@@ -1,0 +1,237 @@
+is_global = true
+build_property.TargetFramework = net8.0
+build_property.TargetFramework = net8.0
+build_property.TargetPlatformMinVersion = 
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = Proyecto_Laboratorios_Univalle
+build_property.RootNamespace = Proyecto_Laboratorios_Univalle
+build_property.ProjectDir = C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 8.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 8.0
+build_property.EnableCodeStyleSeverity = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Ciudades/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2l1ZGFkZXNcQ3JlYXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Ciudades/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2l1ZGFkZXNcRGVsZXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Ciudades/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2l1ZGFkZXNcRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Ciudades/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2l1ZGFkZXNcRWRpdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Ciudades/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2l1ZGFkZXNcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Equipos/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXF1aXBvc1xDcmVhdGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Equipos/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXF1aXBvc1xEZWxldGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Equipos/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXF1aXBvc1xEZXRhaWxzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Equipos/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXF1aXBvc1xFZGl0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Equipos/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXF1aXBvc1xJbmRleC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Facultades/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRmFjdWx0YWRlc1xDcmVhdGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Facultades/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRmFjdWx0YWRlc1xEZWxldGUuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Facultades/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRmFjdWx0YWRlc1xEZXRhaWxzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Facultades/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRmFjdWx0YWRlc1xFZGl0LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Facultades/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRmFjdWx0YWRlc1xJbmRleC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Laboratorios/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTGFib3JhdG9yaW9zXENyZWF0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Laboratorios/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTGFib3JhdG9yaW9zXERlbGV0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Laboratorios/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTGFib3JhdG9yaW9zXERldGFpbHMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Laboratorios/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTGFib3JhdG9yaW9zXEVkaXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Laboratorios/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTGFib3JhdG9yaW9zXEluZGV4LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Mantenimientos/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTWFudGVuaW1pZW50b3NcQ3JlYXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Mantenimientos/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTWFudGVuaW1pZW50b3NcRGVsZXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Mantenimientos/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTWFudGVuaW1pZW50b3NcRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Mantenimientos/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTWFudGVuaW1pZW50b3NcRWRpdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Mantenimientos/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTWFudGVuaW1pZW50b3NcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Paises/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUGFpc2VzXENyZWF0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Paises/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUGFpc2VzXERlbGV0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Paises/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUGFpc2VzXERldGFpbHMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Paises/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUGFpc2VzXEVkaXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Paises/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcUGFpc2VzXEluZGV4LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Solicitudes/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU29saWNpdHVkZXNcQ3JlYXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Solicitudes/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU29saWNpdHVkZXNcRGVsZXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Solicitudes/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU29saWNpdHVkZXNcRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Solicitudes/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU29saWNpdHVkZXNcRWRpdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Solicitudes/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU29saWNpdHVkZXNcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Equipos/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19FcXVpcG9zXENyZWF0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Equipos/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19FcXVpcG9zXERlbGV0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Equipos/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19FcXVpcG9zXERldGFpbHMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Equipos/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19FcXVpcG9zXEVkaXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Equipos/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19FcXVpcG9zXEluZGV4LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Matenimientos/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19NYXRlbmltaWVudG9zXENyZWF0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Matenimientos/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19NYXRlbmltaWVudG9zXERlbGV0ZS5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Matenimientos/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19NYXRlbmltaWVudG9zXERldGFpbHMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Matenimientos/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19NYXRlbmltaWVudG9zXEVkaXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Tipo_Matenimientos/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVGlwb19NYXRlbmltaWVudG9zXEluZGV4LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Usuarios/Create.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXN1YXJpb3NcQ3JlYXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Usuarios/Delete.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXN1YXJpb3NcRGVsZXRlLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Usuarios/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXN1YXJpb3NcRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Usuarios/Edit.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXN1YXJpb3NcRWRpdC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/Usuarios/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVXN1YXJpb3NcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/_ValidationScriptsPartial.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1ZhbGlkYXRpb25TY3JpcHRzUGFydGlhbC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/monte/OneDrive/Desktop/Proyecto Laboratorios Univalle/Pages/_ViewImports.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 

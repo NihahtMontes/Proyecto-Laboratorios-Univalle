@@ -1,0 +1,40 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes.CreateModel
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Maintenance Type</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="MaintenanceType.Name" class="control-label"></label>
+                <input asp-for="MaintenanceType.Name" class="form-control" aria-required="true"/>
+                <span asp-validation-for="MaintenanceType.Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="MaintenanceType.Description" class="control-label"></label>
+                <input asp-for="MaintenanceType.Description" class="form-control" />
+                <span asp-validation-for="MaintenanceType.Description" class="text-danger"></span>
+            </div>
+            <div class="form-group mt-3">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-page="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,116 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Users.CreateModel
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Usuario</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="SystemUser.FirstName" class="control-label"></label>
+                <input asp-for="SystemUser.FirstName" class="form-control" aria-required="true"/>
+                <span asp-validation-for="SystemUser.FirstName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="SystemUser.LastName" class="control-label"></label>
+                <input asp-for="SystemUser.LastName" class="form-control" aria-required="true"/>
+                <span asp-validation-for="SystemUser.LastName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SystemUser.SecondLastName" class="control-label"></label>
+                <input asp-for="SystemUser.SecondLastName" class="form-control" />
+                <span asp-validation-for="SystemUser.SecondLastName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="SystemUser.IdentityCard" class="control-label"></label>
+                <input asp-for="SystemUser.IdentityCard" class="form-control" aria-required="true"/>
+                <span asp-validation-for="SystemUser.IdentityCard" class="text-danger"></span>
+            </div>
+            
+            <div class="form-group">
+                <label asp-for="SystemUser.PhoneNumber" class="control-label"></label>
+                <input asp-for="SystemUser.PhoneNumber" class="form-control" />
+                <span asp-validation-for="SystemUser.PhoneNumber" class="text-danger"></span>
+            </div>
+            
+            <div class="form-group">
+                <label asp-for="SystemUser.Email" class="control-label"></label>
+                <input asp-for="SystemUser.Email" class="form-control" />
+                <span asp-validation-for="SystemUser.Email" class="text-danger"></span>
+            </div>
+            
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="SystemUser.UserName" class="control-label"></label>
+                <input asp-for="SystemUser.UserName" class="form-control" aria-required="true"/>
+                <span asp-validation-for="SystemUser.UserName" class="text-danger"></span>
+            </div>
+            
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="Password" class="control-label"></label>
+                <input asp-for="Password" class="form-control" aria-required="true"/>
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+            
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="SystemUser.Role" class="control-label"></label>
+                <select asp-for="SystemUser.Role" class="form-control" aria-required="true" asp-items="ViewBag.Roles"></select>
+                <small class="form-text text-muted">
+                    Rol de Usuario
+
+                </small>
+                <span asp-validation-for="SystemUser.Role" class="text-danger"></span>
+
+            </div>
+            
+            <div class="form-group">
+                <label asp-for="SystemUser.Position" class="control-label"></label>
+                <input asp-for="SystemUser.Position" class="form-control" />
+                <small class="form-text text-muted">
+                    (Cargo de la Persona)
+
+                </small>
+                <span asp-validation-for="SystemUser.Position" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SystemUser.Department" class="control-label"></label>
+                <input asp-for="SystemUser.Department" class="form-control" />
+                <small class="form-text text-muted">
+                  (Ej. Tecnología, Salud, Arquitectura)
+                        
+                </small>
+                <span asp-validation-for="SystemUser.Department" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="SystemUser.HireDate" class="control-label"></label>
+                <input asp-for="SystemUser.HireDate" class="form-control" />
+                <span asp-validation-for="SystemUser.HireDate" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-page="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

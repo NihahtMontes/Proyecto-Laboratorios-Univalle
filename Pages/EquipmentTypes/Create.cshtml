@@ -1,0 +1,50 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes.CreateModel
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Equipment Type</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="EquipmentType.Name" class="control-label"></label>
+                <input asp-for="EquipmentType.Name" class="form-control" aria-required="true"/>
+                <span asp-validation-for="EquipmentType.Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="EquipmentType.Description" class="control-label"></label>
+                <input asp-for="EquipmentType.Description" class="form-control" />
+                <span asp-validation-for="EquipmentType.Description" class="text-danger"></span>
+            </div>
+            <div class="form-group form-check">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="EquipmentType.RequiresCalibration" /> @Html.DisplayNameFor(model => model.EquipmentType.RequiresCalibration)
+                </label>
+            </div>
+            <div class="form-group">
+                <label asp-for="EquipmentType.MaintenanceFrequencyMonths" class="control-label"></label>
+                <input asp-for="EquipmentType.MaintenanceFrequencyMonths" class="form-control" />
+                <span asp-validation-for="EquipmentType.MaintenanceFrequencyMonths" class="text-danger"></span>
+            </div>
+            <div class="form-group mt-3">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-page="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

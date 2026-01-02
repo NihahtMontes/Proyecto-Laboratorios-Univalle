@@ -1,0 +1,285 @@
+﻿@page
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@model Proyecto_Laboratorios_Univalle.Pages.Maintenances.EditModel
+
+@{
+    ViewData["Title"] = "Edit";
+    var categoryList = Html.GetEnumSelectList<CostCategory>();
+}
+
+<h1>Edit Maintenance</h1>
+
+<h4>Maintenance</h4>
+<hr />
+<div class="row">
+    <div class="col-md-12">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Maintenance.Id" />
+            
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.EquipmentId" class="control-label"></label>
+                        <select asp-for="Maintenance.EquipmentId" class="form-control" asp-items="ViewBag.EquipmentId"></select>
+                         <span asp-validation-for="Maintenance.EquipmentId" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.MaintenanceTypeId" class="control-label"></label>
+                        <select asp-for="Maintenance.MaintenanceTypeId" class="form-control" asp-items="ViewBag.MaintenanceTypeId"></select>
+                         <span asp-validation-for="Maintenance.MaintenanceTypeId" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.TechnicianId" class="control-label"></label>
+                        <select asp-for="Maintenance.TechnicianId" class="form-control" asp-items="ViewBag.TechnicianId" ></select>
+                         <span asp-validation-for="Maintenance.TechnicianId" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+             <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.RequestId" class="control-label"></label>
+                        <select asp-for="Maintenance.RequestId" class="form-control" asp-items="ViewBag.RequestId" >
+                             <option value="">-- None --</option>
+                        </select>
+                         <span asp-validation-for="Maintenance.RequestId" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.ScheduledDate" class="control-label"></label>
+                        <input asp-for="Maintenance.ScheduledDate" class="form-control" />
+                        <span asp-validation-for="Maintenance.ScheduledDate" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                     <div class="form-group">
+                        <label asp-for="Maintenance.Status" class="control-label"></label>
+                        <select asp-for="Maintenance.Status" class="form-control" asp-items="Html.GetEnumSelectList<MaintenanceStatus>()"></select>
+                        <span asp-validation-for="Maintenance.Status" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                 <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.StartDate" class="control-label"></label>
+                        <input asp-for="Maintenance.StartDate" class="form-control" />
+                        <span asp-validation-for="Maintenance.StartDate" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.EndDate" class="control-label"></label>
+                        <input asp-for="Maintenance.EndDate" class="form-control" />
+                        <span asp-validation-for="Maintenance.EndDate" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Maintenance.Description" class="control-label"></label>
+                <textarea asp-for="Maintenance.Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Maintenance.Description" class="text-danger"></span>
+            </div>
+
+             <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.EstimatedCost" class="control-label"></label>
+                        <input asp-for="Maintenance.EstimatedCost" class="form-control" type="number" step="0.01" />
+                        <span asp-validation-for="Maintenance.EstimatedCost" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.ActualCost" class="control-label"></label>
+                        <input asp-for="Maintenance.ActualCost" class="form-control" readonly id="txtActualCost" />
+                        <span asp-validation-for="Maintenance.ActualCost" class="text-danger"></span>
+                    </div>
+                </div>
+             </div>
+
+            <div class="form-group">
+                <label asp-for="Maintenance.Recommendations" class="control-label"></label>
+                <textarea asp-for="Maintenance.Recommendations" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="Maintenance.Recommendations" class="text-danger"></span>
+            </div>
+            
+             <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.SuggestedNextMaintenanceDate" class="control-label"></label>
+                        <input asp-for="Maintenance.SuggestedNextMaintenanceDate" class="form-control" />
+                        <span asp-validation-for="Maintenance.SuggestedNextMaintenanceDate" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="Maintenance.Observations" class="control-label"></label>
+                        <input asp-for="Maintenance.Observations" class="form-control" />
+                        <span asp-validation-for="Maintenance.Observations" class="text-danger"></span>
+                    </div>
+                </div>
+             </div>
+            
+            <hr />
+            <h5>Cost Details</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered" id="costsTable">
+                    <thead class="thead-light">
+                        <tr>
+                            <th style="width: 25%">Concept</th>
+                            <th style="width: 20%">Category</th>
+                            <th style="width: 20%">Description</th>
+                            <th style="width: 10%">Qty</th>
+                            <th style="width: 10%">Unit Price</th>
+                            <th>Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="costsContainer">
+                        @if (Model.Maintenance.CostDetails != null)
+                        {
+                            for (int i = 0; i < Model.Maintenance.CostDetails.Count; i++)
+                            {
+                                <tr class="cost-row">
+                                    <input type="hidden" asp-for="Maintenance.CostDetails[i].Id" />
+                                    <td>
+                                        <input asp-for="Maintenance.CostDetails[i].Concept" class="form-control" required placeholder="Concept" />
+                                    </td>
+                                    <td>
+                                        <select asp-for="Maintenance.CostDetails[i].Category" class="form-control" asp-items="categoryList" onchange="checkCategory(this)"></select>
+                                    </td>
+                                     <td>
+                                        <input asp-for="Maintenance.CostDetails[i].Description" class="form-control" placeholder="Optional desc" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="Maintenance.CostDetails[i].Quantity" class="form-control txt-qty" type="number" step="0.01" onchange="calculateTotals()" />
+                                    </td>
+                                    <td>
+                                        <input asp-for="Maintenance.CostDetails[i].UnitPrice" class="form-control txt-price" type="number" step="0.01" onchange="calculateTotals()" />
+                                    </td>
+                                    <td class="txt-subtotal">@Model.Maintenance.CostDetails[i].Subtotal.ToString("F2")</td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">x</button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-success btn-sm" onclick="addRow()">+ Add Cost Item</button>
+            <hr />
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Save Changes" class="btn btn-primary" />
+                <a asp-page="./Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Template for new rows -->
+<table style="display:none">
+    <tbody id="costTemplate">
+        <tr class="cost-row">
+            <input type="hidden" name="Maintenance.CostDetails[INDEX].Id" value="0" />
+            <td>
+                <input name="Maintenance.CostDetails[INDEX].Concept" class="form-control" required placeholder="Concept" />
+            </td>
+            <td>
+                <select name="Maintenance.CostDetails[INDEX].Category" class="form-control" onchange="checkCategory(this)">
+                    @foreach (var item in categoryList)
+                    {
+                        <option value="@item.Value">@item.Text</option>
+                    }
+                </select>
+            </td>
+            <td>
+                <input name="Maintenance.CostDetails[INDEX].Description" class="form-control" placeholder="Optional desc" />
+            </td>
+            <td>
+                <input name="Maintenance.CostDetails[INDEX].Quantity" class="form-control txt-qty" type="number" step="0.01" value="1" onchange="calculateTotals()" />
+            </td>
+            <td>
+                <input name="Maintenance.CostDetails[INDEX].UnitPrice" class="form-control txt-price" type="number" step="0.01" onchange="calculateTotals()" />
+            </td>
+            <td class="txt-subtotal">0.00</td>
+            <td>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeRow(this)">x</button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+
+    <script>
+        function addRow() {
+            const container = document.getElementById('costsContainer');
+            const template = document.getElementById('costTemplate').innerHTML;
+            const index = container.children.length;
+            
+            const newRow = template.replace(/INDEX/g, index);
+            container.insertAdjacentHTML('beforeend', newRow);
+            const newlyAddedRow = container.lastElementChild;
+            const select = newlyAddedRow.querySelector('select');
+            checkCategory(select);
+        }
+
+        function removeRow(btn) {
+            btn.closest('tr').remove();
+            reindexRows();
+            calculateTotals();
+        }
+
+        function reindexRows() {
+            const rows = document.querySelectorAll('#costsContainer .cost-row');
+            rows.forEach((row, index) => {
+                row.querySelectorAll('input, select').forEach(input => {
+                    const name = input.getAttribute('name');
+                    if (name) {
+                        input.setAttribute('name', name.replace(/\[\d+\]/, `[${index}]`));
+                    }
+                });
+            });
+        }
+
+        function checkCategory(selectElement) {
+            // Placeholder for category logic logic
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            let totalGeneral = 0;
+            const rows = document.querySelectorAll('#costsContainer .cost-row');
+            
+            rows.forEach(row => {
+                const qtyInput = row.querySelector('.txt-qty');
+                const qty = parseFloat(qtyInput.value) || 0;
+                const price = parseFloat(row.querySelector('.txt-price').value) || 0;
+                
+                const subtotal = qty * price;
+                
+                row.querySelector('.txt-subtotal').innerText = subtotal.toFixed(2);
+                totalGeneral += subtotal;
+            });
+            
+            document.getElementById('txtActualCost').value = totalGeneral.toFixed(2);
+        }
+
+        window.onload = function() {
+            calculateTotals();
+        };
+    </script>
+}

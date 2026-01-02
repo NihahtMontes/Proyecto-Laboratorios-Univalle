@@ -1,0 +1,178 @@
+﻿@page
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@model Proyecto_Laboratorios_Univalle.Pages.Verifications.EditModel
+
+@{
+    ViewData["Title"] = "Edit";
+}
+
+<h1>Edit</h1>
+
+<h4>Verification</h4>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Verification.Id" />
+            
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="Verification.EquipmentId" class="control-label"></label>
+                <select asp-for="Verification.EquipmentId" class ="form-control" asp-items="ViewBag.EquipmentId"></select>
+                 <span asp-validation-for="Verification.EquipmentId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Verification.Date" class="control-label"></label>
+                <input asp-for="Verification.Date" class="form-control" />
+                <span asp-validation-for="Verification.Date" class="text-danger"></span>
+            </div>
+
+            <h5 class="mt-4">Checklist</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="Verification.CablingCheck" class="control-label"></label>
+                        <select asp-for="Verification.CablingCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.CablingCheck" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Verification.GasHoseCheck" class="control-label"></label>
+                       <select asp-for="Verification.GasHoseCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.GasHoseCheck" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Verification.WaterHoseCheck" class="control-label"></label>
+                        <select asp-for="Verification.WaterHoseCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.WaterHoseCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.BurnerCheck" class="control-label"></label>
+                        <select asp-for="Verification.BurnerCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.BurnerCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.HeatExchangerCheck" class="control-label"></label>
+                        <select asp-for="Verification.HeatExchangerCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.HeatExchangerCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.FlameSensorCheck" class="control-label"></label>
+                        <select asp-for="Verification.FlameSensorCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.FlameSensorCheck" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Verification.ElectrodeIgniterCheck" class="control-label"></label>
+                        <select asp-for="Verification.ElectrodeIgniterCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.ElectrodeIgniterCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.FanCheck" class="control-label"></label>
+                        <select asp-for="Verification.FanCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.FanCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.CombustionFlameCheck" class="control-label"></label>
+                        <select asp-for="Verification.CombustionFlameCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.CombustionFlameCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.LubricationCheck" class="control-label"></label>
+                        <select asp-for="Verification.LubricationCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.LubricationCheck" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="Verification.OvenIgnitionCheck" class="control-label"></label>
+                        <select asp-for="Verification.OvenIgnitionCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.OvenIgnitionCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.TemperatureControlCheck" class="control-label"></label>
+                        <select asp-for="Verification.TemperatureControlCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.TemperatureControlCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.InternalCleaningCheck" class="control-label"></label>
+                        <select asp-for="Verification.InternalCleaningCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.InternalCleaningCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.ExternalCleaningCheck" class="control-label"></label>
+                        <select asp-for="Verification.ExternalCleaningCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.ExternalCleaningCheck" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Verification.LightsCheck" class="control-label"></label>
+                        <select asp-for="Verification.LightsCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.LightsCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.HighTempSteamCheck" class="control-label"></label>
+                        <select asp-for="Verification.HighTempSteamCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.HighTempSteamCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.LedDisplayCheck" class="control-label"></label>
+                        <select asp-for="Verification.LedDisplayCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.LedDisplayCheck" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Verification.SolenoidValveCheck" class="control-label"></label>
+                        <select asp-for="Verification.SolenoidValveCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.SolenoidValveCheck" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Verification.SoundAlarmCheck" class="control-label"></label>
+                        <select asp-for="Verification.SoundAlarmCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.SoundAlarmCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.ThermocoupleCheck" class="control-label"></label>
+                        <select asp-for="Verification.ThermocoupleCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.ThermocoupleCheck" class="text-danger"></span>
+                    </div>
+                     <div class="form-group">
+                        <label asp-for="Verification.SteamOutletCheck" class="control-label"></label>
+                        <select asp-for="Verification.SteamOutletCheck" class="form-control" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        <span asp-validation-for="Verification.SteamOutletCheck" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="mt-4">Summary</h5>
+
+            <div class="form-group">
+                <label asp-for="Verification.Observations" class="control-label"></label>
+                <textarea asp-for="Verification.Observations" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Verification.Observations" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Verification.CriticalFindings" class="control-label"></label>
+                <textarea asp-for="Verification.CriticalFindings" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="Verification.CriticalFindings" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Verification.Recommendations" class="control-label"></label>
+                <textarea asp-for="Verification.Recommendations" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="Verification.Recommendations" class="text-danger"></span>
+            </div>
+             <div class="form-group">
+                 <label asp-for="Verification.Status" class="control-label"></label>
+                 <select asp-for="Verification.Status" class="form-control" asp-items="Html.GetEnumSelectList<VerificationStatus>()"></select>
+                 <span asp-validation-for="Verification.Status" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mt-3">
+                <input type="submit" value="Save" class="btn btn-primary" />
+                <a asp-page="./Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

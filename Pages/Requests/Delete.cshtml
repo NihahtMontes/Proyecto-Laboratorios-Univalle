@@ -1,0 +1,40 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Requests.DeleteModel
+
+@{
+    ViewData["Title"] = "Delete";
+}
+
+<h1>Delete</h1>
+
+<h3>Are you sure you want to delete this Request?</h3>
+<div>
+    <h4>Request</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.Equipment)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.Equipment.Name)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.Description)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.Description)
+        </dd>
+         <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.Status)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.Status)
+        </dd>
+    </dl>
+    
+    <form method="post">
+        <input type="hidden" asp-for="MaintenanceRequest.Id" />
+        <input type="submit" value="Delete" class="btn btn-danger" /> |
+        <a asp-page="./Index">Back to List</a>
+    </form>
+</div>

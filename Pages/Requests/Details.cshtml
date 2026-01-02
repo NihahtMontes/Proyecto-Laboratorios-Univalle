@@ -1,0 +1,79 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Requests.DetailsModel
+
+@{
+    ViewData["Title"] = "Details";
+}
+
+<h1>Details</h1>
+
+<div>
+    <h4>Request</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.Equipment)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.Equipment.Name)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.RequestedBy)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.RequestedBy.FullName)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.Description)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.Description)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.Priority)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.Priority)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.Observations)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.Observations)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.Status)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.Status)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.ApprovedBy)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.ApprovedBy.FullName)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.ApprovalDate)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.ApprovalDate)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.RejectionReason)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.RejectionReason)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.MaintenanceRequest.CreatedDate)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.MaintenanceRequest.CreatedDate)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-page="./Edit" asp-route-id="@Model.MaintenanceRequest.Id">Edit</a> |
+    <a asp-page="./Index">Back to List</a>
+</div>

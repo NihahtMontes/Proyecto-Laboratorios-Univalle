@@ -1,0 +1,138 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Equipment.IndexModel
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-page="Create" class="btn btn-primary">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].Name)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].InventoryNumber)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].Brand)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].Model)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].SerialNumber)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].UsefulLifeYears)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].AcquisitionDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].AcquisitionValue)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].CurrentStatus)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].Observations)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].CreatedDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].LastModifiedDate)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].EquipmentType)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].Laboratory)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].Country)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].City)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].CreatedBy)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Equipment[0].ModifiedBy)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model.Equipment) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.InventoryNumber)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Brand)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Model)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.SerialNumber)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.UsefulLifeYears)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.AcquisitionDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.AcquisitionValue)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CurrentStatus)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Observations)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CreatedDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.LastModifiedDate)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.EquipmentType.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Laboratory.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Country.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.City.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CreatedBy.IdentityCard)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ModifiedBy.IdentityCard)
+            </td>
+            <td>
+                <a asp-page="./Edit" asp-route-id="@item.Id">Edit</a> |
+                <a asp-page="./Details" asp-route-id="@item.Id">Details</a> |
+                <a asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

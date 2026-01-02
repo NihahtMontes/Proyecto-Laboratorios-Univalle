@@ -1,0 +1,97 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Equipment.CreateModel
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Equipment</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="Equipment.EquipmentTypeId" class="control-label"></label>
+                <select asp-for="Equipment.EquipmentTypeId" class ="form-control" asp-items="ViewBag.EquipmentTypeId" aria-required="true"></select>
+            </div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="Equipment.LaboratoryId" class="control-label"></label>
+                <select asp-for="Equipment.LaboratoryId" class ="form-control" asp-items="ViewBag.LaboratoryId" aria-required="true"></select>
+            </div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="Equipment.CityId" class="control-label"></label>
+                <select asp-for="Equipment.CityId" class ="form-control" asp-items="ViewBag.CityId" aria-required="true"></select>
+            </div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="Equipment.CountryId" class="control-label"></label>
+                <select asp-for="Equipment.CountryId" class ="form-control" asp-items="ViewBag.CountryId" aria-required="true"></select>
+            </div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="Equipment.Name" class="control-label"></label>
+                <input asp-for="Equipment.Name" class="form-control" aria-required="true"/>
+                <span asp-validation-for="Equipment.Name" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="Equipment.InventoryNumber" class="control-label"></label>
+                <input asp-for="Equipment.InventoryNumber" class="form-control" aria-required="true"/>
+                <span asp-validation-for="Equipment.InventoryNumber" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Equipment.Brand" class="control-label"></label>
+                <input asp-for="Equipment.Brand" class="form-control" />
+                <span asp-validation-for="Equipment.Brand" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Equipment.Model" class="control-label"></label>
+                <input asp-for="Equipment.Model" class="form-control" />
+                <span asp-validation-for="Equipment.Model" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Equipment.SerialNumber" class="control-label"></label>
+                <input asp-for="Equipment.SerialNumber" class="form-control" />
+                <span asp-validation-for="Equipment.SerialNumber" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Equipment.UsefulLifeYears" class="control-label"></label>
+                <input asp-for="Equipment.UsefulLifeYears" class="form-control" />
+                <span asp-validation-for="Equipment.UsefulLifeYears" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Equipment.AcquisitionDate" class="control-label" ></label>
+                <input asp-for="Equipment.AcquisitionDate" class="form-control" />
+                <span asp-validation-for="Equipment.AcquisitionDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Equipment.AcquisitionValue" class="control-label"></label>
+                <input asp-for="Equipment.AcquisitionValue" class="form-control" />
+                <span asp-validation-for="Equipment.AcquisitionValue" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Equipment.Observations" class="control-label"></label>
+                <input asp-for="Equipment.Observations" class="form-control" />
+                <span asp-validation-for="Equipment.Observations" class="text-danger"></span>
+            </div>
+         
+            <div class="form-group mt-3">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-page="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

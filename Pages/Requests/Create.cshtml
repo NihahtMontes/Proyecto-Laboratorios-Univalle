@@ -1,0 +1,54 @@
+﻿@page
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@model Proyecto_Laboratorios_Univalle.Pages.Requests.CreateModel
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create Request</h1>
+
+<h4>Request</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="MaintenanceRequest.EquipmentId" class="control-label"></label>
+                <select asp-for="MaintenanceRequest.EquipmentId" class ="form-control" asp-items="ViewBag.EquipmentId"></select>
+                <span asp-validation-for="MaintenanceRequest.EquipmentId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="MaintenanceRequest.RequestedById" class="control-label"></label>
+                <select asp-for="MaintenanceRequest.RequestedById" class ="form-control" asp-items="ViewBag.RequestedById"></select>
+                 <span asp-validation-for="MaintenanceRequest.RequestedById" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="MaintenanceRequest.Description" class="control-label"></label>
+                <textarea asp-for="MaintenanceRequest.Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="MaintenanceRequest.Description" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="MaintenanceRequest.Priority" class="control-label"></label>
+                <select asp-for="MaintenanceRequest.Priority" class="form-control" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
+                <span asp-validation-for="MaintenanceRequest.Priority" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="MaintenanceRequest.Observations" class="control-label"></label>
+                <textarea asp-for="MaintenanceRequest.Observations" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="MaintenanceRequest.Observations" class="text-danger"></span>
+            </div>
+            <div class="form-group mt-3">
+                <input type="submit" value="Create" class="btn btn-primary" />
+                <a asp-page="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,55 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    
+    @if (User?.Identity != null && User.Identity.IsAuthenticated)
+    {
+        <div class="alert alert-success">
+            You are logged in as <strong>@User.Identity.Name</strong>
+            <br />
+
+            <div class="debug-info">
+                <h3>Debug Info:</h3>
+                <p>Is Authenticated: @User.Identity.IsAuthenticated</p>
+                <p>Username: @User.Identity.Name</p>
+                <p>All Claims:</p>
+                <ul>
+                    @foreach (var claim in User.Claims)
+                    {
+                        <li><strong>@claim.Type:</strong> @claim.Value</li>
+                    }
+                </ul>
+            </div>
+
+            <form class="form-inline" asp-page="/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })" method="post">
+                <button type="submit" class="nav-link btn btn-link text-dark">Logout</button>
+            </form>
+        </div>
+
+        <h2>Modules</h2>
+        <div class="list-group">
+            <a href="/Users/Index" class="list-group-item list-group-item-action">Administrar Usuarios</a>
+            <a href="/Laboratories/Index" class="list-group-item list-group-item-action">Laboratorios</a>
+            <a href="/Equipment/Index" class="list-group-item list-group-item-action">Equipos</a>
+            <a href="/Maintenance/Index" class="list-group-item list-group-item-action">Mantenimientos</a>
+            <a href="/Verifications/Index" class="list-group-item list-group-item-action">Verificaciones</a>
+            <a href="/Requests/Index" class="list-group-item list-group-item-action">Solicitudes</a>
+            <a href="/Faculties/Index" class="list-group-item list-group-item-action">Facultades</a>
+            <a href="/Cities/Index" class="list-group-item list-group-item-action">Ciudades</a>
+            <a href="/Countries/Index" class="list-group-item list-group-item-action">Paises</a>
+            <a href="/EquipmentTypes/Index" class="list-group-item list-group-item-action">Tipos de Equipos</a>
+            <a href="/MaintenanceTypes/Index" class="list-group-item list-group-item-action">Tipos de Mantenimiento</a>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            Please <a asp-page="/Login">Log in</a> to access the system.
+        </div>
+    }
+</div>

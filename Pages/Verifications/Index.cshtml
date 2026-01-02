@@ -1,0 +1,60 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Verifications.IndexModel
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-page="Create" class="btn btn-primary">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+             <th>
+                @Html.DisplayNameFor(model => model.Verifications[0].Equipment)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Verifications[0].Date)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Verifications[0].Status)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Verifications[0].CreatedBy)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Verifications[0].CreatedDate)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model.Verifications) {
+        <tr>
+             <td>
+                @Html.DisplayFor(modelItem => item.Equipment.Name)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Date)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Status)
+            </td>
+             <td>
+                @Html.DisplayFor(modelItem => item.CreatedBy.FullName)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.CreatedDate)
+            </td>
+            <td>
+                <a asp-page="./Edit" asp-route-id="@item.Id">Edit</a> |
+                <a asp-page="./Details" asp-route-id="@item.Id">Details</a> |
+                <a asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

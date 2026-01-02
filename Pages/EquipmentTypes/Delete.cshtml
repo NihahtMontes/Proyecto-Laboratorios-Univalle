@@ -1,0 +1,46 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes.DeleteModel
+
+@{
+    ViewData["Title"] = "Delete";
+}
+
+<h1>Delete</h1>
+
+<h3>Are you sure you want to delete this?</h3>
+<div>
+    <h4>Equipment Type</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.EquipmentType.Name)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.EquipmentType.Name)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.EquipmentType.Description)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.EquipmentType.Description)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.EquipmentType.RequiresCalibration)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.EquipmentType.RequiresCalibration)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.EquipmentType.MaintenanceFrequencyMonths)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.EquipmentType.MaintenanceFrequencyMonths)
+        </dd>
+    </dl>
+    
+    <form method="post">
+        <input type="hidden" asp-for="EquipmentType.Id" />
+        <input type="submit" value="Delete" class="btn btn-danger" /> |
+        <a asp-page="./Index">Back to List</a>
+    </form>
+</div>
