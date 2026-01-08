@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
     /// Represents a physical space where equipment is stored and used.
     /// </summary>
-    public class Laboratory
+    public class Laboratory : IAuditable
     {
         // ========================================
         // PRIMARY KEY
@@ -64,7 +65,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         [Required]
         [Display(Name = "Estado")]
-        public GeneralStatus Status { get; set; } = GeneralStatus.Active;
+        public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
 
         [Display(Name = "Creado Por")]
         public int? CreatedById { get; set; }

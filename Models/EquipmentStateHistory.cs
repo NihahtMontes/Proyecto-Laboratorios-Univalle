@@ -2,13 +2,14 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
     /// Historical record of equipment state changes
     /// </summary>
-    public class EquipmentStateHistory
+    public class EquipmentStateHistory : IAuditable
     {
         [Key]
         public int Id { get; set; }
@@ -34,11 +35,20 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Motivo del Cambio")]
         public string? Reason { get; set; }
 
-        [Display(Name = "Registrado Por")]
-        public int? RegisteredById { get; set; }
+        // ========================================
+        // AUDIT (IAuditable Implementation)
+        // ========================================
+        [Display(Name = "Registrado Por (Creado Por)")]
+        public int? CreatedById { get; set; }
 
         [Display(Name = "Fecha de Registro")]
-        public DateTime RegisteredDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.Now;
+
+        [Display(Name = "Modificado Por")]
+        public int? ModifiedById { get; set; }
+
+        [Display(Name = "Última Modificación")]
+        public DateTime? LastModifiedDate { get; set; }
 
         // ========================================
         // NAVIGATION
@@ -46,8 +56,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("EquipmentId")]
         public virtual Equipment? Equipment { get; set; }
 
-        [ForeignKey("RegisteredById")]
-        public virtual User? RegisteredBy { get; set; }
+        [ForeignKey("CreatedById")]
+        public virtual User? CreatedBy { get; set; }
+
+        [ForeignKey("ModifiedById")]
+        public virtual User? ModifiedBy { get; set; }
 
         // ========================================
         // CALCULATED PROPERTY

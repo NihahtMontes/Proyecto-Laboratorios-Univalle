@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -11,9 +8,14 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
+    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
     public class EditModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
@@ -47,7 +49,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
             ViewData["RequestId"] = new SelectList(_context.Requests, "Id", "Id"); // Assuming description is not available yet, using Id
-            ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Technician), "Id", "FullName");
+            ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Tecnico), "Id", "FullName");
             ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes, "Id", "Name");
             
             return Page();
@@ -77,20 +79,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             {
                 ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
                 ViewData["RequestId"] = new SelectList(_context.Requests, "Id", "Id");
-                ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Technician), "Id", "FullName");
+                ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Tecnico), "Id", "FullName");
                 ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes, "Id", "Name");
                 return Page();
             }
 
             Maintenance.ActualCost = totalCosts;
-            Maintenance.LastModifiedDate = DateTime.Now;
             
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser != null)
-            {
-                Maintenance.ModifiedById = currentUser.Id;
-            }
-
             var maintenanceDB = await _context.Maintenances
                 .Include(m => m.CostDetails)
                 .FirstOrDefaultAsync(m => m.Id == Maintenance.Id);

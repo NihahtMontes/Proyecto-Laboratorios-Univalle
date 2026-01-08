@@ -169,7 +169,7 @@
                                     <th>Start Date</th>
                                     <th>End Date</th>
                                     <th>Duration</th>
-                                    <th>Registered By</th>
+                                    <th>Registered By (Created By)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -208,9 +208,9 @@
                                             }
                                         </td>
                                         <td>
-                                            @if (history.RegisteredBy != null)
+                                            @if (history.CreatedBy != null)
                                             {
-                                                @history.RegisteredBy.FullName
+                                                @history.CreatedBy.FullName
                                             }
                                             else
                                             {

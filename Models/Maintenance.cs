@@ -4,10 +4,11 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
-    public class Maintenance
+    public class Maintenance : IAuditable
     {
         [Key]
         public int Id { get; set; }

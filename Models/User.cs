@@ -5,13 +5,15 @@ using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Identity;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
     /// Represents a system user with credentials and permissions.
     /// Extends IdentityUser<int> for ASP.NET Core Identity integration.
     /// </summary>
-    public class User : IdentityUser<int>
+    public class User : IdentityUser<int>, IAuditable
     {
         // IdentityUser includes: Id, UserName, Email, PasswordHash, PhoneNumber, etc.
 
@@ -52,7 +54,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [Required]
         [Display(Name = "Estado")]
-        public GeneralStatus Status { get; set; } = GeneralStatus.Active;
+        public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
 
         // ========================================
         // WORK INFORMATION

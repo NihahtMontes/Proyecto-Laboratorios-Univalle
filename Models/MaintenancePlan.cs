@@ -1,11 +1,14 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+using System.ComponentModel.DataAnnotations.Schema;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
-    public class MaintenancePlan
+    public class MaintenancePlan : IAuditable
     {
         [Key]
         public int Id { get; set; }
@@ -32,6 +35,24 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Required]
         [Display(Name = "Tipo de Servicio")]
         public ServiceType ServiceType { get; set; } = ServiceType.Internal;
+
+        // ========================================
+        // AUDIT
+        // ========================================
+        [Display(Name = "Creado Por")]
+        public int? CreatedById { get; set; }
+
+        [Display(Name = "Modificado Por")]
+        public int? ModifiedById { get; set; }
+
+        [Display(Name = "Última Modificación")]
+        public DateTime? LastModifiedDate { get; set; }
+
+        [ForeignKey("CreatedById")]
+        public virtual User? CreatedBy { get; set; }
+
+        [ForeignKey("ModifiedById")]
+        public virtual User? ModifiedBy { get; set; }
 
         [Display(Name = "Tiempo Estimado (horas)")]
         [Range(0, 1000)]

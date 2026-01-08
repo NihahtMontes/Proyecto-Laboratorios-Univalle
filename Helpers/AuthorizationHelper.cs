@@ -27,7 +27,7 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         /// </summary>
         public static bool IsAdmin(UserRole role)
         {
-            return role == UserRole.Administrator || role == UserRole.SuperAdmin;
+            return role == UserRole.Administrador || role == UserRole.SuperAdmin;
         }
 
         /// <summary>
@@ -43,8 +43,8 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         /// </summary>
         public static bool IsTechnical(UserRole role)
         {
-            return role == UserRole.Technician || 
-                   role == UserRole.Engineer || 
+            return role == UserRole.Tecnico || 
+                   role == UserRole.Ingeniero || 
                    role == UserRole.Supervisor;
         }
     }

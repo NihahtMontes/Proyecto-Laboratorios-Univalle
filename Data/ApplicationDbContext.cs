@@ -1,36 +1,66 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Data
 {
     public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, int>
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        private readonly ICurrentUserService _currentUserService;
+
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ICurrentUserService currentUserService)
             : base(options)
         {
+            _currentUserService = currentUserService;
+        }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var userId = _currentUserService.UserId;
+            var now = DateTime.Now;
+
+            foreach (var entry in ChangeTracker.Entries<IAuditable>())
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    entry.Entity.CreatedById = userId;
+                    entry.Entity.CreatedDate = now;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    entry.Entity.ModifiedById = userId;
+                    entry.Entity.LastModifiedDate = now;
+                }
+                // Implicit Soft Delete handling if we want to add it later could go here
+            }
+
+            return await base.SaveChangesAsync(cancellationToken);
         }
 
         // ============================================
         // DB SETS (Tables)
+        // Initialized with null-forgiving operator to satisfy the nullable reference analysis.
+        // EF will populate these at runtime.
         // ============================================
-        public DbSet<User> Users { get; set; }
-        public DbSet<Person> People { get; set; } // New Table
-        public DbSet<Faculty> Faculties { get; set; }
-        public DbSet<Laboratory> Laboratories { get; set; }
-        public DbSet<Country> Countries { get; set; }
-        public DbSet<City> Cities { get; set; }
-        public DbSet<EquipmentType> EquipmentTypes { get; set; }
-        public DbSet<MaintenanceType> MaintenanceTypes { get; set; }
-        public DbSet<Equipment> Equipments { get; set; }
-        public DbSet<EquipmentStateHistory> EquipmentStateHistories { get; set; }
-        public DbSet<Request> Requests { get; set; }
-        public DbSet<Maintenance> Maintenances { get; set; }
-        public DbSet<CostDetail> CostDetails { get; set; }
-        public DbSet<MaintenancePlan> MaintenancePlans { get; set; }
-        public DbSet<Verification> Verifications { get; set; }
+        public new DbSet<User> Users { get; set; } = null!;
+        public DbSet<Person> People { get; set; } = null!; // New Table
+        public DbSet<Faculty> Faculties { get; set; } = null!;
+        public DbSet<Laboratory> Laboratories { get; set; } = null!;
+        public DbSet<Country> Countries { get; set; } = null!;
+        public DbSet<City> Cities { get; set; } = null!;
+        public DbSet<EquipmentType> EquipmentTypes { get; set; } = null!;
+        public DbSet<MaintenanceType> MaintenanceTypes { get; set; } = null!;
+        public DbSet<Equipment> Equipments { get; set; } = null!;
+        public DbSet<EquipmentStateHistory> EquipmentStateHistories { get; set; } = null!;
+        public DbSet<Request> Requests { get; set; } = null!;
+        public DbSet<Maintenance> Maintenances { get; set; } = null!;
+        public DbSet<CostDetail> CostDetails { get; set; } = null!;
+        public DbSet<MaintenancePlan> MaintenancePlans { get; set; } = null!;
+        public DbSet<Verification> Verifications { get; set; } = null!;
 
         // ============================================
         // CONFIGURATION (OnModelCreating)
@@ -72,11 +102,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
             // ============================================
             // DEFAULT VALUES
             // ============================================
-            modelBuilder.Entity<User>().Property(u => u.Status).HasDefaultValue(GeneralStatus.Active);
-            modelBuilder.Entity<Faculty>().Property(f => f.Status).HasDefaultValue(GeneralStatus.Active);
-            modelBuilder.Entity<Laboratory>().Property(l => l.Status).HasDefaultValue(GeneralStatus.Active);
-            modelBuilder.Entity<Country>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Active);
-            modelBuilder.Entity<City>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Active);
+            modelBuilder.Entity<User>().Property(u => u.Status).HasDefaultValue(GeneralStatus.Activo);
+            modelBuilder.Entity<Faculty>().Property(f => f.Status).HasDefaultValue(GeneralStatus.Activo);
+            modelBuilder.Entity<Laboratory>().Property(l => l.Status).HasDefaultValue(GeneralStatus.Activo);
+            modelBuilder.Entity<Country>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Activo);
+            modelBuilder.Entity<City>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Activo    );
 
             modelBuilder.Entity<Equipment>().Property(e => e.CurrentStatus).HasDefaultValue(EquipmentStatus.Operational);
             modelBuilder.Entity<EquipmentStateHistory>().Property(ee => ee.Status).HasDefaultValue(EquipmentStatus.Operational);
@@ -88,11 +118,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
             // ============================================
             // GLOBAL FILTERS (Query Filters)
             // ============================================
-            modelBuilder.Entity<User>().HasQueryFilter(u => u.Status != GeneralStatus.Deleted);
-            modelBuilder.Entity<Faculty>().HasQueryFilter(f => f.Status != GeneralStatus.Deleted);
-            modelBuilder.Entity<Laboratory>().HasQueryFilter(l => l.Status != GeneralStatus.Deleted);
-            modelBuilder.Entity<Country>().HasQueryFilter(p => p.Status != GeneralStatus.Deleted);
-            modelBuilder.Entity<City>().HasQueryFilter(c => c.Status != GeneralStatus.Deleted);
+            modelBuilder.Entity<User>().HasQueryFilter(u => u.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<Faculty>().HasQueryFilter(f => f.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<Laboratory>().HasQueryFilter(l => l.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<Country>().HasQueryFilter(p => p.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<City>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<Equipment>().HasQueryFilter(e => e.CurrentStatus != EquipmentStatus.Deleted);
             modelBuilder.Entity<Maintenance>().HasQueryFilter(m => m.Status != MaintenanceStatus.Cancelled);
             modelBuilder.Entity<Request>().HasQueryFilter(s => s.Status != RequestStatus.Cancelled);
@@ -215,9 +245,15 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             // History -> User
             modelBuilder.Entity<EquipmentStateHistory>()
-                .HasOne(ee => ee.RegisteredBy)
+                .HasOne(ee => ee.CreatedBy)
                 .WithMany()
-                .HasForeignKey(ee => ee.RegisteredById)
+                .HasForeignKey(ee => ee.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EquipmentStateHistory>()
+                .HasOne(ee => ee.ModifiedBy)
+                .WithMany()
+                .HasForeignKey(ee => ee.ModifiedById)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Maintenance -> User
@@ -241,9 +277,15 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             // CostDetail -> User
             modelBuilder.Entity<CostDetail>()
-                .HasOne(d => d.RegisteredBy)
+                .HasOne(d => d.CreatedBy)
                 .WithMany()
-                .HasForeignKey(d => d.RegisteredById)
+                .HasForeignKey(d => d.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CostDetail>()
+                .HasOne(d => d.ModifiedBy)
+                .WithMany()
+                .HasForeignKey(d => d.ModifiedById)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Request -> User
@@ -304,12 +346,19 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 .HasForeignKey(u => u.ModifiedById)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Person -> User (Optional)
+            // Person -> User (Audit)
             modelBuilder.Entity<Person>()
-               .HasOne(p => p.User)
-               .WithMany()
-               .HasForeignKey(p => p.UserId)
-               .OnDelete(DeleteBehavior.SetNull);
+                .HasOne(p => p.CreatedBy)
+                .WithMany()
+                .HasForeignKey(p => p.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Person>()
+                .HasOne(p => p.ModifiedBy)
+                .WithMany()
+                .HasForeignKey(p => p.ModifiedById)
+                .OnDelete(DeleteBehavior.Restrict);
         }
+        public DbSet<Proyecto_Laboratorios_Univalle.Models.ScaffoldTest> ScaffoldTest { get; set; } = default!;
     }
 }

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -10,9 +7,14 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
+    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
     public class CreateModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
@@ -31,7 +33,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             // Requests
             ViewData["RequestId"] = new SelectList(_context.Requests, "Id", "Id"); // Assuming Request has Id and maybe Description/Date, using Id for now
             // Technicians only
-            ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Technician), "Id", "FullName");
+            ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Tecnico), "Id", "FullName");
             // Maintenance Types
             ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes, "Id", "Name");
             
@@ -75,20 +77,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             {
                 ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
                 ViewData["RequestId"] = new SelectList(_context.Requests, "Id", "Id");
-                ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Technician), "Id", "FullName");
+                ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Tecnico), "Id", "FullName");
                 ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes, "Id", "Name");
                 return Page();
             }
 
-            Maintenance.CreatedDate = DateTime.Now;
             Maintenance.ActualCost = totalCosts;
             
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser != null)
-            {
-                Maintenance.CreatedById = currentUser.Id;
-            }
-
             // Sync cost details FKs? handled by EF usually effectively.
             
             _context.Maintenances.Add(Maintenance);

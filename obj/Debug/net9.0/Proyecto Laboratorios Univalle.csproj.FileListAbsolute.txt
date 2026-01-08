@@ -1,3 +1,13 @@
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.csproj.AssemblyReference.cache
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\rpswa.dswa.cache.json
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.AssemblyInfoInputs.cache
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.AssemblyInfo.cs
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.csproj.CoreCompileInputs.cache
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.RazorAssemblyInfo.cache
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.RazorAssemblyInfo.cs
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.sourcelink.json
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\appsettings.Development.json
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\appsettings.json
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Proyecto Laboratorios Univalle.staticwebassets.runtime.json
@@ -19,6 +29,8 @@ C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Build.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Build.Framework.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Build.Locator.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Build.Tasks.Core.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Build.Utilities.Core.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.CodeAnalysis.AnalyzerUtilities.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.CodeAnalysis.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.CodeAnalysis.CSharp.dll
@@ -29,6 +41,7 @@ C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.CodeAnalysis.Razor.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.CodeAnalysis.Scripting.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.CodeAnalysis.Workspaces.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.CodeAnalysis.ExternalAccess.RazorCompiler.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.CodeAnalysis.Workspaces.MSBuild.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Data.SqlClient.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.DiaSymReader.dll
@@ -38,7 +51,16 @@ C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.EntityFrameworkCore.Design.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.EntityFrameworkCore.Relational.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.EntityFrameworkCore.SqlServer.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Caching.Abstractions.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Caching.Memory.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Configuration.Abstractions.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.DependencyInjection.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.DependencyModel.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Logging.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Logging.Abstractions.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Options.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Primitives.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Identity.Client.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Identity.Client.Extensions.Msal.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.IdentityModel.Abstractions.dll
@@ -78,8 +100,11 @@ C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.IdentityModel.Tokens.Jwt.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Memory.Data.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Reflection.MetadataLoadContext.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Resources.Extensions.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Runtime.Caching.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Security.Cryptography.ProtectedData.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Security.Permissions.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Windows.Extensions.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\af\Humanizer.resources.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\ar\Humanizer.resources.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\az\Humanizer.resources.dll
@@ -219,6 +244,19 @@ C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\tr\Microsoft.CodeAnalysis.Workspaces.resources.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.resources.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\cs\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\de\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\es\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\fr\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\it\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\ja\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\ko\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\pl\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\pt-BR\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\ru\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\tr\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\runtimes\unix\lib\net6.0\Microsoft.Data.SqlClient.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\runtimes\win\lib\net6.0\Microsoft.Data.SqlClient.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\runtimes\win-arm\native\Microsoft.Data.SqlClient.SNI.dll
@@ -226,19 +264,14 @@ C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\runtimes\win-x86\native\Microsoft.Data.SqlClient.SNI.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\runtimes\win\lib\net6.0\System.Runtime.Caching.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.csproj.AssemblyReference.cache
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\rpswa.dswa.cache.json
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.AssemblyInfoInputs.cache
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.AssemblyInfo.cs
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.csproj.CoreCompileInputs.cache
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.RazorAssemblyInfo.cache
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.RazorAssemblyInfo.cs
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\runtimes\win\lib\net8.0\System.Windows.Extensions.dll
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\rjimswa.dswa.cache.json
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\scopedcss\Pages copy\Shared\_Layout.cshtml.rz.scp.css
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\scopedcss\Pages\Shared\_Layout.cshtml.rz.scp.css
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\scopedcss\bundle\Proyecto Laboratorios Univalle.styles.css
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\scopedcss\projectbundle\Proyecto Laboratorios Univalle.bundle.scp.css
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\unlu0xluo6-eu7w3d5g1a.gz
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\n9s4z48bir-c2tiyv64ts.gz
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\a1ew213t4b-61n19gt1b8.gz
@@ -300,6 +333,8 @@ C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\pnhctc6rvh-5pze98is44.gz
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\yzj5xkm168-mlv21k5csn.gz
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\3gin1ph7ub-25o87uqmvr.gz
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\1odqbc4xdc-tocgjkcj7m.gz
+C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\m13lqgg2wi-2qmno0frwz.gz
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\staticwebassets.build.json
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\staticwebassets.build.json.cache
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\staticwebassets.development.json
@@ -310,38 +345,4 @@ C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.pdb
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\Proyecto Laboratorios Univalle.genruntimeconfig.cache
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\ref\Proyecto Laboratorios Univalle.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Build.Tasks.Core.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Build.Utilities.Core.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.CodeAnalysis.ExternalAccess.RazorCompiler.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Caching.Abstractions.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Caching.Memory.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Configuration.Abstractions.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.DependencyInjection.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Logging.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Logging.Abstractions.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Options.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\Microsoft.Extensions.Primitives.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Resources.Extensions.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Security.Permissions.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\System.Windows.Extensions.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\cs\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\de\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\es\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\fr\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\it\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\ja\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\ko\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\pl\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\pt-BR\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\ru\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\tr\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.MSBuild.resources.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\bin\Debug\net9.0\runtimes\win\lib\net8.0\System.Windows.Extensions.dll
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\scopedcss\Pages copy\Shared\_Layout.cshtml.rz.scp.css
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\scopedcss\Pages\Shared\_Layout.cshtml.rz.scp.css
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\scopedcss\projectbundle\Proyecto Laboratorios Univalle.bundle.scp.css
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\1odqbc4xdc-tocgjkcj7m.gz
-C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\compressed\m13lqgg2wi-2qmno0frwz.gz
 C:\Users\monte\OneDrive\Desktop\Proyecto Laboratorios Univalle\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt

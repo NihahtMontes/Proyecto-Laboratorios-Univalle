@@ -3,13 +3,14 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
     /// Technical verification checklist for laboratory equipment
     /// </summary>
-    public class Verification
+    public class Verification : IAuditable
     {
         [Key]
         public int Id { get; set; }

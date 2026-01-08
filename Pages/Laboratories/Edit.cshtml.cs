@@ -1,18 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 {
+    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
     public class EditModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
@@ -68,14 +71,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
             try
             {
-                Laboratory.LastModifiedDate = DateTime.Now;
-                
-                var currentUser = await _userManager.GetUserAsync(User);
-                if (currentUser != null)
-                {
-                    Laboratory.ModifiedById = currentUser.Id;
-                }
-
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
@@ -101,7 +96,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
         private void CargarEstados()
         {
             var estados = Enum.GetValues<GeneralStatus>()
-                .Where(e => e != GeneralStatus.Deleted)
+                .Where(e => e != GeneralStatus.Eliminado)
                 .Select(e => new SelectListItem
                 {
                     Value = ((int)e).ToString(),

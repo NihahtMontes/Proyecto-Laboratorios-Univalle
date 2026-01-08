@@ -71,9 +71,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                     EquipmentId = equipment.Id,
                     Status = equipment.CurrentStatus,
                     StartDate = DateTime.Now,
-                    RegisteredDate = DateTime.Now,
+                    CreatedDate = DateTime.Now,
                     Reason = "Equipment deleted",
-                    RegisteredById = userId
+                    CreatedById = userId
                 };
 
                 var lastHistory = await _context.EquipmentStateHistories

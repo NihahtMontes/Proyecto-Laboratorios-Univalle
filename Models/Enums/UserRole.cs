@@ -1,12 +1,20 @@
+﻿using System.ComponentModel.DataAnnotations;
+
 namespace Proyecto_Laboratorios_Univalle.Models.Enums
 {
     public enum UserRole
     {
-        Technician = 1,
+        [Display(Name = "Técnico")]
+        Tecnico = 1,
+        [Display(Name = "Supervisor")]
         Supervisor = 2,
+        [Display(Name = "Director")]
         Director = 3,
-        Engineer = 4,       // Ingeniera
-        Administrator = 5,  // Administrador del sistema
-        SuperAdmin = 99     // Super administrador
+        [Display(Name = "Ingeniero")]
+        Ingeniero = 4,
+        [Display(Name = "Administrador")]
+        Administrador = 5,
+        [Display(Name = "Super administrador")]
+        SuperAdmin = 99
     }
 }

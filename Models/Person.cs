@@ -3,12 +3,14 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
     /// Represents a physical person (Technician, Employee) separate from system access (User).
     /// </summary>
-    public class Person
+    public class Person : IAuditable
     {
         [Key]
         public int Id { get; set; }
@@ -56,14 +58,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Teléfono / Celular")]
         public string? PhoneNumber { get; set; }
 
-        // ========================================
-        // LINKED USER (Optional)
-        // ========================================
-        [Display(Name = "Usuario de Sistema")]
-        public int? UserId { get; set; }
-
-        [ForeignKey("UserId")]
-        public virtual User? User { get; set; }
 
         // ========================================
         // AUDIT
@@ -71,8 +65,22 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Fecha de Registro")]
         public DateTime CreatedDate { get; set; } = DateTime.Now;
 
-        [NotMapped]
-        [Display(Name = "Nombre Completo")]
-        public string FullName => $"{FirstName} {LastName}";
+        [Display(Name = "Creado Por")]
+        public int? CreatedById { get; set; }
+
+        [Display(Name = "Modificado Por")]
+        public int? ModifiedById { get; set; }
+
+        // Navigation properties for audit (linked to User)
+        [ForeignKey("CreatedById")]
+        public virtual User? CreatedBy { get; set; }
+
+        [ForeignKey("ModifiedById")]
+        public virtual User? ModifiedBy { get; set; }
+
+        [Display(Name = "Última Modificación")]
+        public DateTime? LastModifiedDate { get; set; }
+
+
     }
 }

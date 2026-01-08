@@ -19,6 +19,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private int? currentUser;
 
         public EditModel(ApplicationDbContext context, UserManager<User> userManager)
         {
@@ -92,14 +93,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             {
                 try
                 {
-                    Equipment.LastModifiedDate = DateTime.Now;
-                    
-                    var currentUser = await _userManager.GetUserAsync(User);
-                    if (currentUser != null)
-                    {
-                        Equipment.ModifiedById = currentUser.Id;
-                    }
-
                     _context.Attach(Equipment).State = EntityState.Modified;
 
                     _context.Entry(Equipment).Property(e => e.CreatedById).IsModified = false;
@@ -125,8 +118,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                             EquipmentId = Equipment.Id,
                             Status = Equipment.CurrentStatus,
                             StartDate = DateTime.Now,
-                            RegisteredDate = DateTime.Now,
-                            RegisteredById = currentUser?.Id,
+                            CreatedDate = DateTime.Now,
+                            CreatedById = currentUser,
                             Reason = "Status/Info updated" 
                         };
                         _context.EquipmentStateHistories.Add(newHistory);
@@ -156,13 +149,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             ViewData["CityId"] = new SelectList(
                 _context.Cities
                     .Include(c => c.Country)
-                    .Where(c => c.Status == GeneralStatus.Active),
+                    .Where(c => c.Status == GeneralStatus.Activo),
                 "Id",
                 "Name"
             );
 
             ViewData["LaboratoryId"] = new SelectList(
-                _context.Laboratories.Where(l => l.Status == GeneralStatus.Active),
+                _context.Laboratories.Where(l => l.Status == GeneralStatus.Activo),
                 "Id",
                 "Name"
             );

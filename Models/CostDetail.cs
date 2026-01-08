@@ -2,13 +2,14 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
     /// Detailed cost breakdown for maintenance (spare parts, labor, etc.)
     /// </summary>
-    public class CostDetail
+    public class CostDetail : IAuditable
     {
         // ========================================
         // PRIMARY KEY
@@ -69,23 +70,31 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public string? InvoiceNumber { get; set; }
 
         // ========================================
-        // AUDIT
+        // AUDIT (IAuditable Implementation)
         // ========================================
-        [Display(Name = "Fecha de Registro")]
-        public DateTime RegisteredDate { get; set; } = DateTime.Now;
+        [Display(Name = "Creado Por")]
+        public int? CreatedById { get; set; }
 
-        [Display(Name = "Registrado Por")]
-        public int? RegisteredById { get; set; }
+        [Display(Name = "Fecha de Creación")]
+        public DateTime CreatedDate { get; set; } = DateTime.Now;
+
+        [Display(Name = "Modificado Por")]
+        public int? ModifiedById { get; set; }
+
+        [Display(Name = "Última Modificación")]
+        public DateTime? LastModifiedDate { get; set; }
 
         // ========================================
         // NAVIGATION PROPERTIES
         // ========================================
-        // Note: Using 'Maintenance' class name. It will resolve once Maintenance.cs is created.
         [ForeignKey("MaintenanceId")]
         public virtual Maintenance? Maintenance { get; set; }
 
-        [ForeignKey("RegisteredById")]
-        public virtual User? RegisteredBy { get; set; }
+        [ForeignKey("CreatedById")]
+        public virtual User? CreatedBy { get; set; }
+
+        [ForeignKey("ModifiedById")]
+        public virtual User? ModifiedBy { get; set; }
 
         // ========================================
         // CALCULATED PROPERTIES

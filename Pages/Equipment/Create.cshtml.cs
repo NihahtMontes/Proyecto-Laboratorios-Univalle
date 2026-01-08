@@ -14,6 +14,8 @@ using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 {
+    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
+
     [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class CreateModel : PageModel
     {
@@ -58,25 +60,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 return Page();
             }
 
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser != null)
-            {
-                Equipment.CreatedById = currentUser.Id;
-            }
-
-            Equipment.CreatedDate = DateTime.Now;
             Equipment.CurrentStatus = EquipmentStatus.Operational; // Default status
 
             _context.Equipments.Add(Equipment);
             await _context.SaveChangesAsync();
 
+            var currentUser = await _userManager.GetUserAsync(User);
             var initialHistory = new EquipmentStateHistory
             {
                 EquipmentId = Equipment.Id,
                 Status = EquipmentStatus.Operational,
                 StartDate = DateTime.Now,
-                RegisteredDate = DateTime.Now,
-                RegisteredById = currentUser?.Id,
+                CreatedDate = DateTime.Now,
+                CreatedById = currentUser?.Id,
                 Reason = "Initial equipment registration"
             };
 

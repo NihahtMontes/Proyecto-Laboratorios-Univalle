@@ -1,106 +1,151 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Users.CreateModel
 
-@{
-    ViewData["Title"] = "Create";
-}
-
-<h1>Create</h1>
-
-<h4>Usuario</h4>
-<hr />
-<div class="row">
+        @{
+        ViewData["Title"] = "Create";
+        }
+        
+        <h1>Create</h1>
+        
+    <h4>User</h4>
+    <hr />
+    <div class="row">
     <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            
+    <form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="SystemUser.FirstName" class="control-label"></label>
-                <input asp-for="SystemUser.FirstName" class="form-control" aria-required="true"/>
-                <span asp-validation-for="SystemUser.FirstName" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="SystemUser.LastName" class="control-label"></label>
-                <input asp-for="SystemUser.LastName" class="form-control" aria-required="true"/>
-                <span asp-validation-for="SystemUser.LastName" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="SystemUser.SecondLastName" class="control-label"></label>
-                <input asp-for="SystemUser.SecondLastName" class="form-control" />
-                <span asp-validation-for="SystemUser.SecondLastName" class="text-danger"></span>
+                <label asp-for="User.FirstName" class="control-label"></label>
+                <input asp-for="User.FirstName" class="form-control" aria-required="true"/>
+                <span asp-validation-for="User.FirstName" class="text-danger"></span>
             </div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="SystemUser.IdentityCard" class="control-label"></label>
-                <input asp-for="SystemUser.IdentityCard" class="form-control" aria-required="true"/>
-                <span asp-validation-for="SystemUser.IdentityCard" class="text-danger"></span>
+                <label asp-for="User.LastName" class="control-label"></label>
+                <input asp-for="User.LastName" class="form-control" aria-required="true"/>
+                <span asp-validation-for="User.LastName" class="text-danger"></span>
             </div>
-            
             <div class="form-group">
-                <label asp-for="SystemUser.PhoneNumber" class="control-label"></label>
-                <input asp-for="SystemUser.PhoneNumber" class="form-control" />
-                <span asp-validation-for="SystemUser.PhoneNumber" class="text-danger"></span>
+                <label asp-for="User.SecondLastName" class="control-label"></label>
+                <input asp-for="User.SecondLastName" class="form-control" />
+                <span asp-validation-for="User.SecondLastName" class="text-danger"></span>
             </div>
-            
-            <div class="form-group">
-                <label asp-for="SystemUser.Email" class="control-label"></label>
-                <input asp-for="SystemUser.Email" class="form-control" />
-                <span asp-validation-for="SystemUser.Email" class="text-danger"></span>
-            </div>
-            
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="SystemUser.UserName" class="control-label"></label>
-                <input asp-for="SystemUser.UserName" class="form-control" aria-required="true"/>
-                <span asp-validation-for="SystemUser.UserName" class="text-danger"></span>
+                <label asp-for="User.IdentityCard" class="control-label"></label>
+                <input asp-for="User.IdentityCard" class="form-control" aria-required="true"/>
+                <span asp-validation-for="User.IdentityCard" class="text-danger"></span>
             </div>
-            
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="Password" class="control-label"></label>
-                <input asp-for="Password" class="form-control" aria-required="true"/>
-                <span asp-validation-for="Password" class="text-danger"></span>
-            </div>
-            
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="SystemUser.Role" class="control-label"></label>
-                <select asp-for="SystemUser.Role" class="form-control" aria-required="true" asp-items="ViewBag.Roles"></select>
-                <small class="form-text text-muted">
-                    Rol de Usuario
-
-                </small>
-                <span asp-validation-for="SystemUser.Role" class="text-danger"></span>
-
-            </div>
-            
-            <div class="form-group">
-                <label asp-for="SystemUser.Position" class="control-label"></label>
-                <input asp-for="SystemUser.Position" class="form-control" />
-                <small class="form-text text-muted">
-                    (Cargo de la Persona)
-
-                </small>
-                <span asp-validation-for="SystemUser.Position" class="text-danger"></span>
+                <label asp-for="User.Role" class="control-label"></label>
+                <select asp-for="User.Role" class="form-control" aria-required="true"></select>
+                <span asp-validation-for="User.Role" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="SystemUser.Department" class="control-label"></label>
-                <input asp-for="SystemUser.Department" class="form-control" />
-                <small class="form-text text-muted">
-                  (Ej. Tecnología, Salud, Arquitectura)
-                        
-                </small>
-                <span asp-validation-for="SystemUser.Department" class="text-danger"></span>
+                <label asp-for="User.Position" class="control-label"></label>
+                <input asp-for="User.Position" class="form-control" />
+                <span asp-validation-for="User.Position" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="SystemUser.HireDate" class="control-label"></label>
-                <input asp-for="SystemUser.HireDate" class="form-control" />
-                <span asp-validation-for="SystemUser.HireDate" class="text-danger"></span>
+                <label asp-for="User.Department" class="control-label"></label>
+                <input asp-for="User.Department" class="form-control" />
+                <span asp-validation-for="User.Department" class="text-danger"></span>
             </div>
-
-            <div class="form-group mt-3">
+            <div class="form-group">
+                <label asp-for="User.HireDate" class="control-label"></label>
+                <input asp-for="User.HireDate" class="form-control" />
+                <span asp-validation-for="User.HireDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.CreatedById" class="control-label"></label>
+                <select asp-for="User.CreatedById" class ="form-control" asp-items="ViewBag.CreatedById" ></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.CreatedDate" class="control-label"></label>
+                <input asp-for="User.CreatedDate" class="form-control" />
+                <span asp-validation-for="User.CreatedDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.ModifiedById" class="control-label"></label>
+                <select asp-for="User.ModifiedById" class ="form-control" asp-items="ViewBag.ModifiedById" ></select>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.LastModifiedDate" class="control-label"></label>
+                <input asp-for="User.LastModifiedDate" class="form-control" />
+                <span asp-validation-for="User.LastModifiedDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.UserName" class="control-label"></label>
+                <input asp-for="User.UserName" class="form-control" />
+                <span asp-validation-for="User.UserName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.NormalizedUserName" class="control-label"></label>
+                <input asp-for="User.NormalizedUserName" class="form-control" />
+                <span asp-validation-for="User.NormalizedUserName" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.Email" class="control-label"></label>
+                <input asp-for="User.Email" class="form-control" />
+                <span asp-validation-for="User.Email" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.NormalizedEmail" class="control-label"></label>
+                <input asp-for="User.NormalizedEmail" class="form-control" />
+                <span asp-validation-for="User.NormalizedEmail" class="text-danger"></span>
+            </div>
+            <div class="form-group form-check">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="User.EmailConfirmed" /> @Html.DisplayNameFor(model => model.User.EmailConfirmed)
+                </label>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.PasswordHash" class="control-label"></label>
+                <input asp-for="User.PasswordHash" class="form-control" />
+                <span asp-validation-for="User.PasswordHash" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.SecurityStamp" class="control-label"></label>
+                <input asp-for="User.SecurityStamp" class="form-control" />
+                <span asp-validation-for="User.SecurityStamp" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.ConcurrencyStamp" class="control-label"></label>
+                <input asp-for="User.ConcurrencyStamp" class="form-control" />
+                <span asp-validation-for="User.ConcurrencyStamp" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.PhoneNumber" class="control-label"></label>
+                <input asp-for="User.PhoneNumber" class="form-control" />
+                <span asp-validation-for="User.PhoneNumber" class="text-danger"></span>
+            </div>
+            <div class="form-group form-check">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="User.PhoneNumberConfirmed" /> @Html.DisplayNameFor(model => model.User.PhoneNumberConfirmed)
+                </label>
+            </div>
+            <div class="form-group form-check">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="User.TwoFactorEnabled" /> @Html.DisplayNameFor(model => model.User.TwoFactorEnabled)
+                </label>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.LockoutEnd" class="control-label"></label>
+                <input asp-for="User.LockoutEnd" class="form-control" />
+                <span asp-validation-for="User.LockoutEnd" class="text-danger"></span>
+            </div>
+            <div class="form-group form-check">
+                <label class="form-check-label">
+                    <input class="form-check-input" asp-for="User.LockoutEnabled" /> @Html.DisplayNameFor(model => model.User.LockoutEnabled)
+                </label>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.AccessFailedCount" class="control-label"></label>
+                <input asp-for="User.AccessFailedCount" class="form-control" />
+                <span asp-validation-for="User.AccessFailedCount" class="text-danger"></span>
+            </div>
+            <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />
             </div>
         </form>

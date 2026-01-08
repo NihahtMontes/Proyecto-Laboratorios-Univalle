@@ -2,13 +2,14 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
     /// Represents a formal request for maintenance or service
     /// </summary>
-    public class Request
+    public class Request : IAuditable
     {
         [Key]
         public int Id { get; set; }
