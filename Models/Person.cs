@@ -13,6 +13,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
     public class Person : IAuditable
     {
         [Key]
+
+        //Modificado. Estoy en mi nueva rama
         public int Id { get; set; }
 
         // ========================================
