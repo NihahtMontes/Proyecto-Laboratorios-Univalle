@@ -52,7 +52,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             if (user != null)
             {
                 User = user;
-                _context.Users.Remove(User);
+                // Soft Delete implementation
+                User.Status = Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Eliminado;
+                _context.Users.Update(User);
                 await _context.SaveChangesAsync();
             }
 

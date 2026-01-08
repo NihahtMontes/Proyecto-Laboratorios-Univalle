@@ -25,7 +25,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         {
             User = await _context.Users
                 .Include(u => u.CreatedBy)
-                .Include(u => u.ModifiedBy).ToListAsync();
+                .Include(u => u.ModifiedBy)
+                .Where(u => u.Status != Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Eliminado)
+                .ToListAsync();
         }
     }
 }

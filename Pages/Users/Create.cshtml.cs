@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Users
 {
@@ -21,8 +23,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
         public IActionResult OnGet()
         {
-        ViewData["CreatedById"] = new SelectList(_context.Users, "Id", "FirstName");
-        ViewData["ModifiedById"] = new SelectList(_context.Users, "Id", "FirstName");
+            // Roles de Usuario CREATE solo personas que necesitan tener una credencial.
+            var excludedRoles = new[] { 
+                ((int)UserRole.Ingeniero).ToString(), 
+                ((int)UserRole.Tecnico).ToString(),
+                ((int)UserRole.Director).ToString(),  
+                ((int)UserRole.SuperAdmin).ToString()
+            };
+
+            var rolesUsuario = EnumHelper.ToSelectList<UserRole>()
+                .Where(e => !excludedRoles.Contains(e.Value));
+
+            ViewData["UserRole"] = rolesUsuario;
+
+            // Audit fields are handled automatically, no need for SelectLists
             return Page();
         }
 

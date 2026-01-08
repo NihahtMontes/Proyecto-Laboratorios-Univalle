@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Helpers;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Users
 {
@@ -36,8 +38,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 return NotFound();
             }
             User = user;
-           ViewData["CreatedById"] = new SelectList(_context.Users, "Id", "FirstName");
-           ViewData["ModifiedById"] = new SelectList(_context.Users, "Id", "FirstName");
+
+            // Roles filtering for Edit as well
+            var excludedRoles = new[] { 
+                ((int)UserRole.Ingeniero).ToString(), 
+                ((int)UserRole.Tecnico).ToString(),
+                ((int)UserRole.Director).ToString(),  
+                ((int)UserRole.SuperAdmin).ToString()
+            };
+
+            var rolesUsuario = EnumHelper.ToSelectList<UserRole>()
+                .Where(e => !excludedRoles.Contains(e.Value));
+
+            ViewData["UserRole"] = rolesUsuario;
+            
+            // Audit fields are handled automatically
             return Page();
         }
 
