@@ -5,10 +5,10 @@
     ViewData["Title"] = "Index";
 }
 
-<h1>Index</h1>
+<h1>Índice de Equipos</h1>
 
 <p>
-    <a asp-page="Create" class="btn btn-primary">Create New</a>
+    <a asp-page="Create" class="btn btn-primary">Crear Nuevo</a>
 </p>
 <table class="table">
     <thead>
@@ -107,7 +107,10 @@
                 @Html.DisplayFor(modelItem => item.CreatedDate)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.LastModifiedDate)
+                <small>
+                    @Html.DisplayFor(modelItem => item.CreatedDate)<br/>
+                    por @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
+                </small>
             </td>
             <td>
                 @Html.DisplayFor(modelItem => item.EquipmentType.Name)
@@ -122,15 +125,18 @@
                 @Html.DisplayFor(modelItem => item.City.Name)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.CreatedBy.IdentityCard)
+                by @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.ModifiedBy.IdentityCard)
+                <small>
+                    @Html.DisplayFor(modelItem => item.LastModifiedDate)<br/>
+                    por @Html.DisplayFor(modelItem => item.ModifiedBy.Initials)
+                </small>
             </td>
             <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-page="./Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
+                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Editar</a> |
+                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info"><i class="fas fa-info-circle"></i> Detalles</a> |
+                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Eliminar</a>
             </td>
         </tr>
 }

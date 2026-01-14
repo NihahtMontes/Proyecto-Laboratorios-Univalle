@@ -5,22 +5,24 @@
     ViewData["Title"] = "Index";
 }
 
-<h1>Index</h1>
+<h1>Índice de Usuarios</h1>
 
 <p>
-    <a asp-page="Create">Create New</a>
+    <a asp-page="Create">Crear Nuevo</a>
 </p>
 <table class="table table-hover">
     <thead class="thead-light">
         <tr>
-            <th>Full Name</th>
+            <th>Nombre</th>
             <th>@Html.DisplayNameFor(model => model.User[0].IdentityCard)</th>
             <th>@Html.DisplayNameFor(model => model.User[0].Role)</th>
             <th>@Html.DisplayNameFor(model => model.User[0].Status)</th>
             <th>@Html.DisplayNameFor(model => model.User[0].Position)</th>
             <th>@Html.DisplayNameFor(model => model.User[0].Department)</th>
             <th>@Html.DisplayNameFor(model => model.User[0].Email)</th>
-            <th>Actions</th>
+            <th>Registrado</th>
+            <th>Modificado</th>
+            <th>Acciones</th>
         </tr>
     </thead>
     <tbody>
@@ -48,9 +50,21 @@
                 @Html.DisplayFor(modelItem => item.Email)
             </td>
             <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Edit</a>
-                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info"><i class="fas fa-info-circle"></i> Details</a>
-                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Delete</a>
+                <small>
+                    @Html.DisplayFor(modelItem => item.CreatedDate)<br/>
+                    por @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
+                </small>
+            </td>
+            <td>
+                <small>
+                    @Html.DisplayFor(modelItem => item.LastModifiedDate)<br/>
+                    por @Html.DisplayFor(modelItem => item.ModifiedBy.Initials)
+                </small>
+            </td>
+            <td>
+                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Editar</a>
+                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info"><i class="fas fa-info-circle"></i> Detalles</a>
+                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Eliminar</a>
             </td>
         </tr>
 }

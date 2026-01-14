@@ -32,7 +32,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
                 return NotFound();
             }
 
-            var country = await _context.Countries.FirstOrDefaultAsync(m => m.Id == id);
+            var country = await _context.Countries
+                .Include(m => m.CreatedBy)
+                .Include(m => m.ModifiedBy)
+                .FirstOrDefaultAsync(m => m.Id == id);
             if (country == null)
             {
                 return NotFound();

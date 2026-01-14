@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
@@ -50,6 +51,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             ModelState.Remove("Equipment.Country");
             ModelState.Remove("Equipment.City");
             ModelState.Remove("Equipment.EquipmentStateHistories");
+
+            // Uniqueness Check (Ignoring Deleted but filtering by status)
+            bool invExists = await _context.Equipments
+                .IgnoreQueryFilters()
+                .AnyAsync(e => e.InventoryNumber == Equipment.InventoryNumber && e.CurrentStatus != EquipmentStatus.Deleted);
+
+            if (invExists)
+            {
+                ModelState.AddModelError("Equipment.InventoryNumber", "El número de inventario ya está en uso por otro equipo activo.");
+            }
 
             if (!ModelState.IsValid)
             {

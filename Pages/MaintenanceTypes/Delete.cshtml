@@ -2,14 +2,14 @@
 @model Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes.DeleteModel
 
 @{
-    ViewData["Title"] = "Delete";
+    ViewData["Title"] = "Eliminar Tipo de Mantenimiento";
 }
 
-<h1>Delete</h1>
+<h1>Eliminar</h1>
 
-<h3>Are you sure you want to delete this?</h3>
+<h3>¿Está seguro de que desea eliminar esto?</h3>
 <div>
-    <h4>Maintenance Type</h4>
+    <h4>Tipo de Mantenimiento</h4>
     <hr />
     <dl class="row">
         <dt class="col-sm-2">
@@ -24,11 +24,33 @@
         <dd class="col-sm-10">
             @Html.DisplayFor(model => model.MaintenanceType.Description)
         </dd>
+        <hr />
+        <dt class="col-sm-2">
+            Auditoría
+        </dt>
+        <dd class="col-sm-10">
+            <small>
+                <strong>Creado:</strong> @Model.MaintenanceType.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+                @if (Model.MaintenanceType.CreatedBy != null)
+                {
+                    <span> por @Model.MaintenanceType.CreatedBy.FullName</span>
+                }
+                <br />
+                @if (Model.MaintenanceType.LastModifiedDate.HasValue)
+                {
+                    <strong>Modificado:</strong> @Model.MaintenanceType.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
+                    @if (Model.MaintenanceType.ModifiedBy != null)
+                    {
+                        <span> por @Model.MaintenanceType.ModifiedBy.FullName</span>
+                    }
+                }
+            </small>
+        </dd>
     </dl>
     
     <form method="post">
         <input type="hidden" asp-for="MaintenanceType.Id" />
-        <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-page="./Index">Back to List</a>
+        <input type="submit" value="Eliminar" class="btn btn-danger" /> |
+        <a asp-page="./Index">Volver al Listado</a>
     </form>
 </div>

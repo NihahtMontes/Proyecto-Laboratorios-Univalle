@@ -27,7 +27,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
             {
                 if (entry.State == EntityState.Added)
                 {
-                    entry.Entity.CreatedById = userId;
+                    // If no user is logged in (e.g., creating first user), CreatedBy can be null
+                    entry.Entity.CreatedById = userId; 
                     entry.Entity.CreatedDate = now;
                 }
                 else if (entry.State == EntityState.Modified)
@@ -38,7 +39,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 // Implicit Soft Delete handling if we want to add it later could go here
             }
 
-            return await base.SaveChangesAsync(cancellationToken);
+                return await base.SaveChangesAsync(cancellationToken);
         }
 
         // ============================================
@@ -93,11 +94,25 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<MaintenancePlan>().Property(p => p.ActualTime).HasColumnType("decimal(10,2)");
 
             // ============================================
-            // UNIQUE INDICES
+            // UNIQUE INDICES (With Soft Delete Filters)
             // ============================================
-            modelBuilder.Entity<User>().HasIndex(u => u.IdentityCard).IsUnique();
-            modelBuilder.Entity<Equipment>().HasIndex(e => e.InventoryNumber).IsUnique();
-            modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique();
+            // Allow duplicate IdentityCards if previous user is Deleted (Status = 2)
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.IdentityCard)
+                .IsUnique()
+                .HasFilter("[Status] != 2"); // GeneralStatus.Eliminado
+
+            // Allow duplicate InventoryNumbers if previous equipment is Deleted (CurrentStatus = 99)
+            modelBuilder.Entity<Equipment>()
+                .HasIndex(e => e.InventoryNumber)
+                .IsUnique()
+                .HasFilter("[CurrentStatus] != 99"); // EquipmentStatus.Deleted
+
+            // Allow duplicate Codes if previous lab is Deleted (Status = 2)
+            modelBuilder.Entity<Laboratory>()
+                .HasIndex(l => l.Code)
+                .IsUnique()
+                .HasFilter("[Status] != 2"); // GeneralStatus.Eliminado
 
             // ============================================
             // DEFAULT VALUES

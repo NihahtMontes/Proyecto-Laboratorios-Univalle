@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,10 +42,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             ModelState.Remove("Laboratory.ModifiedBy");
             ModelState.Remove("Laboratory.Faculty");
 
-            // Validate Code uniqueness (including deleted ones)
-            if (await _context.Laboratories.IgnoreQueryFilters().AnyAsync(l => l.Code == Laboratory.Code))
+            // Validate Code uniqueness (including deleted ones but filtering by status)
+            // "Is there any OTHER lab with the same Code that is NOT Deleted?"
+            bool codeExists = await _context.Laboratories
+                .IgnoreQueryFilters()
+                .AnyAsync(l => l.Code == Laboratory.Code && l.Status != GeneralStatus.Eliminado);
+
+            if (codeExists)
             {
-                ModelState.AddModelError("Laboratory.Code", "The code (Siglas) is already in use.");
+                ModelState.AddModelError("Laboratory.Code", "El código (Siglas) ya está en uso por otro laboratorio activo.");
+            }
+
+            // Validate Name uniqueness
+            bool nameExists = await _context.Laboratories
+                .IgnoreQueryFilters()
+                .AnyAsync(l => l.Name == Laboratory.Name && l.Status != GeneralStatus.Eliminado);
+
+            if (nameExists)
+            {
+                 ModelState.AddModelError("Laboratory.Name", "El nombre del laboratorio ya está en uso por otro laboratorio activo.");
             }
 
             if (!ModelState.IsValid)

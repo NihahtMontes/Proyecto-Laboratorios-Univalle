@@ -2,16 +2,16 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Users.DetailsModel
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Detalles de Usuario";
 }
 
-<h1>Details</h1>
+<h1>Detalles</h1>
 
 <div>
-    <h4>User Details</h4>
+    <h4>Detalles de Usuario</h4>
     <hr />
     <dl class="row">
-        <dt class="col-sm-3">Full Name</dt>
+        <dt class="col-sm-3">Nombre Completo</dt>
         <dd class="col-sm-9">@Html.DisplayFor(model => model.User.FirstName) @Html.DisplayFor(model => model.User.LastName) @Html.DisplayFor(model => model.User.SecondLastName)</dd>
 
         <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.IdentityCard)</dt>
@@ -42,16 +42,19 @@
         <dd class="col-sm-9">@Html.DisplayFor(model => model.User.UserName)</dd>
 
         <hr />
-        <dt class="col-sm-3">Audit Information</dt>
+        <dt class="col-sm-3">Información de Auditoría</dt>
         <dd class="col-sm-9">
             <small>
-                Created: @Html.DisplayFor(model => model.User.CreatedDate) by @Html.DisplayFor(model => model.User.CreatedBy.FirstName)<br />
-                Modified: @Html.DisplayFor(model => model.User.LastModifiedDate) by @Html.DisplayFor(model => model.User.ModifiedBy.FirstName)
+                Creado: @Model.User.CreatedDate.ToString("dd/MM/yyyy HH:mm") por @(Model.User.CreatedBy?.FullName ?? "Sistema")<br />
+                @if (Model.User.LastModifiedDate.HasValue)
+                {
+                    <span>Modificado: @Model.User.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm") por @(Model.User.ModifiedBy?.FullName ?? "N/A")</span>
+                }
             </small>
         </dd>
     </dl>
 </div>
 <div>
-    <a asp-page="./Edit" asp-route-id="@Model.User.Id">Edit</a> |
-    <a asp-page="./Index">Back to List</a>
+    <a asp-page="./Edit" asp-route-id="@Model.User.Id">Editar</a> |
+    <a asp-page="./Index">Volver al Listado</a>
 </div>

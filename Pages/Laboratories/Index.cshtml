@@ -86,10 +86,10 @@
                 @Html.DisplayFor(modelItem => item.Faculty.Name)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.CreatedBy.IdentityCard)
+                @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.ModifiedBy.IdentityCard)
+                @Html.DisplayFor(modelItem => item.ModifiedBy.Initials)
             </td>
             <td>
                 <a asp-page="./Edit" asp-route-id="@item.Id">Edit</a> |

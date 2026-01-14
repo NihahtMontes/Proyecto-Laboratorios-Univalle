@@ -19,7 +19,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
-        private int? currentUser;
 
         public EditModel(ApplicationDbContext context, UserManager<User> userManager)
         {
@@ -28,82 +27,158 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         }
 
         [BindProperty]
-        public Proyecto_Laboratorios_Univalle.Models.Equipment Equipment { get; set; } = default!;
+        public EquipmentInputModel Input { get; set; } = new();
+
+        public int Id { get; set; }
+
+        public class EquipmentInputModel
+        {
+            public int EquipmentTypeId { get; set; }
+            public int LaboratoryId { get; set; }
+            public int CityId { get; set; }
+            public int CountryId { get; set; } // agregado para bind del select País
+            public string Name { get; set; } = string.Empty;
+            public string InventoryNumber { get; set; } = string.Empty;
+            public string? Brand { get; set; }
+            public string? Model { get; set; }
+            public string? SerialNumber { get; set; }
+            public int? UsefulLifeYears { get; set; }
+            public DateTime AcquisitionDate { get; set; }
+            public decimal? AcquisitionValue { get; set; }
+            public EquipmentStatus CurrentStatus { get; set; }
+            public string? Observations { get; set; }
+            // CountryId es ahora parte del Input para enlazar el select en la vista.
+        }
+
+        // We use this property to display ReadOnly info in the View (like Country/City names, dates)
+        public Proyecto_Laboratorios_Univalle.Models.Equipment ExistingEquipmentDisplay { get; set; } = default!;
+
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var equipment = await _context.Equipments
+                .IgnoreQueryFilters() // Load Includes even if they are soft-deleted
                 .Include(e => e.Country)
                 .Include(e => e.City)
-                .FirstOrDefaultAsync(m => m.Id == id);
+                .FirstOrDefaultAsync(m => m.Id == id && m.CurrentStatus != EquipmentStatus.Deleted);
 
-            if (equipment == null)
+            if (equipment == null) return NotFound();
+
+            Id = equipment.Id;
+            ExistingEquipmentDisplay = equipment; // For display purposes
+
+            // Map Entity -> DTO
+            Input = new EquipmentInputModel
             {
-                return NotFound();
-            }
+                EquipmentTypeId = equipment.EquipmentTypeId,
+                LaboratoryId = equipment.LaboratoryId,
+                CityId = equipment.CityId,
+                CountryId = equipment.City?.CountryId ?? equipment.CountryId, // Prioritize derived Country from City
+                Name = equipment.Name,
+                InventoryNumber = equipment.InventoryNumber,
+                Brand = equipment.Brand,
+                Model = equipment.Model,
+                SerialNumber = equipment.SerialNumber,
+                UsefulLifeYears = equipment.UsefulLifeYears,
+                AcquisitionDate = equipment.AcquisitionDate ?? DateTime.MinValue,
+                AcquisitionValue = equipment.AcquisitionValue,
+                CurrentStatus = equipment.CurrentStatus,
+                Observations = equipment.Observations
+            };
 
-            Equipment = equipment;
             CargarViewData();
             CargarEstadosEquipo();
 
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(int id)
         {
-            var city = await _context.Cities.FindAsync(Equipment.CityId);
-            if (city != null)
-            {
-                Equipment.CountryId = city.CountryId;
-            }
-
-            ModelState.Remove("Equipment.CountryId");
-            ModelState.Remove("Equipment.Country");
-            ModelState.Remove("Equipment.City");
-            ModelState.Remove("Equipment.EquipmentType");
-            ModelState.Remove("Equipment.Laboratory");
-            ModelState.Remove("Equipment.CreatedBy");
-            ModelState.Remove("Equipment.ModifiedBy");
-            ModelState.Remove("Equipment.EquipmentStateHistories");
-
+            Id = id;
             if (!ModelState.IsValid)
             {
+                // Reload display data if validation fails
+                var eq = await _context.Equipments
+                    .IgnoreQueryFilters()
+                    .Include(e=>e.Country)
+                    .Include(e=>e.City)
+                    .FirstOrDefaultAsync(e=>e.Id == id);
+                if (eq != null) ExistingEquipmentDisplay = eq;
+
+                CargarViewData();
+                CargarEstadosEquipo();
+                return Page();
+            }
+
+            // 1. Uniqueness Check (Ignoring Deleted)
+            bool invExists = await _context.Equipments
+                .IgnoreQueryFilters()
+                .AnyAsync(e => e.InventoryNumber == Input.InventoryNumber && 
+                               e.Id != id && 
+                               e.CurrentStatus != EquipmentStatus.Deleted);
+
+            if (invExists)
+            {
+                ModelState.AddModelError("Input.InventoryNumber", "El número de inventario ya está en uso por otro equipo.");
+                // Reload display data
+                var eq = await _context.Equipments
+                    .IgnoreQueryFilters()
+                    .Include(e=>e.Country)
+                    .Include(e=>e.City)
+                    .FirstOrDefaultAsync(e=>e.Id == id);
+                if (eq != null) ExistingEquipmentDisplay = eq;
+
                 CargarViewData();
                 CargarEstadosEquipo();
                 return Page();
             }
 
             var equipmentBD = await _context.Equipments
-                .AsNoTracking()
-                .FirstOrDefaultAsync(e => e.Id == Equipment.Id);
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(e => e.Id == id); // Also ignore filters to fetch invalid-state items for update
 
-            if (equipmentBD == null)
+            if (equipmentBD == null) return NotFound();
+
+            // Derive Country from City
+            var city = await _context.Cities.FindAsync(Input.CityId);
+            if (city != null)
             {
-                return NotFound();
+                equipmentBD.CountryId = city.CountryId;
             }
 
-            bool statusChanged = equipmentBD.CurrentStatus != Equipment.CurrentStatus;
+            // Capture status change for history
+            bool statusChanged = equipmentBD.CurrentStatus != Input.CurrentStatus;
+
+            // Update Fields
+            equipmentBD.EquipmentTypeId = Input.EquipmentTypeId;
+            equipmentBD.LaboratoryId = Input.LaboratoryId;
+            equipmentBD.CityId = Input.CityId;
+            equipmentBD.Name = Input.Name;
+            equipmentBD.InventoryNumber = Input.InventoryNumber;
+            equipmentBD.Brand = Input.Brand;
+            equipmentBD.Model = Input.Model;
+            equipmentBD.SerialNumber = Input.SerialNumber;
+            equipmentBD.UsefulLifeYears = Input.UsefulLifeYears;
+            equipmentBD.AcquisitionDate = Input.AcquisitionDate;
+            equipmentBD.AcquisitionValue = Input.AcquisitionValue;
+            equipmentBD.CurrentStatus = Input.CurrentStatus;
+            equipmentBD.Observations = Input.Observations;
 
             using (var transaction = _context.Database.BeginTransaction())
             {
                 try
                 {
-                    _context.Attach(Equipment).State = EntityState.Modified;
-
-                    _context.Entry(Equipment).Property(e => e.CreatedById).IsModified = false;
-                    _context.Entry(Equipment).Property(e => e.CreatedDate).IsModified = false;
-
                     await _context.SaveChangesAsync();
 
                     if (statusChanged)
                     {
+                        var currentUser = await _userManager.GetUserAsync(User);
+                        int? userId = currentUser?.Id;
+
                         var lastHistory = await _context.EquipmentStateHistories
-                            .Where(h => h.EquipmentId == Equipment.Id && h.EndDate == null)
+                            .Where(h => h.EquipmentId == id && h.EndDate == null)
                             .OrderByDescending(h => h.StartDate)
                             .FirstOrDefaultAsync();
 
@@ -115,12 +190,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
                         var newHistory = new EquipmentStateHistory
                         {
-                            EquipmentId = Equipment.Id,
-                            Status = Equipment.CurrentStatus,
+                            EquipmentId = id,
+                            Status = Input.CurrentStatus,
                             StartDate = DateTime.Now,
                             CreatedDate = DateTime.Now,
-                            CreatedById = currentUser,
-                            Reason = "Status/Info updated" 
+                            CreatedById = userId,
+                            Reason = "Status/Info updated via Edit" 
                         };
                         _context.EquipmentStateHistories.Add(newHistory);
 
@@ -139,46 +214,78 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             return RedirectToPage("./Index");
         }
 
-        private bool EquipmentExists(int id)
+        // Endpoint para obtener ciudades por país (llamado desde JS)
+        public async Task<JsonResult> OnGetCitiesAsync(int countryId)
         {
-            return _context.Equipments.Any(e => e.Id == id);
+            var cities = await _context.Cities
+                .Where(c => (c.CountryId == countryId && c.Status == GeneralStatus.Activo))
+                .OrderBy(c => c.Name)
+                .Select(c => new { c.Id, c.Name })
+                .ToListAsync();
+
+            return new JsonResult(cities);
         }
 
         private void CargarViewData()
         {
-            ViewData["CityId"] = new SelectList(
-                _context.Cities
-                    .Include(c => c.Country)
-                    .Where(c => c.Status == GeneralStatus.Activo),
+            // Poblamos países - aseguro incluir el country actual aunque no sea activo
+            ViewData["CountryId"] = new SelectList(
+                _context.Countries
+                    .Where(c => c.Status == GeneralStatus.Activo || (Input != null && c.Id == Input.CountryId))
+                    .OrderBy(c => c.Name),
                 "Id",
-                "Name"
+                "Name",
+                Input?.CountryId
             );
 
+            // Si tenemos CountryId, limitar ciudades al país seleccionado; si no, mostrar todas activas
+            if (Input != null && Input.CountryId > 0)
+            {
+                ViewData["CityId"] = new SelectList(
+                    _context.Cities
+                        .Where(c => (c.Status == GeneralStatus.Activo && c.CountryId == Input.CountryId) || c.Id == Input.CityId)
+                        .OrderBy(c => c.Name),
+                    "Id",
+                    "Name",
+                    Input.CityId
+                );
+            }
+            else
+            {
+                ViewData["CityId"] = new SelectList(
+                    _context.Cities
+                        .Where(c => c.Status == GeneralStatus.Activo || (Input != null && c.Id == Input.CityId))
+                        .OrderBy(c => c.Name),
+                    "Id",
+                    "Name",
+                    Input?.CityId
+                );
+            }
+
             ViewData["LaboratoryId"] = new SelectList(
-                _context.Laboratories.Where(l => l.Status == GeneralStatus.Activo),
+                _context.Laboratories.Where(l => l.Status == GeneralStatus.Activo || (Input != null && l.Id == Input.LaboratoryId)),
                 "Id",
-                "Name"
+                "Name",
+                Input?.LaboratoryId
             );
 
             ViewData["EquipmentTypeId"] = new SelectList(
                 _context.EquipmentTypes,
                 "Id",
-                "Name"
+                "Name",
+                Input?.EquipmentTypeId
             );
         }
 
         private void CargarEstadosEquipo()
         {
-            var estados = Enum.GetValues(typeof(EquipmentStatus))
-                .Cast<EquipmentStatus>()
-                .Where(e => e != EquipmentStatus.Deleted)
-                .Select(e => new SelectListItem
-                {
-                    Value = ((int)e).ToString(),
-                    Text = e.ToString()
-                });
-
-            ViewData["ListaEstadosEquipo"] = new SelectList(estados, "Value", "Text", (int)Equipment.CurrentStatus);
+            var estados = EnumHelper.GetStatusSelectList<EquipmentStatus>();
+            ViewData["ListaEstadosEquipo"] = new SelectList(
+                estados, 
+                "Value", 
+                "Text", 
+                (int)Input.CurrentStatus
+            );
         }
     }
 }

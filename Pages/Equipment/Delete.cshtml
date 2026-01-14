@@ -2,63 +2,63 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.DeleteModel
 
 @{
-    ViewData["Title"] = "Delete Equipment";
+    ViewData["Title"] = "Eliminar Equipo";
 }
 
 <div class="container mt-4">
     <div class="alert alert-warning" role="alert">
         <h4 class="alert-heading">
-            <i class="fas fa-exclamation-triangle"></i> Are you sure you want to delete this equipment?
+            <i class="fas fa-exclamation-triangle"></i> ¿Está seguro de que desea eliminar este equipo?
         </h4>
-        <p>This action will mark the equipment as <strong>"Deleted"</strong> but will NOT remove it from the database. History and maintenance logs will be preserved.</p>
+        <p>Esta acción marcará el equipo como <strong>"Eliminado"</strong>, pero NO lo borrará de la base de datos. Se conservarán los registros de historial y mantenimiento.</p>
         <hr>
-        <p class="mb-0">The equipment will no longer appear in active lists but can still be queried in history.</p>
+        <p class="mb-0">El equipo ya no aparecerá en las listas activas, pero aún se podrá consultar en el historial.</p>
     </div>
 
     <div class="card">
         <div class="card-header bg-danger text-white">
-            <h4 class="mb-0"><i class="fas fa-trash-alt"></i> Equipment Information</h4>
+            <h4 class="mb-0"><i class="fas fa-trash-alt"></i> Información del Equipo</h4>
         </div>
         <div class="card-body">
             <dl class="row">
-                <dt class="col-sm-3">Name:</dt>
+                <dt class="col-sm-3">Nombre:</dt>
                 <dd class="col-sm-9"><strong>@Html.DisplayFor(model => model.Equipment.Name)</strong></dd>
 
-                <dt class="col-sm-3">Inventory N°:</dt>
+                <dt class="col-sm-3">N° Inventario:</dt>
                 <dd class="col-sm-9">
                     <span class="badge badge-secondary">@Html.DisplayFor(model => model.Equipment.InventoryNumber)</span>
                 </dd>
 
-                <dt class="col-sm-3">Type:</dt>
+                <dt class="col-sm-3">Tipo:</dt>
                 <dd class="col-sm-9">@Html.DisplayFor(model => model.Equipment.EquipmentType.Name)</dd>
 
-                <dt class="col-sm-3">Laboratory:</dt>
+                <dt class="col-sm-3">Laboratorio:</dt>
                 <dd class="col-sm-9">@Html.DisplayFor(model => model.Equipment.Laboratory.Name)</dd>
 
-                <dt class="col-sm-3">Current Status:</dt>
+                <dt class="col-sm-3">Estado Actual:</dt>
                 <dd class="col-sm-9">
                      @Html.DisplayFor(model => model.Equipment.CurrentStatus)
                 </dd>
 
                 @if (!string.IsNullOrEmpty(Model.Equipment.Brand))
                 {
-                    <dt class="col-sm-3">Brand/Model:</dt>
+                    <dt class="col-sm-3">Marca/Modelo:</dt>
                     <dd class="col-sm-9">@Model.Equipment.Brand @Model.Equipment.Model</dd>
                 }
 
                 @if (!string.IsNullOrEmpty(Model.Equipment.SerialNumber))
                 {
-                    <dt class="col-sm-3">Serial Number:</dt>
+                    <dt class="col-sm-3">Número de Serie:</dt>
                     <dd class="col-sm-9">@Html.DisplayFor(model => model.Equipment.SerialNumber)</dd>
                 }
 
                 @if (Model.Equipment.AcquisitionValue.HasValue)
                 {
-                    <dt class="col-sm-3">Acquisition Value:</dt>
+                    <dt class="col-sm-3">Valor de Adquisición:</dt>
                     <dd class="col-sm-9">@Model.Equipment.AcquisitionValue.Value.ToString("C")</dd>
                 }
 
-                <dt class="col-sm-3">Origin:</dt>
+                <dt class="col-sm-3">Origen:</dt>
                 <dd class="col-sm-9">
                     @Html.DisplayFor(model => model.Equipment.City.Name),
                     @Html.DisplayFor(model => model.Equipment.Country.Name)
@@ -66,8 +66,29 @@
 
                 @if (!string.IsNullOrEmpty(Model.Equipment.Observations))
                 {
-                    <dt class="col-sm-3">Observations:</dt>
+                    <dt class="col-sm-3">Observaciones:</dt>
                     <dd class="col-sm-9">@Html.DisplayFor(model => model.Equipment.Observations)</dd>
+                }
+                
+                <hr class="col-12" />
+                <dt class="col-sm-3">Fecha de Registro:</dt>
+                <dd class="col-sm-9">
+                    @Model.Equipment.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+                    @if (Model.Equipment.CreatedBy != null)
+                    {
+                        <span class="text-muted"> por @Model.Equipment.CreatedBy.FullName</span>
+                    }
+                </dd>
+                @if (Model.Equipment.LastModifiedDate.HasValue)
+                {
+                    <dt class="col-sm-3">Última Modificación:</dt>
+                    <dd class="col-sm-9">
+                        @Model.Equipment.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
+                        @if (Model.Equipment.ModifiedBy != null)
+                        {
+                            <span class="text-muted"> por @Model.Equipment.ModifiedBy.FullName</span>
+                        }
+                    </dd>
                 }
             </dl>
         </div>
@@ -78,13 +99,13 @@
 
         <div class="btn-group" role="group">
             <button type="submit" class="btn btn-danger btn-lg">
-                <i class="fas fa-check"></i> Confirm Delete
+                <i class="fas fa-check"></i> Confirmar Eliminación
             </button>
             <a asp-page="./Details" asp-route-id="@Model.Equipment.Id" class="btn btn-info btn-lg">
-                <i class="fas fa-eye"></i> View Details
+                <i class="fas fa-eye"></i> Ver Detalles
             </a>
             <a asp-page="./Index" class="btn btn-secondary btn-lg">
-                <i class="fas fa-times"></i> Cancel
+                <i class="fas fa-times"></i> Cancelar
             </a>
         </div>
     </form>
@@ -93,7 +114,7 @@
 @section Scripts {
     <script>
         document.querySelector('form').addEventListener('submit', function(e) {
-            if (!confirm('Are you completely sure you want to delete this equipment?')) {
+            if (!confirm('¿Está completamente seguro de que desea eliminar este equipo?')) {
                 e.preventDefault();
             }
         });

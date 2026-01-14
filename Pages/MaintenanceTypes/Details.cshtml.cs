@@ -31,7 +31,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
                 return NotFound();
             }
 
-            var maintenancetype = await _context.MaintenanceTypes.FirstOrDefaultAsync(m => m.Id == id);
+            var maintenancetype = await _context.MaintenanceTypes
+                .Include(m => m.CreatedBy)
+                .Include(m => m.ModifiedBy)
+                .FirstOrDefaultAsync(m => m.Id == id);
             if (maintenancetype == null)
             {
                 return NotFound();

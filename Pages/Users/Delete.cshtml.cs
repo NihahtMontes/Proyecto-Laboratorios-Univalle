@@ -29,7 +29,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 return NotFound();
             }
 
-            var user = await _context.Users.FirstOrDefaultAsync(m => m.Id == id);
+            var user = await _context.Users
+                .Include(m => m.CreatedBy)
+                .Include(m => m.ModifiedBy)
+                .FirstOrDefaultAsync(m => m.Id == id);
 
             if (user is not null)
             {

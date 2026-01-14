@@ -23,7 +23,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
         public async Task OnGetAsync()
         {
-            User = await _context.Users
+                User = await _context.Users
                 .Include(u => u.CreatedBy)
                 .Include(u => u.ModifiedBy)
                 .Where(u => u.Status != Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Eliminado)

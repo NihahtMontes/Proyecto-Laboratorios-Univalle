@@ -15,7 +15,19 @@ namespace Proyecto_Laboratorios_Univalle.Models
     /// </summary>
     public class User : IdentityUser<int>, IAuditable
     {
-        // IdentityUser includes: Id, UserName, Email, PasswordHash, PhoneNumber, etc.
+        [Required(ErrorMessage = "El nombre de usuario es obligatorio")]
+        [Display(Name = "Nombre de Usuario")]
+        public override string? UserName { get; set; }
+
+        [Required(ErrorMessage = "El correo electrónico es obligatorio")]
+        [EmailAddress(ErrorMessage = "Formato de correo inválido")]
+        [Display(Name = "Correo Electrónico")]
+        public override string? Email { get; set; }
+
+        [Required(ErrorMessage = "El teléfono es obligatorio")]
+        [Phone(ErrorMessage = "Formato de teléfono inválido")]
+        [Display(Name = "Teléfono")]
+        public override string? PhoneNumber { get; set; }
 
         // ========================================
         // PERSONAL INFORMATION
@@ -38,7 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public string? SecondLastName { get; set; }
 
         [Required(ErrorMessage = "El CI es obligatorio")]
-        [StringLength(8, ErrorMessage = "El CI no puede tener más de 8 números")]
+        [StringLength(10, ErrorMessage = "El CI no puede tener más de 10 números")]
         [RegularExpression(@"^[0-9A-Z-]*$", ErrorMessage = "Formato de cédula inválido")]
 
         [Display(Name = "Cédula de Identidad")]
@@ -98,19 +110,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // INVERSE RELATIONSHIPS
         // ========================================
-
-        // As Responsible Technician (renaming classes in relationships proactively, assuming Maintenance exists)
-        // Note: Using 'Maintenance' class name although it might not exist yet (Refactoring dependency ring)
-        // We will rename Mantenimiento to Maintenance shortly.
         
-        // public virtual ICollection<Maintenance>? MaintenancesPerformed { get; set; }
-        // public virtual ICollection<MaintenancePlan>? AssignedPlans { get; set; }
-        // public virtual ICollection<Request>? CreatedRequests { get; set; }
-
-        // Commenting out relationships temporarily to allow compilation of THIS file 
-        // until other models are renamed. Or I can leave them if I rename everything fast.
-        // Let's use the OLD class names for now to avoid breaking intellisense if I don't rename all at once?
-        // NO, the plan is to rename everything. I should use the NEW names.
+        // ... (Relationships code omitted for brevity)
 
         // ========================================
         // CALCULATED PROPERTIES

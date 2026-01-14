@@ -2,13 +2,13 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.DetailsModel
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Detalles de la Verificación";
 }
 
-<h1>Details</h1>
+<h1>Detalles</h1>
 
 <div>
-    <h4>Verification</h4>
+    <h4>Verificación</h4>
     <hr />
      <dl class="row">
          <dt class="col-sm-2">
@@ -35,18 +35,30 @@
         <dd class="col-sm-10">
             @Html.DisplayFor(model => model.Verification.CompletionPercentage)%
         </dd>
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.CreatedBy)
+        <hr class="col-12" />
+        <dt class="col-sm-2">
+            Fecha de Registro
         </dt>
         <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.CreatedBy.FullName)
+            @Model.Verification.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+            @if (Model.Verification.CreatedBy != null)
+            {
+                <span class="text-muted"> por @Model.Verification.CreatedBy.FullName</span>
+            }
         </dd>
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.CreatedDate)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.CreatedDate)
-        </dd>
+        @if (Model.Verification.LastModifiedDate.HasValue)
+        {
+            <dt class="col-sm-2">
+                Última Modificación
+            </dt>
+            <dd class="col-sm-10">
+                @Model.Verification.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
+                @if (Model.Verification.ModifiedBy != null)
+                {
+                    <span class="text-muted"> por @Model.Verification.ModifiedBy.FullName</span>
+                }
+            </dd>
+        }
     </dl>
     
     <h5>Checklist Results</h5>
@@ -85,8 +97,8 @@
     </dl>
 </div>
 <div>
-    <a asp-page="./Edit" asp-route-id="@Model.Verification.Id">Edit</a> |
-    <a asp-page="./Index">Back to List</a>
+    <a asp-page="./Edit" asp-route-id="@Model.Verification.Id">Editar</a> |
+    <a asp-page="./Index">Volver al Listado</a>
 </div>
 
 @functions {

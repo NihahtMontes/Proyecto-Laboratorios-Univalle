@@ -36,7 +36,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 return NotFound();
             }
 
-            var equipment = await _context.Equipments.FirstOrDefaultAsync(m => m.Id == id);
+            var equipment = await _context.Equipments
+                .Include(m => m.EquipmentType)
+                .Include(m => m.Laboratory)
+                .Include(m => m.Country)
+                .Include(m => m.City)
+                .Include(m => m.CreatedBy)
+                .Include(m => m.ModifiedBy)
+                .FirstOrDefaultAsync(m => m.Id == id);
 
             if (equipment == null)
             {

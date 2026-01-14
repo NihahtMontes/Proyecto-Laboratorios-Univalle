@@ -5,9 +5,9 @@
         ViewData["Title"] = "Create";
         }
         
-        <h1>Create</h1>
+        <h1>Crear Usuario</h1>
         
-    <h4>User</h4>
+    <h4>Usuario</h4>
     <hr />
     <div class="row">
     <div class="col-md-4">
@@ -17,17 +17,17 @@
                 <div class="col-md-6">
                     <div class="form-group">
                         <span class="text-danger">*</span>
-                        <label asp-for="User.FirstName" class="control-label"></label>
-                        <input asp-for="User.FirstName" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="User.FirstName" class="text-danger"></span>
+                        <label asp-for="Input.FirstName" class="control-label"></label>
+                        <input asp-for="Input.FirstName" class="form-control" aria-required="true"/>
+                        <span asp-validation-for="Input.FirstName" class="text-danger"></span>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <span class="text-danger">*</span>
-                        <label asp-for="User.LastName" class="control-label"></label>
-                        <input asp-for="User.LastName" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="User.LastName" class="text-danger"></span>
+                        <label asp-for="Input.LastName" class="control-label"></label>
+                        <input asp-for="Input.LastName" class="form-control" aria-required="true"/>
+                        <span asp-validation-for="Input.LastName" class="text-danger"></span>
                     </div>
                 </div>
             </div>
@@ -35,70 +35,123 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label asp-for="User.SecondLastName" class="control-label"></label>
-                        <input asp-for="User.SecondLastName" class="form-control" />
-                        <span asp-validation-for="User.SecondLastName" class="text-danger"></span>
+                        <label asp-for="Input.SecondLastName" class="control-label"></label>
+                        <input asp-for="Input.SecondLastName" class="form-control" />
+                        <span asp-validation-for="Input.SecondLastName" class="text-danger"></span>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <span class="text-danger">*</span>
-                        <label asp-for="User.IdentityCard" class="control-label"></label>
-                        <input asp-for="User.IdentityCard" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="User.IdentityCard" class="text-danger"></span>
+                        <label asp-for="Input.IdentityCard" class="control-label"></label>
+                        <input asp-for="Input.IdentityCard" class="form-control" aria-required="true"/>
+                        <span asp-validation-for="Input.IdentityCard" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                     <div class="form-group">
+                        <span class="text-danger">*</span>
+                        <label asp-for="Input.UserName" class="control-label"></label>
+                        <input asp-for="Input.UserName" class="form-control" aria-required="true" autocomplete="username"/>
+                        <span asp-validation-for="Input.UserName" class="text-danger"></span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                     <div class="form-group">
+                        <span class="text-danger">*</span>
+                        <label asp-for="Input.Password" class="control-label"></label>
+                        <div class="input-group">
+                            <input asp-for="Input.Password" class="form-control" aria-required="true" autocomplete="new-password" id="passwordInput" type="password"/>
+                            <div class="input-group-append">
+                                <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()">Generar</button>
+                                <button type="button" class="btn btn-outline-secondary" id="togglePasswordBtn" onclick="togglePassword()">Mostrar</button>
+                            </div>
+                        </div>
+                        <span asp-validation-for="Input.Password" class="text-danger"></span>
                     </div>
                 </div>
             </div>
 
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="User.Role" class="control-label"></label>
-                <select asp-for="User.Role" class="form-control" aria-required="true" asp-items="ViewBag.UserRole">
+                <label asp-for="Input.Email" class="control-label"></label>
+                <input asp-for="Input.Email" class="form-control" aria-required="true" />
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <span class="text-danger">*</span>
+                <label asp-for="Input.Role" class="control-label"></label>
+                <select asp-for="Input.Role" class="form-control" aria-required="true" asp-items="ViewBag.UserRole">
                     <option value="">-- Seleccione un Rol --</option>
                 </select>
-                <span asp-validation-for="User.Role" class="text-danger"></span>
+                <span asp-validation-for="Input.Role" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="User.Position" class="control-label"></label>
-                <input asp-for="User.Position" class="form-control" />
-                <span asp-validation-for="User.Position" class="text-danger"></span>
+                <label asp-for="Input.Position" class="control-label"></label>
+                <input asp-for="Input.Position" class="form-control" />
+                <span asp-validation-for="Input.Position" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="User.Department" class="control-label"></label>
-                <input asp-for="User.Department" class="form-control" />
-                <span asp-validation-for="User.Department" class="text-danger"></span>
+                <label asp-for="Input.Department" class="control-label"></label>
+                <input asp-for="Input.Department" class="form-control" />
+                <span asp-validation-for="Input.Department" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="User.HireDate" class="control-label"></label>
-                <input asp-for="User.HireDate" class="form-control" />
-                <span asp-validation-for="User.HireDate" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="User.Email" class="control-label"></label>
-                <input asp-for="User.Email" class="form-control" />
-                <span asp-validation-for="User.Email" class="text-danger"></span>
+                <label asp-for="Input.HireDate" class="control-label"></label>
+                <input asp-for="Input.HireDate" class="form-control" />
+                <span asp-validation-for="Input.HireDate" class="text-danger"></span>
             </div>
             
             <div class="form-group">
-                <label asp-for="User.PhoneNumber" class="control-label"></label>
-                <input asp-for="User.PhoneNumber" class="form-control" />
-                <span asp-validation-for="User.PhoneNumber" class="text-danger"></span>
+                <span class="text-danger">*</span>
+                <label asp-for="Input.PhoneNumber" class="control-label"></label>
+                <input asp-for="Input.PhoneNumber" class="form-control" />
+                <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
+                <input type="submit" value="Crear" class="btn btn-primary" />
             </div>
         </form>
     </div>
 </div>
 
 <div>
-    <a asp-page="Index">Back to List</a>
+    <a asp-page="Index">Volver al Listado</a>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script>
+        function generatePassword() {
+            var length = 8;
+            var charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\u0023$%^&*()_+";
+            var retVal = "";
+            for (var i = 0, n = charset.length; i < length; ++i) {
+                retVal += charset.charAt(Math.floor(Math.random() * n));
+            }
+            retVal += "5";
+
+            document.getElementById("passwordInput").value = retVal;
+        }
+
+        function togglePassword() {
+            var input = document.getElementById("passwordInput");
+            var btn = document.getElementById("togglePasswordBtn");
+            if (!input || !btn) return;
+            if (input.type === "password") {
+                input.type = "text";
+                btn.textContent = "Ocultar";
+            } else {
+                input.type = "password";
+                btn.textContent = "Mostrar";
+            }
+        }
+    </script>
 }

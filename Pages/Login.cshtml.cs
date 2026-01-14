@@ -39,6 +39,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
             [Display(Name = "Remember me?")]
             public bool RememberMe { get; set; }
+            public string IdentityCard { get; internal set; }
         }
 
         public async Task OnGetAsync(string? returnUrl = null)

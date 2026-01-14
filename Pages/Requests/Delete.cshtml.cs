@@ -35,6 +35,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             var request = await _context.Requests
                 .Include(r => r.Equipment)
                 .Include(r => r.RequestedBy)
+                .Include(m => m.CreatedBy)
+                .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (request == null)

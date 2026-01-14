@@ -30,7 +30,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             Laboratories = await _context.Laboratories.Where(l => l.Status != GeneralStatus.Eliminado)
                 .Include(l => l.CreatedBy)
                 .Include(l => l.Faculty)
-                .Include(l => l.ModifiedBy).ToListAsync();
+                .Include(l => l.ModifiedBy)
+                .ToListAsync();
         }
     }
 }

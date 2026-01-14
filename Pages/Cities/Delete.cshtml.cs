@@ -36,6 +36,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 
             var city = await _context.Cities
                 .Include(c => c.Country)
+                .Include(m => m.CreatedBy)
+                .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (city == null)

@@ -5,44 +5,43 @@
     ViewData["Title"] = "Editor Equipment";
 }
 
-<h1>Edit Equipment</h1>
+<h1>Editar Equipo</h1>
 
-<h4>@Model.Equipment.Name</h4>
+<h4>@Model.ExistingEquipmentDisplay?.Name</h4>
 <hr />
 
 <div class="row">
     <div class="col-md-8">
         <form method="post">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="Equipment.Id" />
-            <input type="hidden" asp-for="Equipment.CountryId" />
-            <input type="hidden" asp-for="Equipment.CityId" />
+            <!-- ID is passed via route -->
+            <input type="hidden" name="id" value="@Model.Id" />
 
             <!-- ========================================
                  BASIC INFORMATION
                  ======================================== -->
             <div class="card mb-3">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Basic Information</h5>
+                    <h5 class="mb-0">Información Básica</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label asp-for="Equipment.Name" class="control-label">
-                                    <span class="text-danger">*</span> Equipment Name
+                                <label asp-for="Input.Name" class="control-label">
+                                    <span class="text-danger">*</span> Nombre del Equipo
                                 </label>
-                                <input asp-for="Equipment.Name" class="form-control" required />
-                                <span asp-validation-for="Equipment.Name" class="text-danger"></span>
+                                <input asp-for="Input.Name" class="form-control" required />
+                                <span asp-validation-for="Input.Name" class="text-danger"></span>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label asp-for="Equipment.InventoryNumber" class="control-label">
-                                    <span class="text-danger">*</span> Inventory N°
+                                <label asp-for="Input.InventoryNumber" class="control-label">
+                                    <span class="text-danger">*</span> N° Inventario
                                 </label>
-                                <input asp-for="Equipment.InventoryNumber" class="form-control" required />
-                                <span asp-validation-for="Equipment.InventoryNumber" class="text-danger"></span>
+                                <input asp-for="Input.InventoryNumber" class="form-control" required />
+                                <span asp-validation-for="Input.InventoryNumber" class="text-danger"></span>
                             </div>
                         </div>
                     </div>
@@ -50,20 +49,20 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label asp-for="Equipment.EquipmentTypeId" class="control-label">
-                                    <span class="text-danger">*</span> Equipment Type
+                                <label asp-for="Input.EquipmentTypeId" class="control-label">
+                                    <span class="text-danger">*</span> Tipo de Equipo
                                 </label>
-                                <select asp-for="Equipment.EquipmentTypeId" class="form-control" asp-items="ViewBag.EquipmentTypeId" required></select>
-                                <span asp-validation-for="Equipment.EquipmentTypeId" class="text-danger"></span>
+                                <select asp-for="Input.EquipmentTypeId" class="form-control" asp-items="ViewBag.EquipmentTypeId" required></select>
+                                <span asp-validation-for="Input.EquipmentTypeId" class="text-danger"></span>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label asp-for="Equipment.LaboratoryId" class="control-label">
-                                    <span class="text-danger">*</span> Laboratory
+                                <label asp-for="Input.LaboratoryId" class="control-label">
+                                    <span class="text-danger">*</span> Laboratorio
                                 </label>
-                                <select asp-for="Equipment.LaboratoryId" class="form-control" asp-items="ViewBag.LaboratoryId" required></select>
-                                <span asp-validation-for="Equipment.LaboratoryId" class="text-danger"></span>
+                                <select asp-for="Input.LaboratoryId" class="form-control" asp-items="ViewBag.LaboratoryId" required></select>
+                                <span asp-validation-for="Input.LaboratoryId" class="text-danger"></span>
                             </div>
                         </div>
                     </div>
@@ -75,29 +74,29 @@
                  ======================================== -->
             <div class="card mb-3">
                 <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">Technical Specs</h5>
+                    <h5 class="mb-0">Especificaciones Técnicas</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label asp-for="Equipment.Brand" class="control-label"></label>
-                                <input asp-for="Equipment.Brand" class="form-control" />
-                                <span asp-validation-for="Equipment.Brand" class="text-danger"></span>
+                                <label asp-for="Input.Brand" class="control-label"></label>
+                                <input asp-for="Input.Brand" class="form-control" />
+                                <span asp-validation-for="Input.Brand" class="text-danger"></span>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label asp-for="Equipment.Model" class="control-label"></label>
-                                <input asp-for="Equipment.Model" class="form-control" />
-                                <span asp-validation-for="Equipment.Model" class="text-danger"></span>
+                                <label asp-for="Input.Model" class="control-label"></label>
+                                <input asp-for="Input.Model" class="form-control" />
+                                <span asp-validation-for="Input.Model" class="text-danger"></span>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label asp-for="Equipment.SerialNumber" class="control-label"></label>
-                                <input asp-for="Equipment.SerialNumber" class="form-control" />
-                                <span asp-validation-for="Equipment.SerialNumber" class="text-danger"></span>
+                                <label asp-for="Input.SerialNumber" class="control-label"></label>
+                                <input asp-for="Input.SerialNumber" class="form-control" />
+                                <span asp-validation-for="Input.SerialNumber" class="text-danger"></span>
                             </div>
                         </div>
                     </div>
@@ -109,29 +108,29 @@
                  ======================================== -->
             <div class="card mb-3">
                 <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">Financial Information</h5>
+                    <h5 class="mb-0">Información Financiera</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label asp-for="Equipment.AcquisitionDate" class="control-label"></label>
-                                <input asp-for="Equipment.AcquisitionDate" class="form-control" type="date" />
-                                <span asp-validation-for="Equipment.AcquisitionDate" class="text-danger"></span>
+                                <label asp-for="Input.AcquisitionDate" class="control-label"></label>
+                                <input asp-for="Input.AcquisitionDate" class="form-control" type="date" />
+                                <span asp-validation-for="Input.AcquisitionDate" class="text-danger"></span>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label asp-for="Equipment.AcquisitionValue" class="control-label"></label>
-                                <input asp-for="Equipment.AcquisitionValue" class="form-control" type="number" step="0.01" />
-                                <span asp-validation-for="Equipment.AcquisitionValue" class="text-danger"></span>
+                                <label asp-for="Input.AcquisitionValue" class="control-label"></label>
+                                <input asp-for="Input.AcquisitionValue" class="form-control" type="number" step="0.01" />
+                                <span asp-validation-for="Input.AcquisitionValue" class="text-danger"></span>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
-                                <label asp-for="Equipment.UsefulLifeYears" class="control-label"></label>
-                                <input asp-for="Equipment.UsefulLifeYears" class="form-control" type="number" min="0" max="100" />
-                                <span asp-validation-for="Equipment.UsefulLifeYears" class="text-danger"></span>
+                                <label asp-for="Input.UsefulLifeYears" class="control-label"></label>
+                                <input asp-for="Input.UsefulLifeYears" class="form-control" type="number" min="0" max="100" />
+                                <span asp-validation-for="Input.UsefulLifeYears" class="text-danger"></span>
                             </div>
                         </div>
                     </div>
@@ -139,25 +138,42 @@
             </div>
 
             <!-- ========================================
-                 ORIGIN (READ ONLY)
+                 ORIGIN (Country + City selects relacionados)
                  ======================================== -->
             <div class="card mb-3">
                 <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0">Origin (ReadOnly)</h5>
+                    <h5 class="mb-0">Origen / Ubicación</h5>
                 </div>
+
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label class="control-label">Country</label>
-                                <input value="@Model.Equipment.Country?.Name" class="form-control" readonly disabled />
-                                <small class="form-text text-muted">Origin cannot be modified after creation.</small>
+                                <label asp-for="Input.CountryId" class="control-label">
+                                    <span class="text-danger">*</span> País
+                                </label>
+                                <select asp-for="Input.CountryId" id="countrySelect" class="form-control" asp-items="ViewBag.CountryId" required></select>
+                                <span asp-validation-for="Input.CountryId" class="text-danger"></span>
                             </div>
                         </div>
+
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label class="control-label">City</label>
-                                <input value="@Model.Equipment.City?.Name" class="form-control" readonly disabled />
+                                <label asp-for="Input.CityId" class="control-label">
+                                    <span class="text-danger">*</span> Ciudad
+                                </label>
+                                <select asp-for="Input.CityId" id="citySelect" class="form-control" asp-items="ViewBag.CityId" required></select>
+                                <span asp-validation-for="Input.CityId" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-2">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label class="control-label">País (Derivado de la Ciudad)</label>
+                                <!-- Using ExistingEquipmentDisplay for read-only View info -->
+                                <input value="@Model.ExistingEquipmentDisplay?.Country?.Name" class="form-control" readonly disabled />
                             </div>
                         </div>
                     </div>
@@ -169,25 +185,25 @@
                  ======================================== -->
             <div class="card mb-3">
                 <div class="card-header bg-success text-white">
-                    <h5 class="mb-0">Status & Observations</h5>
+                    <h5 class="mb-0">Estado y Observaciones</h5>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label asp-for="Equipment.CurrentStatus" class="control-label">
-                                    <span class="text-danger">*</span> Current Status
+                                <label asp-for="Input.CurrentStatus" class="control-label">
+                                    <span class="text-danger">*</span> Estado Actual
                                 </label>
-                                <select asp-for="Equipment.CurrentStatus" class="form-control" asp-items="ViewBag.ListaEstadosEquipo" required></select>
-                                <span asp-validation-for="Equipment.CurrentStatus" class="text-danger"></span>
-                                <small class="form-text text-muted">Status changes will be automatically recorded in history.</small>
+                                <select asp-for="Input.CurrentStatus" class="form-control" asp-items="ViewBag.ListaEstadosEquipo" required></select>
+                                <span asp-validation-for="Input.CurrentStatus" class="text-danger"></span>
+                                <small class="form-text text-muted">Los cambios de estado se guardan automáticamente en el historial.</small>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label asp-for="Equipment.Observations" class="control-label"></label>
-                                <textarea asp-for="Equipment.Observations" class="form-control" rows="3"></textarea>
-                                <span asp-validation-for="Equipment.Observations" class="text-danger"></span>
+                                <label asp-for="Input.Observations" class="control-label"></label>
+                                <textarea asp-for="Input.Observations" class="form-control" rows="3"></textarea>
+                                <span asp-validation-for="Input.Observations" class="text-danger"></span>
                             </div>
                         </div>
                     </div>
@@ -199,13 +215,13 @@
                  ======================================== -->
             <div class="form-group mt-3">
                 <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Save Changes
+                    <i class="fas fa-save"></i> Guardar Cambios
                 </button>
                 <a asp-page="./Index" class="btn btn-secondary">
-                    <i class="fas fa-times"></i> Cancel
+                    <i class="fas fa-times"></i> Cancelar
                 </a>
-                <a asp-page="./Details" asp-route-id="@Model.Equipment.Id" class="btn btn-info">
-                    <i class="fas fa-eye"></i> View Details
+                <a asp-page="./Details" asp-route-id="@Model.Id" class="btn btn-info">
+                    <i class="fas fa-eye"></i> Ver Detalles
                 </a>
             </div>
         </form>
@@ -217,22 +233,22 @@
     <div class="col-md-4">
         <div class="card">
             <div class="card-header bg-dark text-white">
-                <h5 class="mb-0">Record Info</h5>
+                <h5 class="mb-0">Información de Registro</h5>
             </div>
             <div class="card-body">
-                <p><strong>Created:</strong> @Model.Equipment.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
-                @if (Model.Equipment.LastModifiedDate.HasValue)
+                <p><strong>Creado:</strong> @Model.ExistingEquipmentDisplay?.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
+                @if (Model.ExistingEquipmentDisplay?.LastModifiedDate.HasValue == true)
                 {
-                    <p><strong>Last Modified:</strong> @Model.Equipment.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</p>
+                    <p><strong>Modificado:</strong> @Model.ExistingEquipmentDisplay.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</p>
                 }
-                @if (Model.Equipment.AgeYears.HasValue)
+                @if (Model.ExistingEquipmentDisplay?.AgeYears.HasValue == true)
                 {
-                    <p><strong>Age:</strong> @Model.Equipment.AgeYears years</p>
+                    <p><strong>Antigüedad:</strong> @Model.ExistingEquipmentDisplay.AgeYears años</p>
                 }
-                @if (Model.Equipment.RequiresReplacement)
+                @if (Model.ExistingEquipmentDisplay?.RequiresReplacement == true)
                 {
                     <div class="alert alert-warning" role="alert">
-                        <i class="fas fa-exclamation-triangle"></i> Needs Replacement.
+                        <i class="fas fa-exclamation-triangle"></i> Requiere Reemplazo.
                     </div>
                 }
             </div>
@@ -241,7 +257,38 @@
 </div>
 
 @section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var country = document.getElementById('countrySelect');
+            var city = document.getElementById('citySelect');
+
+            if (!country || !city) return;
+
+            country.addEventListener('change', function () {
+                var countryId = this.value || 0;
+                fetch('?handler=Cities&countryId=' + countryId)
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        city.innerHTML = '';
+                        // Añadir opción vacía para forzar selección si se desea
+                        var emptyOpt = document.createElement('option');
+                        emptyOpt.value = '';
+                        emptyOpt.text = '-- Seleccione ciudad --';
+                        city.appendChild(emptyOpt);
+
+                        data.forEach(function (c) {
+                            var opt = document.createElement('option');
+                            opt.value = c.id;
+                            opt.textContent = c.name;
+                            city.appendChild(opt);
+                        });
+                    })
+                    .catch(function (err) {
+                        console.error('Error cargando ciudades:', err);
+                    });
+            });
+        });
+    </script>
 }

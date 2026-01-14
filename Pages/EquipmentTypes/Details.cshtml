@@ -2,13 +2,13 @@
 @model Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes.DetailsModel
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Detalles del Tipo de Equipo";
 }
 
-<h1>Details</h1>
+<h1>Detalles</h1>
 
 <div>
-    <h4>Equipment Type</h4>
+    <h4>Tipo de Equipo</h4>
     <hr />
     <dl class="row">
         <dt class="col-sm-2">
@@ -35,9 +35,31 @@
         <dd class="col-sm-10">
             @Html.DisplayFor(model => model.EquipmentType.MaintenanceFrequencyMonths)
         </dd>
+        <hr />
+        <dt class="col-sm-2">
+            Auditoría
+        </dt>
+        <dd class="col-sm-10">
+            <small>
+                <strong>Creado:</strong> @Model.EquipmentType.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+                @if (Model.EquipmentType.CreatedBy != null)
+                {
+                    <span> por @Model.EquipmentType.CreatedBy.FullName</span>
+                }
+                <br />
+                @if (Model.EquipmentType.LastModifiedDate.HasValue)
+                {
+                    <strong>Modificado:</strong> @Model.EquipmentType.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
+                    @if (Model.EquipmentType.ModifiedBy != null)
+                    {
+                        <span> por @Model.EquipmentType.ModifiedBy.FullName</span>
+                    }
+                }
+            </small>
+        </dd>
     </dl>
 </div>
 <div>
-    <a asp-page="./Edit" asp-route-id="@Model.EquipmentType.Id">Edit</a> |
-    <a asp-page="./Index">Back to List</a>
+    <a asp-page="./Edit" asp-route-id="@Model.EquipmentType.Id">Editar</a> |
+    <a asp-page="./Index">Volver al Listado</a>
 </div>

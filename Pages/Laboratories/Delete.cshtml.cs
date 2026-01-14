@@ -36,7 +36,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
                 return NotFound();
             }
 
-            var laboratory = await _context.Laboratories.FirstOrDefaultAsync(m => m.Id == id);
+            var laboratory = await _context.Laboratories
+                .Include(l => l.Faculty)
+                .Include(l => l.CreatedBy)
+                .Include(l => l.ModifiedBy)
+                .FirstOrDefaultAsync(m => m.Id == id);
 
             if (laboratory == null)
             {

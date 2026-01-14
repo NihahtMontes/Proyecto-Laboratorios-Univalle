@@ -2,13 +2,13 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Countries.DetailsModel
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Detalles del País";
 }
 
-<h1>Details</h1>
+<h1>Detalles</h1>
 
 <div>
-    <h4>Country</h4>
+    <h4>País</h4>
     <hr />
     <dl class="row">
         <dt class="col-sm-2">
@@ -24,14 +24,31 @@
             @Html.DisplayFor(model => model.Country.Status)
         </dd>
         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Country.CreatedDate)
+            Fecha de Creación
         </dt>
         <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Country.CreatedDate)
+            @Model.Country.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+            @if (Model.Country.CreatedBy != null)
+            {
+                <span class="text-muted"> por @Model.Country.CreatedBy.FullName</span>
+            }
         </dd>
+        @if (Model.Country.LastModifiedDate.HasValue)
+        {
+            <dt class="col-sm-2">
+                Última Modificación
+            </dt>
+            <dd class="col-sm-10">
+                @Model.Country.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
+                @if (Model.Country.ModifiedBy != null)
+                {
+                    <span class="text-muted"> por @Model.Country.ModifiedBy.FullName</span>
+                }
+            </dd>
+        }
     </dl>
 </div>
 <div>
-    <a asp-page="./Edit" asp-route-id="@Model.Country.Id">Edit</a> |
-    <a asp-page="./Index">Back to List</a>
+    <a asp-page="./Edit" asp-route-id="@Model.Country.Id">Editar</a> |
+    <a asp-page="./Index">Volver al Listado</a>
 </div>

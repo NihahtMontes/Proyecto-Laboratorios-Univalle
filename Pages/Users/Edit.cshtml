@@ -5,29 +5,32 @@
     ViewData["Title"] = "Edit";
 }
 
-<h1>Edit</h1>
+<h1>Editar Usuario</h1>
 
-<h4>User</h4>
+<h4>Usuario</h4>
 <hr />
 <div class="row">
     <div class="col-md-4">
         <form method="post">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <!-- ID is in the route -->
+            <input type="hidden" name="id" value="@Model.Id" />
+
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
                         <span class="text-danger">*</span>
-                        <label asp-for="User.FirstName" class="control-label"></label>
-                        <input asp-for="User.FirstName" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="User.FirstName" class="text-danger"></span>
+                        <label asp-for="Input.FirstName" class="control-label"></label>
+                        <input asp-for="Input.FirstName" class="form-control" aria-required="true"/>
+                        <span asp-validation-for="Input.FirstName" class="text-danger"></span>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <span class="text-danger">*</span>
-                        <label asp-for="User.LastName" class="control-label"></label>
-                        <input asp-for="User.LastName" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="User.LastName" class="text-danger"></span>
+                        <label asp-for="Input.LastName" class="control-label"></label>
+                        <input asp-for="Input.LastName" class="form-control" aria-required="true"/>
+                        <span asp-validation-for="Input.LastName" class="text-danger"></span>
                     </div>
                 </div>
             </div>
@@ -35,73 +38,89 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label asp-for="User.SecondLastName" class="control-label"></label>
-                        <input asp-for="User.SecondLastName" class="form-control" />
-                        <span asp-validation-for="User.SecondLastName" class="text-danger"></span>
+                        <label asp-for="Input.SecondLastName" class="control-label"></label>
+                        <input asp-for="Input.SecondLastName" class="form-control" />
+                        <span asp-validation-for="Input.SecondLastName" class="text-danger"></span>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
                         <span class="text-danger">*</span>
-                        <label asp-for="User.IdentityCard" class="control-label"></label>
-                        <input asp-for="User.IdentityCard" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="User.IdentityCard" class="text-danger"></span>
+                        <label asp-for="Input.IdentityCard" class="control-label"></label>
+                        <input asp-for="Input.IdentityCard" class="form-control" aria-required="true"/>
+                        <span asp-validation-for="Input.IdentityCard" class="text-danger"></span>
                     </div>
                 </div>
             </div>
 
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="User.Role" class="control-label"></label>
-                <select asp-for="User.Role" class="form-control" aria-required="true" asp-items="ViewBag.UserRole"></select>
-                <span asp-validation-for="User.Role" class="text-danger"></span>
+                <label asp-for="Input.Role" class="control-label"></label>
+                <select asp-for="Input.Role" class="form-control" aria-required="true" asp-items="ViewBag.UserRole"></select>
+                <span asp-validation-for="Input.Role" class="text-danger"></span>
             </div>
 
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="User.Status" class="control-label"></label>
-                <select asp-for="User.Status" class="form-control" aria-required="true" asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"></select>
-                <span asp-validation-for="User.Status" class="text-danger"></span>
+                <label asp-for="Input.Status" class="control-label"></label>
+                <select asp-for="Input.Status"
+                        class="form-control"
+                        aria-required="true"
+                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"></select>
+                <span asp-validation-for="Input.Status" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="User.Position" class="control-label"></label>
-                <input asp-for="User.Position" class="form-control" />
-                <span asp-validation-for="User.Position" class="text-danger"></span>
+                <label asp-for="Input.Position" class="control-label"></label>
+                <input asp-for="Input.Position" class="form-control" />
+                <span asp-validation-for="Input.Position" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="User.Department" class="control-label"></label>
-                <input asp-for="User.Department" class="form-control" />
-                <span asp-validation-for="User.Department" class="text-danger"></span>
+                <label asp-for="Input.Department" class="control-label"></label>
+                <input asp-for="Input.Department" class="form-control" />
+                <span asp-validation-for="Input.Department" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="User.HireDate" class="control-label"></label>
-                <input asp-for="User.HireDate" class="form-control" />
-                <span asp-validation-for="User.HireDate" class="text-danger"></span>
+                <label asp-for="Input.HireDate" class="control-label"></label>
+                <input asp-for="Input.HireDate" class="form-control" />
+                <span asp-validation-for="Input.HireDate" class="text-danger"></span>
             </div>
 
             <div class="form-group">
-                <label asp-for="User.Email" class="control-label"></label>
-                <input asp-for="User.Email" class="form-control" />
-                <span asp-validation-for="User.Email" class="text-danger"></span>
+                <label asp-for="Input.Email" class="control-label"></label>
+                <input asp-for="Input.Email" class="form-control" />
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
             </div>
             
             <div class="form-group">
-                <label asp-for="User.PhoneNumber" class="control-label"></label>
-                <input asp-for="User.PhoneNumber" class="form-control" />
-                <span asp-validation-for="User.PhoneNumber" class="text-danger"></span>
+                <label asp-for="Input.PhoneNumber" class="control-label"></label>
+                <input asp-for="Input.PhoneNumber" class="form-control" />
+                <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
+            </div>
+            
+            <hr/>
+            <h5>Credenciales de Acceso</h5>
+            <div class="form-group">
+                <label asp-for="Input.UserName" class="control-label"></label>
+                <input asp-for="Input.UserName" class="form-control" autocomplete="username"/>
+                <span asp-validation-for="Input.UserName" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <input type="submit" value="Save" class="btn btn-primary" />
+                <label asp-for="Input.NewPassword" class="control-label"></label>
+                <input asp-for="Input.NewPassword" class="form-control" autocomplete="new-password" placeholder="Dejar en blanco para mantener la actual"/>
+                <span asp-validation-for="Input.NewPassword" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Guardar" class="btn btn-primary" />
             </div>
         </form>
     </div>
 </div>
 
 <div>
-    <a asp-page="./Index">Back to List</a>
+    <a asp-page="./Index">Volver al Listado</a>
 </div>
 
 @section Scripts {

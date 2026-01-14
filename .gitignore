@@ -40,3 +40,6 @@
 .vs/Proyecto Laboratorios Univalle/FileContentIndex/cf866645-9b25-4c51-a9c6-bde590958e58.vsidx
 .vs/Proyecto Laboratorios Univalle/FileContentIndex/41c2db94-9dba-4eb3-9d87-868a8b520efa.vsidx
 /.vs
+/Migrations
+*.cs
+/Migrations

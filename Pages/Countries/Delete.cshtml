@@ -2,14 +2,14 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Countries.DeleteModel
 
 @{
-    ViewData["Title"] = "Delete";
+    ViewData["Title"] = "Eliminar País";
 }
 
-<h1>Delete</h1>
+<h1>Eliminar</h1>
 
-<h3>Are you sure you want to delete this?</h3>
+<h3>¿Está seguro de que desea eliminar esto?</h3>
 <div>
-    <h4>Country</h4>
+    <h4>País</h4>
     <hr />
     <dl class="row">
         <dt class="col-sm-2">
@@ -24,11 +24,35 @@
         <dd class="col-sm-10">
             @Html.DisplayFor(model => model.Country.Status)
         </dd>
+        <hr />
+        <dt class="col-sm-2">
+            Fecha de Registro
+        </dt>
+        <dd class="col-sm-10">
+            @Model.Country.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+            @if (Model.Country.CreatedBy != null)
+            {
+                <span class="text-muted"> por @Model.Country.CreatedBy.FullName</span>
+            }
+        </dd>
+        @if (Model.Country.LastModifiedDate.HasValue)
+        {
+            <dt class="col-sm-2">
+                Última Modificación
+            </dt>
+            <dd class="col-sm-10">
+                @Model.Country.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
+                @if (Model.Country.ModifiedBy != null)
+                {
+                    <span class="text-muted"> por @Model.Country.ModifiedBy.FullName</span>
+                }
+            </dd>
+        }
     </dl>
     
     <form method="post">
         <input type="hidden" asp-for="Country.Id" />
-        <input type="submit" value="Delete" class="btn btn-danger" /> |
-        <a asp-page="./Index">Back to List</a>
+        <input type="submit" value="Eliminar" class="btn btn-danger" /> |
+        <a asp-page="./Index">Volver al Listado</a>
     </form>
 </div>
