@@ -1,45 +1,13 @@
-.vs/CopilotSnapshots/A3457F35A74CA04FBD3C6D205D26F563/0A3DBEC9D7FB9A43ABB6948C233D237D/10F9AE75758D7DF760BE92685FD1251E
-.vs/CopilotSnapshots/A3457F35A74CA04FBD3C6D205D26F563/0A3DBEC9D7FB9A43ABB6948C233D237D/DC6B149F522205DA2CDB442F6B252033
-.vs/CopilotSnapshots/A3457F35A74CA04FBD3C6D205D26F563/state.mpack
-.vs/ProjectEvaluation/proyecto laboratorios univalle.metadata.v9.bin
-.vs/ProjectEvaluation/proyecto laboratorios univalle.projects.v9.bin
-.vs/ProjectEvaluation/proyecto laboratorios univalle.strings.v9.bin
-.vs/Proyecto Laboratorios Univalle/config/applicationhost.config
-.vs/Proyecto Laboratorios Univalle/copilot-chat/5a084183/sessions/357f45a3-4ca7-4fa0-bd3c-6d205d26f563
-.vs/Proyecto Laboratorios Univalle/copilot-chat/5a084183/sessions/5905d2f6-3ab0-4abb-b951-5a35f67071fe
-.vs/Proyecto Laboratorios Univalle/copilot-chat/5a084183/sessions/61454491-fb89-431c-8547-4f3938b0266b
-.vs/Proyecto Laboratorios Univalle/copilot-chat/5a084183/sessions/f40663fb-7489-4219-8d92-4bab6c045467
-.vs/Proyecto Laboratorios Univalle/CopilotIndices/17.14.1561.44479/CodeChunks.db
-.vs/Proyecto Laboratorios Univalle/CopilotIndices/17.14.1561.44479/CodeChunks.db-shm
-.vs/Proyecto Laboratorios Univalle/CopilotIndices/17.14.1561.44479/CodeChunks.db-wal
-.vs/Proyecto Laboratorios Univalle/CopilotIndices/17.14.1561.44479/SemanticSymbols.db
-.vs/Proyecto Laboratorios Univalle/CopilotIndices/17.14.1561.44479/SemanticSymbols.db-shm
-.vs/Proyecto Laboratorios Univalle/CopilotIndices/17.14.1561.44479/SemanticSymbols.db-wal
-.vs/Proyecto Laboratorios Univalle/DesignTimeBuild/.dtbcache.v2
-.vs/Proyecto Laboratorios Univalle/FileContentIndex/0f3fbdf4-fbe7-41e3-a004-2df53a3b26ec.vsidx
-.vs/Proyecto Laboratorios Univalle/FileContentIndex/163c0d85-e716-4f52-a16e-35c41fa0948f.vsidx
-.vs/Proyecto Laboratorios Univalle/FileContentIndex/661d4150-0b16-49f5-b676-8363641aff4c.vsidx
-.vs/Proyecto Laboratorios Univalle/FileContentIndex/8c04b368-5946-444c-a180-cf321fea95cf.vsidx
-.vs/Proyecto Laboratorios Univalle/FileContentIndex/bc9d2333-3ca7-42d2-aef1-6ac10b933b82.vsidx
-.vs/Proyecto Laboratorios Univalle/v17/.futdcache.v2
-.vs/Proyecto Laboratorios Univalle/v17/.suo
-.vs/Proyecto Laboratorios Univalle/v17/DocumentLayout.backup.json
-.vs/Proyecto Laboratorios Univalle/v17/DocumentLayout.json
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/351BA8AA8314FF78BD2211AC4ABB4720
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/584EB238A8B712AD8A94197E4DFBAFA9
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/5DA75F197897E63E6A7060F48BDCACC9
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/7E21142D2874A18566A7C926A5086F9E
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/9518221C231C79D9C11B1C6334D0FD81
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/977ED01DD913D7BC860594521DB4CC69
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/B6A94C1951EA27574BFA06FAEE8D3A87
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/D1095257B4D648B29D0BDF5CAD232926
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/EE4B4192BCF20D21E72A20ABF1F69DC1
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/D4E699644F6C16439BEBA79131F31FC2/F109C4E458A90E261D4D179EBABD1AC2
-.vs/CopilotSnapshots/9144456189FB1C4385474F3938B0266B/state.mpack
-.vs/Proyecto Laboratorios Univalle/FileContentIndex/90d751a1-b323-4150-b6a3-33f91b6d795f.vsidx
-.vs/Proyecto Laboratorios Univalle/FileContentIndex/cf866645-9b25-4c51-a9c6-bde590958e58.vsidx
-.vs/Proyecto Laboratorios Univalle/FileContentIndex/41c2db94-9dba-4eb3-9d87-868a8b520efa.vsidx
-/.vs
-/Migrations
-*.cs
-/Migrations
+[Bb]in/
+[Oo]bj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln.docstates
+*.userprefs
+*.log
+appsettings.Development.json
+# No ignorar archivos .cs ni Migrations!
+!**/*.cs
+!**/Migrations/**
