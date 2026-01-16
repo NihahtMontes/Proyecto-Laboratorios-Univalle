@@ -1,17 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 {
@@ -40,26 +36,42 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         }
 
         [BindProperty]
-        public Proyecto_Laboratorios_Univalle.Models.Equipment Equipment { get; set; } = default!;
+        public InputModel Input { get; set; } = new();
+
+        public class InputModel
+        {
+            [Required]
+            public int EquipmentTypeId { get; set; }
+            [Required]
+            public int LaboratoryId { get; set; }
+            [Required]
+            public int CityId { get; set; }
+            [Required]
+            public int CountryId { get; set; }
+            [Required]
+            public string Name { get; set; }
+            [Required]
+            public string InventoryNumber { get; set; }
+            public string? Brand { get; set; }
+            public string? Model { get; set; }
+            public string? SerialNumber { get; set; }
+            public int? UsefulLifeYears { get; set; }
+            [DataType(DataType.Date)]
+            public DateTime? AcquisitionDate { get; set; }
+            public decimal? AcquisitionValue { get; set; }
+            public string? Observations { get; set; }
+        }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            ModelState.Remove("Equipment.CreatedBy");
-            ModelState.Remove("Equipment.ModifiedBy");
-            ModelState.Remove("Equipment.Laboratory");
-            ModelState.Remove("Equipment.EquipmentType");
-            ModelState.Remove("Equipment.Country");
-            ModelState.Remove("Equipment.City");
-            ModelState.Remove("Equipment.EquipmentStateHistories");
-
             // Uniqueness Check (Ignoring Deleted but filtering by status)
             bool invExists = await _context.Equipments
                 .IgnoreQueryFilters()
-                .AnyAsync(e => e.InventoryNumber == Equipment.InventoryNumber && e.CurrentStatus != EquipmentStatus.Deleted);
+                .AnyAsync(e => e.InventoryNumber == Input.InventoryNumber && e.CurrentStatus != EquipmentStatus.Deleted);
 
             if (invExists)
             {
-                ModelState.AddModelError("Equipment.InventoryNumber", "El número de inventario ya está en uso por otro equipo activo.");
+                ModelState.AddModelError("Input.InventoryNumber", "El número de inventario ya está en uso por otro equipo activo.");
             }
 
             if (!ModelState.IsValid)
@@ -71,15 +83,32 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 return Page();
             }
 
-            Equipment.CurrentStatus = EquipmentStatus.Operational; // Default status
+            var equipment = new Models.Equipment
+            {
+                EquipmentTypeId = Input.EquipmentTypeId,
+                LaboratoryId = Input.LaboratoryId,
+                CityId = Input.CityId,
+                CountryId = Input.CountryId,
+                Name = Input.Name,
+                InventoryNumber = Input.InventoryNumber,
+                Brand = Input.Brand,
+                Model = Input.Model,
+                SerialNumber = Input.SerialNumber,
+                UsefulLifeYears = Input.UsefulLifeYears,
+                AcquisitionDate = Input.AcquisitionDate,
+                AcquisitionValue = Input.AcquisitionValue,
+                Observations = Input.Observations,
+                CurrentStatus = EquipmentStatus.Operational,
+                CreatedDate = DateTime.Now
+            };
 
-            _context.Equipments.Add(Equipment);
+            _context.Equipments.Add(equipment);
             await _context.SaveChangesAsync();
 
             var currentUser = await _userManager.GetUserAsync(User);
             var initialHistory = new EquipmentStateHistory
             {
-                EquipmentId = Equipment.Id,
+                EquipmentId = equipment.Id,
                 Status = EquipmentStatus.Operational,
                 StartDate = DateTime.Now,
                 CreatedDate = DateTime.Now,

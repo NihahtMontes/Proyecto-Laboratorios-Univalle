@@ -15,44 +15,45 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="Laboratory.FacultyId" class="control-label"></label>
-                <select asp-for="Laboratory.FacultyId" class ="form-control" asp-items="ViewBag.FacultyId" aria-required="true"></select>
+                <label asp-for="Input.FacultyId" class="control-label">Facultad</label>
+                <select asp-for="Input.FacultyId" class ="form-control" asp-items="ViewBag.FacultyId" aria-required="true"></select>
             </div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="Laboratory.Code" class="control-label"></label>
-                <input asp-for="Laboratory.Code" class="form-control" aria-required="true"/>
-                <span asp-validation-for="Laboratory.Code" class="text-danger"></span>
+                <label asp-for="Input.Code" class="control-label">Código</label>
+                <input asp-for="Input.Code" class="form-control" aria-required="true"/>
+                <span asp-validation-for="Input.Code" class="text-danger"></span>
             </div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="Laboratory.Name" class="control-label"></label>
-                <input asp-for="Laboratory.Name" class="form-control" aria-required="true"/>
-                <span asp-validation-for="Laboratory.Name" class="text-danger"></span>
+                <label asp-for="Input.Name" class="control-label">Nombre</label>
+                <input asp-for="Input.Name" class="form-control" aria-required="true"/>
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Laboratory.Type" class="control-label"></label>
-                <input asp-for="Laboratory.Type" class="form-control" />
-                <span asp-validation-for="Laboratory.Type" class="text-danger"></span>
+                <label asp-for="Input.Type" class="control-label">Tipo</label>
+                <input asp-for="Input.Type" class="form-control" />
+                <span asp-validation-for="Input.Type" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Laboratory.Building" class="control-label"></label>
-                <input asp-for="Laboratory.Building" class="form-control" />
-                <span asp-validation-for="Laboratory.Building" class="text-danger"></span>
+                <label asp-for="Input.Building" class="control-label">Edificio</label>
+                <input asp-for="Input.Building" class="form-control" />
+                <span asp-validation-for="Input.Building" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Laboratory.Floor" class="control-label"></label>
-                <input asp-for="Laboratory.Floor" class="form-control" />
-                <span asp-validation-for="Laboratory.Floor" class="text-danger"></span>
+                <label asp-for="Input.Floor" class="control-label">Piso</label>
+                <input asp-for="Input.Floor" class="form-control" />
+                <span asp-validation-for="Input.Floor" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Laboratory.Description" class="control-label"></label>
-                <input asp-for="Laboratory.Description" class="form-control" />
-                <span asp-validation-for="Laboratory.Description" class="text-danger"></span>
+                <label asp-for="Input.Description" class="control-label">Descripción</label>
+                <textArea asp-for="Input.Description" class="form-control" ></textArea>
+                <span asp-validation-for="Input.Description" class="text-danger"></span>
             </div>
 
             <div class="form-group mt-3">
-                <input type="submit" value="Create" class="btn btn-primary" />
+                <input type="submit" value="Crear" class="btn btn-primary" />
+                <a asp-page="Index" class="btn btn-secondary">Cancelar</a>
             </div>
         </form>
     </div>

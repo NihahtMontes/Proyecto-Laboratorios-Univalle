@@ -1,14 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
 {
@@ -28,7 +23,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
         }
 
         [BindProperty]
-        public MaintenanceType MaintenanceType { get; set; } = default!;
+        public InputModel Input { get; set; } = new();
+
+        public class InputModel
+        {
+            [Required]
+            public string Name { get; set; }
+            public string? Description { get; set; }
+        }
 
         public async Task<IActionResult> OnPostAsync()
         {
@@ -37,7 +39,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
                 return Page();
             }
 
-            _context.MaintenanceTypes.Add(MaintenanceType);
+            var maintenanceType = new MaintenanceType
+            {
+                Name = Input.Name,
+                Description = Input.Description,
+                CreatedDate = DateTime.Now
+            };
+
+            _context.MaintenanceTypes.Add(maintenanceType);
             await _context.SaveChangesAsync();
 
             return RedirectToPage("./Index");

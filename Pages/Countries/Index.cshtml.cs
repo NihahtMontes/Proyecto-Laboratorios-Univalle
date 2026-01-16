@@ -1,15 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Countries
 {
@@ -23,11 +18,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             _context = context;
         }
 
-        public IList<Country> Countries { get;set; } = default!;
+        public IList<Country> Countries { get; set; } = default!;
 
         public async Task OnGetAsync()
         {
             Countries = await _context.Countries
+                .Include(c => c.CreatedBy)
+                .Include(c => c.ModifiedBy)
                 .Where(c => c.Status != GeneralStatus.Eliminado)
                 .ToListAsync();
         }

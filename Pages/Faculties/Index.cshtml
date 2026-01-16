@@ -10,8 +10,8 @@
 <p>
     <a asp-page="Create" class="btn btn-primary">Create New</a>
 </p>
-<table class="table">
-    <thead>
+<table class="table table-hover">
+    <thead class="thead-light">
         <tr>
              <th>
                 @Html.DisplayNameFor(model => model.Faculties[0].Name)
@@ -22,10 +22,9 @@
             <th>
                 @Html.DisplayNameFor(model => model.Faculties[0].Status)
             </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Faculties[0].CreatedDate)
-            </th>
-            <th></th>
+            <th>Registrado</th>
+            <th>Modificado</th>
+            <th>Acciones</th>
         </tr>
     </thead>
     <tbody>
@@ -41,12 +40,21 @@
                 @Html.DisplayFor(modelItem => item.Status)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.CreatedDate)
+                <small>
+                    @Html.DisplayFor(modelItem => item.CreatedDate)<br/>
+                    por @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
+                </small>
             </td>
             <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-page="./Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
+                <small>
+                    @Html.DisplayFor(modelItem => item.LastModifiedDate)<br/>
+                    por @Html.DisplayFor(modelItem => item.ModifiedBy.Initials)
+                </small>
+            </td>
+            <td>
+                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Editar</a>
+                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info"><i class="fas fa-info-circle"></i> Detalles</a>
+                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Eliminar</a>
             </td>
         </tr>
 }

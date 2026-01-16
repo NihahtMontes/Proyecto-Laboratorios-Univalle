@@ -4,14 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
@@ -37,10 +32,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 return NotFound();
             }
 
-            var maintenance =  await _context.Maintenances
+            var maintenance = await _context.Maintenances
                 .Include(m => m.CostDetails)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            
+
             if (maintenance == null)
             {
                 return NotFound();
@@ -51,13 +46,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             ViewData["RequestId"] = new SelectList(_context.Requests, "Id", "Id"); // Assuming description is not available yet, using Id
             ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Tecnico), "Id", "FullName");
             ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes, "Id", "Name");
-            
+
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-             // Remove navigation properties from validation
+            // Remove navigation properties from validation
             ModelState.Remove("Maintenance.CreatedBy");
             ModelState.Remove("Maintenance.ModifiedBy");
             ModelState.Remove("Maintenance.Equipment");
@@ -70,9 +65,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             if (Maintenance.Status == MaintenanceStatus.Completed && totalCosts <= 0)
             {
-               // Warn if completing without costs, logic from original code
-               // Or maybe it is allowed? Original code said "No se puede completar..."
-                 ModelState.AddModelError("Maintenance.Status", "Cannot complete maintenance without cost details.");
+                // Warn if completing without costs, logic from original code
+                // Or maybe it is allowed? Original code said "No se puede completar..."
+                ModelState.AddModelError("Maintenance.Status", "Cannot complete maintenance without cost details.");
             }
 
             if (!ModelState.IsValid)
@@ -85,7 +80,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             }
 
             Maintenance.ActualCost = totalCosts;
-            
+
             var maintenanceDB = await _context.Maintenances
                 .Include(m => m.CostDetails)
                 .FirstOrDefaultAsync(m => m.Id == Maintenance.Id);
@@ -108,7 +103,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             foreach (var detailForm in Maintenance.CostDetails)
             {
                 detailForm.MaintenanceId = Maintenance.Id; // Ensure FK
-                
+
                 var existingDetail = maintenanceDB.CostDetails.FirstOrDefault(d => d.Id == detailForm.Id && d.Id != 0);
                 if (existingDetail != null)
                 {

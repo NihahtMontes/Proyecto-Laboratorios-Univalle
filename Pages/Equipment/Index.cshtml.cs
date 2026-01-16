@@ -1,14 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
-using Proyecto_Laboratorios_Univalle.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 {
@@ -22,7 +15,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             _context = context;
         }
 
-        public IList<Proyecto_Laboratorios_Univalle.Models.Equipment> Equipment { get;set; } = default!;
+        public IList<Proyecto_Laboratorios_Univalle.Models.Equipment> Equipment { get; set; } = default!;
 
         public async Task OnGetAsync()
         {

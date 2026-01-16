@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
@@ -70,8 +65,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 int? userId = currentUser?.Id;
 
                 equipment.CurrentStatus = EquipmentStatus.Deleted;
-                equipment.LastModifiedDate = DateTime.Now;
-                equipment.ModifiedById = userId;
+                // equipment.LastModifiedDate = DateTime.Now; // Handled by Interceptor
+                // equipment.ModifiedById = userId; // Handled by Interceptor
 
                 var newHistory = new EquipmentStateHistory
                 {

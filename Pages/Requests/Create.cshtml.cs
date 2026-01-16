@@ -3,14 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 {
@@ -35,17 +31,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         }
 
         [BindProperty]
-        public Request MaintenanceRequest { get; set; } = default!;
+        public InputModel Input { get; set; } = new();
+
+        public class InputModel
+        {
+            [Required]
+            public int EquipmentId { get; set; }
+            public string? RequestedById { get; set; }
+            [Required]
+            public string Description { get; set; }
+            public RequestPriority Priority { get; set; }
+            public string? Observations { get; set; }
+        }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Clear Validation
-            ModelState.Remove("MaintenanceRequest.CreatedBy");
-            ModelState.Remove("MaintenanceRequest.ModifiedBy");
-            ModelState.Remove("MaintenanceRequest.Equipment");
-            ModelState.Remove("MaintenanceRequest.RequestedBy");
-            ModelState.Remove("MaintenanceRequest.ApprovedBy");
-
             if (!ModelState.IsValid)
             {
                 ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
@@ -53,17 +53,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 return Page();
             }
 
+            var request = new Request
+            {
+                EquipmentId = Input.EquipmentId,
+                Description = Input.Description,
+                Priority = Input.Priority,
+                Observations = Input.Observations,
+                CreatedDate = DateTime.Now
+            };
+
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)
             {
-                // Typically default requested by to current user if not set? 
-                if (MaintenanceRequest.RequestedById == null || MaintenanceRequest.RequestedById == 0)
+                if (string.IsNullOrEmpty(Input.RequestedById))
                 {
-                     MaintenanceRequest.RequestedById = currentUser.Id;
+                    request.RequestedById = currentUser.Id;
+                }
+                else
+                {
+                    request.RequestedById = int.TryParse(Input.RequestedById, out var requestedByIdValue) ? requestedByIdValue : (int?)null;
                 }
             }
 
-            _context.Requests.Add(MaintenanceRequest);
+            _context.Requests.Add(request);
             await _context.SaveChangesAsync();
 
             return RedirectToPage("./Index");

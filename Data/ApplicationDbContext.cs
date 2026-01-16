@@ -10,25 +10,27 @@ namespace Proyecto_Laboratorios_Univalle.Data
 {
     public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, int>
     {
-        private readonly ICurrentUserService _currentUserService;
+        // private readonly ICurrentUserService _currentUserService;
 
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ICurrentUserService currentUserService)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) //, ICurrentUserService currentUserService)
             : base(options)
         {
-            _currentUserService = currentUserService;
+            // _currentUserService = currentUserService;
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            var userId = _currentUserService.UserId;
-            var now = DateTime.Now;
+            // var userId = _currentUserService.UserId;
+            int? userId = null; // DISABLED TEMPORARILY FOR DEBUGGING CRASH
+            var now = DateTime.Now; 
+            
 
             foreach (var entry in ChangeTracker.Entries<IAuditable>())
             {
                 if (entry.State == EntityState.Added)
                 {
                     // If no user is logged in (e.g., creating first user), CreatedBy can be null
-                    entry.Entity.CreatedById = userId; 
+                    entry.Entity.CreatedById = userId;
                     entry.Entity.CreatedDate = now;
                 }
                 else if (entry.State == EntityState.Modified)
@@ -39,7 +41,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 // Implicit Soft Delete handling if we want to add it later could go here
             }
 
-                return await base.SaveChangesAsync(cancellationToken);
+            return await base.SaveChangesAsync(cancellationToken);
         }
 
         // ============================================
@@ -69,7 +71,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder); // IMPORTANT: Configures Identity tables
-            
+
             // Customize Identity Table Names
             modelBuilder.Entity<User>().ToTable("Users");
             modelBuilder.Entity<IdentityRole<int>>().ToTable("Roles");
@@ -83,7 +85,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             // DECIMAL PRECISION
             // ============================================
             modelBuilder.Entity<Equipment>().Property(e => e.AcquisitionValue).HasColumnType("decimal(18,2)");
-           
+
             modelBuilder.Entity<Maintenance>().Property(m => m.EstimatedCost).HasColumnType("decimal(18,2)");
             modelBuilder.Entity<Maintenance>().Property(m => m.ActualCost).HasColumnType("decimal(18,2)");
 
@@ -121,7 +123,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Faculty>().Property(f => f.Status).HasDefaultValue(GeneralStatus.Activo);
             modelBuilder.Entity<Laboratory>().Property(l => l.Status).HasDefaultValue(GeneralStatus.Activo);
             modelBuilder.Entity<Country>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Activo);
-            modelBuilder.Entity<City>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Activo    );
+            modelBuilder.Entity<City>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Activo);
 
             modelBuilder.Entity<Equipment>().Property(e => e.CurrentStatus).HasDefaultValue(EquipmentStatus.Operational);
             modelBuilder.Entity<EquipmentStateHistory>().Property(ee => ee.Status).HasDefaultValue(EquipmentStatus.Operational);

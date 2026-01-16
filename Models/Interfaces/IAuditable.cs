@@ -1,5 +1,3 @@
-using System;
-
 namespace Proyecto_Laboratorios_Univalle.Models.Interfaces
 {
     public interface IAuditable

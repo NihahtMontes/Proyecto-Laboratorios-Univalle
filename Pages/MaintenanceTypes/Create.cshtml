@@ -15,17 +15,18 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="MaintenanceType.Name" class="control-label"></label>
-                <input asp-for="MaintenanceType.Name" class="form-control" aria-required="true"/>
-                <span asp-validation-for="MaintenanceType.Name" class="text-danger"></span>
+                <label asp-for="Input.Name" class="control-label">Nombre</label>
+                <input asp-for="Input.Name" class="form-control" aria-required="true"/>
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="MaintenanceType.Description" class="control-label"></label>
-                <input asp-for="MaintenanceType.Description" class="form-control" />
-                <span asp-validation-for="MaintenanceType.Description" class="text-danger"></span>
+                <label asp-for="Input.Description" class="control-label">Descripción</label>
+                <input asp-for="Input.Description" class="form-control" />
+                <span asp-validation-for="Input.Description" class="text-danger"></span>
             </div>
             <div class="form-group mt-3">
                 <input type="submit" value="Crear" class="btn btn-primary" />
+                <a asp-page="Index" class="btn btn-secondary">Cancelar</a>
             </div>
         </form>
     </div>

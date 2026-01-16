@@ -1,15 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
 {
@@ -33,7 +27,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
                 return NotFound();
             }
 
-            var maintenancetype =  await _context.MaintenanceTypes.FirstOrDefaultAsync(m => m.Id == id);
+            var maintenancetype = await _context.MaintenanceTypes.FirstOrDefaultAsync(m => m.Id == id);
             if (maintenancetype == null)
             {
                 return NotFound();

@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity; // <-- Agregado para DisplayAttribute
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using Proyecto_Laboratorios_Univalle.Helpers;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity; // <-- Agregado para DisplayAttribute
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Users
 {
@@ -32,7 +27,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         public UserInputModel Input { get; set; } = new();
 
         public int Id { get; set; }
-        
+
         // Needed for filtering roles in View (or can be done in OnGet)
         public SelectList RoleOptions { get; set; }
 
@@ -140,8 +135,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             // 1. Uniqueness Check: Is there any OTHER active user with this CI?
             bool ciExists = await _context.Users
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.IdentityCard == Input.IdentityCard && 
-                               u.Id != id && 
+                .AnyAsync(u => u.IdentityCard == Input.IdentityCard &&
+                               u.Id != id &&
                                u.Status != GeneralStatus.Eliminado);
 
             if (ciExists)
@@ -152,8 +147,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             // Check Email uniqueness
             bool emailExists = await _context.Users
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.Email == Input.Email && 
-                               u.Id != id && 
+                .AnyAsync(u => u.Email == Input.Email &&
+                               u.Id != id &&
                                u.Status != GeneralStatus.Eliminado);
 
             if (emailExists)
@@ -166,8 +161,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             {
                 bool userNameExists = await _context.Users
                     .IgnoreQueryFilters()
-                    .AnyAsync(u => u.UserName == Input.UserName && 
-                                   u.Id != id && 
+                    .AnyAsync(u => u.UserName == Input.UserName &&
+                                   u.Id != id &&
                                    u.Status != GeneralStatus.Eliminado);
 
                 if (userNameExists)
@@ -202,7 +197,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             {
                 userToUpdate.Email = Input.Email;
                 userToUpdate.NormalizedEmail = Input.Email.ToUpper();
-                userToUpdate.EmailConfirmed = true; 
+                userToUpdate.EmailConfirmed = true;
             }
 
             // 4. Handle UserName
@@ -258,8 +253,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         private async Task CargarRoles()
         {
             // Logic to filter roles if needed, similar to current code
-             var excludedRoles = new[] { 
-                ((int)UserRole.Ingeniero).ToString(), 
+            var excludedRoles = new[] {
+                ((int)UserRole.Ingeniero).ToString(),
                 ((int)UserRole.Tecnico).ToString(),
                 ((int)UserRole.Director).ToString(),
                 ((int)UserRole.SuperAdmin).ToString()
@@ -267,9 +262,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             var rolesUsuario = EnumHelper.ToSelectList<UserRole>()
                 .Where(e => !excludedRoles.Contains(e.Value));
-            
+
             ViewData["UserRole"] = rolesUsuario;
-            await Task.CompletedTask; 
+            await Task.CompletedTask;
         }
     }
 }

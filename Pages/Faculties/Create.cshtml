@@ -15,23 +15,23 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="Faculty.Name" class="control-label"></label>
-                <input asp-for="Faculty.Name" class="form-control" />
-                <span asp-validation-for="Faculty.Name" class="text-danger"></span>
+                <label asp-for="Input.Name" class="control-label">Nombre</label>
+                <input asp-for="Input.Name" class="form-control" />
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Faculty.Code" class="control-label"></label>
-                <input asp-for="Faculty.Code" class="form-control" />
-                <span asp-validation-for="Faculty.Code" class="text-danger"></span>
+                <label asp-for="Input.Code" class="control-label">Código</label>
+                <input asp-for="Input.Code" class="form-control" />
+                <span asp-validation-for="Input.Code" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Faculty.Description" class="control-label"></label>
-                <textarea asp-for="Faculty.Description" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="Faculty.Description" class="text-danger"></span>
+                <label asp-for="Input.Description" class="control-label">Descripción</label>
+                <textarea asp-for="Input.Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Input.Description" class="text-danger"></span>
             </div>
             <div class="form-group mt-3">
-                <input type="submit" value="Create" class="btn btn-primary" />
-                <a asp-page="Index" class="btn btn-secondary">Cancel</a>
+                <input type="submit" value="Crear" class="btn btn-primary" />
+                <a asp-page="Index" class="btn btn-secondary">Cancelar</a>
             </div>
         </form>
     </div>

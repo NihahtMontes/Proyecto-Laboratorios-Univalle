@@ -1,15 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 {
@@ -29,7 +24,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
         }
 
         [BindProperty]
-        public Faculty Faculty { get; set; } = default!;
+        public InputModel Input { get; set; } = new();
+
+        public class InputModel
+        {
+            [Required]
+            public string Name { get; set; }
+            public string? Code { get; set; }
+            public string? Description { get; set; }
+        }
 
         public async Task<IActionResult> OnPostAsync()
         {
@@ -38,10 +41,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
                 return Page();
             }
 
-            Faculty.CreatedDate = DateTime.Now;
-            Faculty.Status = GeneralStatus.Activo;
+            var faculty = new Faculty
+            {
+                Name = Input.Name,
+                Code = Input.Code,
+                Description = Input.Description,
+                Status = GeneralStatus.Activo,
+                CreatedDate = DateTime.Now
+            };
 
-            _context.Faculties.Add(Faculty);
+            _context.Faculties.Add(faculty);
             await _context.SaveChangesAsync();
 
             return RedirectToPage("./Index");

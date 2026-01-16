@@ -2,14 +2,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 {
@@ -25,27 +21,40 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 
         public IActionResult OnGet()
         {
-        ViewData["CountryId"] = new SelectList(_context.Countries.Where(c=> c.Status == GeneralStatus.Activo), "Id", "Name");
+            ViewData["CountryId"] = new SelectList(_context.Countries.Where(c => c.Status == GeneralStatus.Activo), "Id", "Name");
             return Page();
         }
 
         [BindProperty]
-        public City City { get; set; } = default!;
+        public InputModel Input { get; set; } = new();
+
+        public class InputModel
+        {
+            [Required]
+            public int CountryId { get; set; }
+            [Required]
+            public string Name { get; set; }
+            public string? Region { get; set; }
+        }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            ModelState.Remove("City.Country");
-            
             if (!ModelState.IsValid)
             {
                 ViewData["CountryId"] = new SelectList(_context.Countries, "Id", "Name");
                 return Page();
             }
 
-            City.CreatedDate = DateTime.Now;
-            City.Status = GeneralStatus.Activo;
+            var city = new City
+            {
+                CountryId = Input.CountryId,
+                Name = Input.Name,
+                Region = Input.Region,
+                Status = GeneralStatus.Activo,
+                CreatedDate = DateTime.Now
+            };
 
-            _context.Cities.Add(City);
+            _context.Cities.Add(city);
             await _context.SaveChangesAsync();
 
             return RedirectToPage("./Index");

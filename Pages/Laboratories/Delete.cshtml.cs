@@ -3,14 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 {
@@ -63,15 +59,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             var laboratory = await _context.Laboratories.FindAsync(id);
             if (laboratory != null)
             {
-                laboratory.Status = GeneralStatus.Eliminado;
-                laboratory.LastModifiedDate = DateTime.Now;
-                
-                var currentUser = await _userManager.GetUserAsync(User);
-                if (currentUser != null)
-                {
-                    laboratory.ModifiedById = currentUser.Id;
-                }
-                
                 _context.Laboratories.Update(laboratory);
                 await _context.SaveChangesAsync();
             }

@@ -1,15 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Countries
 {
@@ -30,7 +25,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
         }
 
         [BindProperty]
-        public Country Country { get; set; } = default!;
+        public InputModel Input { get; set; } = new();
+
+        public class InputModel
+        {
+            [Required]
+            public string Name { get; set; }
+        }
 
         public async Task<IActionResult> OnPostAsync()
         {
@@ -39,10 +40,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
                 return Page();
             }
 
-            Country.CreatedDate = DateTime.Now;
-            Country.Status = GeneralStatus.Activo;
+            var country = new Country
+            {
+                Name = Input.Name,
+                Status = GeneralStatus.Activo,
+                CreatedDate = DateTime.Now
+            };
 
-            _context.Countries.Add(Country);
+            _context.Countries.Add(country);
             await _context.SaveChangesAsync();
 
             return RedirectToPage("./Index");

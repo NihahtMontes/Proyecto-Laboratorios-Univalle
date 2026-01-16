@@ -3,14 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 {
@@ -35,13 +29,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
                 return NotFound();
             }
 
-            var city =  await _context.Cities.FirstOrDefaultAsync(m => m.Id == id);
+            var city = await _context.Cities.FirstOrDefaultAsync(m => m.Id == id);
             if (city == null)
             {
                 return NotFound();
             }
             City = city;
-           ViewData["CountryId"] = new SelectList(_context.Countries, "Id", "Name");
+            ViewData["CountryId"] = new SelectList(_context.Countries, "Id", "Name");
             return Page();
         }
 

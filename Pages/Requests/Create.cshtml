@@ -16,30 +16,32 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="MaintenanceRequest.EquipmentId" class="control-label"></label>
-                <select asp-for="MaintenanceRequest.EquipmentId" class ="form-control" asp-items="ViewBag.EquipmentId"></select>
-                <span asp-validation-for="MaintenanceRequest.EquipmentId" class="text-danger"></span>
+                <label asp-for="Input.EquipmentId" class="control-label">Equipment</label>
+                <select asp-for="Input.EquipmentId" class ="form-control" asp-items="ViewBag.EquipmentId"></select>
+                <span asp-validation-for="Input.EquipmentId" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="MaintenanceRequest.RequestedById" class="control-label"></label>
-                <select asp-for="MaintenanceRequest.RequestedById" class ="form-control" asp-items="ViewBag.RequestedById"></select>
-                 <span asp-validation-for="MaintenanceRequest.RequestedById" class="text-danger"></span>
+                <label asp-for="Input.RequestedById" class="control-label">Requested By</label>
+                <select asp-for="Input.RequestedById" class ="form-control" asp-items="ViewBag.RequestedById">
+                    <option value="">-- Current User --</option>
+                </select>
+                 <span asp-validation-for="Input.RequestedById" class="text-danger"></span>
             </div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="MaintenanceRequest.Description" class="control-label"></label>
-                <textarea asp-for="MaintenanceRequest.Description" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="MaintenanceRequest.Description" class="text-danger"></span>
+                <label asp-for="Input.Description" class="control-label">Description</label>
+                <textarea asp-for="Input.Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Input.Description" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="MaintenanceRequest.Priority" class="control-label"></label>
-                <select asp-for="MaintenanceRequest.Priority" class="form-control" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
-                <span asp-validation-for="MaintenanceRequest.Priority" class="text-danger"></span>
+                <label asp-for="Input.Priority" class="control-label">Priority</label>
+                <select asp-for="Input.Priority" class="form-control" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
+                <span asp-validation-for="Input.Priority" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="MaintenanceRequest.Observations" class="control-label"></label>
-                <textarea asp-for="MaintenanceRequest.Observations" class="form-control" rows="2"></textarea>
-                <span asp-validation-for="MaintenanceRequest.Observations" class="text-danger"></span>
+                <label asp-for="Input.Observations" class="control-label">Observations</label>
+                <textarea asp-for="Input.Observations" class="form-control" rows="2"></textarea>
+                <span asp-validation-for="Input.Observations" class="text-danger"></span>
             </div>
             <div class="form-group mt-3">
                 <input type="submit" value="Create" class="btn btn-primary" />

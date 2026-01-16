@@ -1,14 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
 {
@@ -28,7 +23,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
         }
 
         [BindProperty]
-        public EquipmentType EquipmentType { get; set; } = default!;
+        public InputModel Input { get; set; } = new();
+
+        public class InputModel
+        {
+            [Required]
+            public string Name { get; set; }
+            public string? Description { get; set; }
+            public bool RequiresCalibration { get; set; }
+            public int? MaintenanceFrequencyMonths { get; set; }
+        }
 
         public async Task<IActionResult> OnPostAsync()
         {
@@ -37,7 +41,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
                 return Page();
             }
 
-            _context.EquipmentTypes.Add(EquipmentType);
+            var equipmentType = new EquipmentType
+            {
+                Name = Input.Name,
+                Description = Input.Description,
+                RequiresCalibration = Input.RequiresCalibration,
+                MaintenanceFrequencyMonths = Input.MaintenanceFrequencyMonths,
+                CreatedDate = DateTime.Now
+            };
+
+            _context.EquipmentTypes.Add(equipmentType);
             await _context.SaveChangesAsync();
 
             return RedirectToPage("./Index");

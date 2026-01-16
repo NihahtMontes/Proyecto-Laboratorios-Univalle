@@ -3,14 +3,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
@@ -36,11 +31,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Tecnico), "Id", "FullName");
             // Maintenance Types
             ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes, "Id", "Name");
-            
+
             // Categories for Cost Details
             // ViewData["CategoryList"] = EnumHelper.ToSelectList<CostCategory>(); // Assuming EnumHelper exists, or we use Html.GetEnumSelectList in View.
             // Using a simple workaround just in case EnumHelper is specialized
-            
+
             Maintenance = new Maintenance
             {
                 CostDetails = new List<CostDetail>()
@@ -66,10 +61,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             // Validate that if status is Completed, it must have cost details?
             // The original logic checked: if Completed && Costs <= 0 -> Error.
             decimal totalCosts = Maintenance.CostDetails?.Sum(d => d.Quantity * d.UnitPrice) ?? 0;
-            
+
             if (Maintenance.Status == MaintenanceStatus.Completed && totalCosts <= 0)
             {
-                 // Allow completion without costs? Usually specific logic. Keeping original rule.
+                // Allow completion without costs? Usually specific logic. Keeping original rule.
                 ModelState.AddModelError("Maintenance.Status", "Cannot complete maintenance without cost details.");
             }
 
@@ -83,9 +78,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             }
 
             Maintenance.ActualCost = totalCosts;
-            
+
             // Sync cost details FKs? handled by EF usually effectively.
-            
+
             _context.Maintenances.Add(Maintenance);
             await _context.SaveChangesAsync();
 

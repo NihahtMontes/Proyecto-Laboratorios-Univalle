@@ -1,15 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 {
@@ -23,11 +18,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             _context = context;
         }
 
-        public IList<Faculty> Faculties { get;set; } = default!;
+        public IList<Faculty> Faculties { get; set; } = default!;
 
         public async Task OnGetAsync()
         {
             Faculties = await _context.Faculties
+                .Include(f => f.CreatedBy)
+                .Include(f => f.ModifiedBy)
                 .Where(f => f.Status != GeneralStatus.Eliminado)
                 .ToListAsync();
         }

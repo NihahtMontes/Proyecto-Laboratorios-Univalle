@@ -1,18 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Proyecto_Laboratorios_Univalle.Data;
-using Proyecto_Laboratorios_Univalle.Models;
-using Proyecto_Laboratorios_Univalle.Helpers;
-using Proyecto_Laboratorios_Univalle.Models.Enums;
-using Microsoft.AspNetCore.Identity;
-using System.ComponentModel.DataAnnotations;
-using static Proyecto_Laboratorios_Univalle.Pages.LoginModel;
 using Microsoft.EntityFrameworkCore;
+using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Users
 {
@@ -59,8 +53,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         public IActionResult OnGet()
         {
             // Roles de Usuario CREATE solo personas que necesitan tener una credencial.
-            var excludedRoles = new[] { 
-                ((int)UserRole.Ingeniero).ToString(), 
+            var excludedRoles = new[] {
+                ((int)UserRole.Ingeniero).ToString(),
 
                 ((int)UserRole.Tecnico).ToString(),
                 ((int)UserRole.Director).ToString(),
@@ -79,13 +73,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         {
             if (!ModelState.IsValid)
             {
-               // ... existing reload logic ...
+                // ... existing reload logic ...
             }
 
             // Check if IdentityCard already exists (Ignorando eliminados)
-             bool ciExists = await _context.Users
-                .IgnoreQueryFilters()
-                .AnyAsync(u => u.IdentityCard == Input.IdentityCard && u.Status != GeneralStatus.Eliminado);
+            bool ciExists = await _context.Users
+               .IgnoreQueryFilters()
+               .AnyAsync(u => u.IdentityCard == Input.IdentityCard && u.Status != GeneralStatus.Eliminado);
 
             if (ciExists)
             {
@@ -114,9 +108,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             if (!ModelState.IsValid)
             {
-                 // Reload roles
-                var excludedRoles = new[] { 
-                    ((int)UserRole.Ingeniero).ToString(), 
+                // Reload roles
+                var excludedRoles = new[] {
+                    ((int)UserRole.Ingeniero).ToString(),
                     ((int)UserRole.Tecnico).ToString(),
                     ((int)UserRole.Director).ToString(),
                     ((int)UserRole.SuperAdmin).ToString()
@@ -160,11 +154,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 ModelState.AddModelError(string.Empty, error.Description);
             }
 
-             // Reload roles if failed
-            var excludedRolesReuse = new[] { 
-                ((int)UserRole.Ingeniero).ToString(), 
+            // Reload roles if failed
+            var excludedRolesReuse = new[] {
+                ((int)UserRole.Ingeniero).ToString(),
                 ((int)UserRole.Tecnico).ToString(),
-                ((int)UserRole.Director).ToString(),  
+                ((int)UserRole.Director).ToString(),
                 ((int)UserRole.SuperAdmin).ToString()
             };
             ViewData["UserRole"] = EnumHelper.ToSelectList<UserRole>().Where(e => !excludedRolesReuse.Contains(e.Value));

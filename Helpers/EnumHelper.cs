@@ -33,9 +33,9 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
             // Convención: GeneralStatus.Eliminado = 2, EquipmentStatus.Deleted = 99
             var intValue = Convert.ToInt32(value);
             var name = value.ToString();
-            
+
             // Filtramos por convención de nombre o valores conocidos
-            return name.Equals("Eliminado", StringComparison.OrdinalIgnoreCase) || 
+            return name.Equals("Eliminado", StringComparison.OrdinalIgnoreCase) ||
                    name.Equals("Deleted", StringComparison.OrdinalIgnoreCase) ||
                    intValue == 99; // EquipmentStatus.Deleted
         }

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Helpers
@@ -43,8 +42,8 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         /// </summary>
         public static bool IsTechnical(UserRole role)
         {
-            return role == UserRole.Tecnico || 
-                   role == UserRole.Ingeniero || 
+            return role == UserRole.Tecnico ||
+                   role == UserRole.Ingeniero ||
                    role == UserRole.Supervisor;
         }
     }

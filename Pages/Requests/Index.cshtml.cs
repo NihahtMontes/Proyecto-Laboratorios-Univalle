@@ -1,14 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 {
@@ -22,7 +16,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             _context = context;
         }
 
-        public IList<Request> Requests { get;set; } = default!;
+        public IList<Request> Requests { get; set; } = default!;
 
         public async Task OnGetAsync()
         {

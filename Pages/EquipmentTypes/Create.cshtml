@@ -15,27 +15,28 @@
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
                 <span class="text-danger">*</span>
-                <label asp-for="EquipmentType.Name" class="control-label"></label>
-                <input asp-for="EquipmentType.Name" class="form-control" aria-required="true"/>
-                <span asp-validation-for="EquipmentType.Name" class="text-danger"></span>
+                <label asp-for="Input.Name" class="control-label">Nombre</label>
+                <input asp-for="Input.Name" class="form-control" aria-required="true"/>
+                <span asp-validation-for="Input.Name" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="EquipmentType.Description" class="control-label"></label>
-                <input asp-for="EquipmentType.Description" class="form-control" />
-                <span asp-validation-for="EquipmentType.Description" class="text-danger"></span>
+                <label asp-for="Input.Description" class="control-label">Descripción</label>
+                <input asp-for="Input.Description" class="form-control" />
+                <span asp-validation-for="Input.Description" class="text-danger"></span>
             </div>
             <div class="form-group form-check">
                 <label class="form-check-label">
-                    <input class="form-check-input" asp-for="EquipmentType.RequiresCalibration" /> @Html.DisplayNameFor(model => model.EquipmentType.RequiresCalibration)
+                    <input class="form-check-input" asp-for="Input.RequiresCalibration" /> @Html.DisplayNameFor(model => model.Input.RequiresCalibration)
                 </label>
             </div>
             <div class="form-group">
-                <label asp-for="EquipmentType.MaintenanceFrequencyMonths" class="control-label"></label>
-                <input asp-for="EquipmentType.MaintenanceFrequencyMonths" class="form-control" />
-                <span asp-validation-for="EquipmentType.MaintenanceFrequencyMonths" class="text-danger"></span>
+                <label asp-for="Input.MaintenanceFrequencyMonths" class="control-label">Frecuencia Mantenimiento (Meses)</label>
+                <input asp-for="Input.MaintenanceFrequencyMonths" class="form-control" />
+                <span asp-validation-for="Input.MaintenanceFrequencyMonths" class="text-danger"></span>
             </div>
             <div class="form-group mt-3">
                 <input type="submit" value="Crear" class="btn btn-primary" />
+                <a asp-page="Index" class="btn btn-secondary">Cancelar</a>
             </div>
         </form>
     </div>

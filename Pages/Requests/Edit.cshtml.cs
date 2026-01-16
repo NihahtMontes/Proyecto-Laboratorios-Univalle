@@ -4,14 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 {
@@ -37,14 +32,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 return NotFound();
             }
 
-            var request =  await _context.Requests.FirstOrDefaultAsync(m => m.Id == id);
+            var request = await _context.Requests.FirstOrDefaultAsync(m => m.Id == id);
             if (request == null)
             {
                 return NotFound();
             }
             MaintenanceRequest = request;
 
-            ViewData["ApprovedById"] = new SelectList(_context.Users.Where(e=> e.Role == UserRole.Director), "Id", "FullName");
+            ViewData["ApprovedById"] = new SelectList(_context.Users.Where(e => e.Role == UserRole.Director), "Id", "FullName");
             ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
             ViewData["RequestedById"] = new SelectList(_context.Users, "Id", "FullName");
 
@@ -61,7 +56,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             if (!ModelState.IsValid)
             {
-                ViewData["ApprovedById"] = new SelectList(_context.Users.Where(e=> e.Role == UserRole.Director), "Id", "FullName");
+                ViewData["ApprovedById"] = new SelectList(_context.Users.Where(e => e.Role == UserRole.Director), "Id", "FullName");
                 ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
                 ViewData["RequestedById"] = new SelectList(_context.Users, "Id", "FullName");
                 return Page();

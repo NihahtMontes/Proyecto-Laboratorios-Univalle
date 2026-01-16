@@ -1,9 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
@@ -34,7 +32,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // Wait, I should stick to English types if I plan to rename them soon. 
         // But Pais/Ciudad classes still exist as Spanish. 
         // I will use 'Pais' and 'Ciudad' types for now, rename later in Phase 1.1 continued.
-        
+
         [Required(ErrorMessage = "La ciudad de procedencia es obligatoria")]
         [Display(Name = "Ciudad de Procedencia")]
         public int CityId { get; set; }
@@ -122,10 +120,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual Laboratory? Laboratory { get; set; }
 
         [ForeignKey("CountryId")]
-        public virtual Country? Country { get; set; } 
+        public virtual Country? Country { get; set; }
 
         [ForeignKey("CityId")]
-        public virtual City? City { get; set; } 
+        public virtual City? City { get; set; }
 
         // AUDIT NAVIGATION
         [ForeignKey("CreatedById")]

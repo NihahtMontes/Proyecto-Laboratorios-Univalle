@@ -4,14 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 {
@@ -85,8 +80,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             // "Is there any OTHER lab (not me) with the same Code that is NOT Deleted?"
             bool codeExists = await _context.Laboratories
                 .IgnoreQueryFilters()
-                .AnyAsync(l => l.Code == Input.Code && 
-                               l.Id != id && 
+                .AnyAsync(l => l.Code == Input.Code &&
+                               l.Id != id &&
                                l.Status != GeneralStatus.Eliminado);
 
             if (codeExists)
@@ -97,8 +92,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             // Check Name uniqueness as well
             bool nameExists = await _context.Laboratories
                 .IgnoreQueryFilters()
-                .AnyAsync(l => l.Name == Input.Name && 
-                               l.Id != id && 
+                .AnyAsync(l => l.Name == Input.Name &&
+                               l.Id != id &&
                                l.Status != GeneralStatus.Eliminado);
 
             if (nameExists)

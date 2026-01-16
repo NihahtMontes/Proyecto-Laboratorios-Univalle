@@ -1,16 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Countries
 {
@@ -35,7 +28,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
                 return NotFound();
             }
 
-            var country =  await _context.Countries.FirstOrDefaultAsync(m => m.Id == id);
+            var country = await _context.Countries.FirstOrDefaultAsync(m => m.Id == id);
             if (country == null)
             {
                 return NotFound();

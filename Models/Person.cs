@@ -1,9 +1,7 @@
-using System;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Proyecto_Laboratorios_Univalle.Models.Enums;
-
-using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {

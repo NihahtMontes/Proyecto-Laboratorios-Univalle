@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -102,9 +99,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 // Reload display data if validation fails
                 var eq = await _context.Equipments
                     .IgnoreQueryFilters()
-                    .Include(e=>e.Country)
-                    .Include(e=>e.City)
-                    .FirstOrDefaultAsync(e=>e.Id == id);
+                    .Include(e => e.Country)
+                    .Include(e => e.City)
+                    .FirstOrDefaultAsync(e => e.Id == id);
                 if (eq != null) ExistingEquipmentDisplay = eq;
 
                 CargarViewData();
@@ -115,8 +112,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             // 1. Uniqueness Check (Ignoring Deleted)
             bool invExists = await _context.Equipments
                 .IgnoreQueryFilters()
-                .AnyAsync(e => e.InventoryNumber == Input.InventoryNumber && 
-                               e.Id != id && 
+                .AnyAsync(e => e.InventoryNumber == Input.InventoryNumber &&
+                               e.Id != id &&
                                e.CurrentStatus != EquipmentStatus.Deleted);
 
             if (invExists)
@@ -125,9 +122,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 // Reload display data
                 var eq = await _context.Equipments
                     .IgnoreQueryFilters()
-                    .Include(e=>e.Country)
-                    .Include(e=>e.City)
-                    .FirstOrDefaultAsync(e=>e.Id == id);
+                    .Include(e => e.Country)
+                    .Include(e => e.City)
+                    .FirstOrDefaultAsync(e => e.Id == id);
                 if (eq != null) ExistingEquipmentDisplay = eq;
 
                 CargarViewData();
@@ -195,7 +192,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                             StartDate = DateTime.Now,
                             CreatedDate = DateTime.Now,
                             CreatedById = userId,
-                            Reason = "Status/Info updated via Edit" 
+                            Reason = "Status/Info updated via Edit"
                         };
                         _context.EquipmentStateHistories.Add(newHistory);
 
@@ -281,9 +278,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         {
             var estados = EnumHelper.GetStatusSelectList<EquipmentStatus>();
             ViewData["ListaEstadosEquipo"] = new SelectList(
-                estados, 
-                "Value", 
-                "Text", 
+                estados,
+                "Value",
+                "Text",
                 (int)Input.CurrentStatus
             );
         }

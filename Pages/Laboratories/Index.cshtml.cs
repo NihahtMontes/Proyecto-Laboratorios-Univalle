@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
@@ -23,7 +17,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             _context = context;
         }
 
-        public IList<Laboratory> Laboratories { get;set; } = default!;
+        public IList<Laboratory> Laboratories { get; set; } = default!;
 
         public async Task OnGetAsync()
         {

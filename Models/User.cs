@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Identity;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-
 using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
@@ -59,7 +56,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // ROLE AND STATUS
         // ========================================
-        
+
         [Required]
         [Display(Name = "Rol")]
         public UserRole Role { get; set; } = UserRole.Supervisor;
@@ -110,7 +107,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // INVERSE RELATIONSHIPS
         // ========================================
-        
+
         // ... (Relationships code omitted for brevity)
 
         // ========================================

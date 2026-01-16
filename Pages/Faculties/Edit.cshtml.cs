@@ -2,14 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 {
@@ -33,7 +27,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
                 return NotFound();
             }
 
-            var faculty =  await _context.Faculties.FirstOrDefaultAsync(m => m.Id == id);
+            var faculty = await _context.Faculties.FirstOrDefaultAsync(m => m.Id == id);
             if (faculty == null)
             {
                 return NotFound();

@@ -10,122 +10,32 @@
 <p>
     <a asp-page="Create" class="btn btn-primary">Crear Nuevo</a>
 </p>
-<table class="table">
-    <thead>
+<table class="table table-hover table-striped">
+    <thead class="thead-light">
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].Name)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].InventoryNumber)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].Brand)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].Model)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].SerialNumber)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].UsefulLifeYears)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].AcquisitionDate)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].AcquisitionValue)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].CurrentStatus)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].Observations)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].CreatedDate)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].LastModifiedDate)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].EquipmentType)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].Laboratory)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].Country)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].City)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].CreatedBy)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Equipment[0].ModifiedBy)
-            </th>
-            <th></th>
+            <th>@Html.DisplayNameFor(model => model.Equipment[0].Name)</th>
+            <th>@Html.DisplayNameFor(model => model.Equipment[0].InventoryNumber)</th>
+            <th>@Html.DisplayNameFor(model => model.Equipment[0].EquipmentType)</th>
+            <th>@Html.DisplayNameFor(model => model.Equipment[0].Laboratory)</th>
+            <th>@Html.DisplayNameFor(model => model.Equipment[0].CurrentStatus)</th>
+            <th>Registrado</th>
+            <th>Modificado</th>
+            <th>Acciones</th>
         </tr>
     </thead>
     <tbody>
 @foreach (var item in Model.Equipment) {
         <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.InventoryNumber)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Brand)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Model)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.SerialNumber)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.UsefulLifeYears)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.AcquisitionDate)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.AcquisitionValue)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CurrentStatus)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Observations)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CreatedDate)
-            </td>
+            <td>@Html.DisplayFor(modelItem => item.Name)</td>
+            <td>@Html.DisplayFor(modelItem => item.InventoryNumber)</td>
+            <td>@Html.DisplayFor(modelItem => item.EquipmentType.Name)</td>
+            <td>@Html.DisplayFor(modelItem => item.Laboratory.Name)</td>
+            <td>@Html.DisplayFor(modelItem => item.CurrentStatus)</td>
             <td>
                 <small>
                     @Html.DisplayFor(modelItem => item.CreatedDate)<br/>
                     por @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
                 </small>
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.EquipmentType.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Laboratory.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Country.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.City.Name)
-            </td>
-            <td>
-                by @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
             </td>
             <td>
                 <small>
@@ -134,9 +44,9 @@
                 </small>
             </td>
             <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Editar</a> |
-                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info"><i class="fas fa-info-circle"></i> Detalles</a> |
-                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Eliminar</a>
+                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning" title="Editar"><i class="fas fa-edit"></i></a>
+                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info" title="Detalles"><i class="fas fa-info-circle"></i></a>
+                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger" title="Eliminar"><i class="fas fa-trash"></i></a>
             </td>
         </tr>
 }
