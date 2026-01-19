@@ -10,7 +10,21 @@
 # default for csharp files.
 # Note: This is only used by command line
 ###############################################################################
-#*.cs     diff=csharp
+
+
+# Forzar LF en código fuente y Razor (garantiza consistencia en CI y otros OS)
+*.cs     text eol=lf
+*.cshtml text eol=lf
+*.razor  text eol=lf
+*.json   text eol=lf
+*.xml    text eol=lf
+
+###############################################################################
+# Opcional: tratar binarios/documentos
+###############################################################################
+#*.png binary
+#*.jpg binary
+#*.docx diff=astextplain
 
 ###############################################################################
 # Set the merge driver for project and solution files
