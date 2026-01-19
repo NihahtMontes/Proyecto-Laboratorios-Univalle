@@ -1,82 +1,97 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html dir="ltr" lang="es">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Proyecto Laboratorios Univalle</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Proyecto Laboratorios Univalle.styles.css" asp-append-version="true" />
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@ViewData["Title"] - Laboratorios Univalle</title>
+    
+    <!-- Favicon icon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="/lib/nice-admin/assets/images/favicon.png">
+    
+    <!-- Custom CSS -->
+    <link href="/lib/nice-admin/dist/css/style.min.css" rel="stylesheet">
+    
+    <!-- App Custom CSS -->
+    <link rel="stylesheet" href="/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/Proyecto Laboratorios Univalle.styles.css" asp-append-version="true" />
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+    <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+<![endif]-->
 </head>
+
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">Laboratorios Univalle</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
-                        </li>
-                        
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="navbarDropdownManagement" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Management
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownManagement">
-                                <li><a class="dropdown-item" asp-page="/Equipment/Index">Equipment</a></li>
-                                <li><a class="dropdown-item" asp-page="/Requests/Index">Requests</a></li>
-                                <li><a class="dropdown-item" asp-page="/Maintenances/Index">Maintenances</a></li>
-                                <li><a class="dropdown-item" asp-page="/Verifications/Index">Verifications</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="navbarDropdownCatalogs" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Catalogs
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownCatalogs">
-                                <li><a class="dropdown-item" asp-page="/EquipmentTypes/Index">Equipment Types</a></li>
-                                <li><a class="dropdown-item" asp-page="/MaintenanceTypes/Index">Maintenance Types</a></li>
-                                <li><a class="dropdown-item" asp-page="/Laboratories/Index">Laboratories</a></li>
-                                <li><a class="dropdown-item" asp-page="/Faculties/Index">Faculties</a></li>
-                                <li><div class="dropdown-divider"></div></li>
-                                <li><a class="dropdown-item" asp-page="/Countries/Index">Countries</a></li>
-                                <li><a class="dropdown-item" asp-page="/Cities/Index">Cities</a></li>
-                            </ul>
-                        </li>
-                        
-                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-page="/Users/Index">Users</a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Privacy">Privacy</a>
-                        </li>
-                    </ul>
+    <!-- ============================================================== -->
+    <!-- Preloader - style you can find in spinners.css -->
+    <!-- ============================================================== -->
+    <div class="preloader">
+        <div class="lds-ripple">
+            <div class="lds-pos"></div>
+            <div class="lds-pos"></div>
+        </div>
+    </div>
+    
+    <!-- ============================================================== -->
+    <!-- Main wrapper - style you can find in pages.scss -->
+    <!-- ============================================================== -->
+    <div id="main-wrapper" data-navbarbg="skin1" data-theme="light" data-layout="vertical" data-sidebartype="full" data-boxed-layout="full">
+        
+        <!-- Topbar header - style you can find in pages.scss -->
+        <partial name="_TopBar" />
+        
+        <!-- Left Sidebar - style you can find in sidebar.scss  -->
+        <partial name="_Sidebar" />
+        
+        <!-- Page wrapper  -->
+        <div class="page-wrapper">
+            <!-- Bread crumb and right sidebar toggle -->
+            <div class="page-breadcrumb">
+                <div class="row">
+                    <div class="col-5 align-self-center">
+                        <h4 class="page-title">@ViewData["Title"]</h4>
+                    </div>
                 </div>
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - Proyecto Laboratorios Univalle - <a asp-area="" asp-page="/Privacy">Privacy</a>
+            
+            <!-- Container fluid  -->
+            <div class="container-fluid">
+                @RenderBody()
+            </div>
+            
+            <!-- footer -->
+            <footer class="footer text-center">
+                &copy; @DateTime.Now.Year - Proyecto Laboratorios Univalle
+            </footer>
         </div>
-    </footer>
-
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
+    </div>
+    
+    <!-- All Jquery -->
+    <script src="/lib/nice-admin/assets/libs/jquery/dist/jquery.min.js"></script>
+    <!-- Bootstrap tether Core JavaScript -->
+    <script src="/lib/nice-admin/assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="/lib/nice-admin/assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
+    
+    <!-- apps -->
+    <script src="/lib/nice-admin/dist/js/app.min.js"></script>
+    <script src="/lib/nice-admin/dist/js/app.init.js"></script>
+    <script src="/lib/nice-admin/dist/js/app-style-switcher.js"></script>
+    
+    <!-- slimscrollbar scrollbar JavaScript -->
+    <script src="/lib/nice-admin/assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="/lib/nice-admin/assets/libs/sparkline/sparkline.js"></script>
+    
+    <!--Wave Effects -->
+    <script src="/lib/nice-admin/dist/js/waves.js"></script>
+    
+    <!--Menu sidebar -->
+    <script src="/lib/nice-admin/dist/js/sidebarmenu.js"></script>
+    
+    <!--Custom JavaScript -->
+    <script src="/lib/nice-admin/dist/js/custom.min.js"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

@@ -21,12 +21,21 @@ namespace Proyecto_Laboratorios_Univalle.Services
             get
             {
                 var user = _httpContextAccessor.HttpContext?.User;
-                if (user?.Identity?.IsAuthenticated != true)
+                
+                // Validación estricta: Si no está autenticado, retornamos null inmediatamente
+                if (user == null || user.Identity?.IsAuthenticated != true)
                 {
                     return null;
                 }
 
+                // Extracción segura del ID: Intentamos obtener el NameIdentifier estándar
                 var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    return null;
+                }
+
                 if (int.TryParse(userIdClaim, out int userId))
                 {
                     return userId;

@@ -10,35 +10,40 @@ namespace Proyecto_Laboratorios_Univalle.Data
 {
     public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<int>, int>
     {
-        // private readonly ICurrentUserService _currentUserService;
+        private readonly ICurrentUserService _currentUserService;
 
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) //, ICurrentUserService currentUserService)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ICurrentUserService currentUserService)
             : base(options)
         {
-            // _currentUserService = currentUserService;
+            _currentUserService = currentUserService;
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            // var userId = _currentUserService.UserId;
-            int? userId = null; // DISABLED TEMPORARILY FOR DEBUGGING CRASH
+            // 1. Obtener el ID del usuario actual de forma segura
+            var userId = _currentUserService.UserId;
             var now = DateTime.Now; 
             
-
+            // 2. Iterar sobre todas las entidades que implementan IAuditable y han cambiado
             foreach (var entry in ChangeTracker.Entries<IAuditable>())
             {
                 if (entry.State == EntityState.Added)
                 {
-                    // If no user is logged in (e.g., creating first user), CreatedBy can be null
+                    // Al crear, asignamos CreatedBy y CreatedDate
+                    // Si no hay usuario (ej. seeding inicial), userId será null, lo cual es válido
                     entry.Entity.CreatedById = userId;
                     entry.Entity.CreatedDate = now;
                 }
                 else if (entry.State == EntityState.Modified)
                 {
+                    // Al modificar, asignamos ModifiedBy y LastModifiedDate
+                    // Evitamos sobreescribir CreatedDate por seguridad
+                    entry.Property(x => x.CreatedDate).IsModified = false;
+                    entry.Property(x => x.CreatedById).IsModified = false;
+
                     entry.Entity.ModifiedById = userId;
                     entry.Entity.LastModifiedDate = now;
                 }
-                // Implicit Soft Delete handling if we want to add it later could go here
             }
 
             return await base.SaveChangesAsync(cancellationToken);

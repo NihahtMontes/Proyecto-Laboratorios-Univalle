@@ -1,0 +1,137 @@
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+<aside class="left-sidebar" data-sidebarbg="skin5">
+    <!-- Sidebar scroll-->
+    <div class="scroll-sidebar">
+        <!-- Sidebar navigation-->
+        <nav class="sidebar-nav">
+            <ul id="sidebarnav">
+                <li class="nav-small-cap">
+                    <i class="mdi mdi-dots-horizontal"></i>
+                    <span class="hide-menu">Navegación</span>
+                </li>
+                
+                <!-- Dashboard -->
+                <li class="sidebar-item">
+                    <a class="sidebar-link waves-effect waves-dark sidebar-link" asp-page="/Index" aria-expanded="false">
+                        <i class="mdi mdi-view-dashboard"></i>
+                        <span class="hide-menu">Inicio</span>
+                    </a>
+                </li>
+
+                <!-- Módulo: Gestión de Activos -->
+                <li class="sidebar-item">
+                    <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
+                        <i class="mdi mdi-cube-outline"></i>
+                        <span class="hide-menu">Activos </span>
+                    </a>
+                    <ul aria-expanded="false" class="collapse first-level">
+                        <li class="sidebar-item">
+                            <a asp-page="/Equipment/Index" class="sidebar-link">
+                                <i class="mdi mdi-laptop-mac"></i>
+                                <span class="hide-menu"> Equipos </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/EquipmentTypes/Index" class="sidebar-link">
+                                <i class="mdi mdi-settings"></i>
+                                <span class="hide-menu"> Tipos de Equipo </span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Módulo: Operaciones -->
+                <li class="sidebar-item">
+                    <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
+                        <i class="mdi mdi-wrench"></i>
+                        <span class="hide-menu">Operaciones </span>
+                    </a>
+                    <ul aria-expanded="false" class="collapse first-level">
+                        <li class="sidebar-item">
+                            <a asp-page="/Requests/Index" class="sidebar-link">
+                                <i class="mdi mdi-message-text-outline"></i>
+                                <span class="hide-menu"> Solicitudes </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Maintenances/Index" class="sidebar-link">
+                                <i class="mdi mdi-hammer"></i>
+                                <span class="hide-menu"> Mantenimientos </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Verifications/Index" class="sidebar-link">
+                                <i class="mdi mdi-check-circle-outline"></i>
+                                <span class="hide-menu"> Verificaciones </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/MaintenanceTypes/Index" class="sidebar-link">
+                                <i class="mdi mdi-playlist-check"></i>
+                                <span class="hide-menu"> Tipos Mantenimiento </span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Módulo: Catálogos -->
+                <li class="sidebar-item">
+                    <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
+                        <i class="mdi mdi-book-open-variant"></i>
+                        <span class="hide-menu">Catálogos </span>
+                    </a>
+                    <ul aria-expanded="false" class="collapse first-level">
+                        <li class="sidebar-item">
+                            <a asp-page="/Laboratories/Index" class="sidebar-link">
+                                <i class="mdi mdi-home-modern"></i>
+                                <span class="hide-menu"> Laboratorios </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Faculties/Index" class="sidebar-link">
+                                <i class="mdi mdi-school"></i>
+                                <span class="hide-menu"> Facultades </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Countries/Index" class="sidebar-link">
+                                <i class="mdi mdi-earth"></i>
+                                <span class="hide-menu"> Países </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Cities/Index" class="sidebar-link">
+                                <i class="mdi mdi-map-marker"></i>
+                                <span class="hide-menu"> Ciudades </span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Módulo: Seguridad -->
+                <li class="sidebar-item">
+                    <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
+                        <i class="mdi mdi-account-key"></i>
+                        <span class="hide-menu">Seguridad </span>
+                    </a>
+                    <ul aria-expanded="false" class="collapse first-level">
+                        <li class="sidebar-item">
+                            <a asp-page="/Users/Index" class="sidebar-link">
+                                <i class="mdi mdi-account-multiple"></i>
+                                <span class="hide-menu"> Usuarios </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/Privacy" class="sidebar-link">
+                                <i class="mdi mdi-shield-check"></i>
+                                <span class="hide-menu"> Privacidad </span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <!-- End Sidebar navigation -->
+    </div>
+    <!-- End Sidebar scroll-->
+</aside>
