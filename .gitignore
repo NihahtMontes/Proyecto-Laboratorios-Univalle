@@ -43,3 +43,9 @@
 /Migrations
 *.cs
 /Migrations
+
+/bin
+/obj
+.vs/
+*.user
+
