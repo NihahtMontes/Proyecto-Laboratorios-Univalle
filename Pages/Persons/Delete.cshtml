@@ -1,0 +1,63 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Persons.DeleteModel
+
+@{
+    ViewData["Title"] = "Eliminar Persona";
+}
+
+<div class="page-breadcrumb">
+    <div class="row">
+        <div class="col-5 align-self-center">
+            <h4 class="page-title">Eliminar Persona</h4>
+            <div class="d-flex align-items-center">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a asp-page="/Index">Inicio</a></li>
+                        <li class="breadcrumb-item"><a asp-page="Index">Personas</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Eliminar</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-danger">
+                <div class="card-header bg-danger">
+                    <h4 class="m-b-0 text-white">¿Está seguro de eliminar esta persona?</h4>
+                </div>
+                <div class="card-body">
+                    <h4 class="card-title">@Model.Person.FirstName @Model.Person.LastName</h4>
+                    <p class="card-text text-danger">Esta acción es irreversible y eliminará todos los registros asociados.</p>
+                    
+                    <dl class="row m-t-20">
+                        <dt class="col-sm-3">Email:</dt>
+                        <dd class="col-sm-9">@Model.Person.Email</dd>
+                        
+                        <dt class="col-sm-3">Tipo:</dt>
+                        <dd class="col-sm-9">@Model.Person.Type</dd>
+                        
+                        <dt class="col-sm-3">Cargo:</dt>
+                        <dd class="col-sm-9">@Model.Person.JobTitle</dd>
+                    </dl>
+                </div>
+                <div class="card-footer bg-light">
+                    <form method="post">
+                        <input type="hidden" asp-for="Person.Id" />
+                        <div class="form-group mb-0 text-right">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="mdi mdi-delete"></i> Confirmar Eliminación
+                            </button>
+                            <a asp-page="Index" class="btn btn-dark">
+                                <i class="mdi mdi-arrow-left"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

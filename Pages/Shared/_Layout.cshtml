@@ -6,49 +6,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@ViewData["Title"] - Laboratorios Univalle</title>
     
-    <!-- Favicon icon -->
-    <link rel="icon" type="image/png" sizes="16x16" href="/lib/nice-admin/assets/images/favicon.png">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="~/assets/images/favicon.png">
     
     <!-- Custom CSS -->
-    <link href="/lib/nice-admin/dist/css/style.min.css" rel="stylesheet">
+    <!-- NOTA: El tilde (~) apunta a wwwroot automáticamente en Razor -->
+    <link href="~/dist/css/style.min.css" rel="stylesheet">
     
-    <!-- App Custom CSS -->
-    <link rel="stylesheet" href="/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="/Proyecto Laboratorios Univalle.styles.css" asp-append-version="true" />
-
-    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
-    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-    <!--[if lt IE 9]>
-    <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-    <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
-<![endif]-->
+    <!-- RenderSection para estilos específicos de cada página -->
+    @await RenderSectionAsync("Styles", required: false)
 </head>
-
 <body>
-    <!-- ============================================================== -->
-    <!-- Preloader - style you can find in spinners.css -->
-    <!-- ============================================================== -->
+    <!-- Preloader -->
     <div class="preloader">
         <div class="lds-ripple">
             <div class="lds-pos"></div>
             <div class="lds-pos"></div>
         </div>
     </div>
-    
-    <!-- ============================================================== -->
-    <!-- Main wrapper - style you can find in pages.scss -->
-    <!-- ============================================================== -->
-    <div id="main-wrapper" data-navbarbg="skin1" data-theme="light" data-layout="vertical" data-sidebartype="full" data-boxed-layout="full">
+    <!-- Wrapper Principal -->
+    <div id="main-wrapper">
         
-        <!-- Topbar header - style you can find in pages.scss -->
-        <partial name="_TopBar" />
-        
-        <!-- Left Sidebar - style you can find in sidebar.scss  -->
+        <!-- 1. TOPBAR (Header) -->
+        <header class="topbar">
+            <nav class="navbar top-navbar navbar-expand-md navbar-dark">
+                <div class="navbar-header">
+                    <a class="nav-toggler waves-effect waves-light d-block d-md-none" href="javascript:void(0)">
+                        <i class="ti-menu ti-close"></i>
+                    </a>
+                    
+                    <!-- LOGO -->
+                    <div class="navbar-brand">
+                        <a href="/" class="logo">
+                            <!-- Logo Icon -->
+                            <b class="logo-icon">
+                                <img src="~/assets/images/logo-icon.png" alt="homepage" class="dark-logo" />
+                                <img src="~/assets/images/logo-light-icon.png" alt="homepage" class="light-logo" />
+                            </b>
+                            <!-- Logo Text -->
+                            <span class="logo-text">
+                                <img src="~/assets/images/logo-text.png" alt="homepage" class="dark-logo" />
+                                <img src="~/assets/images/logo-light-text.png" class="light-logo" alt="homepage" />
+                            </span>
+                        </a>
+                        <a class="sidebartoggler d-none d-md-block" href="javascript:void(0)" data-sidebartype="mini-sidebar">
+                            <i class="mdi mdi-toggle-switch mdi-toggle-switch-off font-20"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Navbar Contenido (Buscador, Perfil, etc) -->
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left mr-auto">
+                        <!-- Buscador -->
+                        <li class="nav-item search-box">
+                            <a class="nav-link waves-effect waves-dark" href="javascript:void(0)">
+                                <div class="d-flex align-items-center">
+                                    <i class="mdi mdi-magnify font-20 mr-1"></i>
+                                    <div class="ml-1 d-none d-sm-block"><span>Buscar</span></div>
+                                </div>
+                            </a>
+                            <form class="app-search position-absolute">
+                                <input type="text" class="form-control" placeholder="Buscar &amp; enter">
+                                <a class="srh-btn"><i class="ti-close"></i></a>
+                            </form>
+                        </li>
+                    </ul>
+
+                    @* Seccion derecha usuario Logueado *@
+
+                    <ul class="navbar-nav float-right">
+                        <!-- Perfil de Usuario -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle waves-effect waves-dark pro-pic" href="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <img src="~/assets/images/users/1.jpg" alt="user" class="rounded-circle" width="31">
+                                <span class="m-l-5 font-medium d-none d-sm-inline-block">
+                                    @User.Identity.Name <i class="mdi mdi-chevron-down"></i>
+                                </span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right user-dd animated">
+                                <a class="dropdown-item" href="javascript:void(0)"><i class="ti-user m-r-5 m-l-5"></i> Mi Perfil</a>
+                                <div class="dropdown-divider"></div>
+                                <!-- Logout real de ASP.NET Identity -->
+                                <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })">
+                                    <button type="submit" class="dropdown-item"><i class="fa fa-power-off m-r-5 m-l-5"></i> Cerrar Sesión</button>
+                                </form>
+                            </div>
+                        </li>
+                    </ul>
+
+                </div>
+            </nav>
+        </header>
+        <!-- 2. SIDEBAR (Menú Lateral) -->
+
         <partial name="_Sidebar" />
         
-        <!-- Page wrapper  -->
+        <!-- 3. PAGE WRAPPER (Aquí se inyecta tu contenido) -->
         <div class="page-wrapper">
-            <!-- Bread crumb and right sidebar toggle -->
+            
+            <!-- Breadcrumb -->
             <div class="page-breadcrumb">
                 <div class="row">
                     <div class="col-5 align-self-center">
@@ -56,43 +113,31 @@
                     </div>
                 </div>
             </div>
-            
+            <!-- AQUÍ ES DONDE SUCEDE LA MAGIA -->
             <!-- Container fluid  -->
             <div class="container-fluid">
                 @RenderBody()
             </div>
             
-            <!-- footer -->
+            <!-- Footer -->
             <footer class="footer text-center">
-                &copy; @DateTime.Now.Year - Proyecto Laboratorios Univalle
+                Todos los derechos reservados.
             </footer>
         </div>
     </div>
-    
-    <!-- All Jquery -->
-    <script src="/lib/nice-admin/assets/libs/jquery/dist/jquery.min.js"></script>
-    <!-- Bootstrap tether Core JavaScript -->
-    <script src="/lib/nice-admin/assets/libs/popper.js/dist/umd/popper.min.js"></script>
-    <script src="/lib/nice-admin/assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
-    
-    <!-- apps -->
-    <script src="/lib/nice-admin/dist/js/app.min.js"></script>
-    <script src="/lib/nice-admin/dist/js/app.init.js"></script>
-    <script src="/lib/nice-admin/dist/js/app-style-switcher.js"></script>
-    
-    <!-- slimscrollbar scrollbar JavaScript -->
-    <script src="/lib/nice-admin/assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
-    <script src="/lib/nice-admin/assets/libs/sparkline/sparkline.js"></script>
-    
-    <!--Wave Effects -->
-    <script src="/lib/nice-admin/dist/js/waves.js"></script>
-    
-    <!--Menu sidebar -->
-    <script src="/lib/nice-admin/dist/js/sidebarmenu.js"></script>
-    
-    <!--Custom JavaScript -->
-    <script src="/lib/nice-admin/dist/js/custom.min.js"></script>
-
+    <!-- SCRIPTS GLOBALES -->
+    <script src="~/assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="~/assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="~/assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="~/dist/js/app.min.js"></script>
+    <script src="~/dist/js/app.init.js"></script>
+    <script src="~/dist/js/app-style-switcher.js"></script>
+    <script src="~/assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="~/assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="~/dist/js/waves.js"></script>
+    <script src="~/dist/js/sidebarmenu.js"></script>
+    <script src="~/dist/js/custom.min.js"></script>
+    <!-- RenderSection para scripts específicos de cada página -->
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
