@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Proyecto_Laboratorios_Univalle.Pages
@@ -11,9 +12,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             _logger = logger;
         }
 
-        public void OnGet()
+        public IActionResult OnGet()
         {
+            if (!User.Identity.IsAuthenticated)
+            {
+                return RedirectToPage("/Login");
+            }
 
+            return Page();
         }
     }
 }

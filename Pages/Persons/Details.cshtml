@@ -1,0 +1,92 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Persons.DetailsModel
+
+@{
+    ViewData["Title"] = "Detalles de Persona";
+}
+
+<div class="page-breadcrumb">
+    <div class="row">
+        <div class="col-5 align-self-center">
+            <h4 class="page-title">Detalles de Persona</h4>
+            <div class="d-flex align-items-center">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a asp-page="/Index">Inicio</a></li>
+                        <li class="breadcrumb-item"><a asp-page="Index">Personas</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Detalles</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 col-xlg-9 col-md-7">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 col-xs-6 b-r"> <strong>Nombre Completo</strong>
+                            <br>
+                            <p class="text-muted">@Model.Person.FirstName @Model.Person.LastName</p>
+                        </div>
+                        <div class="col-md-3 col-xs-6 b-r"> <strong>Teléfono</strong>
+                            <br>
+                            <p class="text-muted">@Model.Person.PhoneNumber</p>
+                        </div>
+                        <div class="col-md-3 col-xs-6 b-r"> <strong>Email</strong>
+                            <br>
+                            <p class="text-muted">@Model.Person.Email</p>
+                        </div>
+                        <div class="col-md-3 col-xs-6"> <strong>Tipo</strong>
+                            <br>
+                            <p class="text-muted">@Model.Person.Type</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <h4 class="font-medium m-t-30">Información Laboral</h4>
+                    <p class="m-t-30">
+                        <strong>Cargo:</strong> @Model.Person.JobTitle <br/>
+                        <strong>Empresa:</strong> @Model.Person.Company
+                    </p>
+                    <hr>
+                    <h4 class="font-medium m-t-30">Información de Auditoría</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Creado por:</strong> @Model.Person.CreatedBy?.UserName (@Model.Person.CreatedBy?.Email)</p>
+                            <p><strong>Fecha de creación:</strong> @Model.Person.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Última modificación por:</strong> @Model.Person.ModifiedBy?.UserName (@Model.Person.ModifiedBy?.Email)</p>
+                            <p><strong>Fecha de modificación:</strong> @Model.Person.LastModifiedDate?.ToString("dd/MM/yyyy HH:mm")</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="form-group mb-0 text-right">
+                        <a asp-page="./Edit" asp-route-id="@Model.Person.Id" class="btn btn-info">
+                            <i class="ti-pencil"></i> Editar
+                        </a>
+                        <a asp-page="Index" class="btn btn-dark">
+                            <i class="mdi mdi-arrow-left"></i> Volver al Listado
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 col-xlg-3 col-md-5">
+            <div class="card">
+                <div class="card-body">
+                    <center class="m-t-30"> 
+                        <img src="~/assets/images/users/5.jpg" class="rounded-circle" width="150" />
+                        <h4 class="card-title m-t-10">@Model.Person.FirstName</h4>
+                        <h6 class="card-subtitle">@Model.Person.Type</h6>
+                    </center>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

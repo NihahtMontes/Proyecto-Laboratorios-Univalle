@@ -39,7 +39,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.None; // Fundamental para evitar el error
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.LoginPath = "/Identity/Account/Login";
+    options.LoginPath = "/Login";
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(1);
 });
@@ -82,6 +82,23 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
+
+// VERIFICACIÓN DE BASE DE DATOS (DIAGNÓSTICO)
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        // Intentar conectar
+        await context.Database.CanConnectAsync();
+        Console.WriteLine(">>> DIAGNÓSTICO: ¡CONEXIÓN A BASE DE DATOS EXITOSA! <<<");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($">>> DIAGNÓSTICO: ERROR GRAVE DE CONEXIÓN A BD: {ex.Message} <<<");
+}
 
 app.Run();
         

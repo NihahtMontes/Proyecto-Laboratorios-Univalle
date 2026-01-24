@@ -2,67 +2,118 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Cities.IndexModel
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Ciudades";
 }
 
-<h1>Índice de Ciudades</h1>
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title">Gestión de Ciudades</h4>
+                        <h6 class="card-subtitle">Listado de ciudades registradas en el sistema</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <a asp-page="Create" class="btn btn-info btn-sm">
+                            <i class="fas fa-plus"></i> Crear Nueva Ciudad
+                        </a>
+                    </div>
+                </div>
 
-<p>
-    <a asp-page="Create" class="btn btn-primary">Crear Nuevo</a>
-</p>
-<table class="table table-hover">
-    <thead class="thead-light">
-        <tr>
-             <th>
-                @Html.DisplayNameFor(model => model.Cities[0].Country)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Cities[0].Name)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Cities[0].Region)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Cities[0].Status)
-            </th>
-            <th>Registrado</th>
-            <th>Modificado</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model.Cities) {
-        <tr>
-             <td>
-                @Html.DisplayFor(modelItem => item.Country.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Region)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Status)
-            </td>
-            <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.CreatedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.LastModifiedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.ModifiedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Editar</a>
-                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info"><i class="fas fa-info-circle"></i> Detalles</a>
-                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Eliminar</a>
-            </td>
-        </tr>
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered no-wrap">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>País</th>
+                                <th>Nombre</th>
+                                <th>Región</th>
+                                <th>Estado</th>
+                                <th>Auditoría</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Cities)
+                            {
+                                <tr>
+                                    <td>@item.Country?.Name</td>
+                                    <td><strong>@item.Name</strong></td>
+                                    <td>@item.Region</td>
+                                    <td>
+                                        <span class="badge badge-@(item.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "success" : "danger")">
+                                            @item.Status
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            <i class="mdi mdi-calendar"></i> @item.CreatedDate.ToString("dd/MM/yyyy")<br />
+                                            <i class="mdi mdi-account"></i> @item.CreatedBy?.Initials
+                                        </small>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info" title="Detalles">
+                                                <i class="fas fa-info-circle"></i>
+                                            </a>
+                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link href="~/lib/nice-admin/assets/libs/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
 }
-    </tbody>
-</table>
+
+@section Scripts {
+
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script src="~/lib/nice-admin/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+
+    <script>
+        // ✅ Mensaje de éxito (sintaxis v7)
+        @if (TempData["SuccessMessage"] != null)
+        {
+                <text>
+                swal({
+                    title: "¡Logrado!",
+                    text: "@TempData["SuccessMessage"]",
+                    type: "success",
+                    confirmButtonColor: "#2962ff",
+                    confirmButtonText: "OK",
+                    timer: 4000
+                });
+                </text>
+        }
+
+        // ✅ Mensaje de error (sintaxis v7)
+        @if (TempData["ErrorMessage"] != null)
+        {
+                <text>
+                swal({
+                    title: "Error",
+                    text: "@TempData["ErrorMessage"]",
+                    type: "error",
+                    confirmButtonColor: "#f62d51",
+                    confirmButtonText: "OK"
+                });
+                </text>
+        }
+    </script>
+}

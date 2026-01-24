@@ -2,65 +2,70 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Cities.DetailsModel
 
 @{
-    ViewData["Title"] = "Detalles de la Ciudad";
+    ViewData["Title"] = "Detalles de Ciudad";
 }
 
-<h1>Detalles</h1>
+<div class="row">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title">Información de la Ciudad</h4>
+                <h6 class="card-subtitle mb-4">Detalles completos del registro seleccionado</h6>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <tbody>
+                            <tr>
+                                <th style="width: 35%;" class="bg-light font-weight-bold">País</th>
+                                <td>@Html.DisplayFor(model => model.City.Country.Name)</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light font-weight-bold">Ciudad</th>
+                                <td><strong>@Html.DisplayFor(model => model.City.Name)</strong></td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light font-weight-bold">Región</th>
+                                <td>@Html.DisplayFor(model => model.City.Region)</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light font-weight-bold">Estado</th>
+                                <td>
+                                    <span class="badge badge-@(Model.City.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "success" : "danger")">
+                                        @Model.City.Status
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-<div>
-    <h4>Ciudad</h4>
-    <hr />
-    <dl class="row">
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.City.Country)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.City.Country.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.City.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.City.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.City.Region)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.City.Region)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.City.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.City.Status)
-        </dd>
-        <dt class="col-sm-2">
-            Fecha de Creación
-        </dt>
-        <dd class="col-sm-10">
-            @Model.City.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-            @if (Model.City.CreatedBy != null)
-            {
-                <span class="text-muted"> por @Model.City.CreatedBy.FullName</span>
-            }
-        </dd>
-        @if (Model.City.LastModifiedDate.HasValue)
-        {
-            <dt class="col-sm-2">
-                Última Modificación
-            </dt>
-            <dd class="col-sm-10">
-                @Model.City.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.City.ModifiedBy != null)
-                {
-                    <span class="text-muted"> por @Model.City.ModifiedBy.FullName</span>
-                }
-            </dd>
-        }
-    </dl>
-</div>
-<div>
-    <a asp-page="./Edit" asp-route-id="@Model.City.Id">Editar</a> |
-    <a asp-page="./Index">Volver al Listado</a>
+                <div class="card bg-light mt-4 border">
+                    <div class="card-body p-3">
+                        <h6 class="font-medium text-uppercase mb-2"><i class="mdi mdi-information-outline"></i> Auditoría de Registro</h6>
+                        <div class="row text-center">
+                            <div class="col-6 border-right">
+                                <small class="text-muted d-block">Creado el</small>
+                                <p class="mb-0 font-medium">@Model.City.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
+                                <small class="text-muted">por @(Model.City.CreatedBy?.FullName ?? "N/A")</small>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted d-block">Última Modificación</small>
+                                <p class="mb-0 font-medium">@(Model.City.LastModifiedDate?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</p>
+                                <small class="text-muted">por @(Model.City.ModifiedBy?.FullName ?? "N/A")</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions mt-4 text-right">
+                    <a asp-page="./Edit" asp-route-id="@Model.City.Id" class="btn btn-warning text-white px-4">
+                        <i class="fas fa-edit"></i> Editar
+                    </a>
+                    <a asp-page="./Index" class="btn btn-outline-secondary ml-2">
+                        Volver al Listado
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

@@ -57,6 +57,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
             _context.Cities.Add(city);
             await _context.SaveChangesAsync();
 
+            // ACTIVAR LA ALERTA
+            TempData["SuccessMessage"] = "La ciudad ha sido registrada correctamente.";
+
             return RedirectToPage("./Index");
         }
     }

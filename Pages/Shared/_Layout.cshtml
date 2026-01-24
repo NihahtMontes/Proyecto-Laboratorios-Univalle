@@ -1,83 +1,143 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html dir="ltr" lang="es">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Proyecto Laboratorios Univalle</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/Proyecto Laboratorios Univalle.styles.css" asp-append-version="true" />
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@ViewData["Title"] - Laboratorios Univalle</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="~/assets/images/favicon.png">
+    
+    <!-- Custom CSS -->
+    <!-- NOTA: El tilde (~) apunta a wwwroot automáticamente en Razor -->
+    <link href="~/dist/css/style.min.css" rel="stylesheet">
+    
+    <!-- RenderSection para estilos específicos de cada página -->
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">Laboratorios Univalle</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
-                        </li>
-                        
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="navbarDropdownManagement" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Management
+    <!-- Preloader -->
+    <div class="preloader">
+        <div class="lds-ripple">
+            <div class="lds-pos"></div>
+            <div class="lds-pos"></div>
+        </div>
+    </div>
+    <!-- Wrapper Principal -->
+    <div id="main-wrapper">
+        
+        <!-- 1. TOPBAR (Header) -->
+        <header class="topbar">
+            <nav class="navbar top-navbar navbar-expand-md navbar-dark">
+                <div class="navbar-header">
+                    <a class="nav-toggler waves-effect waves-light d-block d-md-none" href="javascript:void(0)">
+                        <i class="ti-menu ti-close"></i>
+                    </a>
+                    
+                    <!-- LOGO -->
+                    <div class="navbar-brand">
+                        <a href="/" class="logo">
+                            <!-- Logo Icon -->
+                            <b class="logo-icon">
+                                <img src="~/assets/images/logo-icon.png" alt="homepage" class="dark-logo" />
+                                <img src="~/assets/images/logo-light-icon.png" alt="homepage" class="light-logo" />
+                            </b>
+                            <!-- Logo Text -->
+                            <span class="logo-text">
+                                <img src="~/assets/images/logo-text.png" alt="homepage" class="dark-logo" />
+                                <img src="~/assets/images/logo-light-text.png" class="light-logo" alt="homepage" />
+                            </span>
+                        </a>
+                        <a class="sidebartoggler d-none d-md-block" href="javascript:void(0)" data-sidebartype="mini-sidebar">
+                            <i class="mdi mdi-toggle-switch mdi-toggle-switch-off font-20"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Navbar Contenido (Buscador, Perfil, etc) -->
+                <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav float-left mr-auto">
+                        <!-- Buscador -->
+                        <li class="nav-item search-box">
+                            <a class="nav-link waves-effect waves-dark" href="javascript:void(0)">
+                                <div class="d-flex align-items-center">
+                                    <i class="mdi mdi-magnify font-20 mr-1"></i>
+                                    <div class="ml-1 d-none d-sm-block"><span>Buscar</span></div>
+                                </div>
                             </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownManagement">
-                                <li><a class="dropdown-item" asp-page="/Equipment/Index">Equipment</a></li>
-                                <li><a class="dropdown-item" asp-page="/Requests/Index">Requests</a></li>
-                                <li><a class="dropdown-item" asp-page="/Maintenances/Index">Maintenances</a></li>
-                                <li><a class="dropdown-item" asp-page="/Verifications/Index">Verifications</a></li>
-                            </ul>
-                        </li>
-
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle text-dark" href="#" id="navbarDropdownCatalogs" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Catalogs
-                            </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownCatalogs">
-                                <li><a class="dropdown-item" asp-page="/EquipmentTypes/Index">Equipment Types</a></li>
-                                <li><a class="dropdown-item" asp-page="/MaintenanceTypes/Index">Maintenance Types</a></li>
-                                <li><a class="dropdown-item" asp-page="/Laboratories/Index">Laboratories</a></li>
-                                <li><a class="dropdown-item" asp-page="/Faculties/Index">Faculties</a></li>
-                                <li><div class="dropdown-divider"></div></li>
-                                <li><a class="dropdown-item" asp-page="/Countries/Index">Countries</a></li>
-                                <li><a class="dropdown-item" asp-page="/Cities/Index">Cities</a></li>
-                            </ul>
-                        </li>
-                        
-                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-page="/Users/Index">Users</a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Privacy">Privacy</a>
+                            <form class="app-search position-absolute">
+                                <input type="text" class="form-control" placeholder="Buscar &amp; enter">
+                                <a class="srh-btn"><i class="ti-close"></i></a>
+                            </form>
                         </li>
                     </ul>
+
+                    @* Seccion derecha usuario Logueado *@
+
+                    <ul class="navbar-nav float-right">
+                        <!-- Perfil de Usuario -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle waves-effect waves-dark pro-pic" href="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <img src="~/assets/images/users/1.jpg" alt="user" class="rounded-circle" width="31">
+                                <span class="m-l-5 font-medium d-none d-sm-inline-block">
+                                    @User.Identity.Name <i class="mdi mdi-chevron-down"></i>
+                                </span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-right user-dd animated">
+                                <a class="dropdown-item" href="javascript:void(0)"><i class="ti-user m-r-5 m-l-5"></i> Mi Perfil</a>
+                                <div class="dropdown-divider"></div>
+                                <!-- Logout real de ASP.NET Identity -->
+                                <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })">
+                                    <button type="submit" class="dropdown-item"><i class="fa fa-power-off m-r-5 m-l-5"></i> Cerrar Sesión</button>
+                                </form>
+                            </div>
+                        </li>
+                    </ul>
+
+                </div>
+            </nav>
+        </header>
+        <!-- 2. SIDEBAR (Menú Lateral) -->
+
+        <partial name="_Sidebar" />
+        
+        <!-- 3. PAGE WRAPPER (Aquí se inyecta tu contenido) -->
+        <div class="page-wrapper">
+            
+            <!-- Breadcrumb -->
+            <div class="page-breadcrumb">
+                <div class="row">
+                    <div class="col-5 align-self-center">
+                        <h4 class="page-title">@ViewData["Title"]</h4>
+                    </div>
                 </div>
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2025 - Proyecto Laboratorios Univalle - <a asp-area="" asp-page="/Privacy">Privacy</a>
+            <!-- AQUÍ ES DONDE SUCEDE LA MAGIA -->
+            <!-- Container fluid  -->
+            <div class="container-fluid">
+                @RenderBody()
+            </div>
+            
+            <!-- Footer -->
+            <footer class="footer text-center">
+                Todos los derechos reservados.
+            </footer>
         </div>
-    </footer>
-
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-
+    </div>
+    <!-- SCRIPTS GLOBALES -->
+    <script src="~/assets/libs/jquery/dist/jquery.min.js"></script>
+    <script src="~/assets/libs/popper.js/dist/umd/popper.min.js"></script>
+    <script src="~/assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="~/dist/js/app.min.js"></script>
+    <script src="~/dist/js/app.init.js"></script>
+    <script src="~/dist/js/app-style-switcher.js"></script>
+    <script src="~/assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+    <script src="~/assets/extra-libs/sparkline/sparkline.js"></script>
+    <script src="~/dist/js/waves.js"></script>
+    <script src="~/dist/js/sidebarmenu.js"></script>
+    <script src="~/dist/js/custom.min.js"></script>
+    <!-- RenderSection para scripts específicos de cada página -->
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

@@ -28,6 +28,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Apellidos")]
         public string LastName { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "El CI es obligatorio")]
+        [StringLength(15)]
+        [Display(Name = "Cédula de Identidad")]
+        public string IdentityCard { get; set; } = string.Empty;
+
         // ========================================
         // CLASSIFICATION
         // ========================================

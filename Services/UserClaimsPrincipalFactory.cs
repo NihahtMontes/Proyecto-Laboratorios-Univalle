@@ -26,7 +26,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
         public override async Task<ClaimsPrincipal> CreateAsync(User user)
         {
             var principal = await base.CreateAsync(user);
-            var identity = (ClaimsIdentity)principal.Identity;
+            var identity = (ClaimsIdentity?)principal.Identity ?? null;
 
             // Add the role claim from the User.Role enum property
             // This allows [Authorize(Roles = "...")] to work correctly

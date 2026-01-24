@@ -1,0 +1,38 @@
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@model IEnumerable<Proyecto_Laboratorios_Univalle.Models.Person>
+
+<div class="table-responsive">
+    <table class="table table-hover v-middle">
+        <thead class="thead-light">
+            <tr>
+                <th>Nombre Completo</th>
+                <th>Documento (CI)</th>
+                <th>Tipo</th>
+                <th class="text-center">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model) {
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="m-r-10"><span class="btn btn-circle btn-sm btn-light-primary text-primary"><i class="ti-id-badge"></i></span></div>
+                            <h5 class="m-b-0 font-16">@item.FirstName @item.LastName</h5>
+                        </div>
+                    </td>
+                    <td>@item.IdentityCard</td>
+                    <td>
+                        @{
+                            var badgeClass = item.Type == PersonType.Internal ? "badge-light-primary" : "badge-light-info";
+                        }
+                        <span class="badge badge-pill @badgeClass">@item.Type</span>
+                    </td>
+                    <td class="text-center">
+                        <a href="/Persons/Edit?id=@item.Id" class="btn btn-sm btn-outline-warning" title="Editar"><i class="fas fa-edit"></i></a>
+                        <a href="/Persons/Details?id=@item.Id" class="btn btn-sm btn-outline-info" title="Detalles"><i class="fas fa-info-circle"></i></a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
