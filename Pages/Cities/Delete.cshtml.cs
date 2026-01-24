@@ -53,13 +53,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
                 return NotFound();
             }
 
-            var city = await _context.Cities.FindAsync(id);
-            if (city != null)
+
+            // CITIES
+            try
             {
-                City = city;
-                City.Status = GeneralStatus.Eliminado; // Soft delete
-                _context.Attach(City).State = EntityState.Modified;
-                await _context.SaveChangesAsync();
+                var city = await _context.Cities.FindAsync(id);
+                if (city != null)
+                {
+                    city.Status = GeneralStatus.Eliminado; // Soft delete
+                    _context.Attach(city).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                    TempData["SuccessMessage"] = "La ciudad ha sido eliminada correctamente.";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = "Hubo un error al intentar eliminar la ciudad: " + ex.Message;
             }
 
             return RedirectToPage("./Index");

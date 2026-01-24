@@ -2,57 +2,58 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Countries.DeleteModel
 
 @{
-    ViewData["Title"] = "Eliminar País";
+    ViewData["Title"] = "Confirmar Eliminación";
 }
 
-<h1>Eliminar</h1>
+<div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
+    <div class="col-md-5">
+        <!-- Tarjeta Limpia y Centrada -->
+        <div class="card text-center shadow-sm">
+            <div class="card-body p-5">
+                
+                <!-- 1. Ícono de Advertencia (Estilo SweetAlert) -->
+                <div class="mb-4 text-warning">
+                    <i class="ti-alert display-3"></i> 
+                </div>
 
-<h3>¿Está seguro de que desea eliminar esto?</h3>
-<div>
-    <h4>País</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Country.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Country.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Country.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Country.Status)
-        </dd>
-        <hr />
-        <dt class="col-sm-2">
-            Fecha de Registro
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Country.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-            @if (Model.Country.CreatedBy != null)
-            {
-                <span class="text-muted"> por @Model.Country.CreatedBy.FullName</span>
-            }
-        </dd>
-        @if (Model.Country.LastModifiedDate.HasValue)
-        {
-            <dt class="col-sm-2">
-                Última Modificación
-            </dt>
-            <dd class="col-sm-10">
-                @Model.Country.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.Country.ModifiedBy != null)
-                {
-                    <span class="text-muted"> por @Model.Country.ModifiedBy.FullName</span>
-                }
-            </dd>
-        }
-    </dl>
-    
-    <form method="post">
-        <input type="hidden" asp-for="Country.Id" />
-        <input type="submit" value="Eliminar" class="btn btn-danger" /> |
-        <a asp-page="./Index">Volver al Listado</a>
-    </form>
+                <!-- 2. Título de Impacto -->
+                <h3 class="card-title text-dark font-weight-bold">¿Estás seguro?</h3>
+                <p class="text-muted mb-4">
+                    Estás a punto de deshabilitar el país <strong class="text-dark">@Model.Country.Name</strong> del sistema.
+                    <br>¡No podrás revertir esta acción fácilmente!
+                </p>
+
+                <!-- 3. Datos Clave (Cajita gris suave) -->
+                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100">
+                    <div class="d-flex justify-content-between">
+                        <span><i class="fas fa-flag mr-2 text-muted"></i> País:</span>
+                        <strong class="text-dark">@Model.Country.Name</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <span><i class="fas fa-info-circle mr-2 text-muted"></i> Estado actual:</span>
+                        <span class="badge badge-warning">@Model.Country.Status</span>
+                    </div>
+                </div>
+
+                <!-- 4. Botones de Acción (Redondos) -->
+                <form method="post">
+                    <input type="hidden" asp-for="Country.Id" />
+                    
+                    <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+                        Cancelar
+                    </a>
+
+                    <button type="submit" class="btn btn-danger btn-rounded px-4">
+                        <i class="fas fa-trash-alt mr-1"></i> Sí, eliminarlo
+                    </button>
+                </form>
+
+            </div>
+        </div>
+        
+        <!-- Pie de página discreto -->
+        <div class="text-center mt-3 text-muted small">
+            Registrado el @Model.Country.CreatedDate.ToString("dd/MM/yyyy") por @(Model.Country.CreatedBy?.Initials ?? "Sist.")
+        </div>
+    </div>
 </div>

@@ -2,6 +2,7 @@ using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
@@ -108,6 +109,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Valor Total Inventario")]
         public decimal TotalInventoryValue =>
             Equipments?.Where(e => e.AcquisitionValue.HasValue)
-                       .Sum(e => e.AcquisitionValue.Value) ?? 0;
+                       .Sum(e => e.AcquisitionValue ?? 0) ?? 0;
     }
 }
