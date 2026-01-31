@@ -2,37 +2,138 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Countries.EditModel
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Actualizar País";
 }
 
-<h1>Editar País</h1>
-
-<h4>País</h4>
-<hr />
 <div class="row">
-    <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="Country.Id" />
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Country.Name" class="control-label"></label>
-                <input asp-for="Country.Name" class="form-control" />
-                <span asp-validation-for="Country.Name" class="text-danger"></span>
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Editar País</h4>
+                        <h6 class="card-subtitle text-muted">Actualice la información del país seleccionado.</h6>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                    <input type="hidden" asp-for="Country.Id" />
+
+                    <div class="row">
+                        <!-- Información Principal -->
+                        <div class="col-md-12">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-flag mr-2"></i> Información del País
+                            </h5>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Country.Name" class="control-label font-weight-bold small text-dark">
+                                    Nombre del País <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="Country.Name" class="form-control" placeholder="Ej: Bolivia"
+                                       required
+                                       minlength="2"
+                                       pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]+$"
+                                       data-validation-pattern-message="Solo se permiten letras, espacios y guiones"
+                                       data-validation-minlength-message="Demasiado corto"
+                                       data-validation-required-message="El nombre del país es necesario" />
+                                <span asp-validation-for="Country.Name" class="text-danger small"></span>
+                            </div>
+
+                            <h5 class="font-weight-bold text-info mt-4 mb-3">
+                                <i class="fas fa-check-circle mr-2"></i> Estado del Registro
+                            </h5>
+                            <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning">
+                                <label asp-for="Country.Status" class="control-label font-weight-bold small text-warning">
+                                    Estado Actual <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="Country.Status" class="form-control custom-select border-warning font-weight-bold"
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"
+                                        required>
+                                </select>
+                                <small class="text-muted italic d-block mt-1">El estado determina la visibilidad del país en el sistema.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-warning btn-rounded px-4 shadow-sm text-white font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Actualizar País
+                        </button>
+                        <a asp-page="/Cities/Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
             </div>
-             <div class="form-group">
-                <label asp-for="Country.Status" class="control-label"></label>
-                 <select asp-for="Country.Status" class="form-control" asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"></select>
-                <span asp-validation-for="Country.Status" class="text-danger"></span>
+        </div>
+    </div>
+
+    <!-- Panel Lateral Informativo -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white">
+            <div class="card-body">
+                <h5 class="card-title text-white">
+                    <i class="fas fa-info-circle mr-2"></i> Datos del Registro
+                </h5>
+                <hr class="border-secondary" />
+
+                <div class="mb-3">
+                    <small class="text-muted uppercase d-block">País Actual</small>
+                    <span class="font-weight-bold text-info">@Model.Country.Name</span>
+                </div>
+
+                <div class="mb-3">
+                    <small class="text-muted uppercase d-block">Estado</small>
+                    @{
+                        var statusClass = Model.Country.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo
+                        ? "text-success" : "text-danger";
+                        var statusText = Model.Country.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo
+                        ? "Activo" : "Inactivo";
+                    }
+                    <span class="font-weight-bold @statusClass">
+                        <i class="fas fa-circle mr-1" style="font-size: 0.5rem;"></i> @statusText
+                    </span>
+                </div>
             </div>
-            <div class="form-group mt-3">
-                <input type="submit" value="Guardar" class="btn btn-primary" />
-                <a asp-page="./Index" class="btn btn-secondary">Cancelar</a>
+        </div>
+
+        <div class="card shadow-sm border-0 mt-4">
+            <div class="card-body">
+                <h5 class="card-title text-dark">
+                    <i class="fas fa-history mr-2"></i> Auditoría
+                </h5>
+                <div class="small mt-3">
+                    <div class="mb-2">
+                        <span class="text-muted d-block">Registrado el:</span>
+                        <span class="text-dark font-weight-bold">
+                            @Model.Country.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-muted d-block">Última edición:</span>
+                        <span class="text-dark font-weight-bold">
+                            @(Model.Country.LastModifiedDate?.ToString("dd/MM/yyyy HH:mm") ?? "Sin cambios previos")
+                        </span>
+                    </div>
+                </div>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+        });
+    </script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

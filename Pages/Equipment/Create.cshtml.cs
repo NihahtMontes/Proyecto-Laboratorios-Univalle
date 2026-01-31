@@ -28,9 +28,31 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         // ojalá que detecte
         public IActionResult OnGet()
         {
-            ViewData["CityId"] = new SelectList(_context.Cities, "Id", "Name");
-            ViewData["LaboratoryId"] = new SelectList(_context.Laboratories, "Id", "Name");
-            ViewData["CountryId"] = new SelectList(_context.Countries, "Id", "Name");
+            // Cargar ciudades con su país concatenado: "Cali, Colombia"
+            var cities = _context.Cities
+                .Include(c => c.Country)
+                .Where(c => c.Status == GeneralStatus.Activo)
+                .OrderBy(c => c.Country.Name)
+                .ThenBy(c => c.Name)
+                .Select(c => new 
+                { 
+                    Id = c.Id, 
+                    FullName = $"{c.Name}, {c.Country.Name}" 
+                })
+                .ToList();
+
+            var laboratories = _context.Laboratories
+                .Where(l => l.Status == GeneralStatus.Activo)
+                .OrderBy(l => l.Name)
+                .Select(l => new 
+                { 
+                    Id = l.Id, 
+                    DisplayName = $"[{l.Code}] - {l.Name}" 
+                })
+                .ToList();
+
+            ViewData["CityId"] = new SelectList(cities, "Id", "FullName");
+            ViewData["LaboratoryId"] = new SelectList(laboratories, "Id", "DisplayName");
             ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes, "Id", "Name");
             return Page();
         }
@@ -46,8 +68,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             public int LaboratoryId { get; set; }
             [Required]
             public int CityId { get; set; }
-            [Required]
-            public int CountryId { get; set; }
+            
             [Required]
             public string Name { get; set; }
             [Required]
@@ -76,19 +97,50 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             if (!ModelState.IsValid)
             {
-                ViewData["CityId"] = new SelectList(_context.Cities, "Id", "Name");
-                ViewData["LaboratoryId"] = new SelectList(_context.Laboratories, "Id", "Name");
-                ViewData["CountryId"] = new SelectList(_context.Countries, "Id", "Name");
+                // Reload lists on error
+                var cities = _context.Cities
+                .Include(c => c.Country)
+                .Where(c => c.Status == GeneralStatus.Activo)
+                .OrderBy(c => c.Country.Name)
+                .ThenBy(c => c.Name)
+                .Select(c => new 
+                { 
+                    Id = c.Id, 
+                    FullName = $"{c.Name}, {c.Country.Name}" 
+                })
+                .ToList();
+
+                var laboratories = _context.Laboratories
+                    .Where(l => l.Status == GeneralStatus.Activo)
+                    .OrderBy(l => l.Name)
+                    .Select(l => new 
+                    { 
+                        Id = l.Id, 
+                        DisplayName = $"[{l.Code}] - {l.Name}" 
+                    })
+                    .ToList();
+
+                ViewData["CityId"] = new SelectList(cities, "Id", "FullName");
+                ViewData["LaboratoryId"] = new SelectList(laboratories, "Id", "DisplayName");
                 ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes, "Id", "Name");
                 return Page();
             }
+
+            // Normalización
+            Input.Name = Input.Name.Clean();
+            Input.Brand = Input.Brand?.Clean();
+            Input.Model = Input.Model?.Clean();
+            
+            // Deducir CountryId desde la Ciudad seleccionada
+            var city = await _context.Cities.FindAsync(Input.CityId);
+            if (city == null) return Page(); // Should not happen with valid modelstate
 
             var equipment = new Models.Equipment
             {
                 EquipmentTypeId = Input.EquipmentTypeId,
                 LaboratoryId = Input.LaboratoryId,
                 CityId = Input.CityId,
-                CountryId = Input.CountryId,
+                CountryId = city.CountryId, // Auto-asignado
                 Name = Input.Name,
                 InventoryNumber = Input.InventoryNumber,
                 Brand = Input.Brand,
@@ -119,6 +171,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             _context.EquipmentStateHistories.Add(initialHistory);
             await _context.SaveChangesAsync();
 
+            TempData["SuccessMessage"] = "Equipo registrado exitosamente.";
             return RedirectToPage("./Index");
         }
     }

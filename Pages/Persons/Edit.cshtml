@@ -5,126 +5,175 @@
     ViewData["Title"] = "Editar Persona";
 }
 
-<div class="page-breadcrumb">
-    <div class="row">
-        <div class="col-5 align-self-center">
-            <h4 class="page-title">Editar Persona</h4>
-            <div class="d-flex align-items-center">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a asp-page="/Index">Inicio</a></li>
-                        <li class="breadcrumb-item"><a asp-page="Index">Personas</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Editar</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="row">
+    <!-- Columna Principal: Formulario de Perfil -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Actualizar Ficha de Personal</h4>
+                        <h6 class="card-subtitle text-muted">Gestión de la identidad base: @Model.Person.FirstName @Model.Person.LastName</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-user-edit fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <form method="post">
-                    <div class="card-body">
-                        <h4 class="card-title">Información de la Persona</h4>
-                        <h6 class="card-subtitle">Actualice los datos de @Model.Person.FirstName @Model.Person.LastName.</h6>
-                        
-                        <div asp-validation-summary="ModelOnly" class="text-danger m-b-20"></div>
-                        <input type="hidden" asp-for="Person.Id" />
-                        @* Mantener campos de auditoría ocultos si no se editan manualmente *@
-                        <input type="hidden" asp-for="Person.CreatedDate" />
-                        <input type="hidden" asp-for="Person.CreatedById" />
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" asp-for="Person.Id" />
+                    <input type="hidden" asp-for="Person.CreatedDate" />
+                    <input type="hidden" asp-for="Person.CreatedById" />
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.FirstName" class="control-label">Nombres <span class="text-danger">*</span></label>
-                                    <input asp-for="Person.FirstName" class="form-control" />
-                                    <span asp-validation-for="Person.FirstName" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.LastName" class="control-label">Apellidos <span class="text-danger">*</span></label>
-                                    <input asp-for="Person.LastName" class="form-control" />
-                                    <span asp-validation-for="Person.LastName" class="text-danger"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.Type" class="control-label">Tipo de Persona <span class="text-danger">*</span></label>
-                                    <select asp-for="Person.Type" class="form-control" asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.PersonType>()"></select>
-                                    <span asp-validation-for="Person.Type" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.JobTitle" class="control-label">Cargo o Título</label>
-                                    <input asp-for="Person.JobTitle" class="form-control" />
-                                    <span asp-validation-for="Person.JobTitle" class="text-danger"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.Company" class="control-label">Empresa o Institución</label>
-                                    <input asp-for="Person.Company" class="form-control" />
-                                    <span asp-validation-for="Person.Company" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.Email" class="control-label">Correo Electrónico</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="ti-email"></i></span>
-                                        </div>
-                                        <input asp-for="Person.Email" type="email" class="form-control" />
+                    <div class="row">
+                        <!-- Identificación y Perfil -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-address-card mr-2"></i> Identificación</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Person.FirstName" class="control-label font-weight-bold small uppercase text-muted">Nombres <span class="text-danger">*</span></label>
+                                        <input asp-for="Person.FirstName" class="form-control" required />
+                                        <span asp-validation-for="Person.FirstName" class="text-danger small"></span>
                                     </div>
-                                    <span asp-validation-for="Person.Email" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Person.LastName" class="control-label font-weight-bold small uppercase text-muted">Apellidos <span class="text-danger">*</span></label>
+                                        <input asp-for="Person.LastName" class="form-control" required />
+                                        <span asp-validation-for="Person.LastName" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2">
+                                <label asp-for="Person.IdentityCard" class="control-label font-weight-bold small text-warning uppercase">Cédula de Identidad (C.I.) <span class="text-danger">*</span></label>
+                                <input asp-for="Person.IdentityCard" class="form-control border-warning shadow-none font-weight-bold" required />
+                                <span asp-validation-for="Person.IdentityCard" class="text-danger small"></span>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Person.Category" class="control-label font-weight-bold small uppercase text-muted">Perfil Actual <span class="text-danger">*</span></label>
+                                        <select asp-for="Person.Category" class="form-control custom-select" asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.PersonCategory>()" required></select>
+                                        <span asp-validation-for="Person.Category" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4 pt-4">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" asp-for="Person.IsInternal" class="custom-control-input" id="swInternalEdit">
+                                            <label class="custom-control-label small font-weight-bold text-muted uppercase" for="swInternalEdit">Vínculo Univalle</label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.PhoneNumber" class="control-label">Teléfono / Celular</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="ti-mobile"></i></span>
-                                        </div>
-                                        <input asp-for="Person.PhoneNumber" class="form-control" />
+                        <!-- Contacto y Laboral -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-id-badge mr-2"></i> Detalles de Perfil</h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Person.Email" class="control-label font-weight-bold small uppercase text-muted">Correo Electrónico</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white"><i class="fas fa-envelope text-muted"></i></span>
                                     </div>
-                                    <span asp-validation-for="Person.PhoneNumber" class="text-danger"></span>
+                                    <input asp-for="Person.Email" type="email" class="form-control" />
                                 </div>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Person.PhoneNumber" class="control-label font-weight-bold small uppercase text-muted">Número de Contacto</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white"><i class="fas fa-mobile-alt text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="Person.PhoneNumber" class="form-control" />
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Person.JobTitle" class="control-label font-weight-bold small uppercase text-muted">Cargo o Título</label>
+                                <input asp-for="Person.JobTitle" class="form-control shadow-none" />
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Person.Company" class="control-label font-weight-bold small uppercase text-muted">Empresa / Institución</label>
+                                <input asp-for="Person.Company" class="form-control shadow-none" />
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="card-footer bg-light">
-                        <div class="form-group mb-0 text-right">
-                            <button type="submit" class="btn btn-info">
-                                <i class="mdi mdi-content-save"></i> Guardar Cambios
-                            </button>
-                            <a asp-page="Index" class="btn btn-dark">
-                                <i class="mdi mdi-arrow-left"></i> Volver al Listado
-                            </a>
-                        </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Guardar Cambios
+                        </button>
+                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                            Cancelar
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- Panel Lateral: Auditoría y Resumen -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white"><i class="fas fa-info-circle mr-2 text-info"></i> Estado de Cuenta</h5>
+                <hr class="border-secondary" />
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-secondary mb-3">
+                        <i class="fas fa-user fa-lg"></i>
+                    </div>
+                    <h5 class="font-weight-bold mb-1">@Model.Person.FirstName</h5>
+                    <span class="badge badge-pill badge-primary px-3 uppercase small">@Model.Person.Category</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Control de Auditoría</h5>
+                <hr />
+                <div class="small">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Fecha de Registro</label>
+                        <span class="font-weight-bold text-dark">@Model.Person.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                    @if (Model.Person.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Último Cambio</label>
+                            <span class="text-dark font-weight-bold d-block">@(Model.Person.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.Person.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-light border shadow-none small text-muted mt-4">
+            <i class="fas fa-exclamation-triangle mr-1 text-warning"></i> Los cambios en el nombre o CI afectarán automáticamente cualquier usuario vinculado a esta persona.
+        </div>
+    </div>
 </div>
 
 @section Scripts {
+    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+        });
+    </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

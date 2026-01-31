@@ -48,6 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
             try
             {
                 await _context.SaveChangesAsync();
+                TempData.Success($"Tipo de mantenimiento '{MaintenanceType.Name}' actualizado correctamente.");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -61,7 +62,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
                 }
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("/Maintenances/Index", null, "tipos");
         }
 
         private bool MaintenanceTypeExists(int id)

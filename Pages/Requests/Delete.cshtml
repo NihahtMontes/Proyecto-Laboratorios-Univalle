@@ -1,64 +1,76 @@
-﻿@page
+﻿@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.DeleteModel
 
 @{
-    ViewData["Title"] = "Eliminar Solicitud";
+    ViewData["Title"] = "Confirmar Anulación";
 }
 
-<h1>Eliminar</h1>
+<div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
+    <div class="col-md-6 col-lg-5">
+        <div class="card text-center shadow-sm border-0">
+            <div class="card-body p-5">
+                <!-- Iconografía de advertencia con doble capa -->
+                <div class="mb-4 text-danger">
+                    <i class="ti-trash display-3 opacity-2" 
+                       style="position: absolute; left: 50%; transform: translateX(-50%); top: 45px;"></i>
+                    <i class="fas fa-exclamation-circle display-4" 
+                       style="position: relative; z-index: 1;"></i>
+                </div>
 
-<h3>¿Está seguro de que desea eliminar esta Solicitud?</h3>
-<div>
-    <h4>Solicitud</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.Equipment)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.Equipment.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.Description)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.Description)
-        </dd>
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.Status)
-        </dd>
-        <hr class="col-12" />
-        <dt class="col-sm-2">
-            Fecha de Registro
-        </dt>
-        <dd class="col-sm-10">
-            @Model.MaintenanceRequest.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-            @if (Model.MaintenanceRequest.CreatedBy != null)
-            {
-                <span class="text-muted"> por @Model.MaintenanceRequest.CreatedBy.FullName</span>
-            }
-        </dd>
-        @if (Model.MaintenanceRequest.LastModifiedDate.HasValue)
-        {
-            <dt class="col-sm-2">
-                Última Modificación
-            </dt>
-            <dd class="col-sm-10">
-                @Model.MaintenanceRequest.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.MaintenanceRequest.ModifiedBy != null)
-                {
-                    <span class="text-muted"> por @Model.MaintenanceRequest.ModifiedBy.FullName</span>
-                }
-            </dd>
-        }
-    </dl>
-    
-    <form method="post">
-        <input type="hidden" asp-for="MaintenanceRequest.Id" />
-        <input type="submit" value="Eliminar" class="btn btn-danger" /> |
-        <a asp-page="./Index">Volver al Listado</a>
-    </form>
+                <!-- Título y descripción -->
+                <h3 class="card-title text-dark font-weight-bold">¿Anular solicitud de servicio?</h3>
+                <p class="text-muted mb-4">
+                    Se dispone a eliminar la solicitud <strong class="text-dark">#@Model.MaintenanceRequest.Id</strong>.
+                    <br />Esta acción eliminará el historial del requerimiento permanentemente.
+                </p>
+
+                <!-- Caja de datos clave -->
+                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small uppercase font-weight-bold">Equipo Afectado:</span>
+                        <strong class="text-dark">@Model.MaintenanceRequest.Equipment?.Name</strong>
+                    </div>
+                     <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small uppercase font-weight-bold">Solicitado por:</span>
+                        <span class="text-dark small">@Model.MaintenanceRequest.RequestedBy?.FullName</span>
+                    </div>
+                    <div class="d-flex justify-content-between pt-2 border-top">
+                        <span class="text-muted small uppercase font-weight-bold">Estado Actual:</span>
+                        @{
+                            var statusClass = Model.MaintenanceRequest.Status switch {
+                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Approved => "badge-success",
+                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Rejected => "badge-danger",
+                                _ => "badge-warning"
+                            };
+                        }
+                        <span class="badge badge-pill @statusClass px-3">@Model.MaintenanceRequest.Status</span>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <form method="post">
+                    <input type="hidden" asp-for="MaintenanceRequest.Id" />
+                    
+                    <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+                        Cancelar
+                    </a>
+                    
+                    <button type="submit" class="btn btn-danger btn-rounded px-4 shadow-sm font-weight-bold">
+                        <i class="fas fa-trash-alt mr-1"></i> Confirmar Anulación
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="text-center mt-3 text-muted small italic">
+            <i class="fas fa-info-circle mr-1"></i> Si esta solicitud ya fue procesada, la acción será bloqueada.
+        </div>
+    </div>
 </div>
+
+@section Styles {
+    <style>
+        .border-3 { border-left-width: 4px !important; }
+        .opacity-2 { opacity: 0.15; }
+    </style>
+}

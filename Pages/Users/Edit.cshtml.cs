@@ -112,7 +112,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 UserName = user.UserName
             };
 
-            await CargarRoles();
+            CargarRoles();
             return Page();
         }
 
@@ -120,60 +120,39 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         {
             Id = id;
 
-            // Remove password validation if empty (it's optional in Edit)
-            if (string.IsNullOrEmpty(Input.NewPassword))
-            {
-                ModelState.Remove("Input.NewPassword");
-            }
+            if (string.IsNullOrEmpty(Input.NewPassword)) ModelState.Remove("Input.NewPassword");
 
             if (!ModelState.IsValid)
             {
-                await CargarRoles();
+                CargarRoles();
                 return Page();
             }
 
-            // 1. Uniqueness Check: Is there any OTHER active user with this CI?
+            // 1. Uniqueness Check
             bool ciExists = await _context.Users
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.IdentityCard == Input.IdentityCard &&
-                               u.Id != id &&
-                               u.Status != GeneralStatus.Eliminado);
+                .AnyAsync(u => u.IdentityCard == Input.IdentityCard && u.Id != id && u.Status != GeneralStatus.Eliminado);
 
-            if (ciExists)
-            {
-                ModelState.AddModelError("Input.IdentityCard", "El CI ya se encuentra registrado por otro usuario activo.");
-            }
+            if (ciExists) ModelState.AddModelError("Input.IdentityCard", "El CI ya se encuentra registrado.");
 
-            // Check Email uniqueness
             bool emailExists = await _context.Users
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.Email == Input.Email &&
-                               u.Id != id &&
-                               u.Status != GeneralStatus.Eliminado);
+                .AnyAsync(u => u.Email == Input.Email && u.Id != id && u.Status != GeneralStatus.Eliminado);
 
-            if (emailExists)
-            {
-                ModelState.AddModelError("Input.Email", "El correo electrónico ya está en uso por otro usuario activo.");
-            }
+            if (emailExists) ModelState.AddModelError("Input.Email", "El correo ya está en uso.");
 
-            // Check UserName uniqueness
             if (!string.IsNullOrEmpty(Input.UserName))
             {
                 bool userNameExists = await _context.Users
                     .IgnoreQueryFilters()
-                    .AnyAsync(u => u.UserName == Input.UserName &&
-                                   u.Id != id &&
-                                   u.Status != GeneralStatus.Eliminado);
+                    .AnyAsync(u => u.UserName == Input.UserName && u.Id != id && u.Status != GeneralStatus.Eliminado);
 
-                if (userNameExists)
-                {
-                    ModelState.AddModelError("Input.UserName", "El nombre de usuario ya está en uso por otro usuario activo.");
-                }
+                if (userNameExists) ModelState.AddModelError("Input.UserName", "El nombre de usuario ya está en uso.");
             }
 
             if (!ModelState.IsValid)
             {
-                await CargarRoles();
+                CargarRoles();
                 return Page();
             }
 
@@ -181,14 +160,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             if (userToUpdate == null) return NotFound();
 
             // 2. Update Fields
-            userToUpdate.FirstName = Input.FirstName;
-            userToUpdate.LastName = Input.LastName;
-            userToUpdate.SecondLastName = Input.SecondLastName;
+            userToUpdate.FirstName = Input.FirstName.Clean();
+            userToUpdate.LastName = Input.LastName.Clean();
+            userToUpdate.SecondLastName = Input.SecondLastName?.Clean();
             userToUpdate.IdentityCard = Input.IdentityCard;
             userToUpdate.Role = Input.Role;
             userToUpdate.Status = Input.Status;
-            userToUpdate.Position = Input.Position;
-            userToUpdate.Department = Input.Department;
+            userToUpdate.Position = Input.Position?.Clean();
+            userToUpdate.Department = Input.Department?.Clean();
             userToUpdate.HireDate = Input.HireDate;
             userToUpdate.PhoneNumber = Input.PhoneNumber;
 
@@ -197,7 +176,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             {
                 userToUpdate.Email = Input.Email;
                 userToUpdate.NormalizedEmail = Input.Email.ToUpper();
-                userToUpdate.EmailConfirmed = true;
             }
 
             // 4. Handle UserName
@@ -206,11 +184,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 var setUserNameResult = await _userManager.SetUserNameAsync(userToUpdate, Input.UserName);
                 if (!setUserNameResult.Succeeded)
                 {
-                    foreach (var error in setUserNameResult.Errors)
-                    {
-                        ModelState.AddModelError("Input.UserName", error.Description);
-                    }
-                    await CargarRoles();
+                    foreach (var error in setUserNameResult.Errors) ModelState.AddModelError("Input.UserName", error.Description);
+                    CargarRoles();
                     return Page();
                 }
             }
@@ -222,19 +197,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 var result = await _userManager.ResetPasswordAsync(userToUpdate, token, Input.NewPassword);
                 if (!result.Succeeded)
                 {
-                    foreach (var error in result.Errors)
-                    {
-                        ModelState.AddModelError("Input.NewPassword", error.Description);
-                    }
-                    await CargarRoles();
+                    foreach (var error in result.Errors) ModelState.AddModelError("Input.NewPassword", error.Description);
+                    CargarRoles();
                     return Page();
                 }
             }
 
-            // 6. Save (Auditing Preserved automatically by Context)
             try
             {
                 await _context.SaveChangesAsync();
+                TempData.Success(NotificationHelper.Users.Edited(userToUpdate.FullName));
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -250,21 +222,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             return _context.Users.Any(e => e.Id == id);
         }
 
-        private async Task CargarRoles()
+        private void CargarRoles()
         {
-            // Logic to filter roles if needed, similar to current code
-            var excludedRoles = new[] {
-                ((int)UserRole.Ingeniero).ToString(),
-                ((int)UserRole.Tecnico).ToString(),
-                ((int)UserRole.Director).ToString(),
-                ((int)UserRole.SuperAdmin).ToString()
-            };
-
-            var rolesUsuario = EnumHelper.ToSelectList<UserRole>()
-                .Where(e => !excludedRoles.Contains(e.Value));
-
-            ViewData["UserRole"] = rolesUsuario;
-            await Task.CompletedTask;
+            ViewData["UserRole"] = EnumHelper.ToSelectList<UserRole>();
         }
     }
 }

@@ -43,7 +43,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
 
             var equipmentType = new EquipmentType
             {
-                Name = Input.Name,
+                Name = Input.Name.Clean(),
                 Description = Input.Description,
                 RequiresCalibration = Input.RequiresCalibration,
                 MaintenanceFrequencyMonths = Input.MaintenanceFrequencyMonths,
@@ -53,6 +53,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
             _context.EquipmentTypes.Add(equipmentType);
             await _context.SaveChangesAsync();
 
+            TempData["SuccessMessage"] = "Categoría de equipo creada exitosamente.";
             return RedirectToPage("./Index");
         }
     }

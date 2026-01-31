@@ -1,84 +1,138 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Persons.IndexModel
 
+@{
+    ViewData["Title"] = "Directorio de Personal";
+}
 
-
-<h1>Lista de Personas</h1>
-
-<div class="page-breadcrumb">
-    <div class="row">
-        <div class="col-5 align-self-center">
-            <h4 class="page-title">Gestión de Personas</h4>
-            <div class="d-flex align-items-center">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a asp-page="/Index">Inicio</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Personas</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-        <div class="col-7 align-self-center">
-            <div class="d-flex no-block justify-content-end align-items-center">
-                <a asp-page="Create" class="btn btn-info"><i class="mdi mdi-plus"></i> Crear Nueva Persona</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="card-title">Listado de Personas</h4>
-                    <h6 class="card-subtitle">Administración de docentes, personal y externos.</h6>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-bordered" id="personsTable">
-                            <thead>
-                                <tr>
-                                    <th>Nombre Completo</th>
-                                    <th>Tipo</th>
-                                    <th>Cargo / Empresa</th>
-                                    <th>Email</th>
-                                    <th>Teléfono</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in Model.Person)
-                                {
-                                    <tr>
-                                        <td>
-                                            <strong>@item.FirstName @item.LastName</strong>
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-info">@item.Type</span>
-                                        </td>
-                                        <td>
-                                            @item.JobTitle <br />
-                                            <small class="text-muted">@item.Company</small>
-                                        </td>
-                                        <td>@item.Email</td>
-                                        <td>@item.PhoneNumber</td>
-                                        <td>
-                                            <div class="btn-group">
-                                                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                    Acciones
-                                                </button>
-                                                <div class="dropdown-menu">
-                                                    <a class="dropdown-item" asp-page="./Edit" asp-route-id="@item.Id"><i class="ti-pencil"></i> Editar</a>
-                                                    <a class="dropdown-item" asp-page="./Details" asp-route-id="@item.Id"><i class="ti-info-alt"></i> Detalles</a>
-                                                    <div class="dropdown-divider"></div>
-                                                    <a class="dropdown-item text-danger" asp-page="./Delete" asp-route-id="@item.Id"><i class="ti-trash"></i> Eliminar</a>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <!-- Header -->
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Directorio de Personal y Colaboradores</h4>
+                        <h6 class="card-subtitle text-muted">Gestión de identidades para la asignación de responsabilidades y accesos.</h6>
                     </div>
+                    <div class="ml-auto mt-2">
+                        <a asp-page="Create" class="btn btn-info btn-rounded shadow-sm px-4">
+                            <i class="fas fa-user-plus mr-1"></i> Registrar Persona
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 🔍 Smart Index Zone -->
+                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                    <form method="get">
+                        <div class="row align-items-end">
+                            <div class="col-md-6">
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, Apellido o Cédula de Identidad..." />
+                                </div>
+                            </div>
+                            <div class="col-md-6 text-right mt-2 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
+                                </button>
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                    <i class="fas fa-sync-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tabla de Personal -->
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="thead-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Información Personal</th>
+                                <th>Categoría / Perfil</th>
+                                <th>Cargo / Organización</th>
+                                <th>Contacto Directo</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.Person.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fas fa-user-friends fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron registros en el directorio.
+                                    </td>
+                                </tr>
+                            }
+                            @foreach (var item in Model.Person)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="m-r-10">
+                                                <span class="btn btn-circle btn-light-info text-info font-weight-bold">
+                                                    @(item.FirstName?[0] ?? 'P')@(item.LastName?[0] ?? 'N')
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <h6 class="m-b-0 font-weight-bold">@item.FirstName @item.LastName</h6>
+                                                <span class="text-muted small">C.I.: @(item.IdentityCard ?? "N/A")</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="mb-1">
+                                            <span class="badge badge-pill badge-primary px-3" style="font-size: 0.65rem;">
+                                                <i class="fas fa-tag mr-1"></i> @item.Category
+                                            </span>
+                                        </div>
+                                        <div>
+                                            @if (item.IsInternal)
+                                            {
+                                                <span class="badge badge-pill border border-success text-success px-2 py-0" style="font-size: 0.6rem;">
+                                                    <i class="fas fa-check-circle mr-1"></i> Interno
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-pill border border-secondary text-secondary px-2 py-0" style="font-size: 0.6rem;">
+                                                    <i class="fas fa-external-link-alt mr-1"></i> Externo
+                                                </span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-dark font-weight-bold small">@(item.JobTitle ?? "-")</div>
+                                        <div class="text-muted italic small">@(item.Company ?? "Univalle")</div>
+                                    </td>
+                                    <td>
+                                        <div class="small">
+                                            <div class="text-dark"><i class="fas fa-envelope mr-1 text-muted"></i> @(item.Email ?? "-")</div>
+                                            <div class="text-muted"><i class="fas fa-phone-alt mr-1"></i> @(item.PhoneNumber ?? "-")</div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                                <i class="fas fa-search-plus"></i>
+                                            </a>
+                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -86,16 +140,8 @@
 </div>
 
 @section Styles {
-    <link href="~/assets/libs/datatables.net-bs4/css/dataTables.bootstrap4.css" rel="stylesheet">
-}
-
-@section Scripts {
-    <script src="~/assets/extra-libs/DataTables/datatables.min.js"></script>
-    <script>
-        $('#personsTable').DataTable({
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
-            }
-        });
-    </script>
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+    </style>
 }

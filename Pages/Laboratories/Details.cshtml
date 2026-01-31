@@ -2,90 +2,134 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Laboratories.DetailsModel
 
 @{
-    ViewData["Title"] = "Detalles del Laboratorio";
+    ViewData["Title"] = "Expediente de Laboratorio";
 }
 
-<h1>Detalles</h1>
+<div class="row">
+    <!-- Columna Principal: Expediente Técnico -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Expediente de Infraestructura</h4>
+                        <h6 class="card-subtitle text-muted">Detalles técnicos y ubicación institucional del centro: @Model.Laboratory.Name</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-flask fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
 
-<div>
-    <h4>Laboratorio</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Laboratory.Code)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Laboratory.Code)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Laboratory.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Laboratory.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Laboratory.Type)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Laboratory.Type)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Laboratory.Building)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Laboratory.Building)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Laboratory.Floor)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Laboratory.Floor)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Laboratory.Description)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Laboratory.Description)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Laboratory.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Laboratory.Status)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Laboratory.Faculty)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Laboratory.Faculty.Name)
-        </dd>
-        <hr class="col-12" />
-        <dt class="col-sm-2">
-            Fecha de Registro
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Laboratory.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-            @if (Model.Laboratory.CreatedBy != null)
-            {
-                <span class="text-muted"> por @Model.Laboratory.CreatedBy.FullName</span>
-            }
-        </dd>
-        @if (Model.Laboratory.LastModifiedDate.HasValue)
-        {
-            <dt class="col-sm-2">
-                Última Modificación
-            </dt>
-            <dd class="col-sm-10">
-                @Model.Laboratory.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.Laboratory.ModifiedBy != null)
-                {
-                    <span class="text-muted"> por @Model.Laboratory.ModifiedBy.FullName</span>
-                }
-            </dd>
-        }
-    </dl>
+                <div class="row mt-4">
+                    <div class="col-md-6 border-right">
+                        <h5 class="font-weight-bold text-info mb-3">
+                            <i class="fas fa-id-card-alt mr-2"></i> Identidad Operativa
+                        </h5>
+                        <table class="table table-sm table-borderless bg-light rounded p-2">
+                            <tbody>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3" style="width: 40%;">Código Interno:</th>
+                                    <td class="font-weight-bold text-dark">@Model.Laboratory.Code</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3">Especialidad:</th>
+                                    <td class="text-dark">@(Model.Laboratory.Type ?? "General")</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3">Adscripción:</th>
+                                    <td class="text-dark font-weight-bold small uppercase">@(Model.Laboratory.Faculty?.Name ?? "No asignada")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5 class="font-weight-bold text-info mb-3">
+                            <i class="fas fa-map-marker-alt mr-2"></i> Localización
+                        </h5>
+                        <table class="table table-sm table-borderless bg-light rounded p-2">
+                            <tbody>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3" style="width: 40%;">Edificio:</th>
+                                    <td class="font-weight-bold text-dark">@(Model.Laboratory.Building ?? "N/A")</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3">Nivel / Piso:</th>
+                                    <td class="text-dark">@(Model.Laboratory.Floor ?? "N/A")</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3">Capacidad:</th>
+                                    <td class="text-muted italic">No definida</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <h6 class="font-weight-bold text-dark small uppercase mb-2"><i class="fas fa-align-left mr-2 text-muted"></i> Descripción del Espacio</h6>
+                    <p class="text-muted bg-light p-3 rounded italic border-left border-3">
+                        @(Model.Laboratory.Description ?? "No se ha proporcionado una descripción detallada para este ambiente físico.")
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Lateral: Auditoría y Control -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-shield-alt mr-2 text-info"></i> Estado Operativo</h5>
+                <hr class="border-secondary" />
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Estatus Sistema:</small>
+                    <span class="badge badge-pill badge-@(Model.Laboratory.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "success" : "danger") px-3">
+                        @Model.Laboratory.Status
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Control de Gestión</h5>
+                <hr />
+                <div class="small">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Alta de Registro</label>
+                        <span class="font-weight-bold text-dark">@Model.Laboratory.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="text-muted">Por: @(Model.Laboratory.CreatedBy?.FullName ?? "Sistema")</div>
+                    </div>
+                    @if (Model.Laboratory.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Laboratory.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.Laboratory.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions mt-4">
+            <a asp-page="./Edit" asp-route-id="@Model.Laboratory.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
+                <i class="fas fa-edit mr-1"></i> Modificar Ficha
+            </a>
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4">
+                <i class="fas fa-list mr-1"></i> Volver al Listado
+            </a>
+            
+            <a asp-page="./Delete" asp-route-id="@Model.Laboratory.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+                <i class="fas fa-trash-alt mr-1"></i> Dar de Baja Infraestructura
+            </a>
+        </div>
+    </div>
 </div>
-<div>
-    <a asp-page="./Edit" asp-route-id="@Model.Laboratory.Id">Editar</a> |
-    <a asp-page="./Index">Volver al Listado</a>
-</div>
+
+@section Styles {
+    <style>
+        .border-left-3 { border-left-width: 3px !important; }
+    </style>
+}

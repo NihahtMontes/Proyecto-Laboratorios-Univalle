@@ -1,57 +1,71 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Cities.DeleteModel
+
 @{
     ViewData["Title"] = "Confirmar Eliminación";
 }
 
-<div class="row justify-content-center" style="min-height: 50vh; align-items: center;">
-    <div class="col-md-5">
+<div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
+    <div class="col-md-6 col-lg-5">
         <div class="card text-center shadow-sm">
             <div class="card-body p-5">
-                <div class="mb-4 text-warning">
-                    <i class="ti-alert display-3"></i>
+                <!-- Iconografía de advertencia con doble capa -->
+                <div class="mb-4 text-danger">
+                    <i class="ti-trash display-3 opacity-2" 
+                       style="position: absolute; left: 50%; transform: translateX(-50%); top: 40px;"></i>
+                    <i class="fas fa-exclamation-triangle display-4" 
+                       style="position: relative; z-index: 1;"></i>
                 </div>
 
-                <h3 class="card-title text-dark font-weight-bold">¿Estás seguro?</h3>
+                <!-- Título y descripción -->
+                <h3 class="card-title text-dark font-weight-bold">¿Deshabilitar esta localidad?</h3>
                 <p class="text-muted mb-4">
-                    Estás a punto de eliminar la ciudad <strong class="text-dark">@Model.City.Name</strong> del registro.
-                    <br>¡No podrás deshacer esta acción!
+                    Estás a punto de dar de baja la ciudad <strong class="text-dark">@Model.City.Name</strong>.
+                    <br>Esta acción puede afectar los laboratorios y equipos vinculados a esta ubicación.
                 </p>
 
-                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100">
-                    <div class="d-flex justify-content-between">
-                        <span><i class="fas fa-globe-americas mr-2 text-muted"></i> País:</span>
-                        <!-- ✅ Si Country es null, muestra vacío en lugar de error -->
+                <!-- Caja de datos clave -->
+                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small uppercase">Ciudad:</span>
+                        <strong class="text-dark">@Model.City.Name</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small uppercase">País:</span>
                         <strong class="text-dark">@(Model.City.Country?.Name ?? "N/A")</strong>
                     </div>
-                    <div class="d-flex justify-content-between mt-2">
-                        <span><i class="fas fa-map-marked-alt mr-2 text-muted"></i> Región:</span>
-                        <span class="text-dark">@Html.DisplayFor(model => model.City.Region)</span>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small uppercase">Estado Actual:</span>
+                        <span class="badge badge-pill badge-warning px-3 font-weight-bold">
+                            @Model.City.Status
+                        </span>
                     </div>
                 </div>
 
-                <form method="post" id="deleteForm">
+                <!-- Botones de acción -->
+                <form method="post">
                     <input type="hidden" asp-for="City.Id" />
-                    <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
-                        Cancelar
+                    <a asp-page="./Details" asp-route-id="@Model.City.Id" 
+                       class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+                        Revisar Ficha
                     </a>
-                    <button type="submit" class="btn btn-danger btn-rounded px-4">
-                        <i class="fas fa-trash-alt mr-1"></i> Sí, eliminarla
+                    <button type="submit" class="btn btn-danger btn-rounded px-4 shadow-sm font-weight-bold">
+                        <i class="fas fa-trash-alt mr-1"></i> Confirmar Baja
                     </button>
                 </form>
             </div>
         </div>
 
-        <div class="text-center mt-3 text-muted small">
-            Registro creado por @(Model.City.CreatedBy?.FullName ?? "Sistema") el @Model.City.CreatedDate.ToString("d")
+        <!-- Nota informativa -->
+        <div class="text-center mt-3 text-muted small italic">
+            <i class="fas fa-info-circle mr-1"></i> 
+            El sistema conservará el historial técnico de la localidad para fines de auditoría institucional.
         </div>
     </div>
 </div>
 
 @section Styles {
-    <link href="~/lib/nice-admin/assets/libs/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
-}
-
-@section Scripts {
-    <script src="~/lib/nice-admin/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    <style>
+        .border-3 { border-left-width: 3px !important; }
+    </style>
 }

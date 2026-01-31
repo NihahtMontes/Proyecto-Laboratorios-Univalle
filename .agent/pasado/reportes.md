@@ -12,13 +12,11 @@ Generación de PDFs (QuestPDF):
 Debes usar la librería QuestPDF exclusivamente para documentos que requieran un formato oficial (Solicitudes, Actas, Certificados).
 Arquitectura: Implementar una capa de servicios en Services/Reporting/. El código de diseño del PDF debe estar separado del PageModel.
 Diseño: Incluir cabeceras institucionales, logos (ubicándolos en wwwroot/assets/images/) y bloques de firmas pixel-perfect.
-Exportación de Datos (ClosedXML):
-Usar ClosedXML para exportar archivos .xlsx masivos (inventarios, historiales).
-Debes aplicar estilos a las cabeceras del Excel (colores corporativos de Univalle) y auto-ajuste de columnas.
-Exportación Rápida (DataTables):
-Identificar las tablas en los archivos .cshtml y configurar los botones de exportación (Excel, PDF, Imprimir) de DataTables.net. Asegurarse de que las dependencias JS estén correctamente referenciadas en _Layout o secciones de scripts.
-Dashboards de Control:
-Utilizar los widgets de NiceAdmin (ApexCharts/Chart.js) para transformar reportes planos en visualizaciones gráficas dentro del sistema.
+Exportación de Datos (ClosedXML/DataTables):
+Usar ClosedXML para archivos .xlsx masivos y DataTables para exportación rápida en cliente. Configurar los botones de exportación en la "Smart Index Zone" de los archivos .cshtml.
+
+2. Dashboards de Control:
+Utilizar los widgets de NiceAdmin (ApexCharts/Chart.js) para transformar reportes planos en visualizaciones gráficas.
 Reglas de Operación:
 
 Autonomía: Estás habilitado para ejecutar comandos de terminal como dotnet add package para instalar las librerías necesarias.

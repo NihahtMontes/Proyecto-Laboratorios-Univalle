@@ -1,71 +1,160 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.IndexModel
 
-
-<h1>Lista de Solicitudes</h1>
-
-<p>
-    <a asp-page="Create" class="btn btn-primary">Create New</a>
-</p>
-<table class="table table-hover">
-    <thead class="thead-light">
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Requests[0].Equipment)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Requests[0].Description)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Requests[0].Priority)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Requests[0].Status)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Requests[0].RequestedBy)
-            </th>
-            <th>Registrado</th>
-            <th>Modificado</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model.Requests) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Equipment.Name)
-            </td>
-             <td>
-                @Html.DisplayFor(modelItem => item.Description)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Priority)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Status)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.RequestedBy.FullName)
-            </td>
-            <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.CreatedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.LastModifiedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.ModifiedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Editar</a>
-                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info"><i class="fas fa-info-circle"></i> Detalles</a>
-                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Eliminar</a>
-            </td>
-        </tr>
+@{
+    ViewData["Title"] = "Gestión de Solicitudes";
 }
-    </tbody>
-</table>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <!-- Header -->
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Buzón de Solicitudes Técnicas</h4>
+                        <h6 class="card-subtitle text-muted">Gestión y seguimiento de requerimientos para el mantenimiento de activos.</h6>
+                    </div>
+                    <div class="ml-auto mt-2">
+                        <a asp-page="Create" class="btn btn-info btn-rounded shadow-sm px-4">
+                            <i class="fas fa-plus-circle mr-1"></i> Nueva Solicitud
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 🔍 Smart Index Zone -->
+                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                    <form method="get">
+                        <div class="row align-items-end">
+                            <div class="col-md-4">
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo, código o solicitante..." />
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="small font-weight-bold text-muted uppercase">Prioridad</label>
+                                <select asp-for="PriorityFilter" class="form-control custom-select" 
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority>()">
+                                    <option value="">-- Todas --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="small font-weight-bold text-muted uppercase">Estado</label>
+                                <select asp-for="StatusFilter" class="form-control custom-select" 
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus>()">
+                                    <option value="">-- Todos --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 text-right mt-2 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
+                                </button>
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                    <i class="fas fa-sync-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Tabla de Solicitudes -->
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="thead-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Equipamiento Asignado</th>
+                                <th>Descripción del Requerimiento</th>
+                                <th class="text-center">Prioridad</th>
+                                <th class="text-center">Estado</th>
+                                <th>Solicitante</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.Requests.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron requerimientos registrados.
+                                    </td>
+                                </tr>
+                            }
+                            @foreach (var item in Model.Requests)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="m-r-10">
+                                                <span class="btn btn-circle btn-light-info text-info"><i class="fas fa-tools"></i></span>
+                                            </div>
+                                            <div>
+                                                <h6 class="m-b-0 font-weight-bold">@item.Equipment.Name</h6>
+                                                <span class="text-muted small">Inv: @item.Equipment.InventoryNumber</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-dark text-truncate" style="max-width: 250px;">@item.Description</div>
+                                        <small class="text-muted italic"><i class="far fa-clock mr-1"></i> @item.CreatedDate.ToString("dd/MM/yyyy")</small>
+                                    </td>
+                                    <td class="text-center">
+                                        @{
+                                            var priorityClass = item.Priority switch {
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority.High => "badge-danger",
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority.Medium => "badge-warning",
+                                                _ => "badge-info"
+                                            };
+                                        }
+                                        <span class="badge @priorityClass px-3 py-1 text-uppercase" style="font-size: 0.7rem;">@item.Priority</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @{
+                                            var statusClass = item.Status switch {
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Approved => "badge-success",
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Pending => "badge-warning",
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Rejected => "badge-danger",
+                                                _ => "badge-light text-muted border"
+                                            };
+                                        }
+                                        <span class="badge @statusClass px-3 py-1">@item.Status</span>
+                                    </td>
+                                    <td>
+                                        <div class="small">
+                                            <div class="font-weight-bold text-dark">@item.RequestedBy?.FullName</div>
+                                            <div class="text-muted">@(item.RequestedBy?.Position ?? "Colaborador")</div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Gestionar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                                <i class="fas fa-search-plus"></i>
+                                            </a>
+                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+    </style>
+}

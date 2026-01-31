@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
@@ -20,13 +21,33 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 
         public IList<Faculty> Faculties { get; set; } = default!;
 
+        [BindProperty(SupportsGet = true)]
+        public string? SearchTerm { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public GeneralStatus? StatusFilter { get; set; }
+
         public async Task OnGetAsync()
         {
-            Faculties = await _context.Faculties
+            var query = _context.Faculties
                 .Include(f => f.CreatedBy)
                 .Include(f => f.ModifiedBy)
-                .Where(f => f.Status != GeneralStatus.Eliminado)
-                .ToListAsync();
+                .Where(f => f.Status != GeneralStatus.Eliminado);
+
+            // Filtro por término
+            if (!string.IsNullOrEmpty(SearchTerm))
+            {
+                var term = SearchTerm.Trim().ToLower();
+                query = query.Where(f => f.Name.ToLower().Contains(term));
+            }
+
+            // Filtro por Estado
+            if (StatusFilter.HasValue)
+            {
+                query = query.Where(f => f.Status == StatusFilter.Value);
+            }
+
+            Faculties = await query.ToListAsync();
         }
     }
 }

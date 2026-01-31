@@ -107,8 +107,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 CreatedDate = DateTime.Now
             };
 
+            var user = await _userManager.GetUserAsync(User);
+            if (user != null)
+            {
+                verification.CreatedById = user.Id;
+            }
+
             _context.Verifications.Add(verification);
             await _context.SaveChangesAsync();
+
+            // Mensaje de éxito
+            var equipment = await _context.Equipments.FindAsync(verification.EquipmentId);
+            TempData.Success(NotificationHelper.Verifications.Created(equipment?.Name ?? "desconocido"));
 
             return RedirectToPage("./Index");
         }

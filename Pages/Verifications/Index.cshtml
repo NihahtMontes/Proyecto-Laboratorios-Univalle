@@ -1,60 +1,227 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-
-
-<h1>Lista de Verificaciones Realizadas</h1>
-
-<p>
-    <a asp-page="Create" class="btn btn-primary">Create New</a>
-</p>
-<table class="table table-hover">
-    <thead class="thead-light">
-        <tr>
-             <th>
-                @Html.DisplayNameFor(model => model.Verifications[0].Equipment)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Verifications[0].Date)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Verifications[0].Status)
-            </th>
-            <th>Registrado</th>
-            <th>Modificado</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model.Verifications) {
-        <tr>
-             <td>
-                @Html.DisplayFor(modelItem => item.Equipment.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Date)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Status)
-            </td>
-             <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.CreatedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.LastModifiedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.ModifiedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Editar</a>
-                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info"><i class="fas fa-info-circle"></i> Detalles</a>
-                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Eliminar</a>
-            </td>
-        </tr>
+@{
+    ViewData["Title"] = "Bitácora de Verificaciones";
 }
-    </tbody>
-</table>
+
+<!-- Notification Script -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({
+                title: '¡Operación Exitosa!',
+                text: '@Html.Raw(TempData["SuccessMessage"])',
+                icon: 'success',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#28a745',
+                timer: 4000
+            });
+        });
+    </script>
+}
+
+<div class="container-fluid px-0"> <!-- Full width container para maximizar espacio -->
+    
+    <!-- 1. HEADER PREMIUM -->
+    <div class="card bg-gradient-dark border-0 shadow-lg mb-4 text-white overflow-hidden" 
+         style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); border-radius: 12px;">
+        <div class="card-body p-4 position-relative">
+            <!-- Decoración de fondo abstracta -->
+            <i class="fas fa-clipboard-check position-absolute" style="font-size: 10rem; opacity: 0.05; right: -20px; top: -20px; transform: rotate(15deg);"></i>
+            
+            <div class="row align-items-center position-relative" style="z-index: 1;">
+                <div class="col-lg-8">
+                    <h2 class="font-weight-bold mb-1 text-white">
+                        <i class="fas fa-check-double mr-2 text-info"></i>Verificaciones Técnicas
+                    </h2>
+                    <p class="mb-0 text-white-50" style="font-size: 1.05rem;">
+                        Gestión centralizada de inspecciones y estado operativo de equipos.
+                    </p>
+                </div>
+                <div class="col-lg-4 text-lg-right mt-3 mt-lg-0">
+                    <a asp-page="Create" class="btn btn-light text-primary btn-pill shadow px-4 font-weight-bold py-2">
+                        <i class="fas fa-plus mr-2"></i> Nueva Inspección
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. BARRA DE HERRAMIENTAS (Restaurada al estilo original) -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <form method="get" class="form-inline w-100">
+            <div class="input-group w-100 shadow-sm">
+                <div class="input-group-prepend">
+                    <span class="input-group-text bg-white border-0 pl-3"><i class="fas fa-search text-muted"></i></span>
+                </div>
+                <input type="text" name="SearchString" value="@Model.CurrentFilter" class="form-control border-0 bg-white" placeholder="Buscar por equipo o número de inventario..." style="height: 50px;">
+                @if (!string.IsNullOrEmpty(Model.CurrentFilter))
+                {
+                    <div class="input-group-append">
+                        <a asp-page="./Index" class="btn btn-white border-0 text-muted d-flex align-items-center pr-3" title="Limpiar filtro">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                }
+            </div>
+        </form>
+    </div>
+
+    <!-- 3. TABLA DE RESULTADOS -->
+    <div class="card shadow border-0 rounded-lg">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-uppercase text-secondary" style="font-size: 0.8rem; letter-spacing: 0.5px;">
+                        <tr>
+                            <th class="pl-4 py-3 border-0 font-weight-bold" style="min-width: 250px;">Equipo Inspeccionado</th>
+                            <th class="py-3 border-0 font-weight-bold">Fecha / Auditor</th>
+                            <th class="py-3 border-0 text-center font-weight-bold">Estado</th>
+                            <th class="py-3 border-0 font-weight-bold">Observaciones</th>
+                            <th class="pr-4 py-3 border-0 text-right font-weight-bold" style="width: 160px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Verifications.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <div class="text-muted opacity-50">
+                                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                                        <p class="h6 font-weight-normal">No hay inspecciones registradas @(string.IsNullOrEmpty(Model.CurrentFilter) ? "" : "con este criterio")</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var item in Model.Verifications)
+                            {
+                                <tr class="border-bottom-custom">
+                                    <td class="pl-4 py-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-icon bg-soft-primary text-primary rounded-circle mr-3 d-flex align-items-center justify-content-center" 
+                                                 style="width: 45px; height: 45px; min-width: 45px;">
+                                                <i class="fas fa-microscope" style="font-size: 1.2rem;"></i>
+                                            </div>
+                                            <div>
+                                                <div class="font-weight-bold text-dark text-truncate" style="max-width: 250px;" title="@item.Equipment.Name">
+                                                    @item.Equipment.Name
+                                                </div>
+                                                <div class="small text-muted">
+                                                    <i class="fas fa-barcode mr-1"></i>@item.Equipment.InventoryNumber
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-3">
+                                        <div class="d-flex flex-column">
+                                            <span class="text-dark font-weight-bold" style="font-size: 0.95rem;">
+                                                @item.Date.ToString("dd MMM, yyyy")
+                                            </span>
+                                            <small class="text-muted">
+                                                <i class="fas fa-user-circle mr-1"></i>@(item.CreatedBy?.FullName ?? "Sistema")
+                                            </small>
+                                        </div>
+                                    </td>
+                                    <td class="text-center py-3">
+                                        @{
+                                            var (badgeClass, iconClass) = item.Status switch
+                                            {
+                                                VerificationStatus.Completed => ("badge-soft-success text-success", "fas fa-check"),
+                                                VerificationStatus.WithObservations => ("badge-soft-warning text-warning", "fas fa-exclamation"),
+                                                VerificationStatus.Draft => ("badge-soft-secondary text-secondary", "fas fa-pen"),
+                                                VerificationStatus.Annulled => ("badge-soft-danger text-danger", "fas fa-ban"),
+                                                _ => ("badge-light text-muted", "fas fa-question")
+                                            };
+                                        }
+                                        <span class="badge @badgeClass px-3 py-2 rounded-pill border-0 font-weight-bold" style="font-size: 0.8rem;">
+                                            <i class="@iconClass mr-1"></i> @Html.DisplayFor(modelItem => item.Status)
+                                        </span>
+                                    </td>
+                                    <td class="py-3">
+                                        @if (!string.IsNullOrEmpty(item.CriticalFindings))
+                                        {
+                                            <div class="d-flex align-items-center text-danger" title="@item.CriticalFindings">
+                                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                                <span class="text-truncate d-inline-block" style="max-width: 200px;">
+                                                    @item.CriticalFindings
+                                                </span>
+                                            </div>
+                                        }
+                                        else if (!string.IsNullOrEmpty(item.Observations))
+                                        {
+                                             <div class="d-flex align-items-center text-info" title="@item.Observations">
+                                                <i class="fas fa-info-circle mr-2"></i>
+                                                <span class="text-truncate d-inline-block" style="max-width: 200px;">
+                                                    @item.Observations
+                                                </span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small font-italic">Sin observaciones</span>
+                                        }
+                                    </td>
+                                    <td class="pr-4 py-3 text-right text-nowrap">
+                                        <a asp-page="./Details" asp-route-id="@item.Id" 
+                                           class="btn btn-icon btn-light text-info btn-sm mr-1 shadow-sm" 
+                                           data-toggle="tooltip" title="Detalles">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a asp-page="./Edit" asp-route-id="@item.Id" 
+                                           class="btn btn-icon btn-light text-primary btn-sm mr-1 shadow-sm" 
+                                           data-toggle="tooltip" title="Editar">
+                                            <i class="fas fa-pencil-alt"></i>
+                                        </a>
+                                        <a asp-page="./Delete" asp-route-id="@item.Id" 
+                                           class="btn btn-icon btn-light text-danger btn-sm shadow-sm" 
+                                           data-toggle="tooltip" title="Eliminar">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white border-top-0 py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">Total Registros: <strong>@Model.Verifications.Count</strong></small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .btn-pill { border-radius: 50px; }
+        .bg-gradient-dark { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+        .badge-soft-success { background-color: #d1e7dd; color: #0f5132; } /* Verde suave */
+        .badge-soft-warning { background-color: #fff3cd; color: #664d03; } /* Amarillo suave */
+        .badge-soft-danger { background-color: #f8d7da; color: #842029; } /* Rojo suave */
+        .badge-soft-secondary { background-color: #e2e3e5; color: #41464b; } /* Gris suave */
+        .badge-soft-info { background-color: #cff4fc; color: #055160; } /* Info suave */
+        
+        .btn-icon { width: 32px; height: 32px; padding: 0; line-height: 32px; border-radius: 6px; transition: all 0.2s; }
+        .btn-icon:hover { transform: translateY(-2px); }
+        .text-nowrap { white-space: nowrap !important; }
+        .border-bottom-custom { border-bottom: 1px solid #f0f0f0; }
+        .border-bottom-custom:last-child { border-bottom: none; }
+        .avatar-icon { font-size: 1.2rem; }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip()
+        })
+    </script>
+}

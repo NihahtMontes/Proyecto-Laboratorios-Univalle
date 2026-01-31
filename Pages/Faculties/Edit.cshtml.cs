@@ -22,16 +22,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
-            var faculty = await _context.Faculties.FirstOrDefaultAsync(m => m.Id == id);
-            if (faculty == null)
-            {
-                return NotFound();
-            }
+            var faculty = await _context.Faculties
+                .Include(f => f.CreatedBy)
+                .Include(f => f.ModifiedBy)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (faculty == null) return NotFound();
+            
             Faculty = faculty;
             return Page();
         }
@@ -40,28 +39,59 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
         {
             if (!ModelState.IsValid)
             {
+                await ReloadFaculty(Faculty.Id);
                 return Page();
             }
 
-            _context.Attach(Faculty).State = EntityState.Modified;
+            var normalizedName = Faculty.Name.NormalizeComparison();
+
+            var exists = await _context.Faculties
+                .AnyAsync(f => f.Id != Faculty.Id && 
+                               f.Name.Trim().ToLower() == normalizedName && 
+                               f.Status != Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Eliminado);
+
+            if (exists)
+            {
+                ModelState.AddModelError("Faculty.Name", NotificationHelper.Faculties.FacultyNameDuplicate);
+                await ReloadFaculty(Faculty.Id);
+                return Page();
+            }
+
+            if (!Faculty.Name.IsValidName())
+            {
+                ModelState.AddModelError("Faculty.Name", NotificationHelper.Countries.InvalidFormat);
+                await ReloadFaculty(Faculty.Id);
+                return Page();
+            }
+
+            var facultyToUpdate = await _context.Faculties.FindAsync(Faculty.Id);
+            if (facultyToUpdate == null) return NotFound();
+
+            facultyToUpdate.Name = Faculty.Name.Clean();
+            facultyToUpdate.Code = Faculty.Code?.Clean().ToUpper();
+            facultyToUpdate.Description = Faculty.Description?.Clean();
+            facultyToUpdate.Status = Faculty.Status;
 
             try
             {
                 await _context.SaveChangesAsync();
+                TempData.Success(NotificationHelper.Faculties.Updated(facultyToUpdate.Name));
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!FacultyExists(Faculty.Id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                if (!FacultyExists(Faculty.Id)) return NotFound();
+                else throw;
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("/Laboratories/Index");
+        }
+
+        private async Task ReloadFaculty(int id)
+        {
+            Faculty = await _context.Faculties
+                .Include(f => f.CreatedBy)
+                .Include(f => f.ModifiedBy)
+                .FirstOrDefaultAsync(m => m.Id == id) ?? new Faculty();
         }
 
         private bool FacultyExists(int id)

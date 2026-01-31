@@ -59,8 +59,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             var laboratory = await _context.Laboratories.FindAsync(id);
             if (laboratory != null)
             {
-                _context.Laboratories.Update(laboratory);
+                laboratory.Status = GeneralStatus.Eliminado; // Borrado lógico
+                _context.Attach(laboratory).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
+                
+                TempData.Success(NotificationHelper.Laboratories.Deleted(laboratory.Name));
             }
 
             return RedirectToPage("./Index");

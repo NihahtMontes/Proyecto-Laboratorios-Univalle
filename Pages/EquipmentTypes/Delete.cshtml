@@ -2,67 +2,62 @@
 @model Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes.DeleteModel
 
 @{
-    ViewData["Title"] = "Eliminar Tipo de Equipo";
+    ViewData["Title"] = "Eliminar Categoría";
 }
 
-<h1>Eliminar</h1>
+<div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
+    <div class="col-md-6 col-lg-5">
+        <div class="card text-center shadow-sm">
+            <div class="card-body p-5">
+                <!-- Ícono de advertencia -->
+                <div class="mb-4 text-danger">
+                    <i class="ti-trash display-3 opacity-2" style="position: absolute; left: 50%; transform: translateX(-50%); top: 40px;"></i>
+                    <i class="fas fa-exclamation-triangle display-4" style="position: relative; z-index: 1;"></i>
+                </div>
 
-<h3>¿Está seguro de que desea eliminar esto?</h3>
-<div>
-    <h4>Tipo de Equipo</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.EquipmentType.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.EquipmentType.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.EquipmentType.Description)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.EquipmentType.Description)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.EquipmentType.RequiresCalibration)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.EquipmentType.RequiresCalibration)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.EquipmentType.MaintenanceFrequencyMonths)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.EquipmentType.MaintenanceFrequencyMonths)
-        </dd>
-        <hr />
-        <dt class="col-sm-2">
-            Auditoría
-        </dt>
-        <dd class="col-sm-10">
-            <small>
-                <strong>Creado:</strong> @Model.EquipmentType.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.EquipmentType.CreatedBy != null)
-                {
-                    <span> por @Model.EquipmentType.CreatedBy.FullName</span>
-                }
-                <br />
-                @if (Model.EquipmentType.LastModifiedDate.HasValue)
-                {
-                    <strong>Modificado:</strong> @Model.EquipmentType.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                    @if (Model.EquipmentType.ModifiedBy != null)
-                    {
-                        <span> por @Model.EquipmentType.ModifiedBy.FullName</span>
-                    }
-                }
-            </small>
-        </dd>
-    </dl>
-    
-    <form method="post">
-        <input type="hidden" asp-for="EquipmentType.Id" />
-        <input type="submit" value="Eliminar" class="btn btn-danger" /> |
-        <a asp-page="./Index">Volver al Listado</a>
-    </form>
+                <!-- Título -->
+                <h3 class="card-title text-dark font-weight-bold">¿Retirar Categoría?</h3>
+                <p class="text-muted mb-4">
+                    Estás a punto de eliminar la categoría <strong class="text-dark">@Model.EquipmentType.Name</strong>.
+                    <br>Asegúrese de que no existan equipos vinculados a este tipo antes de proceder.
+                </p>
+
+                <!-- Datos clave -->
+                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small uppercase">Categoría:</span>
+                        <strong class="text-dark">@Model.EquipmentType.Name</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small uppercase">Calibración:</span>
+                        <span class="badge badge-pill @(Model.EquipmentType.RequiresCalibration ? "badge-info" : "badge-secondary") px-3 font-weight-bold">
+                            @(Model.EquipmentType.RequiresCalibration ? "Requerida" : "No requerida")
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Botones -->
+                <form method="post">
+                    <input type="hidden" asp-for="EquipmentType.Id" />
+                    
+                    <a asp-page="/Equipment/Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+                         Cerrar
+                    </a>
+                    <button type="submit" class="btn btn-danger btn-rounded px-4 shadow-sm font-weight-bold">
+                        <i class="fas fa-trash-alt mr-1"></i> Confirmar Eliminación
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-3 text-muted small italic">
+            <i class="fas fa-info-circle mr-1"></i> La eliminación es permanente si no existen registros históricos asociados.
+        </div>
+    </div>
 </div>
+
+@section Styles {
+    <style>
+        .border-3 { border-left-width: 3px !important; }
+    </style>
+}

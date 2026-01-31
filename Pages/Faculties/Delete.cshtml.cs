@@ -54,10 +54,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             var faculty = await _context.Faculties.FindAsync(id);
             if (faculty != null)
             {
-                Faculty = faculty;
-                Faculty.Status = GeneralStatus.Eliminado; // Soft delete
-                _context.Attach(Faculty).State = EntityState.Modified;
+                faculty.Status = GeneralStatus.Eliminado; // Soft delete
+                _context.Attach(faculty).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
+                
+                TempData.Success(NotificationHelper.Faculties.Deleted(faculty.Name));
             }
 
             return RedirectToPage("./Index");

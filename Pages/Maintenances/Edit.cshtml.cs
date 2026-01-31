@@ -27,70 +27,76 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var maintenance = await _context.Maintenances
                 .Include(m => m.CostDetails)
+                .Include(m => m.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (maintenance == null)
-            {
-                return NotFound();
-            }
+            if (maintenance == null) return NotFound();
+            
             Maintenance = maintenance;
-
-            ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
-            ViewData["RequestId"] = new SelectList(_context.Requests, "Id", "Id"); // Assuming description is not available yet, using Id
-            ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Tecnico), "Id", "FullName");
-            ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes, "Id", "Name");
+            CargarListas();
 
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Remove navigation properties from validation
+            // Limpieza y Normalización
+            Maintenance.Description = Maintenance.Description.Clean();
+            Maintenance.Observations = Maintenance.Observations.Clean();
+            Maintenance.Recommendations = Maintenance.Recommendations.Clean();
+
+            // Validaciones Lógicas Rigurosas
+            if (Maintenance.StartDate.HasValue && Maintenance.EndDate.HasValue)
+            {
+                if (Maintenance.EndDate < Maintenance.StartDate)
+                {
+                    ModelState.AddModelError("Maintenance.EndDate", NotificationHelper.Maintenances.EndDateBeforeStart);
+                }
+            }
+
+            // Quitar navegación de la validación
             ModelState.Remove("Maintenance.CreatedBy");
             ModelState.Remove("Maintenance.ModifiedBy");
             ModelState.Remove("Maintenance.Equipment");
             ModelState.Remove("Maintenance.MaintenanceType");
             ModelState.Remove("Maintenance.Technician");
             ModelState.Remove("Maintenance.Request");
-            // Note: CostDetails might need manual handling if they are bound from client
 
+            // Recalcular costo real basado en detalles
             decimal totalCosts = Maintenance.CostDetails?.Sum(d => d.Quantity * d.UnitPrice) ?? 0;
+            Maintenance.ActualCost = totalCosts;
 
             if (Maintenance.Status == MaintenanceStatus.Completed && totalCosts <= 0)
             {
-                // Warn if completing without costs, logic from original code
-                // Or maybe it is allowed? Original code said "No se puede completar..."
-                ModelState.AddModelError("Maintenance.Status", "Cannot complete maintenance without cost details.");
+                ModelState.AddModelError("Maintenance.Status", NotificationHelper.Maintenances.CompletedWithoutCosts);
             }
 
             if (!ModelState.IsValid)
             {
-                ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
-                ViewData["RequestId"] = new SelectList(_context.Requests, "Id", "Id");
-                ViewData["TechnicianId"] = new SelectList(_context.Users.Where(u => u.Role == UserRole.Tecnico), "Id", "FullName");
-                ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes, "Id", "Name");
+                CargarListas();
                 return Page();
             }
 
-            Maintenance.ActualCost = totalCosts;
-
             var maintenanceDB = await _context.Maintenances
                 .Include(m => m.CostDetails)
+                .Include(m => m.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == Maintenance.Id);
 
             if (maintenanceDB == null) return NotFound();
 
+            // Auditoría y Actualización
+            var currentUser = await _userManager.GetUserAsync(User);
+            Maintenance.ModifiedById = currentUser?.Id;
+            Maintenance.LastModifiedDate = DateTime.Now;
+
             _context.Entry(maintenanceDB).CurrentValues.SetValues(Maintenance);
 
-            // Sync Cost Details
-            // 1. Delete removed
+            // Sincronización de Detalles de Costos
+            // 1. Eliminar los que ya no están en la lista
             foreach (var existingDetail in maintenanceDB.CostDetails.ToList())
             {
                 if (!Maintenance.CostDetails.Any(d => d.Id == existingDetail.Id))
@@ -99,10 +105,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 }
             }
 
-            // 2. Add or Update
+            // 2. Agregar nuevos o actualizar existentes
             foreach (var detailForm in Maintenance.CostDetails)
             {
-                detailForm.MaintenanceId = Maintenance.Id; // Ensure FK
+                detailForm.MaintenanceId = Maintenance.Id;
 
                 var existingDetail = maintenanceDB.CostDetails.FirstOrDefault(d => d.Id == detailForm.Id && d.Id != 0);
                 if (existingDetail != null)
@@ -118,20 +124,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             try
             {
                 await _context.SaveChangesAsync();
+                TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.Equipment?.Name));
+                return RedirectToPage("./Index");
             }
-            catch (DbUpdateConcurrencyException)
+            catch (Exception ex)
             {
-                if (!MaintenanceExists(Maintenance.Id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                TempData.Error(NotificationHelper.Maintenances.SaveError(ex.Message));
+                CargarListas();
+                return Page();
             }
+        }
 
-            return RedirectToPage("./Index");
+        private void CargarListas()
+        {
+            var equipos = _context.Equipments
+                .Include(e => e.EquipmentType)
+                .Where(e => e.CurrentStatus != EquipmentStatus.Deleted)
+                .OrderBy(e => e.Name)
+                .Select(e => new
+                {
+                    Id = e.Id,
+                    DisplayName = $"{e.Name} (Inv: {e.InventoryNumber}) - [{e.EquipmentType.Name}]"
+                })
+                .ToList();
+
+            ViewData["EquipmentId"] = new SelectList(equipos, "Id", "DisplayName");
+            
+            var tecnicos = _context.People
+                .Where(p => p.Category == PersonCategory.Tecnico)
+                .OrderBy(p => p.FirstName)
+                .Select(p => new { Id = p.Id, FullName = p.FirstName + " " + p.LastName })
+                .ToList();
+            
+            ViewData["TechnicianId"] = new SelectList(tecnicos, "Id", "FullName");
+            ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes.OrderBy(mt => mt.Name), "Id", "Name");
+            ViewData["RequestId"] = new SelectList(_context.Requests.OrderByDescending(r => r.CreatedDate).Take(20), "Id", "Id");
         }
 
         private bool MaintenanceExists(int id)

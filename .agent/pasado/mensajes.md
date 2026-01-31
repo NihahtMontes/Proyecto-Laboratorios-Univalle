@@ -8,13 +8,17 @@
     Nunca escribas mensajes de texto directamente. Utiliza `NotificationHelper` y los métodos de extensión de `TempData`.
 
     ```csharp
-    // ✅ CORRECTO: Centralizado y Limpio
+    // ✅ CORRECTO: Doble Capa (Lógica y Notificación)
+    if (!Input.Name.IsValidName()) {
+        ModelState.AddModelError("Input.Name", NotificationHelper.Countries.InvalidFormat);
+        return Page();
+    }
+    
     if (exists) {
         ModelState.AddModelError("Input.Name", NotificationHelper.Countries.CountryNameDuplicate);
         return Page();
     }
 
-    // ... guardar cambios ...
     TempData.Success(NotificationHelper.Countries.Created(country.Name));
     return RedirectToPage("./Index");
     ```
@@ -75,6 +79,16 @@
 
     ---
 
+    ## 🧪 Validación IRT (In Real Time)
+    Para que el usuario reciba feedback inmediato, usamos los mensajes de NiceAdmin:
+    - **Requerido**: `data-validation-required-message`
+    - **Formato (Regex)**: `data-validation-pattern-message`
+    - **Longitud**: `data-validation-minlength-message`
+
+    *Nota*: Siempre incluir `<span asp-validation-for="...">` para errores que solo el servidor conoce (ej. Duplicados en BD).
+
+    ---
+
     ## 🗑️ Flujo de Eliminación Estándar
 
     1.  **Index**: El botón de la tabla es un enlace simple `<a>` hacia la página Delete. No uses popups directos en el listado para permitir una confirmación con más detalle.
@@ -89,3 +103,4 @@
     - [ ] ¿Se usó `@Html.JsTempData()` en el JavaScript de la vista?
     - [ ] ¿La alerta tiene el `type` correcto (v7)?
     - [ ] ¿Los nombres de entidades en el mensaje fueron procesados con `.Clean()`?
+    - [ ] ¿Se normalizaron los datos con `.Normalize()` antes de validar duplicados?

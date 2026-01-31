@@ -37,8 +37,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // CLASSIFICATION
         // ========================================
         [Required]
-        [Display(Name = "Tipo de Personal")]
-        public PersonType Type { get; set; } = PersonType.Internal;
+        [Display(Name = "Es Interno")]
+        public bool IsInternal { get; set; } = true;
+
+        [Required]
+        [Display(Name = "Categoría")]
+        public PersonCategory Category { get; set; } = PersonCategory.Tecnico;
 
         [StringLength(100)]
         [Display(Name = "Cargo / Título")]
@@ -84,6 +88,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Última Modificación")]
         public DateTime? LastModifiedDate { get; set; }
 
-
+        [NotMapped]
+        [Display(Name = "Nombre Completo")]
+        public string FullName => $"{FirstName} {LastName}";
     }
 }

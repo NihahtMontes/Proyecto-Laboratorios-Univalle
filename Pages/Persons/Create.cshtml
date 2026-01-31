@@ -2,120 +2,142 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Persons.CreateModel
 
 @{
-    ViewData["Title"] = "Crear Persona";
+    ViewData["Title"] = "Registro de Personal";
 }
 
-<div class="page-breadcrumb">
-    <div class="row">
-        <div class="col-5 align-self-center">
-            <h4 class="page-title">Crear Persona</h4>
-            <div class="d-flex align-items-center">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a asp-page="/Index">Inicio</a></li>
-                        <li class="breadcrumb-item"><a asp-page="Index">Personas</a></li>
-                        <li class="breadcrumb-item active" aria-current="page">Crear</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Registrar Nueva Identidad</h4>
+                        <h6 class="card-subtitle text-muted">Apertura de ficha en el catálogo de capital humano y colaboradores externos.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-id-card fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <form method="post">
-                    <div class="card-body">
-                        <h4 class="card-title">Información de la Persona</h4>
-                        <h6 class="card-subtitle">Complete los datos para registrar una nueva persona.</h6>
-                        
-                        <div asp-validation-summary="ModelOnly" class="text-danger m-b-20"></div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.FirstName" class="control-label">Nombres <span class="text-danger">*</span></label>
-                                    <input asp-for="Person.FirstName" class="form-control" placeholder="Ej: Juan" />
-                                    <span asp-validation-for="Person.FirstName" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.LastName" class="control-label">Apellidos <span class="text-danger">*</span></label>
-                                    <input asp-for="Person.LastName" class="form-control" placeholder="Ej: Pérez" />
-                                    <span asp-validation-for="Person.LastName" class="text-danger"></span>
-                                </div>
-                            </div>
-                        </div>
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.Type" class="control-label">Tipo de Persona <span class="text-danger">*</span></label>
-                                    <select asp-for="Person.Type" class="form-control" asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.PersonType>()">
-                                        <option value="">-- Seleccione Tipo --</option>
-                                    </select>
-                                    <span asp-validation-for="Person.Type" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.JobTitle" class="control-label">Cargo o Título</label>
-                                    <input asp-for="Person.JobTitle" class="form-control" placeholder="Ej: Docente de Química" />
-                                    <span asp-validation-for="Person.JobTitle" class="text-danger"></span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.Company" class="control-label">Empresa o Institución</label>
-                                    <input asp-for="Person.Company" class="form-control" placeholder="Ej: Univalle" />
-                                    <span asp-validation-for="Person.Company" class="text-danger"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.Email" class="control-label">Correo Electrónico</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="ti-email"></i></span>
-                                        </div>
-                                        <input asp-for="Person.Email" type="email" class="form-control" placeholder="juan.perez@ejemplo.com" />
+                    <div class="row">
+                        <!-- Identificación Personal -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-user-circle mr-2"></i> Identificación Personal
+                            </h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Person.FirstName" class="control-label font-weight-bold small uppercase text-muted">Nombres <span class="text-danger">*</span></label>
+                                        <input asp-for="Person.FirstName" class="form-control" placeholder="Ej: Juan Antonio" required />
+                                        <span asp-validation-for="Person.FirstName" class="text-danger small"></span>
                                     </div>
-                                    <span asp-validation-for="Person.Email" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Person.LastName" class="control-label font-weight-bold small uppercase text-muted">Apellidos <span class="text-danger">*</span></label>
+                                        <input asp-for="Person.LastName" class="form-control" placeholder="Ej: Pérez García" required />
+                                        <span asp-validation-for="Person.LastName" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2">
+                                <label asp-for="Person.IdentityCard" class="control-label font-weight-bold small text-info uppercase">Documento de Identidad (C.I.) <span class="text-danger">*</span></label>
+                                <input asp-for="Person.IdentityCard" class="form-control border-info shadow-none" placeholder="Ej: 1234567 LP" required />
+                                <span asp-validation-for="Person.IdentityCard" class="text-danger small"></span>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Person.Category" class="control-label font-weight-bold small uppercase text-muted">Perfil Persona <span class="text-danger">*</span></label>
+                                        <select asp-for="Person.Category" class="form-control custom-select" asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.PersonCategory>()" required>
+                                            <option value="">-- Seleccionar --</option>
+                                        </select>
+                                        <span asp-validation-for="Person.Category" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4 pt-4">
+                                        <div class="custom-control custom-switch">
+                                            <input type="checkbox" asp-for="Person.IsInternal" class="custom-control-input" id="swInternal">
+                                            <label class="custom-control-label small font-weight-bold text-muted uppercase" for="swInternal">Personal Interno</label>
+                                        </div>
+                                        <small class="text-muted d-block mt-1 italic" style="font-size: 0.75rem;">Indica si pertenece a la planilla Univalle.</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Person.PhoneNumber" class="control-label">Teléfono / Celular</label>
-                                    <div class="input-group">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text"><i class="ti-mobile"></i></span>
+                        <!-- Datos Profesionales y Contacto -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-briefcase mr-2"></i> Perfil Profesional
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Person.JobTitle" class="control-label font-weight-bold small uppercase text-muted">Cargo / Especialidad</label>
+                                <input asp-for="Person.JobTitle" class="form-control" placeholder="Ej: Jefe de Laboratorio / Estudiante" />
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Person.Company" class="control-label font-weight-bold small uppercase text-muted">Organización Vinculada</label>
+                                <input asp-for="Person.Company" class="form-control" placeholder="Ej: Universidad del Valle" />
+                            </div>
+
+                            <h5 class="font-weight-bold text-info mt-4 mb-3">
+                                <i class="fas fa-address-book mr-2"></i> Canales de Contacto
+                            </h5>
+
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Person.Email" class="control-label font-weight-bold small uppercase text-muted">Correo Institucional / Personal</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-white"><i class="fas fa-envelope text-muted"></i></span>
+                                            </div>
+                                            <input asp-for="Person.Email" type="email" class="form-control" placeholder="ejemplo@univalle.edu" />
                                         </div>
-                                        <input asp-for="Person.PhoneNumber" class="form-control" placeholder="Ej: +591 70000000" />
+                                        <span asp-validation-for="Person.Email" class="text-danger small"></span>
                                     </div>
-                                    <span asp-validation-for="Person.PhoneNumber" class="text-danger"></span>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Person.PhoneNumber" class="control-label font-weight-bold small uppercase text-muted">Número de Contacto</label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-white"><i class="fas fa-phone-alt text-muted"></i></span>
+                                            </div>
+                                            <input asp-for="Person.PhoneNumber" class="form-control" placeholder="+591 ..." />
+                                        </div>
+                                        <span asp-validation-for="Person.PhoneNumber" class="text-danger small"></span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="card-footer bg-light">
-                        <div class="form-group mb-0 text-right">
-                            <button type="submit" class="btn btn-info">
-                                <i class="mdi mdi-content-save"></i> Guardar Persona
-                            </button>
-                            <a asp-page="Index" class="btn btn-dark">
-                                <i class="mdi mdi-arrow-left"></i> Volver al Listado
-                            </a>
-                        </div>
+
+                    <div class="alert alert-light-info border-0 small p-3 mt-2 text-info d-flex align-items-center">
+                        <i class="fas fa-info-circle mr-3 fa-2x"></i>
+                        <span>Este registro crea la identidad base. Posteriormente podrá asignar una <strong>Cuenta de Usuario</strong> vinculada a este perfil si requiere acceso al sistema.</span>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Registrar Persona
+                        </button>
+                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                            Cancelar
+                        </a>
                     </div>
                 </form>
             </div>
@@ -124,5 +146,12 @@
 </div>
 
 @section Scripts {
+    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+        });
+    </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

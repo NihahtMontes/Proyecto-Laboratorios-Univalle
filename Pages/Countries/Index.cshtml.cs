@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
@@ -20,13 +21,33 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
 
         public IList<Country> Countries { get; set; } = default!;
 
+        [BindProperty(SupportsGet = true)]
+        public string? SearchTerm { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public GeneralStatus? StatusFilter { get; set; }
+
         public async Task OnGetAsync()
         {
-            Countries = await _context.Countries
+            var query = _context.Countries
                 .Include(c => c.CreatedBy)
                 .Include(c => c.ModifiedBy)
-                .Where(c => c.Status != GeneralStatus.Eliminado)
-                .ToListAsync();
+                .Where(c => c.Status != GeneralStatus.Eliminado);
+
+            // Filtro por término de búsqueda
+            if (!string.IsNullOrEmpty(SearchTerm))
+            {
+                var term = SearchTerm.Trim().ToLower();
+                query = query.Where(c => c.Name.ToLower().Contains(term));
+            }
+
+            // Filtro por Estado
+            if (StatusFilter.HasValue)
+            {
+                query = query.Where(c => c.Status == StatusFilter.Value);
+            }
+
+            Countries = await query.ToListAsync();
         }
     }
 }

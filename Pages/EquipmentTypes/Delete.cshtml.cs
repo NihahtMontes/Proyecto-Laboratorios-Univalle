@@ -58,7 +58,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
                 await _context.SaveChangesAsync();
             }
 
-            return RedirectToPage("./Index");
+            TempData["SuccessMessage"] = "La categoría ha sido eliminada del sistema.";
+            return RedirectToPage("/Equipment/Index");
         }
     }
 }

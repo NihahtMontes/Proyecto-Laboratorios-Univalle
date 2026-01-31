@@ -36,11 +36,32 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             Country = country;
             return Page();
         }
-
         public async Task<IActionResult> OnPostAsync()
         {
             if (!ModelState.IsValid)
             {
+                return Page();
+            }
+
+            // 1. Normalizar
+            var normalizedName = Country.Name.Normalize();
+
+            // 2. Validar Duplicados (Excluyendo el ID actual)
+            var exists = await _context.Countries
+                .AnyAsync(c => c.Id != Country.Id && 
+                               c.Name.Trim().ToLower() == normalizedName && 
+                               c.Status != Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Eliminado);
+
+            if (exists)
+            {
+                ModelState.AddModelError("Country.Name", NotificationHelper.Countries.CountryNameDuplicate);
+                return Page();
+            }
+
+            // 3. Validar Formato
+            if (!Country.Name.IsValidName())
+            {
+                ModelState.AddModelError("Country.Name", NotificationHelper.Countries.InvalidFormat);
                 return Page();
             }
 
@@ -62,7 +83,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
                 }
             }
 
-            return RedirectToPage("./Index");
+            TempData.Success(NotificationHelper.Countries.Updated(Country.Name));
+            return RedirectToPage("/Cities/Index");
         }
 
         private bool CountryExists(int id)

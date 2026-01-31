@@ -2,41 +2,122 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Faculties.CreateModel
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Alta de Facultad";
 }
 
-<h1>Create</h1>
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Alta de Unidad Académica</h4>
+                        <h6 class="card-subtitle text-muted">Defina las facultades que agrupan los centros de investigación y laboratorios.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-university fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
 
-<h4>Faculty</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Name" class="control-label">Nombre</label>
-                <input asp-for="Input.Name" class="form-control" />
-                <span asp-validation-for="Input.Name" class="text-danger"></span>
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+
+                    <div class="row">
+                        <!-- Identificación -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-card mr-2"></i> Identidad Institucional
+                            </h5>
+                            
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre de la Facultad <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" placeholder="Ej: Facultad de Informática y Electrónica" required />
+                                <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2">
+                                <label asp-for="Input.Code" class="control-label font-weight-bold small text-warning uppercase">Sigla Oficial</label>
+                                <input asp-for="Input.Code" class="form-control border-warning shadow-none" placeholder="Ej: FIE" maxlength="10" />
+                                <span asp-validation-for="Input.Code" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <!-- Alcance -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-align-left mr-2"></i> Alcance Académico
+                            </h5>
+                            
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small uppercase text-muted">Descripción Operativa</label>
+                                <textarea asp-for="Input.Description" class="form-control" rows="4" placeholder="Especifique las áreas técnicas o carreras que dependen de esta facultad..."></textarea>
+                            </div>
+
+                            <div class="alert alert-light-info border-0 small p-3 mt-2 text-info italic">
+                                <i class="fas fa-info-circle mr-1"></i> Las facultades permiten jerarquizar los informes de mantenimiento por unidad de negocio o área académica.
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Registrar Facultad
+                        </button>
+                        <a asp-page="/Laboratories/Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <label asp-for="Input.Code" class="control-label">Código</label>
-                <input asp-for="Input.Code" class="form-control" />
-                <span asp-validation-for="Input.Code" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.Description" class="control-label">Descripción</label>
-                <textarea asp-for="Input.Description" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="Input.Description" class="text-danger"></span>
-            </div>
-            <div class="form-group mt-3">
-                <input type="submit" value="Crear" class="btn btn-primary" />
-                <a asp-page="Index" class="btn btn-secondary">Cancelar</a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
 @section Scripts {
+    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            
+            // Función para mostrar mensajes de error temporales
+            function showTemporaryError($el, message) {
+                var $group = $el.closest('.form-group');
+                var $help = $group.find('.help-block');
+                if ($help.length === 0) {
+                    $group.append('<div class="help-block text-danger small font-weight-bold mt-1"></div>');
+                    $help = $group.find('.help-block');
+                }
+                $help.text(message).fadeIn();
+                $group.addClass('error');
+                
+                setTimeout(function() {
+                    $help.fadeOut(function() { $(this).text(''); });
+                    $group.removeClass('error');
+                }, 2000);
+            }
+
+            // Patrón: solo letras, números, espacios, guiones, puntos y paréntesis
+            var textPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]*$/;
+            
+            function setupBlocking($selector, pattern, errorMessage) {
+                $($selector).on('input', function() {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]/g, ''));
+                        showTemporaryError($field, errorMessage);
+                    }
+                });
+            }
+
+            // Aplicar validación agresiva
+            setupBlocking('#Input_Name', textPattern, "Carácter no permitido (especial)");
+            setupBlocking('#Input_Code', textPattern, "Código: Solo letras, números y guiones");
+        });
+    </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

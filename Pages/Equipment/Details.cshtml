@@ -2,292 +2,205 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.DetailsModel
 
 @{
-    ViewData["Title"] = "Detalles del Equipo";
+    ViewData["Title"] = "Expediente del Equipo";
 }
 
-<h1>Detalles del Equipo</h1>
-
 <div class="row">
-    <!-- ========================================
-         MAIN COLUMN: EQUIPMENT INFO
-         ======================================== -->
-    <div class="col-md-8">
-
-        <!-- BASIC INFO -->
-        <div class="card mb-3">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información Básica</h5>
-            </div>
-            <div class="card-body">
-                <dl class="row">
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.Name)</dt>
-                    <dd class="col-sm-8"><strong>@Html.DisplayFor(model => model.Equipment.Name)</strong></dd>
-
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.InventoryNumber)</dt>
-                    <dd class="col-sm-8"><span class="badge badge-secondary">@Html.DisplayFor(model => model.Equipment.InventoryNumber)</span></dd>
-
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.EquipmentType)</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Equipment.EquipmentType.Name)</dd>
-
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.Laboratory)</dt>
-                    <dd class="col-sm-8">
-                        @Html.DisplayFor(model => model.Equipment.Laboratory.Name)
-                        <small class="text-muted">(@Model.Equipment.Laboratory?.Faculty?.Name)</small>
-                    </dd>
-
-                    <dt class="col-sm-4">Estado Actual</dt>
-                    <dd class="col-sm-8">
-                        @Html.DisplayFor(model => model.Equipment.CurrentStatus)
-                    </dd>
-                </dl>
-            </div>
-        </div>
-
-        <!-- TECHNICAL SPECS -->
-        <div class="card mb-3">
-            <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0"><i class="fas fa-cogs"></i> Especificaciones Técnicas</h5>
-            </div>
-            <div class="card-body">
-                <dl class="row">
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.Brand)</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Equipment.Brand)</dd>
-
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.Model)</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Equipment.Model)</dd>
-
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.SerialNumber)</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Equipment.SerialNumber)</dd>
-                </dl>
-            </div>
-        </div>
-
-        <!-- FINANCIAL INFO -->
-        <div class="card mb-3">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="fas fa-dollar-sign"></i> Información Financiera</h5>
-            </div>
-            <div class="card-body">
-                <dl class="row">
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.AcquisitionDate)</dt>
-                    <dd class="col-sm-8">
-                        @if (Model.Equipment.AcquisitionDate.HasValue)
-                        {
-                            @Model.Equipment.AcquisitionDate.Value.ToString("dd/MM/yyyy")
+    <!-- Columna Principal: Expediente Técnico -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Expediente Técnico: @Model.Equipment.Name</h4>
+                        <h6 class="card-subtitle text-muted">Información detallada sobre el activo y su ciclo de vida operativo.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        @{
+                            var statusBadge = Model.Equipment.CurrentStatus switch {
+                                Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Operational => "badge-success",
+                                Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.UnderMaintenance => "badge-warning",
+                                Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.OutOfService => "badge-danger",
+                                _ => "badge-secondary"
+                            };
                         }
-                        else
-                        {
-                            <span class="text-muted">No especificado</span>
-                        }
-                    </dd>
-
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.AcquisitionValue)</dt>
-                    <dd class="col-sm-8">
-                        @if (Model.Equipment.AcquisitionValue.HasValue)
-                        {
-                            @Model.Equipment.AcquisitionValue.Value.ToString("C")
-                        }
-                        else
-                        {
-                            <span class="text-muted">No especificado</span>
-                        }
-                    </dd>
-
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.UsefulLifeYears)</dt>
-                    <dd class="col-sm-8">
-                        @if (Model.Equipment.UsefulLifeYears.HasValue)
-                        {
-                            @Model.Equipment.UsefulLifeYears
-                        }
-                        else
-                        {
-                            <span class="text-muted">No especificado</span>
-                        }
-                    </dd>
-
-                    @if (Model.Equipment.AgeYears.HasValue)
-                    {
-                        <dt class="col-sm-4">Antigüedad</dt>
-                        <dd class="col-sm-8">
-                            @Model.Equipment.AgeYears años
-                            @if (Model.Equipment.RequiresReplacement)
-                            {
-                                <span class="badge badge-warning ml-2">
-                                    <i class="fas fa-exclamation-triangle"></i> Requiere Reemplazo
-                                </span>
-                            }
-                        </dd>
-                    }
-                </dl>
-            </div>
-        </div>
-
-        <!-- ORIGIN -->
-        <div class="card mb-3">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Origen</h5>
-            </div>
-            <div class="card-body">
-                <dl class="row">
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.Country)</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Equipment.Country.Name)</dd>
-
-                    <dt class="col-sm-4">@Html.DisplayNameFor(model => model.Equipment.City)</dt>
-                    <dd class="col-sm-8">@Html.DisplayFor(model => model.Equipment.City.Name)</dd>
-                </dl>
-            </div>
-        </div>
-
-        <!-- OBSERVATIONS -->
-        @if (!string.IsNullOrEmpty(Model.Equipment.Observations))
-        {
-            <div class="card mb-3">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0"><i class="fas fa-comment"></i> Observaciones</h5>
+                        <span class="badge badge-pill @statusBadge px-4 py-2" style="font-size: 0.9rem;">
+                            <i class="fas fa-check-circle mr-1"></i> @Model.Equipment.CurrentStatus
+                        </span>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <p>@Html.DisplayFor(model => model.Equipment.Observations)</p>
-                </div>
-            </div>
-        }
 
-        <!-- ========================================
-             STATUS HISTORY
-             ======================================== -->
-        <div class="card mb-3">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="fas fa-history"></i> Historial de Estado</h5>
-            </div>
-            <div class="card-body">
-                @if (Model.Equipment.StateHistory != null && Model.Equipment.StateHistory.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead class="thead-dark">
+                <div class="row mt-4">
+                    <div class="col-md-6 border-right">
+                        <h5 class="font-weight-bold text-info mb-3">
+                            <i class="fas fa-microscope mr-2"></i> Especificaciones del Activo
+                        </h5>
+                        <table class="table table-sm table-borderless bg-light rounded p-3">
+                            <tbody>
                                 <tr>
-                                    <th>Estado</th>
+                                    <th class="text-muted small uppercase pl-3 pt-3" style="width: 40%;">N° Inventario</th>
+                                    <td class="font-weight-bold pt-3 text-info">@Model.Equipment.InventoryNumber</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3">Marca / Modelo</th>
+                                    <td class="font-weight-bold text-dark">@(Model.Equipment.Brand ?? "N/A") - @(Model.Equipment.Model ?? "N/A")</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3">Número de Serie</th>
+                                    <td class="text-dark">@(Model.Equipment.SerialNumber ?? "S/N")</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3 pb-3">Categoría</th>
+                                    <td class="pb-3 text-dark">@Model.Equipment.EquipmentType.Name</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5 class="font-weight-bold text-info mb-3">
+                            <i class="fas fa-map-marker-alt mr-2"></i> Ubicación Asignada
+                        </h5>
+                        <div class="p-3 bg-light rounded">
+                            <div class="mb-3">
+                                <label class="text-muted small uppercase d-block mb-0">Laboratorio / Sede</label>
+                                <span class="font-weight-bold text-dark">@Model.Equipment.Laboratory.Name</span>
+                                <div class="small text-muted">@Model.Equipment.Laboratory?.Faculty?.Name</div>
+                            </div>
+                            <div>
+                                <label class="text-muted small uppercase d-block mb-0">Ubicación Administrativa</label>
+                                <span class="text-dark">@Model.Equipment.City.Name, @Model.Equipment.Country.Name</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historial de Disponibilidad -->
+                <div class="mt-5">
+                    <h5 class="font-weight-bold text-dark mb-3">
+                        <i class="fas fa-history mr-2 text-warning"></i> Historial de Estados Recientes
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover v-middle border rounded">
+                            <thead class="bg-light">
+                                <tr class="small uppercase font-weight-bold text-muted">
+                                    <th>Estatus Técnico</th>
                                     <th>Fecha Inicio</th>
                                     <th>Fecha Fin</th>
                                     <th>Duración</th>
-                                    <th>Registrado Por (Creador)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var history in Model.Equipment.StateHistory.OrderByDescending(e => e.StartDate))
+                                @if (Model.Equipment.StateHistory?.Any() == true)
                                 {
-                                    <tr class="@(history.EndDate == null ? "table-success" : "")">
-                                        <td>
-                                            <strong>@history.Status</strong>
-                                            @if (history.EndDate == null)
-                                            {
-                                                <span class="badge badge-success ml-2">Actual</span>
-                                            }
-                                        </td>
-                                        <td>@history.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
-                                        <td>
-                                            @if (history.EndDate.HasValue)
-                                            {
-                                                @history.EndDate.Value.ToString("dd/MM/yyyy HH:mm")
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">En curso</span>
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (history.DurationDays.HasValue)
-                                            {
-                                                if (history.DurationDays < 1)
-                                                {
-                                                    <span>Menos de 1 día</span>
-                                                }
-                                                else
-                                                {
-                                                    <span>@history.DurationDays días</span>
-                                                }
-                                            }
-                                        </td>
-                                        <td>
-                                            @if (history.CreatedBy != null)
-                                            {
-                                                @history.CreatedBy.FullName
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">Sistema</span>
-                                            }
-                                        </td>
+                                    @foreach (var history in Model.Equipment.StateHistory.OrderByDescending(h => h.StartDate).Take(5))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="badge @(history.EndDate == null ? "badge-success" : "badge-light text-muted") px-3">
+                                                    @history.Status
+                                                </span>
+                                            </td>
+                                            <td class="small">@history.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                            <td class="small">@(history.EndDate?.ToString("dd/MM/yyyy HH:mm") ?? "En curso")</td>
+                                            <td class="small">@(history.DurationDays.HasValue ? $"{history.DurationDays} d." : "-")</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted italic p-4 small">No se registra historial de cambios.</td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
                     </div>
-                }
-                else
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.Equipment.Observations))
                 {
-                    <p class="text-muted">No se encontró historial de estados.</p>
+                    <div class="alert alert-info border-0 mt-4 bg-light-info text-info small">
+                        <label class="font-weight-bold uppercase mb-1 d-block">Observaciones de Referencia</label>
+                        <i class="fas fa-info-circle mr-2"></i> @Model.Equipment.Observations
+                    </div>
                 }
             </div>
         </div>
-
     </div>
 
-    <!-- ========================================
-         SIDE COLUMN: AUDIT & ACTIONS
-         ======================================== -->
-    <div class="col-md-4">
-
-        <!-- AUDIT -->
-        <div class="card mb-3">
-            <div class="card-header bg-dark text-white">
-                <h5 class="mb-0"><i class="fas fa-user-shield"></i> Auditoría</h5>
-            </div>
+    <!-- Columna Lateral: Lifecycle y Control -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4 bg-info text-white">
             <div class="card-body">
-                <p>
-                    <strong>Creado:</strong><br>
-                    @Model.Equipment.CreatedDate.ToString("dd/MM/yyyy HH:mm")<br>
-                    @if (Model.Equipment.CreatedBy != null)
-                    {
-                        <small class="text-muted">por @Model.Equipment.CreatedBy.FullName</small>
-                    }
-                </p>
-                @if (Model.Equipment.LastModifiedDate.HasValue)
-                {
-                    <p>
-                        <strong>Modificado:</strong><br>
-                        @Model.Equipment.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")<br>
-                        @if (Model.Equipment.ModifiedBy != null)
-                        {
-                            <small class="text-muted">por @Model.Equipment.ModifiedBy.FullName</small>
+                <h5 class="card-title text-white font-weight-bold"><i class="fas fa-chart-line mr-2"></i> Ciclo de Vida Útil</h5>
+                <hr class="border-white opacity-2" />
+                
+                <div class="row">
+                    <div class="col-6">
+                        <small class="text-white-50 d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Antigüedad</small>
+                        <span class="font-weight-bold h5 mb-0">@(Model.Equipment.AgeYears?.ToString() ?? "0") años</span>
+                    </div>
+                    <div class="col-6 border-left border-white opacity-5">
+                        <small class="text-white-50 d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Vida Estimada</small>
+                        <span class="font-weight-bold h5 mb-0">@(Model.Equipment.UsefulLifeYears?.ToString() ?? "0") años</span>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    @{
+                        var percent = 0;
+                        if (Model.Equipment.UsefulLifeYears.HasValue && Model.Equipment.UsefulLifeYears > 0) {
+                            percent = (int)(100 - ((double)(Model.Equipment.AgeYears ?? 0) / Model.Equipment.UsefulLifeYears * 100));
+                            percent = Math.Max(0, Math.Min(100, percent));
                         }
-                    </p>
-                }
+                        var progressColor = percent < 20 ? "bg-danger" : (percent < 50 ? "bg-warning" : "bg-success");
+                    }
+                    <div class="d-flex justify-content-between mb-1">
+                        <small class="text-white-50 uppercase font-weight-bold" style="font-size: 0.65rem;">Salud del Activo</small>
+                        <span class="small font-weight-bold">@percent%</span>
+                    </div>
+                    <div class="progress" style="height: 5px; background: rgba(255,255,255,0.2);">
+                        <div class="progress-bar @progressColor" role="progressbar" style="width: @percent%;"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- ACTIONS -->
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-tools"></i> Acciones</h5>
-            </div>
+        <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
-                <a asp-page="./Edit" asp-route-id="@Model.Equipment.Id" class="btn btn-warning btn-block mb-2">
-                    <i class="fas fa-edit"></i> Editar
-                </a>
-                <a asp-page="./Index" class="btn btn-secondary btn-block mb-2">
-                    <i class="fas fa-list"></i> Volver al Listado
-                </a>
-                <!-- Maintenance Link commented out until renamed -->
-                <!-- 
-                <a asp-page="/Maintenances/Create" asp-route-equipmentId="@Model.Equipment.Id" class="btn btn-info btn-block mb-2">
-                    <i class="fas fa-wrench"></i> New Maintenance
-                </a>
-                -->
-                <a asp-page="./Delete" asp-route-id="@Model.Equipment.Id" class="btn btn-danger btn-block">
-                    <i class="fas fa-trash"></i> Eliminar
-                </a>
+                <h5 class="card-title text-dark font-weight-bold mb-4"><i class="fas fa-user-shield mr-2 text-warning"></i> Trazabilidad</h5>
+                <hr />
+                <div class="small mt-3">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Registrado por</label>
+                        <span class="font-weight-bold text-dark d-block">@(Model.Equipment.CreatedBy?.FullName ?? "Sistema")</span>
+                        <span class="text-muted">@Model.Equipment.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                    @if (Model.Equipment.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0">
+                            <label class="text-muted d-block small uppercase mb-0">Última Edición</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Equipment.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted">@Model.Equipment.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
 
+        <!-- Botones de Acción -->
+        <div class="form-actions mt-4">
+            <a asp-page="./Edit" asp-route-id="@Model.Equipment.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
+                <i class="fas fa-edit mr-1"></i> Editar Ficha Técnica
+            </a>
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4">
+                <i class="fas fa-list mr-1"></i> Volver al Inventario
+            </a>
+            
+            <a asp-page="./Delete" asp-route-id="@Model.Equipment.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+                <i class="fas fa-trash-alt mr-1"></i> Solicitar baja definitiva del activo
+            </a>
+        </div>
     </div>
 </div>

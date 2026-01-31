@@ -2,77 +2,204 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Laboratories.EditModel
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Editar Laboratorio";
 }
 
-<h1>Edit</h1>
-
-<h4>Laboratory</h4>
-<hr />
 <div class="row">
-    <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <!-- ID is in the route, but keeping a hidden for safety if needed, though route binding is preferred -->
-            <input type="hidden" name="id" value="@Model.Id" /> 
-            
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.FacultyId" class="control-label"></label>
-                <select asp-for="Input.FacultyId" class="form-control" asp-items="ViewBag.FacultyId" aria-required="true"></select>
-                <span asp-validation-for="Input.FacultyId" class="text-danger"></span>
+    <!-- Columna Principal: Gestión de Infraestructura -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Actualización de Infraestructura</h4>
+                        <h6 class="card-subtitle text-muted">Asegúrese de que el código y el estado operativo sean precisos.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-tools fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" name="id" value="@Model.Id" /> 
+
+                    <div class="row">
+                        <!-- Identificación y Adscripción -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-university mr-2"></i> Adscripción Académica</h5>
+                            
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold small uppercase text-muted">Facultad Responsable <span class="text-danger">*</span></label>
+                                <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="ViewBag.FacultyId" required>
+                                </select>
+                                <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2 font-weight-bold text-dark">
+                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-info">Código Identificador (C.I.L.) <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Code" class="form-control border-info shadow-none font-weight-bold" required maxlength="20" />
+                                <span asp-validation-for="Input.Code" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Denominación Oficial <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" required placeholder="Nombre del laboratrorio" />
+                                <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <!-- Localización y Perfil -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-map-marker-alt mr-2"></i> Localización Física</h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Building" class="control-label font-weight-bold small uppercase text-muted">Edificio / Bloque</label>
+                                <input asp-for="Input.Building" class="form-control" placeholder="Ej. Bloque Industrial" />
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Floor" class="control-label font-weight-bold small uppercase text-muted">Nivel / Piso</label>
+                                <input asp-for="Input.Floor" class="form-control" placeholder="Ej. Planta Baja" />
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Type" class="control-label font-weight-bold small uppercase text-muted">Especialidad Técnica</label>
+                                <input asp-for="Input.Type" class="form-control" placeholder="Ej. Automatización / Biomedicina" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning mt-3">
+                        <label asp-for="Input.Status" class="text-warning small uppercase font-weight-bold">Estado Operativo <span class="text-danger">*</span></label>
+                        <select asp-for="Input.Status" class="form-control border-warning font-weight-bold custom-select" 
+                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"
+                                required>
+                        </select>
+                        <small class="text-muted italic mt-1 d-block">La desactivación impide el registro de nuevos servicios de mantenimiento en este espacio.</small>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label asp-for="Input.Description" class="control-label font-weight-bold small uppercase text-muted">Notas Adicionales</label>
+                        <textarea asp-for="Input.Description" class="form-control" rows="3" placeholder="Información relevante sobre el acceso o manejo del espacio..."></textarea>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions mt-4 text-right">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Guardar Cambios
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Code" class="control-label"></label>
-                <input asp-for="Input.Code" class="form-control" aria-required="true"/>
-                <span asp-validation-for="Input.Code" class="text-danger"></span>
+        </div>
+    </div>
+
+    <!-- Columna Lateral: Estado y Control -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-info-circle mr-2 text-info"></i> Estado de Infraestructura</h5>
+                <hr class="border-secondary" />
+                
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-info mb-3">
+                        <i class="fas fa-flask fa-lg"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-white mb-1">@Model.Input.Code</h5>
+                    <span class="badge badge-pill badge-warning px-3 small font-weight-bold">@(Model.Input.Status)</span>
+                </div>
+
+                <div class="mt-4 border-top border-secondary pt-3 small">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Activos Vinculados:</span>
+                        <span class="font-weight-bold text-info">Cargando...</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Capacidad:</span>
+                        <span class="font-weight-bold">Estándar</span>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Name" class="control-label"></label>
-                <input asp-for="Input.Name" class="form-control" aria-required="true"/>
-                <span asp-validation-for="Input.Name" class="text-danger"></span>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Control de Auditoría</h5>
+                <hr />
+                <div class="small">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Alta de Registro</label>
+                        <span class="font-weight-bold text-dark d-block">@Model.ExistingLaboratory?.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <span class="text-muted">Por: @(Model.ExistingLaboratory?.CreatedBy?.Initials ?? "Sist.")</span>
+                    </div>
+                    @if (Model.ExistingLaboratory?.LastModifiedDate.HasValue == true)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <span class="font-weight-bold text-dark d-block">@Model.ExistingLaboratory.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            <span class="text-muted">Por: @(Model.ExistingLaboratory.ModifiedBy?.Initials ?? "-")</span>
+                        </div>
+                    }
+                </div>
             </div>
-            <div class="form-group">
-                <label asp-for="Input.Type" class="control-label"></label>
-                <input asp-for="Input.Type" class="form-control" />
-                <span asp-validation-for="Input.Type" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.Building" class="control-label"></label>
-                <input asp-for="Input.Building" class="form-control" />
-                <span asp-validation-for="Input.Building" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.Floor" class="control-label"></label>
-                <input asp-for="Input.Floor" class="form-control" />
-                <span asp-validation-for="Input.Floor" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.Description" class="control-label"></label>
-                <input asp-for="Input.Description" class="form-control" />
-                <span asp-validation-for="Input.Description" class="text-danger"></span>
-            </div>
-            
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Status" class="control-label"></label>
-                <select asp-for="Input.Status" class="form-control" asp-items="ViewBag.ListaEstados" ></select>
-                <span asp-validation-for="Input.Status" class="text-danger"></span>
-            </div>
-           
-            <div class="form-group mt-3">
-                <input type="submit" value="Save" class="btn btn-primary" />
-            </div>
-        </form>
+        </div>
+
+        <div class="alert alert-light border shadow-none small text-muted mt-4 italic">
+            <i class="fas fa-info-circle mr-1 text-info"></i> Los laboratorios son la unidad base para la organización georeferenciada del equipamiento.
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-page="./Index">Back to List</a>
-</div>
-
 @section Scripts {
+    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            
+            // Función para mostrar mensajes de error temporales
+            function showTemporaryError($el, message) {
+                var $group = $el.closest('.form-group');
+                var $help = $group.find('.help-block');
+                if ($help.length === 0) {
+                    $group.append('<div class="help-block text-danger small font-weight-bold mt-1"></div>');
+                    $help = $group.find('.help-block');
+                }
+                $help.text(message).fadeIn();
+                $group.addClass('error');
+                
+                setTimeout(function() {
+                    $help.fadeOut(function() { $(this).text(''); });
+                    $group.removeClass('error');
+                }, 2000);
+            }
+
+            // Patrón: solo letras, números, espacios, guiones, puntos y paréntesis
+            var textPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]*$/;
+            
+            function setupBlocking($selector, pattern, errorMessage) {
+                $($selector).on('input', function() {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]/g, ''));
+                        showTemporaryError($field, errorMessage);
+                    }
+                });
+            }
+
+            // Aplicar validación agresiva
+            setupBlocking('#Input_Name', textPattern, "Carácter no permitido (especial)");
+            setupBlocking('#Input_Code', textPattern, "Código: Solo letras, números y guiones");
+            setupBlocking('#Input_Type', textPattern, "Tipo: Solo caracteres alfanuméricos");
+            setupBlocking('#Input_Building', textPattern, "Edificio: Solo caracteres alfanuméricos");
+            setupBlocking('#Input_Floor', textPattern, "Piso: Solo caracteres alfanuméricos");
+        });
+    </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

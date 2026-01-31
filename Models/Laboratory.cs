@@ -110,5 +110,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public decimal TotalInventoryValue =>
             Equipments?.Where(e => e.AcquisitionValue.HasValue)
                        .Sum(e => e.AcquisitionValue ?? 0) ?? 0;
+
+        public int? CityId { get; internal set; }
     }
 }

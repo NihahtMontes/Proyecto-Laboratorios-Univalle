@@ -1,89 +1,148 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Users.IndexModel
 
-
-<h1>Lista de Usuarios</h1>
-
+@{
+    ViewData["Title"] = "Gestión de Accesos";
+}
 
 <div class="row">
     <div class="col-12">
-        <div class="card">
-            <!-- Navegación de Pestañas Estilo NiceAdmin -->
-            <ul class="nav nav-tabs customtab" role="tablist">
+        <div class="card shadow-sm border-0">
+            <!-- 📂 Navegación de Pestañas Premium -->
+            <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link active" data-toggle="tab" href="#usuarios" role="tab">
-                        <span class="hidden-sm-up"><i class="ti-user"></i></span>
-                        <span class="hidden-xs-down"> Listado de Usuarios</span>
+                    <a class="nav-link active font-weight-bold" data-toggle="tab" href="#usuarios" role="tab">
+                        <span class="hidden-sm-up"><i class="fas fa-users-cog"></i></span>
+                        <span class="hidden-xs-down"><i class="fas fa-users-cog mr-2"></i> Cuentas de Acceso</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#personas" role="tab">
-                        <span class="hidden-sm-up"><i class="ti-id-badge"></i></span>
-                        <span class="hidden-xs-down"> Gestión de Personas</span>
+                    <a class="nav-link font-weight-bold" data-toggle="tab" href="#personas" role="tab">
+                        <span class="hidden-xs-down"><i class="fas fa-id-card mr-2"></i> Directorio de Personal</span>
                     </a>
                 </li>
             </ul>
 
-            <!-- Contenido de las Pestañas -->
             <div class="tab-content">
-
                 <!-- PESTAÑA 1: USUARIOS -->
                 <div class="tab-pane active" id="usuarios" role="tabpanel">
                     <div class="card-body">
-                        <div class="d-md-flex align-items-center mb-3">
+                        <div class="d-md-flex align-items-center mb-4">
                             <div>
-                                <h4 class="card-title">Cuentas de Usuario</h4>
-                                <h6 class="card-subtitle">Administre los accesos y roles del sistema</h6>
+                                <h4 class="card-title text-dark">Control de Usuarios del Sistema</h4>
+                                <h6 class="card-subtitle text-muted">Administración de credenciales, roles y estados de seguridad.</h6>
                             </div>
-                            <div class="ml-auto">
-                                <a asp-page="Create" class="btn btn-sm btn-info btn-rounded">
-                                    <i class="fas fa-plus mr-1"></i> Crear Usuario
+                            <div class="ml-auto mt-2">
+                                <a asp-page="Create" class="btn btn-info btn-rounded shadow-sm px-4">
+                                    <i class="fas fa-plus-circle mr-1"></i> Vincular Usuario
                                 </a>
                             </div>
+                        </div>
+
+                        <!-- 🔍 Smart Index Zone -->
+                        <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                            <form method="get">
+                                <div class="row align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="small font-weight-bold text-muted uppercase">Búsqueda Técnica</label>
+                                        <div class="input-group drop-shadow">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                            </div>
+                                            <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, Usuario o C.I..." />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="small font-weight-bold text-muted uppercase">Estado de Cuenta</label>
+                                        <select asp-for="StatusFilter" class="form-control custom-select" 
+                                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()">
+                                            <option value="">-- Todos --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 text-right mt-2 mt-md-0">
+                                        <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                            <i class="fas fa-filter mr-1"></i> Filtrar
+                                        </button>
+                                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
 
                         <div class="table-responsive">
                             <table class="table table-hover v-middle">
                                 <thead class="thead-light">
-                                    <tr>
-                                        <th>Nombre</th>
-                                        <th>Rol</th>
-                                        <th>Estado</th>
-                                        <th>Cargo</th>
-                                        <th>Email</th>
-                                        <th>Acciones</th>
+                                    <tr class="small uppercase font-weight-bold">
+                                        <th>Identidad / Usuario</th>
+                                        <th>Seguridad / Rol</th>
+                                        <th class="text-center">Estatus</th>
+                                        <th>Perfil Laboral</th>
+                                        <th>Registro</th>
+                                        <th class="text-center">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var item in Model.User)
+                                    @if (!Model.UserList.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center py-5 text-muted">
+                                                <i class="fas fa-user-slash fa-3x mb-3 d-block opacity-2"></i>
+                                                No se encontraron cuentas que coincidan con la búsqueda.
+                                            </td>
+                                        </tr>
+                                    }
+                                    @foreach (var item in Model.UserList)
                                     {
                                         <tr>
                                             <td>
                                                 <div class="d-flex align-items-center">
-                                                    <div class="m-r-10"><span class="btn btn-circle btn-sm btn-light-info text-info">@item.FirstName.Substring(0, 1)</span></div>
-                                                    <div class="">
-                                                        <h5 class="m-b-0 font-16">@item.FirstName @item.LastName</h5>
-                                                        <small class="text-muted">C.I: @item.IdentityCard</small>
+                                                    <div class="m-r-10">
+                                                        <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm">@item.Initials</span>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="m-b-0 font-weight-bold">@item.FullName</h6>
+                                                        <span class="text-muted small">CI: @item.IdentityCard</span>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td><span class="badge badge-light-info text-info font-medium">@item.Role</span></td>
                                             <td>
-                                                @if (item.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo)
-                                                {
-                                                    <span class="label label-success">Activo</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="label label-danger">Inactivo</span>
-                                                }
+                                                <div class="small">
+                                                    <div class="text-dark font-weight-bold"><i class="fas fa-shield-alt mr-1 text-info"></i> @item.Role</div>
+                                                    <div class="text-muted">@@@item.UserName</div>
+                                                </div>
                                             </td>
-                                            <td>@item.Position</td>
-                                            <td>@item.Email</td>
+                                            <td class="text-center">
+                                                @{
+                                                    var badgeClass = item.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "badge-success" : "badge-danger";
+                                                }
+                                                <span class="badge badge-pill @badgeClass px-3 py-1">@item.Status</span>
+                                            </td>
                                             <td>
-                                                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning" title="Editar"><i class="fas fa-edit"></i></a>
-                                                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info" title="Detalles"><i class="fas fa-info-circle"></i></a>
-                                                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="fas fa-trash"></i></a>
+                                                <div class="small">
+                                                    <div class="text-dark font-weight-bold">@(item.Position ?? "-")</div>
+                                                    <div class="text-muted italic">@(item.Department ?? "-")</div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="small">
+                                                    <div class="text-dark font-weight-bold"><i class="far fa-calendar-alt mr-1 text-muted"></i> @item.CreatedDate.ToString("dd/MM/yyyy")</div>
+                                                    <div class="text-muted">Alta: @(item.HireDate?.ToString("dd/MM/yyyy") ?? "-")</div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group">
+                                                    <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                                        <i class="fas fa-search-plus"></i>
+                                                    </a>
+                                                    <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
                                             </td>
                                         </tr>
                                     }
@@ -93,37 +152,40 @@
                     </div>
                 </div>
 
-                <!-- PESTAÑA 2: PERSONAS (Integración Real) -->
-                <div class="tab-pane p-20" id="personas" role="tabpanel">
-                    <div class="row mb-3">
-                        <div class="col-md-8">
-                            <h4 class="card-title">Catálogo de Personas Base</h4>
-                            <p class="card-subtitle">Personal registrado antes de asignar cuenta de acceso</p>
+                <!-- PESTAÑA 2: PERSONAL -->
+                <div class="tab-pane" id="personas" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center mb-4">
+                            <div>
+                                <h4 class="card-title text-dark">Cátalogo Base de Identidades</h4>
+                                <h6 class="card-subtitle text-muted">Personas registradas que aún no cuentan con acceso al sistema.</h6>
+                            </div>
+                            <div class="ml-auto mt-2">
+                                <a href="/Persons/Create" class="btn btn-info btn-rounded shadow-sm px-4">
+                                    <i class="fas fa-user-plus mr-1"></i> Nueva Identidad
+                                </a>
+                                <a href="/Persons/Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                    <i class="fas fa-external-link-alt mr-1"></i> Ir al Directorio
+                                </a>
+                            </div>
                         </div>
-                        <div class="col-md-4 text-right">
-                            <a href="/Persons/Create" class="btn btn-info btn-sm">
-                                <i class="fas fa-plus mr-1"></i> Registrar Persona
-                            </a>
-                            <a href="/Persons/Index" class="btn btn-outline-primary btn-sm ml-2">
-                                <i class="fas fa-external-link-alt"></i> Pantalla Completa
-                            </a>
-                        </div>
+                        
+                        @if (Model.PersonsList != null && Model.PersonsList.Any())
+                        {
+                            <div class="alert alert-light-info border-0 small rounded p-3 mb-4 text-info italic shadow-none">
+                                <i class="fas fa-info-circle mr-2"></i> Las personas listadas aquí son candidatos para ser promovidos a <strong>Usuarios del Sistema</strong>.
+                            </div>
+                            <partial name="_PersonsTable" model="Model.PersonsList" />
+                        }
+                        else
+                        {
+                            <div class="text-center py-5 border rounded" style="border-style: dashed !important;">
+                                <i class="fas fa-id-badge fa-4x text-muted opacity-2 mb-3"></i>
+                                <h5 class="text-muted">No hay identidades disponibles para vinculación.</h5>
+                            </div>
+                        }
                     </div>
-                    
-                    <!-- AQUÍ SE CARGA LA TABLA REAL -->
-                    @if (Model.PersonsList != null && Model.PersonsList.Any())
-                    {
-                        <partial name="_PersonsTable" model="Model.PersonsList" />
-                    }
-                    else
-                    {
-                        <div class="text-center p-40">
-                            <h3 class="text-muted"><i class="mdi mdi-account-off display-4"></i></h3>
-                            <p>No hay personas registradas aún.</p>
-                        </div>
-                    }
                 </div>
-
             </div>
         </div>
     </div>
@@ -131,32 +193,10 @@
 
 @section Styles {
     <style>
-        /* Ajuste para que las pestañas se vean más modernas */
-        .customtab .nav-link.active {
-            border-bottom: 2px solid #2962ff;
-            color: #2962ff;
-        }
-
-        .v-middle td {
-            vertical-align: middle !important;
-        }
-        /* Estilo de etiquetas NiceAdmin */
-        .label {
-            padding: 3px 10px;
-            line-height: normal;
-            display: inline-block;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 400;
-            color: #fff;
-        }
-
-        .label-success {
-            background-color: #28a745;
-        }
-
-        .label-danger {
-            background-color: #dc3545;
-        }
+        .customtab .nav-link { border: none; color: #747d8c; padding: 15px 20px; transition: all 0.3s ease; }
+        .customtab .nav-link.active { color: #2962ff; background: transparent; border-bottom: 3px solid #2962ff; }
+        .customtab .nav-link:hover { color: #2962ff; }
+        .v-middle td { vertical-align: middle !important; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
     </style>
 }

@@ -21,11 +21,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
 
         public IList<Person> Person { get;set; } = default!;
 
+        [BindProperty(SupportsGet = true)]
+        public string? SearchTerm { get; set; }
+
         public async Task OnGetAsync()
         {
-            Person = await _context.People
+            var query = _context.People
                 .Include(p => p.CreatedBy)
-                .Include(p => p.ModifiedBy).ToListAsync();
+                .Include(p => p.ModifiedBy)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(SearchTerm))
+            {
+                var term = SearchTerm.Trim().ToLower();
+                query = query.Where(p => p.FirstName.ToLower().Contains(term) || 
+                                       p.LastName.ToLower().Contains(term) || 
+                                       p.IdentityCard.Contains(term));
+            }
+
+            Person = await query.ToListAsync();
         }
     }
 }

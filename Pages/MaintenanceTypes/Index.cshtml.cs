@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
@@ -18,12 +19,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
 
         public IList<MaintenanceType> MaintenanceTypes { get; set; } = default!;
 
+        [BindProperty(SupportsGet = true)]
+        public string? SearchTerm { get; set; }
+
         public async Task OnGetAsync()
         {
-            MaintenanceTypes = await _context.MaintenanceTypes
+            var query = _context.MaintenanceTypes
                 .Include(mt => mt.CreatedBy)
                 .Include(mt => mt.ModifiedBy)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(SearchTerm))
+            {
+                query = query.Where(mt => mt.Name.Contains(SearchTerm) || mt.Description.Contains(SearchTerm));
+            }
+
+            MaintenanceTypes = await query.ToListAsync();
         }
     }
 }

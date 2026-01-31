@@ -27,14 +27,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             }
 
             var equipment = await _context.Equipments
-                .Include(e => e.Laboratory!)
+                .Include(e => e.Laboratory)
                     .ThenInclude(l => l.Faculty)
                 .Include(e => e.EquipmentType)
-                .Include(e => e.City!)
-                    .ThenInclude(c => c.Country)
+                .Include(e => e.City)
+                .Include(e => e.Country)
                 .Include(e => e.CreatedBy)
                 .Include(e => e.ModifiedBy)
-                .Include(e => e.StateHistory!)
+                .Include(e => e.StateHistory)
                     .ThenInclude(h => h.CreatedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 

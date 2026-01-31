@@ -18,13 +18,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public IList<Verification> Verifications { get; set; } = default!;
 
-        public async Task OnGetAsync()
+        public string CurrentFilter { get; set; }
+
+        public async Task OnGetAsync(string searchString)
         {
-            Verifications = await _context.Verifications
+            CurrentFilter = searchString;
+
+            IQueryable<Verification> verificationIQ = _context.Verifications
                 .Include(v => v.CreatedBy)
                 .Include(v => v.Equipment)
-                .Include(v => v.ModifiedBy)
-                .ToListAsync();
+                .Include(v => v.ModifiedBy);
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                verificationIQ = verificationIQ.Where(s => s.Equipment.Name.Contains(searchString) 
+                                       || s.Equipment.InventoryNumber.Contains(searchString));
+            }
+
+            Verifications = await verificationIQ.OrderByDescending(v => v.Date).ToListAsync();
         }
     }
 }
