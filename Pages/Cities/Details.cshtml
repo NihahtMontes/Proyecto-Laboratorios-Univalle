@@ -2,70 +2,100 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Cities.DetailsModel
 
 @{
-    ViewData["Title"] = "Detalles de Ciudad";
+    ViewData["Title"] = "Expediente de Ciudad";
 }
 
 <div class="row">
-    <div class="col-md-8 col-lg-6">
-        <div class="card">
-            <div class="card-body">
-                <h4 class="card-title">Información de la Ciudad</h4>
-                <h6 class="card-subtitle mb-4">Detalles completos del registro seleccionado</h6>
-                
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped">
-                        <tbody>
-                            <tr>
-                                <th style="width: 35%;" class="bg-light font-weight-bold">País</th>
-                                <td>@Html.DisplayFor(model => model.City.Country.Name)</td>
-                            </tr>
-                            <tr>
-                                <th class="bg-light font-weight-bold">Ciudad</th>
-                                <td><strong>@Html.DisplayFor(model => model.City.Name)</strong></td>
-                            </tr>
-                            <tr>
-                                <th class="bg-light font-weight-bold">Región</th>
-                                <td>@Html.DisplayFor(model => model.City.Region)</td>
-                            </tr>
-                            <tr>
-                                <th class="bg-light font-weight-bold">Estado</th>
-                                <td>
-                                    <span class="badge badge-@(Model.City.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "success" : "danger")">
-                                        @Model.City.Status
-                                    </span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+    <!-- Columna Principal: Información Detallada -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Expediente Técnico: @Model.City.Name</h4>
+                        <h6 class="card-subtitle text-muted">Información geográfica y estado administrativo.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <span class="badge badge-pill badge-@(Model.City.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "success" : "danger") px-4 py-2" style="font-size: 0.9rem;">
+                            <i class="fas fa-check-circle mr-1"></i> @Model.City.Status
+                        </span>
+                    </div>
                 </div>
 
-                <div class="card bg-light mt-4 border">
-                    <div class="card-body p-3">
-                        <h6 class="font-medium text-uppercase mb-2"><i class="mdi mdi-information-outline"></i> Auditoría de Registro</h6>
-                        <div class="row text-center">
-                            <div class="col-6 border-right">
-                                <small class="text-muted d-block">Creado el</small>
-                                <p class="mb-0 font-medium">@Model.City.CreatedDate.ToString("dd/MM/yyyy HH:mm")</p>
-                                <small class="text-muted">por @(Model.City.CreatedBy?.FullName ?? "N/A")</small>
-                            </div>
-                            <div class="col-6">
-                                <small class="text-muted d-block">Última Modificación</small>
-                                <p class="mb-0 font-medium">@(Model.City.LastModifiedDate?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</p>
-                                <small class="text-muted">por @(Model.City.ModifiedBy?.FullName ?? "N/A")</small>
-                            </div>
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="font-weight-bold text-info mb-3">
+                            <i class="fas fa-map-marker-alt mr-2"></i> Ubicación Geográfica
+                        </h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-borderless bg-light rounded p-3">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-4 pt-3" style="width: 30%;">País de Pertenencia</th>
+                                        <td class="font-weight-bold pt-3">
+                                            <i class="fas fa-globe mr-2 text-primary"></i> @Model.City.Country?.Name
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-4">Nombre de la Ciudad</th>
+                                        <td class="font-weight-bold text-info h5">@Model.City.Name</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-4 pb-3">Región / Departamento</th>
+                                        <td class="pb-3 text-dark">@(Model.City.Region ?? "No especificado")</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
 
-                <div class="form-actions mt-4 text-right">
-                    <a asp-page="./Edit" asp-route-id="@Model.City.Id" class="btn btn-warning text-white px-4">
-                        <i class="fas fa-edit"></i> Editar
-                    </a>
-                    <a asp-page="./Index" class="btn btn-outline-secondary ml-2">
-                        Volver al Listado
-                    </a>
+                <div class="alert alert-info border-0 mt-4 bg-light-info text-info small">
+                    <i class="fas fa-info-circle mr-2"></i> Este registro se utiliza para canalizar la ubicación de laboratorios y personal. Cualquier cambio en su estado puede afectar la trazabilidad de los equipos.
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Columna Lateral: Auditoría y Acciones -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4">
+                    <i class="fas fa-history mr-2 text-warning"></i> Historial de Registro
+                </h5>
+                <hr />
+                <div class="small mt-3">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Fecha de Registro</label>
+                        <span class="font-weight-bold text-dark d-block">@Model.City.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <span class="text-muted">por @(Model.City.CreatedBy?.FullName ?? "Sistema")</span>
+                    </div>
+
+                    @if (Model.City.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0">
+                            <label class="text-muted d-block small uppercase mb-0">Última Actualización</label>
+                            <span class="font-weight-bold text-dark d-block">@Model.City.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            <span class="text-muted">por @(Model.City.ModifiedBy?.FullName ?? "-")</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted font-italic">Sin modificaciones registradas.</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="form-actions mt-4">
+            <a asp-page="./Edit" asp-route-id="@Model.City.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
+                <i class="fas fa-edit mr-1"></i> Editar Ciudad
+            </a>
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2">
+                <i class="fas fa-list mr-1"></i> Volver al Listado
+            </a>
         </div>
     </div>
 </div>

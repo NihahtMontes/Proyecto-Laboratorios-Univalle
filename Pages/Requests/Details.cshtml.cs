@@ -7,7 +7,7 @@ using Proyecto_Laboratorios_Univalle.Models;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 {
-    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
+    [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class DetailsModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
@@ -17,31 +17,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             _context = context;
         }
 
-        public Request MaintenanceRequest { get; set; } = default!;
+        public Request Request { get; set; } = default!;
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var request = await _context.Requests
-                .Include(r => r.Equipment)
-                .Include(r => r.RequestedBy)
                 .Include(r => r.ApprovedBy)
                 .Include(r => r.CreatedBy)
+                .Include(r => r.Equipment)
+                    .ThenInclude(e => e.EquipmentType)
                 .Include(r => r.ModifiedBy)
+                .Include(r => r.RequestedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (request == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                MaintenanceRequest = request;
-            }
+            if (request == null) return NotFound();
+            
+            Request = request;
             return Page();
         }
     }

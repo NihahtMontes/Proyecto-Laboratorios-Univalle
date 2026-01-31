@@ -21,7 +21,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         {
         }
 
-        public async Task<IActionResult> OnPost(string returnUrl = null)
+        public async Task<IActionResult> OnPost(string ?returnUrl = null)
         {
             // 1. Standard Identity SignOut
             await _signInManager.SignOutAsync();

@@ -48,48 +48,69 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Validate Code uniqueness (including deleted ones but filtering by status)
-            bool codeExists = await _context.Laboratories
-                .IgnoreQueryFilters()
-                .AnyAsync(l => l.Code == Input.Code && l.Status != GeneralStatus.Eliminado);
-
-            if (codeExists)
-            {
-                ModelState.AddModelError("Input.Code", "El código (Siglas) ya está en uso por otro laboratorio activo.");
-            }
-
-            // Validate Name uniqueness
-            bool nameExists = await _context.Laboratories
-                .IgnoreQueryFilters()
-                .AnyAsync(l => l.Name == Input.Name && l.Status != GeneralStatus.Eliminado);
-
-            if (nameExists)
-            {
-                ModelState.AddModelError("Input.Name", "El nombre del laboratorio ya está en uso por otro laboratorio activo.");
-            }
-
+            // 1. Validaciones Preliminares
             if (!ModelState.IsValid)
             {
                 ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
                 return Page();
             }
 
+            // 2. Normalización para validación interna
+            var normalizedName = Input.Name.NormalizeComparison();
+            var normalizedCode = Input.Code.NormalizeComparison().ToUpper();
+
+            // 3. Validar Duplicados de Código (Global)
+            bool codeExists = await _context.Laboratories
+                .IgnoreQueryFilters()
+                .AnyAsync(l => l.Code.ToUpper() == normalizedCode && l.Status != GeneralStatus.Eliminado);
+
+            if (codeExists)
+            {
+                ModelState.AddModelError("Input.Code", NotificationHelper.Laboratories.LabCodeDuplicate);
+                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
+                return Page();
+            }
+
+            // 4. Validar Duplicados de Nombre (En la misma Facultad)
+            bool nameExists = await _context.Laboratories
+                .IgnoreQueryFilters()
+                .AnyAsync(l => l.FacultyId == Input.FacultyId && 
+                               l.Name.ToLower() == normalizedName && 
+                               l.Status != GeneralStatus.Eliminado);
+
+            if (nameExists)
+            {
+                ModelState.AddModelError("Input.Name", NotificationHelper.Laboratories.LabNameDuplicate);
+                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
+                return Page();
+            }
+
+            // 5. Validar Formato de Nombre
+            if (!Input.Name.IsValidName())
+            {
+                ModelState.AddModelError("Input.Name", NotificationHelper.Countries.InvalidFormat);
+                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
+                return Page();
+            }
+
+            // 6. Guardado Estandarizado
             var laboratory = new Laboratory
             {
                 FacultyId = Input.FacultyId,
-                Code = Input.Code,
-                Name = Input.Name,
-                Type = Input.Type,
-                Building = Input.Building,
-                Floor = Input.Floor,
-                Description = Input.Description,
+                Code = Input.Code.Clean().ToUpper(),
+                Name = Input.Name.Clean(),
+                Type = Input.Type?.Clean(),
+                Building = Input.Building?.Clean(),
+                Floor = Input.Floor?.Clean(),
+                Description = Input.Description?.Clean(),
                 Status = GeneralStatus.Activo,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             _context.Laboratories.Add(laboratory);
             await _context.SaveChangesAsync();
 
+            TempData.Success(NotificationHelper.Laboratories.Created(laboratory.Name));
             return RedirectToPage("./Index");
         }
     }

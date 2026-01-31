@@ -2,73 +2,86 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Maintenances.DeleteModel
 
 @{
-    ViewData["Title"] = "Eliminar Mantenimiento";
+    ViewData["Title"] = "Confirmar Eliminación";
 }
 
-<h1>Eliminar</h1>
+<div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
+    <div class="col-md-6 col-lg-5">
+        <div class="card text-center shadow-sm border-0">
+            <div class="card-body p-5">
+                <!-- Iconografía de advertencia con doble capa -->
+                <div class="mb-4 text-danger">
+                    <i class="ti-trash display-3 opacity-2" 
+                       style="position: absolute; left: 50%; transform: translateX(-50%); top: 40px;"></i>
+                    <i class="fas fa-exclamation-triangle display-4" 
+                       style="position: relative; z-index: 1;"></i>
+                </div>
 
-<h3>¿Está seguro de que desea eliminar este Registro de Mantenimiento?</h3>
-<div>
-    <h4>Mantenimiento</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.Equipment)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.Equipment.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.MaintenanceType)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.MaintenanceType.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.ScheduledDate)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.ScheduledDate)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.Status)
-        </dd>
-        <dt class="col-sm-2">
-            Costo Total
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.ActualCost)
-        </dd>
-        <hr />
-        <dt class="col-sm-2">
-            Auditoría
-        </dt>
-        <dd class="col-sm-10">
-            <small>
-                <strong>Creado:</strong> @Model.Maintenance.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.Maintenance.CreatedBy != null)
-                {
-                    <span> por @Model.Maintenance.CreatedBy.FullName</span>
-                }
-                <br />
-                @if (Model.Maintenance.LastModifiedDate.HasValue)
-                {
-                    <strong>Modificado:</strong> @Model.Maintenance.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                    @if (Model.Maintenance.ModifiedBy != null)
+                <!-- Título y descripción -->
+                <h3 class="card-title text-dark font-weight-bold">¿Eliminar registro de servicio?</h3>
+                <p class="text-muted mb-4">
+                    Está a punto de borrar permanentemente el historial de mantenimiento para el equipo:
+                    <br />
+                    <strong class="text-dark h5">@Model.Maintenance.Equipment?.Name</strong>
+                </p>
+
+                <!-- Caja de datos clave -->
+                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small uppercase font-weight-bold">Tipo:</span>
+                        <strong class="text-dark">@(Model.Maintenance.MaintenanceType?.Name ?? "-")</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small uppercase font-weight-bold">Fecha Programada:</span>
+                        <strong class="text-dark">@(Model.Maintenance.ScheduledDate?.ToString("dd/MM/yyyy") ?? "-")</strong>
+                    </div>
+                    @if (Model.Maintenance.ActualCost.HasValue && Model.Maintenance.ActualCost > 0)
                     {
-                        <span> por @Model.Maintenance.ModifiedBy.FullName</span>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted small uppercase font-weight-bold">Costo Registrado:</span>
+                            <strong class="text-danger">Bs @Model.Maintenance.ActualCost?.ToString("N2")</strong>
+                        </div>
                     }
-                }
-            </small>
-        </dd>
-    </dl>
-    
-    <form method="post">
-        <input type="hidden" asp-for="Maintenance.Id" />
-        <input type="submit" value="Eliminar" class="btn btn-danger" /> |
-        <a asp-page="./Index">Volver al Listado</a>
-    </form>
+                    <div class="d-flex justify-content-between mt-3 pt-2 border-top">
+                        <span class="text-muted small uppercase font-weight-bold">Estado Actual:</span>
+                        @{
+                            var statusClass = Model.Maintenance.Status switch {
+                                Proyecto_Laboratorios_Univalle.Models.Enums.MaintenanceStatus.Completed => "badge-success",
+                                Proyecto_Laboratorios_Univalle.Models.Enums.MaintenanceStatus.Cancelled => "badge-danger",
+                                _ => "badge-warning"
+                            };
+                        }
+                        <span class="badge badge-pill @statusClass px-3">@Model.Maintenance.Status</span>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <form method="post">
+                    <input type="hidden" asp-for="Maintenance.Id" />
+                    
+                    <a asp-page="./Index" 
+                       class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+                        Cancelar
+                    </a>
+                    
+                    <button type="submit" class="btn btn-danger btn-rounded px-4 shadow-sm font-weight-bold">
+                        <i class="fas fa-trash-alt mr-1"></i> Confirmar Eliminación
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Nota informativa -->
+        <div class="text-center mt-3 text-muted small italic">
+            <i class="fas fa-info-circle mr-1"></i> 
+            Esta acción no se puede deshacer y afectará los reportes de costos del equipo.
+        </div>
+    </div>
 </div>
+
+@section Styles {
+    <style>
+        .border-3 { border-left-width: 4px !important; }
+        .opacity-2 { opacity: 0.15; }
+    </style>
+}

@@ -47,19 +47,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         public async Task<IActionResult> OnPostAsync(int? id)
         {
-            if (id == null)
+            if (id == null) return NotFound();
+
+            var request = await _context.Requests
+                .Include(r => r.Maintenance)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (request == null) return NotFound();
+
+            // Validación de Integridad Referencial
+            if (request.Maintenance != null)
             {
-                return NotFound();
+                TempData.Error(NotificationHelper.Requests.DeleteRestricted);
+                return RedirectToPage("./Index");
             }
 
-            var request = await _context.Requests.FindAsync(id);
-            if (request != null)
-            {
-                MaintenanceRequest = request;
-                _context.Requests.Remove(MaintenanceRequest);
-                await _context.SaveChangesAsync();
-            }
-
+            MaintenanceRequest = request;
+            _context.Requests.Remove(MaintenanceRequest);
+            await _context.SaveChangesAsync();
+            
+            TempData.Success(NotificationHelper.Requests.Deleted(request.Id));
             return RedirectToPage("./Index");
         }
     }

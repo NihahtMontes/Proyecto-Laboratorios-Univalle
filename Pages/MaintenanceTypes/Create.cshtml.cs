@@ -34,8 +34,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
 
         public async Task<IActionResult> OnPostAsync()
         {
+            Input.Name = Input.Name.Clean();
+            Input.Description = Input.Description.Clean();
+
             if (!ModelState.IsValid)
             {
+                return Page();
+            }
+
+            // Validar duplicados básicos
+            if (_context.MaintenanceTypes.Any(mt => mt.Name.ToLower() == Input.Name.ToLower()))
+            {
+                ModelState.AddModelError("Input.Name", "Ya existe un tipo de mantenimiento con este nombre.");
                 return Page();
             }
 
@@ -49,7 +59,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
             _context.MaintenanceTypes.Add(maintenanceType);
             await _context.SaveChangesAsync();
 
-            return RedirectToPage("./Index");
+            TempData["SuccessMessage"] = $"Tipo de mantenimiento '{maintenanceType.Name}' creado correctamente.";
+            return RedirectToPage("/Maintenances/Index", null, "tipos"); // Regresa a la pestaña de tipos
         }
     }
 }

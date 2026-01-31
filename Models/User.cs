@@ -58,7 +58,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
 
         [Required]
-        [Display(Name = "Rol")]
+        [Display(Name = "Rol de Sistema")]
         public UserRole Role { get; set; } = UserRole.Supervisor;
 
         [Required]

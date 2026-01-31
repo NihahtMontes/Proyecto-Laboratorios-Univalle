@@ -1,64 +1,96 @@
-﻿@page
+﻿@page "{id:int}"
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.DeleteModel
 
 @{
-    ViewData["Title"] = "Eliminar Verificación";
+    ViewData["Title"] = "Eliminar Registro";
 }
 
-<h1>Eliminar</h1>
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+        <div class="card shadow-lg border-0 rounded-lg">
+            <div class="card-body p-5 text-center">
+                
+                <!-- Icono Animado / Destacado -->
+                <div class="mb-4 d-inline-block position-relative">
+                    <div class="icon-circle bg-soft-danger text-danger d-flex align-items-center justify-content-center rounded-circle mx-auto" 
+                         style="width: 80px; height: 80px;">
+                        <i class="fas fa-trash-alt fa-3x"></i>
+                    </div>
+                    <!-- Efecto pulso decorativo (opcional) -->
+                    <div class="position-absolute w-100 h-100 rounded-circle bg-danger opacity-1" 
+                         style="top:0; left:0; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; z-index: -1;">
+                    </div>
+                </div>
 
-<h3>¿Está seguro de que desea eliminar esto?</h3>
-<div>
-    <h4>Verificación</h4>
-    <hr />
-    <dl class="row">
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.Equipment)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.Equipment.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.Date)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.Date)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.Status)
-        </dd>
-        <hr class="col-12" />
-        <dt class="col-sm-2">
-            Fecha de Registro
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Verification.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-            @if (Model.Verification.CreatedBy != null)
-            {
-                <span class="text-muted"> por @Model.Verification.CreatedBy.FullName</span>
-            }
-        </dd>
-        @if (Model.Verification.LastModifiedDate.HasValue)
-        {
-            <dt class="col-sm-2">
-                Última Modificación
-            </dt>
-            <dd class="col-sm-10">
-                @Model.Verification.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.Verification.ModifiedBy != null)
-                {
-                    <span class="text-muted"> por @Model.Verification.ModifiedBy.FullName</span>
-                }
-            </dd>
-        }
-    </dl>
-    
-    <form method="post">
-        <input type="hidden" asp-for="Verification.Id" />
-        <input type="submit" value="Eliminar" class="btn btn-danger" /> |
-        <a asp-page="./Index">Volver al Listado</a>
-    </form>
+                <h3 class="font-weight-bold text-dark mb-2">¿Estás seguro?</h3>
+                <p class="text-muted mb-4 opacity-7">
+                    Estás a punto de eliminar la verificación técnica <span class="font-weight-bold text-dark">#@Model.Verification.Id</span>. Esta acción es <span class="text-danger font-weight-bold">irreversible</span>.
+                </p>
+
+                <!-- Tarjeta de Resumen -->
+                <div class="card bg-light border-0 mb-4 p-3 text-left shadow-sm">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="mr-3 mt-1 text-muted">
+                            <i class="fas fa-server fa-lg"></i>
+                        </div>
+                        <div>
+                            <small class="text-uppercase text-muted font-weight-bold" style="font-size: 0.7rem;">Equipo Afectado</small>
+                            <h6 class="font-weight-bold text-dark mb-0">@Model.Verification.Equipment?.Name</h6>
+                            <small class="text-muted">Inv: @Model.Verification.Equipment?.InventoryNumber</small>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2">
+                        <div>
+                             <small class="text-uppercase text-muted font-weight-bold d-block" style="font-size: 0.7rem;">Fecha Inspección</small>
+                             <span class="text-dark font-weight-bold small"><i class="far fa-calendar-alt mr-1"></i>@Model.Verification.Date.ToShortDateString()</span>
+                        </div>
+                        <div>
+                            <small class="text-uppercase text-muted font-weight-bold d-block text-right" style="font-size: 0.7rem;">Estado</small>
+                            @{
+                                var statusClass = Model.Verification.Status switch {
+                                    VerificationStatus.Completed => "badge-soft-success text-success",
+                                    VerificationStatus.WithObservations => "badge-soft-warning text-warning",
+                                    VerificationStatus.Annulled => "badge-soft-danger text-danger",
+                                    _ => "badge-soft-secondary text-secondary"
+                                };
+                            }
+                            <span class="badge @statusClass border-0">@Html.DisplayFor(m => m.Verification.Status)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones -->
+                <form method="post" class="d-flex justify-content-center">
+                    <input type="hidden" asp-for="Verification.Id" />
+                    
+                    <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded font-weight-bold px-4 mr-2 py-2">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-danger btn-rounded font-weight-bold px-4 shadow-sm py-2">
+                        <i class="fas fa-trash-alt mr-2"></i>Sí, Eliminar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Styles {
+    <style>
+        .bg-soft-danger { background-color: #ffebee; }
+        .bg-soft-success { background-color: #e8f5e9; }
+        .bg-soft-warning { background-color: #fff3cd; }
+        .bg-soft-secondary { background-color: #f8f9fa; }
+        .opacity-1 { opacity: 0.15; }
+        .opacity-7 { opacity: 0.7; }
+        
+        @@keyframes ping {
+            75%, 100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+    </style>
+}

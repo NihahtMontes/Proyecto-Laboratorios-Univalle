@@ -2,64 +2,75 @@
 @model Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes.DetailsModel
 
 @{
-    ViewData["Title"] = "Detalles del Tipo de Equipo";
+    ViewData["Title"] = "Detalles de Categoría";
 }
 
-<h1>Detalles</h1>
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4 text-dark font-weight-bold">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Expediente de Categoría</h4>
+                        <h6 class="card-subtitle text-muted font-weight-bold">Definición de estándares técnicos y mantenimiento preventivo.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-tag fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
 
-<div>
-    <h4>Tipo de Equipo</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.EquipmentType.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.EquipmentType.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.EquipmentType.Description)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.EquipmentType.Description)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.EquipmentType.RequiresCalibration)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.EquipmentType.RequiresCalibration)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.EquipmentType.MaintenanceFrequencyMonths)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.EquipmentType.MaintenanceFrequencyMonths)
-        </dd>
-        <hr />
-        <dt class="col-sm-2">
-            Auditoría
-        </dt>
-        <dd class="col-sm-10">
-            <small>
-                <strong>Creado:</strong> @Model.EquipmentType.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.EquipmentType.CreatedBy != null)
-                {
-                    <span> por @Model.EquipmentType.CreatedBy.FullName</span>
-                }
-                <br />
-                @if (Model.EquipmentType.LastModifiedDate.HasValue)
-                {
-                    <strong>Modificado:</strong> @Model.EquipmentType.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                    @if (Model.EquipmentType.ModifiedBy != null)
-                    {
-                        <span> por @Model.EquipmentType.ModifiedBy.FullName</span>
-                    }
-                }
-            </small>
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-page="./Edit" asp-route-id="@Model.EquipmentType.Id">Editar</a> |
-    <a asp-page="./Index">Volver al Listado</a>
+                <div class="bg-light p-4 rounded mb-4 border">
+                    <div class="row">
+                        <div class="col-md-7">
+                            <small class="text-muted d-block uppercase font-weight-bold">Nombre de la Familia</small>
+                            <h3 class="font-weight-bold text-info">@Model.EquipmentType.Name</h3>
+                            <p class="text-dark mt-2">@(Model.EquipmentType.Description ?? "Sin descripción detallada.")</p>
+                        </div>
+                        <div class="col-md-5 border-left">
+                            <div class="mb-3">
+                                <small class="text-muted d-block uppercase font-weight-bold">Calibración</small>
+                                <span class="badge @(Model.EquipmentType.RequiresCalibration ? "badge-info" : "badge-light text-muted") px-3 py-1 font-weight-bold">
+                                    <i class="fas @(Model.EquipmentType.RequiresCalibration ? "fa-check-circle" : "fa-times-circle") mr-1"></i>
+                                    @(Model.EquipmentType.RequiresCalibration ? "Requerida" : "No requerida")
+                                </span>
+                            </div>
+                            <div>
+                                <small class="text-muted d-block uppercase font-weight-bold">Mantenimiento Sugerido</small>
+                                <span class="text-dark font-weight-bold"><i class="fas fa-clock mr-1"></i> Cada @(Model.EquipmentType.MaintenanceFrequencyMonths?.ToString() ?? "N/A") meses</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card bg-light border-0 shadow-none">
+                    <div class="card-body p-3">
+                        <h6 class="font-weight-bold text-uppercase mb-3 small text-muted"><i class="fas fa-history mr-2"></i> Auditoría del Registro</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Creado por</small>
+                                <div class="font-weight-bold text-dark">@(Model.EquipmentType.CreatedBy?.FullName ?? "Sistema")</div>
+                                <div class="small text-muted font-weight-bold">@Model.EquipmentType.CreatedDate.ToString("dd/MM/yyyy HH:mm")</div>
+                            </div>
+                            <div class="col-6 border-left">
+                                <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Última Edición</small>
+                                <div class="font-weight-bold text-dark">@(Model.EquipmentType.ModifiedBy?.FullName ?? "-")</div>
+                                <div class="small text-muted font-weight-bold">@(Model.EquipmentType.LastModifiedDate?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="mt-4" />
+
+                <div class="form-actions text-right mt-3 text-dark font-weight-bold">
+                    <a asp-page="./Edit" asp-route-id="@Model.EquipmentType.Id" class="btn btn-warning btn-rounded text-white px-4 shadow-sm font-weight-bold">
+                        <i class="fas fa-edit mr-1"></i> Editar Estándar
+                    </a>
+                    <a asp-page="/Equipment/Index" class="btn btn-outline-secondary btn-rounded ml-2 font-weight-bold">
+                        Volver al Inventario
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

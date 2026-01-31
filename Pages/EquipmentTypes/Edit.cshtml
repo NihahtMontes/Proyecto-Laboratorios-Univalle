@@ -2,50 +2,108 @@
 @model Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes.EditModel
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Editar Categoría";
 }
 
-<h1>Editar Tipo de Equipo</h1>
+<div class="row justify-content-center">
+    <div class="col-lg-7 col-xl-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4 text-dark font-weight-bold">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Actualizar Categoría</h4>
+                        <h6 class="card-subtitle text-muted font-weight-bold">Modifique los estándares técnicos para esta familia de equipos.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-edit fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
 
-<h4>Tipo de Equipo</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="EquipmentType.Id" />
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="EquipmentType.Name" class="control-label"></label>
-                <input asp-for="EquipmentType.Name" class="form-control" aria-required="true"/>
-                <span asp-validation-for="EquipmentType.Name" class="text-danger"></span>
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                    <input type="hidden" asp-for="EquipmentType.Id" />
+
+                    <div class="form-group mb-4">
+                        <label asp-for="EquipmentType.Name" class="control-label font-weight-bold small text-dark">Nombre de la Categoría <span class="text-danger">*</span></label>
+                        <input asp-for="EquipmentType.Name" class="form-control form-control-lg border-warning shadow-none" 
+                               required data-validation-required-message="El nombre es obligatorio"
+                               pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\(\)-]+$"
+                               data-validation-pattern-message="Solo letras, números, espacios, guiones y paréntesis" />
+                        <span asp-validation-for="EquipmentType.Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label asp-for="EquipmentType.Description" class="control-label font-weight-bold small text-dark font-weight-bold">Descripción / Alcance</label>
+                        <textarea asp-for="EquipmentType.Description" class="form-control shadow-none" rows="3"></textarea>
+                    </div>
+
+                    <div class="row bg-light rounded p-3 mb-4 mx-0 border">
+                        <div class="col-md-7">
+                            <div class="custom-control custom-checkbox custom-control-inline">
+                                <input type="checkbox" asp-for="EquipmentType.RequiresCalibration" class="custom-control-input" id="calibCheck">
+                                <label class="custom-control-label font-weight-bold text-dark" for="calibCheck">Requiere Calibración Periódica</label>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="form-group mb-0 text-dark font-weight-bold">
+                                <label asp-for="EquipmentType.MaintenanceFrequencyMonths" class="control-label font-weight-bold small text-dark font-weight-bold">Frecuencia (Meses)</label>
+                                <input asp-for="EquipmentType.MaintenanceFrequencyMonths" class="form-control form-control-sm text-dark font-weight-bold" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4 text-dark font-weight-bold">
+                        <button type="submit" class="btn btn-warning btn-rounded px-4 shadow-sm text-white font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Guardar Cambios
+                        </button>
+                        <a asp-page="/Equipment/Index" class="btn btn-outline-secondary btn-rounded ml-2 font-weight-bold">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <label asp-for="EquipmentType.Description" class="control-label"></label>
-                <input asp-for="EquipmentType.Description" class="form-control" />
-                <span asp-validation-for="EquipmentType.Description" class="text-danger"></span>
-            </div>
-            <div class="form-group form-check">
-                <label class="form-check-label">
-                    <input class="form-check-input" asp-for="EquipmentType.RequiresCalibration" /> @Html.DisplayNameFor(model => model.EquipmentType.RequiresCalibration)
-                </label>
-            </div>
-            <div class="form-group">
-                <label asp-for="EquipmentType.MaintenanceFrequencyMonths" class="control-label"></label>
-                <input asp-for="EquipmentType.MaintenanceFrequencyMonths" class="form-control" />
-                <span asp-validation-for="EquipmentType.MaintenanceFrequencyMonths" class="text-danger"></span>
-            </div>
-            <div class="form-group mt-3">
-                <input type="submit" value="Guardar" class="btn btn-primary" />
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-page="./Index">Volver al Listado</a>
-</div>
-
 @section Scripts {
+    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,textarea").not("[type=submit]").jqBootstrapValidation();
+
+            // Función para mostrar mensajes de error temporales
+            function showTemporaryError($el, message) {
+                var $group = $el.closest('.form-group');
+                var $help = $group.find('.help-block');
+                if ($help.length === 0) {
+                    $group.append('<div class="help-block text-danger small font-weight-bold mt-1"></div>');
+                    $help = $group.find('.help-block');
+                }
+                $help.text(message).fadeIn();
+                $group.addClass('error');
+                
+                setTimeout(function() {
+                    $help.fadeOut(function() { $(this).text(''); });
+                    $group.removeClass('error');
+                }, 2000);
+            }
+
+            // Patrón: solo letras, números, espacios, guiones y paréntesis
+            var textPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\(\)-]*$/;
+            
+            $('#EquipmentType_Name').on('input', function() {
+                var $field = $(this);
+                var val = $field.val();
+                if (!textPattern.test(val)) {
+                    $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\(\)-]/g, ''));
+                    showTemporaryError($field, "Carácter no permitido en el nombre");
+                }
+            });
+        });
+    </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

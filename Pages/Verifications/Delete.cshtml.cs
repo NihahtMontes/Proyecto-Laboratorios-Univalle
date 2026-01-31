@@ -47,17 +47,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public async Task<IActionResult> OnPostAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var verification = await _context.Verifications.FindAsync(id);
+
             if (verification != null)
             {
                 Verification = verification;
                 _context.Verifications.Remove(Verification);
                 await _context.SaveChangesAsync();
+                
+                TempData.Success(NotificationHelper.Verifications.Deleted(Verification.Id));
             }
 
             return RedirectToPage("./Index");

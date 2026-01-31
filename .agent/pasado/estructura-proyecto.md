@@ -26,9 +26,16 @@ El proyecto sigue un enfoque de **Arquitectura Limpia** y **Separación de Respo
 *   **Solución**: Todos los mensajes UI (éxito, error, duplicados) están en una clase estática centralizada.
 *   **Beneficio**: Cambiar un mensaje en un solo lugar actualiza todo el sistema automáticamente.
 
-### 2️⃣ Normalización de Datos (`StringExtensions.cs`)
-*   **Lógica**: Se utilizan los métodos `.Normalize()` para comparaciones seguras en SQL (quita espacios y pone en minúsculas) y `.Clean()` para guardar datos estéticos en la BD.
-*   **Beneficio**: Evita duplicados como " BOLIVIA " vs "bolivia" y mantiene la integridad de los datos.
+### 2️⃣ Normalización y Validación de Datos (`StringExtensions.cs`)
+*   **Lógica**:
+    *   `.Normalize()`: Para comparaciones seguras (SQL).
+    *   `.Clean()`: Para guardado estético.
+    *   `.IsValidName()`: **NUEVO**. Regex que solo permite letras, acentos, espacios y guiones.
+*   **Beneficio**: Blindaje total contra caracteres especiales (`&%$#`) y duplicados.
+
+### 3️⃣ Validación de Doble Capa (IRT + Server)
+*   **Frontend**: Uso de `jqBootstrapValidation` con atributos `pattern` y `data-validation-*-message` para feedback instantáneo.
+*   **Backend**: Refuerzo con `IsValidName()` y `ModelState.AddModelError` para integridad final.
 
 ### 3️⃣ Seguridad XSS y Encoding (`RazorJsHelper.cs`)
 *   **Lógica**: Uso de `@Html.JsTempData("Key")` para renderizar mensajes en JavaScript.

@@ -2,65 +2,99 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Faculties.DetailsModel
 
 @{
-    ViewData["Title"] = "Detalles de la Facultad";
+    ViewData["Title"] = "Expediente de Facultad";
 }
 
-<h1>Detalles</h1>
-<div>
-    <h4>Facultad</h4>
-    <hr />
-    <dl class="row">
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Faculty.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Faculty.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Faculty.Code)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Faculty.Code)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Faculty.Description)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Faculty.Description)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Faculty.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Faculty.Status)
-        </dd>
-        <hr class="col-12" />
-        <dt class="col-sm-2">
-            Fecha de Registro
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Faculty.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-            @if (Model.Faculty.CreatedBy != null)
-            {
-                <span class="text-muted"> por @Model.Faculty.CreatedBy.FullName</span>
-            }
-        </dd>
-        @if (Model.Faculty.LastModifiedDate.HasValue)
-        {
-            <dt class="col-sm-2">
-                Última Modificación
-            </dt>
-            <dd class="col-sm-10">
-                @Model.Faculty.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.Faculty.ModifiedBy != null)
-                {
-                    <span class="text-muted"> por @Model.Faculty.ModifiedBy.FullName</span>
-                }
-            </dd>
-        }
-    </dl>
-</div>
-<div>
-    <a asp-page="./Edit" asp-route-id="@Model.Faculty.Id">Editar</a> |
-    <a asp-page="./Index">Volver al Listado</a>
+<div class="row">
+    <!-- Columna Principal: Identidad Académica -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Expediente de Unidad Académica</h4>
+                        <h6 class="card-subtitle text-muted">Detalles institucionales y adscripción de laboratorios de: @Model.Faculty.Name</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-university fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-5 border-right text-center">
+                        <div class="btn btn-circle btn-lg btn-light-info text-info mb-3" style="width: 80px; height: 80px; line-height: 70px;">
+                            <i class="fas fa-university fa-3x"></i>
+                        </div>
+                        <h3 class="font-weight-bold text-dark mb-1">@Model.Faculty.Name</h3>
+                        <span class="badge badge-pill badge-primary px-3 mb-3">@Model.Faculty.Code</span>
+                    </div>
+
+                    <div class="col-md-7">
+                        <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-info-circle mr-2"></i> Alcance Académico</h5>
+                        <div class="bg-light p-3 rounded mb-4">
+                            <label class="text-muted small uppercase font-weight-bold d-block mb-2">Descripción Oficial:</label>
+                            <p class="text-dark italic mb-0">
+                                @(Model.Faculty.Description ?? "No se ha registrado una descripción detallada para esta unidad académica.")
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-light-info border-0 mt-4 p-3 shadow-none small text-info italic">
+                    <i class="fas fa-shield-alt mr-2"></i> Los laboratorios y el equipamiento están organizados jerárquicamente bajo esta facultad para fines de auditoría institucional.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Lateral: Estado y Auditoría -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-info-circle mr-2 text-info"></i> Gestión Administrativa</h5>
+                <hr class="border-secondary" />
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Estado Ficha:</small>
+                    <span class="badge badge-pill badge-@(Model.Faculty.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "success" : "danger") px-3">
+                        @Model.Faculty.Status
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Control de Auditoría</h5>
+                <hr />
+                <div class="small">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Alta de Registro</label>
+                        <span class="font-weight-bold text-dark d-block">@Model.Faculty.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <span class="text-muted">Por: @(Model.Faculty.CreatedBy?.FullName ?? "Sistema")</span>
+                    </div>
+                    @if (Model.Faculty.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Faculty.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.Faculty.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions mt-4">
+            <a asp-page="./Edit" asp-route-id="@Model.Faculty.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
+                <i class="fas fa-edit mr-1"></i> Modificar Ficha
+            </a>
+            <a asp-page="/Laboratories/Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4">
+                <i class="fas fa-list mr-1"></i> Volver al Listado
+            </a>
+            
+            <a asp-page="./Delete" asp-route-id="@Model.Faculty.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+                <i class="fas fa-trash-alt mr-1"></i> Eliminar Facultad (Solo si no tiene dependencias)
+            </a>
+        </div>
+    </div>
 </div>

@@ -52,12 +52,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 return NotFound();
             }
 
-            var maintenance = await _context.Maintenances.FindAsync(id);
+            var maintenance = await _context.Maintenances
+                .Include(m => m.Equipment)
+                .FirstOrDefaultAsync(m => m.Id == id);
+                
             if (maintenance != null)
             {
-                Maintenance = maintenance;
-                _context.Maintenances.Remove(Maintenance);
+                var equipmentName = maintenance.Equipment?.Name;
+                
+                _context.Maintenances.Remove(maintenance);
                 await _context.SaveChangesAsync();
+                
+                TempData.Success(NotificationHelper.Maintenances.Deleted(equipmentName));
             }
 
             return RedirectToPage("./Index");

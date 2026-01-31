@@ -1,156 +1,176 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Users.CreateModel
 
-        @{
-        ViewData["Title"] = "Create";
-        }
-        
-        <h1>Crear Usuario</h1>
-        
-    <h4>Usuario</h4>
-    <hr />
-    <div class="row">
-    <div class="col-md-4">
-    <form method="post">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <span class="text-danger">*</span>
-                        <label asp-for="Input.FirstName" class="control-label"></label>
-                        <input asp-for="Input.FirstName" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="Input.FirstName" class="text-danger"></span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <span class="text-danger">*</span>
-                        <label asp-for="Input.LastName" class="control-label"></label>
-                        <input asp-for="Input.LastName" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="Input.LastName" class="text-danger"></span>
-                    </div>
-                </div>
-            </div>
+@{
+    ViewData["Title"] = "Alta de Usuario";
+}
 
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label asp-for="Input.SecondLastName" class="control-label"></label>
-                        <input asp-for="Input.SecondLastName" class="form-control" />
-                        <span asp-validation-for="Input.SecondLastName" class="text-danger"></span>
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Alta de Cuenta de Usuario</h4>
+                        <h6 class="card-subtitle text-muted">Defina credenciales seguras y privilegios de acceso al sistema.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-user-shield fa-2x text-info opacity-5"></i>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <span class="text-danger">*</span>
-                        <label asp-for="Input.IdentityCard" class="control-label"></label>
-                        <input asp-for="Input.IdentityCard" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="Input.IdentityCard" class="text-danger"></span>
-                    </div>
-                </div>
-            </div>
 
-            <div class="row">
-                <div class="col-md-6">
-                     <div class="form-group">
-                        <span class="text-danger">*</span>
-                        <label asp-for="Input.UserName" class="control-label"></label>
-                        <input asp-for="Input.UserName" class="form-control" aria-required="true" autocomplete="username"/>
-                        <span asp-validation-for="Input.UserName" class="text-danger"></span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                     <div class="form-group">
-                        <span class="text-danger">*</span>
-                        <label asp-for="Input.Password" class="control-label"></label>
-                        <div class="input-group">
-                            <input asp-for="Input.Password" class="form-control" aria-required="true" autocomplete="new-password" id="passwordInput" type="password"/>
-                            <div class="input-group-append">
-                                <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()">Generar</button>
-                                <button type="button" class="btn btn-outline-secondary" id="togglePasswordBtn" onclick="togglePassword()">Mostrar</button>
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+
+                    <div class="row">
+                        <!-- Columna 1: Información Base -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-address-card mr-2"></i> Identidad del Usuario</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.FirstName" class="control-label font-weight-bold small uppercase text-muted">Nombres <span class="text-danger">*</span></label>
+                                        <input asp-for="Input.FirstName" class="form-control" placeholder="Ej: Juan Antonio" required />
+                                        <span asp-validation-for="Input.FirstName" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.LastName" class="control-label font-weight-bold small uppercase text-muted">1er Apellido <span class="text-danger">*</span></label>
+                                        <input asp-for="Input.LastName" class="form-control" placeholder="Ej: Pérez" required />
+                                        <span asp-validation-for="Input.LastName" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.SecondLastName" class="control-label font-weight-bold small uppercase text-muted">2do Apellido</label>
+                                        <input asp-for="Input.SecondLastName" class="form-control" placeholder="Ej: García" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.IdentityCard" class="control-label font-weight-bold small uppercase text-muted">Documento Identidad <span class="text-danger">*</span></label>
+                                        <input asp-for="Input.IdentityCard" class="form-control" placeholder="1234567" required />
+                                        <span asp-validation-for="Input.IdentityCard" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Email" class="control-label font-weight-bold small uppercase text-muted">Correo Institucional <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Email" class="form-control" placeholder="usuario@univalle.edu" required />
+                                <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.PhoneNumber" class="control-label font-weight-bold small uppercase text-muted">Teléfono de Contacto <span class="text-danger">*</span></label>
+                                <input asp-for="Input.PhoneNumber" class="form-control" placeholder="+591 ..." />
                             </div>
                         </div>
-                        <span asp-validation-for="Input.Password" class="text-danger"></span>
+
+                        <!-- Columna 2: Seguridad y Roles -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-lock mr-2"></i> Seguridad y Privilegios</h5>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Role" class="control-label font-weight-bold small uppercase text-info">Rol de Aplicación <span class="text-danger">*</span></label>
+                                <select asp-for="Input.Role" class="form-control custom-select border-info" asp-items="ViewBag.UserRole" required>
+                                    <option value="">-- Seleccionar Rol --</option>
+                                </select>
+                                <span asp-validation-for="Input.Role" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3 border-left border-warning pl-3 bg-light p-2">
+                                <label asp-for="Input.UserName" class="control-label font-weight-bold small text-warning uppercase">Nombre de Usuario (Login) <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white"><i class="fas fa-user-tag text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="Input.UserName" class="form-control border-warning shadow-none" placeholder="Ej: jperez" required />
+                                </div>
+                                <span asp-validation-for="Input.UserName" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Password" class="control-label font-weight-bold small uppercase text-muted">Contraseña de Acceso <span class="text-danger">*</span></label>
+                                <div class="input-group drop-shadow">
+                                    <input asp-for="Input.Password" class="form-control" id="passwordInput" type="password" required />
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-secondary" onclick="togglePassword()" id="togglePasswordBtn" title="Ver/Ocultar"><i class="fas fa-eye"></i></button>
+                                        <button type="button" class="btn btn-dark" onclick="generatePassword()" title="Generar Automática"><i class="fas fa-magic"></i></button>
+                                    </div>
+                                </div>
+                                <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                                <small class="text-muted italic" style="font-size: 0.75rem;">Mínimo 8 caracteres, letras y números.</small>
+                            </div>
+
+                            <h5 class="font-weight-bold text-info mb-3 mt-4"><i class="fas fa-briefcase mr-2"></i> Adscripción Laboral</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.Position" class="control-label font-weight-bold small uppercase text-muted">Cargo Académico/Adm.</label>
+                                        <input asp-for="Input.Position" class="form-control" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.Department" class="control-label font-weight-bold small uppercase text-muted">Departamento</label>
+                                        <input asp-for="Input.Department" class="form-control" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Email" class="control-label"></label>
-                <input asp-for="Input.Email" class="form-control" aria-required="true" />
-                <span asp-validation-for="Input.Email" class="text-danger"></span>
-            </div>
+                    <hr />
 
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Role" class="control-label"></label>
-                <select asp-for="Input.Role" class="form-control" aria-required="true" asp-items="ViewBag.UserRole">
-                    <option value="">-- Seleccione un Rol --</option>
-                </select>
-                <span asp-validation-for="Input.Role" class="text-danger"></span>
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Crear Cuenta
+                        </button>
+                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                             Cancelar
+                        </a>
+                    </div>
+                </form>
             </div>
-
-            <div class="form-group">
-                <label asp-for="Input.Position" class="control-label"></label>
-                <input asp-for="Input.Position" class="form-control" />
-                <span asp-validation-for="Input.Position" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Input.Department" class="control-label"></label>
-                <input asp-for="Input.Department" class="form-control" />
-                <span asp-validation-for="Input.Department" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Input.HireDate" class="control-label"></label>
-                <input asp-for="Input.HireDate" class="form-control" />
-                <span asp-validation-for="Input.HireDate" class="text-danger"></span>
-            </div>
-            
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.PhoneNumber" class="control-label"></label>
-                <input asp-for="Input.PhoneNumber" class="form-control" />
-                <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Crear" class="btn btn-primary" />
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-page="Index">Volver al Listado</a>
-</div>
-
 @section Scripts {
-    @await Html.PartialAsync("_ValidationScriptsPartial")
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
     <script>
         function generatePassword() {
-            var length = 8;
-            var charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\u0023$%^&*()_+";
+            var length = 10;
+            var charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%^&*";
             var retVal = "";
-            for (var i = 0, n = charset.length; i < length; ++i) {
-                retVal += charset.charAt(Math.floor(Math.random() * n));
+            for (var i = 0; i < length; ++i) {
+                retVal += charset.charAt(Math.floor(Math.random() * charset.length));
             }
-            retVal += "5";
-
-            document.getElementById("passwordInput").value = retVal;
+            retVal += Math.floor(Math.random() * 9);
+            var input = document.getElementById("passwordInput");
+            input.value = retVal;
+            input.type = "text";
+            document.getElementById("togglePasswordBtn").innerHTML = '<i class="fas fa-eye-slash"></i>';
         }
 
         function togglePassword() {
             var input = document.getElementById("passwordInput");
             var btn = document.getElementById("togglePasswordBtn");
-            if (!input || !btn) return;
             if (input.type === "password") {
                 input.type = "text";
-                btn.textContent = "Ocultar";
+                btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
             } else {
                 input.type = "password";
-                btn.textContent = "Mostrar";
+                btn.innerHTML = '<i class="fas fa-eye"></i>';
             }
         }
     </script>

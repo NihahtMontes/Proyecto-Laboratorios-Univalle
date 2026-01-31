@@ -53,18 +53,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             }
 
             // COUNTRIES
-
-            var country = await _context.Countries.FindAsync(id);
-            if (country != null)
+            try
             {
-                Country = country;
-                Country.Status = GeneralStatus.Eliminado; // Soft delete
-                _context.Attach(Country).State = EntityState.Modified;
-                await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "El pais ha sido eliminada correctamente.";
+                var country = await _context.Countries.FindAsync(id);
+                if (country != null)
+                {
+                    country.Status = GeneralStatus.Eliminado; // Soft delete
+                    _context.Attach(country).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                    
+                    TempData.Success(NotificationHelper.Countries.Deleted(country.Name));
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData.Error("Hubo un error al intentar eliminar el país: " + ex.Message);
+                return RedirectToPage("/Cities/Index");
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("/Cities/Index");
         }
     }
 }

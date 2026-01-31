@@ -1,89 +1,244 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Laboratories.IndexModel
 
-
-<h1>Lista de Laboratorios</h1>
-
-<p>
-    <a asp-page="Create" class="btn btn-primary">Create New</a>
-</p>
-<table class="table table-hover">
-    <thead class="thead-light">
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Laboratories[0].Code)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Laboratories[0].Name)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Laboratories[0].Type)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Laboratories[0].Building)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Laboratories[0].Floor)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Laboratories[0].Description)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Laboratories[0].Status)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Laboratories[0].Faculty)
-            </th>
-            <th>Registrado</th>
-            <th>Modificado</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model.Laboratories) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Code)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Type)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Building)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Floor)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Description)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Status)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Faculty.Name)
-            </td>
-            <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.CreatedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.LastModifiedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.ModifiedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Editar</a>
-                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info"><i class="fas fa-info-circle"></i> Detalles</a>
-                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Eliminar</a>
-            </td>
-        </tr>
+@{
+    ViewData["Title"] = "Infraestructura Operativa";
 }
-    </tbody>
-</table>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <!-- 🏗️ Dual-Tab Architecture -->
+            <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active font-weight-bold" data-toggle="tab" href="#laboratories" role="tab">
+                        <i class="fas fa-flask mr-2"></i> Centros de Laboratorio
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link font-weight-bold" data-toggle="tab" href="#faculties" role="tab">
+                        <i class="fas fa-university mr-2"></i> Unidades Académicas
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- 🧪 TAB 1: LABORATORIOS -->
+                <div class="tab-pane active" id="laboratories" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center mb-4">
+                            <div>
+                                <h4 class="card-title text-dark">Directorio de Laboratorios</h4>
+                                <h6 class="card-subtitle text-muted">Gestión de espacios físicos, equipamiento base y asignación técnica.</h6>
+                            </div>
+                            <div class="ml-auto mt-2">
+                                <a asp-page="Create" class="btn btn-info btn-rounded shadow-sm px-4">
+                                    <i class="fas fa-plus-circle mr-1"></i> Nuevo Laboratorio
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- 🔍 Smart Index Zone -->
+                        <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                            <form method="get">
+                                <div class="row align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="small font-weight-bold text-muted uppercase">Búsqueda Técnica</label>
+                                        <div class="input-group drop-shadow">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                            </div>
+                                            <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, código o facultad..." />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="small font-weight-bold text-muted uppercase">Disponibilidad</label>
+                                        <select asp-for="StatusFilter" class="form-control custom-select" 
+                                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()">
+                                            <option value="">-- Todos --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 text-right mt-2 mt-md-0">
+                                        <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                            <i class="fas fa-filter mr-1"></i> Filtrar
+                                        </button>
+                                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover v-middle">
+                                <thead class="thead-light">
+                                    <tr class="small uppercase font-weight-bold">
+                                        <th>Laboratorio / Cód.</th>
+                                        <th>Ubicación Física</th>
+                                        <th class="text-center">Estado</th>
+                                        <th>Facultad Responsable</th>
+                                        <th>Auditoría</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!Model.Laboratories.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center py-5 text-muted">
+                                                <i class="fas fa-flask fa-3x mb-3 d-block opacity-2"></i>
+                                                No se encontraron registros en la infraestructura seleccionada.
+                                            </td>
+                                        </tr>
+                                    }
+                                    @foreach (var item in Model.Laboratories)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="m-r-10">
+                                                        <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm"><i class="fas fa-flask"></i></span>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="m-b-0 font-weight-bold text-dark">@item.Name</h6>
+                                                        <span class="text-muted small">ID: <strong class="text-dark">@item.Code</strong></span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="small">
+                                                    <div class="text-dark"><i class="fas fa-building mr-1 text-muted"></i> Edif: @(item.Building ?? "N/A")</div>
+                                                    <div class="text-muted italic"><i class="fas fa-layer-group mr-1"></i> Piso: @(!string.IsNullOrEmpty(item.Floor) ? item.Floor : "-")</div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                @{
+                                                    var badgeClass = item.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "badge-success" : "badge-danger";
+                                                }
+                                                <span class="badge badge-pill @badgeClass px-3 py-1">@item.Status</span>
+                                            </td>
+                                            <td>
+                                                <span class="text-dark font-weight-bold small uppercase">@(item.Faculty?.Name ?? "General")</span>
+                                            </td>
+                                            <td>
+                                                <div class="small text-muted">
+                                                    <div class="text-dark"><i class="far fa-calendar-alt mr-1"></i> @item.CreatedDate.ToString("dd/MM/yyyy")</div>
+                                                    <div><i class="far fa-user mr-1"></i> @(item.CreatedBy?.Initials ?? "Sist.")</div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group">
+                                                    <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                                        <i class="fas fa-search-plus"></i>
+                                                    </a>
+                                                    <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🏛️ TAB 2: FACULTADES -->
+                <div class="tab-pane" id="faculties" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center mb-4">
+                            <div>
+                                <h4 class="card-title text-dark">Unidades Académicas</h4>
+                                <h6 class="card-subtitle text-muted">Agrupación lógica de laboratorios y centros de investigación.</h6>
+                            </div>
+                            <div class="ml-auto mt-2">
+                                <a asp-page="/Faculties/Create" class="btn btn-info btn-rounded shadow-sm px-4">
+                                    <i class="fas fa-plus-circle mr-1"></i> Nueva Facultad
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover v-middle">
+                                <thead class="thead-light">
+                                    <tr class="small uppercase font-weight-bold">
+                                        <th>Nombre / Identificador</th>
+                                        <th class="text-center">Estado</th>
+                                        <th>Auditoría</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!Model.Faculties.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="4" class="text-center py-5 text-muted">
+                                                <i class="fas fa-university fa-3x mb-3 d-block opacity-2"></i>
+                                                No hay facultades registradas en el sistema.
+                                            </td>
+                                        </tr>
+                                    }
+                                    @foreach (var item in Model.Faculties)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="m-r-10">
+                                                        <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm"><i class="fas fa-university"></i></span>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="m-b-0 font-weight-bold text-dark">@item.Name</h6>
+                                                        <span class="text-muted small">Cód: @(item.Code ?? "N/D")</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                @{
+                                                    var badgeClass = item.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "badge-success" : "badge-danger";
+                                                }
+                                                <span class="badge badge-pill @badgeClass px-3 py-1">@item.Status</span>
+                                            </td>
+                                            <td>
+                                                <div class="small text-muted">
+                                                    <div class="text-dark font-weight-bold"><i class="far fa-calendar-alt"></i> @item.CreatedDate.ToString("dd/MM/yyyy")</div>
+                                                    <div>Por: @(item.CreatedBy?.Initials ?? "Sist.")</div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group">
+                                                    <a asp-page="../Faculties/Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a asp-page="../Faculties/Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                                        <i class="fas fa-search-plus"></i>
+                                                    </a>
+                                                    <a asp-page="../Faculties/Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .customtab .nav-link { border: none; color: #747d8c; padding: 15px 25px; transition: all 0.3s ease; }
+        .customtab .nav-link.active { color: #2962ff; background: transparent; border-bottom: 3px solid #2962ff; }
+        .v-middle td { vertical-align: middle !important; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+    </style>
+}

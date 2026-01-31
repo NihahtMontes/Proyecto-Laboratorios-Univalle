@@ -8,7 +8,7 @@
         /// - Múltiples espacios → espacio simple
         /// - ToLower para comparación case-insensitive
         /// </summary>
-        public static string Normalize(this string? value)
+        public static string NormalizeComparison(this string? value)
         {
             if (string.IsNullOrWhiteSpace(value))
                 return string.Empty;
@@ -27,6 +27,20 @@
                 return string.Empty;
 
             return System.Text.RegularExpressions.Regex.Replace(value.Trim(), @"\s+", " ");
+        }
+
+        /// <summary>
+        /// Valida si el string contiene solo letras, espacios, acentos y guiones.
+        /// Ideal para nombres de Países, Ciudades, etc.
+        /// </summary>
+        public static bool IsValidName(this string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            // Regex: Letras (incluyendo acentos), espacios y guiones
+            var regex = new System.Text.RegularExpressions.Regex(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]+$");
+            return regex.IsMatch(value);
         }
     }
 }

@@ -1,146 +1,181 @@
-﻿@page
+﻿@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Maintenances.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Detalles del Mantenimiento";
+    ViewData["Title"] = "Expediente de Mantenimiento";
 }
 
-<h1>Detalles</h1>
+<div class="row justify-content-center">
+    <!-- Columna Principal: Detalles -->
+    <div class="col-lg-9 col-xl-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <!-- Encabezado -->
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark mb-1">Mantenimiento #@Model.Maintenance.Id</h4>
+                        <h6 class="card-subtitle text-muted small"><i class="fas fa-tools mr-1"></i> Ficha técnica del proceso de mantenimiento realizado.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        @{
+                            var statusClass = Model.Maintenance.Status switch {
+                                MaintenanceStatus.Completed => "badge-success",
+                                MaintenanceStatus.InProgress => "badge-warning",
+                                MaintenanceStatus.Scheduled => "badge-info",
+                                MaintenanceStatus.Cancelled => "badge-danger",
+                                _ => "badge-secondary"
+                            };
+                        }
+                        <span class="badge badge-pill @statusClass px-3 py-2">
+                            @Model.Maintenance.Status
+                        </span>
+                    </div>
+                </div>
 
-<div>
-    <h4>Mantenimiento</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.Equipment)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.Equipment.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.MaintenanceType)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.MaintenanceType.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.Technician)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.Technician.FullName)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.Status)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.ScheduledDate)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.ScheduledDate)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.StartDate)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.StartDate)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.EndDate)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.EndDate)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.Description)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.Description)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.Recommendations)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.Recommendations)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.Observations)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Maintenance.Observations)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Maintenance.ActualCost)
-        </dt>
-        <dd class="col-sm-10">
-                @if(Model.Maintenance.ActualCost.HasValue)
-            {
-               @Model.Maintenance.ActualCost.Value.ToString("C")
-            }
-        </dd>
-        <hr />
-        <dt class="col-sm-2">
-            Auditoría
-        </dt>
-        <dd class="col-sm-10">
-            <small>
-                <strong>Creado:</strong> @Model.Maintenance.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.Maintenance.CreatedBy != null)
-                {
-                    <span> por @Model.Maintenance.CreatedBy.FullName</span>
-                }
-                <br />
-                @if (Model.Maintenance.LastModifiedDate.HasValue)
-                {
-                    <strong>Modificado:</strong> @Model.Maintenance.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                    @if (Model.Maintenance.ModifiedBy != null)
-                    {
-                        <span> por @Model.Maintenance.ModifiedBy.FullName</span>
-                    }
-                }
-            </small>
-        </dd>
-    </dl>
-    
-    <h5>Detalles de Costos</h5>
-    <hr />
-    @if(Model.Maintenance.CostDetails != null && Model.Maintenance.CostDetails.Any())
-    {
-        <table class="table table-sm">
-            <thead>
-                <tr>
-                    <th>Concepto</th>
-                    <th>Categoría</th>
-                    <th>Descripción</th>
-                    <th>Cant.</th>
-                    <th>Precio Unit.</th>
-                    <th>Subtotal</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach(var item in Model.Maintenance.CostDetails)
-                {
-                    <tr>
-                        <td>@item.Concept</td>
-                        <td>@item.Category</td>
-                        <td>@item.Description</td>
-                        <td>@item.Quantity</td>
-                        <td>@item.UnitPrice.ToString("C")</td>
-                        <td>@item.Subtotal.ToString("C")</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-    else
-    {
-        <p>No hay costos registrados.</p>
-    }
+                <div class="row">
+                    <!-- Información del Equipo y Tipo -->
+                    <div class="col-md-6 border-right">
+                        <h5 class="text-info font-weight-bold mb-3 small uppercase"><i class="fas fa-info-circle mr-2"></i> Información General</h5>
+                        
+                        <div class="mb-3">
+                            <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Equipamiento</label>
+                            <p class="text-dark font-weight-bold mb-1">@Model.Maintenance.Equipment?.Name</p>
+                            <span class="badge badge-light border text-muted small">Inv: @Model.Maintenance.Equipment?.InventoryNumber</span>
+                        </div>
 
+                        <div class="mb-3">
+                            <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Tipo de Mantenimiento</label>
+                            <p class="text-dark">@Model.Maintenance.MaintenanceType?.Name</p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Descripción / Hallazgos</label>
+                            <p class="text-dark small">@(Model.Maintenance.Description ?? "Sin descripción registrada.")</p>
+                        </div>
+                    </div>
+
+                    <!-- Datos del Técnico y Fechas -->
+                    <div class="col-md-6">
+                        <h5 class="text-info font-weight-bold mb-3 small uppercase"><i class="fas fa-calendar-alt mr-2"></i> Ejecución y Personal</h5>
+                        
+                        <div class="mb-3">
+                            <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Técnico Responsable</label>
+                            <div class="d-flex align-items-center">
+                                <div class="btn btn-circle btn-sm btn-light-info text-info mr-2"><i class="fas fa-user-cog"></i></div>
+                                <p class="text-dark font-weight-bold mb-0">@(Model.Maintenance.Technician?.FullName ?? "No asignado")</p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Programado</label>
+                                <p class="text-dark small"><i class="far fa-calendar mr-1"></i> @Model.Maintenance.ScheduledDate.?ToString("dd/MM/yyyy")</p>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Inicio Real</label>
+                                <p class="text-dark small"><i class="far fa-clock mr-1 text-success"></i> @(Model.Maintenance.StartDate?.ToString("dd/MM/yyyy") ?? "-")</p>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Finalización</label>
+                                <p class="text-dark small"><i class="fas fa-check-double mr-1 text-info"></i> @(Model.Maintenance.EndDate?.ToString("dd/MM/yyyy") ?? "-")</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recomendaciones y Observaciones -->
+                <div class="row mt-4 pt-3 border-top">
+                    <div class="col-md-6">
+                        <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Recomendaciones Técnicas</label>
+                        <p class="text-dark small italic">@(Model.Maintenance.Recommendations ?? "N/A")</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Observaciones Finales</label>
+                        <p class="text-dark small">@(Model.Maintenance.Observations ?? "Sin observaciones.")</p>
+                    </div>
+                </div>
+
+                <!-- Tabla de Costos (Si existen) -->
+                @if (Model.Maintenance.CostDetails != null && Model.Maintenance.CostDetails.Any())
+                {
+                    <div class="mt-4 pt-4 border-top">
+                        <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-money-bill-wave mr-2 text-success"></i> Desglose de Gastos</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover border">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="small py-2">Concepto</th>
+                                        <th class="small py-2 text-right">Cant.</th>
+                                        <th class="small py-2 text-right">Unitario</th>
+                                        <th class="small py-2 text-right">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in Model.Maintenance.CostDetails)
+                                    {
+                                        <tr>
+                                            <td class="small font-weight-bold">@item.Concept</td>
+                                            <td class="small text-right">@item.Quantity</td>
+                                            <td class="small text-right">@item.UnitPrice.ToString("C")</td>
+                                            <td class="small text-right font-weight-bold">@item.Subtotal.ToString("C")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="bg-light">
+                                    <tr>
+                                        <td colspan="3" class="text-right font-weight-bold uppercase small">Costo Total Ejecutado:</td>
+                                        <td class="text-right font-weight-bold text-success" style="font-size: 1rem;">
+                                            @Model.Maintenance.ActualCost?.ToString("C")
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-light border shadow-none small mt-4">
+                        <i class="fas fa-info-circle mr-2"></i> No se registraron costos adicionales para este mantenimiento.
+                    </div>
+                }
+
+                <!-- Auditoría -->
+                <div class="card bg-light mt-4 border-0 shadow-none">
+                    <div class="card-body p-3">
+                        <h6 class="font-weight-bold text-uppercase mb-3 small text-muted"><i class="fas fa-history mr-2"></i> Trazabilidad</h6>
+                        <div class="row small">
+                            <div class="col-6">
+                                <small class="text-muted d-block font-weight-bold uppercase" style="font-size: 0.6rem;">Generado por</small>
+                                <div class="text-dark font-weight-bold">@(Model.Maintenance.CreatedBy?.FullName ?? "Sistema")</div>
+                                <div class="text-muted">@Model.Maintenance.CreatedDate.ToString("dd/MM/yyyy HH:mm")</div>
+                            </div>
+                            <div class="col-6 border-left">
+                                <small class="text-muted d-block font-weight-bold uppercase" style="font-size: 0.6rem;">Última Actualización</small>
+                                <div class="text-dark font-weight-bold">@(Model.Maintenance.ModifiedBy?.FullName ?? "-")</div>
+                                <div class="text-muted">@(Model.Maintenance.LastModifiedDate?.ToString("dd/MM/yyyy HH:mm") ?? "-")</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions text-right mt-4 pt-3 border-top">
+                    <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+                         Volver
+                    </a>
+                    <a asp-page="./Edit" asp-route-id="@Model.Maintenance.Id" class="btn btn-warning btn-rounded text-white px-4 shadow-sm font-weight-bold">
+                        <i class="fas fa-edit mr-1"></i> Editar Registro
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-<div>
-    <a asp-page="./Edit" asp-route-id="@Model.Maintenance.Id">Editar</a> |
-    <a asp-page="./Index">Volver al Listado</a>
-</div>
+
+@section Styles {
+    <style>
+        .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+        .italic { font-style: italic; }
+    </style>
+}

@@ -1,118 +1,229 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Detalles de la Verificación";
+    ViewData["Title"] = "Detalle de Verificación";
+    var v = Model.Verification;
+
+    // Helper local usando Func delegate para evitar bloque @functions complejo
+    Func<string, VerificationResult, Microsoft.AspNetCore.Html.IHtmlContent> RenderCheck = (label, result) =>
+    {
+        var colorInfo = result switch
+        {
+            VerificationResult.Good => ("text-success", "fa-check-circle", "bg-soft-success", "Bueno"),
+            VerificationResult.Bad => ("text-danger", "fa-times-circle", "bg-soft-danger", "Malo"),
+            VerificationResult.NotApplicable => ("text-muted", "fa-minus-circle", "", "N/A"),
+            _ => ("text-secondary", "fa-circle", "", "Sin Verificar")
+        };
+
+        var html = $@"
+        <div class='d-flex justify-content-between align-items-center p-3 border-bottom check-row {colorInfo.Item3}'>
+            <span class='font-weight-bold small text-uppercase text-dark'>{label}</span>
+            <div class='d-flex align-items-center {colorInfo.Item1}'>
+                <span class='font-weight-bold mr-2 small'>{colorInfo.Item4}</span>
+                <i class='fas {colorInfo.Item2} fa-lg'></i>
+            </div>
+        </div>";
+        return Html.Raw(html);
+    };
 }
 
-<h1>Detalles</h1>
-
-<div>
-    <h4>Verificación</h4>
-    <hr />
-     <dl class="row">
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.Equipment)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.Equipment.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.Date)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.Date)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.Status)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.CompletionPercentage)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.CompletionPercentage)%
-        </dd>
-        <hr class="col-12" />
-        <dt class="col-sm-2">
-            Fecha de Registro
-        </dt>
-        <dd class="col-sm-10">
-            @Model.Verification.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-            @if (Model.Verification.CreatedBy != null)
-            {
-                <span class="text-muted"> por @Model.Verification.CreatedBy.FullName</span>
-            }
-        </dd>
-        @if (Model.Verification.LastModifiedDate.HasValue)
-        {
-            <dt class="col-sm-2">
-                Última Modificación
-            </dt>
-            <dd class="col-sm-10">
-                @Model.Verification.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.Verification.ModifiedBy != null)
-                {
-                    <span class="text-muted"> por @Model.Verification.ModifiedBy.FullName</span>
-                }
-            </dd>
-        }
-    </dl>
+<div class="container-fluid px-0">
     
-    <h5>Checklist Results</h5>
-    <dl class="row">
-        @foreach(var prop in Helper.GetChecklistProperties(Model.Verification))
-        {
-             <dt class="col-sm-4">
-                @prop.Name
-            </dt>
-            <dd class="col-sm-8">
-                @prop.Value
-            </dd>
-        }
-    </dl>
+    <!-- Hero Header -->
+    <div class="card border-0 shadow-lg mb-4 overflow-hidden" style="border-radius: 12px;">
+        <div class="card-body p-0">
+            <div class="row no-gutters">
+                <!-- Columna Izquierda: Info Principal -->
+                <div class="col-lg-9 p-4 bg-white position-relative">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="icon-box bg-soft-info text-info rounded-circle mr-3 d-flex align-items-center justify-content-center">
+                            <i class="fas fa-clipboard-check fa-2x"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-uppercase text-muted small font-weight-bold mb-1">Verificación Técnica #@v.Id</h6>
+                            <h3 class="text-dark font-weight-bold mb-0">@v.Equipment.Name</h3>
+                            <span class="badge badge-light border mt-1">
+                                <i class="fas fa-barcode mr-1"></i> Inv: @v.Equipment.InventoryNumber
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-sm-4 mb-3 mb-sm-0">
+                            <small class="text-uppercase text-muted font-weight-bold d-block mb-1">Fecha Inspección</small>
+                            <span class="font-weight-bold text-dark h6"><i class="far fa-calendar-alt mr-2 text-primary"></i>@v.Date.ToShortDateString()</span>
+                        </div>
+                        <div class="col-sm-4 mb-3 mb-sm-0">
+                            <small class="text-uppercase text-muted font-weight-bold d-block mb-1">Auditor</small>
+                            <span class="font-weight-bold text-dark h6"><i class="far fa-user mr-2 text-primary"></i>@(v.CreatedBy?.FullName ?? "Sistema")</span>
+                        </div>
+                        <div class="col-sm-4">
+                            <small class="text-uppercase text-muted font-weight-bold d-block mb-1">Última Actualización</small>
+                            <span class="font-weight-bold text-dark h6">
+                                @(v.LastModifiedDate.HasValue ? v.LastModifiedDate.Value.ToString("dd/MM/yyyy") : "-")
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
-    <h5>Summary</h5>
-    <dl class="row">
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.Observations)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.Observations)
-        </dd>
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.CriticalFindings)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.CriticalFindings)
-        </dd>
-         <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Verification.Recommendations)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Verification.Recommendations)
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-page="./Edit" asp-route-id="@Model.Verification.Id">Editar</a> |
-    <a asp-page="./Index">Volver al Listado</a>
-</div>
+                <!-- Columna Derecha: Estado -->
+                <div class="col-lg-3 bg-light p-4 d-flex flex-column justify-content-center align-items-center border-left">
+                    <small class="text-uppercase text-muted font-weight-bold mb-2">Estado General</small>
+                    @{
+                        var stateConfig = v.Status switch {
+                            VerificationStatus.Completed => ("text-success", "bg-soft-success", "fa-check-circle"),
+                            VerificationStatus.WithObservations => ("text-warning", "bg-soft-warning", "fa-exclamation-triangle"),
+                            VerificationStatus.Annulled => ("text-danger", "bg-soft-danger", "fa-ban"),
+                            _ => ("text-secondary", "bg-soft-secondary", "fa-pen")
+                        };
+                    }
+                    <div class="status-circle @stateConfig.Item2 @stateConfig.Item1 d-flex align-items-center justify-content-center rounded-circle mb-2" style="width: 80px; height: 80px;">
+                        <i class="fas @stateConfig.Item3 fa-3x"></i>
+                    </div>
+                    <h5 class="font-weight-bold @stateConfig.Item1 mb-0">@Html.DisplayFor(m => v.Status)</h5>
+                </div>
+            </div>
+        </div>
+    </div>
 
-@functions {
-    public static class Helper {
-        public static IEnumerable<(string Name, string Value)> GetChecklistProperties(Proyecto_Laboratorios_Univalle.Models.Verification verification) {
-            var props = typeof(Proyecto_Laboratorios_Univalle.Models.Verification).GetProperties()
-                .Where(p => p.PropertyType == typeof(Proyecto_Laboratorios_Univalle.Models.Enums.VerificationResult) && p.Name.EndsWith("Check"));
+    <div class="row">
+        <!-- Columna Izquierda: Checklist (Más ancha) -->
+        <div class="col-lg-8">
+            <h5 class="text-dark font-weight-bold mb-3 pl-1"><i class="fas fa-tasks mr-2 text-info"></i>Detalle de Puntos de Control</h5>
             
-            foreach(var p in props) {
-                var disp = p.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute), false).FirstOrDefault() as System.ComponentModel.DataAnnotations.DisplayAttribute;
-                var name = disp?.Name ?? p.Name;
-                var val = p.GetValue(verification)?.ToString() ?? "N/A";
-                yield return (name, val);
+            <div class="row">
+                <!-- Grupo 1: Combustión (Full Width en móvil, mitad en desktop grande) -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
+                            <i class="fas fa-burn mr-2"></i> Sistema de Combustión
+                        </div>
+                        <div class="card-body p-0 pb-2">
+                            @RenderCheck("Manguera Gas", v.GasHoseCheck)
+                            @RenderCheck("Manguera Agua", v.WaterHoseCheck)
+                            @RenderCheck("Válvula Solenoide", v.SolenoidValveCheck)
+                            @RenderCheck("Quemador", v.BurnerCheck)
+                            @RenderCheck("Sensor de Llama", v.FlameSensorCheck)
+                            @RenderCheck("Llama Piloto", v.CombustionFlameCheck)
+                            @RenderCheck("Ignitor", v.ElectrodeIgniterCheck)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grupo 2: Mecánica -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
+                            <i class="fas fa-cogs mr-2"></i> Mecánica y Térmica
+                        </div>
+                        <div class="card-body p-0 pb-2">
+                            @RenderCheck("Ventilador", v.FanCheck)
+                            @RenderCheck("Intercambiador Calor", v.HeatExchangerCheck)
+                            @RenderCheck("Lubricación", v.LubricationCheck)
+                            @RenderCheck("Salida Vapor", v.SteamOutletCheck)
+                            @RenderCheck("Vapor Alta Temp", v.HighTempSteamCheck)
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- Grupo 3: Eléctrico -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
+                            <i class="fas fa-plug mr-2"></i> Eléctrico y Control
+                        </div>
+                        <div class="card-body p-0 pb-2">
+                            @RenderCheck("Cableado", v.CablingCheck)
+                            @RenderCheck("Control Temp", v.TemperatureControlCheck)
+                            @RenderCheck("Display LED", v.LedDisplayCheck)
+                            @RenderCheck("Luces", v.LightsCheck)
+                            @RenderCheck("Alarma Sonora", v.SoundAlarmCheck)
+                            @RenderCheck("Termocupla", v.ThermocoupleCheck)
+                             @RenderCheck("Encendido Horno", v.OvenIgnitionCheck)
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- Grupo 4: Higiene -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
+                             <i class="fas fa-broom mr-2"></i> Estética e Higiene
+                        </div>
+                        <div class="card-body p-0 pb-2">
+                            @RenderCheck("Limpieza Interna", v.InternalCleaningCheck)
+                            @RenderCheck("Limpieza Externa", v.ExternalCleaningCheck)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha: Hallazgos y Acciones (Sticky si fuera necesario) -->
+        <div class="col-lg-4">
+            <h5 class="text-dark font-weight-bold mb-3 pl-1"><i class="fas fa-clipboard-check mr-2 text-info"></i>Conclusiones</h5>
+
+            @if (!string.IsNullOrEmpty(v.CriticalFindings))
+            {
+                <div class="card shadow-sm border-0 mb-3 bg-white border-left-danger">
+                    <div class="card-body">
+                        <h6 class="text-danger font-weight-bold mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Hallazgos Críticos</h6>
+                        <p class="mb-0 text-dark small">@v.CriticalFindings</p>
+                    </div>
+                </div>
             }
-        }
-    }
+
+            @if (!string.IsNullOrEmpty(v.Recommendations))
+            {
+                <div class="card shadow-sm border-0 mb-3 bg-white border-left-success">
+                    <div class="card-body">
+                        <h6 class="text-success font-weight-bold mb-2"><i class="fas fa-lightbulb mr-2"></i>Recomendaciones</h6>
+                        <p class="mb-0 text-dark small">@v.Recommendations</p>
+                    </div>
+                </div>
+            }
+
+            <div class="card shadow-sm border-0 mb-4 bg-light">
+                <div class="card-body">
+                    <h6 class="text-muted font-weight-bold mb-2 small text-uppercase">Observaciones Generales</h6>
+                    <p class="mb-0 text-secondary font-italic small">
+                        @(string.IsNullOrEmpty(v.Observations) ? "Ninguna observación registrada." : v.Observations)
+                    </p>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                     <h6 class="text-dark font-weight-bold mb-3">Acciones</h6>
+                    <a asp-page="./Edit" asp-route-id="@v.Id" class="btn btn-primary btn-block shadow-sm font-weight-bold mb-2">
+                        <i class="fas fa-edit mr-2"></i>Editar Datos
+                    </a>
+                    <a asp-page="./Index" class="btn btn-outline-secondary btn-block font-weight-bold">
+                        <i class="fas fa-arrow-left mr-2"></i>Volver al Listado
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .icon-box { width: 60px; height: 60px; min-width: 60px; }
+        .bg-soft-info { background-color: #e3f2fd; }
+        .bg-soft-success { background-color: #e8f5e9; }
+        .bg-soft-danger { background-color: #ffebee; }
+        .bg-soft-warning { background-color: #fff8e1; }
+        .bg-soft-secondary { background-color: #f5f5f5; }
+        
+        .border-left-danger { border-left: 4px solid #dc3545 !important; }
+        .border-left-success { border-left: 4px solid #28a745 !important; }
+        
+        .check-row:hover { background-color: #f8f9fa; }
+        .check-row.bg-soft-danger { background-color: #ffebee !important; } /* Forzar rojo suave en checks malos */
+    </style>
 }

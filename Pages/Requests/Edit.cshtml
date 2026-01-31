@@ -1,84 +1,194 @@
-﻿@page
-@using Proyecto_Laboratorios_Univalle.Models.Enums
+﻿@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Gestionar Solicitud";
 }
 
-<h1>Edit Request</h1>
-
-<h4>Request</h4>
-<hr />
 <div class="row">
-    <div class="col-md-6">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <input type="hidden" asp-for="MaintenanceRequest.Id" />
-            
-            <div class="form-group">
-                <label asp-for="MaintenanceRequest.EquipmentId" class="control-label"></label>
-                <select asp-for="MaintenanceRequest.EquipmentId" class="form-control" asp-items="ViewBag.EquipmentId"></select>
-                <span asp-validation-for="MaintenanceRequest.EquipmentId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="MaintenanceRequest.RequestedById" class="control-label"></label>
-                <select asp-for="MaintenanceRequest.RequestedById" class="form-control" asp-items="ViewBag.RequestedById"></select>
-                <span asp-validation-for="MaintenanceRequest.RequestedById" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="MaintenanceRequest.Description" class="control-label"></label>
-                <textarea asp-for="MaintenanceRequest.Description" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="MaintenanceRequest.Description" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <div class="row">
-                    <div class="col-md-6">
-                        <label asp-for="MaintenanceRequest.Priority" class="control-label"></label>
-                        <select asp-for="MaintenanceRequest.Priority" class="form-control" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
-                        <span asp-validation-for="MaintenanceRequest.Priority" class="text-danger"></span>
+    <!-- Columna Principal: Gestión del Requerimiento -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Gestión de Solicitud: #@Model.Input.Id</h4>
+                        <h6 class="card-subtitle text-muted">Evaluación técnica y actualización del flujo de mantenimiento.</h6>
                     </div>
-                    <div class="col-md-6">
-                         <label asp-for="MaintenanceRequest.Status" class="control-label"></label>
-                        <select asp-for="MaintenanceRequest.Status" class="form-control" asp-items="Html.GetEnumSelectList<RequestStatus>()"></select>
-                        <span asp-validation-for="MaintenanceRequest.Status" class="text-danger"></span>
+                    <div class="ml-auto">
+                        <i class="fas fa-edit fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+
+                    <!-- Bloque de Referencia -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="small text-muted font-weight-bold uppercase mb-1">Equipamiento</label>
+                            <div class="p-2 bg-light rounded border-left border-info font-weight-bold text-dark">
+                                <i class="fas fa-tools mr-1 text-info small"></i> @Model.Request.Equipment?.Name 
+                                <span class="text-muted font-weight-normal small">(@Model.Request.Equipment?.InventoryNumber)</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small text-muted font-weight-bold uppercase mb-1">Solicitado Por</label>
+                            <div class="p-2 bg-light rounded border-left border-info text-dark">
+                                <i class="fas fa-user-circle mr-1 text-info small"></i> @Model.Request.RequestedBy?.FullName
+                                <span class="small text-muted ml-2">@Model.Request.CreatedDate.ToString("dd/MM/yyyy")</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-align-left mr-2 text-info"></i> Detalles del Requerimiento</h5>
+                    
+                    <div class="form-group mb-4">
+                        <label asp-for="Input.Description" class="control-label font-weight-bold small uppercase text-muted">Contenido de la Solicitud <span class="text-danger">*</span></label>
+                        <textarea asp-for="Input.Description" class="form-control" rows="3" placeholder="Descripción técnica del problema..."></textarea>
+                        <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Nivel de Prioridad <span class="text-danger">*</span></label>
+                                <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
+                                <span asp-validation-for="Input.Priority" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                             <div class="form-group">
+                                <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones Adicionales</label>
+                                <textarea asp-for="Input.Observations" class="form-control" rows="1" placeholder="Notas de campo..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (User.IsInRole("Administrator") || User.IsInRole("SuperAdmin"))
+                    {
+                        <div class="card border-info bg-light-info mt-4 shadow-none">
+                            <div class="card-body p-3">
+                                <h5 class="card-title text-info font-weight-bold mb-3 small uppercase"><i class="fas fa-shield-alt mr-2"></i> Panel de Decisión Administrativa</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-0">
+                                            <label asp-for="Input.Status" class="control-label font-weight-bold small uppercase text-info">Estado de Resolución</label>
+                                            <select asp-for="Input.Status" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<RequestStatus>()"></select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group mb-0">
+                                            <label asp-for="Input.ApprovedById" class="control-label font-weight-bold small uppercase text-muted">Responsable Evaluador</label>
+                                            <select asp-for="Input.ApprovedById" class="form-control custom-select" asp-items="ViewBag.ApprovedById">
+                                                <option value="">-- Automático (Sistema) --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div id="rejectionSection" class="col-md-12 mt-3" style="@(Model.Input.Status == RequestStatus.Rejected ? "" : "display:none;")">
+                                        <div class="form-group mb-0">
+                                            <label asp-for="Input.RejectionReason" class="control-label font-weight-bold small text-danger uppercase">Motivo Relevante de Rechazo</label>
+                                            <textarea asp-for="Input.RejectionReason" class="form-control border-danger" rows="2" placeholder="Explique brevemente por qué no procede la solicitud..."></textarea>
+                                            <span asp-validation-for="Input.RejectionReason" class="text-danger small"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Guardar Cambios
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Lateral: Trazabilidad -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
+            <div class="card-body">
+                <h5 class="card-title text-white"><i class="fas fa-info-circle mr-2 text-info"></i> Estado de Trámite</h5>
+                <hr class="border-secondary" />
+                <div class="small">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-1">Identificador Único</label>
+                        <span class="font-weight-bold text-info">#REQ-@(Model.Input.Id.ToString("D5"))</span>
+                    </div>
+                    <div>
+                        <label class="text-muted d-block small uppercase mb-1">Estatus Actual</label>
+                        <span class="badge badge-pill badge-@(Model.Request.Status == RequestStatus.Approved ? "success" : (Model.Request.Status == RequestStatus.Pending ? "warning" : "danger")) px-3">
+                            @Model.Request.Status
+                        </span>
                     </div>
                 </div>
             </div>
-            <div class="form-group">
-                <label asp-for="MaintenanceRequest.Observations" class="control-label"></label>
-                <textarea asp-for="MaintenanceRequest.Observations" class="form-control" rows="2"></textarea>
-                <span asp-validation-for="MaintenanceRequest.Observations" class="text-danger"></span>
-            </div>
-            
-            <hr />
-            <h5>Approval (Director)</h5>
-            <div class="form-group">
-                <label asp-for="MaintenanceRequest.ApprovedById" class="control-label"></label>
-                <select asp-for="MaintenanceRequest.ApprovedById" class="form-control" asp-items="ViewBag.ApprovedById">
-                     <option value="">-- Pending --</option>
-                </select>
-                <span asp-validation-for="MaintenanceRequest.ApprovedById" class="text-danger"></span>
-            </div>
-             <div class="form-group">
-                <label asp-for="MaintenanceRequest.ApprovalDate" class="control-label"></label>
-                <input asp-for="MaintenanceRequest.ApprovalDate" class="form-control" />
-                <span asp-validation-for="MaintenanceRequest.ApprovalDate" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="MaintenanceRequest.RejectionReason" class="control-label"></label>
-                <textarea asp-for="MaintenanceRequest.RejectionReason" class="form-control" rows="2"></textarea>
-                <span asp-validation-for="MaintenanceRequest.RejectionReason" class="text-danger"></span>
-            </div>
+        </div>
 
-            <div class="form-group mt-3">
-                <input type="submit" value="Save" class="btn btn-primary" />
-                <a asp-page="./Index" class="btn btn-secondary">Cancel</a>
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Bitácora de Auditoría</h5>
+                <hr />
+                <div class="small">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Origen de Solicitud</label>
+                        <span class="font-weight-bold text-dark d-block">@(Model.Request.CreatedBy?.FullName ?? "Colaborador")</span>
+                        <span class="text-muted small">@Model.Request.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+
+                    @if (Model.Request.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Request.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.Request.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(function() {
+            // Control visual para estado "Rechazado"
+            $('#Input_Status').on('change', function() {
+                if ($(this).val() == '@((int)RequestStatus.Rejected)') {
+                    $('#rejectionSection').slideDown();
+                    $('#Input_RejectionReason').focus();
+                } else {
+                    $('#rejectionSection').slideUp();
+                }
+            });
+
+            // Validaciones Preventivas (Agresivas)
+            setupBlocking('#Input_Description', /^[a-zA-Z0-9\s\-\.\(\)\¿\?¡!,]*$/, "Caracteres no permitidos");
+            setupBlocking('#Input_Observations', /^[a-zA-Z0-9\s\-\.\(\)\¿\?¡!,]*$/, "Caracteres no permitidos");
+            setupBlocking('#Input_RejectionReason', /^[a-zA-Z0-9\s\-\.\(\)\¿\?¡!,_]*$/, "Caracteres no permitidos");
+        });
+
+        // Helper global de bloqueo
+        function setupBlocking($selector, pattern, errorMessage) {
+            $('body').on('input', $selector, function() {
+                var $field = $(this);
+                var val = $field.val();
+                if (!pattern.test(val)) {
+                   if(val.length > 0) $field.val(val.slice(0, -1)); 
+                }
+            });
+        }
+    </script>
 }

@@ -2,59 +2,150 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Users.DetailsModel
 
 @{
-    ViewData["Title"] = "Detalles de Usuario";
+    ViewData["Title"] = "Expediente de Usuario";
 }
 
-<h1>Detalles</h1>
+<div class="row">
+    <!-- Columna Principal: Ficha de Seguridad -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Expediente de Seguridad</h4>
+                        <h6 class="card-subtitle text-muted">Información detallada sobre el acceso y perfil institucional del usuario.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-user-shield fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
 
-<div>
-    <h4>Detalles de Usuario</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-3">Nombre Completo</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.FirstName) @Html.DisplayFor(model => model.User.LastName) @Html.DisplayFor(model => model.User.SecondLastName)</dd>
+                <div class="row mt-4">
+                    <div class="col-md-5 border-right text-center">
+                        <span class="btn btn-circle btn-info btn-xl font-weight-bold text-white shadow mb-3" style="width: 100px; height: 100px; line-height: 75px; font-size: 2.5rem;">
+                            @Model.User.Initials
+                        </span>
+                        <h3 class="font-weight-bold text-dark mb-1">@Model.User.FullName</h3>
+                        <div class="mb-3">
+                            <span class="badge badge-pill badge-primary px-4 py-1">@Model.User.Role</span>
+                        </div>
+                        
+                        <div class="bg-light p-3 rounded border text-left d-inline-block w-100">
+                            <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
+                                <span class="text-muted small uppercase font-weight-bold">Usuario:</span>
+                                <strong class="text-info">@Model.User.UserName</strong>
+                            </div>
+                            <div class="d-flex justify-content-between pt-1">
+                                <span class="text-muted small uppercase font-weight-bold">CI:</span>
+                                <strong class="text-dark">@Model.User.IdentityCard</strong>
+                            </div>
+                        </div>
+                    </div>
 
-        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.IdentityCard)</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.IdentityCard)</dd>
+                    <div class="col-md-7">
+                        <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-id-card-alt mr-2"></i> Contacto e Institución</h5>
+                        
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3"><i class="fas fa-envelope"></i></span>
+                                <div>
+                                    <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Correo Institucional</small>
+                                    <span class="font-weight-bold text-dark">@Model.User.Email</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3"><i class="fas fa-phone-alt"></i></span>
+                                <div>
+                                    <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Teléfono / Celular</small>
+                                    <span class="font-weight-bold text-dark">@(Model.User.PhoneNumber ?? "No registrado")</span>
+                                </div>
+                            </div>
+                        </div>
 
-        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.Role)</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.Role)</dd>
+                        <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-briefcase mr-2"></i> Adscripción Laboral</h5>
+                        <table class="table table-sm table-borderless bg-light rounded p-2">
+                            <tbody>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3" style="width: 40%;">Cargo Actual:</th>
+                                    <td class="font-weight-bold text-dark">@(Model.User.Position ?? "-")</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3">Departamento:</th>
+                                    <td class="font-weight-bold text-dark">@(Model.User.Department ?? "-")</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3">Fecha Alta:</th>
+                                    <td class="font-weight-bold text-dark">@(Model.User.HireDate?.ToString("dd/MM/yyyy") ?? "-")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.Status)</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.Status)</dd>
+    <!-- Columna Lateral: Estado y Control -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-shield-alt mr-2 text-info"></i> Estado de Seguridad</h5>
+                <hr class="border-secondary" />
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Estado Cuenta:</small>
+                    @{
+                        var badgeClass = Model.User.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "badge-success" : "badge-danger";
+                    }
+                    <span class="badge badge-pill @badgeClass px-3">@Model.User.Status</span>
+                </div>
 
-        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.Position)</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.Position)</dd>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Token de Acceso:</small>
+                    <span class="badge badge-pill badge-light text-dark px-3">Vigente</span>
+                </div>
+            </div>
+        </div>
 
-        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.Department)</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.Department)</dd>
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Auditoría de Sistema</h5>
+                <hr />
+                <div class="small">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Cuenta Creada</label>
+                        <span class="font-weight-bold text-dark">@Model.User.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="text-muted">Por: @(Model.User.CreatedBy?.FullName ?? "Admin Principal")</div>
+                    </div>
+                    @if (Model.User.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.User.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.User.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
 
-        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.HireDate)</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.HireDate)</dd>
-
-        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.Email)</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.Email)</dd>
-
-        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.PhoneNumber)</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.PhoneNumber)</dd>
-
-        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.User.UserName)</dt>
-        <dd class="col-sm-9">@Html.DisplayFor(model => model.User.UserName)</dd>
-
-        <hr />
-        <dt class="col-sm-3">Información de Auditoría</dt>
-        <dd class="col-sm-9">
-            <small>
-                Creado: @Model.User.CreatedDate.ToString("dd/MM/yyyy HH:mm") por @(Model.User.CreatedBy?.FullName ?? "Sistema")<br />
-                @if (Model.User.LastModifiedDate.HasValue)
-                {
-                    <span>Modificado: @Model.User.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm") por @(Model.User.ModifiedBy?.FullName ?? "N/A")</span>
-                }
-            </small>
-        </dd>
-    </dl>
+        <div class="form-actions mt-4">
+            <a asp-page="./Edit" asp-route-id="@Model.User.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
+                <i class="fas fa-edit mr-1"></i> Editar Credenciales
+            </a>
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4">
+                <i class="fas fa-list mr-1"></i> Volver al Listado
+            </a>
+            
+            <a asp-page="./Delete" asp-route-id="@Model.User.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+                <i class="fas fa-user-minus mr-1"></i> Revocar Acceso permanentemente
+            </a>
+        </div>
+    </div>
 </div>
-<div>
-    <a asp-page="./Edit" asp-route-id="@Model.User.Id">Editar</a> |
-    <a asp-page="./Index">Volver al Listado</a>
-</div>
+
+@section Styles {
+    <style>
+        .border-left-3 { border-left-width: 3px !important; }
+    </style>
+}

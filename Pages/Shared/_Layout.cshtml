@@ -13,6 +13,9 @@
     <!-- NOTA: El tilde (~) apunta a wwwroot automáticamente en Razor -->
     <link href="~/dist/css/style.min.css" rel="stylesheet">
     
+    <!-- SweetAlert2 CSS -->
+    <link href="~/lib/nice-admin/assets/libs/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+    
     <!-- RenderSection para estilos específicos de cada página -->
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -121,7 +124,6 @@
             
             <!-- Footer -->
             <footer class="footer text-center">
-                Todos los derechos reservados.
             </footer>
         </div>
     </div>
@@ -137,6 +139,56 @@
     <script src="~/dist/js/waves.js"></script>
     <script src="~/dist/js/sidebarmenu.js"></script>
     <script src="~/dist/js/custom.min.js"></script>
+
+    <!-- SweetAlert2 JS -->
+    <script src="~/lib/nice-admin/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    
+    <script>
+        $(function () {
+            // Alerta de Éxito
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <text>
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Éxito!',
+                    text: "@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(TempData["SuccessMessage"]?.ToString()))",
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#4CAF50'
+                });
+                </text>
+            }
+            
+            // Alerta de Error
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <text>
+                Swal.fire({
+                    icon: 'error',
+                    title: '¡Error!',
+                    text: "@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(TempData["ErrorMessage"]?.ToString()))",
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#f44336'
+                });
+                </text>
+            }
+
+            // Alerta de Advertencia
+            @if (TempData["WarningMessage"] != null)
+            {
+                <text>
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Advertencia',
+                    text: "@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(TempData["WarningMessage"]?.ToString()))",
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#ff9800'
+                });
+                </text>
+            }
+        });
+    </script>
+
     <!-- RenderSection para scripts específicos de cada página -->
     @await RenderSectionAsync("Scripts", required: false)
 </body>

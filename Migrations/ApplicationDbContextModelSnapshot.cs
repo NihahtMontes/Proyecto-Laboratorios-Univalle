@@ -551,6 +551,9 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int?>("CityId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -808,6 +811,9 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("Category")
+                        .HasColumnType("int");
+
                     b.Property<string>("Company")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -832,6 +838,9 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
 
+                    b.Property<bool>("IsInternal")
+                        .HasColumnType("bit");
+
                     b.Property<string>("JobTitle")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -850,9 +859,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -1466,7 +1472,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasForeignKey("Proyecto_Laboratorios_Univalle.Models.Maintenance", "RequestId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "Technician")
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Person", "Technician")
                         .WithMany()
                         .HasForeignKey("TechnicianId")
                         .OnDelete(DeleteBehavior.Restrict);

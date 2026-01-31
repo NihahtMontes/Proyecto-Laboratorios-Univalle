@@ -1,56 +1,128 @@
 ﻿@page
-@using Proyecto_Laboratorios_Univalle.Models.Enums
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.CreateModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Nueva Solicitud";
 }
 
-<h1>Create Request</h1>
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Registrar Requerimiento Técnico</h4>
+                        <h6 class="card-subtitle text-muted">Apertura de ficha para mantenimiento o asistencia técnica de activos.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-file-medical fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
 
-<h4>Request</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.EquipmentId" class="control-label">Equipment</label>
-                <select asp-for="Input.EquipmentId" class ="form-control" asp-items="ViewBag.EquipmentId"></select>
-                <span asp-validation-for="Input.EquipmentId" class="text-danger"></span>
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+
+                    <div class="row">
+                        <!-- Columna 1: Identificación -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-barcode mr-2"></i> Identificación del Activo
+                            </h5>
+                            
+                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2">
+                                <label asp-for="Input.EquipmentId" class="control-label font-weight-bold small text-info text-uppercase">Equipamiento Afectado <span class="text-danger">*</span></label>
+                                <select asp-for="Input.EquipmentId" class="form-control select2" asp-items="ViewBag.EquipmentId">
+                                    <option value="">-- Seleccionar Equipo --</option>
+                                </select>
+                                <span asp-validation-for="Input.EquipmentId" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.RequestedById" class="control-label font-weight-bold small uppercase text-muted">Solicitante Autorizado</label>
+                                <select asp-for="Input.RequestedById" class="form-control custom-select" asp-items="ViewBag.RequestedById">
+                                    <option value="">-- Usuario de Sesión Actual --</option>
+                                </select>
+                                <span asp-validation-for="Input.RequestedById" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Grado de Prioridad <span class="text-danger">*</span></label>
+                                <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
+                                <span asp-validation-for="Input.Priority" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <!-- Columna 2: Detalles -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-align-left mr-2"></i> Naturaleza del Problema
+                            </h5>
+                            
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small text-warning text-uppercase">Descripción del Requerimiento <span class="text-danger">*</span></label>
+                                <textarea asp-for="Input.Description" class="form-control border-warning shadow-none" rows="4" placeholder="Describa el fallo detectado o la asistencia técnica necesaria..."></textarea>
+                                <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones de Campo</label>
+                                <textarea asp-for="Input.Observations" class="form-control" rows="2" placeholder="Notas adicionales o contexto de la falla..."></textarea>
+                                <span asp-validation-for="Input.Observations" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light-info border-0 small p-3 mt-2 text-info">
+                        <i class="fas fa-info-circle mr-1"></i> Una vez enviada, la solicitud entrará en estado <strong>Pendiente</strong> y será evaluada por el equipo técnico administrativo.
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                            <i class="fas fa-paper-plane mr-2"></i> Enviar Solicitud
+                        </button>
+                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                             Cancelar
+                        </a>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <label asp-for="Input.RequestedById" class="control-label">Requested By</label>
-                <select asp-for="Input.RequestedById" class ="form-control" asp-items="ViewBag.RequestedById">
-                    <option value="">-- Current User --</option>
-                </select>
-                 <span asp-validation-for="Input.RequestedById" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Description" class="control-label">Description</label>
-                <textarea asp-for="Input.Description" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="Input.Description" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.Priority" class="control-label">Priority</label>
-                <select asp-for="Input.Priority" class="form-control" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
-                <span asp-validation-for="Input.Priority" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.Observations" class="control-label">Observations</label>
-                <textarea asp-for="Input.Observations" class="form-control" rows="2"></textarea>
-                <span asp-validation-for="Input.Observations" class="text-danger"></span>
-            </div>
-            <div class="form-group mt-3">
-                <input type="submit" value="Create" class="btn btn-primary" />
-                <a asp-page="Index" class="btn btn-secondary">Cancel</a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <link href="~/lib/nice-admin/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <script src="~/lib/nice-admin/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script>
+        $(function() {
+            // 1. Select2 Avanzado
+            $(".select2").select2({
+                placeholder: "-- Seleccionar Equipo --",
+                allowClear: true,
+                width: '100%'
+            });
+
+            // 2. Validaciones Agresivas (Preventivas)
+            setupBlocking('#Input_Description', /^[a-zA-Z0-9\s\-\.\(\)\¿\?¡!]*$/, "Caracteres especiales no permitidos");
+            setupBlocking('#Input_Observations', /^[a-zA-Z0-9\s\-\.\(\)\¿\?¡!]*$/, "Caracteres especiales no permitidos");
+        });
+
+        // Helper para Bloqueo de Input (Validación Agresiva)
+        function setupBlocking($selector, pattern, errorMessage) {
+            $('body').on('input', $selector, function() {
+                var $field = $(this);
+                var val = $field.val();
+                if (!pattern.test(val)) {
+                    // Revertir último caracter si no es pegar
+                   if(val.length > 0) $field.val(val.slice(0, -1)); 
+                }
+            });
+        }
+    </script>
 }

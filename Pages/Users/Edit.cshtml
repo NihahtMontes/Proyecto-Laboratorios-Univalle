@@ -2,127 +2,172 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Users.EditModel
 
 @{
-    ViewData["Title"] = "Edit";
+    ViewData["Title"] = "Editar Usuario";
 }
 
-<h1>Editar Usuario</h1>
-
-<h4>Usuario</h4>
-<hr />
 <div class="row">
-    <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <!-- ID is in the route -->
-            <input type="hidden" name="id" value="@Model.Id" />
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <span class="text-danger">*</span>
-                        <label asp-for="Input.FirstName" class="control-label"></label>
-                        <input asp-for="Input.FirstName" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="Input.FirstName" class="text-danger"></span>
+    <!-- Columna Principal: Gestión de Perfil -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Gestión de Cuenta</h4>
+                        <h6 class="card-subtitle text-muted">Actualización de privilegios y datos de contacto del usuario @Model.Input.UserName</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-user-edit fa-2x text-warning opacity-5"></i>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <span class="text-danger">*</span>
-                        <label asp-for="Input.LastName" class="control-label"></label>
-                        <input asp-for="Input.LastName" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="Input.LastName" class="text-danger"></span>
+
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" name="id" value="@Model.Id" />
+
+                    <div class="row">
+                        <!-- Datos de Identidad -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-badge mr-2"></i> Identidad y Contacto
+                            </h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.FirstName" class="control-label font-weight-bold small uppercase text-muted">Nombres <span class="text-danger">*</span></label>
+                                        <input asp-for="Input.FirstName" class="form-control" placeholder="Juan" required />
+                                        <span asp-validation-for="Input.FirstName" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.LastName" class="control-label font-weight-bold small uppercase text-muted">Apellido <span class="text-danger">*</span></label>
+                                        <input asp-for="Input.LastName" class="form-control" placeholder="Pérez" required />
+                                        <span asp-validation-for="Input.LastName" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-3 border-left border-info pl-3 bg-light p-2 font-weight-bold text-dark">
+                                <label asp-for="Input.IdentityCard" class="control-label font-weight-bold small text-info uppercase">Cédula de Identidad (C.I.) <span class="text-danger">*</span></label>
+                                <input asp-for="Input.IdentityCard" class="form-control border-info shadow-none" required />
+                                <span asp-validation-for="Input.IdentityCard" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Email" class="control-label font-weight-bold small uppercase text-muted">Correo Institucional <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Email" class="form-control" required />
+                                <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3 text-dark font-weight-bold">
+                                <label asp-for="Input.PhoneNumber" class="control-label font-weight-bold small uppercase text-muted">Teléfono de Contacto</label>
+                                <input asp-for="Input.PhoneNumber" class="form-control" />
+                            </div>
+                        </div>
+
+                        <!-- Seguridad y Perfil -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-lock mr-2"></i> Privilegios de Acceso
+                            </h5>
+
+                            <div class="form-group mb-3 border-left border-warning pl-3 bg-light p-2">
+                                <label asp-for="Input.Role" class="control-label font-weight-bold small text-warning uppercase">Rol de Aplicación <span class="text-danger">*</span></label>
+                                <select asp-for="Input.Role" class="form-control custom-select border-warning shadow-none" asp-items="ViewBag.UserRole" required></select>
+                            </div>
+
+                            <div class="bg-light p-3 rounded mb-4 border shadow-none">
+                                <h6 class="font-weight-bold text-dark small text-uppercase mb-3"><i class="fas fa-key mr-2 text-muted"></i> Gestión de Credenciales</h6>
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.UserName" class="control-label font-weight-bold small uppercase text-muted">Nombre de Usuario</label>
+                                    <input asp-for="Input.UserName" class="form-control bg-white" readonly />
+                                    <small class="text-muted" style="font-size: 0.7rem;">El nombre de usuario no puede ser modificado.</small>
+                                </div>
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.NewPassword" class="control-label font-weight-bold small uppercase text-muted">Restablecer Contraseña</label>
+                                    <input asp-for="Input.NewPassword" type="password" class="form-control bg-white" placeholder="••••••••" />
+                                    <small class="text-warning italic d-block mt-1" style="font-size: 0.7rem;">Deje vacío para conservar la contraseña actual.</small>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-group mb-0">
+                                        <label asp-for="Input.Position" class="control-label font-weight-bold small uppercase text-muted">Cargo</label>
+                                        <input asp-for="Input.Position" class="form-control" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-group mb-0">
+                                        <label asp-for="Input.Department" class="control-label font-weight-bold small uppercase text-muted">Dpto.</label>
+                                        <input asp-for="Input.Department" class="form-control" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Guardar Cambios
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Lateral: Control y Auditoría -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-shield-alt mr-2 text-info"></i> Seguridad de Cuenta</h5>
+                <hr class="border-secondary" />
+                
+                <div class="form-group">
+                    <label class="small text-muted uppercase font-weight-bold d-block mb-2">Estado de Actividad</label>
+                    <select id="userStatus" class="form-control custom-select bg-dark text-white border-secondary" 
+                            onchange="document.getElementById('Input_Status').value = this.value">
+                        @foreach (var status in Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>())
+                        {
+                            <option value="@status.Value" border selected="@(status.Value == Model.Input.Status.ToString())">@status.Text</option>
+                        }
+                    </select>
+                    <!-- Campo oculto para vincular al formulario principal (opcional, mejor usar el del formulario si el JS lo permite) -->
+                </div>
+
+                <div class="mt-4 py-2 border-top border-secondary small">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Último Acceso:</span>
+                        <span class="font-weight-bold text-info">Nunca</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Intentos Fallidos:</span>
+                        <span class="text-danger font-weight-bold">0</span>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label asp-for="Input.SecondLastName" class="control-label"></label>
-                        <input asp-for="Input.SecondLastName" class="form-control" />
-                        <span asp-validation-for="Input.SecondLastName" class="text-danger"></span>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <span class="text-danger">*</span>
-                        <label asp-for="Input.IdentityCard" class="control-label"></label>
-                        <input asp-for="Input.IdentityCard" class="form-control" aria-required="true"/>
-                        <span asp-validation-for="Input.IdentityCard" class="text-danger"></span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Role" class="control-label"></label>
-                <select asp-for="Input.Role" class="form-control" aria-required="true" asp-items="ViewBag.UserRole"></select>
-                <span asp-validation-for="Input.Role" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Status" class="control-label"></label>
-                <select asp-for="Input.Status"
-                        class="form-control"
-                        aria-required="true"
-                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"></select>
-                <span asp-validation-for="Input.Status" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Input.Position" class="control-label"></label>
-                <input asp-for="Input.Position" class="form-control" />
-                <span asp-validation-for="Input.Position" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Input.Department" class="control-label"></label>
-                <input asp-for="Input.Department" class="form-control" />
-                <span asp-validation-for="Input.Department" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Input.HireDate" class="control-label"></label>
-                <input asp-for="Input.HireDate" class="form-control" />
-                <span asp-validation-for="Input.HireDate" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="Input.Email" class="control-label"></label>
-                <input asp-for="Input.Email" class="form-control" />
-                <span asp-validation-for="Input.Email" class="text-danger"></span>
-            </div>
-            
-            <div class="form-group">
-                <label asp-for="Input.PhoneNumber" class="control-label"></label>
-                <input asp-for="Input.PhoneNumber" class="form-control" />
-                <span asp-validation-for="Input.PhoneNumber" class="text-danger"></span>
-            </div>
-            
-            <hr/>
-            <h5>Credenciales de Acceso</h5>
-            <div class="form-group">
-                <label asp-for="Input.UserName" class="control-label"></label>
-                <input asp-for="Input.UserName" class="form-control" autocomplete="username"/>
-                <span asp-validation-for="Input.UserName" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.NewPassword" class="control-label"></label>
-                <input asp-for="Input.NewPassword" class="form-control" autocomplete="new-password" placeholder="Dejar en blanco para mantener la actual"/>
-                <span asp-validation-for="Input.NewPassword" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Guardar" class="btn btn-primary" />
-            </div>
-        </form>
+        <div class="alert alert-light-info border-0 p-3 shadow-sm italic small text-info">
+            <i class="fas fa-info-circle mr-1"></i> Al cambiar el <strong>Rol</strong>, el usuario deberá reiniciar sesión para aplicar los nuevos permisos y accesos laterales.
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-page="./Index">Volver al Listado</a>
-</div>
-
 @section Scripts {
+    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+        });
+    </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

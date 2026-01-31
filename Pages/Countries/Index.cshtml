@@ -5,13 +5,47 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <div class="d-flex no-block align-items-center mb-4">
-                    <h4 class="card-title">Listado de Países</h4>
-                    <div class="ml-auto">
-                        <a asp-page="Create" class="btn btn-info btn-rounded">
-                            <i class="fas fa-plus mr-1"></i> Nuevo País
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h2 class="mt-3 ml-3">Países</h2>
+                    </div>
+                    <div class="ml-auto mt-3">
+                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark">
+                            <i class="fas fa-plus-circle mr-1 text-info"></i> Nuevo País
                         </a>
                     </div>
+                </div>
+
+                <!-- 🔍 Zona de Smart Index: Filtros y Búsqueda -->
+                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                    <form method="get">
+                        <div class="row align-items-end">
+                            <div class="col-md-5">
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Técnica</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Ej. Vietnam" />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold text-muted uppercase">Filtrar por Estado</label>
+                                <select asp-for="StatusFilter" class="form-control custom-select" 
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()">
+                                    <option value="">-- Todos los Estados --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
+                                </button>
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                    <i class="fas fa-sync-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
                 </div>
 
                 <div class="table-responsive">
@@ -41,16 +75,18 @@
                                         <small class="text-info">@item.CreatedBy?.Initials</small>
                                     </td>
                                     <td>
-                                        <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning" title="Editar">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info" title="Detalles">
-                                            <i class="fas fa-info-circle"></i>
-                                        </a>
-
-                                        <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger" title="Eliminar">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
+                                        <div class="btn-group">
+                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                                <i class="fas fa-search-plus"></i>
+                                            </a>
+                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    
                                     </td>
                                 </tr>
                             }
@@ -64,43 +100,8 @@
 </div>
 
 
-@section Styles {
-    <link href="~/lib/nice-admin/assets/libs/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
-}
-
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-    <script src="~/lib/nice-admin/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
-    <script>
-        // ✅ Mensaje de éxito
-        @if (TempData["SuccessMessage"] != null)
-        {
-                <text>
-                swal({
-                    title: "¡Logrado!",
-                    text: @Html.JsTempData("SuccessMessage"),
-                    type: "success",
-                    confirmButtonColor: "#2962ff",
-                    confirmButtonText: "OK",
-                    timer: 4000
-                });
-                </text>
-        }
-
-        // ✅ Mensaje de error
-        @if (TempData["ErrorMessage"] != null)
-        {
-                <text>
-                swal({
-                    title: "Error",
-                    text: @Html.JsTempData("ErrorMessage"),
-                    type: "error",
-                    confirmButtonColor: "#f62d51",
-                    confirmButtonText: "OK"
-                });
-                </text>
-        }
-    </script>
-}
+} 

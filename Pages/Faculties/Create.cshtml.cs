@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
@@ -41,18 +42,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
                 return Page();
             }
 
+            // 1. Normalización
+            var normalizedName = Input.Name.NormalizeComparison();
+
+            // 2. Validación de Duplicados
+            var exists = await _context.Faculties
+                .AnyAsync(f => f.Name.Trim().ToLower() == normalizedName && 
+                               f.Status != GeneralStatus.Eliminado);
+
+            if (exists)
+            {
+                ModelState.AddModelError("Input.Name", NotificationHelper.Faculties.FacultyNameDuplicate);
+                return Page();
+            }
+
+            // 3. Validación de Formato
+            if (!Input.Name.IsValidName())
+            {
+                ModelState.AddModelError("Input.Name", NotificationHelper.Countries.InvalidFormat);
+                return Page();
+            }
+
+            // 4. Mapeo y Guardado
             var faculty = new Faculty
             {
-                Name = Input.Name,
-                Code = Input.Code,
-                Description = Input.Description,
+                Name = Input.Name.Clean(),
+                Code = Input.Code?.ToUpper().Trim(),
+                Description = Input.Description?.Clean(),
                 Status = GeneralStatus.Activo,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             _context.Faculties.Add(faculty);
             await _context.SaveChangesAsync();
 
+            TempData.Success(NotificationHelper.Faculties.Created(faculty.Name));
             return RedirectToPage("./Index");
         }
     }

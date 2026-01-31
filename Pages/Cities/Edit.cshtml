@@ -2,53 +2,91 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Cities.EditModel
 
 @{
-    ViewData["Title"] = "Editar Ciudad";
+    ViewData["Title"] = "Actualizar Ciudad";
 }
 
 <div class="row">
-    <div class="col-md-6 col-lg-5">
-        <div class="card">
-            <div class="card-body">
-                <h4 class="card-title">Modificar Ciudad</h4>
-                <h6 class="card-subtitle mb-4">Actualice la información de la ciudad seleccionada</h6>
-                
-                <form method="post">
+    <!-- Columna Principal: Formulario de Edición -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Editar Localidad</h4>
+                        <h6 class="card-subtitle text-muted">Actualice la configuración territorial y el estado operativo de @Model.City.Name.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-edit fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
                     <input type="hidden" asp-for="City.Id" />
-                    
-                    <div class="form-group mb-3">
-                        <label asp-for="City.CountryId" class="control-label font-weight-bold">País <span class="text-danger">*</span></label>
-                        <select asp-for="City.CountryId" class="form-control" asp-items="ViewBag.CountryId">
-                            <option value="">-- Seleccione un País --</option>
-                        </select>
-                        <span asp-validation-for="City.CountryId" class="text-danger"></span>
-                    </div>
 
-                    <div class="form-group mb-3">
-                        <label asp-for="City.Name" class="control-label font-weight-bold">Nombre de la Ciudad <span class="text-danger">*</span></label>
-                        <input asp-for="City.Name" class="form-control" />
-                        <span asp-validation-for="City.Name" class="text-danger"></span>
-                    </div>
+                    <div class="row">
+                        <!-- Sección 1: Ubicación -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-map-marker-alt mr-2"></i> Ubicación
+                            </h5>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="City.CountryId" class="control-label font-weight-bold small uppercase text-muted">
+                                    País <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="City.CountryId" class="form-control custom-select" asp-items="ViewBag.CountryId"
+                                        required data-validation-required-message="Debe seleccionar un país">
+                                </select>
+                                <span asp-validation-for="City.CountryId" class="text-danger small"></span>
+                            </div>
 
-                    <div class="form-group mb-3">
-                        <label asp-for="City.Region" class="control-label font-weight-bold">Región / Departamento</label>
-                        <input asp-for="City.Region" class="form-control" />
-                        <span asp-validation-for="City.Region" class="text-danger"></span>
-                    </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="City.Name" class="control-label font-weight-bold small uppercase text-muted">
+                                    Nombre de la Ciudad <span class="text-danger">*</span>
+                                </label>
+                                <input asp-for="City.Name" class="form-control" placeholder="Ej: Cochabamba" 
+                                       required data-validation-required-message="El nombre es obligatorio"
+                                       pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]+$"
+                                       data-validation-pattern-message="Solo letras, espacios y guiones" />
+                                <span asp-validation-for="City.Name" class="text-danger small"></span>
+                            </div>
+                        </div>
 
-                    <div class="form-group mb-4">
-                        <label asp-for="City.Status" class="control-label font-weight-bold">Estado</label>
-                        <select asp-for="City.Status" class="form-control" asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"></select>
-                        <span asp-validation-for="City.Status" class="text-danger"></span>
+                        <!-- Sección 2: Configuración -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-cog mr-2"></i> Configuración
+                            </h5>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="City.Region" class="control-label font-weight-bold small uppercase text-muted">
+                                    Región / Departamento
+                                </label>
+                                <input asp-for="City.Region" class="form-control" placeholder="Ej: Cercado"
+                                       pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]*$"
+                                       data-validation-pattern-message="Solo letras, espacios y guiones" />
+                            </div>
+
+                            <div class="form-group mb-3 border-left border-warning pl-3 bg-light p-2">
+                                <label asp-for="City.Status" class="control-label font-weight-bold small text-warning uppercase">
+                                    Estado del Registro <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="City.Status" class="form-control custom-select border-warning font-weight-bold" 
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"
+                                        required>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <hr />
 
-                    <div class="form-actions mt-4 text-right">
-                        <button type="submit" class="btn btn-warning px-4 text-white">
-                            <i class="fas fa-save"></i> Guardar Cambios
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Actualizar Registro
                         </button>
-                        <a asp-page="./Index" class="btn btn-outline-secondary ml-2">
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
                             Cancelar
                         </a>
                     </div>
@@ -56,8 +94,97 @@
             </div>
         </div>
     </div>
+
+    <!-- Columna Lateral: Auditoría -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white">
+                    <i class="fas fa-info-circle mr-2 text-info"></i> Información de Control
+                </h5>
+                <hr class="border-secondary" />
+                <div class="small">
+                    <div class="mb-3">
+                        <small class="text-muted d-block uppercase">ID de Sistema</small>
+                        <span class="font-weight-bold">#@Model.City.Id</span>
+                    </div>
+                    <div class="mb-0">
+                        <small class="text-muted d-block uppercase">País Relacionado</small>
+                        <span class="font-weight-bold text-info">@Model.City.Country?.Name</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4">
+                    <i class="fas fa-history mr-2 text-warning"></i> Auditoría
+                </h5>
+                <hr />
+                <div class="small mt-3">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Registrado por</label>
+                        <span class="font-weight-bold text-dark d-block">@(Model.City.CreatedBy?.FullName ?? "Sistema")</span>
+                        <span class="text-muted">@Model.City.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+
+                    @if (Model.City.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0">
+                            <label class="text-muted d-block small uppercase mb-0">Última Edición</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.City.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted">@Model.City.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
+    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            
+            // Función para mostrar mensajes de error temporales
+            function showTemporaryError($el, message) {
+                var $group = $el.closest('.form-group');
+                var $help = $group.find('.help-block');
+                if ($help.length === 0) {
+                    $group.append('<div class="help-block text-danger small font-weight-bold mt-1"></div>');
+                    $help = $group.find('.help-block');
+                }
+                $help.text(message).fadeIn();
+                $group.addClass('error');
+                
+                setTimeout(function() {
+                    $help.fadeOut(function() { $(this).text(''); });
+                    $group.removeClass('error');
+                }, 2000);
+            }
+
+            // Patrón: solo letras, espacios y guiones
+            var textPattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]*$/;
+            
+            function setupBlocking($selector, pattern, errorMessage) {
+                $($selector).on('input', function() {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]/g, ''));
+                        showTemporaryError($field, errorMessage);
+                    }
+                });
+            }
+
+            // Aplicar validación agresiva
+            setupBlocking('#City_Name', textPattern, "Carácter no permitido (solo letras y guiones)");
+            setupBlocking('#City_Region', textPattern, "Región: Solo letras, espacios y guiones");
+        });
+    </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

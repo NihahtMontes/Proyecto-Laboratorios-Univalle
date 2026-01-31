@@ -25,7 +25,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
         [BindProperty]
         public LabInputModel Input { get; set; } = new();
 
-        public int Id { get; set; } // To keep track of ID in the URL/Form
+        public int Id { get; set; }
+        public Laboratory ExistingLaboratory { get; set; } = default!;
 
         public class LabInputModel
         {
@@ -43,91 +44,90 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
         {
             if (id == null) return NotFound();
 
-            var laboratory = await _context.Laboratories.FirstOrDefaultAsync(m => m.Id == id);
-            if (laboratory == null) return NotFound();
+            ExistingLaboratory = await _context.Laboratories
+                .Include(l => l.CreatedBy)
+                .Include(l => l.ModifiedBy)
+                .FirstOrDefaultAsync(m => m.Id == id);
 
-            Id = laboratory.Id;
+            if (ExistingLaboratory == null) return NotFound();
 
-            // Map Entity -> DTO
+            Id = ExistingLaboratory.Id;
+
             Input = new LabInputModel
             {
-                FacultyId = laboratory.FacultyId,
-                Code = laboratory.Code,
-                Name = laboratory.Name,
-                Type = laboratory.Type,
-                Building = laboratory.Building,
-                Floor = laboratory.Floor,
-                Description = laboratory.Description,
-                Status = laboratory.Status
+                FacultyId = ExistingLaboratory.FacultyId,
+                Code = ExistingLaboratory.Code,
+                Name = ExistingLaboratory.Name,
+                Type = ExistingLaboratory.Type,
+                Building = ExistingLaboratory.Building,
+                Floor = ExistingLaboratory.Floor,
+                Description = ExistingLaboratory.Description,
+                Status = ExistingLaboratory.Status
             };
 
-            CargarEstados();
-            ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name", laboratory.FacultyId);
+            ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name", ExistingLaboratory.FacultyId);
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync(int id)
         {
-            Id = id; // Ensure ID is captured from route
+            Id = id;
+
             if (!ModelState.IsValid)
             {
-                CargarEstados();
-                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
+                await LoadLaboratoryData(id);
+                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name", Input.FacultyId);
                 return Page();
             }
 
-            // 1. Uniqueness Check (Ignoring Deleted)
-            // "Is there any OTHER lab (not me) with the same Code that is NOT Deleted?"
+            var normalizedName = Input.Name.NormalizeComparison();
+            var normalizedCode = Input.Code.NormalizeComparison().ToUpper();
+
             bool codeExists = await _context.Laboratories
                 .IgnoreQueryFilters()
-                .AnyAsync(l => l.Code == Input.Code &&
-                               l.Id != id &&
+                .AnyAsync(l => l.Id != id && 
+                               l.Code.ToUpper() == normalizedCode && 
                                l.Status != GeneralStatus.Eliminado);
 
             if (codeExists)
             {
-                ModelState.AddModelError("Input.Code", "El código (Siglas) ya está en uso por otro laboratorio activo.");
+                ModelState.AddModelError("Input.Code", NotificationHelper.Laboratories.LabCodeDuplicate);
+                await LoadLaboratoryData(id);
+                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name", Input.FacultyId);
+                return Page();
             }
 
-            // Check Name uniqueness as well
             bool nameExists = await _context.Laboratories
                 .IgnoreQueryFilters()
-                .AnyAsync(l => l.Name == Input.Name &&
-                               l.Id != id &&
+                .AnyAsync(l => l.Id != id && 
+                               l.FacultyId == Input.FacultyId && 
+                               l.Name.ToLower() == normalizedName && 
                                l.Status != GeneralStatus.Eliminado);
 
             if (nameExists)
             {
-                ModelState.AddModelError("Input.Name", "El nombre del laboratorio ya está en uso por otro laboratorio activo.");
-            }
-
-            if (!ModelState.IsValid)
-            {
-                CargarEstados();
-                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
+                ModelState.AddModelError("Input.Name", NotificationHelper.Laboratories.LabNameDuplicate);
+                await LoadLaboratoryData(id);
+                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name", Input.FacultyId);
                 return Page();
             }
 
-            // 2. Fetch Original Entity
             var laboratory = await _context.Laboratories.FindAsync(id);
             if (laboratory == null) return NotFound();
 
-            // 3. Update Fields (DTO -> Entity)
             laboratory.FacultyId = Input.FacultyId;
-            laboratory.Code = Input.Code;
-            laboratory.Name = Input.Name;
-            laboratory.Type = Input.Type;
-            laboratory.Building = Input.Building;
-            laboratory.Floor = Input.Floor;
-            laboratory.Description = Input.Description;
+            laboratory.Code = Input.Code.Clean().ToUpper();
+            laboratory.Name = Input.Name.Clean();
+            laboratory.Type = Input.Type?.Clean();
+            laboratory.Building = Input.Building?.Clean();
+            laboratory.Floor = Input.Floor?.Clean();
+            laboratory.Description = Input.Description?.Clean();
             laboratory.Status = Input.Status;
-
-            // 4. Audit Protection (Redundant but safe)
-            // CreatedBy/Date are NOT touched here. ModifiedBy/Date are handled by DbContext.SaveAsync override.
 
             try
             {
                 await _context.SaveChangesAsync();
+                TempData.Success(NotificationHelper.Laboratories.Updated(laboratory.Name));
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -138,15 +138,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             return RedirectToPage("./Index");
         }
 
+        private async Task LoadLaboratoryData(int id)
+        {
+            ExistingLaboratory = await _context.Laboratories
+                .Include(l => l.CreatedBy)
+                .Include(l => l.ModifiedBy)
+                .FirstOrDefaultAsync(l => l.Id == id) ?? new Laboratory();
+        }
+
         private bool LaboratoryExists(int id)
         {
             return _context.Laboratories.Any(e => e.Id == id);
-        }
-
-        private void CargarEstados()
-        {
-            var estados = EnumHelper.GetStatusSelectList<GeneralStatus>();
-            ViewData["ListaEstados"] = new SelectList(estados, "Value", "Text", (int)Input.Status);
         }
     }
 }

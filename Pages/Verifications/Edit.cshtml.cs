@@ -53,11 +53,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return Page();
             }
 
+            var user = await _userManager.GetUserAsync(User);
+            if (user != null)
+            {
+                Verification.ModifiedById = user.Id;
+            }
+            Verification.LastModifiedDate = DateTime.Now;
+
             _context.Attach(Verification).State = EntityState.Modified;
 
             try
             {
                 await _context.SaveChangesAsync();
+                TempData.Success(NotificationHelper.Verifications.Updated(Verification.Id));
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -67,6 +75,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 }
                 else
                 {
+                    TempData.Error(NotificationHelper.Requests.SaveError("Conflicto de concurrencia."));
                     throw;
                 }
             }

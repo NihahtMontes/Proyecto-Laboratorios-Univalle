@@ -44,20 +44,28 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
                 return Page();
             }
 
-            // ✅ Normalizar ANTES de la consulta
-            var normalizedInput = Input.Name.Normalize();
+            // 1. Normalizar para validación robusta
+            var normalizedInput = Input.Name.NormalizeComparison();
 
-            // ✅ Usar solo métodos que EF puede traducir a SQL
+            // 2. Validar Duplicados
             var exists = await _context.Countries
-                .AnyAsync(c => c.Name.Trim().ToLower() == normalizedInput);
+                .AnyAsync(c => c.Name.Trim().ToLower() == normalizedInput && 
+                               c.Status != GeneralStatus.Eliminado);
 
             if (exists)
             {
-                ModelState.AddModelError("Input.Name",
-                    NotificationHelper.Countries.CountryNameDuplicate);
+                ModelState.AddModelError("Input.Name", NotificationHelper.Countries.CountryNameDuplicate);
                 return Page();
             }
 
+            // 3. Validar Formato (Sin caracteres especiales)
+            if (!Input.Name.IsValidName())
+            {
+                ModelState.AddModelError("Input.Name", NotificationHelper.Countries.InvalidFormat);
+                return Page();
+            }
+
+            // 4. Crear con datos limpios
             var country = new Country
             {
                 Name = Input.Name.Clean(),
@@ -68,8 +76,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             _context.Countries.Add(country);
             await _context.SaveChangesAsync();
 
+            // 4. Notificación Estandarizada
             TempData.Success(NotificationHelper.Countries.Created(country.Name));
-            return RedirectToPage("./Index");
+            return RedirectToPage("/Cities/Index");
         }
     }
 }

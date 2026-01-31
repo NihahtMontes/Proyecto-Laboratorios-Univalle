@@ -63,12 +63,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
                     city.Status = GeneralStatus.Eliminado; // Soft delete
                     _context.Attach(city).State = EntityState.Modified;
                     await _context.SaveChangesAsync();
-                    TempData["SuccessMessage"] = "La ciudad ha sido eliminada correctamente.";
+                    
+                    TempData.Success(NotificationHelper.Cities.Deleted(city.Name));
                 }
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = "Hubo un error al intentar eliminar la ciudad: " + ex.Message;
+                TempData.Error("Hubo un error al intentar eliminar la ciudad: " + ex.Message);
+                return RedirectToPage("./Delete", new { id });
             }
 
             return RedirectToPage("./Index");

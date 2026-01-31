@@ -98,7 +98,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual MaintenanceType? MaintenanceType { get; set; }
 
         [ForeignKey("TechnicianId")]
-        public virtual User? Technician { get; set; }
+        public virtual Person? Technician { get; set; }
 
         [ForeignKey("RequestId")]
         public virtual Request? Request { get; set; }

@@ -1,54 +1,242 @@
 ﻿@page
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.IndexModel
 
-@* @{
-    ViewData["Title"] = "Index";
-}
- *@
-<h1>Lista de Equipos</h1>
 
-<p>
-    <a asp-page="Create" class="btn btn-primary">Crear Nuevo</a>
-</p>
-<table class="table table-hover table-striped">
-    <thead class="thead-light">
-        <tr>
-            <th>@Html.DisplayNameFor(model => model.Equipment[0].Name)</th>
-            <th>@Html.DisplayNameFor(model => model.Equipment[0].InventoryNumber)</th>
-            <th>@Html.DisplayNameFor(model => model.Equipment[0].EquipmentType)</th>
-            <th>@Html.DisplayNameFor(model => model.Equipment[0].Laboratory)</th>
-            <th>@Html.DisplayNameFor(model => model.Equipment[0].CurrentStatus)</th>
-            <th>Registrado</th>
-            <th>Modificado</th>
-            <th>Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model.Equipment) {
-        <tr>
-            <td>@Html.DisplayFor(modelItem => item.Name)</td>
-            <td>@Html.DisplayFor(modelItem => item.InventoryNumber)</td>
-            <td>@Html.DisplayFor(modelItem => item.EquipmentType.Name)</td>
-            <td>@Html.DisplayFor(modelItem => item.Laboratory.Name)</td>
-            <td>@Html.DisplayFor(modelItem => item.CurrentStatus)</td>
-            <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.CreatedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.CreatedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <small>
-                    @Html.DisplayFor(modelItem => item.LastModifiedDate)<br/>
-                    por @Html.DisplayFor(modelItem => item.ModifiedBy.Initials)
-                </small>
-            </td>
-            <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning" title="Editar"><i class="fas fa-edit"></i></a>
-                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-info" title="Detalles"><i class="fas fa-info-circle"></i></a>
-                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger" title="Eliminar"><i class="fas fa-trash"></i></a>
-            </td>
-        </tr>
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <!-- 📂 Navegación de Pestañas Premium -->
+            <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active font-weight-bold" data-toggle="tab" href="#equipos" role="tab">
+                        <span class="hidden-sm-up"><i class="fas fa-microscope"></i></span>
+                        <span class="hidden-xs-down"><i class="fas fa-microscope mr-2"></i> Inventario de Equipos</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link font-weight-bold" data-toggle="tab" href="#tipos" role="tab">
+                        
+                        <span class="hidden-xs-down"><i class="fas fa-tags mr-2"></i> Categorías / Tipos</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- ============================================================== -->
+                <!-- PESTAÑA 1: EQUIPOS (CON SMART INDEX) -->
+                <!-- ============================================================== -->
+                <div class="tab-pane active" id="equipos" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center mb-4">
+                            <div>
+                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Registro Técnico de Equipos</h3>
+                                <h6 class="card-subtitle text-muted ml-2">Control centralizado de equipos registrados.</h6>
+                            </div>
+                            <div class="ml-auto mt-3">
+                                <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark">
+                                    <i class="fas fa-plus-circle mr-1 text-info"></i> Registrar Equipo
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- 🔍 Smart Index Zone para Equipos -->
+                        <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                            <form method="get">
+                                <div class="row align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="small font-weight-bold text-muted uppercase">Búsqueda Técnica</label>
+                                        <div class="input-group drop-shadow">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                            </div>
+                                            <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, Marca o N° Inventario..." />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="small font-weight-bold text-muted uppercase">Filtrar por Tipo</label>
+                                        <select asp-for="TypeFilter" class="form-control custom-select" 
+                                                asp-items="@(new SelectList(Model.EquipmentTypes, "Id", "Name"))">
+                                            <option value="">-- Todos los Tipos --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 text-right">
+                                        <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                            <i class="fas fa-filter mr-1"></i> Filtrar
+                                        </button>
+                                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover v-middle">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th>Equipamiento</th>
+                                        <th>Estado Técnico</th>
+                                        <th>Ubicación / Lab.</th>
+                                        <th>Identificación</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (!Model.Equipment.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="5" class="text-center py-5 text-muted italic">
+                                                <i class="fas fa-box-open fa-3x mb-3 d-block opacity-2"></i>
+                                                No se encontraron equipos registrados.
+                                            </td>
+                                        </tr>
+                                    }
+                                    @foreach (var item in Model.Equipment)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="m-r-10">
+                                                        <span class="btn btn-circle btn-light-info text-info"><i class="fas fa-tools"></i></span>
+                                                    </div>
+                                                    <div>
+                                                        <h5 class="m-b-0 font-medium">@item.Name</h5>
+                                                        <span class="text-muted small">@item.Brand | Modelo: @(item.Model ?? "N/A")</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                @{
+                                                    var statusClass = item.CurrentStatus switch {
+                                                        Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Operational => "badge-success",
+                                                        Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.UnderMaintenance => "badge-warning",
+                                                        Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.OutOfService => "badge-danger",
+                                                        _ => "badge-secondary"
+                                                    };
+                                                }
+                                                <span class="badge @statusClass px-3 py-1">@item.CurrentStatus</span>
+                                            </td>
+                                            <td>
+                                                <div class="small">
+                                                    <div class="text-dark font-weight-bold"><i class="fas fa-flask mr-1 text-muted"></i> @item.Laboratory?.Name</div>
+                                                    <div class="text-muted"><i class="fas fa-map-marker-alt mr-1"></i> @item.City?.Name, @item.Country?.Name</div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="small">
+                                                    <div class="text-info font-weight-bold">Inv: @item.InventoryNumber</div>
+                                                    <div class="text-muted">Serie: @(item.SerialNumber ?? "S/N")</div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group">
+                                                    <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                                        <i class="fas fa-search-plus"></i>
+                                                    </a>
+                                                    <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- PESTAÑA 2: TIPOS DE EQUIPAMIENTO -->
+                <!-- ============================================================== -->
+                <div class="tab-pane" id="tipos" role="tabpanel">
+                    <div class="card-body"> 
+                        <div class="d-md-flex align-items-center mb-4">
+                            <div>
+                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Catálogo de Tipos de Equipos</h3>
+                                <h6 class="card-subtitle text-muted ml-2">Control centralizado de tipos de equipos registrados.</h6>
+                            </div>
+                            
+                            <div class="ml-auto mt-3">
+                                <a asp-page="/EquipmentTypes/Create" class="btn bg-white border btn-rounded shadow-sm text-dark">
+                                    <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Categoría
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover v-middle">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th>Nombre del Tipo</th>
+                                        <th>Mantenimiento</th>
+                                        <th>Calibración</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var type in Model.EquipmentTypes)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="m-r-10">
+                                                        <span class="btn btn-circle btn-sm btn-light-secondary text-secondary"><i class="fas fa-tag"></i></span>
+                                                    </div>
+                                                    <div>
+                                                        <h5 class="m-b-0 font-medium text-dark">@type.Name</h5>
+                                                        <span class="text-muted small">@type.Description</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-dark font-weight-bold">Cada @(type.MaintenanceFrequencyMonths?.ToString() ?? "N/A") meses</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge @(type.RequiresCalibration ? "badge-info" : "badge-light text-muted") px-3 py-1">
+                                                    @(type.RequiresCalibration ? "Requerida" : "No requerida")
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group">
+                                                    <a href="/EquipmentTypes/Edit?id=@type.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar"><i class="fas fa-edit"></i></a>
+                                                    <a href="/EquipmentTypes/Details?id=@type.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles"><i class="fas fa-search-plus"></i></a>
+                                                    <a href="/EquipmentTypes/Delete?id=@type.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar"><i class="fas fa-trash"></i></a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .customtab .nav-link {
+            border: none;
+            color: #747d8c;
+            padding: 15px 20px;
+            transition: all 0.3s ease;
+        }
+        .customtab .nav-link.active {
+            color: #2962ff;
+            background: transparent;
+            border-bottom: 3px solid #2962ff;
+        }
+        .v-middle td { vertical-align: middle !important; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+    </style>
 }
-    </tbody>
-</table>
+
+@section Scripts {
+}

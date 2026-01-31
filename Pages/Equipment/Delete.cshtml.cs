@@ -91,6 +91,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 await _context.SaveChangesAsync();
             }
 
+            TempData["SuccessMessage"] = "El equipo ha sido dado de baja correctamente.";
             return RedirectToPage("./Index");
         }
     }

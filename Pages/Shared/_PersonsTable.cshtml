@@ -22,14 +22,24 @@
                     </td>
                     <td>@item.IdentityCard</td>
                     <td>
-                        @{
-                            var badgeClass = item.Type == PersonType.Internal ? "badge-light-primary" : "badge-light-info";
+                        <span class="badge badge-pill badge-light-primary text-primary">@item.Category</span>
+                        @if (item.IsInternal)
+                        {
+                            <span class="badge badge-pill badge-light-success text-success ml-1">Interno</span>
                         }
-                        <span class="badge badge-pill @badgeClass">@item.Type</span>
                     </td>
                     <td class="text-center">
-                        <a href="/Persons/Edit?id=@item.Id" class="btn btn-sm btn-outline-warning" title="Editar"><i class="fas fa-edit"></i></a>
-                        <a href="/Persons/Details?id=@item.Id" class="btn btn-sm btn-outline-info" title="Detalles"><i class="fas fa-info-circle"></i></a>
+                        <div class="btn-group">
+                            <a href="/Persons/Edit?id=@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="/Persons/Details?id=@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                <i class="fas fa-search-plus"></i>
+                            </a>
+                            <a href="/Persons/Delete?id=@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
                     </td>
                 </tr>
             }

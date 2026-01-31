@@ -32,8 +32,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         {
             public int EquipmentTypeId { get; set; }
             public int LaboratoryId { get; set; }
-            public int CityId { get; set; }
-            public int CountryId { get; set; } // agregado para bind del select País
+            public int CityId { get; set;  }
             public string Name { get; set; } = string.Empty;
             public string InventoryNumber { get; set; } = string.Empty;
             public string? Brand { get; set; }
@@ -72,7 +71,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 EquipmentTypeId = equipment.EquipmentTypeId,
                 LaboratoryId = equipment.LaboratoryId,
                 CityId = equipment.CityId,
-                CountryId = equipment.City?.CountryId ?? equipment.CountryId, // Prioritize derived Country from City
+
                 Name = equipment.Name,
                 InventoryNumber = equipment.InventoryNumber,
                 Brand = equipment.Brand,
@@ -109,6 +108,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 return Page();
             }
 
+            // Normalización
+            Input.Name = Input.Name.Clean();
+            Input.Brand = Input.Brand?.Clean();
+            Input.Model = Input.Model?.Clean();
+
             // 1. Uniqueness Check (Ignoring Deleted)
             bool invExists = await _context.Equipments
                 .IgnoreQueryFilters()
@@ -134,7 +138,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             var equipmentBD = await _context.Equipments
                 .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.Id == id); // Also ignore filters to fetch invalid-state items for update
+                .FirstOrDefaultAsync(e => e.Id == id); 
 
             if (equipmentBD == null) return NotFound();
 
@@ -208,61 +212,38 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 }
             }
 
+            TempData["SuccessMessage"] = "Datos del equipo actualizados correctamente.";
             return RedirectToPage("./Index");
-        }
-
-        // Endpoint para obtener ciudades por país (llamado desde JS)
-        public async Task<JsonResult> OnGetCitiesAsync(int countryId)
-        {
-            var cities = await _context.Cities
-                .Where(c => (c.CountryId == countryId && c.Status == GeneralStatus.Activo))
-                .OrderBy(c => c.Name)
-                .Select(c => new { c.Id, c.Name })
-                .ToListAsync();
-
-            return new JsonResult(cities);
         }
 
         private void CargarViewData()
         {
-            // Poblamos países - aseguro incluir el country actual aunque no sea activo
-            ViewData["CountryId"] = new SelectList(
-                _context.Countries
-                    .Where(c => c.Status == GeneralStatus.Activo || (Input != null && c.Id == Input.CountryId))
-                    .OrderBy(c => c.Name),
-                "Id",
-                "Name",
-                Input?.CountryId
-            );
+            // Cargar ciudades con su país concatenado
+            var cities = _context.Cities
+                .Include(c => c.Country)
+                .Where(c => c.Status == GeneralStatus.Activo || (Input != null && c.Id == Input.CityId))
+                .OrderBy(c => c.Country.Name)
+                .ThenBy(c => c.Name)
+                .Select(c => new 
+                { 
+                    Id = c.Id, 
+                    FullName = $"{c.Name}, {c.Country.Name}" 
+                })
+                .ToList();
 
-            // Si tenemos CountryId, limitar ciudades al país seleccionado; si no, mostrar todas activas
-            if (Input != null && Input.CountryId > 0)
-            {
-                ViewData["CityId"] = new SelectList(
-                    _context.Cities
-                        .Where(c => (c.Status == GeneralStatus.Activo && c.CountryId == Input.CountryId) || c.Id == Input.CityId)
-                        .OrderBy(c => c.Name),
-                    "Id",
-                    "Name",
-                    Input.CityId
-                );
-            }
-            else
-            {
-                ViewData["CityId"] = new SelectList(
-                    _context.Cities
-                        .Where(c => c.Status == GeneralStatus.Activo || (Input != null && c.Id == Input.CityId))
-                        .OrderBy(c => c.Name),
-                    "Id",
-                    "Name",
-                    Input?.CityId
-                );
-            }
+            ViewData["CityId"] = new SelectList(cities, "Id", "FullName", Input?.CityId);
 
             ViewData["LaboratoryId"] = new SelectList(
-                _context.Laboratories.Where(l => l.Status == GeneralStatus.Activo || (Input != null && l.Id == Input.LaboratoryId)),
+                _context.Laboratories
+                    .Where(l => l.Status == GeneralStatus.Activo || (Input != null && l.Id == Input.LaboratoryId))
+                    .OrderBy(l => l.Name)
+                    .Select(l => new 
+                    { 
+                        Id = l.Id, 
+                        DisplayName = $"[{l.Code}] - {l.Name}" 
+                    }),
                 "Id",
-                "Name",
+                "DisplayName",
                 Input?.LaboratoryId
             );
 

@@ -1,97 +1,182 @@
-﻿@page
+﻿@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Detalles de la Solicitud";
+    ViewData["Title"] = "Expediente de Solicitud";
 }
 
-<h1>Detalles</h1>
+<div class="row">
+    <!-- Columna Principal: Datos del Requerimiento -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Expediente de Solicitud: #@Model.Request.Id</h4>
+                        <h6 class="card-subtitle text-muted">Información técnica y estado administrativo del requerimiento enviado.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-clipboard-list fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
 
-<div>
-    <h4>Solicitud</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.Equipment)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.Equipment.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.RequestedBy)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.RequestedBy.FullName)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.Description)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.Description)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.Priority)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.Priority)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.Observations)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.Observations)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.Status)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.Status)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.ApprovedBy)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.ApprovedBy.FullName)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.ApprovalDate)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.ApprovalDate)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceRequest.RejectionReason)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceRequest.RejectionReason)
-        </dd>
-        <hr class="col-12" />
-        <dt class="col-sm-2">
-            Fecha de Registro
-        </dt>
-        <dd class="col-sm-10">
-            @Model.MaintenanceRequest.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-            @if (Model.MaintenanceRequest.CreatedBy != null)
-            {
-                <span class="text-muted"> por @Model.MaintenanceRequest.CreatedBy.FullName</span>
-            }
-        </dd>
-        @if (Model.MaintenanceRequest.LastModifiedDate.HasValue)
-        {
-            <dt class="col-sm-2">
-                Última Modificación
-            </dt>
-            <dd class="col-sm-10">
-                @Model.MaintenanceRequest.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.MaintenanceRequest.ModifiedBy != null)
+                <div class="row mt-4">
+                    <div class="col-md-6 border-right">
+                        <h5 class="font-weight-bold text-info mb-3">
+                            <i class="fas fa-tools mr-2"></i> Equipamiento Afectado
+                        </h5>
+                        <div class="p-3 bg-light rounded border-left border-info mb-4">
+                            <h5 class="font-weight-bold text-dark mb-1">@Model.Request.Equipment?.Name</h5>
+                            <span class="text-muted small uppercase font-weight-bold">Código Inv: @Model.Request.Equipment?.InventoryNumber</span>
+                            <div class="mt-2">
+                                <span class="badge badge-pill badge-info px-3">@Model.Request.Equipment?.EquipmentType?.Name</span>
+                            </div>
+                        </div>
+
+                        <label class="text-muted small uppercase font-weight-bold d-block mb-1">Solicitado Por</label>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="btn btn-circle btn-sm btn-light-info text-info mr-2"><i class="fas fa-user"></i></div>
+                            <div>
+                                <span class="font-weight-bold text-dark d-block">@Model.Request.RequestedBy?.FullName</span>
+                                <span class="text-muted small">@Model.Request.RequestedBy?.Position</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5 class="font-weight-bold text-info mb-3">
+                            <i class="fas fa-align-left mr-2"></i> Descripción Técnica
+                        </h5>
+                        <div class="mb-4">
+                            <label class="text-muted small uppercase font-weight-bold d-block mb-1">Requerimiento</label>
+                            <p class="text-dark">@Model.Request.Description</p>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(Model.Request.Observations))
+                        {
+                            <div>
+                                <label class="text-muted small uppercase font-weight-bold d-block mb-1">Notas de Campo</label>
+                                <p class="text-muted italic small border-left pl-2">@Model.Request.Observations</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Bloque de Respuesta Técnica/Administrativa -->
+                @if (Model.Request.Status != RequestStatus.Pending)
                 {
-                    <span class="text-muted"> por @Model.MaintenanceRequest.ModifiedBy.FullName</span>
+                    <div class="mt-5">
+                        <h5 class="font-weight-bold text-dark mb-3">
+                            <i class="fas fa-check-double mr-2 text-success"></i> Resolución del Caso
+                        </h5>
+                        @{
+                            var resClass = Model.Request.Status == RequestStatus.Approved ? "bg-light-success text-success border-success" : "bg-light-danger text-danger border-danger";
+                            var resIcon = Model.Request.Status == RequestStatus.Approved ? "fa-check-circle" : "fa-times-circle";
+                        }
+                        <div class="p-4 @resClass rounded border-left border-3 shadow-none">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas @resIcon fa-2x mr-3"></i>
+                                <div>
+                                    <h6 class="mb-0 font-weight-bold">Solicitud @Model.Request.Status</h6>
+                                    <small class="opacity-7">Evaluado el @Model.Request.ApprovalDate?.ToString("dd/MM/yyyy HH:mm")</small>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <span class="font-weight-bold small uppercase d-block opacity-7">Responsable Evaluador</span>
+                                <span class="font-weight-bold">@(Model.Request.ApprovedBy?.FullName ?? "Administración Central")</span>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(Model.Request.RejectionReason))
+                            {
+                                <div class="mt-3 p-2 bg-white rounded border border-danger small text-danger">
+                                    <i class="fas fa-info-circle mr-1"></i> <strong>Motivo de Rechazo:</strong> @Model.Request.RejectionReason
+                                </div>
+                            }
+                        </div>
+                    </div>
                 }
-            </dd>
-        }
-    </dl>
+                else
+                {
+                    <div class="alert alert-warning border-0 mt-5 p-4 bg-light-warning text-warning d-flex align-items-center">
+                        <i class="fas fa-clock fa-2x mr-3 opacity-5"></i>
+                        <div>
+                            <h6 class="font-weight-bold mb-0 text-warning">Trámite en Revisión</h6>
+                            <p class="mb-0 small">Esta solicitud está esperando la evaluación técnica de un administrador.</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Lateral: Control y Acciones -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold"><i class="fas fa-shield-alt mr-2 text-info"></i> Estatus Logístico</h5>
+                <hr class="border-secondary" />
+                
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Prioridad</small>
+                    @{
+                        var pBadge = Model.Request.Priority == RequestPriority.High ? "badge-danger" : (Model.Request.Priority == RequestPriority.Medium ? "badge-warning" : "badge-info");
+                    }
+                    <span class="badge badge-pill @pBadge px-3">@Model.Request.Priority</span>
+                </div>
+
+                <div class="mb-0 d-flex justify-content-between align-items-center">
+                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Estado Flujo</small>
+                    <span class="badge badge-pill badge-light text-dark px-3">@Model.Request.Status</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Auditoría de Canal</h5>
+                <hr />
+                <div class="small">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Creado</label>
+                        <span class="font-weight-bold text-dark">@Model.Request.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                    @if (Model.Request.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Último Cambio</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Request.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.Request.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions mt-4">
+            @if (Model.Request.Status == RequestStatus.Pending || User.IsInRole("Administrator") || User.IsInRole("SuperAdmin"))
+            {
+                <a asp-page="./Edit" asp-route-id="@Model.Request.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
+                    <i class="fas fa-edit mr-1"></i> Gestionar Solicitud
+                </a>
+            }
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4">
+                <i class="fas fa-list mr-1"></i> Volver al Listado
+            </a>
+            
+            <a asp-page="./Delete" asp-route-id="@Model.Request.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+                <i class="fas fa-trash-alt mr-1"></i> Cancelar / Eliminar Solicitud
+            </a>
+        </div>
+    </div>
 </div>
-<div>
-    <a asp-page="./Edit" asp-route-id="@Model.MaintenanceRequest.Id">Editar</a> |
-    <a asp-page="./Index">Volver al Listado</a>
-</div>
+
+@section Styles {
+    <style>
+        .bg-light-success { background-color: rgba(54, 190, 166, 0.05); }
+        .bg-light-danger { background-color: rgba(246, 45, 81, 0.05); }
+        .bg-light-warning { background-color: rgba(255, 188, 52, 0.05); }
+        .border-left-3 { border-left-width: 3px !important; }
+    </style>
+}

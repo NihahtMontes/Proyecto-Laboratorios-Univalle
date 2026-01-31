@@ -2,101 +2,210 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.CreateModel
 
 @{
-    ViewData["Title"] = "Create";
+    ViewData["Title"] = "Registro de Equipamiento";
 }
 
-<h1>Crear Equipo</h1>
+<div class="row justify-content-center">
+    <div class="col-lg-11 col-xl-10">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Registrar Nuevo Activo</h4>
+                        <h6 class="card-subtitle text-muted">Asegúrese de cargar correctamente los números de inventario y serie para la trazabilidad.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-microscope fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
 
-<h4>Equipo</h4>
-<hr />
-<div class="row">
-    <div class="col-md-4">
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.EquipmentTypeId" class="control-label">Tipo de Equipo</label>
-                <select asp-for="Input.EquipmentTypeId" class ="form-control" asp-items="ViewBag.EquipmentTypeId" aria-required="true"></select>
-                <span asp-validation-for="Input.EquipmentTypeId" class="text-danger"></span>
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="row">
+                        <!-- Columna 1: Identificación y Ubicación -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-barcode mr-2"></i> Identificación Base</h5>
+                            
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Equipo <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" placeholder="Ej: Espectrofotómetro UV-VIS" 
+                                       required data-validation-required-message="El nombre es obligatorio"
+                                       pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\.-]+$"
+                                       data-validation-pattern-message="Solo letras, números, puntos y guiones" />
+                                <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3 border-left border-warning pl-3 bg-light p-2">
+                                        <label asp-for="Input.InventoryNumber" class="control-label font-weight-bold small text-warning uppercase">N° Inventario <span class="text-danger">*</span></label>
+                                        <input asp-for="Input.InventoryNumber" class="form-control border-warning shadow-none" placeholder="INV-001" required />
+                                        <span asp-validation-for="Input.InventoryNumber" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.EquipmentTypeId" class="control-label font-weight-bold small uppercase text-muted">Categoría <span class="text-danger">*</span></label>
+                                        <select asp-for="Input.EquipmentTypeId" class="form-control custom-select" asp-items="ViewBag.EquipmentTypeId" required>
+                                            <option value="">-- Seleccione Tipo --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h5 class="font-weight-bold text-info mt-4 mb-3"><i class="fas fa-map-marker-alt mr-2"></i> Asignación de Ubicación</h5>
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small uppercase text-muted">Laboratorio Destino <span class="text-danger">*</span></label>
+                                <select asp-for="Input.LaboratoryId" class="form-control custom-select" asp-items="ViewBag.LaboratoryId" required>
+                                    <option value="">-- Seleccione Laboratorio --</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.CityId" class="control-label font-weight-bold small uppercase text-muted">Origen Geográfico <span class="text-danger">*</span></label>
+                                <select asp-for="Input.CityId" class="form-control custom-select" asp-items="ViewBag.CityId" required>
+                                    <option value="">-- Seleccione Sede --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Columna 2: Especificaciones y Finanzas -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-cogs mr-2"></i> Ficha Técnica</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.Brand" class="control-label font-weight-bold small uppercase text-muted">Marca</label>
+                                        <input asp-for="Input.Brand" class="form-control" placeholder="Ej: Thermo Fisher" 
+                                               pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\.-]+$"
+                                               data-validation-pattern-message="Formato de marca no válido" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.Model" class="control-label font-weight-bold small uppercase text-muted">Modelo</label>
+                                        <input asp-for="Input.Model" class="form-control" placeholder="Ej: Genesis 50" 
+                                               pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\.-]+$"
+                                               data-validation-pattern-message="Formato de modelo no válido" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.SerialNumber" class="control-label font-weight-bold small uppercase text-muted">Número de Serie</label>
+                                <input asp-for="Input.SerialNumber" class="form-control shadow-none" placeholder="S/N: 123456789" />
+                            </div>
+
+                            <h5 class="font-weight-bold text-info mt-4 mb-3"><i class="fas fa-dollar-sign mr-2"></i> Adquisición y Vida Útil</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.AcquisitionDate" class="control-label font-weight-bold small uppercase text-muted">Fecha Compra</label>
+                                        <input asp-for="Input.AcquisitionDate" class="form-control shadow-none" type="date" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.AcquisitionValue" class="control-label font-weight-bold small uppercase text-muted">Valor (USD)</label>
+                                        <input asp-for="Input.AcquisitionValue" class="form-control shadow-none font-weight-bold" placeholder="0.00" 
+                                               type="number" step="0.01" min="0"
+                                               data-validation-number-message="Debe ser un valor numérico" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.UsefulLifeYears" class="control-label font-weight-bold small uppercase text-muted">Vida Útil (Años)</label>
+                                <input asp-for="Input.UsefulLifeYears" class="form-control shadow-none" placeholder="Ej: 10" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mt-4">
+                        <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones Iniciales</label>
+                        <textarea asp-for="Input.Observations" class="form-control" rows="3" placeholder="Detalle cualquier condición especial, accesorios incluidos o estado de entrega..."></textarea>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                            <i class="fas fa-save mr-1"></i> Registrar Activo
+                        </button>
+                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.LaboratoryId" class="control-label">Laboratorio</label>
-                <select asp-for="Input.LaboratoryId" class ="form-control" asp-items="ViewBag.LaboratoryId" aria-required="true"></select>
-                <span asp-validation-for="Input.LaboratoryId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.CityId" class="control-label">Ciudad</label>
-                <select asp-for="Input.CityId" class ="form-control" asp-items="ViewBag.CityId" aria-required="true"></select>
-                <span asp-validation-for="Input.CityId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.CountryId" class="control-label">País</label>
-                <select asp-for="Input.CountryId" class ="form-control" asp-items="ViewBag.CountryId" aria-required="true"></select>
-                <span asp-validation-for="Input.CountryId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.Name" class="control-label">Nombre</label>
-                <input asp-for="Input.Name" class="form-control" aria-required="true"/>
-                <span asp-validation-for="Input.Name" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <span class="text-danger">*</span>
-                <label asp-for="Input.InventoryNumber" class="control-label">No. Inventario</label>
-                <input asp-for="Input.InventoryNumber" class="form-control" aria-required="true"/>
-                <span asp-validation-for="Input.InventoryNumber" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.Brand" class="control-label">Marca</label>
-                <input asp-for="Input.Brand" class="form-control" />
-                <span asp-validation-for="Input.Brand" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.Model" class="control-label">Modelo</label>
-                <input asp-for="Input.Model" class="form-control" />
-                <span asp-validation-for="Input.Model" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.SerialNumber" class="control-label">No. Serie</label>
-                <input asp-for="Input.SerialNumber" class="form-control" />
-                <span asp-validation-for="Input.SerialNumber" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.UsefulLifeYears" class="control-label">Vida Útil (Años)</label>
-                <input asp-for="Input.UsefulLifeYears" class="form-control" />
-                <span asp-validation-for="Input.UsefulLifeYears" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.AcquisitionDate" class="control-label">Fecha Adquisición</label>
-                <input asp-for="Input.AcquisitionDate" class="form-control" />
-                <span asp-validation-for="Input.AcquisitionDate" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.AcquisitionValue" class="control-label">Valor Adquisición</label>
-                <input asp-for="Input.AcquisitionValue" class="form-control" />
-                <span asp-validation-for="Input.AcquisitionValue" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="Input.Observations" class="control-label">Observaciones</label>
-                <textarea asp-for="Input.Observations" class="form-control"></textarea>
-                <span asp-validation-for="Input.Observations" class="text-danger"></span>
-            </div>
-         
-            <div class="form-group mt-3">
-                <input type="submit" value="Crear" class="btn btn-primary" />
-                <a asp-page="Index" class="btn btn-secondary">Cancelar</a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-page="Index">Volver al Listado</a>
-</div>
-
 @section Scripts {
+    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            
+            // Función para mostrar mensajes de error temporales
+            function showTemporaryError($el, message) {
+                var $group = $el.closest('.form-group');
+                var $help = $group.find('.help-block');
+                if ($help.length === 0) {
+                    $group.append('<div class="help-block text-danger small font-weight-bold mt-1"></div>');
+                    $help = $group.find('.help-block');
+                }
+                $help.text(message).fadeIn();
+                $group.addClass('error');
+                
+                setTimeout(function() {
+                    $help.fadeOut(function() { $(this).text(''); });
+                    $group.removeClass('error');
+                }, 2000);
+            }
+
+            // Patrón: solo letras, números, espacios, guiones, puntos y paréntesis
+            var textPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]*$/;
+            
+            function setupBlocking($selector, pattern, errorMessage) {
+                $($selector).on('input', function() {
+                    var $field = $(this);
+                     var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]/g, ''));
+                        showTemporaryError($field, errorMessage);
+                    }
+                });
+            }
+
+            // Aplicar validación agresiva&
+            setupBlocking('#Input_Name', textPattern, "Carácter no permitido (especial)");
+            setupBlocking('#Input_Brand', textPattern, "Marca: Solo letras, números y guiones");
+            setupBlocking('#Input_Model', textPattern, "Modelo: Solo letras, números y guiones");
+            setupBlocking('#Input_SerialNumber', textPattern, "S/N: Solo caracteres alfanuméricos");
+            
+            // Validación para Valor USD (solo números y punto decimal)
+            $('#Input_AcquisitionValue').on('input', function() {
+                var $field = $(this);
+                var val = $field.val();
+                if (!/^[0-9\.]*$/.test(val)) {
+                    $field.val(val.replace(/[^0-9\.]/g, ''));
+                    showTemporaryError($field, "Solo se permiten números y punto decimal");
+                }
+            });
+            
+            // Validación para Vida Útil (solo números)
+            $('#Input_UsefulLifeYears').on('input', function() {
+                var $field = $(this);
+                var val = $field.val();
+                if (!/^[0-9]*$/.test(val)) {
+                    $field.val(val.replace(/[^0-9]/g, ''));
+                    showTemporaryError($field, "Solo se permiten números enteros");
+                }
+            });
+        });
+    </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
 }

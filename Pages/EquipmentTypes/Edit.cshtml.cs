@@ -27,12 +27,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
                 return NotFound();
             }
 
-            var equipmentType = await _context.EquipmentTypes.FirstOrDefaultAsync(m => m.Id == id);
-            if (equipmentType == null)
+            var equipmenttype = await _context.EquipmentTypes.FirstOrDefaultAsync(m => m.Id == id);
+            if (equipmenttype == null)
             {
                 return NotFound();
             }
-            EquipmentType = equipmentType;
+            EquipmentType = equipmenttype;
             return Page();
         }
 
@@ -43,7 +43,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
                 return Page();
             }
 
-            _context.Attach(EquipmentType).State = EntityState.Modified;
+            var typeToUpdate = await _context.EquipmentTypes.FindAsync(EquipmentType.Id);
+            if (typeToUpdate == null)
+            {
+                return NotFound();
+            }
+
+            typeToUpdate.Name = EquipmentType.Name.Clean();
+            typeToUpdate.Description = EquipmentType.Description;
+            typeToUpdate.RequiresCalibration = EquipmentType.RequiresCalibration;
+            typeToUpdate.MaintenanceFrequencyMonths = EquipmentType.MaintenanceFrequencyMonths;
+            typeToUpdate.LastModifiedDate = DateTime.Now;
 
             try
             {
@@ -61,6 +71,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
                 }
             }
 
+            TempData["SuccessMessage"] = "Categoría actualizada correctamente.";
             return RedirectToPage("./Index");
         }
 

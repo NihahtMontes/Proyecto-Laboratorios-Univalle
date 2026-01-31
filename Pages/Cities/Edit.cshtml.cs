@@ -49,6 +49,31 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
                 return Page();
             }
 
+            // 1. Normalizar
+            var normalizedName = City.Name.NormalizeComparison();
+
+            // 2. Validar Duplicados (Mismo país, diferente ID)
+            var exists = await _context.Cities
+                .AnyAsync(c => c.Id != City.Id && 
+                               c.CountryId == City.CountryId && 
+                               c.Name.Trim().ToLower() == normalizedName && 
+                               c.Status != Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Eliminado);
+
+            if (exists)
+            {
+                ModelState.AddModelError("City.Name", NotificationHelper.Cities.CityNameDuplicate);
+                ViewData["CountryId"] = new SelectList(_context.Countries, "Id", "Name");
+                return Page();
+            }
+
+            // 3. Validar Formato
+            if (!City.Name.IsValidName())
+            {
+                ModelState.AddModelError("City.Name", NotificationHelper.Countries.InvalidFormat);
+                ViewData["CountryId"] = new SelectList(_context.Countries, "Id", "Name");
+                return Page();
+            }
+
             _context.Attach(City).State = EntityState.Modified;
 
             try
