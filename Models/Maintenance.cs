@@ -11,8 +11,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int Id { get; set; }
 
         [Required]
-        [Display(Name = "Equipamiento")]
-        public int EquipmentId { get; set; }
+        [Display(Name = "Unidad de Equipamiento")]
+        public int EquipmentUnitId { get; set; }
 
         [Required]
         [Display(Name = "Tipo de Mantenimiento")]
@@ -91,8 +91,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // NAVIGATION
         // ========================================
-        [ForeignKey("EquipmentId")]
-        public virtual Equipment? Equipment { get; set; }
+        [ForeignKey("EquipmentUnitId")]
+        public virtual EquipmentUnit? EquipmentUnit { get; set; }
 
         [ForeignKey("MaintenanceTypeId")]
         public virtual MaintenanceType? MaintenanceType { get; set; }
@@ -146,5 +146,14 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [NotMapped]
         [Display(Name = "Total Calculado")]
         public decimal CalculatedTotal => CostDetails?.Sum(d => d.Subtotal) ?? 0;
+
+        // ========================================
+        // LEGACY COMPATIBILITY HELPERS
+        // ========================================
+        [NotMapped]
+        public DateTime MaintenanceDate => ScheduledDate ?? CreatedDate;
+
+        [NotMapped]
+        public string TechnicianName => Technician?.FullName ?? "N/A";
     }
 }

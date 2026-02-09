@@ -21,23 +21,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var faculty = await _context.Faculties
                 .Include(m => m.CreatedBy)
                 .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (faculty == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                Faculty = faculty;
-            }
+
+            if (faculty == null) return NotFound();
+            
+            Faculty = faculty;
             return Page();
         }
     }

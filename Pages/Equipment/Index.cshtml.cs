@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
@@ -24,37 +25,39 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         public string? SearchTerm { get; set; }
 
         [BindProperty(SupportsGet = true)]
-        public int? TypeFilter { get; set; }
+        public int? TypeId { get; set; }
 
         public async Task OnGetAsync()
         {
             var equipmentQuery = _context.Equipments
-                .Include(e => e.City)
-                .Include(e => e.CreatedBy)
-                .Include(e => e.Laboratory)
-                .Include(e => e.ModifiedBy)
-                .Include(e => e.Country)
                 .Include(e => e.EquipmentType)
+                .Include(e => e.City)
+                .Include(e => e.Country)
+                .Include(e => e.Units!)
+                    .ThenInclude(u => u.Laboratory!)
+                        .ThenInclude(l => l.Faculty)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
                 equipmentQuery = equipmentQuery.Where(e => e.Name.ToLower().Contains(term) || 
-                                                        e.InventoryNumber.ToLower().Contains(term) || 
-                                                        e.Brand.ToLower().Contains(term));
+                                                         e.Units!.Any(u => u.InventoryNumber.Contains(term)) || 
+                                                         (e.Brand != null && e.Brand.ToLower().Contains(term)));
             }
 
-            if (TypeFilter.HasValue)
+            if (TypeId.HasValue)
             {
-                equipmentQuery = equipmentQuery.Where(e => e.EquipmentTypeId == TypeFilter.Value);
+                equipmentQuery = equipmentQuery.Where(e => e.EquipmentTypeId == TypeId.Value);
             }
 
-            Equipment = await equipmentQuery.ToListAsync();
+            Equipment = await equipmentQuery.OrderBy(e => e.Name).ToListAsync();
 
-            // Para la pestaña de Tipos de Equipamiento
+            ViewData["TypeId"] = new SelectList(await _context.EquipmentTypes.OrderBy(t => t.Name).ToListAsync(), "Id", "Name", TypeId);
+
             EquipmentTypes = await _context.EquipmentTypes
                 .Include(Et => Et.CreatedBy)
+                .OrderBy(t => t.Name)
                 .ToListAsync();
         }
     }

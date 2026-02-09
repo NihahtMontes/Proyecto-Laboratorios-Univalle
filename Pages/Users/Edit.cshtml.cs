@@ -1,8 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity; // <-- Agregado para DisplayAttribute
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
@@ -28,9 +27,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
         public int Id { get; set; }
 
-        // Needed for filtering roles in View (or can be done in OnGet)
-        public SelectList RoleOptions { get; set; }
-
         public class UserInputModel
         {
             [Required(ErrorMessage = "Los nombres son obligatorios")]
@@ -38,23 +34,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             public string FirstName { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "El primer apellido es obligatorio")]
-            [Display(Name = "Primer Apellido")]
+            [Display(Name = "Apellido Paterno")]
             public string LastName { get; set; } = string.Empty;
 
-            [Display(Name = "Segundo Apellido")]
+            [Display(Name = "Apellido Materno")]
             public string? SecondLastName { get; set; }
 
-            [Required(ErrorMessage = "El CI es obligatorio")]
-            [StringLength(10)]
-            [Display(Name = "Cédula de Identidad")]
+            [Required(ErrorMessage = "El documento de identidad es obligatorio")]
+            [Display(Name = "C.I.")]
             public string IdentityCard { get; set; } = string.Empty;
 
-            [Required]
+            [Required(ErrorMessage = "El rol es obligatorio")]
             [Display(Name = "Rol")]
             public UserRole Role { get; set; }
 
             [Required]
-            [Display(Name = "Estado")]
             public GeneralStatus Status { get; set; }
 
             [Display(Name = "Cargo")]
@@ -63,26 +57,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             [Display(Name = "Departamento")]
             public string? Department { get; set; }
 
-            [Display(Name = "Fecha de Ingreso")]
-            [DataType(DataType.Date)]
+            [Display(Name = "Fecha de Alta")]
             public DateTime? HireDate { get; set; }
 
+            [Phone(ErrorMessage = "Formato de teléfono inválido")]
             [Display(Name = "Teléfono")]
-            [Phone]
             public string? PhoneNumber { get; set; }
 
-            [Required(ErrorMessage = "El correo es obligatorio")]
-            [EmailAddress]
-            [Display(Name = "Email")]
+            [Required(ErrorMessage = "El correo institucional es obligatorio")]
+            [EmailAddress(ErrorMessage = "Correo electrónico inválido")]
             public string Email { get; set; } = string.Empty;
 
-            // Credentials
-            [Display(Name = "Nombre de Usuario")]
+            [Display(Name = "Usuario")]
             public string? UserName { get; set; }
 
-            [Display(Name = "Nueva Contraseña (Opcional)")]
             [DataType(DataType.Password)]
-            [StringLength(100, ErrorMessage = "La {0} debe tener al menos {2} caracteres.", MinimumLength = 6)]
+            [StringLength(100, ErrorMessage = "La contraseña debe tener al menos 8 caracteres.", MinimumLength = 8)]
+            [Display(Name = "Nueva Contraseña")]
             public string? NewPassword { get; set; }
         }
 
@@ -112,7 +103,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 UserName = user.UserName
             };
 
-            CargarRoles();
+            LoadRoles();
             return Page();
         }
 
@@ -120,77 +111,64 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         {
             Id = id;
 
-            if (string.IsNullOrEmpty(Input.NewPassword)) ModelState.Remove("Input.NewPassword");
+            if (string.IsNullOrEmpty(Input.NewPassword)) 
+            {
+                ModelState.Remove("Input.NewPassword");
+            }
 
             if (!ModelState.IsValid)
             {
-                CargarRoles();
+                LoadRoles();
                 return Page();
             }
 
-            // 1. Uniqueness Check
+            // Uniqueness Checks
             bool ciExists = await _context.Users
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.IdentityCard == Input.IdentityCard && u.Id != id && u.Status != GeneralStatus.Eliminado);
 
-            if (ciExists) ModelState.AddModelError("Input.IdentityCard", "El CI ya se encuentra registrado.");
+            if (ciExists) ModelState.AddModelError("Input.IdentityCard", "Este C.I. ya está asignado a otro usuario.");
 
             bool emailExists = await _context.Users
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.Email == Input.Email && u.Id != id && u.Status != GeneralStatus.Eliminado);
 
-            if (emailExists) ModelState.AddModelError("Input.Email", "El correo ya está en uso.");
-
-            if (!string.IsNullOrEmpty(Input.UserName))
-            {
-                bool userNameExists = await _context.Users
-                    .IgnoreQueryFilters()
-                    .AnyAsync(u => u.UserName == Input.UserName && u.Id != id && u.Status != GeneralStatus.Eliminado);
-
-                if (userNameExists) ModelState.AddModelError("Input.UserName", "El nombre de usuario ya está en uso.");
-            }
+            if (emailExists) ModelState.AddModelError("Input.Email", "Este correo electrónico ya se encuentra registrado.");
 
             if (!ModelState.IsValid)
             {
-                CargarRoles();
+                LoadRoles();
                 return Page();
             }
 
             var userToUpdate = await _context.Users.FindAsync(id);
             if (userToUpdate == null) return NotFound();
 
-            // 2. Update Fields
+            // Mapping Updates
             userToUpdate.FirstName = Input.FirstName.Clean();
             userToUpdate.LastName = Input.LastName.Clean();
             userToUpdate.SecondLastName = Input.SecondLastName?.Clean();
-            userToUpdate.IdentityCard = Input.IdentityCard;
+            userToUpdate.IdentityCard = Input.IdentityCard.Trim();
             userToUpdate.Role = Input.Role;
             userToUpdate.Status = Input.Status;
             userToUpdate.Position = Input.Position?.Clean();
             userToUpdate.Department = Input.Department?.Clean();
-            userToUpdate.HireDate = Input.HireDate;
             userToUpdate.PhoneNumber = Input.PhoneNumber;
 
-            // 3. Handle Email
+            // Handle Email Change
             if (userToUpdate.Email != Input.Email)
             {
-                userToUpdate.Email = Input.Email;
+                var setEmailResult = await _userManager.SetEmailAsync(userToUpdate, Input.Email);
+                if (!setEmailResult.Succeeded)
+                {
+                    foreach (var error in setEmailResult.Errors) ModelState.AddModelError("Input.Email", error.Description);
+                    LoadRoles();
+                    return Page();
+                }
                 userToUpdate.NormalizedEmail = Input.Email.ToUpper();
             }
 
-            // 4. Handle UserName
-            if (!string.IsNullOrEmpty(Input.UserName) && Input.UserName != userToUpdate.UserName)
-            {
-                var setUserNameResult = await _userManager.SetUserNameAsync(userToUpdate, Input.UserName);
-                if (!setUserNameResult.Succeeded)
-                {
-                    foreach (var error in setUserNameResult.Errors) ModelState.AddModelError("Input.UserName", error.Description);
-                    CargarRoles();
-                    return Page();
-                }
-            }
-
-            // 5. Handle Password
+            // Handle Password Reset
             if (!string.IsNullOrEmpty(Input.NewPassword))
             {
                 var token = await _userManager.GeneratePasswordResetTokenAsync(userToUpdate);
@@ -198,15 +176,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 if (!result.Succeeded)
                 {
                     foreach (var error in result.Errors) ModelState.AddModelError("Input.NewPassword", error.Description);
-                    CargarRoles();
+                    LoadRoles();
                     return Page();
                 }
+            }
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                userToUpdate.ModifiedById = currentUser.Id;
+                userToUpdate.LastModifiedDate = DateTime.Now;
             }
 
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success(NotificationHelper.Users.Edited(userToUpdate.FullName));
+                TempData.Success($"Datos de la cuenta '{userToUpdate.FullName}' actualizados correctamente.");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -222,10 +207,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             return _context.Users.Any(e => e.Id == id);
         }
 
-        private void CargarRoles()
+        private void LoadRoles()
         {
             ViewData["UserRole"] = EnumHelper.ToSelectList<UserRole>();
         }
     }
 }
-

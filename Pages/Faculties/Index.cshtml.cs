@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 {
@@ -27,6 +26,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
         [BindProperty(SupportsGet = true)]
         public GeneralStatus? StatusFilter { get; set; }
 
+        public IActionResult OnGet()
+        {
+            return RedirectToPage("/Laboratories/Index", null, "faculties");
+        }
+
         public async Task OnGetAsync()
         {
             var query = _context.Faculties
@@ -34,20 +38,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
                 .Include(f => f.ModifiedBy)
                 .Where(f => f.Status != GeneralStatus.Eliminado);
 
-            // Filtro por término
+            // Term and Code Filter
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                query = query.Where(f => f.Name.ToLower().Contains(term));
+                query = query.Where(f => f.Name.ToLower().Contains(term) || (f.Code != null && f.Code.ToLower().Contains(term)));
             }
 
-            // Filtro por Estado
+            // Status Filter
             if (StatusFilter.HasValue)
             {
                 query = query.Where(f => f.Status == StatusFilter.Value);
             }
 
-            Faculties = await query.ToListAsync();
+            Faculties = await query.OrderBy(f => f.Name).ToListAsync();
         }
     }
 }

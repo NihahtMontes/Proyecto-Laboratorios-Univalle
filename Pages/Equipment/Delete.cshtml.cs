@@ -26,72 +26,40 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var equipment = await _context.Equipments
                 .Include(m => m.EquipmentType)
-                .Include(m => m.Laboratory)
-                .Include(m => m.Country)
-                .Include(m => m.City)
-                .Include(m => m.CreatedBy)
-                .Include(m => m.ModifiedBy)
+                .Include(m => m.Units!)
+                    .ThenInclude(u => u.Laboratory)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (equipment == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                Equipment = equipment;
-            }
+            if (equipment == null) return NotFound();
+            
+            Equipment = equipment;
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync(int? id)
         {
-            if (id == null)
+            if (id == null) return NotFound();
+
+            var equipment = await _context.Equipments
+                .Include(e => e.Units)
+                .FirstOrDefaultAsync(e => e.Id == id);
+                
+            if (equipment == null) return NotFound();
+
+            if (equipment.Units != null && equipment.Units.Any(u => u.CurrentStatus != EquipmentStatus.Deleted))
             {
-                return NotFound();
+                TempData.Error($"No se puede eliminar '{equipment.Name}' porque tiene unidades activas asociadas. Elimine o dé de baja las unidades primero.");
+                return RedirectToPage("./Details", new { id = equipment.Id });
             }
 
-            var equipment = await _context.Equipments.FindAsync(id);
-            if (equipment != null)
-            {
-                var currentUser = await _userManager.GetUserAsync(User);
-                int? userId = currentUser?.Id;
+            _context.Equipments.Remove(equipment);
+            await _context.SaveChangesAsync();
 
-                equipment.CurrentStatus = EquipmentStatus.Deleted;
-                // equipment.LastModifiedDate = DateTime.Now; // Handled by Interceptor
-                // equipment.ModifiedById = userId; // Handled by Interceptor
-
-                var newHistory = new EquipmentStateHistory
-                {
-                    EquipmentId = equipment.Id,
-                    Status = equipment.CurrentStatus,
-                    StartDate = DateTime.Now,
-                    CreatedDate = DateTime.Now,
-                    Reason = "Equipment deleted",
-                    CreatedById = userId
-                };
-
-                var lastHistory = await _context.EquipmentStateHistories
-                  .Where(h => h.EquipmentId == equipment.Id && h.EndDate == null)
-                  .OrderByDescending(h => h.StartDate)
-                  .FirstOrDefaultAsync();
-
-                if (lastHistory != null)
-                    lastHistory.EndDate = DateTime.Now;
-
-                _context.EquipmentStateHistories.Add(newHistory);
-
-                await _context.SaveChangesAsync();
-            }
-
-            TempData["SuccessMessage"] = "El equipo ha sido dado de baja correctamente.";
+            TempData.Success($"La definición de equipo '{equipment.Name}' ha sido eliminada correctamente.");
             return RedirectToPage("./Index");
         }
     }

@@ -3,11 +3,12 @@
 
 <div class="table-responsive">
     <table class="table table-hover v-middle">
-        <thead class="thead-light">
-            <tr>
-                <th>Nombre Completo</th>
-                <th>Documento (CI)</th>
-                <th>Tipo</th>
+        <thead class="bg-light">
+            <tr class="small uppercase font-weight-bold">
+                <th>Nombre Completo / C.I.</th>
+                <th>Clasificación</th>
+                <th>Cargo / Título</th>
+                <th class="text-center">Estado</th>
                 <th class="text-center">Acciones</th>
             </tr>
         </thead>
@@ -16,27 +17,56 @@
                 <tr>
                     <td>
                         <div class="d-flex align-items-center">
-                            <div class="m-r-10"><span class="btn btn-circle btn-sm btn-light-primary text-primary"><i class="ti-id-badge"></i></span></div>
-                            <h5 class="m-b-0 font-16">@item.FirstName @item.LastName</h5>
+                            <div class="m-r-10">
+                                <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm">
+                                    @(item.FirstName?[0] ?? 'P')@(item.LastName?[0] ?? 'N')
+                                </span>
+                            </div>
+                            <div>
+                                <h6 class="m-b-0 font-weight-bold text-dark">@item.FullName</h6>
+                                <span class="text-muted small">C.I.: @item.IdentityCard</span>
+                            </div>
                         </div>
                     </td>
-                    <td>@item.IdentityCard</td>
                     <td>
-                        <span class="badge badge-pill badge-light-primary text-primary">@item.Category</span>
-                        @if (item.IsInternal)
-                        {
-                            <span class="badge badge-pill badge-light-success text-success ml-1">Interno</span>
-                        }
+                        <div class="mb-1">
+                            <span class="badge badge-pill badge-primary px-3" style="font-size: 0.65rem;">
+                                <i class="fas fa-tag mr-1"></i> @item.Category
+                            </span>
+                        </div>
+                        <div>
+                            @if (item.IsInternal)
+                            {
+                                <span class="badge badge-pill border border-success text-success px-2 py-0" style="font-size: 0.6rem;">
+                                    <i class="fas fa-check-circle mr-1"></i> Interno
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-pill border border-secondary text-secondary px-2 py-0" style="font-size: 0.6rem;">
+                                    <i class="fas fa-external-link-alt mr-1"></i> Externo
+                                </span>
+                            }
+                        </div>
+                    </td>
+                    <td>
+                        <div class="text-dark font-weight-bold small">@(item.JobTitle ?? "-")</div>
+                        <div class="text-muted italic small">@(item.Company ?? "Univalle")</div>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge badge-pill @(item.Status == GeneralStatus.Activo ? "badge-success" : "badge-danger") px-3 py-1 font-weight-bold">
+                            @item.Status
+                        </span>
                     </td>
                     <td class="text-center">
                         <div class="btn-group">
-                            <a href="/Persons/Edit?id=@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                            <a asp-page="/Persons/Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded shadow-none" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <a href="/Persons/Details?id=@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                            <a asp-page="/Persons/Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1 shadow-none" title="Detalles">
                                 <i class="fas fa-search-plus"></i>
                             </a>
-                            <a href="/Persons/Delete?id=@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                            <a asp-page="/Persons/Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded shadow-none" title="Eliminar">
                                 <i class="fas fa-trash"></i>
                             </a>
                         </div>

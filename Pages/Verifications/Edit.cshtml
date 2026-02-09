@@ -1,19 +1,17 @@
-﻿@page "{id:int}"
+@page "{id:int}"
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.EditModel
 
-@{
-    ViewData["Title"] = "Editar Verificación";
-}
+
 
 <form method="post" id="editForm">
     <div class="row">
-        <!-- Header y Navegación Superior -->
+        <!-- Header and Top Navigation -->
         <div class="col-12 mb-4">
             <div class="d-flex align-items-center justify-content-between p-4 bg-white rounded shadow-sm">
                 <div>
                     <h4 class="font-weight-bold text-dark mb-1">Editar Verificación #@Model.Verification.Id</h4>
-                    <p class="text-muted mb-0 small">Modo de edición para auditoría técnica.</p>
+                    <p class="text-muted mb-0 small">Modo de edición para auditoría técnica de equipos.</p>
                 </div>
                 <div>
                     <button type="button" class="btn btn-outline-success btn-rounded font-weight-bold shadow-sm" onclick="markAllGood()">
@@ -21,28 +19,28 @@
                     </button>
                 </div>
             </div>
-            <!-- Barra de Progreso Discreta -->
+            <!-- Discreet Progress Bar -->
             <div class="progress mt-2" style="height: 4px;">
                 <div id="checkProgress" class="progress-bar bg-warning" role="progressbar" style="width: 0%; transition: width 0.5s ease;"></div>
             </div>
         </div>
 
-        <!-- Columna Izquierda: Checklist (8 Columnas) -->
+        <!-- Left Column: Checklist (8 Columns) -->
         <div class="col-lg-8">
             <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small mb-4"></div>
             <input type="hidden" asp-for="Verification.Id" />
             <input type="hidden" asp-for="Verification.CreatedDate" />
             <input type="hidden" asp-for="Verification.CreatedById" />
-            <input type="hidden" asp-for="Verification.EquipmentId" />
+            <input type="hidden" asp-for="Verification.EquipmentUnitId" />
 
-            <!-- Grupo 1: Combustión -->
+            <!-- Group 1: Combustion System -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white font-weight-bold text-dark border-bottom pt-3 pb-2">
-                    <i class="fas fa-burn mr-2 text-warning"></i> Sistema de Combustión
+                    <i class="fas fa-burn mr-2 text-warning"></i> Sistema de Combustión y Fluidos
                 </div>
                 <div class="card-body pt-0">
                     <div class="row pt-2">
-                        <!-- Items Combustión -->
+                        <!-- Combustion Items -->
                         <div class="col-12 col-md-6 mb-3">
                             <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
                                 <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-fire-alt fa-lg"></i></div>
@@ -110,7 +108,7 @@
                 </div>
             </div>
 
-            <!-- Grupo 2: Mecánica -->
+            <!-- Group 2: Mechanical System -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white font-weight-bold text-dark border-bottom pt-3 pb-2">
                     <i class="fas fa-cogs mr-2 text-warning"></i> Mecánica y Térmica
@@ -166,7 +164,7 @@
                 </div>
             </div>
 
-            <!-- Grupo 3: Eléctrico -->
+            <!-- Group 3: Electrical System -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white font-weight-bold text-dark border-bottom pt-3 pb-2">
                     <i class="fas fa-plug mr-2 text-warning"></i> Eléctrico y Control
@@ -240,7 +238,7 @@
                 </div>
             </div>
 
-            <!-- Grupo 4: Higiene -->
+            <!-- Group 4: Hygiene System -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white font-weight-bold text-dark border-bottom pt-3 pb-2">
                     <i class="fas fa-broom mr-2 text-warning"></i> Estética e Higiene
@@ -270,16 +268,16 @@
             </div>
         </div>
 
-        <!-- Columna Derecha: Panel de Control (4 Columnas) -->
+        <!-- Right Column: Control Panel (4 Columns) -->
         <div class="col-lg-4">
-            <!-- Info Equipo -->
+            <!-- Equipment Information -->
             <div class="card shadow-sm border-0 mb-4 bg-white border-left-info">
                 <div class="card-body">
                     <h6 class="text-uppercase text-muted font-weight-bold small mb-2">Equipo en Revisión</h6>
                     <h5 class="text-dark font-weight-bold mb-1">
-                        <i class="fas fa-microscope mr-2 text-info"></i>@Model.Verification.Equipment?.Name
+                        <i class="fas fa-microscope mr-2 text-info"></i>@Model.Verification.EquipmentUnit?.Equipment?.Name
                     </h5>
-                    <span class="badge badge-light border">Inv: @Model.Verification.Equipment?.InventoryNumber</span>
+                    <span class="badge badge-light border">Inv: @Model.Verification.EquipmentUnit?.InventoryNumber</span>
                     
                     <hr class="my-3"/>
                     
@@ -290,7 +288,7 @@
                 </div>
             </div>
 
-            <!-- Conclusiones -->
+            <!-- Conclusions and Results -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white font-weight-bold border-bottom-0 pb-0">
                     Resoluciones
@@ -305,13 +303,13 @@
                         <textarea asp-for="Verification.Recommendations" class="form-control border-success bg-soft-success" rows="3" placeholder="Sugerencias..."></textarea>
                     </div>
                     <div class="form-group mb-0">
-                        <label asp-for="Verification.Observations" class="font-weight-bold small uppercase text-muted">Observaciones</label>
+                        <label asp-for="Verification.Observations" class="font-weight-bold small uppercase text-muted">Observaciones Formulario</label>
                         <textarea asp-for="Verification.Observations" class="form-control bg-light" rows="2"></textarea>
                     </div>
                 </div>
             </div>
 
-            <!-- Acciones -->
+            <!-- Form Actions -->
             <div class="card shadow-lg border-0 bg-gradient-light">
                 <div class="card-body">
                     <div class="form-group mb-4">

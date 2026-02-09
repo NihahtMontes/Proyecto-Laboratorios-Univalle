@@ -24,7 +24,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public IActionResult OnGet()
         {
-            CargarListas();
+            LoadLists();
 
             Maintenance = new Maintenance
             {
@@ -40,46 +40,47 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Limpieza y Normalización
+            // Data Cleaning and Normalization
             Maintenance.Description = Maintenance.Description.Clean();
             Maintenance.Observations = Maintenance.Observations.Clean();
             Maintenance.Recommendations = Maintenance.Recommendations.Clean();
 
-            // Validaciones Lógicas Rigurosas
+            // Rigorous Technical Validations
             if (Maintenance.StartDate.HasValue && Maintenance.EndDate.HasValue)
             {
                 if (Maintenance.EndDate < Maintenance.StartDate)
                 {
-                    ModelState.AddModelError("Maintenance.EndDate", NotificationHelper.Maintenances.EndDateBeforeStart);
+                    ModelState.AddModelError("Maintenance.EndDate", "La fecha de finalización no puede ser anterior al inicio.");
                 }
             }
 
-            if (Maintenance.ScheduledDate.HasValue && Maintenance.StartDate.HasValue)
-            {
-                // Informativo: Opcionalmente podrías validar si inició después de lo programado, 
-                // pero permitiremos flexibilidad técnica aquí.
-            }
-
-            // Quitar navegación de la validación
+            // Remove navigation properties from validation
             ModelState.Remove("Maintenance.CreatedBy");
             ModelState.Remove("Maintenance.ModifiedBy");
-            ModelState.Remove("Maintenance.Equipment");
+            ModelState.Remove("Maintenance.EquipmentUnit");
             ModelState.Remove("Maintenance.MaintenanceType");
             ModelState.Remove("Maintenance.Technician");
             ModelState.Remove("Maintenance.Request");
 
-            // Recalcular costo real basado en detalles (Doble chequeo de seguridad)
+            // Sanitize CostDetails list (remove rows with empty descriptions)
+            if (Maintenance.CostDetails != null)
+            {
+                Maintenance.CostDetails = Maintenance.CostDetails.Where(d => !string.IsNullOrWhiteSpace(d.Description)).ToList();
+            }
+
+            // Recalculate actual cost based on details (Double security check)
             decimal totalCosts = Maintenance.CostDetails?.Sum(d => d.Quantity * d.UnitPrice) ?? 0;
             Maintenance.ActualCost = totalCosts;
 
             if (Maintenance.Status == MaintenanceStatus.Completed && totalCosts <= 0)
             {
-                ModelState.AddModelError("Maintenance.Status", NotificationHelper.Maintenances.CompletedWithoutCosts);
+                // Note: This could be a warning, but for strict laboratorios we might want it as an error
+                // ModelState.AddModelError("Maintenance.Status", "Un mantenimiento completado usualmente requiere registro de insumos o mano de obra.");
             }
 
             if (!ModelState.IsValid)
             {
-                CargarListas();
+                LoadLists();
                 return Page();
             }
 
@@ -92,50 +93,51 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 _context.Maintenances.Add(Maintenance);
                 await _context.SaveChangesAsync();
 
-                // Cargar Equipment para obtener el nombre
-                var equipment = await _context.Equipments.FindAsync(Maintenance.EquipmentId);
-                TempData.Success(NotificationHelper.Maintenances.Created(equipment?.Name));
+                // Get equipment name for notification
+                var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).FirstOrDefaultAsync(u => u.Id == Maintenance.EquipmentUnitId);
+                TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' programado correctamente.");
                 
                 return RedirectToPage("./Index");
             }
             catch (Exception ex)
             {
-                TempData.Error(NotificationHelper.Maintenances.SaveError(ex.Message));
-                CargarListas();
+                TempData.Error($"Error al guardar el registro: {ex.Message}");
+                LoadLists();
                 return Page();
             }
         }
 
-        private void CargarListas()
+        private void LoadLists()
         {
-            // Selector Pro de Equipos: Nombre (Inv: XXX) - Categoría
-            var equipos = _context.Equipments
-                .Include(e => e.EquipmentType)
-                .Where(e => e.CurrentStatus != EquipmentStatus.Deleted)
-                .OrderBy(e => e.Name)
-                .Select(e => new
+            // Equipment Selector: Name (Inv: XXX) - Category
+            var equipments = _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .ThenInclude(e => e.EquipmentType)
+                .Where(u => u.CurrentStatus != EquipmentStatus.Deleted)
+                .OrderBy(u => u.Equipment!.Name)
+                .Select(u => new
                 {
-                    Id = e.Id,
-                    DisplayName = $"{e.Name} (Inv: {e.InventoryNumber}) - [{e.EquipmentType.Name}]"
+                    Id = u.Id,
+                    DisplayName = $"{u.Equipment!.Name} (Inv: {u.InventoryNumber}) - [{u.Equipment!.EquipmentType!.Name}]"
                 })
                 .ToList();
 
-            ViewData["EquipmentId"] = new SelectList(equipos, "Id", "DisplayName");
+            ViewData["EquipmentUnitId"] = new SelectList(equipments, "Id", "DisplayName");
             
-            // Técnicos ordenados por nombre
-            var tecnicos = _context.People
+            // Technicians sorted by name
+            var technicians = _context.People
                 .Where(p => p.Category == PersonCategory.Tecnico)
                 .OrderBy(p => p.FirstName)
                 .ThenBy(p => p.LastName)
                 .Select(p => new { Id = p.Id, FullName = p.FirstName + " " + p.LastName })
                 .ToList();
             
-            ViewData["TechnicianId"] = new SelectList(tecnicos, "Id", "FullName");
+            ViewData["TechnicianId"] = new SelectList(technicians, "Id", "FullName");
 
-            // Tipos de Mantenimiento
+            // Maintenance Types
             ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes.OrderBy(mt => mt.Name), "Id", "Name");
             
-            // Solicitudes (Opcional)
+            // Recent Requests (Optional)
             ViewData["RequestId"] = new SelectList(_context.Requests.OrderByDescending(r => r.CreatedDate).Take(20), "Id", "Id");
         }
     }

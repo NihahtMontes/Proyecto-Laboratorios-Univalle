@@ -13,9 +13,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
-        [Display(Name = "Equipamiento")]
-        public int EquipmentId { get; set; }
+        [Display(Name = "Unidad de Equipamiento")]
+        public int? EquipmentUnitId { get; set; }
 
         [Required]
         [Display(Name = "Estado")]
@@ -52,8 +51,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // NAVIGATION
         // ========================================
-        [ForeignKey("EquipmentId")]
-        public virtual Equipment? Equipment { get; set; }
+        [ForeignKey("EquipmentUnitId")]
+        public virtual EquipmentUnit? EquipmentUnit { get; set; }
 
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }

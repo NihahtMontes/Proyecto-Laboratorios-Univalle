@@ -1,8 +1,14 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.IndexModel
 
-@{
-    ViewData["Title"] = "Gestión de Solicitudes";
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle mr-2"></i> @TempData["Error"]
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
 }
 
 <div class="row">
@@ -12,12 +18,12 @@
                 <!-- Header -->
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark">Buzón de Solicitudes Técnicas</h4>
-                        <h6 class="card-subtitle text-muted">Gestión y seguimiento de requerimientos para el mantenimiento de activos.</h6>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Buzón de Solicitudes Técnicas</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Gestión y seguimiento de requerimientos para el mantenimiento de activos.</h6>
                     </div>
-                    <div class="ml-auto mt-2">
-                        <a asp-page="Create" class="btn btn-info btn-rounded shadow-sm px-4">
-                            <i class="fas fa-plus-circle mr-1"></i> Nueva Solicitud
+                    <div class="ml-auto mt-3">
+                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                            <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Solicitud
                         </a>
                     </div>
                 </div>
@@ -61,13 +67,14 @@
                     </form>
                 </div>
 
-                <!-- Tabla de Solicitudes -->
+                <!-- Table of Requests -->
                 <div class="table-responsive">
                     <table class="table table-hover v-middle">
                         <thead class="thead-light">
                             <tr class="small uppercase font-weight-bold">
                                 <th>Equipamiento Asignado</th>
                                 <th>Descripción del Requerimiento</th>
+                                <th class="text-center">Tipo</th>
                                 <th class="text-center">Prioridad</th>
                                 <th class="text-center">Estado</th>
                                 <th>Solicitante</th>
@@ -75,17 +82,19 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @if (!Model.Requests.Any())
+                            @if (Model.Requests == null || !Model.Requests.Any())
                             {
                                 <tr>
-                                    <td colspan="6" class="text-center py-5 text-muted">
+                                    <td colspan="7" class="text-center py-5 text-muted">
                                         <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
                                         No se encontraron requerimientos registrados.
                                     </td>
                                 </tr>
                             }
-                            @foreach (var item in Model.Requests)
+                            else
                             {
+                                foreach (var item in Model.Requests)
+                                {
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
@@ -93,8 +102,8 @@
                                                 <span class="btn btn-circle btn-light-info text-info"><i class="fas fa-tools"></i></span>
                                             </div>
                                             <div>
-                                                <h6 class="m-b-0 font-weight-bold">@item.Equipment.Name</h6>
-                                                <span class="text-muted small">Inv: @item.Equipment.InventoryNumber</span>
+                                                <h6 class="m-b-0 font-weight-bold text-dark">@(item.EquipmentUnit?.Equipment?.Name ?? item.Equipment?.Name ?? "S/E")</h6>
+                                                <span class="text-muted small">Inv: @(item.EquipmentUnit?.InventoryNumber ?? "-")</span>
                                             </div>
                                         </div>
                                     </td>
@@ -104,28 +113,38 @@
                                     </td>
                                     <td class="text-center">
                                         @{
-                                            var priorityClass = item.Priority switch {
-                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority.High => "badge-danger",
-                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority.Medium => "badge-warning",
-                                                _ => "badge-info"
-                                            };
+                                            var typeBadgeInfo = item.Type == Proyecto_Laboratorios_Univalle.Models.Enums.RequestType.Technical 
+                                                ? ("badge-info", "TÉCNICA", "fa-tools") 
+                                                : ("badge-success", "COMPRA", "fa-shopping-cart");
                                         }
-                                        <span class="badge @priorityClass px-3 py-1 text-uppercase" style="font-size: 0.7rem;">@item.Priority</span>
+                                        <span class="badge badge-pill @typeBadgeInfo.Item1 px-3 py-1 text-white border-0 shadow-sm">
+                                            <i class="fas @typeBadgeInfo.Item3 mr-1" style="font-size: 0.65rem;"></i> @typeBadgeInfo.Item2
+                                        </span>
                                     </td>
                                     <td class="text-center">
                                         @{
-                                            var statusClass = item.Status switch {
-                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Approved => "badge-success",
-                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Pending => "badge-warning",
-                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Rejected => "badge-danger",
-                                                _ => "badge-light text-muted border"
+                                            var (priorityClass, priorityText) = item.Priority switch {
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority.High => ("badge-danger", "ALTA"),
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority.Medium => ("badge-warning", "MEDIA"),
+                                                _ => ("badge-info", "BAJA")
                                             };
                                         }
-                                        <span class="badge @statusClass px-3 py-1">@item.Status</span>
+                                        <span class="badge @priorityClass px-3 py-1 text-uppercase" style="font-size: 0.7rem;">@priorityText</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @{
+                                            var (statusClass, statusText) = item.Status switch {
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Approved => ("badge-success", "APROBADA"),
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Pending => ("badge-warning", "PENDIENTE"),
+                                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Rejected => ("badge-danger", "RECHAZADA"),
+                                                _ => ("badge-light text-muted border", "DESCONOCIDO")
+                                            };
+                                        }
+                                        <span class="badge @statusClass px-3 py-1">@statusText</span>
                                     </td>
                                     <td>
                                         <div class="small">
-                                            <div class="font-weight-bold text-dark">@item.RequestedBy?.FullName</div>
+                                            <div class="font-weight-bold text-dark">@(item.RequestedBy?.FullName ?? "-")</div>
                                             <div class="text-muted">@(item.RequestedBy?.Position ?? "Colaborador")</div>
                                         </div>
                                     </td>
@@ -137,12 +156,14 @@
                                             <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
                                                 <i class="fas fa-search-plus"></i>
                                             </a>
+
                                             <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         </div>
                                     </td>
                                 </tr>
+                                }
                             }
                         </tbody>
                     </table>
@@ -152,9 +173,45 @@
     </div>
 </div>
 
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Función para actualizar el estado de los botones basados en localStorage
+            function updateDownloadButtons() {
+                $('.btn-download-report').each(function() {
+                    const id = $(this).data('id');
+                    if (id && localStorage.getItem('downloaded_request_' + id)) {
+                        $(this).removeClass('btn-success').addClass('btn-info');
+                        $(this).attr('title', 'Volver a descargar reporte');
+                        // Si tiene texto, cambiarlo (para Details)
+                        const $text = $(this).find('.download-text');
+                        if ($text && $text.length > 0) {
+                            $text.text('Volver a Descargar');
+                        }
+                    }
+                });
+            }
+
+            // Al hacer clic, marcar como descargado
+            $('.btn-download-report').on('click', function() {
+                const id = $(this).data('id');
+                if (id) {
+                    localStorage.setItem('downloaded_request_' + id, 'true');
+                    // Pequeño delay para que se note el cambio después de iniciar la descarga
+                    setTimeout(updateDownloadButtons, 300);
+                }
+            });
+
+            // Carga inicial
+            updateDownloadButtons();
+        });
+    </script>
+}
+
 @section Styles {
     <style>
         .v-middle td { vertical-align: middle !important; }
         .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+        .italic { font-style: italic; }
     </style>
 }

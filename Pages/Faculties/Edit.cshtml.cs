@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 {
@@ -11,10 +13,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
     public class EditModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public EditModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context)
+        public EditModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         [BindProperty]
@@ -43,23 +47,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
                 return Page();
             }
 
-            var normalizedName = Faculty.Name.NormalizeComparison();
+            // Normalization
+            var normalizedName = Faculty.Name.Trim().ToLower();
 
+            // Duplicate Validation (excluding current ID)
             var exists = await _context.Faculties
                 .AnyAsync(f => f.Id != Faculty.Id && 
                                f.Name.Trim().ToLower() == normalizedName && 
-                               f.Status != Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Eliminado);
+                               f.Status != GeneralStatus.Eliminado);
 
             if (exists)
             {
-                ModelState.AddModelError("Faculty.Name", NotificationHelper.Faculties.FacultyNameDuplicate);
-                await ReloadFaculty(Faculty.Id);
-                return Page();
-            }
-
-            if (!Faculty.Name.IsValidName())
-            {
-                ModelState.AddModelError("Faculty.Name", NotificationHelper.Countries.InvalidFormat);
+                ModelState.AddModelError("Faculty.Name", "Ya existe otra facultad con este nombre en el sistema institucional.");
                 await ReloadFaculty(Faculty.Id);
                 return Page();
             }
@@ -67,15 +66,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             var facultyToUpdate = await _context.Faculties.FindAsync(Faculty.Id);
             if (facultyToUpdate == null) return NotFound();
 
+            // Entity Mapping
             facultyToUpdate.Name = Faculty.Name.Clean();
             facultyToUpdate.Code = Faculty.Code?.Clean().ToUpper();
             facultyToUpdate.Description = Faculty.Description?.Clean();
             facultyToUpdate.Status = Faculty.Status;
+            facultyToUpdate.LastModifiedDate = DateTime.Now;
+
+            // Set current auditor
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                facultyToUpdate.ModifiedById = currentUser.Id;
+            }
 
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success(NotificationHelper.Faculties.Updated(facultyToUpdate.Name));
+                TempData.Success($"Datos de la Facultad '{facultyToUpdate.Name}' actualizados correctamente.");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -83,7 +91,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
                 else throw;
             }
 
-            return RedirectToPage("/Laboratories/Index");
+            return RedirectToPage("/Laboratories/Index", null, "faculties");
         }
 
         private async Task ReloadFaculty(int id)

@@ -29,12 +29,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
                 .Include(e => e.ModifiedBy)
                 .AsQueryable();
 
+            // Search by Category Name or Description
             if (!string.IsNullOrWhiteSpace(SearchTerm))
             {
-                query = query.Where(e => e.Name.Contains(SearchTerm) || (e.Description != null && e.Description.Contains(SearchTerm)));
+                var term = SearchTerm.Trim().ToLower();
+                query = query.Where(e => e.Name.ToLower().Contains(term) || (e.Description != null && e.Description.ToLower().Contains(term)));
             }
 
-            EquipmentTypes = await query.ToListAsync();
+            EquipmentTypes = await query.OrderBy(e => e.Name).ToListAsync();
         }
     }
 }

@@ -1,12 +1,28 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Proyecto_Laboratorios_Univalle.Models.Enums
 {
     public enum EquipmentStatus
     {
+        [Display(Name = "Operativo")]
         Operational = 0,
+
+        [Display(Name = "En Mantenimiento")]
         UnderMaintenance = 1,
+
+        [Display(Name = "Fuera de Servicio")]
         OutOfService = 2,
-        Decommissioned = 3, // Baja
-        Dismantled = 4,     // Desmantelado
-        Deleted = 99        // Soft Delete
+
+        [Display(Name = "En Reparación")]
+        InRepair = 5,
+
+        [Display(Name = "De baja")]
+        Decommissioned = 3,
+
+        [Display(Name = "Desmantelado")]
+        Dismantled = 4,
+
+        [Display(Name = "Eliminado")]
+        Deleted = 99
     }
 }

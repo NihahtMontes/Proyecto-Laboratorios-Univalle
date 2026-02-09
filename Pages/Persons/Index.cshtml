@@ -1,23 +1,21 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Persons.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Directorio de Personal";
-}
 
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm border-0">
             <div class="card-body">
                 <!-- Header -->
-                <div class="d-md-flex align-items-center mb-4">
+                <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Directorio de Personal y Colaboradores</h4>
-                        <h6 class="card-subtitle text-muted">Gestión de identidades para la asignación de responsabilidades y accesos.</h6>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Directorio de Personal y Colaboradores</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Gestión de identidades para la asignación de responsabilidades y accesos al sistema.</h6>
                     </div>
-                    <div class="ml-auto mt-2">
-                        <a asp-page="Create" class="btn btn-info btn-rounded shadow-sm px-4">
-                            <i class="fas fa-user-plus mr-1"></i> Registrar Persona
+                    <div class="ml-auto mt-3 mt-md-0">
+                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                            <i class="fas fa-user-plus mr-1 text-info"></i> Registrar Persona
                         </a>
                     </div>
                 </div>
@@ -26,16 +24,23 @@
                 <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
                     <form method="get">
                         <div class="row align-items-end">
-                            <div class="col-md-6">
-                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
+                            <div class="col-md-5">
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Técnica</label>
                                 <div class="input-group drop-shadow">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                                     </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, Apellido o Cédula de Identidad..." />
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, Apellido o C.I..." />
                                 </div>
                             </div>
-                            <div class="col-md-6 text-right mt-2 mt-md-0">
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold text-muted uppercase">Estado</label>
+                                <select asp-for="StatusFilter" class="form-control custom-select" 
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()">
+                                    <option value="">-- Todos --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 text-right mt-2 mt-md-0">
                                 <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
                                     <i class="fas fa-filter mr-1"></i> Filtrar
                                 </button>
@@ -47,92 +52,19 @@
                     </form>
                 </div>
 
-                <!-- Tabla de Personal -->
+                <!-- Staff Table -->
                 <div class="table-responsive">
-                    <table class="table table-hover v-middle">
-                        <thead class="thead-light">
-                            <tr class="small uppercase font-weight-bold">
-                                <th>Información Personal</th>
-                                <th>Categoría / Perfil</th>
-                                <th>Cargo / Organización</th>
-                                <th>Contacto Directo</th>
-                                <th class="text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (!Model.Person.Any())
-                            {
-                                <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted">
-                                        <i class="fas fa-user-friends fa-3x mb-3 d-block opacity-2"></i>
-                                        No se encontraron registros en el directorio.
-                                    </td>
-                                </tr>
-                            }
-                            @foreach (var item in Model.Person)
-                            {
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="m-r-10">
-                                                <span class="btn btn-circle btn-light-info text-info font-weight-bold">
-                                                    @(item.FirstName?[0] ?? 'P')@(item.LastName?[0] ?? 'N')
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <h6 class="m-b-0 font-weight-bold">@item.FirstName @item.LastName</h6>
-                                                <span class="text-muted small">C.I.: @(item.IdentityCard ?? "N/A")</span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="mb-1">
-                                            <span class="badge badge-pill badge-primary px-3" style="font-size: 0.65rem;">
-                                                <i class="fas fa-tag mr-1"></i> @item.Category
-                                            </span>
-                                        </div>
-                                        <div>
-                                            @if (item.IsInternal)
-                                            {
-                                                <span class="badge badge-pill border border-success text-success px-2 py-0" style="font-size: 0.6rem;">
-                                                    <i class="fas fa-check-circle mr-1"></i> Interno
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge badge-pill border border-secondary text-secondary px-2 py-0" style="font-size: 0.6rem;">
-                                                    <i class="fas fa-external-link-alt mr-1"></i> Externo
-                                                </span>
-                                            }
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="text-dark font-weight-bold small">@(item.JobTitle ?? "-")</div>
-                                        <div class="text-muted italic small">@(item.Company ?? "Univalle")</div>
-                                    </td>
-                                    <td>
-                                        <div class="small">
-                                            <div class="text-dark"><i class="fas fa-envelope mr-1 text-muted"></i> @(item.Email ?? "-")</div>
-                                            <div class="text-muted"><i class="fas fa-phone-alt mr-1"></i> @(item.PhoneNumber ?? "-")</div>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="btn-group">
-                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
-                                                <i class="fas fa-search-plus"></i>
-                                            </a>
-                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    @if (Model.Person == null || !Model.Person.Any())
+                    {
+                        <div class="text-center py-5 text-muted italic">
+                            <i class="fas fa-user-friends fa-3x mb-3 d-block opacity-2"></i>
+                            No se encontraron registros en el directorio bajo los criterios actuales.
+                        </div>
+                    }
+                    else
+                    {
+                        <partial name="_PersonsTable" model="Model.Person" />
+                    }
                 </div>
             </div>
         </div>
@@ -143,5 +75,16 @@
     <style>
         .v-middle td { vertical-align: middle !important; }
         .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .italic { font-style: italic; }
+        .opacity-2 { opacity: 0.2; }
     </style>
+}
+
+@section Scripts {
+    <script>
+        $(function () {
+             $('[data-toggle="tooltip"]').tooltip();
+        });
+    </script>
 }

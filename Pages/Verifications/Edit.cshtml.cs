@@ -31,28 +31,51 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return NotFound();
             }
 
-            var verification = await _context.Verifications.FirstOrDefaultAsync(m => m.Id == id);
+            var verification = await _context.Verifications
+                .Include(v => v.EquipmentUnit)
+                    .ThenInclude(eu => eu.Equipment)
+                .FirstOrDefaultAsync(m => m.Id == id);
+            
             if (verification == null)
             {
                 return NotFound();
             }
             Verification = verification;
-            ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
+
+            var units = _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Select(u => new { 
+                    Id = u.Id, 
+                    DisplayName = $"{u.Equipment.Name} (INV: {u.InventoryNumber})" 
+                })
+                .ToList();
+
+            ViewData["EquipmentUnitId"] = new SelectList(units, "Id", "DisplayName");
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // Remove navigational properties from validation to avoid circular reference or required errors
             ModelState.Remove("Verification.CreatedBy");
             ModelState.Remove("Verification.ModifiedBy");
-            ModelState.Remove("Verification.Equipment");
+            ModelState.Remove("Verification.EquipmentUnit");
 
             if (!ModelState.IsValid)
             {
-                ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
+                var units = _context.EquipmentUnits
+                    .Include(u => u.Equipment)
+                    .Select(u => new { 
+                        Id = u.Id, 
+                        DisplayName = $"{u.Equipment.Name} (INV: {u.InventoryNumber})" 
+                    })
+                    .ToList();
+
+                ViewData["EquipmentUnitId"] = new SelectList(units, "Id", "DisplayName");
                 return Page();
             }
 
+            // Set audit tracking for modification
             var user = await _userManager.GetUserAsync(User);
             if (user != null)
             {
@@ -75,7 +98,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 }
                 else
                 {
-                    TempData.Error(NotificationHelper.Requests.SaveError("Conflicto de concurrencia."));
+                    TempData.Error(NotificationHelper.Requests.SaveError("Concurrency conflict."));
                     throw;
                 }
             }

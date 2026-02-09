@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html dir="ltr" lang="es">
 <head>
     <meta charset="utf-8">
@@ -10,13 +10,13 @@
     <link rel="icon" type="image/png" sizes="16x16" href="~/assets/images/favicon.png">
     
     <!-- Custom CSS -->
-    <!-- NOTA: El tilde (~) apunta a wwwroot automáticamente en Razor -->
+    <!-- NOTA: El tilde (~) apunta a wwwroot autom�ticamente en Razor -->
     <link href="~/dist/css/style.min.css" rel="stylesheet">
     
     <!-- SweetAlert2 CSS -->
     <link href="~/lib/nice-admin/assets/libs/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
     
-    <!-- RenderSection para estilos específicos de cada página -->
+    <!-- RenderSection para estilos espec�ficos de cada p�gina -->
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
@@ -48,8 +48,8 @@
                             </b>
                             <!-- Logo Text -->
                             <span class="logo-text">
-                                <img src="~/assets/images/logo-text.png" alt="homepage" class="dark-logo" />
-                                <img src="~/assets/images/logo-light-text.png" class="light-logo" alt="homepage" />
+                                <span class="font-weight-bold text-white" style="font-size: 1.1rem; letter-spacing: 1px;">LABORATORIOS</span>
+                         
                             </span>
                         </a>
                         <a class="sidebartoggler d-none d-md-block" href="javascript:void(0)" data-sidebartype="mini-sidebar">
@@ -92,7 +92,7 @@
                                 <div class="dropdown-divider"></div>
                                 <!-- Logout real de ASP.NET Identity -->
                                 <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })">
-                                    <button type="submit" class="dropdown-item"><i class="fa fa-power-off m-r-5 m-l-5"></i> Cerrar Sesión</button>
+                                    <button type="submit" class="dropdown-item"><i class="fa fa-power-off m-r-5 m-l-5"></i> Cerrar Sesi�n</button>
                                 </form>
                             </div>
                         </li>
@@ -101,11 +101,11 @@
                 </div>
             </nav>
         </header>
-        <!-- 2. SIDEBAR (Menú Lateral) -->
+        <!-- 2. SIDEBAR (Men� Lateral) -->
 
         <partial name="_Sidebar" />
         
-        <!-- 3. PAGE WRAPPER (Aquí se inyecta tu contenido) -->
+        <!-- 3. PAGE WRAPPER (Aqu� se inyecta tu contenido) -->
         <div class="page-wrapper">
             
             <!-- Breadcrumb -->
@@ -116,7 +116,7 @@
                     </div>
                 </div>
             </div>
-            <!-- AQUÍ ES DONDE SUCEDE LA MAGIA -->
+            <!-- AQU� ES DONDE SUCEDE LA MAGIA -->
             <!-- Container fluid  -->
             <div class="container-fluid">
                 @RenderBody()
@@ -145,13 +145,13 @@
     
     <script>
         $(function () {
-            // Alerta de Éxito
+            // Alerta de �xito
             @if (TempData["SuccessMessage"] != null)
             {
                 <text>
                 Swal.fire({
                     icon: 'success',
-                    title: '¡Éxito!',
+                    title: '��xito!',
                     text: "@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(TempData["SuccessMessage"]?.ToString()))",
                     confirmButtonText: 'OK',
                     confirmButtonColor: '#4CAF50'
@@ -165,7 +165,7 @@
                 <text>
                 Swal.fire({
                     icon: 'error',
-                    title: '¡Error!',
+                    title: '�Error!',
                     text: "@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(TempData["ErrorMessage"]?.ToString()))",
                     confirmButtonText: 'Entendido',
                     confirmButtonColor: '#f44336'
@@ -189,7 +189,7 @@
         });
     </script>
 
-    <!-- RenderSection para scripts específicos de cada página -->
+    <!-- RenderSection para scripts espec�ficos de cada p�gina -->
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

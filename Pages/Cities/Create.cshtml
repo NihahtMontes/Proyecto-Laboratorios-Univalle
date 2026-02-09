@@ -1,78 +1,70 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Cities.CreateModel
 
-@{
-    ViewData["Title"] = "Alta de Ciudad";
-}
+
 
 <div class="row justify-content-center">
     <div class="col-lg-11 col-xl-10">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
                 <!-- Header -->
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Registrar Nueva Localidad</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Registrar Nueva Localidad</h4>
                         <h6 class="card-subtitle text-muted">Defina las sedes y puntos de presencia institucional con precisión geográfica.</h6>
                     </div>
-                    <div class="ml-auto">
+                    <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-map-marked-alt fa-2x text-info opacity-5"></i>
                     </div>
                 </div>
 
                 <form method="post" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0" role="alert"></div>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
                     <div class="row">
-                        <!-- Columna 1: Identificación Geográfica -->
+                        <!-- Column 1: Geographic Identification -->
                         <div class="col-md-6 border-right">
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-globe mr-2"></i> Adscripción Territorial
                             </h5>
                             
                             <div class="form-group mb-3">
-                                <label asp-for="Input.CountryId" class="control-label font-weight-bold small uppercase text-muted">
+                                <label asp-for="Input.CountryId" class="control-label font-weight-bold small uppercase text-muted text-dark">
                                     País de Ubicación <span class="text-danger">*</span>
                                 </label>
                                 <select asp-for="Input.CountryId" class="form-control custom-select" asp-items="ViewBag.CountryId" required>
                                     <option value="">-- Seleccione el País --</option>
                                 </select>
-                                <span asp-validation-for="Input.CountryId" class="text-danger small"></span>
+                                <span asp-validation-for="Input.CountryId" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="form-group mb-3">
-                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted text-dark">
                                     Nombre de la Ciudad <span class="text-danger">*</span>
                                 </label>
-                                <input asp-for="Input.Name" class="form-control" placeholder="Ej: La Paz, Santa Cruz..." 
-                                       required 
-                                       data-validation-required-message="El nombre de la ciudad es obligatorio"
-                                       pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]+$"
-                                       data-validation-pattern-message="Solo letras, espacios y guiones" />
-                                <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                                <input asp-for="Input.Name" class="form-control" placeholder="Ej: Cali, Bogotá..." required />
+                                <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
                             </div>
                         </div>
 
-                        <!-- Columna 2: División Administrativa -->
+                        <!-- Column 2: Administrative Division -->
                         <div class="col-md-6">
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-layer-group mr-2"></i> División Administrativa
                             </h5>
                             
                             <div class="form-group mb-3">
-                                <label asp-for="Input.Region" class="control-label font-weight-bold small uppercase text-muted">
+                                <label asp-for="Input.Region" class="control-label font-weight-bold small uppercase text-muted text-dark">
                                     Región / Provincia / Departamento
                                 </label>
-                                <input asp-for="Input.Region" class="form-control" placeholder="Ej: La Paz, Cochabamba..." 
-                                       pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]*$"
-                                       data-validation-pattern-message="Solo letras, espacios y guiones" />
-                                <span asp-validation-for="Input.Region" class="text-danger small"></span>
+                                <input asp-for="Input.Region" class="form-control" placeholder="Ej: Valle del Cauca, Cundinamarca..." />
+                                <span asp-validation-for="Input.Region" class="text-danger small font-weight-bold"></span>
                             </div>
 
-                            <div class="alert alert-light border-left border-info border-3 small p-3 mt-4">
-                                <strong class="text-info"><i class="fas fa-info-circle mr-1"></i> Nota Técnica</strong><br>
+                            <div class="alert alert-light border-0 small p-3 mt-4 italic shadow-none border-left border-info border-3">
+                                <strong class="text-info"><i class="fas fa-info-circle mr-1"></i> Nota Técnica:</strong><br>
                                 <span class="text-muted">
-                                    El registro preciso de ciudades permite segmentar el inventario y los servicios técnicos por proximidad regional.
+                                    El registro preciso de ciudades permite segmentar el inventario institucional y los servicios técnicos por proximidad regional en los reportes de gestión.
                                 </span>
                             </div>
                         </div>
@@ -81,10 +73,10 @@
                     <hr />
 
                     <div class="form-actions text-right mt-4">
-                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Registrar Ciudad
                         </button>
-                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                             Cancelar
                         </a>
                     </div>
@@ -94,12 +86,6 @@
     </div>
 </div>
 
-@section Styles {
-    <style>
-        .border-3 { border-left-width: 3px !important; }
-    </style>
-}
-
 @section Scripts {
     <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
     <script>
@@ -107,41 +93,33 @@
             "use strict";
             $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
             
-            // Función para mostrar mensajes de error temporales
-            function showTemporaryError($el, message) {
-                var $group = $el.closest('.form-group');
-                var $help = $group.find('.help-block');
-                if ($help.length === 0) {
-                    $group.append('<div class="help-block text-danger small font-weight-bold mt-1"></div>');
-                    $help = $group.find('.help-block');
-                }
-                $help.text(message).fadeIn();
-                $group.addClass('error');
-                
-                setTimeout(function() {
-                    $help.fadeOut(function() { $(this).text(''); });
-                    $group.removeClass('error');
-                }, 2000);
-            }
-
-            // Patrón: solo letras, espacios y guiones
-            var textPattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]*$/;
+            // Advanced text pattern for Spanish alfanumeric fields
+            // Advanced text pattern for Spanish alfanumeric fields
+            var alphaPattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]*$/;
             
-            function setupBlocking($selector, pattern, errorMessage) {
-                $($selector).on('input', function() {
+            function setupBlocking(selector, pattern) {
+                $(selector).on('input', function() {
                     var $field = $(this);
                     var val = $field.val();
                     if (!pattern.test(val)) {
                         $field.val(val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]/g, ''));
-                        showTemporaryError($field, errorMessage);
                     }
                 });
             }
 
-            // Aplicar validación agresiva
-            setupBlocking('#Input_Name', textPattern, "Carácter no permitido (solo letras y guiones)");
-            setupBlocking('#Input_Region', textPattern, "Región: Solo letras, espacios y guiones");
+            // Apply aggressive validation
+            setupBlocking('#Input_Name', alphaPattern);
+            setupBlocking('#Input_Region', alphaPattern);
         });
     </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 3px !important; }
+    </style>
 }

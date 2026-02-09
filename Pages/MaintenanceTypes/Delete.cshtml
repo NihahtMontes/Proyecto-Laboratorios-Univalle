@@ -1,56 +1,92 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes.DeleteModel
 
-@{
-    ViewData["Title"] = "Eliminar Tipo de Mantenimiento";
-}
 
-<h1>Eliminar</h1>
 
-<h3>¿Está seguro de que desea eliminar esto?</h3>
-<div>
-    <h4>Tipo de Mantenimiento</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceType.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceType.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceType.Description)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceType.Description)
-        </dd>
-        <hr />
-        <dt class="col-sm-2">
-            Auditoría
-        </dt>
-        <dd class="col-sm-10">
-            <small>
-                <strong>Creado:</strong> @Model.MaintenanceType.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.MaintenanceType.CreatedBy != null)
-                {
-                    <span> por @Model.MaintenanceType.CreatedBy.FullName</span>
-                }
-                <br />
-                @if (Model.MaintenanceType.LastModifiedDate.HasValue)
-                {
-                    <strong>Modificado:</strong> @Model.MaintenanceType.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                    @if (Model.MaintenanceType.ModifiedBy != null)
-                    {
-                        <span> por @Model.MaintenanceType.ModifiedBy.FullName</span>
-                    }
-                }
-            </small>
-        </dd>
-    </dl>
-    
-    <form method="post">
-        <input type="hidden" asp-for="MaintenanceType.Id" />
-        <input type="submit" value="Eliminar" class="btn btn-danger" /> |
-        <a asp-page="/Maintenances/Index" asp-fragment="tipos">Volver al Listado</a>
-    </form>
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+        <div class="card shadow-lg border-0 rounded-lg">
+            <div class="card-body p-5 text-center">
+
+                <!-- Animated Icon -->
+                <div class="mb-4 d-inline-block position-relative">
+                    <div class="icon-circle bg-soft-danger text-danger d-flex align-items-center justify-content-center rounded-circle mx-auto"
+                         style="width: 80px; height: 80px;">
+                        <i class="fas fa-trash-alt fa-3x"></i>
+                    </div>
+                    <!-- Decorative ping effect -->
+                    <div class="position-absolute w-100 h-100 rounded-circle bg-danger opacity-1"
+                         style="top:0; left:0; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; z-index: -1;">
+                    </div>
+                </div>
+
+                <h3 class="font-weight-bold text-dark mb-2">¿Eliminar Categoría?</h3>
+                <p class="text-muted mb-4 opacity-7">
+                    Está a punto de eliminar el tipo de mantenimiento <span class="font-weight-bold text-dark">@Model.MaintenanceType.Name</span>. 
+                    Esta acción es <span class="text-danger font-weight-bold">irreversible</span> y solo podrá realizarse si no existen servicios vinculados.
+                </p>
+
+                <!-- Summary Card -->
+                <div class="card bg-light border-0 mb-4 p-3 text-left shadow-none">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="mr-3 mt-1 text-muted">
+                            <i class="fas fa-tools fa-lg"></i>
+                        </div>
+                        <div class="w-100">
+                            <small class="text-uppercase text-muted font-weight-bold d-block mb-1" style="font-size: 0.7rem;">Tipo de Mantenimiento</small>
+                            <h6 class="font-weight-bold text-dark mb-1 h5">@Model.MaintenanceType.Name</h6>
+                            @if (!string.IsNullOrEmpty(Model.MaintenanceType.Description))
+                            {
+                                <small class="text-muted d-block italic" style="font-size: 0.75rem;">@Model.MaintenanceType.Description</small>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="border-top pt-3 shadow-none">
+                        <small class="text-uppercase text-muted font-weight-bold d-block mb-2" style="font-size: 0.7rem;">
+                            <i class="fas fa-history mr-1"></i> Auditoría de Registro
+                        </small>
+                        <div class="small">
+                            <div class="text-dark font-weight-bold">
+                                <i class="far fa-calendar-plus mr-1 text-muted"></i> @Model.MaintenanceType.CreatedDate.ToString("dd/MM/yyyy HH:mm")
+                            </div>
+                            <div class="text-muted small">Por: @(Model.MaintenanceType.CreatedBy?.FullName ?? "Admin Principal")</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <form method="post" class="d-flex justify-content-center">
+                    <input type="hidden" asp-for="MaintenanceType.Id" />
+
+                    <a asp-page="./Details" asp-route-id="@Model.MaintenanceType.Id" class="btn btn-outline-secondary btn-rounded font-weight-bold px-4 mr-2 py-2">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-danger btn-rounded font-weight-bold px-4 shadow-sm py-2">
+                        <i class="fas fa-trash-alt mr-2"></i> Confirmar Eliminación
+                    </button>
+                </form>
+                
+                <div class="mt-4">
+                    <a asp-page="./Index" class="btn btn-link text-muted small">Volver al Maestro Técnico</a>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Styles {
+    <style>
+        .bg-soft-danger { background-color: #ffebee; }
+        .opacity-1 { opacity: 0.15; }
+        .opacity-7 { opacity: 0.7; }
+        .italic { font-style: italic; }
+
+        @@keyframes ping {
+            75%, 100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+    </style>
+}

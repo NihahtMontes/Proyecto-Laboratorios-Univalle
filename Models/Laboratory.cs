@@ -93,7 +93,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // INVERSE RELATIONSHIPS
         // ========================================
-        public virtual ICollection<Equipment>? Equipments { get; set; }
+        public virtual ICollection<EquipmentUnit>? EquipmentUnits { get; set; }
         public virtual ICollection<MaintenancePlan>? MaintenancePlans { get; set; }
 
         // ========================================
@@ -103,13 +103,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [NotMapped]
         [Display(Name = "Equipos Operativos")]
         public int OperationalEquipmentsCount =>
-            Equipments?.Count(e => e.CurrentStatus == EquipmentStatus.Operational) ?? 0;
+            EquipmentUnits?.Count(u => u.CurrentStatus == EquipmentStatus.Operational) ?? 0;
 
         [NotMapped]
         [Display(Name = "Valor Total Inventario")]
         public decimal TotalInventoryValue =>
-            Equipments?.Where(e => e.AcquisitionValue.HasValue)
-                       .Sum(e => e.AcquisitionValue ?? 0) ?? 0;
+            EquipmentUnits?.Where(u => u.AcquisitionValue.HasValue)
+                           .Sum(u => u.AcquisitionValue ?? 0) ?? 0;
 
         public int? CityId { get; internal set; }
     }

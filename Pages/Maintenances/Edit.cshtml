@@ -3,7 +3,6 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Maintenances.EditModel
 
 @{
-    ViewData["Title"] = "Editar Mantenimiento";
     var categoryList = Html.GetEnumSelectList<CostCategory>();
 }
 
@@ -30,17 +29,17 @@
                     <input type="hidden" asp-for="Maintenance.Id" />
                     <!-- Preservamos propiedades de auditoría ocultas si es necesario, aunque el backend las maneja -->
 
-                    <!-- 🛠️ SECCIÓN 1: DATOS GENERALES -->
+                    <!-- ??? SECCIÓN 1: DATOS GENERALES -->
                     <div class="bg-light p-4 rounded mb-4 border-left border-warning border-3">
                         <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-microchip mr-2 text-warning"></i>Contexto del Servicio</h5>
                         <div class="row">
                             <div class="col-md-5">
                                 <div class="form-group mb-3">
-                                    <label asp-for="Maintenance.EquipmentId" class="control-label font-weight-bold small uppercase text-muted">Equipo Objetivo</label>
-                                    <select asp-for="Maintenance.EquipmentId" class="form-control custom-select" asp-items="ViewBag.EquipmentId" required>
+                                    <label asp-for="Maintenance.EquipmentUnitId" class="control-label font-weight-bold small uppercase text-muted">Equipo Objetivo</label>
+                                    <select asp-for="Maintenance.EquipmentUnitId" class="form-control custom-select" asp-items="ViewBag.EquipmentUnitId" required>
                                         <option value="">-- Seleccione Equipo --</option>
                                     </select>
-                                    <span asp-validation-for="Maintenance.EquipmentId" class="text-danger small"></span>
+                                    <span asp-validation-for="Maintenance.EquipmentUnitId" class="text-danger small"></span>
                                 </div>
                             </div>
                             <div class="col-md-3">
@@ -64,7 +63,7 @@
                     </div>
 
                     <div class="row">
-                        <!-- 📅 SECCIÓN 2: CRONOGRAMA -->
+                        <!-- ?? SECCIÓN 2: CRONOGRAMA -->
                         <div class="col-lg-7">
                             <h5 class="text-dark font-weight-bold mb-3"><i class="far fa-calendar-alt mr-2 text-info"></i>Planificación Temporal</h5>
                             <div class="card border mb-4">
@@ -92,7 +91,7 @@
                             </div>
                         </div>
 
-                        <!-- 🚦 SECCIÓN 3: ESTADO -->
+                        <!-- ?? SECCIÓN 3: ESTADO -->
                         <div class="col-lg-5">
                             <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-thermometer-half mr-2 text-danger"></i>Situación Actual</h5>
                             <div class="card bg-light border-0 mb-4">
@@ -117,14 +116,14 @@
                         </div>
                     </div>
 
-                    <!-- 📝 SECCIÓN 4: DETALLES -->
+                    <!-- ?? SECCIÓN 4: DETALLES -->
                     <div class="form-group mb-4">
                         <label asp-for="Maintenance.Description" class="control-label font-weight-bold text-dark">Descripción del Trabajo / Requerimiento</label>
                         <textarea asp-for="Maintenance.Description" class="form-control rounded" rows="3" required data-validation-required-message="La descripción es obligatoria"></textarea>
                         <span asp-validation-for="Maintenance.Description" class="text-danger small"></span>
                     </div>
 
-                    <!-- 💰 SECCIÓN 5: COSTOS DINÁMICOS -->
+                    <!-- ?? SECCIÓN 5: COSTOS DINÁMICOS -->
                     <div class="card border border-light shadow-none mb-4">
                         <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-4 px-4">
                             <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Control de Costos y Repuestos</h5>
@@ -188,7 +187,7 @@
                         </div>
                     </div>
 
-                    <!-- 📋 SECCIÓN 6: NOTAS ADICIONALES -->
+                    <!-- ?? SECCIÓN 6: NOTAS ADICIONALES -->
                     <div class="row mb-5">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -218,7 +217,7 @@
     </div>
 </div>
 
-<!-- 📦 TEMPLATE OCULTO PARA NUEVAS FILAS -->
+<!-- ?? TEMPLATE OCULTO PARA NUEVAS FILAS -->
 <table style="display:none">
     <tbody id="costTemplate">
         <tr class="cost-row">

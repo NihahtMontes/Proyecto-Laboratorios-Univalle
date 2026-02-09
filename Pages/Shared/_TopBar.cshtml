@@ -25,10 +25,8 @@
                     <!--End Logo icon -->
                     <!-- Logo text -->
                     <span class="logo-text">
-                         <!-- dark Logo text -->
-                         <img src="~/lib/nice-admin/assets/images/logo-text.png" alt="homepage" class="dark-logo" />
-                         <!-- Light Logo text -->    
-                         <img src="~/lib/nice-admin/assets/images/logo-light-text.png" class="light-logo" alt="homepage" />
+                         <!-- Logo text -->
+                         <span class="font-weight-bold text-white" style="font-size: 1.1rem; letter-spacing: 1px;">LABORATORIOS</span>
                     </span>
                 </a>
             </div>
@@ -82,7 +80,7 @@
                                 </div>
                                 <div class="m-l-10">
                                     <h4 class="m-b-0">@currentUser?.FullName</h4>
-                                    <p class=" m-b-0">@User.Identity.Name</p>
+                                    <p class=" m-b-0">@User.Identity?.Name</p>
                                 </div>
                             </div>
                             <a class="dropdown-item" href="javascript:void(0)">

@@ -1,21 +1,18 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Persons.EditModel
-
-@{
-    ViewData["Title"] = "Editar Persona";
-}
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 <div class="row">
-    <!-- Columna Principal: Formulario de Perfil -->
+    <!-- Main Column: Profile Form -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Actualizar Ficha de Personal</h4>
-                        <h6 class="card-subtitle text-muted">Gestión de la identidad base: @Model.Person.FirstName @Model.Person.LastName</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Actualizar Ficha de Personal</h4>
+                        <h6 class="card-subtitle text-muted">Gestión de la identidad base: @Model.Person.FullName</h6>
                     </div>
-                    <div class="ml-auto">
+                    <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-user-edit fa-2x text-warning opacity-5"></i>
                     </div>
                 </div>
@@ -27,7 +24,7 @@
                     <input type="hidden" asp-for="Person.CreatedById" />
 
                     <div class="row">
-                        <!-- Identificación y Perfil -->
+                        <!-- Identification and Profile -->
                         <div class="col-md-6 border-right">
                             <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-address-card mr-2"></i> Identificación</h5>
                             
@@ -36,22 +33,27 @@
                                     <div class="form-group mb-4">
                                         <label asp-for="Person.FirstName" class="control-label font-weight-bold small uppercase text-muted">Nombres <span class="text-danger">*</span></label>
                                         <input asp-for="Person.FirstName" class="form-control" required />
-                                        <span asp-validation-for="Person.FirstName" class="text-danger small"></span>
+                                        <span asp-validation-for="Person.FirstName" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group mb-4">
                                         <label asp-for="Person.LastName" class="control-label font-weight-bold small uppercase text-muted">Apellidos <span class="text-danger">*</span></label>
                                         <input asp-for="Person.LastName" class="form-control" required />
-                                        <span asp-validation-for="Person.LastName" class="text-danger small"></span>
+                                        <span asp-validation-for="Person.LastName" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2">
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2 shadow-none rounded">
                                 <label asp-for="Person.IdentityCard" class="control-label font-weight-bold small text-warning uppercase">Cédula de Identidad (C.I.) <span class="text-danger">*</span></label>
-                                <input asp-for="Person.IdentityCard" class="form-control border-warning shadow-none font-weight-bold" required />
-                                <span asp-validation-for="Person.IdentityCard" class="text-danger small"></span>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-id-card text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="Person.IdentityCard" class="form-control border-left-0 font-weight-bold" required />
+                                </div>
+                                <span asp-validation-for="Person.IdentityCard" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="row mt-4">
@@ -59,7 +61,7 @@
                                     <div class="form-group mb-4">
                                         <label asp-for="Person.Category" class="control-label font-weight-bold small uppercase text-muted">Perfil Actual <span class="text-danger">*</span></label>
                                         <select asp-for="Person.Category" class="form-control custom-select" asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.PersonCategory>()" required></select>
-                                        <span asp-validation-for="Person.Category" class="text-danger small"></span>
+                                        <span asp-validation-for="Person.Category" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -71,9 +73,17 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Person.Status" class="control-label font-weight-bold small uppercase text-muted">Estado de Registro</label>
+                                <select asp-for="Person.Status" class="form-control custom-select" 
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()">
+                                </select>
+                                <span asp-validation-for="Person.Status" class="text-danger small font-weight-bold"></span>
+                            </div>
                         </div>
 
-                        <!-- Contacto y Laboral -->
+                        <!-- Contact and Laboral -->
                         <div class="col-md-6">
                             <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-id-badge mr-2"></i> Detalles de Perfil</h5>
 
@@ -81,30 +91,34 @@
                                 <label asp-for="Person.Email" class="control-label font-weight-bold small uppercase text-muted">Correo Electrónico</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white"><i class="fas fa-envelope text-muted"></i></span>
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-envelope text-muted"></i></span>
                                     </div>
-                                    <input asp-for="Person.Email" type="email" class="form-control" />
+                                    <input asp-for="Person.Email" type="email" class="form-control border-left-0" />
                                 </div>
+                                <span asp-validation-for="Person.Email" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="form-group mb-4">
                                 <label asp-for="Person.PhoneNumber" class="control-label font-weight-bold small uppercase text-muted">Número de Contacto</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white"><i class="fas fa-mobile-alt text-muted"></i></span>
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-phone-alt text-muted"></i></span>
                                     </div>
-                                    <input asp-for="Person.PhoneNumber" class="form-control" />
+                                    <input asp-for="Person.PhoneNumber" class="form-control border-left-0" />
                                 </div>
+                                <span asp-validation-for="Person.PhoneNumber" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="form-group mb-4">
                                 <label asp-for="Person.JobTitle" class="control-label font-weight-bold small uppercase text-muted">Cargo o Título</label>
                                 <input asp-for="Person.JobTitle" class="form-control shadow-none" />
+                                <span asp-validation-for="Person.JobTitle" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="form-group mb-4">
                                 <label asp-for="Person.Company" class="control-label font-weight-bold small uppercase text-muted">Empresa / Institución</label>
                                 <input asp-for="Person.Company" class="form-control shadow-none" />
+                                <span asp-validation-for="Person.Company" class="text-danger small font-weight-bold"></span>
                             </div>
                         </div>
                     </div>
@@ -112,10 +126,10 @@
                     <hr />
 
                     <div class="form-actions text-right mt-4">
-                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Guardar Cambios
                         </button>
-                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                        <a asp-page="Details" asp-route-id="@Model.Person.Id" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                             Cancelar
                         </a>
                     </div>
@@ -124,18 +138,23 @@
         </div>
     </div>
 
-    <!-- Panel Lateral: Auditoría y Resumen -->
+    <!-- Sidebar: Audit and Summary -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 bg-dark text-white mb-4">
             <div class="card-body">
-                <h5 class="card-title text-white"><i class="fas fa-info-circle mr-2 text-info"></i> Estado de Cuenta</h5>
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-info-circle mr-2 text-info"></i> Resumen de Perfil</h5>
                 <hr class="border-secondary" />
                 <div class="text-center py-3">
-                    <div class="btn btn-circle btn-lg btn-secondary mb-3">
-                        <i class="fas fa-user fa-lg"></i>
+                    <div class="btn btn-circle btn-lg btn-secondary mb-3 shadow" style="width: 70px; height: 70px; line-height: 55px;">
+                        <i class="fas fa-user fa-2x"></i>
                     </div>
-                    <h5 class="font-weight-bold mb-1">@Model.Person.FirstName</h5>
-                    <span class="badge badge-pill badge-primary px-3 uppercase small">@Model.Person.Category</span>
+                    <h5 class="font-weight-bold mb-1 text-white">@Model.Person.FirstName</h5>
+                    <div class="mb-3">
+                        <span class="badge badge-pill badge-primary px-3 uppercase small">@Model.Person.Category</span>
+                    </div>
+                    <span class="badge badge-pill @(Model.Person.Status == GeneralStatus.Activo ? "badge-success" : "badge-danger") px-4">
+                         @Model.Person.Status
+                    </span>
                 </div>
             </div>
         </div>
@@ -145,14 +164,15 @@
                 <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Control de Auditoría</h5>
                 <hr />
                 <div class="small">
-                    <div class="mb-3">
+                    <div class="mb-3 border-left border-info pl-2 ml-1">
                         <label class="text-muted d-block small uppercase mb-0">Fecha de Registro</label>
                         <span class="font-weight-bold text-dark">@Model.Person.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="text-muted italic">Por: @(Model.Person.CreatedBy?.FullName ?? "Sistema")</div>
                     </div>
                     @if (Model.Person.LastModifiedDate.HasValue)
                     {
-                        <div class="mb-0 border-top pt-2">
-                            <label class="text-muted d-block small uppercase mb-0">Último Cambio</label>
+                        <div class="mb-0 border-top pt-2 border-left border-warning pl-2 ml-1 mt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
                             <span class="text-dark font-weight-bold d-block">@(Model.Person.ModifiedBy?.FullName ?? "-")</span>
                             <span class="text-muted small">@Model.Person.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
                         </div>
@@ -161,7 +181,7 @@
             </div>
         </div>
 
-        <div class="alert alert-light border shadow-none small text-muted mt-4">
+        <div class="alert alert-light border shadow-none small text-muted mt-4 border-left border-warning border-3">
             <i class="fas fa-exclamation-triangle mr-1 text-warning"></i> Los cambios en el nombre o CI afectarán automáticamente cualquier usuario vinculado a esta persona.
         </div>
     </div>
@@ -173,7 +193,31 @@
         $(function () {
             "use strict";
             $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+
+            // Spanish alphabetic pattern
+            var namePattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+
+            function restrictInput($selector, pattern) {
+                $($selector).on('input', function() {
+                    var val = $(this).val();
+                    if (!pattern.test(val)) {
+                        $(this).val(val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''));
+                    }
+                });
+            }
+
+            restrictInput('#Person_FirstName', namePattern);
+            restrictInput('#Person_LastName', namePattern);
         });
     </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 3px !important; }
+    </style>
 }

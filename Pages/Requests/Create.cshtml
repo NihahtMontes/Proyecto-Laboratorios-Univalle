@@ -1,10 +1,8 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.CreateModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Nueva Solicitud";
-}
+
 
 <div class="row justify-content-center">
     <div class="col-lg-10 col-xl-9">
@@ -21,70 +19,144 @@
                     </div>
                 </div>
 
-                <form method="post" novalidate>
+                <form method="post" novalidate id="createRequestForm">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
+                    <!-- Hidden Type Input -->
+                    <input type="hidden" asp-for="Input.Type" id="Input_Type" />
+
+                    <!-- 1. SELECTOR DE TIPO (TABS) -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="nav nav-pills nav-fill p-1 bg-light rounded" role="tablist">
+                                <a class="nav-item nav-link active font-weight-bold py-3 shadow-sm" id="tab-technical" data-toggle="pill" href="#technical" role="tab" onclick="setType('Technical')">
+                                    <i class="fas fa-tools mr-2"></i> Solicitud Técnica
+                                </a>
+                                <a class="nav-item nav-link font-weight-bold py-3 shadow-sm" id="tab-purchasing" data-toggle="pill" href="#purchasing" role="tab" onclick="setType('Purchasing')">
+                                    <i class="fas fa-shopping-cart mr-2"></i> Solicitud Administrativa
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row">
-                        <!-- Columna 1: Identificación -->
-                        <div class="col-md-6 border-right">
+                        <!-- Column 1: Identification (Común) -->
+                        <div class="col-md-5 border-right">
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-barcode mr-2"></i> Identificación del Activo
                             </h5>
                             
-                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2">
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-info text-uppercase">
+                                    Laboratorio <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" asp-items="ViewBag.LaboratoryId">
+                                    <option value="">-- Seleccionar Laboratorio --</option>
+                                </select>
+                                <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2 rounded">
                                 <label asp-for="Input.EquipmentId" class="control-label font-weight-bold small text-info text-uppercase">Equipamiento Afectado <span class="text-danger">*</span></label>
-                                <select asp-for="Input.EquipmentId" class="form-control select2" asp-items="ViewBag.EquipmentId">
-                                    <option value="">-- Seleccionar Equipo --</option>
+                                <select asp-for="Input.EquipmentId" class="form-control select2" id="equipmentSelect" disabled>
+                                    <option value="">-- Primero seleccione un laboratorio --</option>
                                 </select>
                                 <span asp-validation-for="Input.EquipmentId" class="text-danger small"></span>
                             </div>
 
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.RequestedById" class="control-label font-weight-bold small uppercase text-muted">Solicitante Autorizado</label>
-                                <select asp-for="Input.RequestedById" class="form-control custom-select" asp-items="ViewBag.RequestedById">
-                                    <option value="">-- Usuario de Sesión Actual --</option>
-                                </select>
-                                <span asp-validation-for="Input.RequestedById" class="text-danger small"></span>
+                            <!-- Campos Técnicos (Solo en modo Técnico) -->
+                            <div id="tech-only-fields" class="animated fadeIn">
+                                <hr class="my-4"/>
+                                <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-sliders-h mr-2"></i> Parametros Técnicos</h6>
+                                
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Grado de Prioridad <span class="text-danger">*</span></label>
+                                    <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
+                                    <span asp-validation-for="Input.Priority" class="text-danger small"></span>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.EstimatedRepairTime" class="control-label font-weight-bold small uppercase text-muted">Tiempo Estimado de Reparación</label>
+                                    <input asp-for="Input.EstimatedRepairTime" class="form-control" placeholder="Ej: 2 horas, 1 día..." />
+                                </div>
                             </div>
-
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Grado de Prioridad <span class="text-danger">*</span></label>
-                                <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
-                                <span asp-validation-for="Input.Priority" class="text-danger small"></span>
+                            
+                            <!-- Campos Administrativos (Solo en modo Compra) -->
+                            <div id="admin-only-fields" class="animated fadeIn" style="display:none;">
+                                <hr class="my-4"/>
+                                <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-file-invoice-dollar mr-2"></i> Datos Financieros</h6>
+                                
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.InvestmentCode" class="control-label font-weight-bold small uppercase text-success">Código de Inversión (Activos) <span class="text-danger">*</span></label>
+                                    <input asp-for="Input.InvestmentCode" class="form-control border-success" placeholder="Ej: INV-2024-001" />
+                                    <span asp-validation-for="Input.InvestmentCode" class="text-danger small"></span>
+                                    <small class="form-text text-muted">Código asignado por la Dirección Administrativa.</small>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Columna 2: Detalles -->
-                        <div class="col-md-6">
+                        <!-- Column 2: Details & Dynamic Table -->
+                        <div class="col-md-7 pl-lg-4">
+                            <!-- Sección Variable: Descripción -->
                             <h5 class="font-weight-bold text-info mb-3">
-                                <i class="fas fa-align-left mr-2"></i> Naturaleza del Problema
+                                <i class="fas fa-align-left mr-2"></i> <span id="desc-title">Naturaleza del Problema</span>
                             </h5>
                             
-                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2">
-                                <label asp-for="Input.Description" class="control-label font-weight-bold small text-warning text-uppercase">Descripción del Requerimiento <span class="text-danger">*</span></label>
-                                <textarea asp-for="Input.Description" class="form-control border-warning shadow-none" rows="4" placeholder="Describa el fallo detectado o la asistencia técnica necesaria..."></textarea>
+                            <div class="form-group mb-4 pl-3 bg-light p-2 rounded" id="desc-container" style="border-left: 4px solid #ffc107;">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small text-uppercase" id="desc-label">Descripción del Fallo <span class="text-danger">*</span></label>
+                                <textarea asp-for="Input.Description" class="form-control shadow-none" rows="3" placeholder="Describa el fallo detectado..."></textarea>
                                 <span asp-validation-for="Input.Description" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones de Campo</label>
-                                <textarea asp-for="Input.Observations" class="form-control" rows="2" placeholder="Notas adicionales o contexto de la falla..."></textarea>
-                                <span asp-validation-for="Input.Observations" class="text-danger small"></span>
+                                <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones Adicionales</label>
+                                <textarea asp-for="Input.Observations" class="form-control" rows="2" placeholder="Notas adicionales o contexto..."></textarea>
+                            </div>
+
+                            <!-- TABLA DE COSTOS (Solo Administrativo) -->
+                            <div id="cost-table-section" style="display:none;" class="animated fadeInUp">
+                                <hr />
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="font-weight-bold text-success mb-0"><i class="fas fa-list-ol mr-2"></i> Detalle de Ítems</h5>
+                                    <button type="button" class="btn btn-sm btn-success btn-rounded shadow-sm" onclick="addItem()">
+                                        <i class="fas fa-plus mr-1"></i> Agregar Ítem
+                                    </button>
+                                </div>
+                                
+                                <div class="table-responsive border rounded bg-white shadow-sm" style="max-height: 400px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover mb-0" id="itemsTable">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="width: 40%">Descripción/Concepto</th>
+                                                <th style="width: 15%">Cantidad</th>
+                                                <th style="width: 20%">Precio Unit.</th>
+                                                <th style="width: 15%">Unidad</th>
+                                                <th style="width: 10%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="itemsBody">
+                                            <!-- Dynamically filled -->
+                                        </tbody>
+                                        <tfoot class="bg-light font-weight-bold">
+                                            <tr>
+                                                <td colspan="2" class="text-right">Total Estimado:</td>
+                                                <td colspan="3" class="text-success" id="totalAmount">0.00</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <span asp-validation-for="Input.Items" class="text-danger small"></span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="alert alert-light-info border-0 small p-3 mt-2 text-info">
-                        <i class="fas fa-info-circle mr-1"></i> Una vez enviada, la solicitud entrará en estado <strong>Pendiente</strong> y será evaluada por el equipo técnico administrativo.
-                    </div>
-
-                    <hr />
+                    <hr class="mt-5" />
 
                     <div class="form-actions text-right mt-4">
-                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
-                            <i class="fas fa-paper-plane mr-2"></i> Enviar Solicitud
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold" id="submitBtn">
+                            <i class="fas fa-save mr-2"></i> Crear Solicitud Técnica
                         </button>
-                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
                              Cancelar
                         </a>
                     </div>
@@ -100,29 +172,170 @@
     <link href="~/lib/nice-admin/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
     <script src="~/lib/nice-admin/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
+        // ESTADO GLOBAL
+        let currentType = 'Technical';
+        let itemCount = 0;
+
+        function setType(type) {
+            currentType = type;
+            $('#Input_Type').val(type);
+            
+            // Actualizar UI
+            if (type === 'Technical') {
+                // Mostrar campos técnicos
+                $('#tech-only-fields').show();
+                $('#admin-only-fields').hide();
+                $('#cost-table-section').hide();
+                
+                // Textos
+                $('#desc-title').html('<i class="fas fa-align-left mr-2"></i> Naturaleza del Problema');
+                $('#desc-label').html('Descripción del Fallo <span class="text-danger">*</span>');
+                $('#Input_Description').attr('placeholder', 'Describa el fallo detectado o la asistencia técnica necesaria...');
+                $('#desc-container').css('border-left', '4px solid #ffc107'); // Warning color
+                
+                // Botones
+                $('#submitBtn').html('<i class="fas fa-save mr-2"></i> Crear Solicitud Técnica')
+                             .removeClass('btn-success').addClass('btn-info');
+                
+                // Re-trigger equipment loading if lab is selected
+                if ($('#laboratorySelect').val()) $('#laboratorySelect').trigger('change');
+            } 
+            else { // Purchasing
+                // Mostrar campos administrativos
+                $('#tech-only-fields').hide();
+                $('#admin-only-fields').show();
+                $('#cost-table-section').show(); // Mostrar tabla
+                
+                // Textos
+                $('#desc-title').html('<i class="fas fa-comment-dollar mr-2"></i> Justificación');
+                $('#desc-label').html('Justificación del Pedido <span class="text-danger">*</span>');
+                $('#Input_Description').attr('placeholder', 'Justifique por qué es necesaria esta adquisición o servicio...');
+                $('#desc-container').css('border-left', '4px solid #28a745'); // Success color
+                
+                // Botón
+                $('#submitBtn').html('<i class="fas fa-file-invoice-dollar mr-2"></i> Crear Solicitud de Compra')
+                             .removeClass('btn-info').addClass('btn-success');
+                             
+                // Re-trigger equipment loading if lab is selected
+                if ($('#laboratorySelect').val()) $('#laboratorySelect').trigger('change');
+
+                // Agregar un item vacío si no hay
+                if (itemCount === 0) addItem();
+            }
+        }
+
+        function addItem() {
+            const index = itemCount++;
+            const row = `
+                <tr id="row_${index}">
+                    <td>
+                        <input name="Input.Items[${index}].Concept" class="form-control form-control-sm" placeholder="Ej: Repuesto Valvula..." required />
+                    </td>
+                    <td>
+                        <input name="Input.Items[${index}].Quantity" type="number" step="0.01" class="form-control form-control-sm qty-input" value="1" onchange="calcTotal()" required />
+                    </td>
+                    <td>
+                        <input name="Input.Items[${index}].UnitPrice" type="number" step="0.01" class="form-control form-control-sm price-input" placeholder="0.00" onchange="calcTotal()" required />
+                    </td>
+                    <td>
+                        <input name="Input.Items[${index}].UnitOfMeasure" class="form-control form-control-sm" value="Unidad" />
+                        <input type="hidden" name="Input.Items[${index}].Category" value="SparePart" />
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-circle" onclick="removeRow(${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            $('#itemsBody').append(row);
+        }
+
+        function removeRow(index) {
+            $(`#row_${index}`).remove();
+            calcTotal();
+        }
+
+        function calcTotal() {
+            let total = 0;
+            $('#itemsBody tr').each(function() {
+                const qty = parseFloat($(this).find('.qty-input').val()) || 0;
+                const price = parseFloat($(this).find('.price-input').val()) || 0;
+                total += qty * price;
+            });
+            $('#totalAmount').text(total.toFixed(2));
+        }
+
         $(function() {
-            // 1. Select2 Avanzado
+            // Inicializar Select2
             $(".select2").select2({
-                placeholder: "-- Seleccionar Equipo --",
+                placeholder: "-- Seleccionar --",
                 allowClear: true,
                 width: '100%'
             });
 
-            // 2. Validaciones Agresivas (Preventivas)
-            setupBlocking('#Input_Description', /^[a-zA-Z0-9\s\-\.\(\)\¿\?¡!]*$/, "Caracteres especiales no permitidos");
-            setupBlocking('#Input_Observations', /^[a-zA-Z0-9\s\-\.\(\)\¿\?¡!]*$/, "Caracteres especiales no permitidos");
-        });
+            // Lógica de Laboratorio -> Equipo (Cascada)
+            var $labSelect = $('#laboratorySelect');
+            var $equipSelect = $('#equipmentSelect');
 
-        // Helper para Bloqueo de Input (Validación Agresiva)
-        function setupBlocking($selector, pattern, errorMessage) {
-            $('body').on('input', $selector, function() {
-                var $field = $(this);
-                var val = $field.val();
-                if (!pattern.test(val)) {
-                    // Revertir último caracter si no es pegar
-                   if(val.length > 0) $field.val(val.slice(0, -1)); 
+            $labSelect.on('change', function() {
+                var labId = $(this).val();
+                
+                if (!labId) {
+                    $equipSelect.html('<option value="">-- Primero seleccione un laboratorio --</option>')
+                                .prop('disabled', true)
+                                .trigger('change');
+                    return;
                 }
+
+                $.ajax({
+                    url: '/Requests/Create?handler=EquipmentsByLab',
+                    type: 'GET',
+                    data: { laboratoryId: labId, type: currentType },
+                    success: function(data) {
+                        var options = '<option value="">-- Seleccionar Equipo --</option>';
+                        $.each(data, function(i, item) {
+                            options += '<option value="' + item.id + '">' + item.name + '</option>';
+                        });
+                        
+                        $equipSelect.html(options)
+                                   .prop('disabled', false)
+                                   .trigger('change');
+                    },
+                    error: function() {
+                        alert('Error al cargar equipos del laboratorio');
+                    }
+                });
             });
-        }
+
+            // Inicializar estado según el valor actual (por si falla validación y vuelve)
+            var initialType = $('#Input_Type').val() || 'Technical';
+            
+            // Activar tab visualmente
+            if(initialType === 'Technical') {
+                $('#tab-technical').addClass('active');
+                $('#tab-purchasing').removeClass('active');
+            } else {
+                $('#tab-purchasing').addClass('active');
+                $('#tab-technical').removeClass('active');
+            }
+            
+            // Input Validation Logic
+            var alphanumericPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]*$/;
+            
+            function setupBlocking(selector, pattern, replacementPattern) {
+                $(selector).on('input', function() {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(replacementPattern, ''));
+                    }
+                });
+            }
+
+            setupBlocking('#Input_EstimatedRepairTime', alphanumericPattern, /[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]/g);
+
+            setType(initialType);
+        });
     </script>
 }

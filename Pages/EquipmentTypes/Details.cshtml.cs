@@ -21,23 +21,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var equipmentType = await _context.EquipmentTypes
                 .Include(m => m.CreatedBy)
                 .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (equipmentType == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                EquipmentType = equipmentType;
-            }
+
+            if (equipmentType == null) return NotFound();
+            
+            EquipmentType = equipmentType;
             return Page();
         }
     }

@@ -1,63 +1,93 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes.DeleteModel
 
-@{
-    ViewData["Title"] = "Eliminar Categoría";
-}
 
-<div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
-    <div class="col-md-6 col-lg-5">
-        <div class="card text-center shadow-sm">
-            <div class="card-body p-5">
-                <!-- Ícono de advertencia -->
-                <div class="mb-4 text-danger">
-                    <i class="ti-trash display-3 opacity-2" style="position: absolute; left: 50%; transform: translateX(-50%); top: 40px;"></i>
-                    <i class="fas fa-exclamation-triangle display-4" style="position: relative; z-index: 1;"></i>
+
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+        <div class="card shadow-lg border-0 rounded-lg">
+            <div class="card-body p-5 text-center">
+
+                <!-- Animated Icon -->
+                <div class="mb-4 d-inline-block position-relative">
+                    <div class="icon-circle bg-soft-danger text-danger d-flex align-items-center justify-content-center rounded-circle mx-auto"
+                         style="width: 80px; height: 80px;">
+                        <i class="fas fa-trash-alt fa-3x"></i>
+                    </div>
+                    <!-- Decorative ping effect -->
+                    <div class="position-absolute w-100 h-100 rounded-circle bg-danger opacity-1"
+                         style="top:0; left:0; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; z-index: -1;">
+                    </div>
                 </div>
 
-                <!-- Título -->
-                <h3 class="card-title text-dark font-weight-bold">¿Retirar Categoría?</h3>
-                <p class="text-muted mb-4">
-                    Estás a punto de eliminar la categoría <strong class="text-dark">@Model.EquipmentType.Name</strong>.
-                    <br>Asegúrese de que no existan equipos vinculados a este tipo antes de proceder.
+                <h3 class="font-weight-bold text-dark mb-2">¿Eliminar Categoría?</h3>
+                <p class="text-muted mb-4 opacity-7">
+                    Estás a punto de eliminar la categoría <span class="font-weight-bold text-dark">@Model.EquipmentType.Name</span>. 
+                    Asegúrese de que no existan equipos vinculados a este tipo antes de proceder. Esta acción es <span class="text-danger font-weight-bold">irreversible</span>.
                 </p>
 
-                <!-- Datos clave -->
-                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small uppercase">Categoría:</span>
-                        <strong class="text-dark">@Model.EquipmentType.Name</strong>
+                <!-- Summary Card -->
+                <div class="card bg-light border-0 mb-4 p-3 text-left shadow-none">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="mr-3 mt-1 text-muted">
+                            <i class="fas fa-layer-group fa-lg"></i>
+                        </div>
+                        <div>
+                            <small class="text-uppercase text-muted font-weight-bold d-block" style="font-size: 0.7rem;">Familia de Equipos</small>
+                            <h6 class="font-weight-bold text-dark mb-0">@Model.EquipmentType.Name</h6>
+                            <small class="text-muted">Tipo de Activo</small>
+                        </div>
                     </div>
-                    <div class="d-flex justify-content-between">
-                        <span class="text-muted small uppercase">Calibración:</span>
-                        <span class="badge badge-pill @(Model.EquipmentType.RequiresCalibration ? "badge-info" : "badge-secondary") px-3 font-weight-bold">
-                            @(Model.EquipmentType.RequiresCalibration ? "Requerida" : "No requerida")
-                        </span>
+
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2">
+                        <div>
+                            <small class="text-uppercase text-muted font-weight-bold d-block mb-1" style="font-size: 0.7rem;">Calibración</small>
+                            <span class="text-dark font-weight-bold small">
+                                <i class="@(Model.EquipmentType.RequiresCalibration ? "fas fa-check-circle text-info" : "fas fa-times-circle text-secondary") mr-1"></i>
+                                @(Model.EquipmentType.RequiresCalibration ? "Requerida" : "No requerida")
+                            </span>
+                        </div>
+                        <div class="text-right">
+                            <small class="text-uppercase text-muted font-weight-bold d-block mb-1" style="font-size: 0.7rem;">Mantenimiento</small>
+                            <span class="badge badge-pill badge-light text-dark border-0 px-3 font-weight-bold">
+                                Cada @(Model.EquipmentType.MaintenanceFrequencyMonths?.ToString() ?? "N/A") meses
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Botones -->
-                <form method="post">
+                <!-- Action Buttons -->
+                <form method="post" class="d-flex justify-content-center">
                     <input type="hidden" asp-for="EquipmentType.Id" />
-                    
-                    <a asp-page="/Equipment/Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
-                         Cerrar
+
+                    <a asp-page="./Details" asp-route-id="@Model.EquipmentType.Id" class="btn btn-outline-secondary btn-rounded font-weight-bold px-4 mr-2 py-2">
+                        Cancelar
                     </a>
-                    <button type="submit" class="btn btn-danger btn-rounded px-4 shadow-sm font-weight-bold">
-                        <i class="fas fa-trash-alt mr-1"></i> Confirmar Eliminación
+                    <button type="submit" class="btn btn-danger btn-rounded font-weight-bold px-4 shadow-sm py-2">
+                        <i class="fas fa-trash-alt mr-2"></i>Sí, Confirmar Eliminación
                     </button>
                 </form>
+                
+                <div class="mt-4">
+                    <a asp-page="./Index" class="btn btn-link text-muted small">Volver al Listado</a>
+                </div>
             </div>
-        </div>
-
-        <div class="text-center mt-3 text-muted small italic">
-            <i class="fas fa-info-circle mr-1"></i> La eliminación es permanente si no existen registros históricos asociados.
         </div>
     </div>
 </div>
 
 @section Styles {
     <style>
-        .border-3 { border-left-width: 3px !important; }
+        .bg-soft-danger { background-color: #ffebee; }
+        .opacity-1 { opacity: 0.15; }
+        .opacity-7 { opacity: 0.7; }
+        .btn-rounded { border-radius: 50px; }
+
+        @@keyframes ping {
+            75%, 100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
     </style>
 }

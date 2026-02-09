@@ -1,15 +1,13 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Maintenances.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Gestión de Mantenimientos";
-}
+
 
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm border-0">
-            <!-- 📂 Navegación de Pestañas Premium -->
+            <!-- ✅ Premium Tab Navigation -->
             <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link active font-weight-bold uppercase small" data-toggle="tab" href="#mantenimientos" role="tab">
@@ -25,19 +23,19 @@
 
             <div class="tab-content">
                 <!-- ============================================================== -->
-                <!-- PESTAÑA 1: MANTENIMIENTOS (CON SMART INDEX) -->
+                <!-- TAB 1: MAINTENANCES (WITH SMART INDEX) -->
                 <!-- ============================================================== -->
                 <div class="tab-pane active" id="mantenimientos" role="tabpanel">
                     <div class="card-body">
-                        <!-- Header Informativo -->
+                        <!-- Informative Header -->
                         <div class="d-md-flex align-items-center mb-4">
                             <div>
                                 <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Registro Técnico de Mantenimiento</h3>
                                 <h6 class="card-subtitle text-muted ml-2">Control centralizado de servicios preventivos y correctivos.</h6>
                             </div>
-                            <div class="ml-auto mt-2">
-                                <a asp-page="Create" class="btn btn-info btn-rounded shadow-sm px-4 font-weight-bold">
-                                    <i class="fas fa-plus mr-1"></i> Programar Nuevo
+                            <div class="ml-auto mt-3">
+                                <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                                    <i class="fas fa-plus-circle mr-1 text-info"></i> Nuevo Mantenimiento
                                 </a>
                             </div>
                         </div>
@@ -87,7 +85,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (!Model.Maintenances.Any())
+                                    @if (Model.Maintenances == null || !Model.Maintenances.Any())
                                     {
                                         <tr>
                                             <td colspan="6" class="text-center py-5 text-muted italic font-weight-bold">
@@ -96,8 +94,10 @@
                                             </td>
                                         </tr>
                                     }
-                                    @foreach (var item in Model.Maintenances)
+                                    else
                                     {
+                                        foreach (var item in Model.Maintenances)
+                                        {
                                         <tr>
                                             <td>
                                                 <div class="d-flex align-items-center">
@@ -105,8 +105,8 @@
                                                         <span class="btn btn-circle btn-sm btn-light-info text-info"><i class="fas fa-tools"></i></span>
                                                     </div>
                                                     <div>
-                                                        <h6 class="m-b-0 font-weight-bold text-dark">@item.Equipment?.Name</h6>
-                                                        <span class="text-muted small">Inv: @item.Equipment?.InventoryNumber</span>
+                                                        <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
+                                                        <span class="text-muted small">Inv: @item.EquipmentUnit?.InventoryNumber</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -126,15 +126,15 @@
                                             </td>
                                             <td class="text-center">
                                                 @{
-                                                    var statusClass = item.Status switch {
-                                                        MaintenanceStatus.Completed => "badge-success",
-                                                        MaintenanceStatus.InProgress => "badge-warning",
-                                                        MaintenanceStatus.Scheduled => "badge-info",
-                                                        MaintenanceStatus.Cancelled => "badge-danger",
-                                                        _ => "badge-secondary"
+                                                    var (statusClass, statusText) = item.Status switch {
+                                                        MaintenanceStatus.Completed => ("badge-success", "COMPLETADO"),
+                                                        MaintenanceStatus.InProgress => ("badge-warning", "EN EJECUCIÓN"),
+                                                        MaintenanceStatus.Scheduled => ("badge-info", "PROGRAMADO"),
+                                                        MaintenanceStatus.Cancelled => ("badge-danger", "CANCELADO"),
+                                                        _ => ("badge-secondary", "DESCONOCIDO")
                                                     };
                                                 }
-                                                <span class="badge @statusClass px-3 py-1">@item.Status</span>
+                                                <span class="badge @statusClass px-3 py-1">@statusText</span>
                                             </td>
                                             <td class="text-center">
                                                 <div class="btn-group">
@@ -150,6 +150,7 @@
                                                 </div>
                                             </td>
                                         </tr>
+                                        }
                                     }
                                 </tbody>
                             </table>
@@ -158,18 +159,18 @@
                 </div>
 
                 <!-- ============================================================== -->
-                <!-- PESTAÑA 2: TIPOS DE MANTENIMIENTO -->
+                <!-- TAB 2: MAINTENANCE TYPES -->
                 <!-- ============================================================== -->
                 <div class="tab-pane" id="tipos" role="tabpanel">
                     <div class="card-body">
                         <div class="d-md-flex align-items-center mb-4">
                             <div>
-                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Tipos de Servicio</h3>
+                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Catálogo de Tipos de Servicio</h3>
                                 <h6 class="card-subtitle text-muted ml-2">Parametrización de categorías de mantenimiento.</h6>
                             </div>
-                            <div class="ml-auto mt-2">
-                                <a href="/MaintenanceTypes/Create" class="btn btn-light border btn-rounded shadow-sm px-4">
-                                    <i class="fas fa-tag mr-1 text-info"></i> Nueva Categoría
+                            <div class="ml-auto mt-3">
+                                <a href="/MaintenanceTypes/Create" class="btn bg-white border btn-rounded shadow-sm text-dark">
+                                    <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Categoría
                                 </a>
                             </div>
                         </div>
@@ -184,8 +185,10 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var type in Model.MaintenanceTypes)
+                                    @if (Model.MaintenanceTypes != null)
                                     {
+                                        foreach (var type in Model.MaintenanceTypes)
+                                        {
                                         <tr>
                                             <td>
                                                 <h6 class="mb-0 font-weight-bold text-dark"><i class="fas fa-caret-right mr-2 text-info"></i> @type.Name</h6>
@@ -207,6 +210,7 @@
                                                 </div>
                                             </td>
                                         </tr>
+                                        }
                                     }
                                 </tbody>
                             </table>
@@ -238,31 +242,5 @@
         $(function () {
              $('[data-toggle="tooltip"]').tooltip();
         });
-
-        // Lógica de Notificaciones
-        @if (TempData["SuccessMessage"] != null)
-        {
-            <text>
-            swal({
-                title: "¡Excelente!",
-                text: "@Html.Raw(TempData["SuccessMessage"])",
-                type: "success",
-                confirmButtonColor: "#2962ff",
-                timer: 4000
-            });
-            </text>
-        }
-        
-        @if (TempData["ErrorMessage"] != null)
-        {
-            <text>
-            swal({
-                title: "Error",
-                text: "@Html.Raw(TempData["ErrorMessage"])",
-                type: "error",
-                confirmButtonColor: "#fc4b6c"
-            });
-            </text>
-        }
     </script>
 }

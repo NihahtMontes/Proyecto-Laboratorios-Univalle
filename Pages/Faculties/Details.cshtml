@@ -1,81 +1,88 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Faculties.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Expediente de Facultad";
-}
+
 
 <div class="row">
-    <!-- Columna Principal: Identidad Académica -->
+    <!-- Main Column: Academic Identity -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Expediente de Unidad Académica</h4>
-                        <h6 class="card-subtitle text-muted">Detalles institucionales y adscripción de laboratorios de: @Model.Faculty.Name</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Expediente de Unidad Académica</h4>
+                        <h6 class="card-subtitle text-muted">Información detallada y alcance institucional de: @Model.Faculty.Name</h6>
                     </div>
-                    <div class="ml-auto">
+                    <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-university fa-2x text-info opacity-5"></i>
                     </div>
                 </div>
 
                 <div class="row mt-4">
                     <div class="col-md-5 border-right text-center">
-                        <div class="btn btn-circle btn-lg btn-light-info text-info mb-3" style="width: 80px; height: 80px; line-height: 70px;">
-                            <i class="fas fa-university fa-3x"></i>
-                        </div>
+                        <span class="btn btn-circle btn-info btn-xl font-weight-bold text-white shadow mb-3" style="width: 100px; height: 100px; line-height: 75px; font-size: 2.5rem;">
+                             <i class="fas fa-university"></i>
+                        </span>
                         <h3 class="font-weight-bold text-dark mb-1">@Model.Faculty.Name</h3>
-                        <span class="badge badge-pill badge-primary px-3 mb-3">@Model.Faculty.Code</span>
+                        <span class="badge badge-pill badge-info px-4 mb-3 font-weight-bold">@(Model.Faculty.Code ?? "No asignada")</span>
+                        
+                        <div class="bg-light p-3 rounded border shadow-none text-left d-inline-block w-100 italic border-left border-info border-3 mt-2">
+                            <div class="d-flex justify-content-between mb-2 pb-2">
+                                <span class="text-muted small uppercase font-weight-bold">ID Sistema:</span>
+                                <strong class="text-info">#@Model.Faculty.Id</strong>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-md-7">
-                        <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-info-circle mr-2"></i> Alcance Académico</h5>
-                        <div class="bg-light p-3 rounded mb-4">
-                            <label class="text-muted small uppercase font-weight-bold d-block mb-2">Descripción Oficial:</label>
-                            <p class="text-dark italic mb-0">
+                        <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-id-card-alt mr-2"></i> Alcance e Institución</h5>
+                        
+                        <div class="bg-light p-4 rounded mb-4 shadow-none">
+                            <label class="text-muted small uppercase font-weight-bold d-block mb-2">Misión / Descripción Oficial:</label>
+                            <p class="text-dark italic h6 font-weight-normal mb-0">
                                 @(Model.Faculty.Description ?? "No se ha registrado una descripción detallada para esta unidad académica.")
                             </p>
                         </div>
+                        
+                        <div class="alert alert-light border-0 mt-4 p-3 shadow-none small text-info italic border-left border-info border-3">
+                            <i class="fas fa-shield-alt mr-2"></i> Esta facultad agrupa jerárquicamente laboratorios y equipamiento técnico para fines de auditoría, gestión de activos y reportes segmentados por área de conocimiento.
+                        </div>
                     </div>
-                </div>
-
-                <div class="alert alert-light-info border-0 mt-4 p-3 shadow-none small text-info italic">
-                    <i class="fas fa-shield-alt mr-2"></i> Los laboratorios y el equipamiento están organizados jerárquicamente bajo esta facultad para fines de auditoría institucional.
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Columna Lateral: Estado y Auditoría -->
+    <!-- Sidebar: Status and Audit -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
             <div class="card-body">
-                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-info-circle mr-2 text-info"></i> Gestión Administrativa</h5>
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-shield-alt mr-2 text-info"></i> Estado Operativo</h5>
                 <hr class="border-secondary" />
                 <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Estado Ficha:</small>
-                    <span class="badge badge-pill badge-@(Model.Faculty.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "success" : "danger") px-3">
+                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Ficha de Registro:</small>
+                    <span class="badge badge-pill badge-@(Model.Faculty.Status == GeneralStatus.Activo ? "success" : "danger") px-3 font-weight-bold">
                         @Model.Faculty.Status
                     </span>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
                 <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Control de Auditoría</h5>
                 <hr />
-                <div class="small">
+                <div class="small mt-3">
                     <div class="mb-3">
-                        <label class="text-muted d-block small uppercase mb-0">Alta de Registro</label>
+                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Alta de Sistema</label>
                         <span class="font-weight-bold text-dark d-block">@Model.Faculty.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
-                        <span class="text-muted">Por: @(Model.Faculty.CreatedBy?.FullName ?? "Sistema")</span>
+                        <div class="text-muted small">Por: @(Model.Faculty.CreatedBy?.FullName ?? "Admin Principal")</div>
                     </div>
                     @if (Model.Faculty.LastModifiedDate.HasValue)
                     {
                         <div class="mb-0 border-top pt-2">
-                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Última Gestión</label>
                             <span class="font-weight-bold text-dark d-block">@(Model.Faculty.ModifiedBy?.FullName ?? "-")</span>
                             <span class="text-muted small">@Model.Faculty.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
                         </div>
@@ -86,15 +93,23 @@
 
         <div class="form-actions mt-4">
             <a asp-page="./Edit" asp-route-id="@Model.Faculty.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
-                <i class="fas fa-edit mr-1"></i> Modificar Ficha
+                <i class="fas fa-edit mr-1"></i> Modificar Unidad
             </a>
-            <a asp-page="/Laboratories/Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4">
+            <a asp-page="/Laboratories/Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
                 <i class="fas fa-list mr-1"></i> Volver al Listado
             </a>
             
-            <a asp-page="./Delete" asp-route-id="@Model.Faculty.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
-                <i class="fas fa-trash-alt mr-1"></i> Eliminar Facultad (Solo si no tiene dependencias)
+            <a asp-page="./Delete" asp-route-id="@Model.Faculty.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">
+                <i class="fas fa-trash-alt mr-1"></i> Eliminar Facultad
             </a>
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 3px !important; }
+    </style>
+}

@@ -38,8 +38,8 @@
             if (string.IsNullOrWhiteSpace(value))
                 return false;
 
-            // Regex: Letras (incluyendo acentos), espacios y guiones
-            var regex = new System.Text.RegularExpressions.Regex(@"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]+$");
+            // Regex: Letras (Unicode \p{L} incluye todos los acentos y diéresis), espacios y guiones
+            var regex = new System.Text.RegularExpressions.Regex(@"^[\p{L}\s-]+$");
             return regex.IsMatch(value);
         }
     }

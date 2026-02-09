@@ -3,10 +3,9 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Detalle de Verificación";
     var v = Model.Verification;
 
-    // Helper local usando Func delegate para evitar bloque @functions complejo
+    // Local helper using Func delegate to avoid complex @functions block in the view
     Func<string, VerificationResult, Microsoft.AspNetCore.Html.IHtmlContent> RenderCheck = (label, result) =>
     {
         var colorInfo = result switch
@@ -35,7 +34,7 @@
     <div class="card border-0 shadow-lg mb-4 overflow-hidden" style="border-radius: 12px;">
         <div class="card-body p-0">
             <div class="row no-gutters">
-                <!-- Columna Izquierda: Info Principal -->
+                <!-- Left Column: Primary Information -->
                 <div class="col-lg-9 p-4 bg-white position-relative">
                     <div class="d-flex align-items-center mb-3">
                         <div class="icon-box bg-soft-info text-info rounded-circle mr-3 d-flex align-items-center justify-content-center">
@@ -43,9 +42,9 @@
                         </div>
                         <div>
                             <h6 class="text-uppercase text-muted small font-weight-bold mb-1">Verificación Técnica #@v.Id</h6>
-                            <h3 class="text-dark font-weight-bold mb-0">@v.Equipment.Name</h3>
+                            <h3 class="text-dark font-weight-bold mb-0">@v.EquipmentUnit?.Equipment?.Name</h3>
                             <span class="badge badge-light border mt-1">
-                                <i class="fas fa-barcode mr-1"></i> Inv: @v.Equipment.InventoryNumber
+                                <i class="fas fa-barcode mr-1"></i> Inv: @v.EquipmentUnit?.InventoryNumber
                             </span>
                         </div>
                     </div>
@@ -68,7 +67,7 @@
                     </div>
                 </div>
 
-                <!-- Columna Derecha: Estado -->
+                <!-- Right Column: Final Status Status -->
                 <div class="col-lg-3 bg-light p-4 d-flex flex-column justify-content-center align-items-center border-left">
                     <small class="text-uppercase text-muted font-weight-bold mb-2">Estado General</small>
                     @{
@@ -89,12 +88,12 @@
     </div>
 
     <div class="row">
-        <!-- Columna Izquierda: Checklist (Más ancha) -->
+        <!-- Left Column: Verification Checklist (Main Content) -->
         <div class="col-lg-8">
             <h5 class="text-dark font-weight-bold mb-3 pl-1"><i class="fas fa-tasks mr-2 text-info"></i>Detalle de Puntos de Control</h5>
             
             <div class="row">
-                <!-- Grupo 1: Combustión (Full Width en móvil, mitad en desktop grande) -->
+                <!-- Group 1: Combustion System -->
                 <div class="col-md-6 mb-4">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
@@ -112,7 +111,7 @@
                     </div>
                 </div>
 
-                <!-- Grupo 2: Mecánica -->
+                <!-- Group 2: Mechanical System -->
                 <div class="col-md-6 mb-4">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
@@ -128,7 +127,7 @@
                     </div>
                 </div>
 
-                 <!-- Grupo 3: Eléctrico -->
+                <!-- Group 3: Electrical System -->
                 <div class="col-md-6 mb-4">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
@@ -146,7 +145,7 @@
                     </div>
                 </div>
 
-                 <!-- Grupo 4: Higiene -->
+                 <!-- Group 4: Hygiene System -->
                 <div class="col-md-6 mb-4">
                     <div class="card shadow-sm border-0 h-100">
                         <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
@@ -161,7 +160,7 @@
             </div>
         </div>
 
-        <!-- Columna Derecha: Hallazgos y Acciones (Sticky si fuera necesario) -->
+        <!-- Right Column: Results and Actions -->
         <div class="col-lg-4">
             <h5 class="text-dark font-weight-bold mb-3 pl-1"><i class="fas fa-clipboard-check mr-2 text-info"></i>Conclusiones</h5>
 
@@ -187,17 +186,23 @@
 
             <div class="card shadow-sm border-0 mb-4 bg-light">
                 <div class="card-body">
-                    <h6 class="text-muted font-weight-bold mb-2 small text-uppercase">Observaciones Generales</h6>
+                    <h6 class="text-muted font-weight-bold mb-2 small text-uppercase">Observaciones Formulario</h6>
                     <p class="mb-0 text-secondary font-italic small">
                         @(string.IsNullOrEmpty(v.Observations) ? "Ninguna observación registrada." : v.Observations)
                     </p>
                 </div>
             </div>
 
-            <!-- Acciones -->
+            <!-- Action Buttons -->
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-                     <h6 class="text-dark font-weight-bold mb-3">Acciones</h6>
+                      <h6 class="text-dark font-weight-bold mb-3">Acciones</h6>
+                      <button onclick="window.print()" class="btn btn-info btn-block shadow-sm font-weight-bold mb-2">
+                          <i class="fas fa-print mr-2"></i>Imprimir Vista
+                      </button>
+                      <a asp-page-handler="DownloadPdf" asp-route-id="@v.Id" class="btn btn-danger btn-block shadow-sm font-weight-bold mb-2">
+                          <i class="fas fa-file-pdf mr-2"></i>Generar Acta PDF
+                      </a>
                     <a asp-page="./Edit" asp-route-id="@v.Id" class="btn btn-primary btn-block shadow-sm font-weight-bold mb-2">
                         <i class="fas fa-edit mr-2"></i>Editar Datos
                     </a>
@@ -224,6 +229,6 @@
         .border-left-success { border-left: 4px solid #28a745 !important; }
         
         .check-row:hover { background-color: #f8f9fa; }
-        .check-row.bg-soft-danger { background-color: #ffebee !important; } /* Forzar rojo suave en checks malos */
+        .check-row.bg-soft-danger { background-color: #ffebee !important; } /* Force soft red on bad checks */
     </style>
 }

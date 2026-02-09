@@ -1,36 +1,29 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.DetailsModel
-
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Expediente del Equipo";
+    ViewData["Title"] = "Detalles del Equipo";
 }
 
 <div class="row">
-    <!-- Columna Principal: Expediente Técnico -->
+    <!-- Main Column: Technical Record -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Expediente Técnico: @Model.Equipment.Name</h4>
-                        <h6 class="card-subtitle text-muted">Información detallada sobre el activo y su ciclo de vida operativo.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Expediente Técnico: @Model.Equipment.Name</h4>
+                        <h6 class="card-subtitle text-muted">Información detallada de la definición del activo y su origen geográfico.</h6>
                     </div>
-                    <div class="ml-auto">
-                        @{
-                            var statusBadge = Model.Equipment.CurrentStatus switch {
-                                Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Operational => "badge-success",
-                                Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.UnderMaintenance => "badge-warning",
-                                Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.OutOfService => "badge-danger",
-                                _ => "badge-secondary"
-                            };
-                        }
-                        <span class="badge badge-pill @statusBadge px-4 py-2" style="font-size: 0.9rem;">
-                            <i class="fas fa-check-circle mr-1"></i> @Model.Equipment.CurrentStatus
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <span class="badge badge-pill badge-info px-4 py-2" style="font-size: 0.9rem;">
+                            <i class="fas fa-cubes mr-2"></i> Definición de Catálogo
                         </span>
                     </div>
                 </div>
 
                 <div class="row mt-4">
+                    <!-- Column 1: Equipment Specs -->
                     <div class="col-md-6 border-right">
                         <h5 class="font-weight-bold text-info mb-3">
                             <i class="fas fa-microscope mr-2"></i> Especificaciones del Activo
@@ -38,169 +31,215 @@
                         <table class="table table-sm table-borderless bg-light rounded p-3">
                             <tbody>
                                 <tr>
-                                    <th class="text-muted small uppercase pl-3 pt-3" style="width: 40%;">N° Inventario</th>
-                                    <td class="font-weight-bold pt-3 text-info">@Model.Equipment.InventoryNumber</td>
+                                    <th class="text-muted small uppercase pl-3 pt-3" style="width: 40%;">Marca</th>
+                                    <td class="font-weight-bold pt-3 text-dark">@(Model.Equipment.Brand ?? "N/A")</td>
                                 </tr>
                                 <tr>
-                                    <th class="text-muted small uppercase pl-3">Marca / Modelo</th>
-                                    <td class="font-weight-bold text-dark">@(Model.Equipment.Brand ?? "N/A") - @(Model.Equipment.Model ?? "N/A")</td>
-                                </tr>
-                                <tr>
-                                    <th class="text-muted small uppercase pl-3">Número de Serie</th>
-                                    <td class="text-dark">@(Model.Equipment.SerialNumber ?? "S/N")</td>
+                                    <th class="text-muted small uppercase pl-3">Modelo</th>
+                                    <td class="font-weight-bold text-dark">@(Model.Equipment.Model ?? "N/A")</td>
                                 </tr>
                                 <tr>
                                     <th class="text-muted small uppercase pl-3 pb-3">Categoría</th>
-                                    <td class="pb-3 text-dark">@Model.Equipment.EquipmentType.Name</td>
+                                    <td class="pb-3 text-dark">@(Model.Equipment.EquipmentType?.Name ?? "General")</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
+                    <!-- Column 2: Origin & Deployment -->
                     <div class="col-md-6">
                         <h5 class="font-weight-bold text-info mb-3">
-                            <i class="fas fa-map-marker-alt mr-2"></i> Ubicación Asignada
+                            <i class="fas fa-globe-americas mr-2"></i> Origen y Procedencia
                         </h5>
-                        <div class="p-3 bg-light rounded">
-                            <div class="mb-3">
-                                <label class="text-muted small uppercase d-block mb-0">Laboratorio / Sede</label>
-                                <span class="font-weight-bold text-dark">@Model.Equipment.Laboratory.Name</span>
-                                <div class="small text-muted">@Model.Equipment.Laboratory?.Faculty?.Name</div>
-                            </div>
-                            <div>
-                                <label class="text-muted small uppercase d-block mb-0">Ubicación Administrativa</label>
-                                <span class="text-dark">@Model.Equipment.City.Name, @Model.Equipment.Country.Name</span>
-                            </div>
+                        <table class="table table-sm table-borderless bg-light rounded p-3">
+                            <tbody>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3 pt-3" style="width: 40%;">Sede / Ciudad</th>
+                                    <td class="font-weight-bold pt-3 text-dark">@(Model.Equipment.City?.Name ?? "No Asignada")</td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3 pb-3">País</th>
+                                    <td class="font-weight-bold pb-3 text-dark">@(Model.Equipment.Country?.Name ?? "No Definido")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="alert alert-soft-info py-2 px-3 small border-0 mt-3">
+                            <i class="fas fa-info-circle mr-2"></i> La ubicación física (Laboratorio) se rastrea por cada unidad individual.
                         </div>
                     </div>
                 </div>
 
-                <!-- Historial de Disponibilidad -->
+                <!-- Units Details Table -->
                 <div class="mt-5">
-                    <h5 class="font-weight-bold text-dark mb-3">
-                        <i class="fas fa-history mr-2 text-warning"></i> Historial de Estados Recientes
-                    </h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover v-middle border rounded">
-                            <thead class="bg-light">
-                                <tr class="small uppercase font-weight-bold text-muted">
-                                    <th>Estatus Técnico</th>
-                                    <th>Fecha Inicio</th>
-                                    <th>Fecha Fin</th>
-                                    <th>Duración</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @if (Model.Equipment.StateHistory?.Any() == true)
-                                {
-                                    @foreach (var history in Model.Equipment.StateHistory.OrderByDescending(h => h.StartDate).Take(5))
+                    <div class="d-flex align-items-center mb-4 pb-2 border-bottom">
+                        <h5 class="font-weight-bold text-dark mb-0">
+                            <i class="fas fa-boxes mr-2 text-warning"></i> Control de Unidades Físicas
+                        </h5>
+                        <div class="ml-auto">
+                            <a asp-page="/EquipmentUnits/Create" asp-route-equipmentId="@Model.Equipment.Id" class="btn btn-sm btn-success btn-rounded px-3">
+                                <i class="fas fa-plus mr-1"></i> Registrar Nueva Unidad
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 🔍 Search & Filter Zone -->
+                    <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                        <form method="get">
+                            <div class="row align-items-end">
+                                <div class="col-md-7">
+                                    <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
+                                    <div class="input-group drop-shadow">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                        </div>
+                                        <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Buscar por N° Inventario o Serie..." />
+                                    </div>
+                                </div>
+                                <div class="col-md-5 text-right">
+                                    <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm font-weight-bold">
+                                        <i class="fas fa-filter mr-1"></i> Filtrar Unidades
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    @if (Model.Equipment.Units != null && Model.Equipment.Units.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover bg-white border shadow-sm rounded">
+                                <thead class="bg-light text-muted uppercase small font-weight-bold">
+                                    <tr>
+                                        <th>Identificación</th>
+                                        <th>Ubicación (Laboratorio)</th>
+                                        <th>Estado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var unit in Model.Equipment.Units)
                                     {
                                         <tr>
-                                            <td>
-                                                <span class="badge @(history.EndDate == null ? "badge-success" : "badge-light text-muted") px-3">
-                                                    @history.Status
-                                                </span>
+                                            <td class="font-weight-bold text-dark v-middle">
+                                                <i class="fas fa-barcode text-muted mr-2"></i>@unit.InventoryNumber
+                                                <div class="small text-muted mt-1">S/N: @(unit.SerialNumber ?? "N/A")</div>
                                             </td>
-                                            <td class="small">@history.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
-                                            <td class="small">@(history.EndDate?.ToString("dd/MM/yyyy HH:mm") ?? "En curso")</td>
-                                            <td class="small">@(history.DurationDays.HasValue ? $"{history.DurationDays} d." : "-")</td>
+                                            <td class="v-middle">
+                                                <div class="font-weight-bold text-info small uppercase">@(unit.Laboratory?.Name ?? "PENDIENTE")</div>
+                                                <small class="text-muted">@(unit.Laboratory?.Faculty?.Name ?? "Sin Facultad")</small>
+                                            </td>
+                                            <td class="v-middle">
+                                                @{
+                                                    var badgeClass = unit.CurrentStatus switch
+                                                    {
+                                                        EquipmentStatus.Operational => "badge-success",
+                                                        EquipmentStatus.UnderMaintenance => "badge-warning",
+                                                        EquipmentStatus.OutOfService => "badge-danger",
+                                                        EquipmentStatus.Deleted => "badge-dark",
+                                                        _ => "badge-secondary"
+                                                    };
+                                                }
+                                                <span class="badge badge-pill @badgeClass px-3 py-1">@Html.DisplayFor(m => unit.CurrentStatus)</span>
+                                            </td>
+                                            <td class="text-center v-middle">
+                                                <div class="btn-group shadow-sm rounded">
+                                                    <a asp-page="/EquipmentUnits/Edit" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-warning" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a asp-page="/EquipmentUnits/Details" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-info" title="Ver Historial">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    <form method="post" asp-page-handler="DeleteUnit" asp-route-id="@unit.Id" class="d-inline" onsubmit="return confirm('¿Dar de baja esta unidad?');">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger ml-1" title="Eliminar">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
                                         </tr>
                                     }
-                                }
-                                else
-                                {
-                                    <tr>
-                                        <td colspan="4" class="text-center text-muted italic p-4 small">No se registra historial de cambios.</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5 bg-light rounded border border-dashed">
+                            <i class="fas fa-info-circle fa-2x text-muted mb-3 d-block opacity-5"></i>
+                            <p class="text-muted mb-0 font-weight-bold text-dark">No se encontraron unidades registradas.</p>
+                            <small class="text-muted">Haga clic en 'Registrar Nueva Unidad' para dar de alta un activo físico.</small>
+                        </div>
+                    }
                 </div>
 
-                @if (!string.IsNullOrEmpty(Model.Equipment.Observations))
+                @if (!string.IsNullOrEmpty(Model.Equipment.Description))
                 {
-                    <div class="alert alert-info border-0 mt-4 bg-light-info text-info small">
-                        <label class="font-weight-bold uppercase mb-1 d-block">Observaciones de Referencia</label>
-                        <i class="fas fa-info-circle mr-2"></i> @Model.Equipment.Observations
+                    <div class="alert alert-light border-0 mt-4 p-3 shadow-none small text-dark border-left border-info">
+                        <label class="font-weight-bold uppercase mb-1 d-block text-info"><i class="fas fa-info-circle mr-2"></i> Descripción / Ficha Técnica:</label>
+                        <div class="text-muted">@Model.Equipment.Description</div>
                     </div>
                 }
             </div>
         </div>
     </div>
 
-    <!-- Columna Lateral: Lifecycle y Control -->
+    <!-- Sidebar: Lifecycle and Control -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 mb-4 bg-info text-white">
-            <div class="card-body">
-                <h5 class="card-title text-white font-weight-bold"><i class="fas fa-chart-line mr-2"></i> Ciclo de Vida Útil</h5>
-                <hr class="border-white opacity-2" />
-                
-                <div class="row">
-                    <div class="col-6">
-                        <small class="text-white-50 d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Antigüedad</small>
-                        <span class="font-weight-bold h5 mb-0">@(Model.Equipment.AgeYears?.ToString() ?? "0") años</span>
-                    </div>
-                    <div class="col-6 border-left border-white opacity-5">
-                        <small class="text-white-50 d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Vida Estimada</small>
-                        <span class="font-weight-bold h5 mb-0">@(Model.Equipment.UsefulLifeYears?.ToString() ?? "0") años</span>
-                    </div>
-                </div>
-
-                <div class="mt-4">
-                    @{
-                        var percent = 0;
-                        if (Model.Equipment.UsefulLifeYears.HasValue && Model.Equipment.UsefulLifeYears > 0) {
-                            percent = (int)(100 - ((double)(Model.Equipment.AgeYears ?? 0) / Model.Equipment.UsefulLifeYears * 100));
-                            percent = Math.Max(0, Math.Min(100, percent));
-                        }
-                        var progressColor = percent < 20 ? "bg-danger" : (percent < 50 ? "bg-warning" : "bg-success");
-                    }
-                    <div class="d-flex justify-content-between mb-1">
-                        <small class="text-white-50 uppercase font-weight-bold" style="font-size: 0.65rem;">Salud del Activo</small>
-                        <span class="small font-weight-bold">@percent%</span>
-                    </div>
-                    <div class="progress" style="height: 5px; background: rgba(255,255,255,0.2);">
-                        <div class="progress-bar @progressColor" role="progressbar" style="width: @percent%;"></div>
-                    </div>
-                </div>
+            <div class="card-body p-4 text-center">
+                <i class="fas fa-clock fa-3x mb-3 opacity-7"></i>
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-1">Vida Útil del Ciclo</h5>
+                <span class="font-weight-bold h3 mb-0">@(Model.Equipment.UsefulLifeYears ?? 0)</span>
+                <span class="text-white opacity-7">años de vida estimada</span>
             </div>
         </div>
 
         <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body">
-                <h5 class="card-title text-dark font-weight-bold mb-4"><i class="fas fa-user-shield mr-2 text-warning"></i> Trazabilidad</h5>
-                <hr />
-                <div class="small mt-3">
+            <div class="card-body p-4">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase border-bottom pb-2">
+                    <i class="fas fa-history mr-2 text-warning"></i> Control de Auditoría
+                </h5>
+                <div class="small">
                     <div class="mb-3">
-                        <label class="text-muted d-block small uppercase mb-0">Registrado por</label>
-                        <span class="font-weight-bold text-dark d-block">@(Model.Equipment.CreatedBy?.FullName ?? "Sistema")</span>
-                        <span class="text-muted">@Model.Equipment.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Alta del Registro</label>
+                        <span class="font-weight-bold text-dark d-block">@Model.Equipment.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="text-muted pt-1"><i class="fas fa-user-circle mr-1"></i> @(Model.Equipment.CreatedBy?.FullName ?? "Sistema")</div>
                     </div>
                     @if (Model.Equipment.LastModifiedDate.HasValue)
                     {
-                        <div class="mb-0">
-                            <label class="text-muted d-block small uppercase mb-0">Última Edición</label>
-                            <span class="font-weight-bold text-dark d-block">@(Model.Equipment.ModifiedBy?.FullName ?? "-")</span>
-                            <span class="text-muted">@Model.Equipment.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="mb-0 border-top pt-3 mt-3">
+                            <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Última Gestión</label>
+                            <span class="font-weight-bold text-dark d-block">@Model.Equipment.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            <div class="text-muted pt-1"><i class="fas fa-user-edit mr-1"></i> @(Model.Equipment.ModifiedBy?.FullName ?? "-")</div>
                         </div>
                     }
                 </div>
             </div>
         </div>
 
-        <!-- Botones de Acción -->
+        <!-- Action Buttons -->
         <div class="form-actions mt-4">
             <a asp-page="./Edit" asp-route-id="@Model.Equipment.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
-                <i class="fas fa-edit mr-1"></i> Editar Ficha Técnica
+                <i class="fas fa-edit mr-1"></i> Modificar Ficha Técnica
             </a>
-            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4">
-                <i class="fas fa-list mr-1"></i> Volver al Inventario
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
+                <i class="fas fa-list mr-1"></i> Volver al Catálogo
             </a>
             
-            <a asp-page="./Delete" asp-route-id="@Model.Equipment.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
-                <i class="fas fa-trash-alt mr-1"></i> Solicitar baja definitiva del activo
+            <a asp-page="./Delete" asp-route-id="@Model.Equipment.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">
+                <i class="fas fa-trash-alt mr-1"></i> Eliminar Definición del Sistema
             </a>
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .v-middle { vertical-align: middle !important; }
+        .italic { font-style: italic; }
+        .opacity-7 { opacity: 0.7; }
+        .opacity-5 { opacity: 0.5; }
+        .border-dashed { border-style: dashed !important; }
+        .alert-soft-info { background-color: #e1f5fe; color: #01579b; border-left: 5px solid #03a9f4; }
+    </style>
+}

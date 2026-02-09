@@ -1,53 +1,78 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes.DetailsModel
 
-@{
-    ViewData["Title"] = "Detalles del Tipo de Mantenimiento";
+
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Detalles de Categoría Técnica</h4>
+                        <h6 class="card-subtitle text-muted">Información detallada del tipo de mantenimiento registrado en el sistema.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-search fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
+
+                <div class="row mt-4 px-3">
+                    <div class="col-md-8">
+                        <div class="mb-4">
+                            <label class="text-muted small uppercase font-weight-bold d-block mb-1">Nombre de la Categoría</label>
+                            <h3 class="font-weight-bold text-info">@Model.MaintenanceType.Name</h3>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="text-muted small uppercase font-weight-bold d-block mb-1">Descripción / Alcance</label>
+                            <p class="text-dark bg-light p-4 rounded border shadow-none italic h6 font-weight-normal">
+                                @(Model.MaintenanceType.Description ?? "No se ha registrado una descripción detallada para este servicio.")
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4 border-left">
+                        <h6 class="font-weight-bold text-uppercase mb-4 small text-muted font-weight-bold"><i class="fas fa-history mr-2"></i> Auditoría de Sistema</h6>
+                        <div class="small mb-4">
+                            <label class="text-muted d-block uppercase font-weight-bold mb-0" style="font-size: 0.65rem;">Fecha de Registro</label>
+                            <span class="font-weight-bold text-dark d-block">@Model.MaintenanceType.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                            <div class="text-muted small">Por: @(Model.MaintenanceType.CreatedBy?.FullName ?? "Admin Principal")</div>
+                        </div>
+
+                        @if (Model.MaintenanceType.LastModifiedDate.HasValue)
+                        {
+                            <div class="small border-top pt-3">
+                                <label class="text-muted d-block uppercase font-weight-bold mb-0" style="font-size: 0.65rem;">Última Gestión</label>
+                                <span class="font-weight-bold text-dark d-block">@Model.MaintenanceType.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                <div class="text-muted small">Por: @(Model.MaintenanceType.ModifiedBy?.FullName ?? "-")</div>
+                            </div>
+                        }
+
+                        <hr class="mt-4" />
+                        <div class="pt-2">
+                            <a asp-page="./Edit" asp-route-id="@Model.MaintenanceType.Id" class="btn btn-warning btn-block btn-rounded text-white font-weight-bold shadow-sm mb-3 py-2">
+                                <i class="fas fa-edit mr-1"></i> Editar Información
+                            </a>
+                            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 shadow-none">
+                                <i class="fas fa-list mr-1"></i> Volver al Listado
+                            </a>
+                            
+                            <a asp-page="./Delete" asp-route-id="@Model.MaintenanceType.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-3">
+                                <i class="fas fa-trash-alt mr-1"></i> Eliminar Categoría
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+    </style>
 }
-
-<h1>Detalles</h1>
-
-<div>
-    <h4>Tipo de Mantenimiento</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceType.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceType.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.MaintenanceType.Description)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.MaintenanceType.Description)
-        </dd>
-        <hr />
-        <dt class="col-sm-2">
-            Auditoría
-        </dt>
-        <dd class="col-sm-10">
-            <small>
-                <strong>Creado:</strong> @Model.MaintenanceType.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-                @if (Model.MaintenanceType.CreatedBy != null)
-                {
-                    <span> por @Model.MaintenanceType.CreatedBy.FullName</span>
-                }
-                <br />
-                @if (Model.MaintenanceType.LastModifiedDate.HasValue)
-                {
-                    <strong>Modificado:</strong> @Model.MaintenanceType.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")
-                    @if (Model.MaintenanceType.ModifiedBy != null)
-                    {
-                        <span> por @Model.MaintenanceType.ModifiedBy.FullName</span>
-                    }
-                }
-            </small>
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-page="./Edit" asp-route-id="@Model.MaintenanceType.Id">Editar</a> |
-    <a asp-page="/Maintenances/Index" asp-fragment="tipos">Volver al Listado</a>
-</div>

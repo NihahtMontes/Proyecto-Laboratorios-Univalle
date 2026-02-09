@@ -1,0 +1,120 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Editar Unidad Física";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Modificar Unidad Física</h4>
+                        <h6 class="card-subtitle text-muted">Gestión de datos específicos del activo con inventario N° @Model.EquipmentUnit.InventoryNumber.</h6>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                    <input type="hidden" asp-for="EquipmentUnit.Id" />
+                    <input type="hidden" asp-for="EquipmentUnit.CreatedById" />
+                    <input type="hidden" asp-for="EquipmentUnit.CreatedDate" />
+
+                    <div class="row">
+                        <!-- Left Column: Reference and Identification -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-warning mb-3"><i class="fas fa-tag mr-2"></i> Identificación del Activo</h5>
+                            
+                            <div class="form-group mb-4">
+                                <label asp-for="EquipmentUnit.EquipmentId" class="control-label font-weight-bold small uppercase text-muted">Modelo de Equipo (Catálogo)</label>
+                                <select asp-for="EquipmentUnit.EquipmentId" class="form-control custom-select" asp-items="ViewBag.EquipmentId" required></select>
+                                <span asp-validation-for="EquipmentUnit.EquipmentId" class="text-danger small"></span>
+                                <small class="text-muted italic mt-1 d-block"><i class="fas fa-info-circle"></i> La procedencia se hereda del catálogo del equipo.</small>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="EquipmentUnit.InventoryNumber" class="control-label font-weight-bold small uppercase text-muted">N° Inventario <span class="text-danger">*</span></label>
+                                    <input asp-for="EquipmentUnit.InventoryNumber" class="form-control font-weight-bold" required />
+                                    <span asp-validation-for="EquipmentUnit.InventoryNumber" class="text-danger small"></span>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="EquipmentUnit.SerialNumber" class="control-label font-weight-bold small uppercase text-muted">Número de Serie</label>
+                                    <input asp-for="EquipmentUnit.SerialNumber" class="form-control" />
+                                    <span asp-validation-for="EquipmentUnit.SerialNumber" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <h5 class="font-weight-bold text-warning mt-4 mb-3"><i class="fas fa-calendar-alt mr-2"></i> Ciclo de Vida</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="EquipmentUnit.AcquisitionDate" class="control-label font-weight-bold small uppercase text-muted">Fecha Adquisición</label>
+                                    <input asp-for="EquipmentUnit.AcquisitionDate" class="form-control" type="date" />
+                                    <span asp-validation-for="EquipmentUnit.AcquisitionDate" class="text-danger small"></span>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="EquipmentUnit.ServiceStartDate" class="control-label font-weight-bold small uppercase text-muted">Puesta en Servicio</label>
+                                    <input asp-for="EquipmentUnit.ServiceStartDate" class="form-control" type="date" />
+                                    <span asp-validation-for="EquipmentUnit.ServiceStartDate" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="EquipmentUnit.AcquisitionValue" class="control-label font-weight-bold small uppercase text-muted">Valor de Adquisición</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-light">$</span>
+                                    </div>
+                                    <input asp-for="EquipmentUnit.AcquisitionValue" class="form-control" type="number" step="0.01" />
+                                </div>
+                                <span asp-validation-for="EquipmentUnit.AcquisitionValue" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Specific Location and Status -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-warning mb-3"><i class="fas fa-map-marker-alt mr-2"></i> Ubicación y Despliegue</h5>
+                            
+                            <div class="form-group mb-4">
+                                <label asp-for="EquipmentUnit.LaboratoryId" class="control-label font-weight-bold small uppercase text-muted">Laboratorio Destino <span class="text-danger">*</span></label>
+                                <select asp-for="EquipmentUnit.LaboratoryId" class="form-control custom-select" asp-items="ViewBag.LaboratoryId" required>
+                                    <option value="">-- Seleccione Laboratorio --</option>
+                                </select>
+                                <span asp-validation-for="EquipmentUnit.LaboratoryId" class="text-danger small"></span>
+                            </div>
+
+                            <h5 class="font-weight-bold text-warning mt-4 mb-3"><i class="fas fa-heartbeat mr-2"></i> Estado Operativo</h5>
+                            <div class="form-group mb-3">
+                                <label asp-for="EquipmentUnit.CurrentStatus" class="control-label font-weight-bold small uppercase text-muted">Estado Actual</label>
+                                <select asp-for="EquipmentUnit.CurrentStatus" class="form-control custom-select" asp-items="Html.GetEnumSelectList<EquipmentStatus>()"></select>
+                                <span asp-validation-for="EquipmentUnit.CurrentStatus" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="EquipmentUnit.Notes" class="control-label font-weight-bold small uppercase text-muted">Observaciones de la Unidad</label>
+                                <textarea asp-for="EquipmentUnit.Notes" class="form-control" rows="4" placeholder="Notas sobre el estado físico o accesorios específicos..."></textarea>
+                                <span asp-validation-for="EquipmentUnit.Notes" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions mt-4 border-top pt-4 text-right">
+                        <button type="submit" class="btn btn-warning px-5 py-2 font-weight-bold shadow-sm text-white btn-rounded">
+                            <i class="fas fa-save mr-2"></i> Guardar Cambios
+                        </button>
+                        <a asp-page="/Equipment/Details" asp-route-id="@Model.EquipmentUnit.EquipmentId" class="btn btn-outline-secondary px-4 py-2 ml-2 font-weight-bold btn-rounded">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

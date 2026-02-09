@@ -13,6 +13,9 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "Con Observaciones")]
         WithObservations = 2,
 
+        [Display(Name = "Revisado")]
+        Reviewed = 3,
+
         [Display(Name = "Anulada")]
         Annulled = 99
     }

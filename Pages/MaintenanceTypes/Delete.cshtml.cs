@@ -22,53 +22,50 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var maintenancetype = await _context.MaintenanceTypes
                 .Include(m => m.CreatedBy)
                 .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (maintenancetype == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                MaintenanceType = maintenancetype;
-            }
+            if (maintenancetype == null) return NotFound();
+            
+            MaintenanceType = maintenancetype;
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var maintenancetype = await _context.MaintenanceTypes
                 .Include(mt => mt.Maintenances)
                 .FirstOrDefaultAsync(mt => mt.Id == id);
 
-            if (maintenancetype != null)
-            {
-                if (maintenancetype.Maintenances.Any())
-                {
-                    TempData.Error($"No se puede eliminar '{maintenancetype.Name}' porque tiene {maintenancetype.Maintenances.Count} mantenimientos asociados.");
-                    return RedirectToPage("/Maintenances/Index", null, "tipos");
-                }
+            if (maintenancetype == null) return NotFound();
 
-                MaintenanceType = maintenancetype;
-                _context.MaintenanceTypes.Remove(MaintenanceType);
-                await _context.SaveChangesAsync();
-                TempData.Success($"Tipo de mantenimiento '{maintenancetype.Name}' eliminado correctamente.");
+            // Dependency Validation
+            if (maintenancetype.Maintenances != null && maintenancetype.Maintenances.Any())
+            {
+                TempData.Error($"No se puede eliminar la categoría '{maintenancetype.Name}' porque tiene {maintenancetype.Maintenances.Count} registros de mantenimiento asociados. Considere editarla en su lugar.");
+                return RedirectToPage("./Details", new { id = maintenancetype.Id });
             }
 
-            return RedirectToPage("/Maintenances/Index", null, "tipos");
+            // Perform Hard Delete (Admin action)
+            try
+            {
+                _context.MaintenanceTypes.Remove(maintenancetype);
+                await _context.SaveChangesAsync();
+                TempData.Success($"Categoría técnica '{maintenancetype.Name}' eliminada permanentemente del sistema.");
+            }
+            catch (Exception ex)
+            {
+                TempData.Error("Hubo un error al intentar eliminar el registro: " + ex.Message);
+                return RedirectToPage("./Details", new { id = maintenancetype.Id });
+            }
+
+            return RedirectToPage("./Index");
         }
     }
 }

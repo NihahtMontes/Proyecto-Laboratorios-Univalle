@@ -44,6 +44,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Categoría")]
         public PersonCategory Category { get; set; } = PersonCategory.Tecnico;
 
+        [Required]
+        [Display(Name = "Estado")]
+        public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
+
         [StringLength(100)]
         [Display(Name = "Cargo / Título")]
         public string? JobTitle { get; set; }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -14,15 +15,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
     public class CreateModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context)
+        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         public IActionResult OnGet()
         {
-            ViewData["CountryId"] = new SelectList(_context.Countries.Where(c => c.Status == GeneralStatus.Activo), "Id", "Name");
+            LoadCountries();
             return Page();
         }
 
@@ -31,10 +34,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 
         public class InputModel
         {
-            [Required]
+            [Required(ErrorMessage = "El país es obligatorio")]
+            [Display(Name = "País")]
             public int CountryId { get; set; }
-            [Required]
-            public string Name { get; set; }
+
+            [Required(ErrorMessage = "El nombre de la ciudad es obligatorio")]
+            [Display(Name = "Nombre de la Ciudad")]
+            [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres")]
+            public string Name { get; set; } = string.Empty;
+
+            [Display(Name = "Región/Departamento")]
+            [StringLength(100, ErrorMessage = "La región no puede superar los 100 caracteres")]
             public string? Region { get; set; }
         }
 
@@ -42,14 +52,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
         {
             if (!ModelState.IsValid)
             {
-                ViewData["CountryId"] = new SelectList(_context.Countries.Where(c => c.Status == GeneralStatus.Activo), "Id", "Name");
+                LoadCountries();
                 return Page();
             }
 
-            // 1. Normalizar para validación (quitar espacios, minúsculas)
-            var normalizedName = Input.Name.NormalizeComparison();
+            // Normalization
+            var normalizedName = Input.Name.Trim().ToLower();
 
-            // 2. Validar Duplicados: Misma ciudad EN EL MISMO país
+            // Duplicate Validation: Same city IN THE SAME country
             var exists = await _context.Cities
                 .AnyAsync(c => c.CountryId == Input.CountryId && 
                                c.Name.Trim().ToLower() == normalizedName && 
@@ -57,22 +67,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 
             if (exists)
             {
-                ModelState.AddModelError("Input.Name", NotificationHelper.Cities.CityNameDuplicate);
-                // Recargar el select list
-                ViewData["CountryId"] = new SelectList(_context.Countries.Where(c => c.Status == GeneralStatus.Activo), "Id", "Name");
+                ModelState.AddModelError("Input.Name", "Esta ciudad ya se encuentra registrada para el país seleccionado.");
+                LoadCountries();
                 return Page();
             }
 
-            // 3. Validar Formato (Sin caracteres especiales)
-            if (!Input.Name.IsValidName())
-            {
-                ModelState.AddModelError("Input.Name", NotificationHelper.Countries.InvalidFormat);
-                ViewData["CountryId"] = new SelectList(_context.Countries.Where(c => c.Status == GeneralStatus.Activo), "Id", "Name");
-                return Page();
-            }
-
-            // 4. Obtener nombre del país para el mensaje de éxito
             var country = await _context.Countries.FindAsync(Input.CountryId);
+            if (country == null) 
+            {
+                LoadCountries();
+                return Page();
+            }
 
             var city = new City
             {
@@ -80,16 +85,31 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
                 Name = Input.Name.Clean(),
                 Region = Input.Region?.Clean(),
                 Status = GeneralStatus.Activo,
-                CreatedDate = DateTime.UtcNow // Estándar de auditoría
+                CreatedDate = DateTime.Now
             };
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                city.CreatedById = currentUser.Id;
+            }
 
             _context.Cities.Add(city);
             await _context.SaveChangesAsync();
 
-            // 4. Notificación Estandarizada
-            TempData.Success(NotificationHelper.Cities.Created(city.Name, country?.Name ?? "N/A"));
-
+            TempData.Success($"Ciudad '{city.Name}' registrada exitosamente en {country.Name}.");
             return RedirectToPage("./Index");
+        }
+
+        private void LoadCountries()
+        {
+            ViewData["CountryId"] = new SelectList(
+                _context.Countries
+                    .Where(c => c.Status == GeneralStatus.Activo)
+                    .OrderBy(c => c.Name), 
+                "Id", 
+                "Name", 
+                Input.CountryId);
         }
     }
 }

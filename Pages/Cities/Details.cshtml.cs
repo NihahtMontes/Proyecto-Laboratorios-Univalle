@@ -7,7 +7,6 @@ using Proyecto_Laboratorios_Univalle.Models;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 {
-
     [Authorize(Roles = AuthorizationHelper.AdminRoles)]
     public class DetailsModel : PageModel
     {
@@ -22,10 +21,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var city = await _context.Cities
                 .Include(c => c.Country)
@@ -33,14 +29,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
                 .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (city == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                City = city;
-            }
+            if (city == null) return NotFound();
+            
+            City = city;
             return Page();
         }
     }

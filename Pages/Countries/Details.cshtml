@@ -1,22 +1,21 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Countries.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Expediente de País";
-}
+
 
 <div class="row">
-    <!-- Columna Principal: Información Detallada -->
+    <!-- Main Column: Detailed Information -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Expediente Técnico: @Model.Country.Name</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Expediente de País: @Model.Country.Name</h4>
                         <h6 class="card-subtitle text-muted">Gestión de identidad nacional y estatus operativo.</h6>
                     </div>
-                    <div class="ml-auto">
-                        <span class="badge badge-pill badge-@(Model.Country.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "success" : "danger") px-4 py-2" style="font-size: 0.9rem;">
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <span class="badge badge-pill badge-@(Model.Country.Status == GeneralStatus.Activo ? "success" : "danger") px-4 py-2" style="font-size: 0.9rem;">
                             <i class="fas fa-check-circle mr-1"></i> @Model.Country.Status
                         </span>
                     </div>
@@ -25,10 +24,10 @@
                 <div class="row mt-4">
                     <div class="col-md-12">
                         <h5 class="font-weight-bold text-info mb-3">
-                            <i class="fas fa-info-circle mr-2"></i> Datos Principales del País
+                            <i class="fas fa-info-circle mr-2"></i> Datos Principales
                         </h5>
                         <div class="table-responsive">
-                            <table class="table table-sm table-borderless bg-light rounded p-3">
+                            <table class="table table-sm table-borderless bg-light rounded p-3 shadow-none">
                                 <tbody>
                                     <tr>
                                         <th class="text-muted small uppercase pl-4 pt-3" style="width: 30%;">Código de Referencia</th>
@@ -43,13 +42,13 @@
                                     <tr>
                                         <th class="text-muted small uppercase pl-4 pb-3">Estado Operativo</th>
                                         <td class="pb-3">
-                                            @if(Model.Country.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo)
+                                            @if(Model.Country.Status == GeneralStatus.Activo)
                                             {
-                                                <span class="text-success font-weight-bold"><i class="fas fa-check mr-1"></i>Habilitado</span>
+                                                <span class="text-success font-weight-bold"><i class="fas fa-check-circle mr-1"></i> Habilitado</span>
                                             }
                                             else
                                             {
-                                                <span class="text-danger font-weight-bold"><i class="fas fa-times mr-1"></i>Suspendido</span>
+                                                <span class="text-danger font-weight-bold"><i class="fas fa-times-circle mr-1"></i> Suspendido</span>
                                             }
                                         </td>
                                     </tr>
@@ -59,18 +58,18 @@
                     </div>
                 </div>
 
-                <div class="alert alert-info border-0 mt-4 bg-light-info text-info small">
-                    <i class="fas fa-shield-alt mr-2"></i> Este registro es la base jerárquica para la gestión de ciudades y facultades nacionales. Su desactivación inhabilitará las ciudades dependientes.
+                <div class="alert alert-light border-0 mt-4 p-3 shadow-none small text-info italic">
+                    <i class="fas fa-shield-alt mr-2"></i> Este registro es la base jerárquica para la gestión de ciudades y sedes institucionales. Su desactivación inhabilitará el acceso a las ubicaciones dependientes en los formularios de registro.
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Columna Lateral: Auditoría y Acciones -->
+    <!-- Sidebar: Audit and Actions -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
-                <h5 class="card-title text-dark font-weight-bold mb-4">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase">
                     <i class="fas fa-history mr-2 text-warning"></i> Historial de Registro
                 </h5>
                 <hr />
@@ -78,33 +77,40 @@
                     <div class="mb-3">
                         <label class="text-muted d-block small uppercase mb-0">Fecha de Registro</label>
                         <span class="font-weight-bold text-dark d-block">@Model.Country.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
-                        <span class="text-muted">por @(Model.Country.CreatedBy?.FullName ?? "Sistema")</span>
+                        <div class="text-muted small">Por: @(Model.Country.CreatedBy?.FullName ?? "Sistema")</div>
                     </div>
 
                     @if (Model.Country.LastModifiedDate.HasValue)
                     {
-                        <div class="mb-0">
+                        <div class="mb-0 border-top pt-2">
                             <label class="text-muted d-block small uppercase mb-0">Última Actualización</label>
-                            <span class="font-weight-bold text-dark d-block">@Model.Country.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                            <span class="text-muted">por @(Model.Country.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Country.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.Country.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
                         </div>
-                    }
-                    else
-                    {
-                        <div class="text-muted font-italic">Sin modificaciones registradas.</div>
                     }
                 </div>
             </div>
         </div>
 
-        <!-- Botones de Acción -->
+        <!-- Action Buttons -->
         <div class="form-actions mt-4">
             <a asp-page="./Edit" asp-route-id="@Model.Country.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
-                <i class="fas fa-edit mr-1"></i> Editar País
+                <i class="fas fa-edit mr-1"></i> Modificar Registro
             </a>
-            <a asp-page="/Cities/Index" class="btn btn-outline-secondary btn-block btn-rounded py-2">
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 font-weight-bold mb-4">
                 <i class="fas fa-list mr-1"></i> Volver al Listado
+            </a>
+            
+             <a asp-page="./Delete" asp-route-id="@Model.Country.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">
+                <i class="fas fa-trash-alt mr-1"></i> Eliminar Registro
             </a>
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+}

@@ -28,29 +28,30 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public async Task OnGetAsync()
         {
-            // 1. Cargar Tipos de Mantenimiento (Tab 2)
+            // 1. Load Maintenance Types (Tab 2)
             MaintenanceTypes = await _context.MaintenanceTypes
                 .Include(mt => mt.CreatedBy)
                 .OrderBy(mt => mt.Name)
                 .ToListAsync();
 
-            // 2. Consulta Base de Mantenimientos (Tab 1)
+            // 2. Base Query for Maintenances (Tab 1)
             var query = _context.Maintenances
                 .Include(m => m.CreatedBy)
-                .Include(m => m.Equipment)
-                    .ThenInclude(e => e.EquipmentType)
+                .Include(m => m.EquipmentUnit)
+                    .ThenInclude(eu => eu.Equipment)
+                        .ThenInclude(e => e!.EquipmentType)
                 .Include(m => m.ModifiedBy)
                 .Include(m => m.Technician)
                 .Include(m => m.MaintenanceType)
                 .AsQueryable();
 
-            // 3. Aplicar Filtros
+            // 3. Apply Filters
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
                 query = query.Where(m => 
-                    m.Equipment.Name.ToLower().Contains(term) ||
-                    m.Equipment.InventoryNumber.ToLower().Contains(term) ||
+                    m.EquipmentUnit!.Equipment!.Name.ToLower().Contains(term) ||
+                    m.EquipmentUnit.InventoryNumber.ToLower().Contains(term) ||
                     (m.Technician != null && m.Technician.FirstName.ToLower().Contains(term)) ||
                     (m.Technician != null && m.Technician.LastName.ToLower().Contains(term))
                 );
@@ -61,7 +62,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 query = query.Where(m => m.Status == StatusFilter.Value);
             }
 
-            // 4. Ejecutar Consulta
+            // 4. Execute Query
             Maintenances = await query
                 .OrderByDescending(m => m.ScheduledDate)
                 .ToListAsync();

@@ -3,6 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Services;
+using Proyecto_Laboratorios_Univalle.Services.Reporting;
+using QuestPDF.Infrastructure;
+using OfficeOpenXml;
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +23,12 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentity<User, IdentityRole<int>>(options => {
     options.SignIn.RequireConfirmedAccount = false;
+    // RELAXED PASSWORD POLICY
+    options.Password.RequireDigit = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequiredLength = 4;
 })
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -54,6 +65,11 @@ builder.Services.AddAntiforgery(options =>
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, UserClaimsPrincipalFactory>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IVerificationReportService, VerificationReportService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<DatabaseErrorHandler>();
+
+ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
 builder.Services.AddRazorPages();
 
@@ -83,21 +99,22 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 
-// VERIFICACIÓN DE BASE DE DATOS (DIAGNÓSTICO)
-try
+// INICIALIZACIÓN Y SEMILLA DE BASE DE DATOS
+using (var scope = app.Services.CreateScope())
 {
-    using (var scope = app.Services.CreateScope())
+    var services = scope.ServiceProvider;
+    try
     {
-        var services = scope.ServiceProvider;
-        var context = services.GetRequiredService<ApplicationDbContext>();
-        // Intentar conectar
-        await context.Database.CanConnectAsync();
-        Console.WriteLine(">>> DIAGNÓSTICO: ¡CONEXIÓN A BASE DE DATOS EXITOSA! <<<");
+        Console.WriteLine(">>> INICIANDO SEMILLA DE BASE DE DATOS <<<");
+        await DbInitializer.SeedAsync(services);
+        Console.WriteLine(">>> SEMILLA DE BASE DE DATOS COMPLETADA CON ÉXITO <<<");
     }
-}
-catch (Exception ex)
-{
-    Console.WriteLine($">>> DIAGNÓSTICO: ERROR GRAVE DE CONEXIÓN A BD: {ex.Message} <<<");
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Ocurrió un error al sembrar la base de datos.");
+        Console.WriteLine($">>> ERROR CRÍTICO EN SEMILLA: {ex.Message} <<<");
+    }
 }
 
 app.Run();

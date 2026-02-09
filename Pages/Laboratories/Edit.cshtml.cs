@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 {
@@ -25,18 +26,40 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
         [BindProperty]
         public LabInputModel Input { get; set; } = new();
 
-        public int Id { get; set; }
-        public Laboratory ExistingLaboratory { get; set; } = default!;
+        public Laboratory? ExistingLaboratory { get; set; }
 
         public class LabInputModel
         {
+            public int Id { get; set; }
+
+            [Required(ErrorMessage = "La facultad responsable es obligatoria")]
+            [Display(Name = "Facultad")]
             public int FacultyId { get; set; }
+
+            [Required(ErrorMessage = "El código institucional es obligatorio")]
+            [Display(Name = "Código")]
+            [StringLength(20, ErrorMessage = "El código no puede superar los 20 caracteres")]
             public string Code { get; set; } = string.Empty;
+
+            [Required(ErrorMessage = "El nombre descriptivo es obligatorio")]
+            [Display(Name = "Nombre")]
+            [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres")]
             public string Name { get; set; } = string.Empty;
+
+            [Display(Name = "Tipo/Especialidad")]
             public string? Type { get; set; }
+
+            [Display(Name = "Edificio")]
             public string? Building { get; set; }
+
+            [Display(Name = "Piso/Nivel")]
             public string? Floor { get; set; }
+
+            [Display(Name = "Descripción")]
             public string? Description { get; set; }
+
+            [Required]
+            [Display(Name = "Estado")]
             public GeneralStatus Status { get; set; }
         }
 
@@ -44,90 +67,102 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
         {
             if (id == null) return NotFound();
 
-            ExistingLaboratory = await _context.Laboratories
+            var laboratory = await _context.Laboratories
                 .Include(l => l.CreatedBy)
                 .Include(l => l.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (ExistingLaboratory == null) return NotFound();
+            if (laboratory == null) return NotFound();
 
-            Id = ExistingLaboratory.Id;
+            ExistingLaboratory = laboratory;
 
+            // Map Entity to DTO
             Input = new LabInputModel
             {
-                FacultyId = ExistingLaboratory.FacultyId,
-                Code = ExistingLaboratory.Code,
-                Name = ExistingLaboratory.Name,
-                Type = ExistingLaboratory.Type,
-                Building = ExistingLaboratory.Building,
-                Floor = ExistingLaboratory.Floor,
-                Description = ExistingLaboratory.Description,
-                Status = ExistingLaboratory.Status
+                Id = laboratory.Id,
+                FacultyId = laboratory.FacultyId,
+                Code = laboratory.Code,
+                Name = laboratory.Name,
+                Type = laboratory.Type,
+                Building = laboratory.Building,
+                Floor = laboratory.Floor,
+                Description = laboratory.Description,
+                Status = laboratory.Status
             };
 
-            ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name", ExistingLaboratory.FacultyId);
+            LoadFaculties(laboratory.FacultyId);
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync(int id)
+        public async Task<IActionResult> OnPostAsync()
         {
-            Id = id;
-
             if (!ModelState.IsValid)
             {
-                await LoadLaboratoryData(id);
-                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name", Input.FacultyId);
+                await LoadLaboratoryData(Input.Id);
+                LoadFaculties(Input.FacultyId);
                 return Page();
             }
 
-            var normalizedName = Input.Name.NormalizeComparison();
-            var normalizedCode = Input.Code.NormalizeComparison().ToUpper();
+            // Normalization
+            var normalizedName = Input.Name.Trim().ToLower();
+            var normalizedCode = Input.Code.Trim().ToUpper();
 
+            // Validate Duplicate Code (excluding current record)
             bool codeExists = await _context.Laboratories
                 .IgnoreQueryFilters()
-                .AnyAsync(l => l.Id != id && 
+                .AnyAsync(l => l.Id != Input.Id && 
                                l.Code.ToUpper() == normalizedCode && 
                                l.Status != GeneralStatus.Eliminado);
 
             if (codeExists)
             {
-                ModelState.AddModelError("Input.Code", NotificationHelper.Laboratories.LabCodeDuplicate);
-                await LoadLaboratoryData(id);
-                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name", Input.FacultyId);
+                ModelState.AddModelError("Input.Code", $"El código institucional '{normalizedCode}' ya pertenece a otro laboratorio.");
+                await LoadLaboratoryData(Input.Id);
+                LoadFaculties(Input.FacultyId);
                 return Page();
             }
 
+            // Validate Duplicate Name within same Faculty (excluding current record)
             bool nameExists = await _context.Laboratories
                 .IgnoreQueryFilters()
-                .AnyAsync(l => l.Id != id && 
+                .AnyAsync(l => l.Id != Input.Id && 
                                l.FacultyId == Input.FacultyId && 
                                l.Name.ToLower() == normalizedName && 
                                l.Status != GeneralStatus.Eliminado);
 
             if (nameExists)
             {
-                ModelState.AddModelError("Input.Name", NotificationHelper.Laboratories.LabNameDuplicate);
-                await LoadLaboratoryData(id);
-                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name", Input.FacultyId);
+                ModelState.AddModelError("Input.Name", "Ya existe otro ambiente con este nombre en la facultad seleccionada.");
+                await LoadLaboratoryData(Input.Id);
+                LoadFaculties(Input.FacultyId);
                 return Page();
             }
 
-            var laboratory = await _context.Laboratories.FindAsync(id);
+            var laboratory = await _context.Laboratories.FindAsync(Input.Id);
             if (laboratory == null) return NotFound();
 
+            // Entity update
             laboratory.FacultyId = Input.FacultyId;
-            laboratory.Code = Input.Code.Clean().ToUpper();
+            laboratory.Code = normalizedCode;
             laboratory.Name = Input.Name.Clean();
             laboratory.Type = Input.Type?.Clean();
             laboratory.Building = Input.Building?.Clean();
             laboratory.Floor = Input.Floor?.Clean();
             laboratory.Description = Input.Description?.Clean();
             laboratory.Status = Input.Status;
+            laboratory.LastModifiedDate = DateTime.Now;
+
+            // Set current auditor
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                laboratory.ModifiedById = currentUser.Id;
+            }
 
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success(NotificationHelper.Laboratories.Updated(laboratory.Name));
+                TempData.Success($"Datos del Laboratorio '{laboratory.Name}' actualizados correctamente.");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -143,7 +178,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             ExistingLaboratory = await _context.Laboratories
                 .Include(l => l.CreatedBy)
                 .Include(l => l.ModifiedBy)
-                .FirstOrDefaultAsync(l => l.Id == id) ?? new Laboratory();
+                .FirstOrDefaultAsync(l => l.Id == id);
+        }
+
+        private void LoadFaculties(int? selectedId = null)
+        {
+            ViewData["FacultyId"] = new SelectList(_context.Faculties
+                .Where(f => f.Status == GeneralStatus.Activo || f.Id == selectedId)
+                .OrderBy(f => f.Name), "Id", "Name", selectedId);
         }
 
         private bool LaboratoryExists(int id)

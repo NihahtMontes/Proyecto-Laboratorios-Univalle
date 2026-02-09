@@ -1,21 +1,17 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Persons.CreateModel
-
-@{
-    ViewData["Title"] = "Registro de Personal";
-}
 
 <div class="row justify-content-center">
     <div class="col-lg-10 col-xl-9">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
                 <!-- Header -->
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Registrar Nueva Identidad</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Registrar Nueva Identidad</h4>
                         <h6 class="card-subtitle text-muted">Apertura de ficha en el catálogo de capital humano y colaboradores externos.</h6>
                     </div>
-                    <div class="ml-auto">
+                    <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-id-card fa-2x text-info opacity-5"></i>
                     </div>
                 </div>
@@ -24,7 +20,7 @@
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
                     <div class="row">
-                        <!-- Identificación Personal -->
+                        <!-- Personal Identification -->
                         <div class="col-md-6 border-right">
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-user-circle mr-2"></i> Identificación Personal
@@ -35,22 +31,27 @@
                                     <div class="form-group mb-4">
                                         <label asp-for="Person.FirstName" class="control-label font-weight-bold small uppercase text-muted">Nombres <span class="text-danger">*</span></label>
                                         <input asp-for="Person.FirstName" class="form-control" placeholder="Ej: Juan Antonio" required />
-                                        <span asp-validation-for="Person.FirstName" class="text-danger small"></span>
+                                        <span asp-validation-for="Person.FirstName" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group mb-4">
                                         <label asp-for="Person.LastName" class="control-label font-weight-bold small uppercase text-muted">Apellidos <span class="text-danger">*</span></label>
                                         <input asp-for="Person.LastName" class="form-control" placeholder="Ej: Pérez García" required />
-                                        <span asp-validation-for="Person.LastName" class="text-danger small"></span>
+                                        <span asp-validation-for="Person.LastName" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2">
+                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2 shadow-none rounded">
                                 <label asp-for="Person.IdentityCard" class="control-label font-weight-bold small text-info uppercase">Documento de Identidad (C.I.) <span class="text-danger">*</span></label>
-                                <input asp-for="Person.IdentityCard" class="form-control border-info shadow-none" placeholder="Ej: 1234567 LP" required />
-                                <span asp-validation-for="Person.IdentityCard" class="text-danger small"></span>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-id-card text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="Person.IdentityCard" class="form-control border-left-0" placeholder="Ej: 1234567 LP" required />
+                                </div>
+                                <span asp-validation-for="Person.IdentityCard" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="row mt-4">
@@ -60,7 +61,7 @@
                                         <select asp-for="Person.Category" class="form-control custom-select" asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.PersonCategory>()" required>
                                             <option value="">-- Seleccionar --</option>
                                         </select>
-                                        <span asp-validation-for="Person.Category" class="text-danger small"></span>
+                                        <span asp-validation-for="Person.Category" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -75,7 +76,7 @@
                             </div>
                         </div>
 
-                        <!-- Datos Profesionales y Contacto -->
+                        <!-- Professional Data and Contact -->
                         <div class="col-md-6">
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-briefcase mr-2"></i> Perfil Profesional
@@ -84,11 +85,13 @@
                             <div class="form-group mb-4">
                                 <label asp-for="Person.JobTitle" class="control-label font-weight-bold small uppercase text-muted">Cargo / Especialidad</label>
                                 <input asp-for="Person.JobTitle" class="form-control" placeholder="Ej: Jefe de Laboratorio / Estudiante" />
+                                <span asp-validation-for="Person.JobTitle" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="form-group mb-4">
                                 <label asp-for="Person.Company" class="control-label font-weight-bold small uppercase text-muted">Organización Vinculada</label>
                                 <input asp-for="Person.Company" class="form-control" placeholder="Ej: Universidad del Valle" />
+                                <span asp-validation-for="Person.Company" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <h5 class="font-weight-bold text-info mt-4 mb-3">
@@ -101,11 +104,11 @@
                                         <label asp-for="Person.Email" class="control-label font-weight-bold small uppercase text-muted">Correo Institucional / Personal</label>
                                         <div class="input-group">
                                             <div class="input-group-prepend">
-                                                <span class="input-group-text bg-white"><i class="fas fa-envelope text-muted"></i></span>
+                                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-envelope text-muted"></i></span>
                                             </div>
-                                            <input asp-for="Person.Email" type="email" class="form-control" placeholder="ejemplo@univalle.edu" />
+                                            <input asp-for="Person.Email" type="email" class="form-control border-left-0" placeholder="ejemplo@univalle.edu" />
                                         </div>
-                                        <span asp-validation-for="Person.Email" class="text-danger small"></span>
+                                        <span asp-validation-for="Person.Email" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                                 <div class="col-md-12">
@@ -113,29 +116,29 @@
                                         <label asp-for="Person.PhoneNumber" class="control-label font-weight-bold small uppercase text-muted">Número de Contacto</label>
                                         <div class="input-group">
                                             <div class="input-group-prepend">
-                                                <span class="input-group-text bg-white"><i class="fas fa-phone-alt text-muted"></i></span>
+                                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-phone-alt text-muted"></i></span>
                                             </div>
-                                            <input asp-for="Person.PhoneNumber" class="form-control" placeholder="+591 ..." />
+                                            <input asp-for="Person.PhoneNumber" class="form-control border-left-0" placeholder="+591 ..." />
                                         </div>
-                                        <span asp-validation-for="Person.PhoneNumber" class="text-danger small"></span>
+                                        <span asp-validation-for="Person.PhoneNumber" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="alert alert-light-info border-0 small p-3 mt-2 text-info d-flex align-items-center">
+                    <div class="alert alert-light border-0 small p-3 mt-2 text-info d-flex align-items-center rounded shadow-none border-left border-info border-3">
                         <i class="fas fa-info-circle mr-3 fa-2x"></i>
-                        <span>Este registro crea la identidad base. Posteriormente podrá asignar una <strong>Cuenta de Usuario</strong> vinculada a este perfil si requiere acceso al sistema.</span>
+                        <span>Este registro crea la identidad base. Posteriormente podrá asignar una <strong>Cuenta de Usuario</strong> vinculada a este perfil si requiere acceso al sistema para gestionar activos.</span>
                     </div>
 
                     <hr />
 
                     <div class="form-actions text-right mt-4">
-                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Registrar Persona
                         </button>
-                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                        <a asp-page="Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                             Cancelar
                         </a>
                     </div>
@@ -151,7 +154,31 @@
         $(function () {
             "use strict";
             $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+
+            // Spanish alphabetic pattern
+            var namePattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+
+            function restrictInput($selector, pattern) {
+                $($selector).on('input', function() {
+                    var val = $(this).val();
+                    if (!pattern.test(val)) {
+                        $(this).val(val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''));
+                    }
+                });
+            }
+
+            restrictInput('#Person_FirstName', namePattern);
+            restrictInput('#Person_LastName', namePattern);
         });
     </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 3px !important; }
+    </style>
 }
