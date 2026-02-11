@@ -14,8 +14,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int Id { get; set; }
 
         [Required]
-        [Display(Name = "Equipamiento")]
-        public int EquipmentId { get; set; }
+        [Display(Name = "Unidad de Equipamiento")]
+        public int EquipmentUnitId { get; set; }
 
         // ========================================
         // CHECKLIST ITEMS (VerificationResult: Good, Bad, NA)
@@ -94,7 +94,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public DateTime Date { get; set; } = DateTime.Now;
 
         [StringLength(2000)]
-        [Display(Name = "Observaciones Generales")]
+        [Display(Name = "Observaciones Formulario")]
         public string? Observations { get; set; }
 
         [StringLength(1000)]
@@ -127,8 +127,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // NAVIGATION
         // ========================================
-        [ForeignKey("EquipmentId")]
-        public virtual Equipment? Equipment { get; set; }
+        [ForeignKey("EquipmentUnitId")]
+        public virtual EquipmentUnit? EquipmentUnit { get; set; }
 
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }

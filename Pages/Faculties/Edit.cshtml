@@ -1,21 +1,20 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Faculties.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Editar Facultad";
-}
+
 
 <div class="row">
-    <!-- Columna Principal: Gestión Académica -->
+    <!-- Main Column: Academic Management -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Gestión de Unidad Académica</h4>
-                        <h6 class="card-subtitle text-muted">Asegúrese de que el nombre y la sigla oficial coincidan con el estatuto.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Gestión de Unidad Académica</h4>
+                        <h6 class="card-subtitle text-muted">Asegúrese de que el nombre y la sigla oficial coincidan con el estatuto institucional institucional.</h6>
                     </div>
-                    <div class="ml-auto">
+                    <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-university fa-2x text-warning opacity-5"></i>
                     </div>
                 </div>
@@ -25,7 +24,7 @@
                     <input type="hidden" asp-for="Faculty.Id" />
 
                     <div class="row">
-                        <!-- Identidad -->
+                        <!-- Identity -->
                         <div class="col-md-7 border-right">
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-id-card mr-2"></i> Identidad Institucional
@@ -34,47 +33,53 @@
                             <div class="form-group mb-4">
                                 <label asp-for="Faculty.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre de la Facultad <span class="text-danger">*</span></label>
                                 <input asp-for="Faculty.Name" class="form-control" required />
-                                <span asp-validation-for="Faculty.Name" class="text-danger small"></span>
+                                <span asp-validation-for="Faculty.Name" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Faculty.Description" class="control-label font-weight-bold small uppercase text-muted">Misión Académica / Descripción</label>
-                                <textarea asp-for="Faculty.Description" class="form-control" rows="4" placeholder="Breve descripción del alcance de la facultad..."></textarea>
+                                <label asp-for="Faculty.Description" class="control-label font-weight-bold small uppercase text-muted">Misión Académica / Alcance</label>
+                                <textarea asp-for="Faculty.Description" class="form-control" rows="4" placeholder="Breve descripción de las áreas o carreras integradas..."></textarea>
+                                <span asp-validation-for="Faculty.Description" class="text-danger small"></span>
                             </div>
                         </div>
 
-                        <!-- Referencia -->
+                        <!-- Reference -->
                         <div class="col-md-5">
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-tag mr-2"></i> Referencia
                             </h5>
-                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2">
-                                <label asp-for="Faculty.Code" class="control-label font-weight-bold small text-warning uppercase">Sigla Oficial (Acronimo)</label>
-                                <input asp-for="Faculty.Code" class="form-control border-warning shadow-none font-weight-bold" maxlength="10" />
-                                <span asp-validation-for="Faculty.Code" class="text-danger small"></span>
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-3 rounded shadow-none">
+                                <label asp-for="Faculty.Code" class="control-label font-weight-bold small text-warning uppercase mb-2">Sigla Oficial (Código)</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white"><i class="fas fa-hashtag text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="Faculty.Code" class="form-control border-warning shadow-none font-weight-bold" maxlength="10" />
+                                </div>
+                                <span asp-validation-for="Faculty.Code" class="text-danger small font-weight-bold d-block mt-1"></span>
                             </div>
 
-                            <div class="alert alert-light-info border-0 small p-3 mt-4 text-info italic shadow-none">
-                                <i class="fas fa-info-circle mr-1"></i> La sigla se utilizará en la generación de reportes y códigos de laboratorio.
+                            <div class="alert alert-light border-0 small p-3 mt-4 text-info italic shadow-none border-left border-info border-3">
+                                <i class="fas fa-info-circle mr-1"></i> La sigla se utilizará en la generación de reportes técnicos y segmentación de inventario.
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning mt-3">
-                        <label asp-for="Faculty.Status" class="text-warning small uppercase font-weight-bold">Estado Administrativo <span class="text-danger">*</span></label>
+                    <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning mt-3 shadow-none">
+                        <label asp-for="Faculty.Status" class="text-warning small uppercase font-weight-bold mb-2 d-block">Estado Administrativo <span class="text-danger">*</span></label>
                         <select asp-for="Faculty.Status" class="form-control border-warning font-weight-bold custom-select" 
-                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"
+                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
                                 required></select>
-                        <small class="text-muted italic mt-1 d-block">Indique si la facultad está habilitada para agrupar nuevos centros o laboratorios.</small>
+                        <small class="text-muted italic mt-2 d-block small">Indique si la facultad está operativa para la gestión de nuevos centros o laboratorios.</small>
                     </div>
 
                     <hr />
 
                     <div class="form-actions mt-4 text-right">
-                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold">
-                            <i class="fas fa-save mr-1"></i> Actualizar Ficha
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> Actualizar Registro
                         </button>
-                        <a asp-page="/Laboratories/Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                        <a asp-page="/Laboratories/Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                              Cancelar
                         </a>
                     </div>
@@ -83,7 +88,7 @@
         </div>
     </div>
 
-    <!-- Columna Lateral: Estado y Auditoría -->
+    <!-- Sidebar: Status and Audit -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 bg-dark text-white mb-4">
             <div class="card-body">
@@ -94,7 +99,7 @@
                     <div class="btn btn-circle btn-lg btn-info mb-3">
                         <i class="fas fa-university fa-lg"></i>
                     </div>
-                    <h5 class="font-weight-bold text-white mb-1">@Model.Faculty.Name</h5>
+                    <h5 class="font-weight-bold text-white mb-1">@(Model.Faculty.Name)</h5>
                     <span class="badge badge-pill badge-warning px-3 small font-weight-bold">@(Model.Faculty.Status)</span>
                 </div>
             </div>
@@ -104,18 +109,18 @@
             <div class="card-body">
                 <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Auditoría Operativa</h5>
                 <hr />
-                <div class="small">
+                <div class="small mt-3">
                     <div class="mb-3">
                         <label class="text-muted d-block small uppercase mb-0">Alta de Registro</label>
                         <span class="font-weight-bold text-dark d-block">@Model.Faculty.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
-                        <span class="text-muted">Por: @(Model.Faculty.CreatedBy?.FullName ?? "Sistema")</span>
+                        <div class="text-muted small">Por: @(Model.Faculty.CreatedBy?.FullName ?? "Sistema")</div>
                     </div>
-                    @if (Model.Faculty.LastModifiedDate.HasValue == true)
+                    @if (Model.Faculty.LastModifiedDate.HasValue)
                     {
                         <div class="mb-0 border-top pt-2">
                             <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
-                            <span class="font-weight-bold text-dark d-block">@Model.Faculty.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                            <span class="text-muted">Por: @(Model.Faculty.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Faculty.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.Faculty.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
                         </div>
                     }
                 </div>
@@ -131,41 +136,32 @@
             "use strict";
             $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
             
-            // Función para mostrar mensajes de error temporales
-            function showTemporaryError($el, message) {
-                var $group = $el.closest('.form-group');
-                var $help = $group.find('.help-block');
-                if ($help.length === 0) {
-                    $group.append('<div class="help-block text-danger small font-weight-bold mt-1"></div>');
-                    $help = $group.find('.help-block');
-                }
-                $help.text(message).fadeIn();
-                $group.addClass('error');
-                
-                setTimeout(function() {
-                    $help.fadeOut(function() { $(this).text(''); });
-                    $group.removeClass('error');
-                }, 2000);
-            }
-
-            // Patrón: solo letras, números, espacios, guiones, puntos y paréntesis
+            // Advanced text pattern for Spanish alfanumeric fields
             var textPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]*$/;
             
-            function setupBlocking($selector, pattern, errorMessage) {
-                $($selector).on('input', function() {
+            function setupBlocking(selector, pattern) {
+                $(selector).on('input', function() {
                     var $field = $(this);
                     var val = $field.val();
                     if (!pattern.test(val)) {
                         $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]/g, ''));
-                        showTemporaryError($field, errorMessage);
                     }
                 });
             }
 
-            // Aplicar validación agresiva
-            setupBlocking('#Input_Name', textPattern, "Carácter no permitido (especial)");
-            setupBlocking('#Input_Code', textPattern, "Código: Solo letras, números y guiones");
+            // Apply aggressive validation
+            setupBlocking('#Faculty_Name', textPattern);
+            setupBlocking('#Faculty_Code', textPattern);
         });
     </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 4px !important; }
+    </style>
 }

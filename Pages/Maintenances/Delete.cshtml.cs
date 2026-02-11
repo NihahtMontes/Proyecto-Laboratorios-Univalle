@@ -29,7 +29,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             var maintenance = await _context.Maintenances
                 .Include(m => m.MaintenanceType)
-                .Include(m => m.Equipment)
+                .Include(m => m.EquipmentUnit)
+                    .ThenInclude(eu => eu.Equipment)
                 .Include(m => m.CreatedBy)
                 .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
@@ -53,12 +54,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             }
 
             var maintenance = await _context.Maintenances
-                .Include(m => m.Equipment)
+                .Include(m => m.EquipmentUnit)
+                    .ThenInclude(eu => eu.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == id);
                 
             if (maintenance != null)
             {
-                var equipmentName = maintenance.Equipment?.Name;
+                var equipmentName = maintenance.EquipmentUnit?.Equipment?.Name;
                 
                 _context.Maintenances.Remove(maintenance);
                 await _context.SaveChangesAsync();

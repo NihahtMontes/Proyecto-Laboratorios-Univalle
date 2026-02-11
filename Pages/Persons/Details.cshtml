@@ -1,34 +1,33 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Persons.DetailsModel
-
-@{
-    ViewData["Title"] = "Expediente de Personal";
-}
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 <div class="row">
-    <!-- Columna Principal: Ficha de Identidad -->
+    <!-- Main Column: Identity File -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Expediente de Personal</h4>
-                        <h6 class="card-subtitle text-muted">Información administrativa y profesional de @Model.Person.FirstName @Model.Person.LastName</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Expediente de Personal</h4>
+                        <h6 class="card-subtitle text-muted">Información administrativa y profesional de @Model.Person.FullName</h6>
                     </div>
-                    <div class="ml-auto">
+                    <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-id-badge fa-2x text-info opacity-5"></i>
                     </div>
                 </div>
 
                 <div class="row mt-4">
                     <div class="col-md-5 border-right text-center">
-                        <div class="btn btn-circle btn-lg btn-light-info text-info mb-3" style="width: 80px; height: 80px; line-height: 70px;">
+                        <div class="btn btn-circle btn-lg btn-light-info text-info mb-3 shadow-none" style="width: 80px; height: 80px; line-height: 70px;">
                             <i class="fas fa-user-circle fa-3x"></i>
                         </div>
-                        <h3 class="font-weight-bold text-dark mb-1">@Model.Person.FirstName @Model.Person.LastName</h3>
-                        <span class="badge badge-pill badge-primary px-3 mb-3">@Model.Person.Category</span>
+                        <h3 class="font-weight-bold text-dark mb-1">@Model.Person.FullName</h3>
+                        <div class="mb-3">
+                            <span class="badge badge-pill badge-primary px-3">@Model.Person.Category</span>
+                        </div>
                         
-                        <div class="mt-2 bg-light p-3 rounded border">
+                        <div class="mt-2 bg-light p-3 rounded border shadow-none italic border-left border-info border-3">
                             <label class="text-muted small uppercase font-weight-bold d-block mb-1">Documento Identidad</label>
                             <h4 class="font-weight-bold text-dark mb-0">@Model.Person.IdentityCard</h4>
                         </div>
@@ -39,14 +38,14 @@
                         
                         <div class="mb-4">
                             <div class="d-flex align-items-center mb-3">
-                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3"><i class="fas fa-envelope"></i></span>
+                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3 font-weight-bold"><i class="fas fa-envelope"></i></span>
                                 <div>
                                     <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Correo Electrónico</small>
                                     <span class="font-weight-bold text-dark">@(Model.Person.Email ?? "No registrado")</span>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
-                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3"><i class="fas fa-phone-alt"></i></span>
+                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3 font-weight-bold"><i class="fas fa-phone-alt"></i></span>
                                 <div>
                                     <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Teléfono / Celular</small>
                                     <span class="font-weight-bold text-dark">@(Model.Person.PhoneNumber ?? "No registrado")</span>
@@ -55,51 +54,59 @@
                         </div>
 
                         <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-briefcase mr-2"></i> Perfil Laboral</h5>
-                        <table class="table table-sm table-borderless bg-light rounded p-2">
-                            <tbody>
-                                <tr>
-                                    <th class="text-muted small uppercase pl-3" style="width: 35%;">Cargo Actual:</th>
-                                    <td class="font-weight-bold text-dark">@(Model.Person.JobTitle ?? "No asignado")</td>
-                                </tr>
-                                <tr>
-                                    <th class="text-muted small uppercase pl-3">Organización:</th>
-                                    <td class="font-weight-bold text-dark">@(Model.Person.Company ?? "Universidad del Valle")</td>
-                                </tr>
-                                <tr>
-                                    <th class="text-muted small uppercase pl-3">Vínculo:</th>
-                                    <td>
-                                        <span class="badge @(Model.Person.IsInternal ? "badge-success" : "badge-secondary") px-2">
-                                            @(Model.Person.IsInternal ? "Interno" : "Externo")
-                                        </span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="table-responsive shadow-none">
+                            <table class="table table-sm table-borderless bg-light rounded p-2">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-3 font-weight-bold" style="width: 35%;">Cargo Actual:</th>
+                                        <td class="font-weight-bold text-dark">@(Model.Person.JobTitle ?? "No asignado")</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-3 font-weight-bold">Organización:</th>
+                                        <td class="font-weight-bold text-dark">@(Model.Person.Company ?? "Universidad del Valle")</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-3 font-weight-bold">Vínculo:</th>
+                                        <td>
+                                            <span class="badge @(Model.Person.IsInternal ? "badge-success" : "badge-secondary") px-2 font-weight-bold">
+                                                @(Model.Person.IsInternal ? "Interno" : "Externo")
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Columna Lateral: Auditoría y Acciones -->
+    <!-- Sidebar: Audit and Actions -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
             <div class="card-body">
-                <h5 class="card-title text-white font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-info"></i> Trazabilidad de Perfil</h5>
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-history mr-2 text-info"></i> Trazabilidad de Perfil</h5>
                 <hr class="border-secondary" />
-                <div class="small">
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Estado Operativo:</small>
+                    <span class="badge badge-pill badge-@(Model.Person.Status == GeneralStatus.Activo ? "success" : "danger") px-3 font-weight-bold">@Model.Person.Status</span>
+                </div>
+
+                <div class="small mt-4">
                     <div class="mb-3">
                         <label class="text-muted d-block small uppercase mb-0">Fecha de Alta</label>
-                        <span class="font-weight-bold">@Model.Person.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
-                        <div class="text-muted">Por: @(Model.Person.CreatedBy?.FullName ?? "Sistema")</div>
+                        <span class="font-weight-bold text-white d-block">@Model.Person.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="text-muted small italic">Por: @(Model.Person.CreatedBy?.FullName ?? "Sistema")</div>
                     </div>
 
                     @if (Model.Person.LastModifiedDate.HasValue)
                     {
                         <div class="mb-0 border-top border-secondary pt-2">
-                            <label class="text-muted d-block small uppercase mb-0">Última Edición</label>
-                            <span class="font-weight-bold">@Model.Person.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                            <div class="text-muted">Por: @(Model.Person.ModifiedBy?.FullName ?? "-")</div>
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <span class="text-white font-weight-bold d-block">@(Model.Person.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small italic">@Model.Person.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
                         </div>
                     }
                 </div>
@@ -110,13 +117,21 @@
             <a asp-page="./Edit" asp-route-id="@Model.Person.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
                 <i class="fas fa-edit mr-1"></i> Editar Perfil
             </a>
-            <a asp-page="Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4">
+            <a asp-page="Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 font-weight-bold mb-4">
                 <i class="fas fa-list mr-1"></i> Volver al Directorio
             </a>
             
-            <a asp-page="./Delete" asp-route-id="@Model.Person.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+            <a asp-page="./Delete" asp-route-id="@Model.Person.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">
                 <i class="fas fa-trash-alt mr-1"></i> Desvincular Persona del Catálogo
             </a>
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 3px !important; }
+    </style>
+}

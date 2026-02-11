@@ -2,197 +2,182 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Bitácora de Verificaciones";
-}
-
-<!-- Notification Script -->
-@if (TempData["SuccessMessage"] != null)
-{
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            Swal.fire({
-                title: '¡Operación Exitosa!',
-                text: '@Html.Raw(TempData["SuccessMessage"])',
-                icon: 'success',
-                confirmButtonText: 'Entendido',
-                confirmButtonColor: '#28a745',
-                timer: 4000
-            });
-        });
-    </script>
-}
-
-<div class="container-fluid px-0"> <!-- Full width container para maximizar espacio -->
-    
-    <!-- 1. HEADER PREMIUM -->
-    <div class="card bg-gradient-dark border-0 shadow-lg mb-4 text-white overflow-hidden" 
-         style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); border-radius: 12px;">
-        <div class="card-body p-4 position-relative">
-            <!-- Decoración de fondo abstracta -->
-            <i class="fas fa-clipboard-check position-absolute" style="font-size: 10rem; opacity: 0.05; right: -20px; top: -20px; transform: rotate(15deg);"></i>
-            
-            <div class="row align-items-center position-relative" style="z-index: 1;">
-                <div class="col-lg-8">
-                    <h2 class="font-weight-bold mb-1 text-white">
-                        <i class="fas fa-check-double mr-2 text-info"></i>Verificaciones Técnicas
-                    </h2>
-                    <p class="mb-0 text-white-50" style="font-size: 1.05rem;">
-                        Gestión centralizada de inspecciones y estado operativo de equipos.
-                    </p>
-                </div>
-                <div class="col-lg-4 text-lg-right mt-3 mt-lg-0">
-                    <a asp-page="Create" class="btn btn-light text-primary btn-pill shadow px-4 font-weight-bold py-2">
-                        <i class="fas fa-plus mr-2"></i> Nueva Inspección
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. BARRA DE HERRAMIENTAS (Restaurada al estilo original) -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <form method="get" class="form-inline w-100">
-            <div class="input-group w-100 shadow-sm">
-                <div class="input-group-prepend">
-                    <span class="input-group-text bg-white border-0 pl-3"><i class="fas fa-search text-muted"></i></span>
-                </div>
-                <input type="text" name="SearchString" value="@Model.CurrentFilter" class="form-control border-0 bg-white" placeholder="Buscar por equipo o número de inventario..." style="height: 50px;">
-                @if (!string.IsNullOrEmpty(Model.CurrentFilter))
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                @if (TempData["Error"] != null)
                 {
-                    <div class="input-group-append">
-                        <a asp-page="./Index" class="btn btn-white border-0 text-muted d-flex align-items-center pr-3" title="Limpiar filtro">
-                            <i class="fas fa-times"></i>
-                        </a>
+                    <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        <strong>Error:</strong> @TempData["Error"]
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
                 }
-            </div>
-        </form>
-    </div>
+                <!-- Header -->
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Bitácora de Verificaciones Técnicas</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Registro de inspecciones y checklist de funcionamiento de equipos.</h6>
+                    </div>
 
-    <!-- 3. TABLA DE RESULTADOS -->
-    <div class="card shadow border-0 rounded-lg">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light text-uppercase text-secondary" style="font-size: 0.8rem; letter-spacing: 0.5px;">
-                        <tr>
-                            <th class="pl-4 py-3 border-0 font-weight-bold" style="min-width: 250px;">Equipo Inspeccionado</th>
-                            <th class="py-3 border-0 font-weight-bold">Fecha / Auditor</th>
-                            <th class="py-3 border-0 text-center font-weight-bold">Estado</th>
-                            <th class="py-3 border-0 font-weight-bold">Observaciones</th>
-                            <th class="pr-4 py-3 border-0 text-right font-weight-bold" style="width: 160px;">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.Verifications.Count == 0)
-                        {
-                            <tr>
-                                <td colspan="5" class="text-center py-5">
-                                    <div class="text-muted opacity-50">
-                                        <i class="fas fa-inbox fa-3x mb-3"></i>
-                                        <p class="h6 font-weight-normal">No hay inspecciones registradas @(string.IsNullOrEmpty(Model.CurrentFilter) ? "" : "con este criterio")</p>
+                    <div class="ml-auto mt-3">
+                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                            <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Solicitud
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 🛠️ Unified Toolbar -->
+                <div class="bg-light p-4 mb-4 rounded border shadow-sm">
+                    <!-- Level 1: Report Generation (Topbar) -->
+                    <form method="post" asp-page-handler="GenerateReport">
+                        <div class="d-lg-flex align-items-center mb-4 pb-3 border-bottom border-muted">
+                            <div class="mb-2 mb-lg-0 mr-auto">
+                                <h6 class="font-weight-bold text-dark mb-1"><i class="fas fa-file-excel mr-2 text-success"></i> Reporte Oficial L-6</h6>
+                                <small class="text-muted d-block">Seleccione los parámetros para descargar el inventario.</small>
+                            </div>
+                            
+                            <div class="d-flex flex-wrap align-items-center justify-content-lg-end">
+                                <div class="input-group input-group-sm mr-2 mb-2" style="width: 220px;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-flask text-muted"></i></span>
                                     </div>
-                                </td>
+                                    <select asp-for="ReportInput.LaboratoryId" class="form-control border-left-0" asp-items="Model.LaboratoryList" required>
+                                        <option value="">-- Laboratorio --</option>
+                                    </select>
+                                </div>
+
+                                <div class="input-group input-group-sm mr-2 mb-2" style="width: 140px;">
+                                    <div class="input-group-prepend">
+                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-calendar-alt text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="ReportInput.Term" class="form-control border-left-0" placeholder="Gestión" required />
+                                </div>
+
+                                <div class="input-group input-group-sm mr-2 mb-2" style="width: 180px;">
+                                    <div class="input-group-prepend">
+                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-user text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="ReportInput.Responsible" class="form-control border-left-0" placeholder="Responsable" required />
+                                </div>
+
+                                <button type="submit" class="btn btn-success btn-sm btn-rounded shadow-sm font-weight-bold px-3 mb-2">
+                                    <i class="fas fa-download mr-1"></i> Excel
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Level 2: Search & Filter -->
+                    <form method="get">
+                        <div class="row align-items-end">
+                            <div class="col-md-5">
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo o código de inventario..." />
+                                </div>
+                            </div>
+                            <div class="col-md-7 text-right mt-3 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm font-weight-bold btn-sm">
+                                    <i class="fas fa-filter mr-1"></i> Buscar
+                                </button>
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1 btn-sm">
+                                    <i class="fas fa-sync-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th class="border-top-0">Equipo Inspeccionado</th>
+                                <th class="border-top-0 text-center">Fecha</th>
+                                <th class="border-top-0">Inspector</th>
+                                <th class="border-top-0 text-center">Progreso</th>
+                                <th class="border-top-0 text-center">Estado</th>
+                                <th class="border-top-0 text-center">Acciones</th>
                             </tr>
-                        }
-                        else
-                        {
-                            @foreach (var item in Model.Verifications)
+                        </thead>
+                        <tbody>
+                            @if (Model.Verifications == null || !Model.Verifications.Any())
                             {
-                                <tr class="border-bottom-custom">
-                                    <td class="pl-4 py-3">
-                                        <div class="d-flex align-items-center">
-                                            <div class="avatar-icon bg-soft-primary text-primary rounded-circle mr-3 d-flex align-items-center justify-content-center" 
-                                                 style="width: 45px; height: 45px; min-width: 45px;">
-                                                <i class="fas fa-microscope" style="font-size: 1.2rem;"></i>
-                                            </div>
-                                            <div>
-                                                <div class="font-weight-bold text-dark text-truncate" style="max-width: 250px;" title="@item.Equipment.Name">
-                                                    @item.Equipment.Name
-                                                </div>
-                                                <div class="small text-muted">
-                                                    <i class="fas fa-barcode mr-1"></i>@item.Equipment.InventoryNumber
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="py-3">
-                                        <div class="d-flex flex-column">
-                                            <span class="text-dark font-weight-bold" style="font-size: 0.95rem;">
-                                                @item.Date.ToString("dd MMM, yyyy")
-                                            </span>
-                                            <small class="text-muted">
-                                                <i class="fas fa-user-circle mr-1"></i>@(item.CreatedBy?.FullName ?? "Sistema")
-                                            </small>
-                                        </div>
-                                    </td>
-                                    <td class="text-center py-3">
-                                        @{
-                                            var (badgeClass, iconClass) = item.Status switch
-                                            {
-                                                VerificationStatus.Completed => ("badge-soft-success text-success", "fas fa-check"),
-                                                VerificationStatus.WithObservations => ("badge-soft-warning text-warning", "fas fa-exclamation"),
-                                                VerificationStatus.Draft => ("badge-soft-secondary text-secondary", "fas fa-pen"),
-                                                VerificationStatus.Annulled => ("badge-soft-danger text-danger", "fas fa-ban"),
-                                                _ => ("badge-light text-muted", "fas fa-question")
-                                            };
-                                        }
-                                        <span class="badge @badgeClass px-3 py-2 rounded-pill border-0 font-weight-bold" style="font-size: 0.8rem;">
-                                            <i class="@iconClass mr-1"></i> @Html.DisplayFor(modelItem => item.Status)
-                                        </span>
-                                    </td>
-                                    <td class="py-3">
-                                        @if (!string.IsNullOrEmpty(item.CriticalFindings))
-                                        {
-                                            <div class="d-flex align-items-center text-danger" title="@item.CriticalFindings">
-                                                <i class="fas fa-exclamation-triangle mr-2"></i>
-                                                <span class="text-truncate d-inline-block" style="max-width: 200px;">
-                                                    @item.CriticalFindings
-                                                </span>
-                                            </div>
-                                        }
-                                        else if (!string.IsNullOrEmpty(item.Observations))
-                                        {
-                                             <div class="d-flex align-items-center text-info" title="@item.Observations">
-                                                <i class="fas fa-info-circle mr-2"></i>
-                                                <span class="text-truncate d-inline-block" style="max-width: 200px;">
-                                                    @item.Observations
-                                                </span>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted small font-italic">Sin observaciones</span>
-                                        }
-                                    </td>
-                                    <td class="pr-4 py-3 text-right text-nowrap">
-                                        <a asp-page="./Details" asp-route-id="@item.Id" 
-                                           class="btn btn-icon btn-light text-info btn-sm mr-1 shadow-sm" 
-                                           data-toggle="tooltip" title="Detalles">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a asp-page="./Edit" asp-route-id="@item.Id" 
-                                           class="btn btn-icon btn-light text-primary btn-sm mr-1 shadow-sm" 
-                                           data-toggle="tooltip" title="Editar">
-                                            <i class="fas fa-pencil-alt"></i>
-                                        </a>
-                                        <a asp-page="./Delete" asp-route-id="@item.Id" 
-                                           class="btn btn-icon btn-light text-danger btn-sm shadow-sm" 
-                                           data-toggle="tooltip" title="Eliminar">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </a>
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted italic font-weight-bold">
+                                        <i class="fas fa-clipboard-check fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron verificaciones registradas.
                                     </td>
                                 </tr>
                             }
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="card-footer bg-white border-top-0 py-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <small class="text-muted">Total Registros: <strong>@Model.Verifications.Count</strong></small>
+                            else
+                            {
+                                foreach (var item in Model.Verifications)
+                                {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="m-r-10">
+                                                <span class="btn btn-circle btn-sm btn-light-success text-success"><i class="fas fa-check-double"></i></span>
+                                            </div>
+                                            <div>
+                                                <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
+                                                <span class="text-muted small">Inv: @item.EquipmentUnit?.InventoryNumber</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="text-dark font-weight-bold small">@item.Date.ToString("dd/MM/yyyy")</span>
+                                    </td>
+                                    <td>
+                                        <div class="small text-dark font-weight-bold">@(item.CreatedBy?.FullName ?? "Sistema")</div>
+                                        <small class="text-muted">Inspector</small>
+                                    </td>
+                                    <td class="text-center" style="width: 15%;">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <span class="small font-weight-bold mr-2">@item.CompletionPercentage%</span>
+                                            <div class="progress flex-grow-1" style="height: 6px;">
+                                                <div class="progress-bar bg-info" role="progressbar" style="width: @item.CompletionPercentage%;" aria-valuenow="@item.CompletionPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        @{
+                                            var (statusClass, statusText) = item.Status switch {
+                                                VerificationStatus.Completed => ("badge-success", "COMPLETADA"),
+                                                VerificationStatus.Draft => ("badge-warning", "BORRADOR"),
+                                                VerificationStatus.Reviewed => ("badge-info", "REVISADA"),
+                                                _ => ("badge-secondary", "DESCONOCIDO")
+                                            };
+                                        }
+                                        <span class="badge @statusClass px-3 py-1">@statusText</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Continuar / Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Ver Detalles">
+                                                <i class="fas fa-search-plus"></i>
+                                            </a>
+                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -200,28 +185,9 @@
 
 @section Styles {
     <style>
-        .btn-pill { border-radius: 50px; }
-        .bg-gradient-dark { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
-        .badge-soft-success { background-color: #d1e7dd; color: #0f5132; } /* Verde suave */
-        .badge-soft-warning { background-color: #fff3cd; color: #664d03; } /* Amarillo suave */
-        .badge-soft-danger { background-color: #f8d7da; color: #842029; } /* Rojo suave */
-        .badge-soft-secondary { background-color: #e2e3e5; color: #41464b; } /* Gris suave */
-        .badge-soft-info { background-color: #cff4fc; color: #055160; } /* Info suave */
-        
-        .btn-icon { width: 32px; height: 32px; padding: 0; line-height: 32px; border-radius: 6px; transition: all 0.2s; }
-        .btn-icon:hover { transform: translateY(-2px); }
-        .text-nowrap { white-space: nowrap !important; }
-        .border-bottom-custom { border-bottom: 1px solid #f0f0f0; }
-        .border-bottom-custom:last-child { border-bottom: none; }
-        .avatar-icon { font-size: 1.2rem; }
+        .v-middle td { vertical-align: middle !important; }
+        .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+        .italic { font-style: italic; }
     </style>
-}
-
-@section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        $(function () {
-            $('[data-toggle="tooltip"]').tooltip()
-        })
-    </script>
 }

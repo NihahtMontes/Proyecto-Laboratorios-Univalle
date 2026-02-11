@@ -20,9 +20,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Bloque (Snapshot)")]
         public string BlockSnapshot { get; set; } = string.Empty;
 
-        [Required]
-        [Display(Name = "Equipamiento")]
-        public int EquipmentId { get; set; }
+        [Display(Name = "Unidad de Equipamiento")]
+        public int? EquipmentUnitId { get; set; }
 
         [Required]
         [StringLength(200)]
@@ -67,8 +66,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Fecha de Creación")]
         public DateTime CreatedDate { get; set; } = DateTime.Now;
 
-        [ForeignKey("EquipmentId")]
-        public virtual Equipment? Equipment { get; set; }
+        [ForeignKey("EquipmentUnitId")]
+        public virtual EquipmentUnit? EquipmentUnit { get; set; }
 
         [ForeignKey("AssignedTechnicianId")]
         public virtual User? Technician { get; set; }

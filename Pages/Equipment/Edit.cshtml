@@ -1,135 +1,103 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.EditModel
-
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Actualizar Equipamiento";
+    ViewData["Title"] = "Editar Definición de Equipo";
 }
 
 <div class="row">
-    <!-- Columna Principal: Ficha de Edición -->
+    <!-- Main Column: Technical Record -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Editar Ficha Técnica: @(Model.ExistingEquipmentDisplay?.Name ?? "Equipo")</h4>
-                        <h6 class="card-subtitle text-muted">Actualice los parámetros de operación, ubicación y especificaciones del activo.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Editar Definición: @(Model.ExistingEquipmentDisplay?.Name ?? "Equipo")</h4>
+                        <h6 class="card-subtitle text-muted">Actualice la ficha técnica general del catálogo.</h6>
                     </div>
-                    <div class="ml-auto">
-                        <i class="fas fa-edit fa-2x text-warning opacity-5"></i>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-edit fa-2x text-warning"></i>
                     </div>
                 </div>
 
-                <form method="post" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
-                    <input type="hidden" name="id" value="@Model.Id" />
+                <form method="post" novalidate id="editForm">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" asp-for="Input.Id" />
 
                     <div class="row">
-                        <!-- Identificación y Ubicación -->
+                        <!-- Identification & Origin -->
                         <div class="col-md-6 border-right">
-                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-barcode mr-2"></i> Identificación Base</h5>
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-barcode mr-2"></i> Identificación y Origen</h5>
                             
                             <div class="form-group mb-3">
                                 <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Activo <span class="text-danger">*</span></label>
-                                <input asp-for="Input.Name" class="form-control" required 
-                                       pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]+$"
-                                       data-validation-pattern-message="Formato de nombre no válido."/>
+                                <input asp-for="Input.Name" class="form-control" required placeholder="Ej: Espectrofotómetro" />
                                 <span asp-validation-for="Input.Name" class="text-danger small"></span>
                             </div>
 
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3 border-left border-warning pl-3 bg-light p-2">
-                                        <label asp-for="Input.InventoryNumber" class="control-label font-weight-bold small text-warning uppercase">N° Inventario <span class="text-danger">*</span></label>
-                                        <input asp-for="Input.InventoryNumber" class="form-control border-warning shadow-none" required />
-                                        <span asp-validation-for="Input.InventoryNumber" class="text-danger small"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label asp-for="Input.EquipmentTypeId" class="control-label font-weight-bold small uppercase text-muted">Categoría <span class="text-danger">*</span></label>
-                                        <select asp-for="Input.EquipmentTypeId" class="form-control custom-select" asp-items="ViewBag.EquipmentTypeId" required></select>
-                                    </div>
-                                </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.EquipmentTypeId" class="control-label font-weight-bold small uppercase text-muted">Categoría <span class="text-danger">*</span></label>
+                                <select asp-for="Input.EquipmentTypeId" class="form-control custom-select" asp-items="ViewBag.EquipmentTypeId" required></select>
+                                <span asp-validation-for="Input.EquipmentTypeId" class="text-danger small"></span>
                             </div>
 
-                            <h5 class="font-weight-bold text-info mt-4 mb-3"><i class="fas fa-map-marker-alt mr-2"></i> Ubicación y Origen</h5>
-                            <div class="form-group mb-3">
-                                <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small uppercase text-muted">Laboratorio Asignado <span class="text-danger">*</span></label>
-                                <select asp-for="Input.LaboratoryId" class="form-control custom-select" asp-items="ViewBag.LaboratoryId" required></select>
-                            </div>
-
-                            <div class="form-group mb-3">
-                                <label asp-for="Input.CityId" class="control-label font-weight-bold small uppercase text-muted">Sede Origen <span class="text-danger">*</span></label>
-                                <select asp-for="Input.CityId" class="form-control custom-select" asp-items="ViewBag.CityId" required></select>
+                            <!-- Origin Section -->
+                            <div class="row mt-4 pt-2 border-top">
+                                <div class="col-md-12">
+                                    <h6 class="font-weight-bold text-muted small uppercase mb-3 text-info">Geolocalización / Procedencia</h6>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="Input.CountryId" class="control-label font-weight-bold small uppercase text-muted">País / Sede</label>
+                                    <select asp-for="Input.CountryId" class="form-control custom-select" asp-items="ViewBag.CountryId" id="countrySelect">
+                                        <option value="">-- Seleccione País --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label asp-for="Input.CityId" class="control-label font-weight-bold small uppercase text-muted">Ciudad / Sede</label>
+                                    <select asp-for="Input.CityId" class="form-control custom-select" asp-items="ViewBag.CityId" id="citySelect">
+                                        <option value="">-- Seleccione Ciudad --</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Estado y Especificaciones -->
+                        <!-- Specifications -->
                         <div class="col-md-6">
-                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-check-circle mr-2"></i> Estado Operativo</h5>
-                            <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning">
-                                <label asp-for="Input.CurrentStatus" class="control-label font-weight-bold small text-warning uppercase">Estatus del Activo <span class="text-danger">*</span></label>
-                                <select asp-for="Input.CurrentStatus" class="form-control custom-select border-warning font-weight-bold" asp-items="ViewBag.ListaEstadosEquipo" required></select>
-                                <small class="text-muted italic d-block mt-2 small"><i class="fas fa-info-circle mr-1"></i> El sistema actualizará el ciclo de vida automáticamente.</small>
-                            </div>
-
                             <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-cogs mr-2"></i> Ficha Técnica</h5>
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group mb-3">
                                         <label asp-for="Input.Brand" class="control-label font-weight-bold small uppercase text-muted">Marca</label>
-                                        <input asp-for="Input.Brand" class="form-control shadow-none" 
-                                               pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\.-]+$"
-                                               data-validation-pattern-message="Formato de marca no válido" />
+                                        <input asp-for="Input.Brand" class="form-control shadow-none" placeholder="Ej: Agilent" />
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group mb-3">
                                         <label asp-for="Input.Model" class="control-label font-weight-bold small uppercase text-muted">Modelo</label>
-                                        <input asp-for="Input.Model" class="form-control shadow-none" 
-                                               pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\.-]+$"
-                                               data-validation-pattern-message="Formato de modelo no válido" />
+                                        <input asp-for="Input.Model" class="form-control shadow-none" placeholder="Ej: Model-X" />
                                     </div>
                                 </div>
-                            </div>
-                            <div class="form-group mb-3">
-                                <label asp-for="Input.SerialNumber" class="control-label font-weight-bold small uppercase text-muted">Número de Serie</label>
-                                <input asp-for="Input.SerialNumber" class="form-control shadow-none" />
                             </div>
 
-                            <h5 class="font-weight-bold text-info mt-4 mb-3"><i class="fas fa-dollar-sign mr-2"></i> Lifecycle</h5>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label asp-for="Input.UsefulLifeYears" class="control-label font-weight-bold small uppercase text-muted">Vida Útil (Años)</label>
-                                        <input asp-for="Input.UsefulLifeYears" class="form-control shadow-none" type="number" />
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-group mb-3">
-                                        <label asp-for="Input.AcquisitionValue" class="control-label font-weight-bold small uppercase text-muted">Valor USD</label>
-                                        <input asp-for="Input.AcquisitionValue" class="form-control shadow-none" 
-                                               type="number" step="0.01" min="0"
-                                               data-validation-number-message="Debe ser un valor numérico" />
-                                    </div>
-                                </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.UsefulLifeYears" class="control-label font-weight-bold small uppercase text-muted">Vida Útil Estimada (Años)</label>
+                                <input asp-for="Input.UsefulLifeYears" class="form-control shadow-none" type="number" min="0" />
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small uppercase text-muted">Descripción / Especificaciones</label>
+                                <textarea asp-for="Input.Description" class="form-control" rows="4" placeholder="Especificaciones técnicas..."></textarea>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="form-group mt-3">
-                        <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Notas Adicionales / Historial de Uso</label>
-                        <textarea asp-for="Input.Observations" class="form-control bg-light" rows="3"></textarea>
                     </div>
 
                     <hr />
 
                     <div class="form-actions text-right mt-4">
-                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Guardar Cambios
                         </button>
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                             Cancelar
                         </a>
                     </div>
@@ -138,121 +106,72 @@
         </div>
     </div>
 
-    <!-- Panel Lateral Informativo -->
+    <!-- Side Panel -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 bg-dark text-white mb-4">
-            <div class="card-body">
-                <h5 class="card-title text-white"><i class="fas fa-info-circle mr-2 text-info"></i> Gestión de Vida Útil</h5>
+            <div class="card-body p-4">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-info-circle mr-2 text-info"></i> Estado del Activo</h5>
                 <hr class="border-secondary" />
                 
-                <div class="mb-3 d-flex justify-content-between align-items-center">
-                    <small class="text-muted uppercase">Antigüedad</small>
-                    <span class="font-weight-bold">@(Model.ExistingEquipmentDisplay?.AgeYears?.ToString() ?? "0") años</span>
-                </div>
-
-                <div class="mb-3 d-flex justify-content-between align-items-center">
-                    <small class="text-muted uppercase">Remanente</small>
-                    @{
-                        var rem = (Model.ExistingEquipmentDisplay?.UsefulLifeYears ?? 0) - (Model.ExistingEquipmentDisplay?.AgeYears ?? 0);
-                        var remClass = rem < 2 ? "text-danger" : "text-success";
-                    }
-                    <span class="font-weight-bold @remClass">@rem años</span>
-                </div>
-
-                @if (Model.ExistingEquipmentDisplay?.RequiresReplacement == true)
-                {
-                    <div class="alert alert-warning border-0 mb-0 small text-dark p-2 mt-3">
-                        <i class="fas fa-exclamation-triangle mr-2"></i> 
-                        <strong>Atención:</strong> Sugerido para reemplazo por obsolescencia.
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-info mb-3">
+                        <i class="fas fa-microscope fa-lg"></i>
                     </div>
-                }
+                    <h5 class="font-weight-bold text-white mb-1">@Model.Input.Name</h5>
+                    <span class="badge badge-pill badge-info px-3 small font-weight-bold">Catálogo</span>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted small uppercase font-weight-bold">Unidades Registradas:</span>
+                    <span class="font-weight-bold text-info">@((Model.ExistingEquipmentDisplay?.Units?.Count ?? 0) + " Unidades")</span>
+                </div>
             </div>
         </div>
 
         <div class="card shadow-sm border-0">
             <div class="card-body">
-                <h5 class="card-title text-dark font-weight-bold mb-4"><i class="fas fa-history mr-2 text-warning"></i> Control de Auditoría</h5>
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Control de Auditoría</h5>
                 <hr />
                 <div class="small mt-3">
                     <div class="mb-3">
                         <label class="text-muted d-block small uppercase mb-0">Fecha de Alta</label>
-                        <span class="text-dark font-weight-bold">@Model.ExistingEquipmentDisplay?.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <span class="text-dark font-weight-bold d-block">@(Model.ExistingEquipmentDisplay?.CreatedDate.ToString("dd/MM/yyyy HH:mm"))</span>
+                        <span class="text-muted">Por: @(Model.ExistingEquipmentDisplay?.CreatedBy?.Initials ?? "Sist.")</span>
                     </div>
-                    <div>
-                        <label class="text-muted d-block small uppercase mb-0">Última Modificación</label>
-                        <span class="text-dark font-weight-bold">@(Model.ExistingEquipmentDisplay?.LastModifiedDate?.ToString("dd/MM/yyyy HH:mm") ?? "Sin cambios previos")</span>
-                    </div>
+                    @if (Model.ExistingEquipmentDisplay?.LastModifiedDate.HasValue == true)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <span class="text-dark font-weight-bold d-block">@Model.ExistingEquipmentDisplay.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            <span class="text-muted">Por: @(Model.ExistingEquipmentDisplay.ModifiedBy?.Initials ?? "-")</span>
+                        </div>
+                    }
                 </div>
             </div>
-        </div>
-        
-        <div class="alert alert-light border shadow-none small text-muted">
-            <i class="fas fa-info-circle mr-1"></i> Los cambios en el laboratorio o ciudad de origen pueden afectar los reportes regionales de inventario.
         </div>
     </div>
 </div>
 
 @section Scripts {
-    <script src="~/lib/nice-admin/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
     <script>
         $(function () {
-            "use strict";
-            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+             // Cascading Dropdown Logic
+            $('#countrySelect').on('change', function() {
+                var countryId = $(this).val();
+                var $citySelect = $('#citySelect');
+                $citySelect.empty().append('<option value="">Cargando sedes...</option>');
 
-            // Función para mostrar mensajes de error temporales
-            function showTemporaryError($el, message) {
-                var $group = $el.closest('.form-group');
-                var $help = $group.find('.help-block');
-                if ($help.length === 0) {
-                    $group.append('<div class="help-block text-danger small font-weight-bold mt-1"></div>');
-                    $help = $group.find('.help-block');
-                }
-                $help.text(message).fadeIn();
-                $group.addClass('error');
-                
-                setTimeout(function() {
-                    $help.fadeOut(function() { $(this).text(''); });
-                    $group.removeClass('error');
-                }, 2000);
-            }
-
-            // Patrón: solo letras, números, espacios, guiones, puntos y paréntesis
-            var textPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]*$/;
-            
-            function setupBlocking($selector, pattern, errorMessage) {
-                $($selector).on('input', function() {
-                    var $field = $(this);
-                    var val = $field.val();
-                    if (!pattern.test(val)) {
-                        $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]/g, ''));
-                        showTemporaryError($field, errorMessage);
-                    }
-                });
-            }
-
-            // Aplicar validación agresiva
-            setupBlocking('#Input_Name', textPattern, "Nombre: Formato no permitido");
-            setupBlocking('#Input_Brand', textPattern, "Marca: Formato no permitido");
-            setupBlocking('#Input_Model', textPattern, "Modelo: Formato no permitido");
-            setupBlocking('#Input_SerialNumber', textPattern, "S/N: Formato no permitido");
-            
-            // Validación para Valor USD (solo números y punto decimal)
-            $('#Input_AcquisitionValue').on('input', function() {
-                var $field = $(this);
-                var val = $field.val();
-                if (!/^[0-9\.]*$/.test(val)) {
-                    $field.val(val.replace(/[^0-9\.]/g, ''));
-                    showTemporaryError($field, "Solo se permiten números y punto decimal");
-                }
-            });
-            
-            // Validación para Vida Útil (solo números)
-            $('#Input_UsefulLifeYears').on('input', function() {
-                var $field = $(this);
-                var val = $field.val();
-                if (!/^[0-9]*$/.test(val)) {
-                    $field.val(val.replace(/[^0-9]/g, ''));
-                    showTemporaryError($field, "Solo se permiten números enteros");
+                if (countryId) {
+                    $.getJSON(`?handler=CitiesByCountry&countryId=${countryId}`, function(data) {
+                        $citySelect.empty().append('<option value="">-- Seleccione Ciudad --</option>');
+                        $.each(data, function(i, city) {
+                            $citySelect.append($('<option/>', { value: city.value, text: city.text }));
+                        });
+                    }).fail(function() {
+                        $citySelect.empty().append('<option value="">Error al cargar</option>');
+                    });
+                } else {
+                    $citySelect.empty().append('<option value="">-- Seleccione País Primero --</option>');
                 }
             });
         });

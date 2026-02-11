@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -13,11 +13,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
     [Authorize(Roles = AuthorizationHelper.AdminRoles)]
     public class CreateModel : PageModel
     {
-        private readonly Data.ApplicationDbContext _context;
+        private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public CreateModel(Data.ApplicationDbContext context)
+        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         public IActionResult OnGet()
@@ -31,8 +33,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
         public class InputModel
         {
             [Required(ErrorMessage = "El nombre del país es obligatorio")]
-            [StringLength(100, MinimumLength = 2,
-                ErrorMessage = "El nombre debe tener entre 2 y 100 caracteres")]
+            [StringLength(100, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre 2 y 100 caracteres")]
             [Display(Name = "Nombre del País")]
             public string Name { get; set; } = string.Empty;
         }
@@ -44,41 +45,39 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
                 return Page();
             }
 
-            // 1. Normalizar para validación robusta
-            var normalizedInput = Input.Name.NormalizeComparison();
+            // Normalization
+            var normalizedInput = Input.Name.Trim().ToLower();
 
-            // 2. Validar Duplicados
+            // Duplicate Validation
             var exists = await _context.Countries
                 .AnyAsync(c => c.Name.Trim().ToLower() == normalizedInput && 
                                c.Status != GeneralStatus.Eliminado);
 
             if (exists)
             {
-                ModelState.AddModelError("Input.Name", NotificationHelper.Countries.CountryNameDuplicate);
+                ModelState.AddModelError("Input.Name", "Ya existe un país con este nombre en el sistema.");
                 return Page();
             }
 
-            // 3. Validar Formato (Sin caracteres especiales)
-            if (!Input.Name.IsValidName())
-            {
-                ModelState.AddModelError("Input.Name", NotificationHelper.Countries.InvalidFormat);
-                return Page();
-            }
-
-            // 4. Crear con datos limpios
+            // Create Country
             var country = new Country
             {
                 Name = Input.Name.Clean(),
                 Status = GeneralStatus.Activo,
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = DateTime.Now
             };
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                country.CreatedById = currentUser.Id;
+            }
 
             _context.Countries.Add(country);
             await _context.SaveChangesAsync();
 
-            // 4. Notificación Estandarizada
-            TempData.Success(NotificationHelper.Countries.Created(country.Name));
-            return RedirectToPage("/Cities/Index");
+            TempData.Success($"País '{country.Name}' registrado exitosamente.");
+            return RedirectToPage("./Index");
         }
     }
 }

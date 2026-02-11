@@ -25,7 +25,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
         public IActionResult OnGet()
         {
-            ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
+            LoadFaculties();
             return Page();
         }
 
@@ -34,44 +34,58 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
         public class InputModel
         {
-            [Required]
+            [Required(ErrorMessage = "La facultad responsable es obligatoria")]
+            [Display(Name = "Facultad")]
             public int FacultyId { get; set; }
-            [Required]
-            public string Code { get; set; }
-            [Required]
-            public string Name { get; set; }
+
+            [Required(ErrorMessage = "El código identificador es obligatorio")]
+            [Display(Name = "Código")]
+            [StringLength(20, ErrorMessage = "El código no puede superar los 20 caracteres")]
+            public string Code { get; set; } = string.Empty;
+
+            [Required(ErrorMessage = "El nombre del laboratorio es obligatorio")]
+            [Display(Name = "Nombre")]
+            [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres")]
+            public string Name { get; set; } = string.Empty;
+
+            [Display(Name = "Tipo/Especialidad")]
             public string? Type { get; set; }
+
+            [Display(Name = "Edificio")]
             public string? Building { get; set; }
+
+            [Display(Name = "Piso")]
             public string? Floor { get; set; }
+
+            [Display(Name = "Descripción")]
             public string? Description { get; set; }
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // 1. Validaciones Preliminares
             if (!ModelState.IsValid)
             {
-                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
+                LoadFaculties();
                 return Page();
             }
 
-            // 2. Normalización para validación interna
-            var normalizedName = Input.Name.NormalizeComparison();
-            var normalizedCode = Input.Code.NormalizeComparison().ToUpper();
+            // Normalization
+            var normalizedName = Input.Name.Trim().ToLower();
+            var normalizedCode = Input.Code.Trim().ToUpper();
 
-            // 3. Validar Duplicados de Código (Global)
+            // Validate Duplicate Code (Global check, ignoring soft-deleted)
             bool codeExists = await _context.Laboratories
                 .IgnoreQueryFilters()
                 .AnyAsync(l => l.Code.ToUpper() == normalizedCode && l.Status != GeneralStatus.Eliminado);
 
             if (codeExists)
             {
-                ModelState.AddModelError("Input.Code", NotificationHelper.Laboratories.LabCodeDuplicate);
-                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
+                ModelState.AddModelError("Input.Code", $"El código institucional '{normalizedCode}' ya se encuentra registrado.");
+                LoadFaculties();
                 return Page();
             }
 
-            // 4. Validar Duplicados de Nombre (En la misma Facultad)
+            // Validate Duplicate Name within the same Faculty
             bool nameExists = await _context.Laboratories
                 .IgnoreQueryFilters()
                 .AnyAsync(l => l.FacultyId == Input.FacultyId && 
@@ -80,38 +94,44 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
             if (nameExists)
             {
-                ModelState.AddModelError("Input.Name", NotificationHelper.Laboratories.LabNameDuplicate);
-                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
+                ModelState.AddModelError("Input.Name", "Ya existe un ambiente con este nombre en la facultad seleccionada.");
+                LoadFaculties();
                 return Page();
             }
 
-            // 5. Validar Formato de Nombre
-            if (!Input.Name.IsValidName())
-            {
-                ModelState.AddModelError("Input.Name", NotificationHelper.Countries.InvalidFormat);
-                ViewData["FacultyId"] = new SelectList(_context.Faculties, "Id", "Name");
-                return Page();
-            }
-
-            // 6. Guardado Estandarizado
+            // Entity Mapping
             var laboratory = new Laboratory
             {
                 FacultyId = Input.FacultyId,
-                Code = Input.Code.Clean().ToUpper(),
+                Code = normalizedCode,
                 Name = Input.Name.Clean(),
                 Type = Input.Type?.Clean(),
                 Building = Input.Building?.Clean(),
                 Floor = Input.Floor?.Clean(),
                 Description = Input.Description?.Clean(),
                 Status = GeneralStatus.Activo,
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = DateTime.Now
             };
+
+            // Set current auditor
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                laboratory.CreatedById = currentUser.Id;
+            }
 
             _context.Laboratories.Add(laboratory);
             await _context.SaveChangesAsync();
 
-            TempData.Success(NotificationHelper.Laboratories.Created(laboratory.Name));
+            TempData.Success($"Laboratorio '{laboratory.Name}' registrado exitosamente en el catálogo.");
             return RedirectToPage("./Index");
+        }
+
+        private void LoadFaculties()
+        {
+            ViewData["FacultyId"] = new SelectList(_context.Faculties
+                .Where(f => f.Status == GeneralStatus.Activo)
+                .OrderBy(f => f.Name), "Id", "Name");
         }
     }
 }

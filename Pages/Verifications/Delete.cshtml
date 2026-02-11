@@ -1,77 +1,75 @@
-﻿@page "{id:int}"
-@using Proyecto_Laboratorios_Univalle.Models.Enums
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.DeleteModel
-
-@{
-    ViewData["Title"] = "Eliminar Registro";
-}
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 <div class="row justify-content-center align-items-center" style="min-height: 80vh;">
     <div class="col-md-6 col-lg-5 col-xl-4">
         <div class="card shadow-lg border-0 rounded-lg">
             <div class="card-body p-5 text-center">
-                
-                <!-- Icono Animado / Destacado -->
+
+                <!-- Animated Icon with Decorative ping effect -->
                 <div class="mb-4 d-inline-block position-relative">
-                    <div class="icon-circle bg-soft-danger text-danger d-flex align-items-center justify-content-center rounded-circle mx-auto" 
+                    <div class="icon-circle bg-soft-danger text-danger d-flex align-items-center justify-content-center rounded-circle mx-auto"
                          style="width: 80px; height: 80px;">
                         <i class="fas fa-trash-alt fa-3x"></i>
                     </div>
-                    <!-- Efecto pulso decorativo (opcional) -->
-                    <div class="position-absolute w-100 h-100 rounded-circle bg-danger opacity-1" 
+                    <!-- Animation layer -->
+                    <div class="position-absolute w-100 h-100 rounded-circle bg-danger opacity-1"
                          style="top:0; left:0; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; z-index: -1;">
                     </div>
                 </div>
 
-                <h3 class="font-weight-bold text-dark mb-2">¿Estás seguro?</h3>
+                <h3 class="font-weight-bold text-dark mb-2">¿Eliminar Verificación?</h3>
                 <p class="text-muted mb-4 opacity-7">
-                    Estás a punto de eliminar la verificación técnica <span class="font-weight-bold text-dark">#@Model.Verification.Id</span>. Esta acción es <span class="text-danger font-weight-bold">irreversible</span>.
+                    Estás a punto de eliminar el reporte de verificación del equipo <span class="font-weight-bold text-dark">@Model.Verification.EquipmentUnit?.Equipment?.Name</span> (Inv: @Model.Verification.EquipmentUnit?.InventoryNumber).
+                    <br />Esta acción es <span class="text-danger font-weight-bold">irreversible</span>.
                 </p>
 
-                <!-- Tarjeta de Resumen -->
-                <div class="card bg-light border-0 mb-4 p-3 text-left shadow-sm">
+                <!-- Summary Card -->
+                <div class="card bg-light border-0 mb-4 p-3 text-left shadow-none">
                     <div class="d-flex align-items-start mb-3">
                         <div class="mr-3 mt-1 text-muted">
-                            <i class="fas fa-server fa-lg"></i>
+                            <i class="fas fa-clipboard-check fa-lg"></i>
                         </div>
                         <div>
-                            <small class="text-uppercase text-muted font-weight-bold" style="font-size: 0.7rem;">Equipo Afectado</small>
-                            <h6 class="font-weight-bold text-dark mb-0">@Model.Verification.Equipment?.Name</h6>
-                            <small class="text-muted">Inv: @Model.Verification.Equipment?.InventoryNumber</small>
+                            <small class="text-uppercase text-muted font-weight-bold d-block" style="font-size: 0.7rem;">Equipo Inspeccionado</small>
+                            <h6 class="font-weight-bold text-dark mb-0">@Model.Verification.EquipmentUnit?.Equipment?.Name</h6>
+                            <small class="text-muted">ID Reporte: #@Model.Verification.Id</small>
                         </div>
                     </div>
-                    
+
                     <div class="d-flex justify-content-between align-items-center border-top pt-2">
                         <div>
-                             <small class="text-uppercase text-muted font-weight-bold d-block" style="font-size: 0.7rem;">Fecha Inspección</small>
-                             <span class="text-dark font-weight-bold small"><i class="far fa-calendar-alt mr-1"></i>@Model.Verification.Date.ToShortDateString()</span>
+                            <small class="text-uppercase text-muted font-weight-bold d-block mb-1" style="font-size: 0.7rem;">Fecha</small>
+                            <span class="text-dark font-weight-bold small">
+                                <i class="far fa-calendar-alt text-info mr-1"></i>
+                                @Model.Verification.Date.ToString("dd/MM/yyyy")
+                            </span>
                         </div>
-                        <div>
-                            <small class="text-uppercase text-muted font-weight-bold d-block text-right" style="font-size: 0.7rem;">Estado</small>
-                            @{
-                                var statusClass = Model.Verification.Status switch {
-                                    VerificationStatus.Completed => "badge-soft-success text-success",
-                                    VerificationStatus.WithObservations => "badge-soft-warning text-warning",
-                                    VerificationStatus.Annulled => "badge-soft-danger text-danger",
-                                    _ => "badge-soft-secondary text-secondary"
-                                };
-                            }
-                            <span class="badge @statusClass border-0">@Html.DisplayFor(m => m.Verification.Status)</span>
+                        <div class="text-right">
+                            <small class="text-uppercase text-muted font-weight-bold d-block mb-1" style="font-size: 0.7rem;">Inspector</small>
+                            <span class="badge badge-pill badge-light text-dark border-0 px-3 font-weight-bold">
+                                @(Model.Verification.CreatedBy?.FullName ?? "N/A")
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Botones -->
+                <!-- Action Buttons -->
                 <form method="post" class="d-flex justify-content-center">
                     <input type="hidden" asp-for="Verification.Id" />
-                    
-                    <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded font-weight-bold px-4 mr-2 py-2">
+
+                    <a asp-page="./Details" asp-route-id="@Model.Verification.Id" class="btn btn-outline-secondary btn-rounded font-weight-bold px-4 mr-2 py-2">
                         Cancelar
                     </a>
                     <button type="submit" class="btn btn-danger btn-rounded font-weight-bold px-4 shadow-sm py-2">
-                        <i class="fas fa-trash-alt mr-2"></i>Sí, Eliminar
+                        <i class="fas fa-trash-alt mr-2"></i>Sí, Confirmar Eliminación
                     </button>
                 </form>
+
+                <div class="mt-4">
+                    <a asp-page="./Index" class="btn btn-link text-muted small">Volver al Listado</a>
+                </div>
             </div>
         </div>
     </div>
@@ -79,13 +77,22 @@
 
 @section Styles {
     <style>
-        .bg-soft-danger { background-color: #ffebee; }
-        .bg-soft-success { background-color: #e8f5e9; }
-        .bg-soft-warning { background-color: #fff3cd; }
-        .bg-soft-secondary { background-color: #f8f9fa; }
-        .opacity-1 { opacity: 0.15; }
-        .opacity-7 { opacity: 0.7; }
-        
+        .bg-soft-danger {
+            background-color: #ffebee;
+        }
+
+        .opacity-1 {
+            opacity: 0.15;
+        }
+
+        .opacity-7 {
+            opacity: 0.7;
+        }
+
+        .btn-rounded {
+            border-radius: 50px;
+        }
+
         @@keyframes ping {
             75%, 100% {
                 transform: scale(1.5);

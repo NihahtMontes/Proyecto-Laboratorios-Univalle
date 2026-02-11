@@ -21,23 +21,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var maintenancetype = await _context.MaintenanceTypes
                 .Include(m => m.CreatedBy)
                 .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (maintenancetype == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                MaintenanceType = maintenancetype;
-            }
+
+            if (maintenancetype == null) return NotFound();
+            
+            MaintenanceType = maintenancetype;
             return Page();
         }
     }

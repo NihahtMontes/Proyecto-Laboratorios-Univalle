@@ -1,58 +1,53 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Countries.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Actualizar País";
-}
+
 
 <div class="row">
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Editar País</h4>
-                        <h6 class="card-subtitle text-muted">Actualice la información del país seleccionado.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Editar País</h4>
+                        <h6 class="card-subtitle text-muted">Actualice la información del registro institucional de país.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-edit fa-2x text-warning opacity-5"></i>
                     </div>
                 </div>
 
                 <form method="post" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
                     <input type="hidden" asp-for="Country.Id" />
 
                     <div class="row">
-                        <!-- Información Principal -->
                         <div class="col-md-12">
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-flag mr-2"></i> Información del País
                             </h5>
 
                             <div class="form-group mb-3">
-                                <label asp-for="Country.Name" class="control-label font-weight-bold small text-dark">
+                                <label asp-for="Country.Name" class="control-label font-weight-bold small text-muted uppercase">
                                     Nombre del País <span class="text-danger">*</span>
                                 </label>
-                                <input asp-for="Country.Name" class="form-control" placeholder="Ej: Bolivia"
-                                       required
-                                       minlength="2"
-                                       pattern="^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s-]+$"
-                                       data-validation-pattern-message="Solo se permiten letras, espacios y guiones"
-                                       data-validation-minlength-message="Demasiado corto"
-                                       data-validation-required-message="El nombre del país es necesario" />
-                                <span asp-validation-for="Country.Name" class="text-danger small"></span>
+                                <input asp-for="Country.Name" class="form-control" placeholder="Ej: Bolivia" required />
+                                <span asp-validation-for="Country.Name" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <h5 class="font-weight-bold text-info mt-4 mb-3">
-                                <i class="fas fa-check-circle mr-2"></i> Estado del Registro
+                                <i class="fas fa-check-circle mr-2"></i> Estado Administrativo
                             </h5>
-                            <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning">
-                                <label asp-for="Country.Status" class="control-label font-weight-bold small text-warning">
+                            <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning shadow-none">
+                                <label asp-for="Country.Status" class="control-label font-weight-bold small text-warning uppercase">
                                     Estado Actual <span class="text-danger">*</span>
                                 </label>
                                 <select asp-for="Country.Status" class="form-control custom-select border-warning font-weight-bold"
-                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()"
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
                                         required>
                                 </select>
-                                <small class="text-muted italic d-block mt-1">El estado determina la visibilidad del país en el sistema.</small>
+                                <small class="text-muted italic d-block mt-2 small">El estado determina si el país y sus ciudades asociadas son visibles para la gestión logística.</small>
                             </div>
                         </div>
                     </div>
@@ -60,10 +55,10 @@
                     <hr />
 
                     <div class="form-actions text-right mt-4">
-                        <button type="submit" class="btn btn-warning btn-rounded px-4 shadow-sm text-white font-weight-bold">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Actualizar País
                         </button>
-                        <a asp-page="/Cities/Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                             Cancelar
                         </a>
                     </div>
@@ -72,53 +67,45 @@
         </div>
     </div>
 
-    <!-- Panel Lateral Informativo -->
+    <!-- Sidebar -->
     <div class="col-lg-4">
-        <div class="card shadow-sm border-0 bg-dark text-white">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
             <div class="card-body">
-                <h5 class="card-title text-white">
-                    <i class="fas fa-info-circle mr-2"></i> Datos del Registro
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4">
+                    <i class="fas fa-info-circle mr-2 text-info"></i> Estado del Registro
                 </h5>
                 <hr class="border-secondary" />
 
-                <div class="mb-3">
-                    <small class="text-muted uppercase d-block">País Actual</small>
-                    <span class="font-weight-bold text-info">@Model.Country.Name</span>
-                </div>
-
-                <div class="mb-3">
-                    <small class="text-muted uppercase d-block">Estado</small>
-                    @{
-                        var statusClass = Model.Country.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo
-                        ? "text-success" : "text-danger";
-                        var statusText = Model.Country.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo
-                        ? "Activo" : "Inactivo";
-                    }
-                    <span class="font-weight-bold @statusClass">
-                        <i class="fas fa-circle mr-1" style="font-size: 0.5rem;"></i> @statusText
-                    </span>
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-info mb-3">
+                        <i class="fas fa-flag fa-lg"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-white mb-1">@Model.Country.Name</h5>
+                    <span class="badge badge-pill badge-warning px-3 small font-weight-bold">@(Model.Country.Status)</span>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm border-0 mt-4">
+        <div class="card shadow-sm border-0">
             <div class="card-body">
-                <h5 class="card-title text-dark">
-                    <i class="fas fa-history mr-2"></i> Auditoría
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase">
+                    <i class="fas fa-history mr-2 text-warning"></i> Auditoría Operativa
                 </h5>
-                <div class="small mt-3">
-                    <div class="mb-2">
-                        <span class="text-muted d-block">Registrado el:</span>
-                        <span class="text-dark font-weight-bold">
-                            @Model.Country.CreatedDate.ToString("dd/MM/yyyy HH:mm")
-                        </span>
+                <hr />
+                <div class="small">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Alta de Registro</label>
+                        <span class="font-weight-bold text-dark d-block">@Model.Country.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="text-muted small">Por: @(Model.Country.CreatedBy?.FullName ?? "Sistema")</div>
                     </div>
-                    <div>
-                        <span class="text-muted d-block">Última edición:</span>
-                        <span class="text-dark font-weight-bold">
-                            @(Model.Country.LastModifiedDate?.ToString("dd/MM/yyyy HH:mm") ?? "Sin cambios previos")
-                        </span>
-                    </div>
+                    @if (Model.Country.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Country.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.Country.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -131,9 +118,31 @@
         $(function () {
             "use strict";
             $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            
+            // Advanced text pattern for Spanish alfanumeric fields
+            var textPattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]*$/;
+            
+            function setupBlocking($selector, pattern) {
+                $($selector).on('input', function() {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]/g, ''));
+                    }
+                });
+            }
+
+            // Apply aggressive validation
+            setupBlocking('#Country_Name', textPattern);
         });
     </script>
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+    </style>
 }

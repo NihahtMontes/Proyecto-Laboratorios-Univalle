@@ -1,63 +1,58 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes.CreateModel
 
-@{
-    ViewData["Title"] = "Nueva Categoría de Equipo";
-}
+
 
 <div class="row justify-content-center">
     <div class="col-lg-7 col-xl-6">
         <div class="card shadow-sm border-0">
-            <div class="card-body p-4 text-dark font-weight-bold">
-                <div class="d-flex no-block align-items-center mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Definir Nueva Categoría</h4>
-                        <h6 class="card-subtitle text-muted font-weight-bold">Establezca los parámetros base para una familia de activos técnicos.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Definir Nueva Categoría</h4>
+                        <h6 class="card-subtitle text-muted">Establezca los parámetros base para una familia de activos técnicos.</h6>
                     </div>
-                    <div class="ml-auto">
+                    <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-tags fa-2x text-warning opacity-5"></i>
                     </div>
                 </div>
 
                 <form method="post" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
                     <div class="form-group mb-4">
-                        <label asp-for="Input.Name" class="control-label font-weight-bold small text-dark">Nombre de la Categoría <span class="text-danger">*</span></label>
-                        <input asp-for="Input.Name" class="form-control form-control-lg border-warning shadow-none" placeholder="Ej: Equipos Ópticos" 
-                               required data-validation-required-message="El nombre es obligatorio"
-                               pattern="^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\(\)-]+$"
-                               data-validation-pattern-message="Solo letras, números, espacios, guiones y paréntesis" />
+                        <label asp-for="Input.Name" class="control-label font-weight-bold small text-muted uppercase">Nombre de la Categoría <span class="text-danger">*</span></label>
+                        <input asp-for="Input.Name" class="form-control form-control-lg border-warning shadow-none" placeholder="Ej: Equipos Ópticos" required />
                         <span asp-validation-for="Input.Name" class="text-danger small"></span>
                     </div>
 
                     <div class="form-group mb-4">
-                        <label asp-for="Input.Description" class="control-label font-weight-bold small text-dark">Descripción / Alcance</label>
+                        <label asp-for="Input.Description" class="control-label font-weight-bold small text-muted uppercase">Descripción / Alcance</label>
                         <textarea asp-for="Input.Description" class="form-control shadow-none" rows="3" placeholder="Detalle qué tipo de equipos pertenecen a esta categoría..."></textarea>
                     </div>
 
-                    <div class="row bg-light rounded p-3 mb-4 mx-0 border">
+                    <div class="row bg-light rounded p-3 mb-4 mx-0 border shadow-none">
                         <div class="col-md-7">
-                            <div class="custom-control custom-checkbox custom-control-inline">
+                            <div class="custom-control custom-checkbox custom-control-inline mt-1">
                                 <input type="checkbox" asp-for="Input.RequiresCalibration" class="custom-control-input" id="calibCheck">
                                 <label class="custom-control-label font-weight-bold text-dark" for="calibCheck">Requiere Calibración Periódica</label>
                             </div>
                         </div>
-                        <div class="col-md-5 text-dark font-weight-bold">
+                        <div class="col-md-5">
                             <div class="form-group mb-0">
-                                <label asp-for="Input.MaintenanceFrequencyMonths" class="control-label font-weight-bold small text-dark">Frecuencia (Meses)</label>
-                                <input asp-for="Input.MaintenanceFrequencyMonths" class="form-control form-control-sm" placeholder="Ej: 6" />
+                                <label asp-for="Input.MaintenanceFrequencyMonths" class="control-label font-weight-bold small text-muted uppercase">Frecuencia (Meses)</label>
+                                <input asp-for="Input.MaintenanceFrequencyMonths" class="form-control form-control-sm" placeholder="Ej: 6" type="number" min="0" />
                             </div>
                         </div>
                     </div>
 
                     <hr />
 
-                    <div class="form-actions text-right mt-4 text-dark font-weight-bold">
-                        <button type="submit" class="btn btn-warning btn-rounded px-4 shadow-sm text-white font-weight-bold">
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Crear Categoría
                         </button>
-                        <a asp-page="/Equipment/Index" class="btn btn-outline-secondary btn-rounded ml-2 font-weight-bold">
+                        <a asp-page="/Equipment/Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                             Cancelar
                         </a>
                     </div>
@@ -74,35 +69,29 @@
             "use strict";
             $("input,textarea").not("[type=submit]").jqBootstrapValidation();
 
-            // Función para mostrar mensajes de error temporales
-            function showTemporaryError($el, message) {
-                var $group = $el.closest('.form-group');
-                var $help = $group.find('.help-block');
-                if ($help.length === 0) {
-                    $group.append('<div class="help-block text-danger small font-weight-bold mt-1"></div>');
-                    $help = $group.find('.help-block');
-                }
-                $help.text(message).fadeIn();
-                $group.addClass('error');
-                
-                setTimeout(function() {
-                    $help.fadeOut(function() { $(this).text(''); });
-                    $group.removeClass('error');
-                }, 2000);
+            // Advanced text pattern for Spanish alfanumeric fields
+            var textPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]*$/;
+            
+            function setupBlocking($selector, pattern) {
+                $($selector).on('input', function() {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]/g, ''));
+                    }
+                });
             }
 
-            // Patrón: solo letras, números, espacios, guiones y paréntesis
-            var textPattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\(\)-]*$/;
-            
-            $('#Input_Name').on('input', function() {
-                var $field = $(this);
-                var val = $field.val();
-                if (!textPattern.test(val)) {
-                    $field.val(val.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s\(\)-]/g, ''));
-                    showTemporaryError($field, "Carácter no permitido en el nombre");
-                }
-            });
+            // Apply aggressive validation
+            setupBlocking('#Input_Name', alphanumericPattern);
         });
     </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+    </style>
 }

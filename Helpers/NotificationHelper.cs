@@ -28,7 +28,6 @@
         
         public static class Countries
         {
-
             // CRUD
             public static string Created(string name) =>
               $"El país '{name}' ha sido registrado exitosamente.";
@@ -40,18 +39,13 @@
                 $"El país '{name}' ha sido eliminado.";
 
             // Validations
-
-            public const string CountryNameDuplicate = "El país ya existe en el sistema. Ponte viooooooooooooooo";
+            public const string CountryNameDuplicate = "El país ya existe en el sistema.";
             public const string InvalidFormat = "El nombre contiene caracteres no permitidos. Solo se aceptan letras, espacios y guiones.";
         }
 
-       
-        
         public static class Cities 
         {
-
             // CRUD
-
             public static string Created(string name, string country) =>
                 $"La ciudad '{name}' ({country}) ha sido registrada exitosamente.";
 
@@ -149,7 +143,7 @@
             public static string SaveError(string detail) =>
                 $"Error al guardar la solicitud: {detail}";
 
-            // Validaciones
+            // Validations
             public const string EquipmentRequired = "Debe seleccionar un equipo para generar la solicitud.";
             public const string DescriptionRequired = "La descripción del problema es obligatoria.";
             public const string DeleteRestricted = "No se puede eliminar una solicitud que ya tiene un mantenimiento en curso o finalizado.";
@@ -167,7 +161,7 @@
             public static string Deleted(int id) =>
                 $"Verificación #{id} eliminada del sistema.";
 
-            // Validaciones
+            // Validations
             public const string EquipmentRequired = "Debe seleccionar un equipo para realizar la verificación.";
             public const string IncompleteChecklist = "La lista de verificación parece incompleta. Por favor revise los ítems marcados.";
             public const string CriticalFindingsWarning = "Al reportar hallazgos críticos, se recomienda cambiar el estado a 'Requiere Atención'.";

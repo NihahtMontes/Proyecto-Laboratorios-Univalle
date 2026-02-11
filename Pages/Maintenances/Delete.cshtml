@@ -1,87 +1,116 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Maintenances.DeleteModel
 
-@{
-    ViewData["Title"] = "Confirmar Eliminación";
-}
+<div class="row justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+        <div class="card shadow-lg border-0 rounded-lg">
+            <div class="card-body p-5 text-center">
 
-<div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
-    <div class="col-md-6 col-lg-5">
-        <div class="card text-center shadow-sm border-0">
-            <div class="card-body p-5">
-                <!-- Iconografía de advertencia con doble capa -->
-                <div class="mb-4 text-danger">
-                    <i class="ti-trash display-3 opacity-2" 
-                       style="position: absolute; left: 50%; transform: translateX(-50%); top: 40px;"></i>
-                    <i class="fas fa-exclamation-triangle display-4" 
-                       style="position: relative; z-index: 1;"></i>
+                <!-- Animated / Highlighted Icon -->
+                <div class="mb-4 d-inline-block position-relative">
+                    <div class="icon-circle bg-soft-danger text-danger d-flex align-items-center justify-content-center rounded-circle mx-auto"
+                         style="width: 80px; height: 80px;">
+                        <i class="fas fa-trash-alt fa-3x"></i>
+                    </div>
+                    <!-- Decorative ping effect -->
+                    <div class="position-absolute w-100 h-100 rounded-circle bg-danger opacity-1"
+                         style="top:0; left:0; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; z-index: -1;">
+                    </div>
                 </div>
 
-                <!-- Título y descripción -->
-                <h3 class="card-title text-dark font-weight-bold">¿Eliminar registro de servicio?</h3>
-                <p class="text-muted mb-4">
-                    Está a punto de borrar permanentemente el historial de mantenimiento para el equipo:
-                    <br />
-                    <strong class="text-dark h5">@Model.Maintenance.Equipment?.Name</strong>
+                <h3 class="font-weight-bold text-dark mb-2">¿Eliminar registro de servicio?</h3>
+                <p class="text-muted mb-4 opacity-7">
+                    Está a punto de borrar permanentemente el historial de mantenimiento para el equipo <span class="font-weight-bold text-dark">@Model.Maintenance.EquipmentUnit?.Equipment?.Name</span>. Esta acción es <span class="text-danger font-weight-bold">irreversible</span> y afectará los reportes de costos.
                 </p>
 
-                <!-- Caja de datos clave -->
-                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small uppercase font-weight-bold">Tipo:</span>
-                        <strong class="text-dark">@(Model.Maintenance.MaintenanceType?.Name ?? "-")</strong>
+                <!-- Summary Card -->
+                <div class="card bg-light border-0 mb-4 p-3 text-left shadow-sm">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="mr-3 mt-1 text-muted">
+                            <i class="fas fa-wrench fa-lg"></i>
+                        </div>
+                        <div>
+                            <small class="text-uppercase text-muted font-weight-bold" style="font-size: 0.7rem;">Equipo Afectado</small>
+                             <h6 class="font-weight-bold text-dark mb-0">@Model.Maintenance.EquipmentUnit?.Equipment?.Name</h6>
+                            <small class="text-muted">Tipo: @(Model.Maintenance.MaintenanceType?.Name ?? "-")</small>
+                        </div>
                     </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small uppercase font-weight-bold">Fecha Programada:</span>
-                        <strong class="text-dark">@(Model.Maintenance.ScheduledDate?.ToString("dd/MM/yyyy") ?? "-")</strong>
+
+                    <div class="d-flex justify-content-between align-items-center border-top pt-2 mb-2">
+                        <div>
+                            <small class="text-uppercase text-muted font-weight-bold d-block" style="font-size: 0.7rem;">Fecha Programada</small>
+                            <span class="text-dark font-weight-bold small"><i class="far fa-calendar-alt mr-1"></i>@(Model.Maintenance.ScheduledDate?.ToString("dd/MM/yyyy") ?? "-")</span>
+                        </div>
+                        <div>
+                            <small class="text-uppercase text-muted font-weight-bold d-block text-right" style="font-size: 0.7rem;">Estado</small>
+                            @{
+                                var statusClass = Model.Maintenance.Status switch
+                                {
+                                    Proyecto_Laboratorios_Univalle.Models.Enums.MaintenanceStatus.Completed => "badge-soft-success text-success",
+                                    Proyecto_Laboratorios_Univalle.Models.Enums.MaintenanceStatus.Cancelled => "badge-soft-danger text-danger",
+                                    _ => "badge-soft-warning text-warning"
+                                };
+                            }
+                            <span class="badge @statusClass border-0">@Model.Maintenance.Status</span>
+                        </div>
                     </div>
+
                     @if (Model.Maintenance.ActualCost.HasValue && Model.Maintenance.ActualCost > 0)
                     {
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted small uppercase font-weight-bold">Costo Registrado:</span>
-                            <strong class="text-danger">Bs @Model.Maintenance.ActualCost?.ToString("N2")</strong>
+                        <div class="border-top pt-2">
+                            <small class="text-uppercase text-muted font-weight-bold d-block" style="font-size: 0.7rem;">Costo Registrado</small>
+                            <span class="text-danger font-weight-bold h6 mb-0"><i class="fas fa-dollar-sign mr-1"></i>Bs @Model.Maintenance.ActualCost?.ToString("N2")</span>
                         </div>
                     }
-                    <div class="d-flex justify-content-between mt-3 pt-2 border-top">
-                        <span class="text-muted small uppercase font-weight-bold">Estado Actual:</span>
-                        @{
-                            var statusClass = Model.Maintenance.Status switch {
-                                Proyecto_Laboratorios_Univalle.Models.Enums.MaintenanceStatus.Completed => "badge-success",
-                                Proyecto_Laboratorios_Univalle.Models.Enums.MaintenanceStatus.Cancelled => "badge-danger",
-                                _ => "badge-warning"
-                            };
-                        }
-                        <span class="badge badge-pill @statusClass px-3">@Model.Maintenance.Status</span>
-                    </div>
                 </div>
 
-                <!-- Botones de acción -->
-                <form method="post">
+                <!-- Buttons -->
+                <form method="post" class="d-flex justify-content-center">
                     <input type="hidden" asp-for="Maintenance.Id" />
-                    
-                    <a asp-page="./Index" 
-                       class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+
+                    <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded font-weight-bold px-4 mr-2 py-2">
                         Cancelar
                     </a>
-                    
-                    <button type="submit" class="btn btn-danger btn-rounded px-4 shadow-sm font-weight-bold">
-                        <i class="fas fa-trash-alt mr-1"></i> Confirmar Eliminación
+                    <button type="submit" class="btn btn-danger btn-rounded font-weight-bold px-4 shadow-sm py-2">
+                        <i class="fas fa-trash-alt mr-2"></i>Sí, Eliminar
                     </button>
                 </form>
             </div>
-        </div>
-
-        <!-- Nota informativa -->
-        <div class="text-center mt-3 text-muted small italic">
-            <i class="fas fa-info-circle mr-1"></i> 
-            Esta acción no se puede deshacer y afectará los reportes de costos del equipo.
         </div>
     </div>
 </div>
 
 @section Styles {
     <style>
-        .border-3 { border-left-width: 4px !important; }
-        .opacity-2 { opacity: 0.15; }
+        .bg-soft-danger {
+            background-color: #ffebee;
+        }
+
+        .bg-soft-success {
+            background-color: #e8f5e9;
+        }
+
+        .bg-soft-warning {
+            background-color: #fff3cd;
+        }
+
+        .bg-soft-secondary {
+            background-color: #f8f9fa;
+        }
+
+        .opacity-1 {
+            opacity: 0.15;
+        }
+
+        .opacity-7 {
+            opacity: 0.7;
+        }
+
+        @@keyframes ping {
+            75%, 100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
     </style>
 }

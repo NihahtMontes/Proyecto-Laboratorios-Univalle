@@ -22,44 +22,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var equipmentType = await _context.EquipmentTypes
                 .Include(m => m.CreatedBy)
                 .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (equipmentType == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                EquipmentType = equipmentType;
-            }
+            if (equipmentType == null) return NotFound();
+            
+            EquipmentType = equipmentType;
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var equipmentType = await _context.EquipmentTypes.FindAsync(id);
-            if (equipmentType != null)
+            if (equipmentType == null) return NotFound();
+
+            // Perform Hard Delete (Admin privileged action)
+            try
             {
-                EquipmentType = equipmentType;
-                _context.EquipmentTypes.Remove(EquipmentType);
+                _context.EquipmentTypes.Remove(equipmentType);
                 await _context.SaveChangesAsync();
+                TempData.Success($"La categoría '{equipmentType.Name}' ha sido eliminada permanentemente del sistema.");
+            }
+            catch (DbUpdateException)
+            {
+                // Most likely due to foreign key constraint (equipments linked to this type)
+                TempData.Error("No se pudo eliminar la categoría porque existen equipos vinculados a ella. Considere editarla o reasignar los equipos primero.");
+                return RedirectToPage("./Details", new { id = id });
             }
 
-            TempData["SuccessMessage"] = "La categoría ha sido eliminada del sistema.";
-            return RedirectToPage("/Equipment/Index");
+            return RedirectToPage("./Index");
         }
     }
 }

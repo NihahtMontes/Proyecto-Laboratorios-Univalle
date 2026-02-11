@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Countries
 {
@@ -34,20 +33,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
                 .Include(c => c.ModifiedBy)
                 .Where(c => c.Status != GeneralStatus.Eliminado);
 
-            // Filtro por término de búsqueda
+            // Term Filter
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
                 query = query.Where(c => c.Name.ToLower().Contains(term));
             }
 
-            // Filtro por Estado
+            // Status Filter
             if (StatusFilter.HasValue)
             {
                 query = query.Where(c => c.Status == StatusFilter.Value);
             }
 
-            Countries = await query.ToListAsync();
+            Countries = await query.OrderBy(c => c.Name).ToListAsync();
         }
     }
 }

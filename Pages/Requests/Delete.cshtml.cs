@@ -22,10 +22,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var request = await _context.Requests
                 .Include(r => r.Equipment)
@@ -34,14 +31,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (request == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                MaintenanceRequest = request;
-            }
+            if (request == null) return NotFound();
+            
+            MaintenanceRequest = request;
             return Page();
         }
 
@@ -55,10 +47,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             if (request == null) return NotFound();
 
-            // Validación de Integridad Referencial
+            // Referential Integrity Validation: Cannot delete if maintenance already exists linked to this request
             if (request.Maintenance != null)
             {
-                TempData.Error(NotificationHelper.Requests.DeleteRestricted);
+                TempData.Error("No se puede eliminar la solicitud porque ya tiene un registro de mantenimiento asociado.");
                 return RedirectToPage("./Index");
             }
 
@@ -66,7 +58,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             _context.Requests.Remove(MaintenanceRequest);
             await _context.SaveChangesAsync();
             
-            TempData.Success(NotificationHelper.Requests.Deleted(request.Id));
+            TempData.Success($"La solicitud #{request.Id} ha sido eliminada correctamente.");
             return RedirectToPage("./Index");
         }
     }

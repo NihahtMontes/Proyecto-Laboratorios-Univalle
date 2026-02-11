@@ -1,10 +1,6 @@
-﻿@page "{id:int}"
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Maintenances.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
-
-@{
-    ViewData["Title"] = "Expediente de Mantenimiento";
-}
 
 <div class="row justify-content-center">
     <!-- Columna Principal: Detalles -->
@@ -40,8 +36,8 @@
                         
                         <div class="mb-3">
                             <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Equipamiento</label>
-                            <p class="text-dark font-weight-bold mb-1">@Model.Maintenance.Equipment?.Name</p>
-                            <span class="badge badge-light border text-muted small">Inv: @Model.Maintenance.Equipment?.InventoryNumber</span>
+                            <p class="text-dark font-weight-bold mb-1">@Model.Maintenance.EquipmentUnit?.Equipment?.Name</p>
+                            <span class="badge badge-pill badge-light border text-muted small">Inv: @Model.Maintenance.EquipmentUnit?.InventoryNumber</span>
                         </div>
 
                         <div class="mb-3">
@@ -70,7 +66,7 @@
                         <div class="row">
                             <div class="col-6 mb-3">
                                 <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Programado</label>
-                                <p class="text-dark small"><i class="far fa-calendar mr-1"></i> @Model.Maintenance.ScheduledDate.?ToString("dd/MM/yyyy")</p>
+                                <p class="text-dark small"><i class="far fa-calendar mr-1"></i> @(Model.Maintenance.ScheduledDate?.ToString("dd/MM/yyyy") ?? "-")</p>
                             </div>
                             <div class="col-6 mb-3">
                                 <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Inicio Real</label>
@@ -115,10 +111,10 @@
                                     @foreach (var item in Model.Maintenance.CostDetails)
                                     {
                                         <tr>
-                                            <td class="small font-weight-bold">@item.Concept</td>
+                                            <td class="small font-weight-bold">@item.Description</td>
                                             <td class="small text-right">@item.Quantity</td>
-                                            <td class="small text-right">@item.UnitPrice.ToString("C")</td>
-                                            <td class="small text-right font-weight-bold">@item.Subtotal.ToString("C")</td>
+                                            <td class="small text-right">@item.UnitPrice.ToString("C2")</td>
+                                            <td class="small text-right font-weight-bold">@((item.Quantity * item.UnitPrice).ToString("C2"))</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -126,7 +122,7 @@
                                     <tr>
                                         <td colspan="3" class="text-right font-weight-bold uppercase small">Costo Total Ejecutado:</td>
                                         <td class="text-right font-weight-bold text-success" style="font-size: 1rem;">
-                                            @Model.Maintenance.ActualCost?.ToString("C")
+                                            @Model.Maintenance.ActualCost?.ToString("C2")
                                         </td>
                                     </tr>
                                 </tfoot>

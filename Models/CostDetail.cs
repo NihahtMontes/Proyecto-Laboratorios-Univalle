@@ -6,33 +6,33 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
-    /// Detailed cost breakdown for maintenance (spare parts, labor, etc.)
+    /// Detalles de costos para Mantenimientos o Items de Solicitudes de Adquisición
     /// </summary>
     public class CostDetail : IAuditable
     {
-        // ========================================
-        // PRIMARY KEY
-        // ========================================
         [Key]
         public int Id { get; set; }
 
         // ========================================
-        // FOREIGN KEY
+        // FOREIGN KEYS (Polymorphic-ish or specific)
         // ========================================
-        [Required]
+        
+        [Display(Name = "Solicitud")]
+        public int? RequestId { get; set; }
+
         [Display(Name = "Mantenimiento")]
-        public int MaintenanceId { get; set; }
+        public int? MaintenanceId { get; set; }
 
         // ========================================
         // COST INFORMATION
         // ========================================
-        [Required(ErrorMessage = "El concepto es obligatorio")]
+        [Required(ErrorMessage = "El concepto/nombre es obligatorio")]
         [StringLength(200)]
-        [Display(Name = "Concepto")]
+        [Display(Name = "Descripción del Ítem")]
         public string Concept { get; set; } = string.Empty;
 
         [StringLength(500)]
-        [Display(Name = "Descripción Detallada")]
+        [Display(Name = "Detalles Adicionales")]
         public string? Description { get; set; }
 
         [Required]
@@ -41,12 +41,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public decimal Quantity { get; set; } = 1;
 
         [StringLength(50)]
-        [Display(Name = "Unidad de Medida")]
+        [Display(Name = "Unidad")]
         public string? UnitOfMeasure { get; set; } = "Unidad";
 
         [Required]
         [Column(TypeName = "decimal(18,2)")]
-        [Display(Name = "Precio Unitario")]
+        [Display(Name = "Precio Unitario (Estimado)")]
         [Range(0, 999999999, ErrorMessage = "El precio debe ser positivo")]
         public decimal UnitPrice { get; set; }
 
@@ -61,7 +61,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // PROVIDER (Optional)
         // ========================================
         [StringLength(200)]
-        [Display(Name = "Proveedor")]
+        [Display(Name = "Proveedor Sugerido")]
         public string? Provider { get; set; }
 
         [StringLength(100)]
@@ -69,7 +69,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public string? InvoiceNumber { get; set; }
 
         // ========================================
-        // AUDIT (IAuditable Implementation)
+        // AUDIT
         // ========================================
         [Display(Name = "Creado Por")]
         public int? CreatedById { get; set; }
@@ -84,8 +84,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public DateTime? LastModifiedDate { get; set; }
 
         // ========================================
-        // NAVIGATION PROPERTIES
+        // NAVIGATION
         // ========================================
+        [ForeignKey("RequestId")]
+        public virtual Request? Request { get; set; }
+
         [ForeignKey("MaintenanceId")]
         public virtual Maintenance? Maintenance { get; set; }
 
@@ -96,12 +99,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual User? ModifiedBy { get; set; }
 
         // ========================================
-        // CALCULATED PROPERTIES
+        // CALCULATIONS
         // ========================================
-
-        /// <summary>
-        /// Item subtotal (Quantity * UnitPrice)
-        /// </summary>
         [NotMapped]
         [Display(Name = "Subtotal")]
         public decimal Subtotal => Quantity * UnitPrice;

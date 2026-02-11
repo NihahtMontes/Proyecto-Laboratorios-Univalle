@@ -29,43 +29,43 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
         public async Task OnGetAsync()
         {
-            // Query Base Laboratorios
+            // Base Queries for Laboratories and Faculties (Excluding deleted)
             var labQuery = _context.Laboratories
                 .Include(l => l.CreatedBy)
                 .Include(l => l.Faculty)
                 .Include(l => l.ModifiedBy)
                 .Where(l => l.Status != GeneralStatus.Eliminado);
 
-            // Query Base Facultades
             var facQuery = _context.Faculties
                 .Include(f => f.CreatedBy)
                 .Include(f => f.ModifiedBy)
                 .Where(f => f.Status != GeneralStatus.Eliminado);
 
-            // Filtro por término (Global)
+            // Apply term filter (Global search across labs and faculties)
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
                 
-                // Filtro Labs
+                // Laboratories Filter: Search in name, code, and faculty name
                 labQuery = labQuery.Where(l => l.Name.ToLower().Contains(term) || 
                                        l.Code.ToLower().Contains(term) ||
                                        (l.Faculty != null && l.Faculty.Name.ToLower().Contains(term)));
 
-                // Filtro Facultades
+                // Faculties Filter: Search in name and institutional code
                 facQuery = facQuery.Where(f => f.Name.ToLower().Contains(term) || 
                                                (f.Code != null && f.Code.ToLower().Contains(term)));
             }
 
-            // Filtro por Estado (Global)
+            // Apply status filter 
             if (StatusFilter.HasValue)
             {
                 labQuery = labQuery.Where(l => l.Status == StatusFilter.Value);
                 facQuery = facQuery.Where(f => f.Status == StatusFilter.Value);
             }
 
-            Laboratories = await labQuery.ToListAsync();
-            Faculties = await facQuery.ToListAsync();
+            // Ordering for both collections
+            Laboratories = await labQuery.OrderBy(l => l.Name).ToListAsync();
+            Faculties = await facQuery.OrderBy(f => f.Name).ToListAsync();
         }
     }
 }

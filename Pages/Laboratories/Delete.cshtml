@@ -1,69 +1,69 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Laboratories.DeleteModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Baja de Infraestructura";
-}
+
 
 <div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
     <div class="col-md-6 col-lg-5">
-        <div class="card text-center shadow-sm">
+        <div class="card text-center shadow-sm border-0">
             <div class="card-body p-5">
-                <!-- Ícono de advertencia -->
+                <!-- Warning icon -->
                 <div class="mb-4 text-danger">
-                    <i class="ti-trash display-3 opacity-2" style="position: absolute; left: 50%; transform: translateX(-50%); top: 40px;"></i>
-                    <i class="fas fa-exclamation-triangle display-4" style="position: relative; z-index: 1;"></i>
+                    <i class="fas fa-exclamation-triangle display-3"></i> 
                 </div>
 
-                <!-- Título -->
+                <!-- Title -->
                 <h3 class="card-title text-dark font-weight-bold">¿Retirar Laboratorio?</h3>
                 <p class="text-muted mb-4">
-                    Estás a punto de deshabilitar el laboratorio <strong class="text-dark">@Model.Laboratory.Name</strong> del catálogo activo.
-                    <br>Esto impactará en la gestión de equipos y mantenimientos vinculados.
+                    Está a punto de dar de baja el laboratorio <strong class="text-dark">@Model.Laboratory.Name</strong> del catálogo activo de infraestructura.
+                    Esta acción inhabilitará la gestión de activos y el registro de mantenimientos vinculados a este espacio físico.
                 </p>
 
-                <!-- Datos clave -->
-                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3">
+                <!-- Key Data -->
+                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3 shadow-none italic">
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small uppercase">Código:</span>
+                        <span class="text-muted small uppercase font-weight-bold">ID / Código:</span>
                         <strong class="text-dark">@Model.Laboratory.Code</strong>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small uppercase">Facultad:</span>
-                        <span class="text-dark font-weight-bold small uppercase">@(Model.Laboratory.Faculty?.Name ?? "No asignada")</span>
+                        <span class="text-muted small uppercase font-weight-bold">Facultad:</span>
+                        <span class="text-dark font-weight-bold small uppercase">@(Model.Laboratory.Faculty?.Name ?? "Área General")</span>
                     </div>
-                    <div class="d-flex justify-content-between">
-                        <span class="text-muted small uppercase">Equipos Estimados:</span>
-                        <span class="text-danger font-weight-bold">Acción Crítica</span>
+                    <div class="d-flex justify-content-between border-top pt-2">
+                        <span class="text-muted small uppercase font-weight-bold">Estatus Actual:</span>
+                        <span class="text-danger font-weight-bold small">@(Model.Laboratory.Status)</span>
                     </div>
                 </div>
 
-                <!-- Botones -->
+                <!-- Action Buttons -->
                 <form method="post">
                     <input type="hidden" asp-for="Laboratory.Id" />
                     
-                    <a asp-page="./Details" asp-route-id="@Model.Laboratory.Id" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+                    <a asp-page="./Details" asp-route-id="@Model.Laboratory.Id" class="btn btn-outline-secondary btn-rounded px-4 mr-2 py-2 font-weight-bold">
                          Ver Detalles
                     </a>
-                    <button type="submit" class="btn btn-danger btn-rounded px-4 shadow-sm font-weight-bold">
-                        <i class="fas fa-trash-alt mr-1"></i> Confirmar Baja
+                    <button type="submit" class="btn btn-danger btn-rounded px-4 shadow-sm py-2 font-weight-bold">
+                        <i class="fas fa-trash-alt mr-1"></i> Sí, Confirmar Baja
                     </button>
                 </form>
                 
                 <div class="mt-4">
-                    <a asp-page="./Index" class="btn btn-link text-muted small">Volver al Inventario</a>
+                    <a asp-page="./Index" class="btn btn-link text-muted small font-weight-bold">Volver al Directorio de Centros</a>
                 </div>
             </div>
         </div>
 
         <div class="text-center mt-3 text-muted small italic">
-            <i class="fas fa-info-circle mr-1"></i> El sistema realizará una eliminación lógica (Soft-Delete) preservando la integridad referencial.
+            <i class="fas fa-info-circle mr-1"></i> <strong>Nota:</strong> El sistema realizará una baja administrativa (Soft-Delete) para preservar el histórico de auditoría y la integridad referencial de los activos.
         </div>
     </div>
 </div>
 
 @section Styles {
     <style>
-        .border-3 { border-left-width: 3px !important; }
+        .border-3 { border-left-width: 4px !important; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
     </style>
 }

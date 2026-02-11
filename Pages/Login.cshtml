@@ -1,17 +1,18 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LoginModel
 @{
-    ViewData["Title"] = "Iniciar Sesión - Laboratorios Univalle";
     Layout = null;
+    ViewData["Title"] = "Ingreso al Sistema | Proyecto Laboratorios";
 }
 
 <!DOCTYPE html>
-<html dir="ltr">
+<html lang="es" dir="ltr">
 
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Acceso al sistema de gestión de laboratorios Univalle.">
 
     <title>@ViewData["Title"]</title>
 
@@ -20,7 +21,7 @@
     <link href="~/lib/nice-admin/dist/css/style.min.css" rel="stylesheet">
 
     <style>
-        /* 1. Aseguramos que el fondo cubra TODA la pantalla sin espacios blancos */
+        /* 1. Ensure background covers the whole screen */
         .auth-wrapper {
             background-image: url('/lib/nice-admin/assets/images/background/login-register.jpg');
             background-repeat: no-repeat;
@@ -31,23 +32,21 @@
             width: 100%;
         }
 
-        /* 2. FORZAMOS el estilo de barra lateral derecha (sidebar) */
+        /* 2. Style for right sidebar login box */
         .auth-box.on-sidebar {
             position: absolute !important;
             right: 0 !important;
             top: 0 !important;
-            height: 100vh !important; /* Altura completa */
+            height: 100vh !important;
             max-width: 450px !important;
             width: 100% !important;
-            background: #ffffff !important; /* Fondo blanco sólido, no transparente */
+            background: #ffffff !important;
             display: flex;
-            align-items: center; /* Centrar contenido verticalmente */
+            align-items: center;
             padding: 40px;
-            box-shadow: -5px 0 20px rgba(0,0,0,0.1); /* Sombra para separar del fondo */
-            margin: 0 !important; /* Quitar margenes que lo centran */
+            box-shadow: -5px 0 20px rgba(0,0,0,0.1);
+            margin: 0 !important;
         }
-
-   
     </style>
 </head>
 
@@ -58,59 +57,71 @@
             <div class="lds-ripple"><div class="lds-pos"></div><div class="lds-pos"></div></div>
         </div>
 
-        <!-- Contenedor Principal -->
+        <!-- Main Container -->
         <div class="auth-wrapper">
             <div class="auth-box on-sidebar">
 
-                <!-- Único Formulario: LOGIN -->
+                <!-- Login Form -->
                 <div id="loginform" style="width: 100%;">
                     <div class="logo text-center">
                         <span class="db"><img src="~/lib/nice-admin/assets/images/logo-icon.png" alt="logo" /></span>
-                        <h5 class="font-medium m-b-20 mt-3">Portal Administrativo</h5>
+                        <h4 class="font-weight-bold text-dark mt-3 uppercase" style="letter-spacing: 2px;">Laboratorios</h4>
+                        <h5 class="text-muted m-b-20">Portal de Gestión Administrativa</h5>
                     </div>
 
                     <div class="row">
                         <div class="col-12">
-                            <form class="form-horizontal m-t-20" id="loginform" method="post">
+                            <form class="form-horizontal m-t-20" id="login-form" method="post">
 
-                                <!-- Mensajes de Error -->
+                                <!-- Validation Summary -->
                                 <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-                                <!-- Input Usuario -->
-                                <div class="input-group mb-3">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-transparent border-right-0"><i class="ti-user"></i></span>
+                                <!-- Username Input -->
+                                <div class="form-group mb-4">
+                                    <label asp-for="Input.UserName" class="small font-weight-bold text-muted uppercase">Usuario o Correo</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-transparent border-right-0"><i class="ti-user"></i></span>
+                                        </div>
+                                        <input asp-for="Input.UserName" class="form-control form-control-lg border-left-0" placeholder="Ej: jperez" required autofocus>
                                     </div>
-                                    <input asp-for="Input.UserName" class="form-control form-control-lg border-left-0" placeholder="Usuario o Email" required>
+                                    <span asp-validation-for="Input.UserName" class="text-danger small"></span>
                                 </div>
 
-                                <!-- Input Contraseña -->
-                                <div class="input-group mb-3">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-transparent border-right-0"><i class="ti-lock"></i></span>
+                                <!-- Password Input -->
+                                <div class="form-group mb-4">
+                                    <label asp-for="Input.Password" class="small font-weight-bold text-muted uppercase">Contraseña</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-transparent border-right-0"><i class="ti-lock"></i></span>
+                                        </div>
+                                        <input asp-for="Input.Password" type="password" class="form-control form-control-lg border-left-0" placeholder="********" required>
                                     </div>
-                                    <input asp-for="Input.Password" type="password" class="form-control form-control-lg border-left-0" placeholder="Contraseña" required>
+                                    <span asp-validation-for="Input.Password" class="text-danger small"></span>
                                 </div>
 
-                                <!-- Checkbox Recordarme -->
-                                <div class="form-group row">
+                                <!-- Remember Me Checkbox -->
+                                <div class="form-group row mb-4">
                                     <div class="col-md-12">
                                         <div class="custom-control custom-checkbox">
                                             <input asp-for="Input.RememberMe" type="checkbox" class="custom-control-input" id="customCheck1">
-                                            <label class="custom-control-label" for="customCheck1">Recordarme en este equipo</label>
+                                            <label class="custom-control-label font-medium" for="customCheck1">Recordarme en este equipo</label>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Botón Ingresar -->
+                                <!-- Login Button -->
                                 <div class="form-group text-center">
                                     <div class="col-xs-12 p-b-20">
-                                        <button class="btn btn-block btn-lg btn-info" type="submit">INGRESAR</button>
+                                        <button class="btn btn-block btn-lg btn-info btn-rounded shadow-sm font-weight-bold px-4" type="submit">
+                                            INICIAR SESIÓN
+                                        </button>
                                     </div>
                                 </div>
 
-                                
-
+                                <div class="mt-4 text-center">
+                                    <small class="text-muted">© @DateTime.Now.Year Universidad del Valle - Sistema de Laboratorios</small>
+                                </div>
                             </form>
                         </div>
                     </div>
@@ -120,13 +131,15 @@
         </div>
     </div>
 
-    <!-- Scripts Básicos -->
+    <!-- Scripts -->
     <script src="~/lib/nice-admin/assets/libs/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/nice-admin/assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
 
     <script>
-        // Ocultar preloader al cargar
-        $(".preloader").fadeOut();
+        $(function() {
+            "use strict";
+            $(".preloader").fadeOut();
+        });
     </script>
 </body>
 </html>

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Users
 {
+    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
     public class CreateModel : PageModel
     {
         private readonly UserManager<User> _userManager;
@@ -23,29 +25,51 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
         public class InputModel
         {
-            [Required]
-            public string UserName { get; set; }
-            [Required]
-            public string Email { get; set; }
-            [Required]
-            public string FirstName { get; set; }
-            [Required]
-            public string LastName { get; set; }
+            [Required(ErrorMessage = "El nombre de usuario es obligatorio")]
+            [Display(Name = "Usuario")]
+            public string UserName { get; set; } = string.Empty;
+
+            [Required(ErrorMessage = "El correo institucional es obligatorio")]
+            [EmailAddress(ErrorMessage = "Correo electrónico inválido")]
+            [Display(Name = "Correo")]
+            public string Email { get; set; } = string.Empty;
+
+            [Required(ErrorMessage = "Los nombres son obligatorios")]
+            [Display(Name = "Nombres")]
+            public string FirstName { get; set; } = string.Empty;
+
+            [Required(ErrorMessage = "El primer apellido es obligatorio")]
+            [Display(Name = "Apellido")]
+            public string LastName { get; set; } = string.Empty;
+
+            [Display(Name = "Segundo Apellido")]
             public string? SecondLastName { get; set; }
-            [Required]
-            public string IdentityCard { get; set; }
-            [Required]
+
+            [Required(ErrorMessage = "El documento de identidad es obligatorio")]
+            [Display(Name = "C.I.")]
+            public string IdentityCard { get; set; } = string.Empty;
+
+            [Required(ErrorMessage = "El rol es obligatorio")]
+            [Display(Name = "Rol")]
             public UserRole Role { get; set; }
 
+            [Display(Name = "Cargo")]
             public string? Position { get; set; }
+
+            [Display(Name = "Departamento")]
             public string? Department { get; set; }
+
+            [Display(Name = "Fecha de Contratación")]
             public DateTime? HireDate { get; set; }
 
-            [Required]
+            [Required(ErrorMessage = "El teléfono es obligatorio")]
+            [Display(Name = "Teléfono")]
             public string? PhoneNumber { get; set; }
-            [Required]
+
+            [Required(ErrorMessage = "La contraseña es obligatoria")]
             [DataType(DataType.Password)]
-            public string Password { get; set; }
+            [StringLength(100, MinimumLength = 8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
+            public string Password { get; set; } = string.Empty;
         }
 
         [BindProperty]
@@ -53,46 +77,49 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
         public IActionResult OnGet()
         {
-            ViewData["UserRole"] = EnumHelper.ToSelectList<UserRole>();
+            LoadRoles();
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // 1. Normalizar Entradas
-            var normalizedCI = Input.IdentityCard.Normalize();
-            var normalizedEmail = Input.Email.Normalize();
-            var normalizedUserName = Input.UserName.Normalize();
+            if (!ModelState.IsValid)
+            {
+                LoadRoles();
+                return Page();
+            }
 
-            // 2. Check CI (Ignorando eliminados)
+            // Normalization
+            var normalizedCI = Input.IdentityCard.Trim();
+            var normalizedEmail = Input.Email.Trim().ToLower();
+            var normalizedUserName = Input.UserName.Trim().ToLower();
+
+            // Duplicate Validations (Ignoring soft-deleted)
             bool ciExists = await _context.Users
                .IgnoreQueryFilters()
                .AnyAsync(u => u.IdentityCard.Trim() == normalizedCI && u.Status != GeneralStatus.Eliminado);
 
-            if (ciExists) ModelState.AddModelError("Input.IdentityCard", NotificationHelper.Users.UserCIDuplicate);
+            if (ciExists) ModelState.AddModelError("Input.IdentityCard", "Este documento de identidad ya está vinculado a otra cuenta.");
 
-            // 3. Check Email
             bool emailExists = await _context.Users
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.Email.Trim().ToLower() == normalizedEmail && u.Status != GeneralStatus.Eliminado);
 
-            if (emailExists) ModelState.AddModelError("Input.Email", NotificationHelper.Users.UserEmailDuplicate);
+            if (emailExists) ModelState.AddModelError("Input.Email", "Este correo electrónico ya se encuentra registrado.");
 
-            // 4. Check UserName
             bool userNameExists = await _context.Users
                 .IgnoreQueryFilters()
                 .AnyAsync(u => u.UserName.Trim().ToLower() == normalizedUserName && u.Status != GeneralStatus.Eliminado);
 
-            if (userNameExists) ModelState.AddModelError("Input.UserName", NotificationHelper.Users.UserNameDuplicate);
+            if (userNameExists) ModelState.AddModelError("Input.UserName", "El nombre de usuario ya está en uso.");
 
             if (!ModelState.IsValid)
             {
-                ViewData["UserRole"] = EnumHelper.ToSelectList<UserRole>();
-                ViewData["PersonCategory"] = EnumHelper.ToSelectList<PersonCategory>();
+                LoadRoles();
                 return Page();
             }
 
-            // 5. Crear usuario
+            // User creation
             var user = new User
             {
                 UserName = normalizedUserName,
@@ -104,17 +131,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 Role = Input.Role,
                 Position = Input.Position?.Clean(),
                 Department = Input.Department?.Clean(),
-                HireDate = Input.HireDate,
+                HireDate = Input.HireDate ?? DateTime.Now,
                 PhoneNumber = Input.PhoneNumber?.Trim(),
                 Status = GeneralStatus.Activo,
-                EmailConfirmed = true 
+                EmailConfirmed = true,
+                CreatedDate = DateTime.Now
             };
+
+            // Get current auditor
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                user.CreatedById = currentUser.Id;
+            }
 
             var result = await _userManager.CreateAsync(user, Input.Password);
 
             if (result.Succeeded)
             {
-                TempData.Success(NotificationHelper.Users.Created(user.FullName));
+                TempData.Success($"Cuenta de usuario para '{user.FullName}' creada exitosamente.");
                 return RedirectToPage("./Index");
             }
 
@@ -123,9 +158,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 ModelState.AddModelError(string.Empty, error.Description);
             }
 
-            ViewData["UserRole"] = EnumHelper.ToSelectList<UserRole>();
-            ViewData["PersonCategory"] = EnumHelper.ToSelectList<PersonCategory>();
+            LoadRoles();
             return Page();
+        }
+
+        private void LoadRoles()
+        {
+            ViewData["UserRole"] = EnumHelper.ToSelectList<UserRole>();
         }
     }
 }

@@ -1,121 +1,118 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Faculties.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Facultades";
-}
+
 
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm border-0">
             <div class="card-body">
-                <div class="d-md-flex align-items-center mb-4">
+                <!-- Header section -->
+                <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Gestión de Facultades</h4>
-                        <h6 class="card-subtitle text-muted">Facultades académicas registradas en el sistema.</h6>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Gestión de Facultades Académicas</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Maestro de facultades y unidades académicas registradas en el ecosistema institucional.</h6>
                     </div>
-                    <div class="ml-auto">
-                        <a asp-page="Create" class="btn btn-info btn-rounded shadow-sm">
-                            <i class="fas fa-plus mr-1"></i> Registrar Nueva Facultad
+                    <div class="ml-auto mt-3 mt-md-0">
+                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                            <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Facultad
                         </a>
                     </div>
                 </div>
 
-                <!-- 🌐 Smart Index Zone: Búsqueda y Filtros -->
+                <!-- 🔍 Smart Index Zone: Search and Filters -->
                 <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
                      <form method="get">
-                         <div class="row align-items-end">
-                             <div class="col-md-5">
-                                 <label class="small font-weight-bold text-muted uppercase">Búsqueda Técnica</label>
-                                 <div class="input-group drop-shadow">
-                                     <div class="input-group-prepend">
-                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
-                                     </div>
-                                     <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Buscar por nombre de facultad..." />
-                                 </div>
-                             </div>
-                             <div class="col-md-3">
-                                 <label class="small font-weight-bold text-muted uppercase">Filtrar por Estado</label>
-                                 <select asp-for="StatusFilter" class="form-control custom-select" 
-                                         asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus>()">
-                                     <option value="">-- Todos los Estados --</option>
-                                 </select>
-                             </div>
-                             <div class="col-md-4 text-right">
-                                 <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
-                                     <i class="fas fa-filter mr-1"></i> Filtrar
-                                 </button>
-                                 <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
-                                     <i class="fas fa-sync-alt"></i>
-                                 </a>
-                             </div>
-                         </div>
+                          <div class="row align-items-end">
+                              <div class="col-md-5">
+                                  <label class="small font-weight-bold text-muted uppercase">Búsqueda Técnica</label>
+                                  <div class="input-group drop-shadow">
+                                      <div class="input-group-prepend">
+                                          <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                      </div>
+                                      <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre de facultad o código institucional..." />
+                                  </div>
+                              </div>
+                              <div class="col-md-3">
+                                  <label class="small font-weight-bold text-muted uppercase">Estatus General</label>
+                                  <select asp-for="StatusFilter" class="form-control custom-select" 
+                                          asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()">
+                                      <option value="">-- Todos --</option>
+                                  </select>
+                              </div>
+                              <div class="col-md-4 text-right mt-2 mt-md-0">
+                                  <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                      <i class="fas fa-filter mr-1"></i> Filtrar
+                                  </button>
+                                  <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                      <i class="fas fa-sync-alt"></i>
+                                  </a>
+                              </div>
+                          </div>
                      </form>
-                 </div>
+                  </div>
 
-                <div class="table-responsive mt-2">
+                <div class="table-responsive">
                     <table class="table table-hover v-middle">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Nombre de la Facultad / Código</th>
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Entidad Académica / Código</th>
                                 <th class="text-center">Estado</th>
-                                <th>Auditoría de Registro</th>
+                                <th>Auditoría Operativa</th>
                                 <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @if (!Model.Faculties.Any())
+                            @if (Model.Faculties == null || !Model.Faculties.Any())
                             {
                                 <tr>
-                                    <td colspan="4" class="text-center py-5 text-muted">
-                                        <i class="fas fa-folder-open fa-3x mb-3 d-block opacity-2"></i>
-                                        No se encontraron facultades con los criterios seleccionados.
+                                    <td colspan="4" class="text-center py-5 text-muted italic">
+                                        <i class="fas fa-university fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron registros de facultades en el sistema.
                                     </td>
                                 </tr>
                             }
-                            @foreach (var item in Model.Faculties)
+                            else
                             {
+                                foreach (var item in Model.Faculties)
+                                {
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="m-r-10">
-                                                <span class="btn btn-circle btn-light text-info"><i class="fas fa-university"></i></span>
+                                                <span class="btn btn-circle btn-info text-white shadow-sm font-weight-bold"><i class="fas fa-university"></i></span>
                                             </div>
                                             <div>
-                                                <h5 class="m-b-0 font-medium">@item.Name</h5>
-                                                <span class="text-muted small">Código: @(item.Code ?? "N/A")</span>
+                                                <h6 class="m-b-0 font-weight-bold text-dark">@item.Name</h6>
+                                                <span class="text-muted small">Cód: @(item.Code ?? "No asignado")</span>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        @{
-                                            var badgeClass = item.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "badge-success" : "badge-danger";
-                                        }
-                                        <span class="badge @badgeClass px-3 py-1">@item.Status</span>
+                                        <span class="badge badge-pill @(item.Status == GeneralStatus.Activo ? "badge-success" : "badge-danger") px-3 py-1 font-weight-bold">@item.Status</span>
                                     </td>
                                     <td>
-                                        <div class="small text-muted">
-                                            <div><i class="fas fa-calendar-plus mr-1"></i> @item.CreatedDate.ToString("dd/MM/yyyy") (por @(item.CreatedBy?.Initials ?? "Sist."))</div>
-                                            @if (item.LastModifiedDate.HasValue)
-                                            {
-                                                <div><i class="fas fa-history mr-1"></i> @item.LastModifiedDate.Value.ToString("dd/MM/yyyy") (por @(item.ModifiedBy?.Initials ?? "-"))</div>
-                                            }
+                                        <div class="small">
+                                            <div class="text-dark"><i class="far fa-calendar-plus text-muted mr-1"></i> @item.CreatedDate.ToString("dd/MM/yyyy")</div>
+                                            <div class="text-muted"><i class="fas fa-user-check mr-1"></i> @(item.CreatedBy?.Initials ?? "Sist.")</div>
                                         </div>
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group">
-                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded shadow-none" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1 shadow-none" title="Detalles">
                                                 <i class="fas fa-search-plus"></i>
                                             </a>
-                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded shadow-none" title="Eliminar">
                                                 <i class="fas fa-trash"></i>
                                             </a>
                                         </div>
                                     </td>
                                 </tr>
+                                }
                             }
                         </tbody>
                     </table>
@@ -124,6 +121,16 @@
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+        .italic { font-style: italic; }
+        .opacity-2 { opacity: 0.2; }
+    </style>
+}
 
 @section Scripts {
     <script>

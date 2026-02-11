@@ -1,15 +1,14 @@
-﻿@page "{id:int}"
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.DeleteModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Confirmar Anulación";
-}
+
 
 <div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
     <div class="col-md-6 col-lg-5">
         <div class="card text-center shadow-sm border-0">
             <div class="card-body p-5">
-                <!-- Iconografía de advertencia con doble capa -->
+                <!-- Warning Iconography -->
                 <div class="mb-4 text-danger">
                     <i class="ti-trash display-3 opacity-2" 
                        style="position: absolute; left: 50%; transform: translateX(-50%); top: 45px;"></i>
@@ -17,29 +16,26 @@
                        style="position: relative; z-index: 1;"></i>
                 </div>
 
-                <!-- Título y descripción -->
+                <!-- Title and Description -->
                 <h3 class="card-title text-dark font-weight-bold">¿Anular solicitud de servicio?</h3>
                 <p class="text-muted mb-4">
                     Se dispone a eliminar la solicitud <strong class="text-dark">#@Model.MaintenanceRequest.Id</strong>.
                     <br />Esta acción eliminará el historial del requerimiento permanentemente.
                 </p>
 
-                <!-- Caja de datos clave -->
-                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3">
+                <!-- Key Data Box -->
+                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3 shadow-none">
                     <div class="d-flex justify-content-between mb-2">
                         <span class="text-muted small uppercase font-weight-bold">Equipo Afectado:</span>
                         <strong class="text-dark">@Model.MaintenanceRequest.Equipment?.Name</strong>
                     </div>
-                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small uppercase font-weight-bold">Solicitado por:</span>
-                        <span class="text-dark small">@Model.MaintenanceRequest.RequestedBy?.FullName</span>
-                    </div>
+
                     <div class="d-flex justify-content-between pt-2 border-top">
                         <span class="text-muted small uppercase font-weight-bold">Estado Actual:</span>
                         @{
                             var statusClass = Model.MaintenanceRequest.Status switch {
-                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Approved => "badge-success",
-                                Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Rejected => "badge-danger",
+                                RequestStatus.Approved => "badge-success",
+                                RequestStatus.Rejected => "badge-danger",
                                 _ => "badge-warning"
                             };
                         }
@@ -47,7 +43,7 @@
                     </div>
                 </div>
 
-                <!-- Botones de acción -->
+                <!-- Action Buttons -->
                 <form method="post">
                     <input type="hidden" asp-for="MaintenanceRequest.Id" />
                     
@@ -63,7 +59,7 @@
         </div>
         
         <div class="text-center mt-3 text-muted small italic">
-            <i class="fas fa-info-circle mr-1"></i> Si esta solicitud ya fue procesada, la acción será bloqueada.
+            <i class="fas fa-info-circle mr-1"></i> Si esta solicitud ya ha dado origen a una orden de mantenimiento, la acción será bloqueada.
         </div>
     </div>
 </div>
@@ -72,5 +68,6 @@
     <style>
         .border-3 { border-left-width: 4px !important; }
         .opacity-2 { opacity: 0.15; }
+        .italic { font-style: italic; }
     </style>
 }

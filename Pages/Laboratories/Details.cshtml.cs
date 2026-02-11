@@ -21,24 +21,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var laboratory = await _context.Laboratories
                 .Include(l => l.Faculty)
                 .Include(l => l.CreatedBy)
                 .Include(l => l.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (laboratory == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                Laboratory = laboratory;
-            }
+
+            if (laboratory == null) return NotFound();
+            
+            Laboratory = laboratory;
             return Page();
         }
     }

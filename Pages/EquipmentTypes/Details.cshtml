@@ -1,42 +1,41 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes.DetailsModel
 
-@{
-    ViewData["Title"] = "Detalles de Categoría";
-}
+
 
 <div class="row justify-content-center">
     <div class="col-lg-8 col-xl-7">
         <div class="card shadow-sm border-0">
-            <div class="card-body p-4 text-dark font-weight-bold">
-                <div class="d-flex no-block align-items-center mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Expediente de Categoría</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Expediente de Categoría</h4>
                         <h6 class="card-subtitle text-muted font-weight-bold">Definición de estándares técnicos y mantenimiento preventivo.</h6>
                     </div>
-                    <div class="ml-auto">
+                    <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-tag fa-2x text-info opacity-5"></i>
                     </div>
                 </div>
 
-                <div class="bg-light p-4 rounded mb-4 border">
+                <div class="bg-light p-4 rounded mb-4 border shadow-none">
                     <div class="row">
-                        <div class="col-md-7">
-                            <small class="text-muted d-block uppercase font-weight-bold">Nombre de la Familia</small>
-                            <h3 class="font-weight-bold text-info">@Model.EquipmentType.Name</h3>
-                            <p class="text-dark mt-2">@(Model.EquipmentType.Description ?? "Sin descripción detallada.")</p>
+                        <div class="col-md-7 border-right">
+                            <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.7rem;">Nombre de la Familia</small>
+                            <h3 class="font-weight-bold text-info mb-3">@Model.EquipmentType.Name</h3>
+                            <h6 class="text-muted small uppercase font-weight-bold mb-2">Descripción / Alcance:</h6>
+                            <p class="text-dark italic">@(Model.EquipmentType.Description ?? "Sin descripción detallada registrada.")</p>
                         </div>
-                        <div class="col-md-5 border-left">
+                        <div class="col-md-5">
                             <div class="mb-3">
-                                <small class="text-muted d-block uppercase font-weight-bold">Calibración</small>
-                                <span class="badge @(Model.EquipmentType.RequiresCalibration ? "badge-info" : "badge-light text-muted") px-3 py-1 font-weight-bold">
+                                <small class="text-muted d-block uppercase font-weight-bold mb-2" style="font-size: 0.7rem;">Calibración:</small>
+                                <span class="badge badge-pill @(Model.EquipmentType.RequiresCalibration ? "badge-info" : "badge-light text-muted") px-3 py-1 font-weight-bold shadow-none">
                                     <i class="fas @(Model.EquipmentType.RequiresCalibration ? "fa-check-circle" : "fa-times-circle") mr-1"></i>
                                     @(Model.EquipmentType.RequiresCalibration ? "Requerida" : "No requerida")
                                 </span>
                             </div>
                             <div>
-                                <small class="text-muted d-block uppercase font-weight-bold">Mantenimiento Sugerido</small>
-                                <span class="text-dark font-weight-bold"><i class="fas fa-clock mr-1"></i> Cada @(Model.EquipmentType.MaintenanceFrequencyMonths?.ToString() ?? "N/A") meses</span>
+                                <small class="text-muted d-block uppercase font-weight-bold mb-2" style="font-size: 0.7rem;">Mantenimiento Sugerido:</small>
+                                <span class="text-dark font-weight-bold"><i class="fas fa-clock mr-1 text-muted"></i> Cada @(Model.EquipmentType.MaintenanceFrequencyMonths?.ToString() ?? "N/A") meses</span>
                             </div>
                         </div>
                     </div>
@@ -44,7 +43,7 @@
 
                 <div class="card bg-light border-0 shadow-none">
                     <div class="card-body p-3">
-                        <h6 class="font-weight-bold text-uppercase mb-3 small text-muted"><i class="fas fa-history mr-2"></i> Auditoría del Registro</h6>
+                        <h6 class="font-weight-bold text-uppercase mb-3 small text-muted font-weight-bold"><i class="fas fa-history mr-2"></i> Auditoría del Registro</h6>
                         <div class="row">
                             <div class="col-6">
                                 <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Creado por</small>
@@ -62,15 +61,22 @@
 
                 <hr class="mt-4" />
 
-                <div class="form-actions text-right mt-3 text-dark font-weight-bold">
-                    <a asp-page="./Edit" asp-route-id="@Model.EquipmentType.Id" class="btn btn-warning btn-rounded text-white px-4 shadow-sm font-weight-bold">
+                <div class="form-actions text-right mt-3 font-weight-bold">
+                    <a asp-page="./Edit" asp-route-id="@Model.EquipmentType.Id" class="btn btn-warning btn-rounded text-white px-4 shadow-sm font-weight-bold py-2">
                         <i class="fas fa-edit mr-1"></i> Editar Estándar
                     </a>
-                    <a asp-page="/Equipment/Index" class="btn btn-outline-secondary btn-rounded ml-2 font-weight-bold">
-                        Volver al Inventario
+                    <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 font-weight-bold py-2 px-4">
+                        Volver al Listado
                     </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+}

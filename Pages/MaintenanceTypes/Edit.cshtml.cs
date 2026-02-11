@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -11,10 +12,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
     public class EditModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public EditModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context)
+        public EditModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         [BindProperty]
@@ -22,16 +25,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var maintenancetype = await _context.MaintenanceTypes.FirstOrDefaultAsync(m => m.Id == id);
-            if (maintenancetype == null)
-            {
-                return NotFound();
-            }
+            
+            if (maintenancetype == null) return NotFound();
+            
             MaintenanceType = maintenancetype;
             return Page();
         }
@@ -43,26 +42,32 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
                 return Page();
             }
 
-            _context.Attach(MaintenanceType).State = EntityState.Modified;
+            var typeToUpdate = await _context.MaintenanceTypes.FindAsync(MaintenanceType.Id);
+            if (typeToUpdate == null) return NotFound();
+
+            // Mapping and Normalization
+            typeToUpdate.Name = MaintenanceType.Name.Clean();
+            typeToUpdate.Description = MaintenanceType.Description?.Clean();
+            typeToUpdate.LastModifiedDate = DateTime.Now;
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                typeToUpdate.ModifiedById = currentUser.Id;
+            }
 
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success($"Tipo de mantenimiento '{MaintenanceType.Name}' actualizado correctamente.");
+                TempData.Success($"Categoría técnica '{typeToUpdate.Name}' actualizada correctamente.");
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!MaintenanceTypeExists(MaintenanceType.Id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                if (!MaintenanceTypeExists(MaintenanceType.Id)) return NotFound();
+                else throw;
             }
 
-            return RedirectToPage("/Maintenances/Index", null, "tipos");
+            return RedirectToPage("./Index");
         }
 
         private bool MaintenanceTypeExists(int id)

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
@@ -24,7 +25,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public IActionResult OnGet()
         {
-            ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
+            var units = _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Select(u => new { 
+                    Id = u.Id, 
+                    DisplayName = $"{u.Equipment.Name} (INV: {u.InventoryNumber})" 
+                })
+                .ToList();
+
+            ViewData["EquipmentUnitId"] = new SelectList(units, "Id", "DisplayName");
             return Page();
         }
 
@@ -34,36 +43,63 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         public class InputModel
         {
             [Required]
-            public int EquipmentId { get; set; }
+            [Display(Name = "Unidad de Equipo")]
+            public int EquipmentUnitId { get; set; }
             [DataType(DataType.Date)]
+            [Display(Name = "Fecha de Inspección")]
             public DateTime Date { get; set; } = DateTime.Today;
 
-            // Checklist
+            // Checklist Items
+            [Display(Name = "Cableado")]
             public VerificationResult CablingCheck { get; set; }
+            [Display(Name = "Manguera Gas")]
             public VerificationResult GasHoseCheck { get; set; }
+            [Display(Name = "Manguera Agua")]
             public VerificationResult WaterHoseCheck { get; set; }
+            [Display(Name = "Quemador")]
             public VerificationResult BurnerCheck { get; set; }
+            [Display(Name = "Intercambiador Calor")]
             public VerificationResult HeatExchangerCheck { get; set; }
+            [Display(Name = "Sensor de Llama")]
             public VerificationResult FlameSensorCheck { get; set; }
+            [Display(Name = "Ignitor")]
             public VerificationResult ElectrodeIgniterCheck { get; set; }
+            [Display(Name = "Ventilador")]
             public VerificationResult FanCheck { get; set; }
+            [Display(Name = "Llama Piloto")]
             public VerificationResult CombustionFlameCheck { get; set; }
+            [Display(Name = "Lubricación")]
             public VerificationResult LubricationCheck { get; set; }
+            [Display(Name = "Encendido Horno")]
             public VerificationResult OvenIgnitionCheck { get; set; }
+            [Display(Name = "Control Temperatura")]
             public VerificationResult TemperatureControlCheck { get; set; }
+            [Display(Name = "Limpieza Interna")]
             public VerificationResult InternalCleaningCheck { get; set; }
+            [Display(Name = "Limpieza Externa")]
             public VerificationResult ExternalCleaningCheck { get; set; }
+            [Display(Name = "Luces")]
             public VerificationResult LightsCheck { get; set; }
+            [Display(Name = "Vapor Alta Temp")]
             public VerificationResult HighTempSteamCheck { get; set; }
+            [Display(Name = "Display LED")]
             public VerificationResult LedDisplayCheck { get; set; }
+            [Display(Name = "Válvula Solenoide")]
             public VerificationResult SolenoidValveCheck { get; set; }
+            [Display(Name = "Alarma Sonora")]
             public VerificationResult SoundAlarmCheck { get; set; }
+            [Display(Name = "Termocupla")]
             public VerificationResult ThermocoupleCheck { get; set; }
+            [Display(Name = "Salida Vapor")]
             public VerificationResult SteamOutletCheck { get; set; }
 
+            [Display(Name = "Observaciones")]
             public string? Observations { get; set; }
+            [Display(Name = "Hallazgos Críticos")]
             public string? CriticalFindings { get; set; }
+            [Display(Name = "Recomendaciones")]
             public string? Recommendations { get; set; }
+            [Display(Name = "Estado")]
             public VerificationStatus Status { get; set; }
         }
 
@@ -71,13 +107,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         {
             if (!ModelState.IsValid)
             {
-                ViewData["EquipmentId"] = new SelectList(_context.Equipments, "Id", "Name");
+                var units = _context.EquipmentUnits
+                    .Include(u => u.Equipment)
+                    .Select(u => new { 
+                        Id = u.Id, 
+                        DisplayName = $"{u.Equipment.Name} (INV: {u.InventoryNumber})" 
+                    })
+                    .ToList();
+                ViewData["EquipmentUnitId"] = new SelectList(units, "Id", "DisplayName");
                 return Page();
             }
 
+            // Map input model to entity
             var verification = new Verification
             {
-                EquipmentId = Input.EquipmentId,
+                EquipmentUnitId = Input.EquipmentUnitId,
                 Date = Input.Date,
                 CablingCheck = Input.CablingCheck,
                 GasHoseCheck = Input.GasHoseCheck,
@@ -107,6 +151,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 CreatedDate = DateTime.Now
             };
 
+            // Set audit tracking
             var user = await _userManager.GetUserAsync(User);
             if (user != null)
             {
@@ -116,9 +161,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             _context.Verifications.Add(verification);
             await _context.SaveChangesAsync();
 
-            // Mensaje de éxito
-            var equipment = await _context.Equipments.FindAsync(verification.EquipmentId);
-            TempData.Success(NotificationHelper.Verifications.Created(equipment?.Name ?? "desconocido"));
+            // Success notification
+            var unit = await _context.EquipmentUnits.Include(u => u.Equipment).FirstOrDefaultAsync(u => u.Id == verification.EquipmentUnitId);
+            TempData.Success(NotificationHelper.Verifications.Created(unit?.Equipment?.Name ?? "unknown"));
 
             return RedirectToPage("./Index");
         }

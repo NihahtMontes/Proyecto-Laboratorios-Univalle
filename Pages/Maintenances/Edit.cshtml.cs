@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿    using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -31,7 +31,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             var maintenance = await _context.Maintenances
                 .Include(m => m.CostDetails)
-                .Include(m => m.Equipment)
+                .Include(m => m.EquipmentUnit)
+                    .ThenInclude(eu => eu.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (maintenance == null) return NotFound();
@@ -61,7 +62,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             // Quitar navegación de la validación
             ModelState.Remove("Maintenance.CreatedBy");
             ModelState.Remove("Maintenance.ModifiedBy");
-            ModelState.Remove("Maintenance.Equipment");
+            ModelState.Remove("Maintenance.EquipmentUnit");
             ModelState.Remove("Maintenance.MaintenanceType");
             ModelState.Remove("Maintenance.Technician");
             ModelState.Remove("Maintenance.Request");
@@ -83,7 +84,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             var maintenanceDB = await _context.Maintenances
                 .Include(m => m.CostDetails)
-                .Include(m => m.Equipment)
+                .Include(m => m.EquipmentUnit)
+                    .ThenInclude(eu => eu.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == Maintenance.Id);
 
             if (maintenanceDB == null) return NotFound();
@@ -124,7 +126,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.Equipment?.Name));
+                TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.EquipmentUnit?.Equipment?.Name));
                 return RedirectToPage("./Index");
             }
             catch (Exception ex)
@@ -137,18 +139,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         private void CargarListas()
         {
-            var equipos = _context.Equipments
-                .Include(e => e.EquipmentType)
-                .Where(e => e.CurrentStatus != EquipmentStatus.Deleted)
-                .OrderBy(e => e.Name)
-                .Select(e => new
+            var equipos = _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                    .ThenInclude(e => e.EquipmentType)
+                .Where(u => u.CurrentStatus != EquipmentStatus.Deleted)
+                .OrderBy(u => u.Equipment!.Name)
+                .Select(u => new
                 {
-                    Id = e.Id,
-                    DisplayName = $"{e.Name} (Inv: {e.InventoryNumber}) - [{e.EquipmentType.Name}]"
+                    Id = u.Id,
+                    DisplayName = $"{u.Equipment!.Name} (Inv: {u.InventoryNumber}) - [{u.Equipment!.EquipmentType!.Name}]"
                 })
                 .ToList();
 
-            ViewData["EquipmentId"] = new SelectList(equipos, "Id", "DisplayName");
+            ViewData["EquipmentUnitId"] = new SelectList(equipos, "Id", "DisplayName");
             
             var tecnicos = _context.People
                 .Where(p => p.Category == PersonCategory.Tecnico)

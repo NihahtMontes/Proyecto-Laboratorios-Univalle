@@ -1,96 +1,173 @@
-﻿@page "{id:int}"
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Expediente de Solicitud";
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <i class="fas fa-exclamation-triangle mr-2"></i> @TempData["Error"]
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
 }
 
 <div class="row">
-    <!-- Columna Principal: Datos del Requerimiento -->
+    <!-- Main Column: Request Data -->
     <div class="col-lg-8">
-        <div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4">
+                <!-- Header -->
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark">Expediente de Solicitud: #@Model.Request.Id</h4>
-                        <h6 class="card-subtitle text-muted">Información técnica y estado administrativo del requerimiento enviado.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Expediente de Solicitud: #@Model.Request.Id</h4>
+                        <h6 class="card-subtitle text-muted small">Información técnica y estado administrativo del requerimiento.</h6>
                     </div>
                     <div class="ml-auto">
-                        <i class="fas fa-clipboard-list fa-2x text-info opacity-5"></i>
+                        <i class="fas fa-clipboard-check fa-2x text-info opacity-5"></i>
                     </div>
                 </div>
 
-                <div class="row mt-4">
-                    <div class="col-md-6 border-right">
-                        <h5 class="font-weight-bold text-info mb-3">
-                            <i class="fas fa-tools mr-2"></i> Equipamiento Afectado
-                        </h5>
-                        <div class="p-3 bg-light rounded border-left border-info mb-4">
-                            <h5 class="font-weight-bold text-dark mb-1">@Model.Request.Equipment?.Name</h5>
-                            <span class="text-muted small uppercase font-weight-bold">Código Inv: @Model.Request.Equipment?.InventoryNumber</span>
-                            <div class="mt-2">
-                                <span class="badge badge-pill badge-info px-3">@Model.Request.Equipment?.EquipmentType?.Name</span>
-                            </div>
-                        </div>
-
-                        <label class="text-muted small uppercase font-weight-bold d-block mb-1">Solicitado Por</label>
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="btn btn-circle btn-sm btn-light-info text-info mr-2"><i class="fas fa-user"></i></div>
-                            <div>
-                                <span class="font-weight-bold text-dark d-block">@Model.Request.RequestedBy?.FullName</span>
-                                <span class="text-muted small">@Model.Request.RequestedBy?.Position</span>
-                            </div>
+                <!-- Equipment Reference Block (Full Width) -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="small text-muted font-weight-bold uppercase mb-1">Equipamiento Afectado</label>
+                        <div class="p-3 bg-light rounded border-left border-info font-weight-bold text-dark d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-tools mr-2 text-info"></i> @Model.Request.Equipment?.Name 
+                                <span class="text-muted font-weight-normal small ml-1">(@(Model.Request.EquipmentUnit?.InventoryNumber ?? "-"))</span>
+                            </span>
+                            <span class="badge badge-pill badge-info px-3">@Model.Request.Equipment?.EquipmentType?.Name</span>
                         </div>
                     </div>
+                </div>
 
-                    <div class="col-md-6">
-                        <h5 class="font-weight-bold text-info mb-3">
-                            <i class="fas fa-align-left mr-2"></i> Descripción Técnica
-                        </h5>
+                <h5 class="font-weight-bold text-dark mb-3">
+                    @if (Model.Request.Type == RequestType.Technical)
+                    {
+                        <i class="fas fa-align-left mr-2 text-info"></i> <span>Detalles Técnicos</span>
+                    }
+                    else
+                    {
+                        <i class="fas fa-shopping-cart mr-2 text-success"></i> <span>Detalles de Compra</span>
+                    }
+                </h5>
+
+                <div class="row">
+                    <!-- Column: Description / Priority / Time -->
+                    <div class="col-12">
                         <div class="mb-4">
-                            <label class="text-muted small uppercase font-weight-bold d-block mb-1">Requerimiento</label>
-                            <p class="text-dark">@Model.Request.Description</p>
+                            <label class="control-label font-weight-bold small uppercase text-muted mb-1">Contenido de la Solicitud / Justificación</label>
+                            <div class="p-3 bg-white border rounded text-dark" style="min-height: 80px; white-space: pre-wrap;">@Model.Request.Description</div>
                         </div>
 
-                        @if (!string.IsNullOrEmpty(Model.Request.Observations))
-                        {
-                            <div>
-                                <label class="text-muted small uppercase font-weight-bold d-block mb-1">Notas de Campo</label>
-                                <p class="text-muted italic small border-left pl-2">@Model.Request.Observations</p>
+                        <div class="row mb-4">
+                            @if (Model.Request.Type == RequestType.Technical)
+                            {
+                                <div class="col-md-6">
+                                    <label class="control-label font-weight-bold small uppercase text-muted mb-1">Tiempo Estimado de Reparación</label>
+                                    <div class="p-2 px-3 bg-light rounded border text-dark font-weight-bold">
+                                        <i class="far fa-clock mr-2 text-info"></i> @(string.IsNullOrEmpty(Model.Request.EstimatedRepairTime) ? "No especificado" : Model.Request.EstimatedRepairTime)
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="col-md-6">
+                                    <label class="control-label font-weight-bold small uppercase text-success mb-1">Código de Inversión (Activos)</label>
+                                    <div class="p-2 px-3 bg-light rounded border border-success text-dark font-weight-bold">
+                                        <i class="fas fa-barcode mr-2 text-success"></i> @(string.IsNullOrEmpty(Model.Request.InvestmentCode) ? "No aplica" : Model.Request.InvestmentCode)
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="col-md-6 mt-3 mt-md-0">
+                                <label class="control-label font-weight-bold small uppercase text-muted mb-1">Nivel de Prioridad</label>
+                                <div class="p-2 px-3 bg-light rounded border text-dark font-weight-bold">
+                                    @{
+                                        var pIcon = Model.Request.Priority == RequestPriority.High ? "fa-bolt text-danger" : (Model.Request.Priority == RequestPriority.Medium ? "fa-info-circle text-warning" : "fa-check-circle text-info");
+                                    }
+                                    <i class="fas @pIcon mr-2"></i> @Model.Request.Priority
+                                </div>
                             </div>
-                        }
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="control-label font-weight-bold small uppercase text-muted mb-1">Observaciones Adicionales / Notas de Campo</label>
+                            <div class="p-3 bg-light border rounded text-muted small italic">
+                                @(string.IsNullOrEmpty(Model.Request.Observations) ? "Sin observaciones registradas." : Model.Request.Observations)
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Bloque de Respuesta Técnica/Administrativa -->
+                <!-- COST ITEMS TABLE (Only for Purchasing) -->
+                @if (Model.Request.Type == RequestType.Purchasing && Model.Request.CostDetails.Any())
+                {
+                    <div class="mt-4 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="font-weight-bold text-success mb-0 small uppercase"><i class="fas fa-list-ol mr-2"></i> Ítems del Presupuesto</h5>
+                        </div>
+                        <div class="table-responsive border rounded bg-white shadow-none">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="bg-light text-muted small uppercase">
+                                    <tr>
+                                        <th class="border-top-0 pl-3">Concepto</th>
+                                        <th class="border-top-0 text-center">Cant.</th>
+                                        <th class="border-top-0 text-center">Unidad</th>
+                                        <th class="border-top-0 text-right">P. Unit.</th>
+                                        <th class="border-top-0 text-right pr-3">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{ decimal grandTotal = 0; }
+                                    @foreach (var item in Model.Request.CostDetails)
+                                    {
+                                        var subtotal = item.Quantity * item.UnitPrice;
+                                        grandTotal += subtotal;
+                                        <tr>
+                                            <td class="pl-3 font-weight-bold text-dark">@item.Concept</td>
+                                            <td class="text-center font-weight-bold">@item.Quantity.ToString("0.##")</td>
+                                            <td class="text-center small text-muted">@item.UnitOfMeasure</td>
+                                            <td class="text-right">@item.UnitPrice.ToString("N2")</td>
+                                            <td class="text-right pr-3 font-weight-bold text-dark">@subtotal.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="bg-light">
+                                    <tr class="font-weight-bold">
+                                        <td colspan="4" class="text-right text-dark uppercase pr-3 pt-2 pb-2 small">Total Estimado:</td>
+                                        <td class="text-right text-success pr-3 pt-2 pb-2" style="font-size: 1rem;">@grandTotal.ToString("N2") Bs.</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+                <!-- Resolution Block -->
                 @if (Model.Request.Status != RequestStatus.Pending)
                 {
-                    <div class="mt-5">
+                    <div class="mt-5 border-top pt-4">
                         <h5 class="font-weight-bold text-dark mb-3">
-                            <i class="fas fa-check-double mr-2 text-success"></i> Resolución del Caso
+                            <i class="fas fa-check-double mr-2 text-info"></i> Resolución Administrativa
                         </h5>
                         @{
                             var resClass = Model.Request.Status == RequestStatus.Approved ? "bg-light-success text-success border-success" : "bg-light-danger text-danger border-danger";
                             var resIcon = Model.Request.Status == RequestStatus.Approved ? "fa-check-circle" : "fa-times-circle";
                         }
                         <div class="p-4 @resClass rounded border-left border-3 shadow-none">
-                            <div class="d-flex align-items-center mb-3">
+                            <div class="d-flex align-items-center">
                                 <i class="fas @resIcon fa-2x mr-3"></i>
                                 <div>
-                                    <h6 class="mb-0 font-weight-bold">Solicitud @Model.Request.Status</h6>
+                                    <h6 class="mb-0 font-weight-bold uppercase">Estado: @Model.Request.Status</h6>
                                     <small class="opacity-7">Evaluado el @Model.Request.ApprovalDate?.ToString("dd/MM/yyyy HH:mm")</small>
                                 </div>
                             </div>
                             
-                            <div class="mb-2">
-                                <span class="font-weight-bold small uppercase d-block opacity-7">Responsable Evaluador</span>
-                                <span class="font-weight-bold">@(Model.Request.ApprovedBy?.FullName ?? "Administración Central")</span>
-                            </div>
-
                             @if (!string.IsNullOrEmpty(Model.Request.RejectionReason))
                             {
-                                <div class="mt-3 p-2 bg-white rounded border border-danger small text-danger">
+                                <div class="mt-3 p-3 bg-white rounded border border-danger small text-danger">
                                     <i class="fas fa-info-circle mr-1"></i> <strong>Motivo de Rechazo:</strong> @Model.Request.RejectionReason
                                 </div>
                             }
@@ -99,11 +176,13 @@
                 }
                 else
                 {
-                    <div class="alert alert-warning border-0 mt-5 p-4 bg-light-warning text-warning d-flex align-items-center">
-                        <i class="fas fa-clock fa-2x mr-3 opacity-5"></i>
-                        <div>
-                            <h6 class="font-weight-bold mb-0 text-warning">Trámite en Revisión</h6>
-                            <p class="mb-0 small">Esta solicitud está esperando la evaluación técnica de un administrador.</p>
+                    <div class="mt-5 border-top pt-4">
+                        <div class="alert alert-warning border-0 p-4 bg-light-warning text-warning d-flex align-items-center rounded shadow-none">
+                            <i class="fas fa-clock fa-2x mr-3 opacity-5"></i>
+                            <div>
+                                <h6 class="font-weight-bold mb-0 text-warning uppercase small">Trámite en Revisión Pendiente</h6>
+                                <p class="mb-0 small">Esta solicitud está en cola para evaluación por el equipo administrativo.</p>
+                            </div>
                         </div>
                     </div>
                 }
@@ -111,72 +190,116 @@
         </div>
     </div>
 
-    <!-- Columna Lateral: Control y Acciones -->
+    <!-- Side Column: Control and Actions -->
     <div class="col-lg-4">
+        <!-- Status Card -->
         <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
             <div class="card-body">
-                <h5 class="card-title text-white font-weight-bold"><i class="fas fa-shield-alt mr-2 text-info"></i> Estatus Logístico</h5>
-                <hr class="border-secondary" />
+                <h5 class="card-title text-white font-weight-bold small uppercase"><i class="fas fa-shield-alt mr-2 text-info"></i> Estado de Trámite</h5>
+                <hr class="border-secondary mb-4" />
                 
-                <div class="mb-3 d-flex justify-content-between align-items-center">
-                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Prioridad</small>
-                    @{
-                        var pBadge = Model.Request.Priority == RequestPriority.High ? "badge-danger" : (Model.Request.Priority == RequestPriority.Medium ? "badge-warning" : "badge-info");
-                    }
-                    <span class="badge badge-pill @pBadge px-3">@Model.Request.Priority</span>
+                <div class="mb-3">
+                    <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Identificador Único</label>
+                    <span class="font-weight-bold text-info" style="font-size: 1.1rem;">#REQ-@Model.Request.Id.ToString("D5")</span>
                 </div>
 
-                <div class="mb-0 d-flex justify-content-between align-items-center">
-                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Estado Flujo</small>
-                    <span class="badge badge-pill badge-light text-dark px-3">@Model.Request.Status</span>
+                <div class="mb-0">
+                    <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estatus Actual</label>
+                    @{
+                        var sBadge = Model.Request.Status == RequestStatus.Approved ? "badge-success" : (Model.Request.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
+                    }
+                    <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold">@Model.Request.Status</span>
                 </div>
             </div>
         </div>
 
+        <!-- Audit Log Card -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
-                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Auditoría de Canal</h5>
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Bitácora de Auditoría</h5>
                 <hr />
-                <div class="small">
+                <div class="audit-log">
                     <div class="mb-3">
-                        <label class="text-muted d-block small uppercase mb-0">Creado</label>
-                        <span class="font-weight-bold text-dark">@Model.Request.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Origen de Solicitud</label>
+                        <span class="font-weight-bold text-dark d-block">@(Model.Request.CreatedBy?.FullName ?? "Sesión de Usuario")</span>
+                        <span class="text-muted small">@Model.Request.CreatedDate.ToString("dd-MM-yyyy HH:mm")</span>
                     </div>
                     @if (Model.Request.LastModifiedDate.HasValue)
                     {
-                        <div class="mb-0 border-top pt-2">
-                            <label class="text-muted d-block small uppercase mb-0">Último Cambio</label>
-                            <span class="font-weight-bold text-dark d-block">@(Model.Request.ModifiedBy?.FullName ?? "-")</span>
-                            <span class="text-muted small">@Model.Request.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="mb-0 border-top pt-3 mt-3">
+                            <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Última Actualización</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Request.ModifiedBy?.FullName ?? "Administración")</span>
+                            <span class="text-muted small">@Model.Request.LastModifiedDate.Value.ToString("dd-MM-yyyy HH:mm")</span>
                         </div>
                     }
                 </div>
             </div>
         </div>
 
+        <!-- Action Buttons -->
         <div class="form-actions mt-4">
             @if (Model.Request.Status == RequestStatus.Pending || User.IsInRole("Administrator") || User.IsInRole("SuperAdmin"))
             {
-                <a asp-page="./Edit" asp-route-id="@Model.Request.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
-                    <i class="fas fa-edit mr-1"></i> Gestionar Solicitud
+                <a asp-page="./Edit" asp-route-id="@Model.Request.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-3">
+                    <i class="fas fa-edit mr-2"></i> Gestionar / Editar
                 </a>
             }
-            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4">
-                <i class="fas fa-list mr-1"></i> Volver al Listado
+
+            <a asp-page="./Details" asp-page-handler="DescargarReporte" asp-route-id="@Model.Request.Id" 
+               class="btn btn-success btn-block btn-rounded shadow-sm font-weight-bold py-2 mb-3 btn-download-report" 
+               data-id="@Model.Request.Id">
+                <i class="fas fa-file-download mr-2"></i> <span class="download-text">Descargar Informe (Excel)</span>
+            </a>
+
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-5">
+                <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
             </a>
             
             <a asp-page="./Delete" asp-route-id="@Model.Request.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
-                <i class="fas fa-trash-alt mr-1"></i> Cancelar / Eliminar Solicitud
+                <i class="fas fa-trash-alt mr-2"></i> Anular Solicitud
             </a>
         </div>
     </div>
 </div>
 
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            function updateDownloadButtons() {
+                $('.btn-download-report').each(function() {
+                    const id = $(this).data('id');
+                    if (id && localStorage.getItem('downloaded_request_' + id)) {
+                        $(this).removeClass('btn-success').addClass('btn-info');
+                        $(this).attr('title', 'Volver a descargar reporte');
+                        const $text = $(this).find('.download-text');
+                        if ($text && $text.length > 0) {
+                            $text.text('Re-Descargar Informe');
+                        }
+                    }
+                });
+            }
+
+            $('.btn-download-report').on('click', function() {
+                const id = $(this).data('id');
+                if (id) {
+                    localStorage.setItem('downloaded_request_' + id, 'true');
+                    setTimeout(updateDownloadButtons, 300);
+                }
+            });
+
+            updateDownloadButtons();
+        });
+    </script>
+}
+
 @section Styles {
     <style>
-        .bg-light-success { background-color: rgba(54, 190, 166, 0.05); }
-        .bg-light-danger { background-color: rgba(246, 45, 81, 0.05); }
-        .bg-light-warning { background-color: rgba(255, 188, 52, 0.05); }
-        .border-left-3 { border-left-width: 3px !important; }
+        .bg-light-success { background-color: rgba(40, 167, 69, 0.05); }
+        .bg-light-danger { background-color: rgba(220, 53, 69, 0.05); }
+        .bg-light-warning { background-color: rgba(255, 193, 7, 0.05); }
+        .border-left-3 { border-left-width: 4px !important; }
+        .italic { font-style: italic; }
+        .opacity-5 { opacity: 0.15; }
+        .audit-log label { letter-spacing: 0.5px; }
     </style>
 }

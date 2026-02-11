@@ -13,9 +13,18 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "El equipamiento es obligatorio")]
-        [Display(Name = "Equipamiento")]
+        [Required(ErrorMessage = "El laboratorio es obligatorio")]
+        [Display(Name = "Laboratorio")]
+        public int LaboratoryId { get; set; }
+
+        // For purchasing, this defines the Type of equipment we want.
+        // For technical support, this defines the Type of the broken unit (redundant with EquipmentUnit but good for filtering).
+        [Required(ErrorMessage = "El equipamiento (Modelo/Tipo) es obligatorio")]
+        [Display(Name = "Modelo/Tipo de Equipamiento")]
         public int EquipmentId { get; set; }
+
+        [Display(Name = "Unidad Específica (Inventario)")]
+        public int? EquipmentUnitId { get; set; }
 
         [Display(Name = "Solicitado Por")]
         public int? RequestedById { get; set; }
@@ -31,6 +40,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(500)]
         [Display(Name = "Observaciones del Solicitante")]
         public string? Observations { get; set; }
+
+        [StringLength(100)]
+        [Display(Name = "Tiempo Estimado de Reparación")]
+        public string? EstimatedRepairTime { get; set; }
 
         [Required]
         [Display(Name = "Estado")]
@@ -65,8 +78,24 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // NAVIGATION
         // ========================================
+        [Display(Name = "Tipo de Solicitud")]
+        public RequestType Type { get; set; } = RequestType.Technical;
+
+        [StringLength(50)]
+        [Display(Name = "Nro. Código de Inversión")]
+        public string? InvestmentCode { get; set; }
+
+        // ========================================
+        // NAVIGATION
+        // ========================================
+        [ForeignKey("LaboratoryId")]
+        public virtual Laboratory? Laboratory { get; set; }
+
         [ForeignKey("EquipmentId")]
         public virtual Equipment? Equipment { get; set; }
+
+        [ForeignKey("EquipmentUnitId")]
+        public virtual EquipmentUnit? EquipmentUnit { get; set; }
 
         [ForeignKey("RequestedById")]
         public virtual User? RequestedBy { get; set; }
@@ -82,5 +111,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         // RELATIONSHIPS
         public virtual Maintenance? Maintenance { get; set; }
+        public virtual ICollection<CostDetail> CostDetails { get; set; } = new List<CostDetail>();
     }
 }

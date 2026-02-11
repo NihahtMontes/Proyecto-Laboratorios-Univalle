@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 {
@@ -27,10 +26,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var laboratory = await _context.Laboratories
                 .Include(l => l.Faculty)
@@ -38,32 +34,39 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
                 .Include(l => l.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (laboratory == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                Laboratory = laboratory;
-            }
+            if (laboratory == null) return NotFound();
+            
+            Laboratory = laboratory;
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var laboratory = await _context.Laboratories.FindAsync(id);
-            if (laboratory != null)
+            if (laboratory == null) return NotFound();
+
+            // Perform Soft Delete (Logic Delete for Audit)
+            laboratory.Status = GeneralStatus.Eliminado;
+            laboratory.LastModifiedDate = DateTime.Now;
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
             {
-                laboratory.Status = GeneralStatus.Eliminado; // Borrado lógico
+                laboratory.ModifiedById = currentUser.Id;
+            }
+
+            try
+            {
                 _context.Attach(laboratory).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                
-                TempData.Success(NotificationHelper.Laboratories.Deleted(laboratory.Name));
+                TempData.Success($"El laboratorio '{laboratory.Name}' ha sido dado de baja del sistema institucional.");
+            }
+            catch (Exception ex)
+            {
+                TempData.Error("Hubo un error al intentar procesar la baja: " + ex.Message);
+                return RedirectToPage("./Delete", new { id });
             }
 
             return RedirectToPage("./Index");

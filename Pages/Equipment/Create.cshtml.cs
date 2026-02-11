@@ -11,8 +11,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 {
-    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
-
     [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class CreateModel : PageModel
     {
@@ -25,35 +23,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             _userManager = userManager;
         }
 
-        // ojalá que detecte
         public IActionResult OnGet()
         {
-            // Cargar ciudades con su país concatenado: "Cali, Colombia"
-            var cities = _context.Cities
-                .Include(c => c.Country)
-                .Where(c => c.Status == GeneralStatus.Activo)
-                .OrderBy(c => c.Country.Name)
-                .ThenBy(c => c.Name)
-                .Select(c => new 
-                { 
-                    Id = c.Id, 
-                    FullName = $"{c.Name}, {c.Country.Name}" 
-                })
-                .ToList();
-
-            var laboratories = _context.Laboratories
-                .Where(l => l.Status == GeneralStatus.Activo)
-                .OrderBy(l => l.Name)
-                .Select(l => new 
-                { 
-                    Id = l.Id, 
-                    DisplayName = $"[{l.Code}] - {l.Name}" 
-                })
-                .ToList();
-
-            ViewData["CityId"] = new SelectList(cities, "Id", "FullName");
-            ViewData["LaboratoryId"] = new SelectList(laboratories, "Id", "DisplayName");
-            ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes, "Id", "Name");
+            LoadLists();
             return Page();
         }
 
@@ -62,117 +34,110 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
         public class InputModel
         {
-            [Required]
+            [Required(ErrorMessage = "La categoría es obligatoria")]
+            [Display(Name = "Categoría")]
             public int EquipmentTypeId { get; set; }
-            [Required]
-            public int LaboratoryId { get; set; }
-            [Required]
-            public int CityId { get; set; }
+
+            [Display(Name = "País / Sede de Origen")]
+            public int? CountryId { get; set; }
+
+            [Display(Name = "Ciudad / Sede de Origen")]
+            public int? CityId { get; set; }
             
-            [Required]
-            public string Name { get; set; }
-            [Required]
-            public string InventoryNumber { get; set; }
+            [Required(ErrorMessage = "El nombre del equipo es obligatorio")]
+            [Display(Name = "Nombre del Equipo")]
+            [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres")]
+            public string Name { get; set; } = string.Empty;
+
+            [Display(Name = "Marca")]
             public string? Brand { get; set; }
+
+            [Display(Name = "Modelo")]
             public string? Model { get; set; }
-            public string? SerialNumber { get; set; }
+
+            [Display(Name = "Vida Útil Estimada (Años)")]
+            [Range(0, 50, ErrorMessage = "La vida útil debe estar entre 0 y 50 años")]
             public int? UsefulLifeYears { get; set; }
-            [DataType(DataType.Date)]
-            public DateTime? AcquisitionDate { get; set; }
-            public decimal? AcquisitionValue { get; set; }
-            public string? Observations { get; set; }
+
+            [Display(Name = "Descripción / Especificaciones")]
+            public string? Description { get; set; }
+        }
+
+        public async Task<JsonResult> OnGetCitiesByCountryAsync(int countryId)
+        {
+            var cities = await _context.Cities
+                .Where(c => c.CountryId == countryId && c.Status == GeneralStatus.Activo)
+                .OrderBy(c => c.Name)
+                .Select(c => new { value = c.Id, text = c.Name })
+                .ToListAsync();
+            return new JsonResult(cities);
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Uniqueness Check (Ignoring Deleted but filtering by status)
-            bool invExists = await _context.Equipments
-                .IgnoreQueryFilters()
-                .AnyAsync(e => e.InventoryNumber == Input.InventoryNumber && e.CurrentStatus != EquipmentStatus.Deleted);
-
-            if (invExists)
-            {
-                ModelState.AddModelError("Input.InventoryNumber", "El número de inventario ya está en uso por otro equipo activo.");
-            }
-
             if (!ModelState.IsValid)
             {
-                // Reload lists on error
-                var cities = _context.Cities
-                .Include(c => c.Country)
-                .Where(c => c.Status == GeneralStatus.Activo)
-                .OrderBy(c => c.Country.Name)
-                .ThenBy(c => c.Name)
-                .Select(c => new 
-                { 
-                    Id = c.Id, 
-                    FullName = $"{c.Name}, {c.Country.Name}" 
-                })
-                .ToList();
-
-                var laboratories = _context.Laboratories
-                    .Where(l => l.Status == GeneralStatus.Activo)
-                    .OrderBy(l => l.Name)
-                    .Select(l => new 
-                    { 
-                        Id = l.Id, 
-                        DisplayName = $"[{l.Code}] - {l.Name}" 
-                    })
-                    .ToList();
-
-                ViewData["CityId"] = new SelectList(cities, "Id", "FullName");
-                ViewData["LaboratoryId"] = new SelectList(laboratories, "Id", "DisplayName");
-                ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes, "Id", "Name");
+                LoadLists();
                 return Page();
             }
 
-            // Normalización
+            // Normalization
             Input.Name = Input.Name.Clean();
             Input.Brand = Input.Brand?.Clean();
             Input.Model = Input.Model?.Clean();
-            
-            // Deducir CountryId desde la Ciudad seleccionada
-            var city = await _context.Cities.FindAsync(Input.CityId);
-            if (city == null) return Page(); // Should not happen with valid modelstate
+            Input.Description = Input.Description?.Clean();
 
+            // Duplicate Check (Name + Model)
+            var normalizedName = Input.Name.ToLower();
+            var normalizedModel = Input.Model?.ToLower();
+
+            var exists = await _context.Equipments
+                .AnyAsync(e => e.Name.ToLower() == normalizedName && 
+                               (string.IsNullOrEmpty(Input.Model) || e.Model.ToLower() == normalizedModel));
+
+            if (exists)
+            {
+                ModelState.AddModelError("Input.Name", "Ya existe un equipo registrado con este nombre y modelo.");
+                LoadLists();
+                return Page();
+            }
+            
             var equipment = new Models.Equipment
             {
                 EquipmentTypeId = Input.EquipmentTypeId,
-                LaboratoryId = Input.LaboratoryId,
+                CountryId = Input.CountryId,
                 CityId = Input.CityId,
-                CountryId = city.CountryId, // Auto-asignado
                 Name = Input.Name,
-                InventoryNumber = Input.InventoryNumber,
                 Brand = Input.Brand,
                 Model = Input.Model,
-                SerialNumber = Input.SerialNumber,
                 UsefulLifeYears = Input.UsefulLifeYears,
-                AcquisitionDate = Input.AcquisitionDate,
-                AcquisitionValue = Input.AcquisitionValue,
-                Observations = Input.Observations,
-                CurrentStatus = EquipmentStatus.Operational,
+                Description = Input.Description,
                 CreatedDate = DateTime.Now
             };
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser != null)
+            {
+                equipment.CreatedById = currentUser.Id;
+            }
 
             _context.Equipments.Add(equipment);
             await _context.SaveChangesAsync();
 
-            var currentUser = await _userManager.GetUserAsync(User);
-            var initialHistory = new EquipmentStateHistory
-            {
-                EquipmentId = equipment.Id,
-                Status = EquipmentStatus.Operational,
-                StartDate = DateTime.Now,
-                CreatedDate = DateTime.Now,
-                CreatedById = currentUser?.Id,
-                Reason = "Initial equipment registration"
-            };
+            TempData.Success($"Definición de '{equipment.Name}' registrada correctamente.");
+            return RedirectToPage("./Details", new { id = equipment.Id });
+        }
 
-            _context.EquipmentStateHistories.Add(initialHistory);
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "Equipo registrado exitosamente.";
-            return RedirectToPage("./Index");
+        private void LoadLists()
+        {
+            ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes.OrderBy(et => et.Name), "Id", "Name");
+            
+            var countries = _context.Countries
+                .Where(c => c.Status == GeneralStatus.Activo)
+                .OrderBy(c => c.Name)
+                .ToList();
+            ViewData["CountryId"] = new SelectList(countries, "Id", "Name");
+            ViewData["CityId"] = new SelectList(Enumerable.Empty<SelectListItem>(), "Value", "Text");
         }
     }
 }

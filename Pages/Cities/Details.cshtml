@@ -1,22 +1,21 @@
-﻿@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Cities.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Expediente de Ciudad";
-}
+
 
 <div class="row">
-    <!-- Columna Principal: Información Detallada -->
+    <!-- Main Column: Detailed Information -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Expediente Técnico: @Model.City.Name</h4>
-                        <h6 class="card-subtitle text-muted">Información geográfica y estado administrativo.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Expediente de Localidad: @Model.City.Name</h4>
+                        <h6 class="card-subtitle text-muted">Información geográfica y estado administrativo institucional.</h6>
                     </div>
-                    <div class="ml-auto">
-                        <span class="badge badge-pill badge-@(Model.City.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "success" : "danger") px-4 py-2" style="font-size: 0.9rem;">
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <span class="badge badge-pill badge-@(Model.City.Status == GeneralStatus.Activo ? "success" : "danger") px-4 py-2" style="font-size: 0.9rem;">
                             <i class="fas fa-check-circle mr-1"></i> @Model.City.Status
                         </span>
                     </div>
@@ -28,12 +27,12 @@
                             <i class="fas fa-map-marker-alt mr-2"></i> Ubicación Geográfica
                         </h5>
                         <div class="table-responsive">
-                            <table class="table table-sm table-borderless bg-light rounded p-3">
+                            <table class="table table-sm table-borderless bg-light rounded p-3 shadow-none">
                                 <tbody>
                                     <tr>
                                         <th class="text-muted small uppercase pl-4 pt-3" style="width: 30%;">País de Pertenencia</th>
                                         <td class="font-weight-bold pt-3">
-                                            <i class="fas fa-globe mr-2 text-primary"></i> @Model.City.Country?.Name
+                                            <i class="fas fa-globe mr-2 text-info"></i> @Model.City.Country?.Name
                                         </td>
                                     </tr>
                                     <tr>
@@ -42,7 +41,7 @@
                                     </tr>
                                     <tr>
                                         <th class="text-muted small uppercase pl-4 pb-3">Región / Departamento</th>
-                                        <td class="pb-3 text-dark">@(Model.City.Region ?? "No especificado")</td>
+                                        <td class="pb-3 text-dark font-weight-bold">@(Model.City.Region ?? "No especificado")</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -50,18 +49,18 @@
                     </div>
                 </div>
 
-                <div class="alert alert-info border-0 mt-4 bg-light-info text-info small">
-                    <i class="fas fa-info-circle mr-2"></i> Este registro se utiliza para canalizar la ubicación de laboratorios y personal. Cualquier cambio en su estado puede afectar la trazabilidad de los equipos.
+                <div class="alert alert-light border-0 mt-4 p-3 shadow-none small text-info italic">
+                    <i class="fas fa-info-circle mr-2"></i> Este registro se utiliza para canalizar la ubicación física de laboratorios y personal. Cualquier cambio en su estado afectará la visibilidad de esta sede en los formularios de registro y reportes de inventario.
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Columna Lateral: Auditoría y Acciones -->
+    <!-- Sidebar: Audit and Actions -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
-                <h5 class="card-title text-dark font-weight-bold mb-4">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase">
                     <i class="fas fa-history mr-2 text-warning"></i> Historial de Registro
                 </h5>
                 <hr />
@@ -69,33 +68,40 @@
                     <div class="mb-3">
                         <label class="text-muted d-block small uppercase mb-0">Fecha de Registro</label>
                         <span class="font-weight-bold text-dark d-block">@Model.City.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
-                        <span class="text-muted">por @(Model.City.CreatedBy?.FullName ?? "Sistema")</span>
+                        <div class="text-muted small">Por: @(Model.City.CreatedBy?.FullName ?? "Sistema")</div>
                     </div>
 
                     @if (Model.City.LastModifiedDate.HasValue)
                     {
-                        <div class="mb-0">
+                        <div class="mb-0 border-top pt-2">
                             <label class="text-muted d-block small uppercase mb-0">Última Actualización</label>
-                            <span class="font-weight-bold text-dark d-block">@Model.City.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                            <span class="text-muted">por @(Model.City.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="font-weight-bold text-dark d-block">@(Model.City.ModifiedBy?.FullName ?? "-")</span>
+                            <span class="text-muted small">@Model.City.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
                         </div>
-                    }
-                    else
-                    {
-                        <div class="text-muted font-italic">Sin modificaciones registradas.</div>
                     }
                 </div>
             </div>
         </div>
 
-        <!-- Botones de Acción -->
+        <!-- Action Buttons -->
         <div class="form-actions mt-4">
             <a asp-page="./Edit" asp-route-id="@Model.City.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
-                <i class="fas fa-edit mr-1"></i> Editar Ciudad
+                <i class="fas fa-edit mr-1"></i> Modificar Ciudad
             </a>
-            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2">
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 font-weight-bold mb-4">
                 <i class="fas fa-list mr-1"></i> Volver al Listado
+            </a>
+            
+             <a asp-page="./Delete" asp-route-id="@Model.City.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">
+                <i class="fas fa-trash-alt mr-1"></i> Eliminar Registro
             </a>
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+}
