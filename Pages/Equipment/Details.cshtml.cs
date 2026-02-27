@@ -21,7 +21,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         public Models.Equipment Equipment { get; set; } = default!;
 
         [BindProperty(SupportsGet = true)]
-        public string SearchTerm { get; set; }
+        public string SearchTerm { get; set; } = string.Empty;
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
@@ -42,7 +42,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             // Cargar unidades con filtros, búsqueda e inclusiones específicas de ubicación
             var unitsQuery = _context.EquipmentUnits
                 .Include(u => u.Laboratory)
-                    .ThenInclude(l => l.Faculty)
+                    .ThenInclude(l => l!.Faculty)
+                .Include(u => u.Career)
                 .Where(u => u.EquipmentId == id);
 
             // Filtro por Estado (Soft Delete) - Mostrar activos por defecto
@@ -54,7 +55,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 var term = SearchTerm.ToLower();
                 unitsQuery = unitsQuery.Where(u => 
                     u.InventoryNumber.ToLower().Contains(term) || 
-                    (u.SerialNumber != null && u.SerialNumber.ToLower().Contains(term)));
+                    (u.SerialNumber != null && u.SerialNumber.ToLower().Contains(term)) ||
+                    (u.Career != null && u.Career.Name.ToLower().Contains(term)));
             }
             
             // Re-asignar las unidades cargadas al modelo para la vista

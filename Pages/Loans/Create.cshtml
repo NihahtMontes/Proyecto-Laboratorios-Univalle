@@ -1,0 +1,176 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Loans.CreateModel
+@{
+    ViewData["Title"] = "Registrar Préstamo";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Registrar Nuevo Préstamo</h4>
+                        <h6 class="card-subtitle text-muted">Control de asignación temporal de activos y utensilios.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-hand-holding fa-2x text-primary opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate id="loanForm">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+
+                    <div class="row">
+                        <!-- Column 1: Identification -->
+                        <div class="col-md-5 border-right">
+                            <h5 class="font-weight-bold text-primary mb-3">
+                                <i class="fas fa-search mr-2"></i> Localización del Activo
+                            </h5>
+                            
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-primary text-uppercase">
+                                    Facultad <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId">
+                                    <option value="">-- Seleccionar Facultad --</option>
+                                </select>
+                                <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4 pl-3 bg-light p-2 rounded">
+                                <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-primary text-uppercase">
+                                    Laboratorio <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" disabled>
+                                    <option value="">-- Primero seleccione facultad --</option>
+                                </select>
+                                <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2 rounded">
+                                <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-warning text-uppercase">
+                                    Activo / Utensilio <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" disabled>
+                                    <option value="">-- Seleccione laboratorio --</option>
+                                </select>
+                                <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                <small class="form-text text-muted">Solo se muestran unidades operativas.</small>
+                            </div>
+                        </div>
+
+                        <!-- Column 2: Loan Details -->
+                        <div class="col-md-7 pl-lg-4">
+                            <h5 class="font-weight-bold text-primary mb-3">
+                                <i class="fas fa-user-clock mr-2"></i> Detalles del Préstamo
+                            </h5>
+                            
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.BorrowerId" class="control-label font-weight-bold small text-uppercase text-muted">Solicitante Responsable <span class="text-danger">*</span></label>
+                                <select asp-for="Input.BorrowerId" class="form-control select2" asp-items="ViewBag.BorrowerId">
+                                    <option value="">-- Seleccione Solicitante --</option>
+                                </select>
+                                <span asp-validation-for="Input.BorrowerId" class="text-danger small"></span>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.LoanDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha de Salida</label>
+                                        <input asp-for="Input.LoanDate" class="form-control" type="datetime-local" />
+                                        <span asp-validation-for="Input.LoanDate" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.EstimatedReturnDate" class="control-label font-weight-bold small text-uppercase text-muted">Devolución Estimada</label>
+                                        <input asp-for="Input.EstimatedReturnDate" class="form-control" type="date" />
+                                        <span asp-validation-for="Input.EstimatedReturnDate" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-0">
+                                <label asp-for="Input.DepartureObservations" class="control-label font-weight-bold small text-uppercase text-muted">Estado Actual / Observaciones de Entrega</label>
+                                <textarea asp-for="Input.DepartureObservations" class="form-control" rows="4" placeholder="Describa el estado físico, accesorios incluidos o cualquier nota relevante al entregar el equipo..."></textarea>
+                                <span asp-validation-for="Input.DepartureObservations" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="mt-4" />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-primary btn-rounded px-5 shadow-sm font-weight-bold">
+                            <i class="fas fa-check mr-2"></i> Registrar Salida de Activo
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                             Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        .opacity-5 { opacity: 0.15; }
+    </style>
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.select2').select2({
+                width: '100%',
+                allowClear: true
+            });
+
+            // Cascading
+            $('#facultySelect').on('change', function() {
+                let id = $(this).val();
+                let $lab = $('#laboratorySelect');
+                let $unit = $('#equipmentUnitSelect');
+                
+                $lab.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
+                $unit.empty().append('<option value="">-- Primero seleccione facultad --</option>').prop('disabled', true);
+                
+                if (!id) {
+                    $lab.html('<option value="">-- Seleccionar Facultad --</option>');
+                    return;
+                }
+
+                $.get('/Loans/Create?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
+                    let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
+                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
+                    $lab.html(opts).prop('disabled', false).trigger('change');
+                });
+            });
+
+            $('#laboratorySelect').on('change', function() {
+                let id = $(this).val();
+                let $unit = $('#equipmentUnitSelect');
+                
+                $unit.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
+                
+                if (!id) {
+                    $unit.html('<option value="">-- Seleccione Laboratorio --</option>');
+                    return;
+                }
+
+                $.get('/Loans/Create?handler=UnitsByLab', { laboratoryId: id }, function(data) {
+                    let opts = '<option value="">-- Seleccionar Activo --</option>';
+                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
+                    $unit.html(opts).prop('disabled', false).trigger('change');
+                });
+            });
+        });
+    </script>
+}

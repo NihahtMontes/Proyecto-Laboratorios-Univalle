@@ -32,6 +32,14 @@
                     </a>
                 </div>
 
+                @if (Model.EquipmentUnit.Career != null)
+                {
+                    <div class="mb-4">
+                        <label class="text-muted small uppercase font-weight-bold d-block mb-1"><i class="fas fa-graduation-cap mr-1 text-info"></i> Carrera / Programa</label>
+                        <span class="font-weight-bold text-dark h6">@Model.EquipmentUnit.Career.Name</span>
+                    </div>
+                }
+
                 <div class="mb-4">
                     <label class="text-muted small uppercase font-weight-bold d-block mb-1"><i class="fas fa-hospital mr-1 text-info"></i> Laboratorio Asignado</label>
                     <span class="font-weight-bold text-dark h6">@(Model.EquipmentUnit.Laboratory?.Name ?? "No asignado")</span>
@@ -39,13 +47,17 @@
                 </div>
 
                 <div class="row mb-4">
-                    <div class="col-6">
+                    <div class="col-4">
                         <label class="text-muted small uppercase font-weight-bold d-block mb-1">Estado</label>
-                        <span class="badge badge-pill badge-info px-3 py-1 font-weight-bold shadow-none">@Html.DisplayFor(m => m.EquipmentUnit.CurrentStatus)</span>
+                        <span class="badge badge-pill badge-info px-2 py-1 font-weight-bold shadow-none small">@Html.DisplayFor(m => m.EquipmentUnit.CurrentStatus)</span>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
+                        <label class="text-muted small uppercase font-weight-bold d-block mb-1">Condición</label>
+                        <span class="badge badge-pill badge-warning px-2 py-1 font-weight-bold shadow-none small text-white">@Html.DisplayFor(m => m.EquipmentUnit.PhysicalCondition)</span>
+                    </div>
+                    <div class="col-4">
                         <label class="text-muted small uppercase font-weight-bold d-block mb-1">Serie</label>
-                        <span class="text-dark font-weight-bold">@(Model.EquipmentUnit.SerialNumber ?? "N/A")</span>
+                        <span class="text-dark font-weight-bold small">@(Model.EquipmentUnit.SerialNumber ?? "N/A")</span>
                     </div>
                 </div>
 
@@ -53,7 +65,7 @@
                 {
                     <div class="mb-4">
                         <label class="text-muted small uppercase font-weight-bold d-block mb-1">Valor Contable</label>
-                        <span class="text-dark font-weight-bold h5">@Model.EquipmentUnit.AcquisitionValue.Value.ToString("C")</span>
+                        <span class="text-dark font-weight-bold h5">Bs @Model.EquipmentUnit.AcquisitionValue.Value.ToString("N2")</span>
                     </div>
                 }
 
@@ -165,22 +177,67 @@
             <div class="card-body p-4">
                 <h5 class="font-weight-bold text-dark mb-3 small uppercase"><i class="fas fa-info-circle mr-2 text-info"></i> Detalles de Ciclo de Vida Individual</h5>
                 <hr />
+
+                <!-- Useful Life Card from Equipment Definition -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0 bg-info text-white">
+                            <div class="card-body p-4 text-center">
+                                <i class="fas fa-clock fa-3x mb-3 opacity-7"></i>
+                                <h5 class="card-title text-white font-weight-bold small uppercase mb-1">Vida Util del Ciclo</h5>
+                                <span class="font-weight-bold h3 mb-0">@(Model.EquipmentUnit.Equipment?.UsefulLifeYears ?? 0)</span>
+                                <span class="text-white opacity-7 d-block">anios de vida estimada</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-sm border-0 bg-dark text-white">
+                            <div class="card-body p-4 text-center">
+                                <i class="fas fa-cog fa-3x mb-3 opacity-7"></i>
+                                <h5 class="card-title text-white font-weight-bold small uppercase mb-1">En Operacion</h5>
+                                <span class="font-weight-bold h3 mb-0">@(Model.EquipmentUnit.YearsInOperation ?? 0)</span>
+                                <span class="text-white-50 d-block">anios desde fabricacion</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row pt-2 text-center">
                     <div class="col-md-4 mb-3 border-right">
-                        <label class="text-muted small uppercase d-block mb-1 font-weight-bold">Fecha Adquisición</label>
+                        <label class="text-muted small uppercase d-block mb-1 font-weight-bold">Fecha Adquisicion</label>
                         <span class="text-dark font-weight-bold">@(Model.EquipmentUnit.AcquisitionDate?.ToString("dd/MM/yyyy") ?? "-")</span>
                     </div>
                     <div class="col-md-4 mb-3 border-right">
-                        <label class="text-muted small uppercase d-block mb-1 font-weight-bold">Puesta en Servicio</label>
-                        <span class="text-info font-weight-bold">@(Model.EquipmentUnit.ServiceStartDate?.ToString("dd/MM/yyyy") ?? "-")</span>
+                        <label class="text-muted small uppercase d-block mb-1 font-weight-bold">Fecha de Fabricacion</label>
+                        <span class="text-info font-weight-bold">@(Model.EquipmentUnit.ManufacturingDate?.ToString("dd/MM/yyyy") ?? "-")</span>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="text-muted small uppercase d-block mb-1 font-weight-bold">Años en Operación</label>
-                        <span class="text-dark font-weight-bold h4 mb-0">@(Model.EquipmentUnit.YearsInOperation ?? 0)</span>
+                        <label class="text-muted small uppercase d-block mb-1 font-weight-bold">Vida Util Restante (Est.)</label>
+                        @{
+                            var usefulLife = Model.EquipmentUnit.Equipment?.UsefulLifeYears ?? 0;
+                            var yearsInOp = Model.EquipmentUnit.YearsInOperation ?? 0;
+                            var remaining = usefulLife - yearsInOp;
+                        }
+                        <span class="font-weight-bold h4 mb-0 @(remaining <= 0 ? "text-danger" : remaining <= 2 ? "text-warning" : "text-success")">
+                            @(remaining > 0 ? $"{remaining} anios" : "Excedido")
+                        </span>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Equipment Product Image -->
+        @if (!string.IsNullOrEmpty(Model.EquipmentUnit.Equipment?.ImageUrl))
+        {
+            <div class="card shadow-sm border-0 mt-4">
+                <div class="card-body p-4 text-center">
+                    <h5 class="font-weight-bold text-dark mb-3 small uppercase"><i class="fas fa-image mr-2 text-info"></i> Imagen del Producto</h5>
+                    <hr />
+                    <img src="@Model.EquipmentUnit.Equipment.ImageUrl" alt="@Model.EquipmentUnit.Equipment.Name" class="img-fluid rounded shadow-sm" style="max-height: 350px; object-fit: contain;" />
+                    <p class="text-muted small mt-2 mb-0">@Model.EquipmentUnit.Equipment.Name - @(Model.EquipmentUnit.Equipment.Brand ?? "") @(Model.EquipmentUnit.Equipment.Model ?? "")</p>
+                </div>
+            </div>
+        }
     </div>
 </div>
 

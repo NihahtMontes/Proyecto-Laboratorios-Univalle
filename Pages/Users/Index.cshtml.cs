@@ -62,12 +62,11 @@ public class IndexModel : PageModel
                                            u.UserName!.ToLower().Contains(term) ||
                                            (u.IdentityCard != null && u.IdentityCard.Contains(term)));
 
-            personQuery = personQuery.Where(p => p.FirstName.ToLower().Contains(term) || 
-                                              p.LastName.ToLower().Contains(term) || 
-                                              p.IdentityCard.Contains(term));
+            personQuery = personQuery.Where(p => p.Email.Contains(term) || 
+                                              p.Id.ToString() == term);
         }
 
         UserList = await userQuery.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ToListAsync();
-        PersonsList = await personQuery.OrderBy(p => p.LastName).ThenBy(p => p.FirstName).ToListAsync();
+        PersonsList = await personQuery.OrderByDescending(p => p.Id).ToListAsync();
     }
 }

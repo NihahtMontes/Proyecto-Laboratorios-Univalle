@@ -11,7 +11,7 @@
                 <div class="d-flex align-items-center mb-4">
                     <div>
                         <h4 class="card-title text-dark font-weight-bold">Lista de Verificación Técnica</h4>
-                        <h6 class="card-subtitle text-muted">Protocolo de inspección de estado operativo de equipos.</h6>
+                        <h6 class="card-subtitle text-muted">Protocolo de inspección de estado operativo de equipos (Unidades Físicas).</h6>
                     </div>
                     <div class="ml-auto">
                         <button type="button" class="btn btn-outline-success btn-sm btn-rounded font-weight-bold shadow-sm" onclick="markAllGood()">
@@ -29,28 +29,42 @@
                 <form method="post" id="verificationForm">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
 
-                    <!-- 1. Report Header Information -->
+                    <!-- 1. Report Header Information (Hierarchical Selection) -->
                     <div class="bg-light p-4 rounded mb-4 border-left border-info border-3">
                         <div class="row">
-                            <div class="col-md-8">
+                            <div class="col-md-4">
                                 <div class="form-group mb-0">
-                                    <label asp-for="Input.EquipmentUnitId" class="font-weight-bold small uppercase text-muted">
-                                        Unidad de Equipo a Verificar <span class="text-danger">*</span>
-                                    </label>
-                                    <select asp-for="Input.EquipmentUnitId"
-                                            class="form-control custom-select bg-white border-0 shadow-sm"
-                                            asp-items="ViewBag.EquipmentUnitId" required>
-                                        <option value="">-- Seleccione Unidad (Nombre + Inv) --</option>
+                                    <label asp-for="Input.FacultyId" class="font-weight-bold small uppercase text-muted">Facultad <span class="text-danger">*</span></label>
+                                    <select asp-for="Input.FacultyId" class="form-control select2 shadow-sm" id="facultySelect" asp-items="ViewBag.FacultyId" required>
+                                        <option value="">-- Seleccionar Facultad --</option>
                                     </select>
-                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                    <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group mb-0">
-                                    <label asp-for="Input.Date" class="font-weight-bold small uppercase text-muted">
-                                        Fecha de Inspección
-                                    </label>
-                                    <input asp-for="Input.Date" class="form-control bg-white border-0 shadow-sm" type="date" />
+                                    <label asp-for="Input.LaboratoryId" class="font-weight-bold small uppercase text-muted">Laboratorio <span class="text-danger">*</span></label>
+                                    <select asp-for="Input.LaboratoryId" class="form-control select2 shadow-sm" id="laboratorySelect" disabled required>
+                                        <option value="">-- Primero seleccione facultad --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.EquipmentUnitId" class="font-weight-bold small uppercase text-muted">Unidad Física <span class="text-danger">*</span></label>
+                                    <select asp-for="Input.EquipmentUnitId" class="form-control select2 shadow-sm" id="equipmentUnitSelect" disabled required>
+                                        <option value="">-- Seleccione laboratorio --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.Date" class="font-weight-bold small uppercase text-muted">Fecha de Inspección</label>
+                                    <input asp-for="Input.Date" class="form-control bg-white shadow-sm border-0" type="date" />
                                 </div>
                             </div>
                         </div>
@@ -269,6 +283,7 @@
 </div>
 
 @section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
     <style>
         .border-3 {
             border-left-width: 4px !important;
@@ -294,8 +309,11 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         $(document).ready(function () {
+            $(".select2").select2({ width: '100%', allowClear: true });
+            
             updateProgress();
 
             $(".verifier").on("change", function () {
@@ -305,6 +323,45 @@
 
             $(".verifier").each(function () {
                 updateColor($(this));
+            });
+
+            // Cascading Selectors
+            $('#facultySelect').on('change', function() {
+                let id = $(this).val();
+                let $lab = $('#laboratorySelect');
+                let $unit = $('#equipmentUnitSelect');
+                
+                $lab.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
+                $unit.empty().append('<option value="">-- Seleccione laboratorio --</option>').prop('disabled', true);
+                
+                if (!id) {
+                    $lab.html('<option value="">-- Primero seleccione facultad --</option>');
+                    return;
+                }
+
+                $.get('/Verifications/Create?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
+                    let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
+                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
+                    $lab.html(opts).prop('disabled', false).trigger('change');
+                });
+            });
+
+            $('#laboratorySelect').on('change', function() {
+                let id = $(this).val();
+                let $unit = $('#equipmentUnitSelect');
+                
+                $unit.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
+                
+                if (!id) {
+                    $unit.html('<option value="">-- Seleccione laboratorio --</option>');
+                    return;
+                }
+
+                $.get('/Verifications/Create?handler=UnitsByLab', { laboratoryId: id }, function(data) {
+                    let opts = '<option value="">-- Seleccionar Unidad Física --</option>';
+                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
+                    $unit.html(opts).prop('disabled', false).trigger('change');
+                });
             });
         });
 

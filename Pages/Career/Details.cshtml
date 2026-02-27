@@ -1,0 +1,99 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Career.DetailsModel
+
+@{
+    ViewData["Title"] = "Detalles de Carrera";
+}
+
+<div class="row">
+    <!-- 📄 Profile Card -->
+    <div class="col-lg-4 col-md-5">
+        <div class="card shadow-sm border-0 overflow-hidden">
+            <div class="bg-info p-4 text-center text-white">
+                <div class="display-1 mb-3"><i class="fas fa-graduation-cap"></i></div>
+                <h3 class="font-weight-bold mb-0">@Model.Career.Name</h3>
+                <span class="badge badge-pill badge-light text-info px-3 py-1 mt-2 font-weight-bold shadow-sm">ID: #@Model.Career.Id</span>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush border-0">
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 bg-white border-0">
+                        <span class="text-muted small uppercase font-weight-bold mt-1"><i class="fas fa-toggle-on mr-2"></i> Estado</span>
+                        <span class="badge badge-pill @(Model.Career.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "badge-success" : "badge-danger") px-4 py-2 font-weight-bold shadow-sm">
+                            @Model.Career.Status
+                        </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 bg-light border-0">
+                        <span class="text-muted small uppercase font-weight-bold"><i class="fas fa-university mr-2 text-info"></i> Facultad</span>
+                        <span class="font-weight-bold text-dark text-right">@(Model.Career.Facultad?.Name ?? "General")</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-footer bg-white border-top p-4 d-flex justify-content-between shadow-none">
+                <a asp-page="./Edit" asp-route-id="@Model.Career.Id" class="btn btn-warning btn-rounded px-4 font-weight-bold shadow-sm">
+                    <i class="fas fa-edit mr-1"></i> Editar
+                </a>
+                <a asp-page="./Index" class="btn btn-light btn-rounded px-4 shadow-sm border">
+                    <i class="fas fa-arrow-left mr-1 text-muted"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📊 Activity & Statistics -->
+    <div class="col-lg-8 col-md-7">
+        <div class="card shadow-sm border-0 border-top border-info h-100">
+            <div class="card-header bg-white border-bottom p-4">
+                <h5 class="card-title font-weight-bold text-dark mb-0"><i class="fas fa-info-circle mr-2 text-info"></i> Información Adicional</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row mb-5">
+                    <div class="col-md-6 mb-4">
+                        <div class="p-4 bg-light rounded shadow-sm border-left border-info h-100">
+                            <label class="text-muted small uppercase font-weight-bold d-block mb-2">Equipos Vinculados</label>
+                            <div class="h3 font-weight-bold text-dark mb-0">@(Model.Career.EquipmentUnits?.Count ?? 0)</div>
+                            <small class="text-muted mt-2 d-block italic">Unidades físicas registradas bajo este programa.</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="p-4 bg-light rounded shadow-sm border-left border-info h-100 text-center d-flex flex-column justify-content-center align-items-center">
+                            <i class="fas fa-chart-line fa-3x text-info opacity-1 mb-2"></i>
+                            <span class="small text-muted font-weight-bold uppercase">Uso de Recursos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4 pt-4 border-top mt-4">
+                    <h6 class="font-weight-bold text-dark mb-3"><i class="fas fa-fingerprint mr-2 text-muted"></i> Registro de Auditoría</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="small p-3 bg-light rounded border">
+                                <label class="text-muted font-weight-bold small uppercase d-block mb-1">Creado Por</label>
+                                <div class="text-dark font-weight-bold"><i class="fas fa-user-check mr-1 text-muted small"></i> @(Model.Career.CreatedBy?.Email ?? "Sistema Automático")</div>
+                                <div class="text-muted small mt-1 ml-3"><i class="far fa-clock mr-1"></i> @Model.Career.CreatedDate.ToString("dd/MM/yyyy HH:mm")</div>
+                            </div>
+                        </div>
+                        @if (Model.Career.LastModifiedDate.HasValue)
+                        {
+                            <div class="col-md-6 mb-3">
+                                <div class="small p-3 bg-light rounded border">
+                                    <label class="text-muted font-weight-bold small uppercase d-block mb-1">Última Modificación</label>
+                                    <div class="text-dark font-weight-bold"><i class="fas fa-edit mr-1 text-muted small"></i> @(Model.Career.ModifiedBy?.Email ?? "N/A")</div>
+                                    <div class="text-muted small mt-1 ml-3"><i class="far fa-clock mr-1"></i> @Model.Career.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .btn-rounded { border-radius: 50px; }
+        .italic { font-style: italic; }
+        .opacity-1 { opacity: 0.1; }
+    </style>
+}

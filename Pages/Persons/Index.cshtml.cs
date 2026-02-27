@@ -38,13 +38,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
                 .Include(p => p.ModifiedBy)
                 .Where(p => p.Status != GeneralStatus.Eliminado);
 
-            // Search by Name, Lastname or CI
+            // Search by ID or Email (until specialized search is implemented)
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                query = query.Where(p => p.FirstName.ToLower().Contains(term) || 
-                                         p.LastName.ToLower().Contains(term) || 
-                                         p.IdentityCard.Contains(term));
+                query = query.Where(p => p.Email.Contains(term) || p.Id.ToString() == term);
             }
 
             // Status Filter
@@ -54,8 +52,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             }
 
             Person = await query
-                .OrderBy(p => p.LastName)
-                .ThenBy(p => p.FirstName)
+                .OrderByDescending(p => p.Id)
                 .ToListAsync();
         }
     }

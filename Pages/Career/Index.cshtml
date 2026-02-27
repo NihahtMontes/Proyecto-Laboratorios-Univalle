@@ -1,0 +1,110 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Career.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@{
+    ViewData["Title"] = "Carreras y Programas";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2"><i class="fas fa-graduation-cap mr-2 text-info"></i> Carreras y Programas</h3>
+                        <h6 class="card-subtitle text-muted">Gestión de la oferta académica asociada a laboratorios.</h6>
+                    </div>
+                    <div class="ml-auto mt-3 mt-md-0">
+                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                            <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Carrera
+                        </a>
+                        <a asp-page="/Laboratories/Index" asp-fragment="careers" class="btn btn-outline-secondary btn-rounded ml-1">
+                            <i class="fas fa-th-list mr-1"></i> Vista Unificada
+                        </a>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold text-muted">
+                                <th>Carrera / Programa</th>
+                                <th>Facultad de Dependencia</th>
+                                <th class="text-center">Estado</th>
+                                <th>Auditoría Operativa</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Careers == null || !Model.Careers.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted italic">
+                                        <i class="fas fa-graduation-cap fa-3x mb-3 d-block opacity-2"></i>
+                                        No hay carreras registradas.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var item in Model.Careers)
+                                {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="m-r-10">
+                                                <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm"><i class="fas fa-graduation-cap"></i></span>
+                                            </div>
+                                            <div>
+                                                <h6 class="m-b-0 font-weight-bold text-dark">@item.Name</h6>
+                                                <span class="text-muted small">ID Sistema: @item.Id</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="text-dark font-weight-bold small uppercase">@(item.Facultad?.Name ?? "Área General")</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge badge-pill @(item.Status == GeneralStatus.Activo ? "badge-success" : "badge-danger") px-3 py-1 font-weight-bold">@item.Status</span>
+                                    </td>
+                                    <td>
+                                        <div class="small">
+                                            <div class="text-dark"><i class="far fa-calendar-alt text-muted mr-1"></i> @item.CreatedDate.ToString("dd/MM/yyyy")</div>
+                                            <div class="text-muted"><i class="fas fa-user-check mr-1"></i> @(item.CreatedBy?.Initials ?? "Sist.")</div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded shadow-none" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1 shadow-none" title="Detalles">
+                                                <i class="fas fa-search-plus"></i>
+                                            </a>
+                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded shadow-none" title="Eliminar">
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .italic { font-style: italic; }
+        .opacity-2 { opacity: 0.2; }
+        .btn-rounded { border-radius: 50px; }
+        .btn-circle { width: 40px; height: 40px; padding: 10px 0; border-radius: 50%; text-align: center; }
+    </style>
+}

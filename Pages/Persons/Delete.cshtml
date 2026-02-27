@@ -20,16 +20,18 @@
                 <!-- Key Data -->
                 <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3 shadow-none rounded">
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small uppercase font-weight-bold">Cédula:</span>
-                        <strong class="text-dark">@Model.Person.IdentityCard</strong>
+                        <span class="text-muted small uppercase font-weight-bold">Identificador:</span>
+                        <strong class="text-dark">ID #@Model.Person.Id</strong>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
-                        <span class="text-muted small uppercase font-weight-bold">Perfil:</span>
-                        <span class="badge badge-pill badge-primary px-3">@Model.Person.Category</span>
+                        <span class="text-muted small uppercase font-weight-bold">Tipo:</span>
+                        <span class="badge badge-pill @(Model.Person is Intern ? "badge-info" : "badge-warning") px-3">
+                            @(Model.Person is Intern ? "Interno" : "Externo")
+                        </span>
                     </div>
                     <div class="d-flex justify-content-between">
-                        <span class="text-muted small uppercase font-weight-bold">Organización:</span>
-                        <span class="text-dark small font-weight-bold">@(Model.Person.Company ?? "Univalle")</span>
+                        <span class="text-muted small uppercase font-weight-bold">Contacto:</span>
+                        <span class="text-dark small font-weight-bold">@(Model.Person.Email ?? Model.Person.PhoneNumber ?? "-")</span>
                     </div>
                 </div>
 

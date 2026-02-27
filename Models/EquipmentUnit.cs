@@ -34,6 +34,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Número de Serie")]
         public string? SerialNumber { get; set; }
 
+        [Display(Name = "Carrera / Programa")]
+        public int? CareerId { get; set; }
+
+        [StringLength(200)]
+        [Display(Name = "Ubicación Interna")]
+        public string? InternalLocation { get; set; }
+
         // ========================================
         // FINANCIAL & LIFECYCLE (Unit Specific)
         // ========================================
@@ -41,9 +48,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [DataType(DataType.Date)]
         public DateTime? AcquisitionDate { get; set; }
 
-        [Display(Name = "Fecha de Puesta en Servicio")]
+        [Display(Name = "Fecha de Fabricación")]
         [DataType(DataType.Date)]
-        public DateTime? ServiceStartDate { get; set; }
+        public DateTime? ManufacturingDate { get; set; }
 
         // Each unit might have a slightly different cost or depreciation status
         [Display(Name = "Valor de Adquisición")]
@@ -58,7 +65,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public EquipmentStatus CurrentStatus { get; set; } = EquipmentStatus.Operational;
 
         [Display(Name = "Condición Física")]
-        public PhysicalCondition? PhysicalCondition { get; set; }
+        public PhysicalCondition? PhysicalCondition { get; set; } = Enums.PhysicalCondition.New;
 
         [StringLength(2000)]
         [Display(Name = "Observaciones (Unidad)")]
@@ -81,6 +88,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("LaboratoryId")]
         public virtual Laboratory? Laboratory { get; set; }
 
+        [ForeignKey("CareerId")]
+        public virtual Career? Career { get; set; }
+
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }
         
@@ -92,6 +102,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual ICollection<Maintenance>? Maintenances { get; set; }
         public virtual ICollection<Verification>? Verifications { get; set; }
         public virtual ICollection<MaintenancePlan>? MaintenancePlans { get; set; }
+        public virtual ICollection<Loan>? Loans { get; set; }
 
         // Calculated Properties
         [NotMapped]
@@ -99,9 +110,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         {
             get
             {
-                if (!ServiceStartDate.HasValue) return null;
-                var years = DateTime.Now.Year - ServiceStartDate.Value.Year;
-                if (DateTime.Now < ServiceStartDate.Value.AddYears(years)) years--;
+                if (!ManufacturingDate.HasValue) return null;
+                var years = DateTime.Now.Year - ManufacturingDate.Value.Year;
+                if (DateTime.Now < ManufacturingDate.Value.AddYears(years)) years--;
                 return years;
             }
         }

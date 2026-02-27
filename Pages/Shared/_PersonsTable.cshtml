@@ -5,9 +5,9 @@
     <table class="table table-hover v-middle">
         <thead class="bg-light">
             <tr class="small uppercase font-weight-bold">
-                <th>Nombre Completo / C.I.</th>
-                <th>Clasificación</th>
-                <th>Cargo / Título</th>
+                <th>Nombre Completo</th>
+                <th>Tipo</th>
+                <th>Contacto</th>
                 <th class="text-center">Estado</th>
                 <th class="text-center">Acciones</th>
             </tr>
@@ -19,39 +19,23 @@
                         <div class="d-flex align-items-center">
                             <div class="m-r-10">
                                 <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm">
-                                    @(item.FirstName?[0] ?? 'P')@(item.LastName?[0] ?? 'N')
+                                    @(item.FullName?[0] ?? 'P')
                                 </span>
                             </div>
                             <div>
                                 <h6 class="m-b-0 font-weight-bold text-dark">@item.FullName</h6>
-                                <span class="text-muted small">C.I.: @item.IdentityCard</span>
+                                <span class="text-muted small">ID: @item.Id</span>
                             </div>
                         </div>
                     </td>
                     <td>
-                        <div class="mb-1">
-                            <span class="badge badge-pill badge-primary px-3" style="font-size: 0.65rem;">
-                                <i class="fas fa-tag mr-1"></i> @item.Category
-                            </span>
-                        </div>
-                        <div>
-                            @if (item.IsInternal)
-                            {
-                                <span class="badge badge-pill border border-success text-success px-2 py-0" style="font-size: 0.6rem;">
-                                    <i class="fas fa-check-circle mr-1"></i> Interno
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="badge badge-pill border border-secondary text-secondary px-2 py-0" style="font-size: 0.6rem;">
-                                    <i class="fas fa-external-link-alt mr-1"></i> Externo
-                                </span>
-                            }
-                        </div>
+                         <span class="badge badge-pill @(item is Intern ? "badge-info" : "badge-warning") px-2 py-1 font-weight-bold small text-white">
+                             @(item is Intern ? "Interno" : "Externo")
+                         </span>
                     </td>
                     <td>
-                        <div class="text-dark font-weight-bold small">@(item.JobTitle ?? "-")</div>
-                        <div class="text-muted italic small">@(item.Company ?? "Univalle")</div>
+                        <div class="text-dark font-weight-bold small">@(item.PhoneNumber ?? "-")</div>
+                        <div class="text-muted small">@(item.Email ?? "-")</div>
                     </td>
                     <td class="text-center">
                         <span class="badge badge-pill @(item.Status == GeneralStatus.Activo ? "badge-success" : "badge-danger") px-3 py-1 font-weight-bold">

@@ -42,7 +42,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             {
                 var term = SearchTerm.Trim().ToLower();
                 equipmentQuery = equipmentQuery.Where(e => e.Name.ToLower().Contains(term) || 
-                                                         e.Units!.Any(u => u.InventoryNumber.Contains(term)) || 
+                                                         e.Units!.Any(u => u.InventoryNumber.Contains(term) || (u.Career != null && u.Career.Name.ToLower().Contains(term))) || 
                                                          (e.Brand != null && e.Brand.ToLower().Contains(term)));
             }
 

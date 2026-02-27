@@ -147,6 +147,13 @@
             public const string EquipmentRequired = "Debe seleccionar un equipo para generar la solicitud.";
             public const string DescriptionRequired = "La descripción del problema es obligatoria.";
             public const string DeleteRestricted = "No se puede eliminar una solicitud que ya tiene un mantenimiento en curso o finalizado.";
+            public const string InvalidId = "Identificador de solicitud no válido.";
+        }
+
+        public static class Loans
+        {
+            public static string Created(string equipmentName) => $"Préstamo registrado correctamente. Activo: {equipmentName}.";
+            public static string Updated() => "Préstamo actualizado correctamente.";
         }
 
         public static class Verifications

@@ -22,6 +22,9 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "Desmantelado")]
         Dismantled = 4,
 
+        [Display(Name = "En Préstamo")]
+        OnLoan = 10,
+
         [Display(Name = "Eliminado")]
         Deleted = 99
     }

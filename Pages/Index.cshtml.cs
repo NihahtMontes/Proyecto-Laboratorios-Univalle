@@ -38,7 +38,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
         public async Task<IActionResult> OnGetAsync()
         {
-            if (!User.Identity.IsAuthenticated)
+            if (User.Identity?.IsAuthenticated != true)
             {
                 return RedirectToPage("/Login");
             }
@@ -80,7 +80,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
             ActiveMaintenances = await _context.Maintenances
                 .Include(m => m.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu != null ? eu.Equipment : null)
                 .Include(m => m.MaintenanceType)
                 .Where(m => m.Status == MaintenanceStatus.InProgress || m.Status == MaintenanceStatus.Scheduled)
                 .OrderBy(m => m.ScheduledDate)

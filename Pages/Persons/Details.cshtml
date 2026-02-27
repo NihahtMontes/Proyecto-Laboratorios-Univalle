@@ -17,64 +17,213 @@
                     </div>
                 </div>
 
-                <div class="row mt-4">
-                    <div class="col-md-5 border-right text-center">
-                        <div class="btn btn-circle btn-lg btn-light-info text-info mb-3 shadow-none" style="width: 80px; height: 80px; line-height: 70px;">
-                            <i class="fas fa-user-circle fa-3x"></i>
-                        </div>
-                        <h3 class="font-weight-bold text-dark mb-1">@Model.Person.FullName</h3>
-                        <div class="mb-3">
-                            <span class="badge badge-pill badge-primary px-3">@Model.Person.Category</span>
-                        </div>
-                        
-                        <div class="mt-2 bg-light p-3 rounded border shadow-none italic border-left border-info border-3">
-                            <label class="text-muted small uppercase font-weight-bold d-block mb-1">Documento Identidad</label>
-                            <h4 class="font-weight-bold text-dark mb-0">@Model.Person.IdentityCard</h4>
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs customtab mb-4" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-toggle="tab" href="#general" role="tab">
+                            <span class="hidden-sm-up"><i class="fas fa-home"></i></span>
+                            <span class="hidden-xs-down font-weight-bold">Información General</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#maintenances" role="tab">
+                            <span class="hidden-sm-up"><i class="fas fa-tools"></i></span>
+                            <span class="hidden-xs-down font-weight-bold">Mantenimientos Realizados</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#loans" role="tab">
+                            <span class="hidden-sm-up"><i class="fas fa-hand-holding"></i></span>
+                            <span class="hidden-xs-down font-weight-bold">Historial de Préstamos</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    <!-- General Tab -->
+                    <div class="tab-pane active" id="general" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-5 border-right text-center">
+                                <div class="btn btn-circle btn-lg btn-light-info text-info mb-3 shadow-none" style="width: 80px; height: 80px; line-height: 70px;">
+                                    <i class="fas @(Model.Person is Intern ? "fa-university" : "fa-truck-loading") fa-3x"></i>
+                                </div>
+                                <h3 class="font-weight-bold text-dark mb-1">@Model.Person.FullName</h3>
+                                <div class="mb-3">
+                                    <span class="badge badge-pill badge-info px-3">
+                                        @(Model.Person is Intern ? "Laboratorio Interno" : (Model.Person is Extern ? "Proveedor Externo" : "Persona Base"))
+                                    </span>
+                                </div>
+                                
+                                <div class="mt-2 bg-light p-3 rounded border shadow-none italic border-left border-info border-3 text-left">
+                                    @if (Model.Person is Extern e)
+                                    {
+                                        <label class="text-muted small uppercase font-weight-bold d-block mb-1">Tipo de Externo</label>
+                                        <h6 class="font-weight-bold text-dark mb-0">@(e.IsEntity ? "Entidad / Empresa" : "Técnico Independiente")</h6>
+                                        
+                                        <label class="text-muted small uppercase font-weight-bold d-block mt-3 mb-1">Dirección Registrada</label>
+                                        <h6 class="text-dark mb-0">@e.Address</h6>
+                                    }
+                                    else if (Model.Person is Intern i)
+                                    {
+                                        <label class="text-muted small uppercase font-weight-bold d-block mb-1">Rol Organizacional</label>
+                                        <h6 class="font-weight-bold text-dark mb-0">Uso Interno Univalle</h6>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="col-md-7">
+                                <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-address-book mr-2"></i> Canales de Comunicación</h5>
+                                
+                                <div class="mb-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <span class="btn btn-circle btn-sm btn-light-info text-info mr-3 font-weight-bold"><i class="fas fa-envelope"></i></span>
+                                        <div>
+                                            <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Correo Electrónico</small>
+                                            <span class="font-weight-bold text-dark">@(Model.Person.Email ?? "No registrado")</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="btn btn-circle btn-sm btn-light-info text-info mr-3 font-weight-bold"><i class="fas fa-phone-alt"></i></span>
+                                        <div>
+                                            <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Teléfono / Celular</small>
+                                            <span class="font-weight-bold text-dark">@(Model.Person.PhoneNumber ?? "No registrado")</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-info-circle mr-2"></i> Estado de la Ficha</h5>
+                                <div class="table-responsive shadow-none">
+                                    <table class="table table-sm table-borderless bg-light rounded p-2">
+                                        <tbody>
+                                            <tr>
+                                                <th class="text-muted small uppercase pl-3 font-weight-bold" style="width: 35%;">Estado General:</th>
+                                                <td>
+                                                    <span class="badge @(Model.Person.Status == GeneralStatus.Activo ? "badge-success" : "badge-danger") px-2 font-weight-bold">
+                                                        @Model.Person.Status
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            @if (Model.Person is Intern intern)
+                                            {
+                                                <tr>
+                                                    <th class="text-muted small uppercase pl-3 font-weight-bold">Estado Interno:</th>
+                                                    <td>
+                                                        <span class="badge border border-info text-info px-2 font-weight-bold">@intern.InternStatus</span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                            @if (Model.Person is Extern ex)
+                                            {
+                                                <tr>
+                                                    <th class="text-muted small uppercase pl-3 font-weight-bold">Estado Externo:</th>
+                                                    <td>
+                                                        <span class="badge border border-warning text-warning px-2 font-weight-bold">@ex.ExternStatus</span>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="col-md-7">
-                        <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-address-book mr-2"></i> Contacto y Vínculo</h5>
-                        
-                        <div class="mb-4">
-                            <div class="d-flex align-items-center mb-3">
-                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3 font-weight-bold"><i class="fas fa-envelope"></i></span>
-                                <div>
-                                    <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Correo Electrónico</small>
-                                    <span class="font-weight-bold text-dark">@(Model.Person.Email ?? "No registrado")</span>
+                    <!-- Maintenances Tab -->
+                    <div class="tab-pane" id="maintenances" role="tabpanel">
+                        <div class="p-3">
+                            <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-tools mr-2 text-info"></i> Últimos Mantenimientos Ejecutados</h5>
+                            @if (Model.Maintenances.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-sm small">
+                                        <thead>
+                                            <tr class="text-muted uppercase small font-weight-bold">
+                                                <th>Fecha</th>
+                                                <th>Equipo / Activo</th>
+                                                <th>Tipo</th>
+                                                <th>Estado</th>
+                                                <th class="text-right">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var m in Model.Maintenances)
+                                            {
+                                                <tr>
+                                                    <td>@(m.StartDate?.ToString("dd/MM/yyyy") ?? m.CreatedDate.ToString("dd/MM/yyyy"))</td>
+                                                    <td>
+                                                        <div class="font-weight-bold text-dark">@m.EquipmentUnit.Equipment.Name</div>
+                                                        <div class="text-muted" style="font-size: 0.7rem;">Inv: @m.EquipmentUnit.InventoryNumber</div>
+                                                    </td>
+                                                    <td>@m.MaintenanceType.Name</td>
+                                                    <td>
+                                                        <span class="badge badge-pill badge-light-info text-info px-2">@m.Status</span>
+                                                    </td>
+                                                    <td class="text-right">
+                                                        <a asp-page="/Maintenances/Details" asp-route-id="@m.Id" class="btn btn-sm btn-light-info"><i class="fas fa-eye"></i></a>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
                                 </div>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3 font-weight-bold"><i class="fas fa-phone-alt"></i></span>
-                                <div>
-                                    <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Teléfono / Celular</small>
-                                    <span class="font-weight-bold text-dark">@(Model.Person.PhoneNumber ?? "No registrado")</span>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4 bg-light rounded">
+                                    <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
+                                    <p class="text-muted mb-0">No se registran intervenciones técnicas para esta persona.</p>
                                 </div>
-                            </div>
+                            }
                         </div>
+                    </div>
 
-                        <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-briefcase mr-2"></i> Perfil Laboral</h5>
-                        <div class="table-responsive shadow-none">
-                            <table class="table table-sm table-borderless bg-light rounded p-2">
-                                <tbody>
-                                    <tr>
-                                        <th class="text-muted small uppercase pl-3 font-weight-bold" style="width: 35%;">Cargo Actual:</th>
-                                        <td class="font-weight-bold text-dark">@(Model.Person.JobTitle ?? "No asignado")</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted small uppercase pl-3 font-weight-bold">Organización:</th>
-                                        <td class="font-weight-bold text-dark">@(Model.Person.Company ?? "Universidad del Valle")</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted small uppercase pl-3 font-weight-bold">Vínculo:</th>
-                                        <td>
-                                            <span class="badge @(Model.Person.IsInternal ? "badge-success" : "badge-secondary") px-2 font-weight-bold">
-                                                @(Model.Person.IsInternal ? "Interno" : "Externo")
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <!-- Loans Tab -->
+                    <div class="tab-pane" id="loans" role="tabpanel">
+                        <div class="p-3">
+                            <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-hand-holding mr-2 text-info"></i> Historial de Préstamos y Asignaciones</h5>
+                            @if (Model.Loans.Any())
+                            {
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-sm small">
+                                        <thead>
+                                            <tr class="text-muted uppercase small font-weight-bold">
+                                                <th>Fecha Préstamo</th>
+                                                <th>Activo</th>
+                                                <th>Devolución</th>
+                                                <th>Estado</th>
+                                                <th class="text-right">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var l in Model.Loans)
+                                            {
+                                                <tr>
+                                                    <td>@l.LoanDate.ToString("dd/MM/yyyy")</td>
+                                                    <td>
+                                                        <div class="font-weight-bold text-dark">@l.EquipmentUnit.Equipment.Name</div>
+                                                        <div class="text-muted" style="font-size: 0.7rem;">Inv: @l.EquipmentUnit.InventoryNumber</div>
+                                                    </td>
+                                                    <td>@(l.ActualReturnDate?.ToString("dd/MM/yyyy") ?? l.EstimatedReturnDate.ToString("dd/MM/yyyy"))</td>
+                                                    <td>
+                                                        <span class="badge badge-pill @(l.Status == LoanStatus.Active ? "badge-info" : "badge-success") px-2">@l.Status</span>
+                                                    </td>
+                                                    <td class="text-right">
+                                                        <a asp-page="/Loans/Details" asp-route-id="@l.Id" class="btn btn-sm btn-light-info"><i class="fas fa-eye"></i></a>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4 bg-light rounded">
+                                    <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
+                                    <p class="text-muted mb-0">No hay historial de préstamos para esta persona.</p>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>

@@ -17,10 +17,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        private readonly IWebHostEnvironment _environment;
+
+        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager, IWebHostEnvironment environment)
         {
             _context = context;
             _userManager = userManager;
+            _environment = environment;
         }
 
         public IActionResult OnGet()
@@ -35,13 +38,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         public class InputModel
         {
             [Required(ErrorMessage = "La categoría es obligatoria")]
-            [Display(Name = "Categoría")]
-            public int EquipmentTypeId { get; set; }
+            [Display(Name = "Tipo de Recurso")]
+            public EquipmentCategory Category { get; set; }
 
-            [Display(Name = "País / Sede de Origen")]
+            [Display(Name = "Tipo de Equipo")]
+            public int? EquipmentTypeId { get; set; }
+
+
+
+            [Display(Name = "Imagen del Equipo")]
+            public IFormFile? ImageUpload { get; set; }
+
+            [Display(Name = "País de Origen")]
             public int? CountryId { get; set; }
 
-            [Display(Name = "Ciudad / Sede de Origen")]
+            // City removed from UI requirement
             public int? CityId { get; set; }
             
             [Required(ErrorMessage = "El nombre del equipo es obligatorio")]
@@ -102,9 +113,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 return Page();
             }
             
+            // Image Upload Handling
+            string? uniqueFileName = null;
+            if (Input.ImageUpload != null)
+            {
+                string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "equipment");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+                
+                // Sanitizar nombre de archivo para evitar caracteres inválidos
+                string safeFileName = Path.GetFileName(Input.ImageUpload.FileName); 
+                uniqueFileName = $"{Guid.NewGuid()}_{safeFileName}";
+                
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await Input.ImageUpload.CopyToAsync(fileStream);
+                }
+            }
+
             var equipment = new Models.Equipment
             {
+                Category = Input.Category,
                 EquipmentTypeId = Input.EquipmentTypeId,
+                ImageUrl = uniqueFileName,
                 CountryId = Input.CountryId,
                 CityId = Input.CityId,
                 Name = Input.Name,

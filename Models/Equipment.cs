@@ -19,9 +19,18 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // FOREIGN KEYS
         // ========================================
-        [Required(ErrorMessage = "El tipo de equipamiento es obligatorio")]
         [Display(Name = "Tipo de Equipamiento")]
-        public int EquipmentTypeId { get; set; }
+        public int? EquipmentTypeId { get; set; }
+
+        // 0 = Equipment, 1 = Utensil
+        [Required]
+        [Display(Name = "Categoría")]
+        public EquipmentCategory Category { get; set; } = EquipmentCategory.Equipment;
+
+
+
+        [Display(Name = "Imagen")]
+        public string? ImageUrl { get; set; }
 
         [Display(Name = "País / Sede de Origen")]
         public int? CountryId { get; set; }

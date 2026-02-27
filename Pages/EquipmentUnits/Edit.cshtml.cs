@@ -46,6 +46,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             // Normalization
             EquipmentUnit.InventoryNumber = EquipmentUnit.InventoryNumber.Clean();
             EquipmentUnit.SerialNumber = EquipmentUnit.SerialNumber?.Clean();
+
             EquipmentUnit.Notes = EquipmentUnit.Notes?.Clean();
 
             // Validar que el número de inventario sea único (excluyendo el actual)
@@ -61,7 +62,52 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 return Page();
             }
 
-            _context.Attach(EquipmentUnit).State = EntityState.Modified;
+            var dbUnit = await _context.EquipmentUnits.FirstOrDefaultAsync(u => u.Id == EquipmentUnit.Id);
+            if (dbUnit == null) return NotFound();
+
+            bool stateChanged = false;
+            string stateChangeMessage = "";
+
+            if (dbUnit.CurrentStatus != EquipmentUnit.CurrentStatus || dbUnit.PhysicalCondition != EquipmentUnit.PhysicalCondition)
+            {
+                stateChanged = true;
+                stateChangeMessage = $"Estado: {dbUnit.CurrentStatus} -> {EquipmentUnit.CurrentStatus}. Físico: {dbUnit.PhysicalCondition} -> {EquipmentUnit.PhysicalCondition}";
+
+                // 1. Cerrar historial anterior (si existe y sigue abierto)
+                var lastHistory = await _context.EquipmentStateHistories
+                    .Where(h => h.EquipmentUnitId == dbUnit.Id && h.EndDate == null)
+                    .OrderByDescending(h => h.StartDate)
+                    .FirstOrDefaultAsync();
+                
+                if (lastHistory != null)
+                {
+                    lastHistory.EndDate = DateTime.Now;
+                    _context.EquipmentStateHistories.Update(lastHistory);
+                }
+
+                // 2. Crear nuevo registro de historial
+                var newHistory = new EquipmentStateHistory
+                {
+                    EquipmentUnitId = dbUnit.Id,
+                    Status = EquipmentUnit.CurrentStatus,
+                    StartDate = DateTime.Now,
+                    Reason = "Actualización manual de estado/condición. " + stateChangeMessage
+                };
+                _context.EquipmentStateHistories.Add(newHistory);
+            }
+
+            // Actualizar propiedades de dbUnit
+            dbUnit.EquipmentId = EquipmentUnit.EquipmentId;
+            dbUnit.LaboratoryId = EquipmentUnit.LaboratoryId;
+            dbUnit.CareerId = EquipmentUnit.CareerId;
+            dbUnit.InventoryNumber = EquipmentUnit.InventoryNumber;
+            dbUnit.SerialNumber = EquipmentUnit.SerialNumber;
+            dbUnit.Notes = EquipmentUnit.Notes;
+            dbUnit.CurrentStatus = EquipmentUnit.CurrentStatus;
+            dbUnit.PhysicalCondition = EquipmentUnit.PhysicalCondition;
+            dbUnit.AcquisitionDate = EquipmentUnit.AcquisitionDate;
+            dbUnit.ManufacturingDate = EquipmentUnit.ManufacturingDate;
+            dbUnit.AcquisitionValue = EquipmentUnit.AcquisitionValue;
 
             try
             {
@@ -69,12 +115,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!EquipmentUnitExists(EquipmentUnit.Id)) return NotFound();
+                if (!EquipmentUnitExists(dbUnit.Id)) return NotFound();
                 else throw;
             }
 
-            TempData.Success("Cambios guardados correctamente.");
-            return RedirectToPage("/Equipment/Details", new { id = EquipmentUnit.EquipmentId });
+            if (stateChanged)
+            {
+                TempData.Success($"Cambios guardados. Se registró el cambio: {stateChangeMessage}");
+            }
+            else
+            {
+                TempData.Success("Cambios guardados correctamente sin alteración de estados clave.");
+            }
+            
+            return RedirectToPage("/Equipment/Details", new { id = dbUnit.EquipmentId });
         }
 
         private void LoadLists()
@@ -87,6 +141,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 .OrderBy(l => l.Faculty.Name)
                 .ThenBy(l => l.Name);
             ViewData["LaboratoryId"] = new SelectList(labs, "Id", "Name", EquipmentUnit.LaboratoryId, "Faculty.Name");
+            ViewData["CareerId"] = new SelectList(_context.Careers.OrderBy(c => c.Name), "Id", "Name", EquipmentUnit.CareerId);
         }
 
         private bool EquipmentUnitExists(int id)

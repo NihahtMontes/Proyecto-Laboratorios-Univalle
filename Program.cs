@@ -17,7 +17,7 @@ Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIB
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString, sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -105,6 +105,11 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     try
     {
+        // Aplicar migraciones pendientes antes de sembrar
+        var db = services.GetRequiredService<ApplicationDbContext>();
+        Console.WriteLine(">>> APLICANDO MIGRACIONES DE EF <<<");
+        await db.Database.MigrateAsync();
+
         Console.WriteLine(">>> INICIANDO SEMILLA DE BASE DE DATOS <<<");
         await DbInitializer.SeedAsync(services);
         Console.WriteLine(">>> SEMILLA DE BASE DE DATOS COMPLETADA CON ÉXITO <<<");
@@ -112,10 +117,9 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Ocurrió un error al sembrar la base de datos.");
-        Console.WriteLine($">>> ERROR CRÍTICO EN SEMILLA: {ex.Message} <<<");
+        logger.LogError(ex, "Ocurrió un error al aplicar migraciones o sembrar la base de datos.");
+        Console.WriteLine($">>> ERROR CRÍTICO EN MIGRACIONES/SEMILLA: {ex.Message} <<<");
     }
 }
 
 app.Run();
-        

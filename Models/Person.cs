@@ -13,52 +13,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
-        // ========================================
-        // BASIC INFO
-        // ========================================
-        [Required(ErrorMessage = "El nombre es obligatorio")]
-        [StringLength(100)]
-        [RegularExpression(@"^[a-zA-Z\s]*$", ErrorMessage = "Solo se permiten letras en el nombre")]
-        [Display(Name = "Nombres")]
-        public string FirstName { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "El apellido es obligatorio")]
-        [StringLength(100)]
-        [RegularExpression(@"^[a-zA-Z\s]*$", ErrorMessage = "Solo se permiten letras en el apellido")]
-        [Display(Name = "Apellidos")]
-        public string LastName { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "El CI es obligatorio")]
-        [StringLength(15)]
-        [Display(Name = "Cédula de Identidad")]
-        public string IdentityCard { get; set; } = string.Empty;
-
-        // ========================================
-        // CLASSIFICATION
-        // ========================================
-        [Required]
-        [Display(Name = "Es Interno")]
-        public bool IsInternal { get; set; } = true;
-
-        [Required]
-        [Display(Name = "Categoría")]
-        public PersonCategory Category { get; set; } = PersonCategory.Tecnico;
-
         [Required]
         [Display(Name = "Estado")]
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
 
-        [StringLength(100)]
-        [Display(Name = "Cargo / Título")]
-        public string? JobTitle { get; set; }
-
-        [StringLength(200)]
-        [Display(Name = "Empresa (si es externo)")]
-        public string? Company { get; set; }
-
-        // ========================================
-        // CONTACT INFO
-        // ========================================
+        
         [StringLength(100)]
         [EmailAddress(ErrorMessage = "Email inválido")]
         [Display(Name = "Correo Electrónico")]
@@ -93,7 +52,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public DateTime? LastModifiedDate { get; set; }
 
         [NotMapped]
-        [Display(Name = "Nombre Completo")]
-        public string FullName => $"{FirstName} {LastName}";
+        [Display(Name = "Nombre / Razón Social")]
+        public virtual string FullName => "Ficha de Persona";
+
+        public virtual ICollection<Loan>? Loans { get; set; }
     }
 }

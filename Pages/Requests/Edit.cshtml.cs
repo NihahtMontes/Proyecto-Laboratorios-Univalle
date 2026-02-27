@@ -26,7 +26,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
-        public Request Request { get; set; } = default!;
+        public new Request Request { get; set; } = default!;
 
         public class InputModel
         {

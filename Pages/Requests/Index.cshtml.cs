@@ -77,7 +77,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             if (id <= 0)
             {
-                TempData["Error"] = "ID de solicitud inválido.";
+                TempData.Error(NotificationHelper.Requests.InvalidId);
                 return RedirectToPage();
             }
 
@@ -95,7 +95,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             catch (Exception ex)
             {
                 _context.ChangeTracker.Clear(); // Evitar problemas de estado si hubo error en BD
-                TempData["Error"] = $"Error técnico: {ex.Message}";
+                TempData.Error(NotificationHelper.Requests.SaveError($"Error técnico: {ex.Message}"));
                 return RedirectToPage();
             }
         }

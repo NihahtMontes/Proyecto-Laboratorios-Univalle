@@ -38,14 +38,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             [Display(Name = "Tipo de Solicitud")]
             public RequestType Type { get; set; } = RequestType.Technical;
 
-            // CAMPOS COMUNES
+            // JERARQUÍA
+            [Required(ErrorMessage = "La facultad es obligatoria")]
+            [Display(Name = "Facultad")]
+            public int FacultyId { get; set; }
+
             [Required(ErrorMessage = "El laboratorio es obligatorio")]
             [Display(Name = "Laboratorio")]
             public int LaboratoryId { get; set; }
 
-            [Required(ErrorMessage = "El equipamiento es obligatorio")]
-            [Display(Name = "Equipamiento")]
-            public int EquipmentId { get; set; }
+            [Required(ErrorMessage = "La unidad física es obligatoria")]
+            [Display(Name = "Unidad Física (Activo)")]
+            public int EquipmentUnitId { get; set; }
 
             [Required(ErrorMessage = "La descripción o justificación es obligatoria")]
             [Display(Name = "Descripción / Justificación")]
@@ -69,79 +73,115 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             [StringLength(50)]
             public string? InvestmentCode { get; set; }
 
+            [Display(Name = "Centro de Costos")]
+            [StringLength(100)]
+            public string? CostCenter { get; set; }
+            
+            [Display(Name = "Referencia de Mantenimiento (Opcional)")]
+            public int? MaintenanceId { get; set; }
+
             public List<CostItemInput> Items { get; set; } = new();
         }
 
         public class CostItemInput
         {
-            [Required(ErrorMessage = "La descripción del ítem es obligatoria")]
+            public int? SelectedCostDetailId { get; set; }
             public string Concept { get; set; } = string.Empty;
-
-            [Required]
-            [Range(0.01, 99999)]
             public decimal Quantity { get; set; } = 1;
-
-            [Required]
-            [Range(0, 999999999)]
             public decimal UnitPrice { get; set; }
-
-            public string? UnitOfMeasure { get; set; } = "Unidad";
-            public string? Provider { get; set; }
+            public string? UnitOfMeasure { get; set; }
             public CostCategory Category { get; set; } = CostCategory.SparePart;
         }
 
-        // AJAX Handler: Get equipments or units by laboratory
-        public async Task<JsonResult> OnGetEquipmentsByLabAsync(int laboratoryId, RequestType type)
+        // AJAX Handler: Get laboratories by faculty
+        public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
         {
-            if (type == RequestType.Technical)
-            {
-                // Find units physically located in this laboratory
-                var rawUnits = await _context.EquipmentUnits
-                    .Include(u => u.Equipment)
-                    .Where(u => u.LaboratoryId == laboratoryId && 
-                                u.CurrentStatus != EquipmentStatus.Deleted)
-                    .Select(u => new { 
-                        Id = u.Id, 
-                        EquipmentName = u.Equipment != null ? u.Equipment.Name : "Desconocido",
-                        InventoryNumber = u.InventoryNumber
-                    })
-                    .ToListAsync();
+            var labs = await _context.Laboratories
+                .Where(l => l.FacultyId == facultyId && l.Status == GeneralStatus.Activo)
+                .Select(l => new { id = l.Id, name = l.Name })
+                .OrderBy(x => x.name)
+                .ToListAsync();
+            return new JsonResult(labs);
+        }
 
-                var units = rawUnits
-                    .Select(u => new { 
-                        id = u.Id, 
-                        name = $"{u.EquipmentName} (Inv: {u.InventoryNumber})" 
-                    })
-                    .OrderBy(x => x.name)
-                    .ToList();
+        // AJAX Handler: Get units by laboratory
+        public async Task<JsonResult> OnGetUnitsByLabAsync(int laboratoryId)
+        {
+            var units = await _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
+                .OrderBy(u => u.Equipment!.Name)
+                .ThenBy(u => u.InventoryNumber)
+                .Select(u => new { 
+                    id = u.Id, 
+                    eqName = u.Equipment != null ? u.Equipment.Name : "Equipo",
+                    inv = u.InventoryNumber
+                })
+                .ToListAsync();
 
-                return new JsonResult(units);
-            }
-            else
-            {
-                var equipments = await _context.Equipments
-                    .Where(e => e.Units.Any(u => u.LaboratoryId == laboratoryId))
-                    .Select(e => new { 
-                        id = e.Id, 
-                        name = e.Name 
-                    })
-                    .OrderBy(x => x.name)
-                    .ToListAsync();
-                
-                return new JsonResult(equipments);
-            }
+            var result = units.Select(x => new {
+                id = x.id,
+                name = $"{x.eqName} (Inv: {x.inv})"
+            });
+
+            return new JsonResult(result);
+        }
+
+        // AJAX Handler: Get pending maintenances for a specific unit
+        public async Task<JsonResult> OnGetMaintenancesByUnitAsync(int unitId)
+        {
+            var maintenances = await _context.Maintenances
+                .Where(m => m.EquipmentUnitId == unitId && 
+                           (m.Status == MaintenanceStatus.Pending || m.Status == MaintenanceStatus.InProgress || m.Status == MaintenanceStatus.Scheduled || m.Status == MaintenanceStatus.Completed))
+                .Select(m => new {
+                    id = m.Id,
+                    displayName = $"Mnt #{m.Id} - {m.ScheduledDate:dd/MM/yyyy} - {m.Status}"
+                })
+                .OrderByDescending(m => m.id)
+                .ToListAsync();
+
+            return new JsonResult(maintenances);
+        }
+
+        public async Task<JsonResult> OnGetMaintenanceCostsAsync(int maintenanceId)
+        {
+            var costs = await _context.CostDetails
+                .Where(d => d.MaintenanceId == maintenanceId)
+                .Select(d => new {
+                    id = d.Id,
+                    concept = d.Concept,
+                    quantity = d.Quantity,
+                    unitPrice = d.UnitPrice,
+                    unitOfMeasure = d.UnitOfMeasure,
+                    categoryName = d.Category.ToString()
+                })
+                .ToListAsync();
+
+            return new JsonResult(costs);
+        }
+
+        public async Task<JsonResult> OnGetNextInvestmentCodeAsync(int unitId)
+        {
+            var unit = await _context.EquipmentUnits.Include(u => u.Equipment).FirstOrDefaultAsync(u => u.Id == unitId);
+            if (unit?.Equipment == null) return new JsonResult(new { code = "" });
+
+            var count = await _context.Requests
+                .Where(r => r.EquipmentUnitId == unitId)
+                .CountAsync();
+
+            string suggestedCode = $"{unit.Equipment!.Name.Replace(" ", "").ToUpper()}-{(count + 1):D3}";
+            return new JsonResult(new { code = suggestedCode });
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Validación Condicional según Tipo
             if (Input.Type == RequestType.Purchasing)
             {
                 if (string.IsNullOrWhiteSpace(Input.InvestmentCode))
-                    ModelState.AddModelError("Input.InvestmentCode", "El código de inversión es obligatorio para solicitudes administrativas.");
+                    ModelState.AddModelError("Input.InvestmentCode", "El código de inversión es obligatorio.");
 
-                if (Input.Items == null || !Input.Items.Any())
-                    ModelState.AddModelError("Input.Items", "Debe agregar al menos un ítem al presupuesto.");
+                if (string.IsNullOrWhiteSpace(Input.CostCenter))
+                    ModelState.AddModelError("Input.CostCenter", "El centro de costos es obligatorio.");
             }
 
             if (!ModelState.IsValid)
@@ -150,49 +190,42 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 return Page();
             }
 
+            var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
+            if (unit == null)
+            {
+                ModelState.AddModelError("Input.EquipmentUnitId", "La unidad seleccionada no es válida.");
+                await LoadLists();
+                return Page();
+            }
+
             var request = new Request
             {
                 Type = Input.Type,
-                InvestmentCode = Input.Type == RequestType.Purchasing ? Input.InvestmentCode?.Clean() : null,
                 LaboratoryId = Input.LaboratoryId,
-                Description = Input.Description.Clean(),
+                EquipmentId = unit.EquipmentId,
+                EquipmentUnitId = unit.Id,
+                Description = Input.Description.Clean()!,
                 Priority = Input.Priority,
                 Observations = Input.Observations?.Clean(),
                 EstimatedRepairTime = Input.Type == RequestType.Technical ? Input.EstimatedRepairTime?.Clean() : null,
+                InvestmentCode = Input.Type == RequestType.Purchasing ? Input.InvestmentCode?.Clean() : null,
+                CostCenter = Input.CostCenter?.Clean(),
                 Status = RequestStatus.Pending,
                 CreatedDate = DateTime.Now
             };
 
-            if (Input.Type == RequestType.Technical)
+            // Link items from maintenance if selected
+            if (Input.Type == RequestType.Purchasing && Input.MaintenanceId.HasValue)
             {
-                // For technical requests, EquipmentId is the UnitId from the selector
-                var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentId);
-                if (unit != null)
+                var maintenanceCosts = await _context.CostDetails
+                    .Where(d => d.MaintenanceId == Input.MaintenanceId.Value)
+                    .ToListAsync();
+                
+                foreach (var cost in maintenanceCosts)
                 {
-                    request.EquipmentUnitId = unit.Id;
-                    request.EquipmentId = unit.EquipmentId;
-                }
-            }
-            else
-            {
-                request.EquipmentId = Input.EquipmentId;
-            }
-
-            // Mapeo manual de items
-            if (Input.Type == RequestType.Purchasing && Input.Items != null)
-            {
-                foreach (var item in Input.Items)
-                {
-                    request.CostDetails.Add(new CostDetail
-                    {
-                        Concept = item.Concept.Clean(),
-                        Quantity = item.Quantity,
-                        UnitPrice = item.UnitPrice,
-                        UnitOfMeasure = item.UnitOfMeasure.Clean(),
-                        Provider = item.Provider?.Clean(),
-                        Category = item.Category,
-                        CreatedDate = DateTime.Now
-                    });
+                    // Update existing cost to link to this request
+                    cost.RequestId = request.Id; // Will be set after save or handled by EF
+                    request.CostDetails.Add(cost);
                 }
             }
 
@@ -200,31 +233,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             if (currentUser != null)
             {
                 request.CreatedById = currentUser.Id;
-                request.RequestedById = currentUser.Id; // Always the current user
+                request.RequestedById = currentUser.Id;
             }
 
             _context.Requests.Add(request);
             await _context.SaveChangesAsync();
 
-            // Get equipment name for success message
-            var equipment = await _context.Equipments.FindAsync(request.EquipmentId);
-            TempData.Success($"Solicitud para '{(request.EquipmentUnitId.HasValue ? ("Unidad " + request.EquipmentUnitId) : (equipment?.Name ?? "el equipo seleccionado"))}' registrada exitosamente.");
-            
+            TempData.Success($"Solicitud para '{unit.InventoryNumber}' registrada exitosamente.");
             return RedirectToPage("./Index");
         }
 
         private async Task LoadLists()
         {
-            // Load laboratories
-            var laboratories = await _context.Laboratories
-                .Where(l => l.Status == GeneralStatus.Activo)
-                .OrderBy(l => l.Name)
-                .ToListAsync();
-            
-            ViewData["LaboratoryId"] = new SelectList(laboratories, "Id", "Name");
+            ViewData["FacultyId"] = new SelectList(await _context.Faculties
+                .Where(f => f.Status == GeneralStatus.Activo)
+                .OrderBy(f => f.Name)
+                .ToListAsync(), "Id", "Name");
 
-            // Equipments will be loaded via AJAX, but provide empty list initially
-            ViewData["EquipmentId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
         }
     }
 }
+    

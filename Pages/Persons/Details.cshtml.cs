@@ -18,6 +18,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
         }
 
         public Person Person { get; set; } = default!;
+        public List<Maintenance> Maintenances { get; set; } = new();
+        public List<Loan> Loans { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
@@ -37,6 +39,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             }
 
             Person = person;
+
+            // Fetch related data
+            Maintenances = await _context.Maintenances
+                .Include(m => m.EquipmentUnit)
+                    .ThenInclude(u => u.Equipment)
+                .Include(m => m.MaintenanceType)
+                .Where(m => m.TechnicianId == id)
+                .OrderByDescending(m => m.StartDate ?? m.CreatedDate)
+                .Take(10)
+                .ToListAsync();
+
+            Loans = await _context.Loans
+                .Include(l => l.EquipmentUnit)
+                    .ThenInclude(u => u.Equipment)
+                .Where(l => l.BorrowerId == id)
+                .OrderByDescending(l => l.LoanDate)
+                .Take(10)
+                .ToListAsync();
+
             return Page();
         }
     }

@@ -1,0 +1,85 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Career.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@{
+    ViewData["Title"] = "Editar Carrera";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card shadow-sm border-0 border-top border-warning">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+                    <div class="btn btn-circle btn-warning text-white mr-3 shadow-sm">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div>
+                        <h4 class="card-title font-weight-bold mb-0 text-dark">Editar Carrera / Programa</h4>
+                        <p class="text-muted small mb-0">Modifique la información académica de la carrera seleccionada.</p>
+                    </div>
+                </div>
+
+                <form method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+
+                    <div class="form-group mb-4">
+                        <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre de la Carrera</label>
+                        <div class="input-group drop-shadow">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-graduation-cap text-warning"></i></span>
+                            </div>
+                            <input asp-for="Input.Name" class="form-control border-left-0 h-auto py-2" />
+                        </div>
+                        <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label asp-for="Input.FacultadId" class="control-label font-weight-bold small uppercase text-muted">Facultad de Dependencia</label>
+                        <div class="input-group drop-shadow">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-university text-muted"></i></span>
+                            </div>
+                            <select asp-for="Input.FacultadId" class="form-control border-left-0 custom-select" asp-items="ViewBag.FacultadId">
+                                <option value="">-- Seleccionar Facultad (Opcional) --</option>
+                            </select>
+                        </div>
+                        <span asp-validation-for="Input.FacultadId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label asp-for="Input.Status" class="control-label font-weight-bold small uppercase text-muted">Estado Actual</label>
+                        <select asp-for="Input.Status" class="form-control custom-select" 
+                                asp-items="Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()">
+                        </select>
+                        <span asp-validation-for="Input.Status" class="text-danger small"></span>
+                    </div>
+
+                    <div class="d-flex align-items-center pt-3 border-top mt-5">
+                        <a asp-page="Index" class="btn btn-light btn-rounded px-4 mr-2">
+                            <i class="fas fa-arrow-left mr-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm ml-auto font-weight-bold text-dark">
+                            <i class="fas fa-save mr-1"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+        .btn-rounded { border-radius: 50px; }
+        .btn-circle { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .custom-select { height: calc(2.25rem + 10px); }
+    </style>
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

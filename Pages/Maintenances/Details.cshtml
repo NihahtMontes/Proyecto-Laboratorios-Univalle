@@ -82,15 +82,29 @@
 
                 <!-- Recomendaciones y Observaciones -->
                 <div class="row mt-4 pt-3 border-top">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Nivel de Satisfacción</label>
+                        <p class="text-dark font-weight-bold">
+                            @if (Model.Maintenance.SatisfactionLevel.HasValue)
+                            {
+                                <i class="fas fa-star text-warning mr-1"></i> @Model.Maintenance.SatisfactionLevel
+                            }
+                            else
+                            {
+                                <span class="text-muted">No evaluado</span>
+                            }
+                        </p>
+                    </div>
+                    <div class="col-md-4">
                         <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Recomendaciones Técnicas</label>
                         <p class="text-dark small italic">@(Model.Maintenance.Recommendations ?? "N/A")</p>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Observaciones Finales</label>
                         <p class="text-dark small">@(Model.Maintenance.Observations ?? "Sin observaciones.")</p>
                     </div>
                 </div>
+
 
                 <!-- Tabla de Costos (Si existen) -->
                 @if (Model.Maintenance.CostDetails != null && Model.Maintenance.CostDetails.Any())
@@ -111,10 +125,10 @@
                                     @foreach (var item in Model.Maintenance.CostDetails)
                                     {
                                         <tr>
-                                            <td class="small font-weight-bold">@item.Description</td>
+                                            <td class="small font-weight-bold">@item.Concept</td>
                                             <td class="small text-right">@item.Quantity</td>
-                                            <td class="small text-right">@item.UnitPrice.ToString("C2")</td>
-                                            <td class="small text-right font-weight-bold">@((item.Quantity * item.UnitPrice).ToString("C2"))</td>
+                                            <td class="small text-right">Bs @item.UnitPrice.ToString("N2")</td>
+                                            <td class="small text-right font-weight-bold">Bs @item.Subtotal.ToString("N2")</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -122,7 +136,7 @@
                                     <tr>
                                         <td colspan="3" class="text-right font-weight-bold uppercase small">Costo Total Ejecutado:</td>
                                         <td class="text-right font-weight-bold text-success" style="font-size: 1rem;">
-                                            @Model.Maintenance.ActualCost?.ToString("C2")
+                                            Bs @Model.Maintenance.ActualCost?.ToString("N2")
                                         </td>
                                     </tr>
                                 </tfoot>
