@@ -1,0 +1,145 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Loans.EditModel
+@{
+    ViewData["Title"] = "Gestionar Préstamo";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Gestión de Préstamo #@Model.Input.Id</h4>
+                        <h6 class="card-subtitle text-muted small">Actualización de datos o registro de devolución.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-edit fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <div class="alert alert-light border-left border-warning p-3 bg-light-warning mb-4 shadow-none">
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <label class="small text-muted font-weight-bold uppercase mb-0">Activo / Utensilio</label>
+                            <div class="text-dark font-weight-bold">@Model.EquipmentName</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="small text-muted font-weight-bold uppercase mb-0">Solicitante</label>
+                            <div class="text-dark font-weight-bold">@Model.BorrowerName</div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    <input type="hidden" asp-for="Input.Id" />
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger small shadow-sm border-0" role="alert"></div>
+
+                    <h5 class="font-weight-bold text-dark mb-3 small uppercase"><i class="fas fa-info-circle mr-2 text-warning"></i> Datos del Préstamo</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.LoanDate" class="control-label font-weight-bold small uppercase text-muted">Fecha de Salida</label>
+                            <input asp-for="Input.LoanDate" class="form-control" type="datetime-local" />
+                            <span asp-validation-for="Input.LoanDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Input.EstimatedReturnDate" class="control-label font-weight-bold small uppercase text-muted">Devolución Estimada</label>
+                            <input asp-for="Input.EstimatedReturnDate" class="form-control" type="date" />
+                            <span asp-validation-for="Input.EstimatedReturnDate" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mb-4">
+                        <label asp-for="Input.DepartureObservations" class="control-label font-weight-bold small uppercase text-muted">Observaciones de Salida</label>
+                        <textarea asp-for="Input.DepartureObservations" class="form-control" rows="2"></textarea>
+                        <span asp-validation-for="Input.DepartureObservations" class="text-danger small"></span>
+                    </div>
+
+                    <!-- SECCIÓN DE DEVOLUCIÓN -->
+                    <div class="bg-light p-4 rounded border-left border-success border-3 mt-4 animated fadeIn">
+                        <h5 class="text-success font-weight-bold mb-3 small uppercase">
+                            <i class="fas fa-undo-alt mr-2"></i> Recepción / Devolución
+                        </h5>
+                        
+                        <div class="custom-control custom-checkbox custom-control-lg mb-3 bg-white p-3 rounded border shadow-none">
+                            <input type="checkbox" class="custom-control-input" asp-for="Input.IsReturned" id="chkReturned">
+                            <label class="custom-control-label font-weight-bold text-dark ml-2 cursor-pointer" for="chkReturned" style="padding-top: 3px;">
+                                MARCAR COMO DEVUELTO AL LABORATORIO
+                            </label>
+                            <small class="d-block text-muted ml-1 mt-1">Este cambio actualizará el estado del activo a "Operativo".</small>
+                        </div>
+
+                        <div id="returnDetails" style="display:none;" class="mt-3 animated slideInDown">
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.ActualReturnDate" class="control-label font-weight-bold small uppercase text-success">Fecha Real de Recepción</label>
+                                <input asp-for="Input.ActualReturnDate" class="form-control border-success" type="datetime-local" />
+                                <span asp-validation-for="Input.ActualReturnDate" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group mb-0">
+                                <label asp-for="Input.ReturnObservations" class="control-label font-weight-bold small uppercase text-success">Estado Final / Observaciones de Regreso</label>
+                                <textarea asp-for="Input.ReturnObservations" class="form-control border-success" rows="3" placeholder="Detalles sobre el estado del equipo al recibirlo..."></textarea>
+                                <span asp-validation-for="Input.ReturnObservations" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="mt-5" />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-white">
+                            <i class="fas fa-save mr-2"></i> Guardar Cambios
+                        </button>
+                        <a asp-page="./Details" asp-route-id="@Model.Input.Id" class="btn btn-outline-secondary btn-rounded ml-2">
+                             Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .bg-light-warning { background-color: rgba(255, 193, 7, 0.05); }
+        .border-3 { border-left-width: 4px !important; }
+        .opacity-5 { opacity: 0.15; }
+        .cursor-pointer { cursor: pointer; }
+        .custom-control-lg .custom-control-label::before, 
+        .custom-control-lg .custom-control-label::after {
+            top: 0.1rem !important;
+            left: -2rem !important;
+            width: 1.5rem !important;
+            height: 1.5rem !important;
+        }
+        .custom-control-lg .custom-control-label {
+            margin-left: 0.5rem !important;
+            font-size: 1rem !important;
+        }
+    </style>
+}
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function () {
+             function toggleReturnDetails() {
+                if ($('#chkReturned').is(':checked')) {
+                    $('#returnDetails').slideDown();
+                    if (!$('#Input_ActualReturnDate').val()) {
+                        let now = new Date();
+                        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                        $('#Input_ActualReturnDate').val(now.toISOString().slice(0, 16));
+                    }
+                } else {
+                    $('#returnDetails').slideUp();
+                }
+            }
+
+            $('#chkReturned').change(toggleReturnDetails);
+            toggleReturnDetails();
+        });
+    </script>
+}

@@ -1,0 +1,160 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Loans.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Gestión de Préstamos";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <!-- Header -->
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Control de Préstamos de Activos</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Seguimiento de salidas y devoluciones de equipos y utensilios.</h6>
+                    </div>
+                    <div class="ml-auto mt-3">
+                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                            <i class="fas fa-plus-circle mr-1 text-primary"></i> Registrar Salida
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 🔍 Smart Index Zone -->
+                <div class="bg-light p-3 mb-4 rounded border-left border-primary shadow-sm">
+                    <form method="get">
+                        <div class="row align-items-end">
+                            <div class="col-md-5">
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo, inventario o solicitante..." />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold text-muted uppercase">Estado del Préstamo</label>
+                                <select asp-for="StatusFilter" class="form-control custom-select" 
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<LoanStatus>()">
+                                    <option value="">-- Todos --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 text-right mt-2 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
+                                </button>
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                    <i class="fas fa-sync-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Table of Loans -->
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="thead-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Activo / Utensilio</th>
+                                <th>Solicitante</th>
+                                <th class="text-center">Fecha Salida</th>
+                                <th class="text-center">Devolución</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Loans == null || !Model.Loans.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="fas fa-hand-holding fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron préstamos registrados.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var item in Model.Loans)
+                                {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="m-r-10">
+                                                <span class="btn btn-circle btn-light-primary text-primary"><i class="fas fa-microscope"></i></span>
+                                            </div>
+                                            <div>
+                                                <h6 class="m-b-0 font-weight-bold text-dark">@(item.EquipmentUnit?.Equipment?.Name ?? "S/N")</h6>
+                                                <span class="text-muted small">Inv: @(item.EquipmentUnit?.InventoryNumber ?? "-")</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="small">
+                                            <div class="font-weight-bold text-dark">@(item.Borrower?.FullName ?? "-")</div>
+                                            <div class="text-muted">ID: #@item.BorrowerId</div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="text-dark font-weight-bold">@item.LoanDate.ToString("dd/MM/yyyy")</div>
+                                        <small class="text-muted">@item.LoanDate.ToString("HH:mm")</small>
+                                    </td>
+                                    <td class="text-center">
+                                        @{
+                                            var isOverdue = item.Status == LoanStatus.Active && item.EstimatedReturnDate < DateTime.Now;
+                                            var dateColor = isOverdue ? "text-danger font-weight-bold" : "text-dark";
+                                        }
+                                        <div class="@dateColor">@item.EstimatedReturnDate.ToString("dd/MM/yyyy")</div>
+                                        @if (isOverdue)
+                                        {
+                                            <small class="badge badge-light-danger text-danger">¡Atrasado!</small>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @{
+                                            var (statusClass, statusText) = item.Status switch {
+                                                LoanStatus.Active => ("badge-primary", "ACTIVO"),
+                                                LoanStatus.Returned => ("badge-success", "DEVUELTO"),
+                                                LoanStatus.Overdue => ("badge-danger", "VENCIDO"),
+                                                LoanStatus.Cancelled => ("badge-secondary", "ANULADO"),
+                                                _ => ("badge-light text-muted border", "OTRO")
+                                            };
+                                        }
+                                        <span class="badge @statusClass px-3 py-1 text-white shadow-sm" style="border: none;">@statusText</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded" title="Detalles">
+                                                <i class="fas fa-search-plus"></i>
+                                            </a>
+                                            @if (item.Status == LoanStatus.Active || item.Status == LoanStatus.Overdue)
+                                            {
+                                                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded mx-1" title="Gestionar Devolución">
+                                                    <i class="fas fa-calendar-check"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+        .badge-light-danger { background-color: #fce4ec; color: #d81b60; border: 1px solid #f8bbd0; }
+        .btn-light-primary { background-color: #e3f2fd; color: #1976d2; }
+    </style>
+}

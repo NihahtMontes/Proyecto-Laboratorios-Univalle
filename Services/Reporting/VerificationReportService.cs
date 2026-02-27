@@ -228,11 +228,11 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
 
                     // Physical Condition Display Name Helper
                     string statusText = unit.PhysicalCondition switch {
-                        PhysicalCondition.Excelente => "EXCELENTE",
-                        PhysicalCondition.Bueno => "BUENO",
-                        PhysicalCondition.Regular => "REGULAR",
-                        PhysicalCondition.Malo => "MALO",
-                        PhysicalCondition.Baja => "BAJA",
+                        PhysicalCondition.New => "NUEVO",
+                        PhysicalCondition.VeryGood => "MUY BUENO",
+                        PhysicalCondition.Good => "BUENO",
+                        PhysicalCondition.Bad => "MALO",
+                        PhysicalCondition.Broken => "ROTO",
                         _ => "SIN EVALUAR"
                     };
                     

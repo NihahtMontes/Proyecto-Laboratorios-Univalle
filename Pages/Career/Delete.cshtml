@@ -1,0 +1,58 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Career.DeleteModel
+
+@{
+    ViewData["Title"] = "Eliminar Carrera";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card shadow-sm border-0 border-top border-danger">
+            <div class="card-body p-4 text-center">
+                <div class="btn btn-circle btn-lg btn-outline-danger mb-4 shadow-sm mx-auto">
+                    <i class="fas fa-trash-alt fa-2x"></i>
+                </div>
+                
+                <h3 class="font-weight-bold text-dark mb-2">¿Confirmar Eliminación?</h3>
+                <p class="text-muted mb-4 px-3">
+                    Está a punto de dar de baja la carrera <strong class="text-danger">@Model.Career.Name</strong>. 
+                    Esta acción marcará el registro como eliminado en el sistema.
+                </p>
+
+                <div class="bg-light p-4 rounded text-left mb-4 shadow-sm border-left border-danger">
+                    <div class="row">
+                        <div class="col-12 mb-2">
+                            <label class="small uppercase font-weight-bold text-muted d-block mb-1">Nombre de la Carrera</label>
+                            <span class="h6 text-dark font-weight-bold">@Model.Career.Name</span>
+                        </div>
+                        <div class="col-12">
+                            <label class="small uppercase font-weight-bold text-muted d-block mb-1">Facultad Asociada</label>
+                            <span class="text-dark">@(Model.Career.Facultad?.Name ?? "Área General")</span>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="post">
+                    <input type="hidden" asp-for="Career.Id" />
+                    <div class="d-flex align-items-center justify-content-center mt-4 pt-3 border-top">
+                        <a asp-page="./Index" class="btn btn-light btn-rounded px-4 mr-3">
+                            <i class="fas fa-arrow-left mr-1"></i> No, Regresar
+                        </a>
+                        <button type="submit" class="btn btn-danger btn-rounded px-4 font-weight-bold shadow-sm">
+                            <i class="fas fa-check mr-1"></i> Sí, Confirmar Baja
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .btn-rounded { border-radius: 50px; }
+        .btn-circle.btn-lg { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .italic { font-style: italic; }
+    </style>
+}

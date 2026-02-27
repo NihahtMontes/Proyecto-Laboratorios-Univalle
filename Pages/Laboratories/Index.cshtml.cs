@@ -20,6 +20,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
         public IList<Laboratory> Laboratories { get; set; } = default!;
         public IList<Faculty> Faculties { get; set; } = default!;
+        public IList<Proyecto_Laboratorios_Univalle.Models.Career> Careers { get; set; } = default!;
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -41,6 +42,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
                 .Include(f => f.ModifiedBy)
                 .Where(f => f.Status != GeneralStatus.Eliminado);
 
+            var carQuery = _context.Careers
+                .Include(c => c.CreatedBy)
+                .Include(c => c.Facultad)
+                .Include(c => c.ModifiedBy)
+                .Where(c => c.Status != GeneralStatus.Eliminado);
+
             // Apply term filter (Global search across labs and faculties)
             if (!string.IsNullOrEmpty(SearchTerm))
             {
@@ -54,6 +61,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
                 // Faculties Filter: Search in name and institutional code
                 facQuery = facQuery.Where(f => f.Name.ToLower().Contains(term) || 
                                                (f.Code != null && f.Code.ToLower().Contains(term)));
+
+                // Careers Filter: Search in name and faculty name
+                carQuery = carQuery.Where(c => c.Name.ToLower().Contains(term) ||
+                                               (c.Facultad != null && c.Facultad.Name.ToLower().Contains(term)));
             }
 
             // Apply status filter 
@@ -61,11 +72,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             {
                 labQuery = labQuery.Where(l => l.Status == StatusFilter.Value);
                 facQuery = facQuery.Where(f => f.Status == StatusFilter.Value);
+                carQuery = carQuery.Where(c => c.Status == StatusFilter.Value);
             }
 
             // Ordering for both collections
             Laboratories = await labQuery.OrderBy(l => l.Name).ToListAsync();
             Faculties = await facQuery.OrderBy(f => f.Name).ToListAsync();
+            Careers = await carQuery.OrderBy(c => c.Name).ToListAsync();
         }
     }
 }

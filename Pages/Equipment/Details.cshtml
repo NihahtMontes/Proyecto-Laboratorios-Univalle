@@ -40,7 +40,7 @@
                                 </tr>
                                 <tr>
                                     <th class="text-muted small uppercase pl-3 pb-3">Categoría</th>
-                                    <td class="pb-3 text-dark">@(Model.Equipment.EquipmentType?.Name ?? "General")</td>
+                                    <td class="font-weight-bold pb-3 text-dark">@(Model.Equipment.EquipmentType?.Name ?? "Utensilio")</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -53,10 +53,7 @@
                         </h5>
                         <table class="table table-sm table-borderless bg-light rounded p-3">
                             <tbody>
-                                <tr>
-                                    <th class="text-muted small uppercase pl-3 pt-3" style="width: 40%;">Sede / Ciudad</th>
-                                    <td class="font-weight-bold pt-3 text-dark">@(Model.Equipment.City?.Name ?? "No Asignada")</td>
-                                </tr>
+                                
                                 <tr>
                                     <th class="text-muted small uppercase pl-3 pb-3">País</th>
                                     <td class="font-weight-bold pb-3 text-dark">@(Model.Equipment.Country?.Name ?? "No Definido")</td>
@@ -112,7 +109,8 @@
                                     <tr>
                                         <th>Identificación</th>
                                         <th>Ubicación (Laboratorio)</th>
-                                        <th>Estado</th>
+                                        <th>Estado Operativo</th>
+                                        <th>Condición Física</th>
                                         <th class="text-center">Acciones</th>
                                     </tr>
                                 </thead>
@@ -123,6 +121,10 @@
                                             <td class="font-weight-bold text-dark v-middle">
                                                 <i class="fas fa-barcode text-muted mr-2"></i>@unit.InventoryNumber
                                                 <div class="small text-muted mt-1">S/N: @(unit.SerialNumber ?? "N/A")</div>
+                                                @if (unit.Career != null)
+                                                {
+                                                    <div class="small text-info mt-1"><i class="fas fa-graduation-cap mr-1"></i>@unit.Career.Name</div>
+                                                }
                                             </td>
                                             <td class="v-middle">
                                                 <div class="font-weight-bold text-info small uppercase">@(unit.Laboratory?.Name ?? "PENDIENTE")</div>
@@ -140,6 +142,9 @@
                                                     };
                                                 }
                                                 <span class="badge badge-pill @badgeClass px-3 py-1">@Html.DisplayFor(m => unit.CurrentStatus)</span>
+                                            </td>
+                                            <td class="v-middle">
+                                                <span class="badge badge-pill badge-warning px-2 py-1 font-weight-bold shadow-none small text-white">@Html.DisplayFor(m => unit.PhysicalCondition)</span>
                                             </td>
                                             <td class="text-center v-middle">
                                                 <div class="btn-group shadow-sm rounded">
@@ -185,14 +190,17 @@
 
     <!-- Sidebar: Lifecycle and Control -->
     <div class="col-lg-4">
-        <div class="card shadow-sm border-0 mb-4 bg-info text-white">
-            <div class="card-body p-4 text-center">
-                <i class="fas fa-clock fa-3x mb-3 opacity-7"></i>
-                <h5 class="card-title text-white font-weight-bold small uppercase mb-1">Vida Útil del Ciclo</h5>
-                <span class="font-weight-bold h3 mb-0">@(Model.Equipment.UsefulLifeYears ?? 0)</span>
-                <span class="text-white opacity-7">años de vida estimada</span>
+        
+        <!-- Image Card -->
+        @if (!string.IsNullOrEmpty(Model.Equipment.ImageUrl))
+        {
+            <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                <div class="card-body p-3 text-center">
+                    <img src="~/uploads/equipment/@Model.Equipment.ImageUrl" alt="@Model.Equipment.Name" class="img-fluid rounded shadow-sm" style="max-height: 250px; object-fit: contain;" />
+                </div>
             </div>
-        </div>
+        }
+
 
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4">

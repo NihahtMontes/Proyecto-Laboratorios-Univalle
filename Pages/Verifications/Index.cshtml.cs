@@ -35,17 +35,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         {
             public int? LaboratoryId { get; set; }
             public string Term { get; set; } = "II/2025";
-            public string Responsible { get; set; }
+            public string Responsible { get; set; } = string.Empty;
         }
 
-        public Microsoft.AspNetCore.Mvc.Rendering.SelectList LaboratoryList { get; set; }
+        public Microsoft.AspNetCore.Mvc.Rendering.SelectList LaboratoryList { get; set; } = default!;
 
         public async Task OnGetAsync()
         {
             IQueryable<Verification> verificationIQ = _context.Verifications
                 .Include(v => v.CreatedBy)
                 .Include(v => v.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu != null ? eu.Equipment : null)
                 .Include(v => v.ModifiedBy);
 
             if (!string.IsNullOrEmpty(SearchTerm))
@@ -112,7 +112,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             catch (Exception ex)
             {
                 _context.ChangeTracker.Clear();
-                TempData["Error"] = $"Error al generar el reporte L-6: {ex.Message}";
+                TempData.Error($"Error al generar el reporte L-6: {ex.Message}");
                 return RedirectToPage();
             }
         }
@@ -124,7 +124,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 IQueryable<Verification> verificationIQ = _context.Verifications
                     .Include(v => v.CreatedBy)
                     .Include(v => v.EquipmentUnit)
-                        .ThenInclude(eu => eu.Equipment)
+                        .ThenInclude(eu => eu != null ? eu.Equipment : null)
                     .Include(v => v.ModifiedBy);
 
                 if (!string.IsNullOrEmpty(SearchTerm))
@@ -142,7 +142,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Error al exportar listado: {ex.Message}";
+                TempData.Error($"Error al exportar listado: {ex.Message}");
                 return RedirectToPage();
             }
         }

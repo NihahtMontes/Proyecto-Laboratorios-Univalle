@@ -85,6 +85,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Nro. Código de Inversión")]
         public string? InvestmentCode { get; set; }
 
+        [StringLength(100)]
+        [Display(Name = "Centro de Costos")]
+        public string? CostCenter { get; set; }
+
         // ========================================
         // NAVIGATION
         // ========================================

@@ -25,15 +25,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public IActionResult OnGet()
         {
-            var units = _context.EquipmentUnits
-                .Include(u => u.Equipment)
-                .Select(u => new { 
-                    Id = u.Id, 
-                    DisplayName = $"{u.Equipment.Name} (INV: {u.InventoryNumber})" 
-                })
-                .ToList();
-
-            ViewData["EquipmentUnitId"] = new SelectList(units, "Id", "DisplayName");
+            LoadLists();
             return Page();
         }
 
@@ -42,9 +34,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public class InputModel
         {
-            [Required]
-            [Display(Name = "Unidad de Equipo")]
+            [Required(ErrorMessage = "La facultad es obligatoria")]
+            [Display(Name = "Facultad")]
+            public int FacultyId { get; set; }
+
+            [Required(ErrorMessage = "El laboratorio es obligatorio")]
+            [Display(Name = "Laboratorio")]
+            public int LaboratoryId { get; set; }
+
+            [Required(ErrorMessage = "La unidad física es obligatoria")]
+            [Display(Name = "Unidad Física")]
             public int EquipmentUnitId { get; set; }
+
             [DataType(DataType.Date)]
             [Display(Name = "Fecha de Inspección")]
             public DateTime Date { get; set; } = DateTime.Today;
@@ -99,26 +100,51 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             public string? CriticalFindings { get; set; }
             [Display(Name = "Recomendaciones")]
             public string? Recommendations { get; set; }
-            [Display(Name = "Estado")]
-            public VerificationStatus Status { get; set; }
+            [Display(Name = "Estado Final")]
+            public VerificationStatus Status { get; set; } = VerificationStatus.Draft;
+        }
+
+        // AJAX Handlers
+        public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
+        {
+            var labs = await _context.Laboratories
+                .Where(l => l.FacultyId == facultyId && l.Status == GeneralStatus.Activo)
+                .Select(l => new { id = l.Id, name = l.Name })
+                .OrderBy(x => x.name)
+                .ToListAsync();
+            return new JsonResult(labs);
+        }
+
+        public async Task<JsonResult> OnGetUnitsByLabAsync(int laboratoryId)
+        {
+            var units = await _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
+                .OrderBy(u => u.Equipment!.Name)
+                .ThenBy(u => u.InventoryNumber)
+                .Select(u => new { 
+                    id = u.Id, 
+                    eqName = u.Equipment != null ? u.Equipment.Name : "Equipo",
+                    inv = u.InventoryNumber
+                })
+                .ToListAsync();
+
+            var result = units.Select(x => new {
+                id = x.id,
+                name = $"{x.eqName} (Inv: {x.inv})"
+            });
+
+            return new JsonResult(result);
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
             if (!ModelState.IsValid)
             {
-                var units = _context.EquipmentUnits
-                    .Include(u => u.Equipment)
-                    .Select(u => new { 
-                        Id = u.Id, 
-                        DisplayName = $"{u.Equipment.Name} (INV: {u.InventoryNumber})" 
-                    })
-                    .ToList();
-                ViewData["EquipmentUnitId"] = new SelectList(units, "Id", "DisplayName");
+                LoadLists();
                 return Page();
             }
 
-            // Map input model to entity
             var verification = new Verification
             {
                 EquipmentUnitId = Input.EquipmentUnitId,
@@ -151,21 +177,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 CreatedDate = DateTime.Now
             };
 
-            // Set audit tracking
             var user = await _userManager.GetUserAsync(User);
-            if (user != null)
-            {
-                verification.CreatedById = user.Id;
-            }
+            if (user != null) verification.CreatedById = user.Id;
 
             _context.Verifications.Add(verification);
             await _context.SaveChangesAsync();
 
-            // Success notification
             var unit = await _context.EquipmentUnits.Include(u => u.Equipment).FirstOrDefaultAsync(u => u.Id == verification.EquipmentUnitId);
-            TempData.Success(NotificationHelper.Verifications.Created(unit?.Equipment?.Name ?? "unknown"));
+            TempData.Success(NotificationHelper.Verifications.Created(unit?.Equipment?.Name ?? "equipo"));
 
             return RedirectToPage("./Index");
+        }
+
+        private void LoadLists()
+        {
+            ViewData["FacultyId"] = new SelectList(_context.Faculties
+                .Where(f => f.Status == GeneralStatus.Activo)
+                .OrderBy(f => f.Name), "Id", "Name");
+            
+            ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
         }
     }
 }

@@ -69,6 +69,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [DataType(DataType.Date)]
         public DateTime? SuggestedNextMaintenanceDate { get; set; }
 
+        [Display(Name = "Nivel de Satisfacción")]
+        public MaintenanceSatisfaction? SatisfactionLevel { get; set; }
+
         [StringLength(1000)]
         [Display(Name = "Observaciones del Técnico")]
         public string? Observations { get; set; }

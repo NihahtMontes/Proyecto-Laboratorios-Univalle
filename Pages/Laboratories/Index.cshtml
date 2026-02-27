@@ -19,6 +19,11 @@
                         <i class="fas fa-university mr-2"></i> Unidades Académicas
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link font-weight-bold" data-toggle="tab" href="#careers" role="tab">
+                        <i class="fas fa-graduation-cap mr-2"></i> Carreras / Programas
+                    </a>
+                </li>
             </ul>
 
             <div class="tab-content border-top">
@@ -220,6 +225,94 @@
                                                         <i class="fas fa-search-plus"></i>
                                                     </a>
                                                     <a asp-page="/Faculties/Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded shadow-none" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================== -->
+                <!-- TAB 3: CAREERS -->
+                <!-- ============================================================== -->
+                <div class="tab-pane" id="careers" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                            <div>
+                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Oferta Académica</h3>
+                                <h6 class="card-subtitle text-muted ml-2">Gestión de carreras y programas asociados a la infraestructura.</h6>
+                            </div>
+                            <div class="ml-auto mt-3 mt-md-0">
+                                <a asp-page="/Career/Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                                    <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Carrera
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover v-middle">
+                                <thead class="bg-light">
+                                    <tr class="small uppercase font-weight-bold">
+                                        <th>Carrera / Programa</th>
+                                        <th>Facultad de Dependencia</th>
+                                        <th class="text-center">Estado</th>
+                                        <th>Auditoría Operativa</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.Careers == null || !Model.Careers.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="5" class="text-center py-5 text-muted italic">
+                                                <i class="fas fa-graduation-cap fa-3x mb-3 d-block opacity-2"></i>
+                                                No hay carreras registradas.
+                                            </td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        foreach (var item in Model.Careers)
+                                        {
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="m-r-10">
+                                                        <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm"><i class="fas fa-graduation-cap"></i></span>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="m-b-0 font-weight-bold text-dark">@item.Name</h6>
+                                                        <span class="text-muted small">ID Sistema: @item.Id</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="text-dark font-weight-bold small uppercase">@(item.Facultad?.Name ?? "Área General")</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge badge-pill @(item.Status == GeneralStatus.Activo ? "badge-success" : "badge-danger") px-3 py-1 font-weight-bold">@item.Status</span>
+                                            </td>
+                                            <td>
+                                                <div class="small">
+                                                    <div class="text-dark"><i class="far fa-calendar-alt text-muted mr-1"></i> @item.CreatedDate.ToString("dd/MM/yyyy")</div>
+                                                    <div class="text-muted"><i class="fas fa-user-check mr-1"></i> @(item.CreatedBy?.Initials ?? "Sist.")</div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="btn-group">
+                                                    <a asp-page="/Career/Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded shadow-none" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a asp-page="/Career/Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1 shadow-none" title="Detalles">
+                                                        <i class="fas fa-search-plus"></i>
+                                                    </a>
+                                                    <a asp-page="/Career/Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded shadow-none" title="Eliminar">
                                                         <i class="fas fa-trash"></i>
                                                     </a>
                                                 </div>

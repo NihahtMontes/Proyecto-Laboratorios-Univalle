@@ -1,0 +1,189 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Loans.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <i class="fas fa-exclamation-triangle mr-2"></i> @TempData["Error"]
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+}
+
+<div class="row">
+    <!-- Main Column: Loan Data -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Expediente de Préstamo: #PR-@Model.Loan.Id.ToString("D5")</h4>
+                        <h6 class="card-subtitle text-muted small">Información del activo, solicitante y control de tiempos.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-hand-holding fa-2x text-primary opacity-5"></i>
+                    </div>
+                </div>
+
+                <!-- Asset Reference Block -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="small text-muted font-weight-bold uppercase mb-1">Activo / Utensilio Entregado</label>
+                        <div class="p-3 bg-light rounded border-left border-primary font-weight-bold text-dark d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-microscope mr-2 text-primary"></i> @Model.Loan.EquipmentUnit?.Equipment?.Name 
+                                <span class="text-muted font-weight-normal small ml-1">(Inv: @(Model.Loan.EquipmentUnit?.InventoryNumber ?? "-"))</span>
+                            </span>
+                            <a asp-page="/EquipmentUnits/Details" asp-route-id="@Model.Loan.EquipmentUnitId" class="btn btn-sm btn-link text-primary font-weight-bold">Ver Ficha <i class="fas fa-external-link-alt ml-1"></i></a>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-info-circle mr-2 text-primary"></i> Detalles del Movimiento</h5>
+                
+                <div class="row">
+                    <!-- Column: Dates and Observations -->
+                    <div class="col-md-6 mb-4">
+                        <label class="control-label font-weight-bold small uppercase text-muted mb-1">Fecha de Salida (Préstamo)</label>
+                        <div class="p-2 px-3 bg-white border rounded text-dark font-weight-bold">
+                            <i class="far fa-calendar-alt mr-2 text-primary"></i> @Model.Loan.LoanDate.ToString("dd/MM/yyyy HH:mm")
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <label class="control-label font-weight-bold small uppercase text-muted mb-1">Devolución Estimada</label>
+                        @{
+                            var overdue = Model.Loan.Status == LoanStatus.Active && Model.Loan.EstimatedReturnDate < DateTime.Now;
+                            var estClass = overdue ? "border-danger text-danger bg-light-danger" : "bg-white border text-dark";
+                        }
+                        <div class="p-2 px-3 rounded font-weight-bold @estClass">
+                            <i class="far fa-clock mr-2"></i> @Model.Loan.EstimatedReturnDate.ToString("dd/MM/yyyy")
+                            @if(overdue) { <span class="badge badge-danger ml-2">VENCIDO</span> }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="control-label font-weight-bold small uppercase text-muted mb-1">Observaciones de Entrega / Estado Inicial</label>
+                    <div class="p-3 bg-light border rounded text-dark" style="min-height: 60px;">
+                        @(string.IsNullOrEmpty(Model.Loan.DepartureObservations) ? "Sin observaciones registradas al momento del préstamo." : Model.Loan.DepartureObservations)
+                    </div>
+                </div>
+
+                @if (Model.Loan.ActualReturnDate.HasValue || !string.IsNullOrEmpty(Model.Loan.ReturnObservations))
+                {
+                    <div class="mt-4 border-top pt-4">
+                        <h5 class="font-weight-bold text-success mb-3"><i class="fas fa-check-circle mr-2"></i> Registro de Devolución</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="control-label font-weight-bold small uppercase text-muted mb-1">Fecha Real de Devolución</label>
+                                <div class="p-2 px-3 bg-light-success border border-success rounded text-success font-weight-bold">
+                                    <i class="fas fa-calendar-check mr-2"></i> @Model.Loan.ActualReturnDate?.ToString("dd/MM/yyyy HH:mm")
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-0">
+                            <label class="control-label font-weight-bold small uppercase text-muted mb-1">Observaciones de Recepción / Estado Final</label>
+                            <div class="p-3 bg-white border rounded text-dark">
+                                @(string.IsNullOrEmpty(Model.Loan.ReturnObservations) ? "Devuelto sin observaciones adicionales." : Model.Loan.ReturnObservations)
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="mt-4 border-top pt-4">
+                        <div class="alert alert-info border-0 p-4 bg-light-primary text-primary d-flex align-items-center rounded shadow-none">
+                            <i class="fas fa-spinner fa-spin fa-2x mr-3 opacity-5"></i>
+                            <div>
+                                <h6 class="font-weight-bold mb-0 text-primary uppercase small">Activo en Posesión del Solicitante</h6>
+                                <p class="mb-0 small">El activo aún no ha sido reportado como devuelto a laboratorio.</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Side Column: Borrower and Actions -->
+    <div class="col-lg-4">
+        <!-- Status Card -->
+        <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase"><i class="fas fa-shield-alt mr-2 text-primary"></i> Estado del Préstamo</h5>
+                <hr class="border-secondary mb-4" />
+                
+                <div class="mb-4">
+                    @{
+                        var sBadge = Model.Loan.Status switch {
+                            LoanStatus.Returned => "badge-success",
+                            LoanStatus.Overdue => "badge-danger",
+                            LoanStatus.Active => "badge-primary",
+                            _ => "badge-secondary"
+                        };
+                    }
+                    <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estatus Actual</label>
+                    <span class="badge badge-pill @sBadge px-4 py-2 font-weight-bold" style="font-size: 0.9rem;">@Model.Loan.Status</span>
+                </div>
+
+                <div class="mb-0">
+                    <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Solicitante Responsable</label>
+                    <div class="d-flex align-items-center mt-2">
+                        <div class="btn-circle btn-primary mr-3 shadow-sm">@(Model.Loan.Borrower?.FullName?.Substring(0,1) ?? "U")</div>
+                        <div class="text-truncate">
+                            <div class="font-weight-bold text-white mb-0">@Model.Loan.Borrower?.FullName</div>
+                            <small class="text-muted">ID: #@Model.Loan.BorrowerId</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Borrower Contact Meta -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-address-card mr-2 text-info"></i> Datos de Contacto</h5>
+                <div class="p-2 px-3 bg-light rounded border mb-2 small text-dark">
+                    <i class="fas fa-phone mr-2 text-muted"></i> @(Model.Loan.Borrower?.PhoneNumber ?? "Sin teléfono")
+                </div>
+                <div class="p-2 px-3 bg-light rounded border small text-dark text-truncate">
+                    <i class="fas fa-envelope mr-2 text-muted"></i> @(Model.Loan.Borrower?.Email ?? "Sin correo")
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="form-actions mt-4">
+            @if (Model.Loan.Status == LoanStatus.Active || Model.Loan.Status == LoanStatus.Overdue)
+            {
+                <a asp-page="./Edit" asp-route-id="@Model.Loan.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-3">
+                    <i class="fas fa-undo-alt mr-2"></i> Registrar Devolución
+                </a>
+            }
+
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-3">
+                <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+            </a>
+            
+            @if(User.IsInRole("Administrator") || User.IsInRole("SuperAdmin"))
+            {
+                <a asp-page="./Delete" asp-route-id="@Model.Loan.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+                    <i class="fas fa-trash-alt mr-2"></i> Anular Registro
+                </a>
+            }
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .bg-light-success { background-color: rgba(40, 167, 69, 0.05); }
+        .bg-light-danger { background-color: rgba(220, 53, 69, 0.05); }
+        .bg-light-primary { background-color: rgba(0, 123, 255, 0.05); }
+        .opacity-5 { opacity: 0.15; }
+        .btn-circle { width: 40px; height: 40px; border-radius: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    </style>
+}

@@ -22,7 +22,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             _reportService = reportService;
         }
 
-        public Request Request { get; set; } = default!;
+        public new Request Request { get; set; } = default!;
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
@@ -48,7 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             if (id <= 0)
             {
-                TempData["Error"] = "Identificador de solicitud no válido.";
+                TempData.Error(NotificationHelper.Requests.InvalidId);
                 return RedirectToPage(new { id = id });
             }
 
@@ -74,7 +74,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             catch (Exception ex)
             {
                 _context.ChangeTracker.Clear();
-                TempData["Error"] = $"No se pudo generar el Excel: {ex.Message}";
+                TempData.Error(NotificationHelper.Requests.SaveError($"No se pudo generar el Excel: {ex.Message}"));
                 return RedirectToPage(new { id = id });
             }
         }

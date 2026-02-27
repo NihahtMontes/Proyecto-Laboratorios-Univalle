@@ -4,19 +4,19 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
 {
     public enum PhysicalCondition
     {
-        [Display(Name = "EXCELENTE")]
-        Excelente = 5,
-        
+        [Display(Name = "NUEVO")]
+        New = 5,
+
+        [Display(Name = "MUY BUENO")]
+        VeryGood = 4,
+
         [Display(Name = "BUENO")]
-        Bueno = 4,
-        
-        [Display(Name = "REGULAR")]
-        Regular = 3,
-        
+        Good = 3,
+
         [Display(Name = "MALO")]
-        Malo = 2,
-        
-        [Display(Name = "BAJA")]
-        Baja = 1 // Para dar de baja
+        Bad = 2,
+
+        [Display(Name = "ROTO")]
+        Broken = 1
     }
 }

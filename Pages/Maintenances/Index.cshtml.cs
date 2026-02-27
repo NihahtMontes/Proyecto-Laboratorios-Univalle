@@ -52,8 +52,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 query = query.Where(m => 
                     m.EquipmentUnit!.Equipment!.Name.ToLower().Contains(term) ||
                     m.EquipmentUnit.InventoryNumber.ToLower().Contains(term) ||
-                    (m.Technician != null && m.Technician.FirstName.ToLower().Contains(term)) ||
-                    (m.Technician != null && m.Technician.LastName.ToLower().Contains(term))
+                    (m.Technician != null && m.Technician.Id.ToString() == term)
                 );
             }
 

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -18,10 +19,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
 
-        public EditModel(ApplicationDbContext context, UserManager<User> userManager)
+        private readonly IWebHostEnvironment _environment;
+
+        public EditModel(ApplicationDbContext context, UserManager<User> userManager, IWebHostEnvironment environment)
         {
             _context = context;
             _userManager = userManager;
+            _environment = environment;
         }
 
         [BindProperty]
@@ -32,13 +36,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             public int Id { get; set; }
 
             [Required(ErrorMessage = "La categoría es obligatoria")]
-            [Display(Name = "Categoría")]
-            public int EquipmentTypeId { get; set; }
+            [Display(Name = "Tipo de Recurso")]
+            public EquipmentCategory Category { get; set; }
+
+            [Display(Name = "Tipo de Equipo")]
+            public int? EquipmentTypeId { get; set; }
+
+
+
+            [Display(Name = "Imagen del Equipo")]
+            public IFormFile? ImageUpload { get; set; }
+            public string? ExistingImageUrl { get; set; }
 
             [Display(Name = "País / Sede de Origen")]
             public int? CountryId { get; set; }
 
-            [Display(Name = "Ciudad / Sede de Origen")]
             public int? CityId { get; set; }
 
             [Required(ErrorMessage = "El nombre del equipo es obligatorio")]
@@ -79,7 +91,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             Input = new EquipmentInputModel
             {
                 Id = equipment.Id,
+                Category = equipment.Category,
                 EquipmentTypeId = equipment.EquipmentTypeId,
+
+                ExistingImageUrl = equipment.ImageUrl,
                 CountryId = equipment.CountryId,
                 CityId = equipment.CityId,
                 Name = equipment.Name,
@@ -118,9 +133,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             if (equipment == null) return NotFound();
 
+            // Image Upload Handling
+            if (Input.ImageUpload != null)
+            {
+                string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "equipment");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+                
+                string uniqueFileName = Guid.NewGuid().ToString() + "_" + Input.ImageUpload.FileName;
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await Input.ImageUpload.CopyToAsync(fileStream);
+                }
+                
+                equipment.ImageUrl = uniqueFileName;
+            }
+
             // Update Fields
             equipment.Name = Input.Name.Clean();
+            equipment.Category = Input.Category;
             equipment.EquipmentTypeId = Input.EquipmentTypeId;
+
             equipment.CountryId = Input.CountryId;
             equipment.CityId = Input.CityId;
             equipment.Brand = Input.Brand?.Clean();

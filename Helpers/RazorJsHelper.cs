@@ -56,12 +56,12 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
                 var message = html.JsTempData("SuccessMessage");
                 scripts.AppendLine($@"
                 <script>
-                    swal({{
-                        title: '¡Excelente!',
+                    Swal.fire({{
+                        icon: 'success',
+                        title: '\u00a1Excelente!',
                         text: {message},
-                        type: 'success',
                         confirmButtonText: 'Aceptar',
-                        confirmButtonColor: '#2962ff',
+                        confirmButtonColor: '#4CAF50',
                         timer: 4000
                     }});
                 </script>");
@@ -73,28 +73,28 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
                 var message = html.JsTempData("ErrorMessage");
                 scripts.AppendLine($@"
                 <script>
-                    swal({{
-                        title: 'Error',
+                    Swal.fire({{
+                        icon: 'error',
+                        title: '\u00a1Error!',
                         text: {message},
-                        type: 'error',
                         confirmButtonText: 'Entendido',
-                        confirmButtonColor: '#d33'
+                        confirmButtonColor: '#f44336'
                     }});
                 </script>");
             }
 
-            // Warning Alert (si lo necesitan en el futuro)
+            // Warning Alert
             if (tempData.TryGetValue("WarningMessage", out var warning) && warning != null)
             {
                 var message = html.JsTempData("WarningMessage");
                 scripts.AppendLine($@"
                 <script>
-                    swal({{
-                        title: 'Atención',
+                    Swal.fire({{
+                        icon: 'warning',
+                        title: 'Advertencia',
                         text: {message},
-                        type: 'warning',
-                        confirmButtonText: 'Entendido',
-                        confirmButtonColor: '#f39c12'
+                        confirmButtonText: 'OK',
+                        confirmButtonColor: '#ff9800'
                     }});
                 </script>");
             }

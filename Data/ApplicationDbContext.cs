@@ -59,6 +59,10 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<CostDetail> CostDetails { get; set; } = null!;
         public DbSet<MaintenancePlan> MaintenancePlans { get; set; } = null!;
         public DbSet<Verification> Verifications { get; set; } = null!;
+        public DbSet<Loan> Loans { get; set; } = null!;
+        public DbSet<Intern> Interns { get; set; } = null!;
+        public DbSet<Extern> Externs { get; set; } = null!;
+        public DbSet<Career> Careers { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -93,6 +97,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Maintenance>().Property(m => m.Status).HasDefaultValue(MaintenanceStatus.Pending);
             modelBuilder.Entity<Request>().Property(s => s.Status).HasDefaultValue(RequestStatus.Pending);
             modelBuilder.Entity<Verification>().Property(v => v.Status).HasDefaultValue(VerificationStatus.Draft);
+            modelBuilder.Entity<Career>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Activo);
 
             modelBuilder.Entity<User>().HasQueryFilter(u => u.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<Faculty>().HasQueryFilter(f => f.Status != GeneralStatus.Eliminado);
@@ -103,6 +108,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Maintenance>().HasQueryFilter(m => m.Status != MaintenanceStatus.Cancelled);
             modelBuilder.Entity<Request>().HasQueryFilter(s => s.Status != RequestStatus.Cancelled);
             modelBuilder.Entity<Verification>().HasQueryFilter(v => v.Status != VerificationStatus.Annulled);
+            modelBuilder.Entity<Loan>().HasQueryFilter(l => l.Status != LoanStatus.Cancelled);
+            modelBuilder.Entity<Career>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
 
             // Relationships
             modelBuilder.Entity<City>().HasOne(c => c.Country).WithMany(p => p.Cities).OnDelete(DeleteBehavior.Restrict);
@@ -126,14 +133,27 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Verification>().HasOne(v => v.EquipmentUnit).WithMany(e => e.Verifications).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<MaintenancePlan>().HasOne(p => p.EquipmentUnit).WithMany(e => e.MaintenancePlans).HasForeignKey(p => p.EquipmentUnitId).OnDelete(DeleteBehavior.SetNull);
 
+            // Loan Relationships
+            modelBuilder.Entity<Loan>().HasOne(l => l.EquipmentUnit).WithMany(u => u.Loans).HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Loan>().HasOne(l => l.Borrower).WithMany(p => p.Loans).HasForeignKey(l => l.BorrowerId).OnDelete(DeleteBehavior.Restrict);
+
             // Audit relationships
             modelBuilder.Entity<Laboratory>().HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.CreatedBy).WithMany().HasForeignKey(u => u.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Equipment).WithMany(e => e.Units).HasForeignKey(u => u.EquipmentId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Career).WithMany(c => c.EquipmentUnits).HasForeignKey(u => u.CareerId).OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Career>().HasOne(c => c.Facultad).WithMany().HasForeignKey(c => c.FacultadId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Career>().HasOne(c => c.CreatedBy).WithMany().HasForeignKey(c => c.CreatedById).OnDelete(DeleteBehavior.Restrict);
+
+            // Inheritance TPT (Table Per Type)
+            modelBuilder.Entity<Person>().ToTable("People");
+            modelBuilder.Entity<Intern>().ToTable("Interns");
+            modelBuilder.Entity<Extern>().ToTable("Externs");
 
             // ... other specific audit links if needed, following the pattern
         }
-        public DbSet<Proyecto_Laboratorios_Univalle.Models.ScaffoldTest> ScaffoldTest { get; set; } = default!;
+       
     }
 }
