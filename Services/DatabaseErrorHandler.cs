@@ -1,4 +1,4 @@
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 
@@ -29,7 +29,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 }
 
                 var errorMessage = new StringBuilder();
-                errorMessage.AppendLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ERROR DE CONEXIÓN A BASE DE DATOS");
+                errorMessage.AppendLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR DE CONEXIÓN A BASE DE DATOS");
                 errorMessage.AppendLine($"Contexto: {additionalContext}");
                 errorMessage.AppendLine($"Mensaje: {ex.Message}");
                 errorMessage.AppendLine($"Tipo: {ex.GetType().Name}");
@@ -65,18 +65,17 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 await context.Database.CloseConnectionAsync();
                 return (true, "Conexión exitosa a la base de datos.");
             }
-            catch (SqlException sqlEx)
+            catch (PostgresException pgEx)
             {
-                LogConnectionError(sqlEx, "Prueba de conexión a base de datos");
+                LogConnectionError(pgEx, "Prueba de conexión a base de datos");
 
-                var errorMessage = sqlEx.Number switch
+                var errorMessage = pgEx.SqlState switch
                 {
-                    -1 => "No se pudo conectar al servidor. Verifica que el servidor esté accesible y que no haya problemas de red.",
-                    -2 => "Tiempo de espera agotado al intentar conectar. El servidor podría estar sobrecargado o la red es lenta.",
-                    18456 => "Credenciales incorrectas. Verifica el usuario y contraseña de la base de datos.",
-                    4060 => "No se puede abrir la base de datos solicitada. Verifica el nombre de la base de datos.",
-                    53 => "Error de red o instancia específica. Verifica el nombre del servidor y el puerto.",
-                    _ => $"Error SQL #{sqlEx.Number}: {sqlEx.Message}"
+                    "28P01" => "Credenciales incorrectas. Verifica el usuario y contraseña de la base de datos.",
+                    "3D000" => "No se puede abrir la base de datos solicitada. Verifica el nombre de la base de datos.",
+                    "08001" => "No se pudo conectar al servidor. Verifica que el servidor esté accesible y que no haya problemas de red.",
+                    "08006" => "Error de conexión fallida.",
+                    _ => $"Error PostgreSQL #{pgEx.SqlState}: {pgEx.MessageText}"
                 };
 
                 return (false, errorMessage);
@@ -93,19 +92,18 @@ namespace Proyecto_Laboratorios_Univalle.Services
         /// </summary>
         public string GetFriendlyErrorMessage(Exception ex)
         {
-            if (ex is SqlException sqlEx)
+            if (ex is PostgresException pgEx)
             {
-                return sqlEx.Number switch
+                return pgEx.SqlState switch
                 {
-                    -1 or -2 => "No se pudo conectar a la base de datos. Por favor, intenta de nuevo más tarde.",
-                    18456 => "Error de autenticación con la base de datos.",
-                    4060 => "La base de datos no está disponible en este momento.",
-                    2601 or 2627 => "Ya existe un registro con estos datos. Por favor, verifica los datos duplicados.",
-                    547 => "No se puede eliminar este registro porque está siendo utilizado por otros registros.",
+                    "08001" or "08006" => "No se pudo conectar a la base de datos. Por favor, intenta de nuevo más tarde.",
+                    "28P01" => "Error de autenticación con la base de datos.",
+                    "3D000" => "La base de datos no está disponible en este momento.",
+                    "23505" => "Ya existe un registro con estos datos. Por favor, verifica los datos duplicados.", // unique violation
+                    "23503" => "No se puede eliminar este registro porque está siendo utilizado por otros registros.", // foreign key violation
                     _ => "Ocurrió un error en la base de datos. Por favor, contacta al administrador."
                 };
-            }
-            else if (ex is DbUpdateException)
+            }            else if (ex is DbUpdateException)
             {
                 return "No se pudieron guardar los cambios. Verifica que los datos sean correctos.";
             }

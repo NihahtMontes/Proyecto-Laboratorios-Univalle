@@ -21,7 +21,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId;
-            var now = DateTime.Now; 
+            var now = DateTime.UtcNow; 
             
             foreach (var entry in ChangeTracker.Entries<IAuditable>())
             {
@@ -84,9 +84,9 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<MaintenancePlan>().Property(p => p.EstimatedTime).HasColumnType("decimal(10,2)");
             modelBuilder.Entity<MaintenancePlan>().Property(p => p.ActualTime).HasColumnType("decimal(10,2)");
 
-            modelBuilder.Entity<User>().HasIndex(u => u.IdentityCard).IsUnique().HasFilter("[Status] != 2");
-            modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("[CurrentStatus] != 99");
-            modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("[Status] != 2");
+            modelBuilder.Entity<User>().HasIndex(u => u.IdentityCard).IsUnique().HasFilter("status != 2");
+            modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("current_status != 99");
+            modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("status != 2");
 
             modelBuilder.Entity<User>().Property(u => u.Status).HasDefaultValue(GeneralStatus.Activo);
             modelBuilder.Entity<Faculty>().Property(f => f.Status).HasDefaultValue(GeneralStatus.Activo);

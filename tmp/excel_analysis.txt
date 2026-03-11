@@ -1,0 +1,71 @@
+
+=== FILE: c:\Users\monte\Desktop\GASTRONOMIA - PELIGRO\Inventario equipos.xlsb ===
+1: [ÿÿÿ] | [ÿÿÿ REPORTE: CUSTODIA DE ACTIVOS POR RESPONSABLE] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+2: [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+3: [UNIDAD GEOGRAFICA PRINCIPAL: BOLIVIA - COCHABAMBA] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+4: [SUBUNIDAD GEOGRAFICA: CAMPUS TIQUIPAYA] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+5: [UNIDAD ORGANIZATIVA FACULTAD DE ARQUITECTURA Y TURISMO- CARRERA DE GASTRONOMIA] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+6: [AREA FISICA DE UBICACION: AREA DE CIRCULACION GENERAL] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+7: [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+8: [RESPONSABLE A CARGO DEL ACTIVO: PEREZ YA¥EZ SARA MARIEL] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+9: [COORDINADOR DE ACTIVOS: ROMAN JOSE LUIS] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+10: [ITEM] | [VI¥ETA] | [TIPO DE ACTIVO] | [DESCRIPCION DETALLADA DEL ACTIVO] | [CODIGO ANTERIOR] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+11: [1] | ['37266'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+12: [2] | ['37267'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+13: [3] | ['37268'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+14: [4] | ['37269'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+15: [5] | ['37270'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+
+=== FILE: c:\Users\monte\Desktop\GASTRONOMIA - PELIGRO\inventario utensilios.xlsx ===
+1: [UNIVERSIDAD PRIVADA DEL VALLE S.A.] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+2: [INVENTARIO ECONOMATO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+3: [Actualizado al 16/03/2020] | [Actualizado al 26/07/2019] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+4: [GENERAL DE UTENSILIOS FALTANTES] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+5: [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+6: [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+7: [C¢digo] | [Descripci¢n] | [Presentaci¢n] | [Unidad] | [INVENTARIO II/2019] | [feb-20] | [INVENTARIO I/2020] | [OBSERVACION ] | [ANOTACIONES] | [GESTION 2022
+BAJA] | [GESTION 2022
+ALTA] | [GESTION 1-2023 ALTA] | [GESTION
+ 1-2024 ALTA] | [TOTAL INVENTARIO GESTION 2024] | [PRECIO UNITARIO] | 
+8: [GA-05-01-001] | [Bowl Inoxidables peque¤os] | [10,12,14 cm] | [pza] | [60,00] | [] | [75,00] | [] | [] | [] | [] | [] | [] | [75,00] | [] | 
+9: [GA-05-01-002] | [Bowl Inoxidables medianos] | [17,16,19 cm] | [pza] | [] | [] | [80,00] | [] | [] | [] | [] | [] | [] | [80,00] | [] | 
+10: [GA-05-01-003] | [Bowl Inoxidables grandes] | [23,28,30 cm] | [pza] | [] | [] | [3,00] | [] | [] | [] | [] | [] | [] | [3,00] | [] | 
+11: [GA-05-01-004] | [Bowl Inoxidables extragrandes] | [44 cm] | [] | [] | [] | [3,00] | [] | [] | [] | [] | [] | [] | [3,00] | [] | 
+12: [GA-05-01-006] | [Charola Metalica 40 cm] | [] | [pza] | [4,00] | [] | [4,00] | [] | [] | [] | [] | [] | [] | [4,00] | [] | 
+13: [GA-05-01-007] | [Charola Metalica 45 cm] | [] | [pza] | [12,00] | [] | [12,00] | [] | [VOLVER A CONTAR] | [] | [] | [] | [] | [12,00] | [] | 
+14: [GA-05-01-008] | [Charola Metalica 51 cm] | [] | [pza] | [1,00] | [] | [3,00] | [SOBRANTE 2] | [] | [] | [] | [] | [] | [3,00] | [] | 
+15: [GA-05-01-009] | [Cremera de Porcelana 7 cm] | [] | [pza] | [4,00] | [] | [4,00] | [] | [] | [] | [] | [] | [] | [4,00] | [] | 
+
+=== FILE: c:\Users\monte\Desktop\GASTRONOMIA - PELIGRO\tipos de equipos.xlsb ===
+1: [ÿÿÿ] | [ÿÿÿ REPORTE: CUSTODIA DE ACTIVOS POR RESPONSABLE] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+2: [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+3: [UNIDAD GEOGRAFICA PRINCIPAL: BOLIVIA - COCHABAMBA] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+4: [SUBUNIDAD GEOGRAFICA: CAMPUS TIQUIPAYA] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+5: [UNIDAD ORGANIZATIVA FACULTAD DE ARQUITECTURA Y TURISMO- CARRERA DE GASTRONOMIA] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+6: [AREA FISICA DE UBICACION: AREA DE CIRCULACION GENERAL] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+7: [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+8: [RESPONSABLE A CARGO DEL ACTIVO: PEREZ YA¥EZ SARA MARIEL] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+9: [COORDINADOR DE ACTIVOS: ROMAN JOSE LUIS] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+10: [ITEM] | [VI¥ETA] | [TIPO DE ACTIVO] | [DESCRIPCION DETALLADA DEL ACTIVO] | [CODIGO ANTERIOR] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+11: [1] | ['37266'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+12: [2] | ['37267'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+13: [3] | ['37268'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+14: [4] | ['37269'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+15: [5] | ['37270'] | [EXTRACTOR DE HUMOS Y GRASAS] | [EXTRACTOR DE HUMOS Y GRASAS CON SISTEMA AUTOLIMPIANTE POR CENTRIFUGACION DE ASPAS, CON BASE SE SUJECION PARA MONTAJE EXTERIOR, MOTOR DE 3HP , MATERIAL: ACERO INOXIDABLE, COLOR: PLATEADO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+
+=== FILE: c:\Users\monte\Desktop\GASTRONOMIA - PELIGRO\tipos de utensilios v.xlsx ===
+1: [Descripci¢n] | [Detalles] | [Unidad] | [Cantidad] | [TIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+2: [Aerografo] | [] | [pza] | [1] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+3: [AHUMADOR PORTATIL CON CAMPANA PARA ALIMENTOS Y BEBIDAS] | [] | [pza] | [2] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+4: [Balanza digital electronic base de vidrio ] | [cap. 5000g] | [pza] | [] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+5: [BATIDORA MANUAL OSTER] | [] | [pza] | [3] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+6: [Batidora Plana Kitchenaid] | [] | [pza] | [] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+7: [batidoras manual] | [blanco] | [pza] | [] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+8: [Laminadora MARCOTO] | [] | [pza] | [2] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+9: [Licuadora Oster] | [] | [pza] | [3] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+10: [Sifon Acero Inox] | [] | [pza] | [3] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+11: [SIFON FRIO] | [] | [pza] | [3] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+12: [SOUS VIDE ACERO INOXIDABLE] | [] | [pza] | [3] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+13: [SOUS VIDE SV 9008 ACERO INOXIDABLE] | [] | [pza] | [1] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+14: [Termometro de Carne] | [] | [pza] | [3] | [EQUIPO] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 
+15: [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | [] | 

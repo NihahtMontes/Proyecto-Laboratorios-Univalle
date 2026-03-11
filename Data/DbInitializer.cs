@@ -47,7 +47,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
                     PhoneNumber = "00000000",
                     Role = UserRole.SuperAdmin,
                     Status = GeneralStatus.Activo,
-                    CreatedDate = DateTime.Now
+                    CreatedDate = DateTime.UtcNow
                 };
 
                 var result = await userManager.CreateAsync(adminUser, "admin123");

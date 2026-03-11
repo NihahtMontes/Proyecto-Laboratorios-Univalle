@@ -211,7 +211,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 InvestmentCode = Input.Type == RequestType.Purchasing ? Input.InvestmentCode?.Clean() : null,
                 CostCenter = Input.CostCenter?.Clean(),
                 Status = RequestStatus.Pending,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             // Link items from maintenance if selected

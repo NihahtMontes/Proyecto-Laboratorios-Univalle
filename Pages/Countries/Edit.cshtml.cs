@@ -69,7 +69,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             // Mapping
             countryToUpdate.Name = Country.Name.Clean();
             countryToUpdate.Status = Country.Status;
-            countryToUpdate.LastModifiedDate = DateTime.Now;
+            countryToUpdate.LastModifiedDate = DateTime.UtcNow;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)

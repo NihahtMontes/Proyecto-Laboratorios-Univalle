@@ -105,7 +105,7 @@
                                     </td>
                                     <td class="text-center">
                                         @{
-                                            var isOverdue = item.Status == LoanStatus.Active && item.EstimatedReturnDate < DateTime.Now;
+                                            var isOverdue = item.Status == LoanStatus.Active && item.EstimatedReturnDate < DateTime.UtcNow;
                                             var dateColor = isOverdue ? "text-danger font-weight-bold" : "text-dark";
                                         }
                                         <div class="@dateColor">@item.EstimatedReturnDate.ToString("dd/MM/yyyy")</div>

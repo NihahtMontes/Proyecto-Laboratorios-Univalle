@@ -2,8 +2,8 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Proyecto_Laboratorios_Univalle.Data;
 
 #nullable disable
@@ -18,36 +18,40 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "9.0.12")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("normalized_name");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_roles");
 
                     b.HasIndex("NormalizedName")
                         .IsUnique()
-                        .HasDatabaseName("RoleNameIndex")
-                        .HasFilter("[NormalizedName] IS NOT NULL");
+                        .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("Roles", (string)null);
                 });
@@ -56,22 +60,28 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("claim_type");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("claim_value");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_role_claims");
 
-                    b.HasIndex("RoleId");
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_role_claims_role_id");
 
                     b.ToTable("RoleClaims", (string)null);
                 });
@@ -80,22 +90,28 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("claim_type");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("claim_value");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_user_claims");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_claims_user_id");
 
                     b.ToTable("UserClaims", (string)null);
                 });
@@ -103,20 +119,26 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
                 {
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text")
+                        .HasColumnName("login_provider");
 
                     b.Property<string>("ProviderKey")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text")
+                        .HasColumnName("provider_key");
 
                     b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("provider_display_name");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
 
-                    b.HasKey("LoginProvider", "ProviderKey");
+                    b.HasKey("LoginProvider", "ProviderKey")
+                        .HasName("pk_user_logins");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_logins_user_id");
 
                     b.ToTable("UserLogins", (string)null);
                 });
@@ -124,14 +146,18 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
                 {
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
 
-                    b.HasKey("UserId", "RoleId");
+                    b.HasKey("UserId", "RoleId")
+                        .HasName("pk_user_roles");
 
-                    b.HasIndex("RoleId");
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_user_roles_role_id");
 
                     b.ToTable("UserRoles", (string)null);
                 });
@@ -139,18 +165,23 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
                 {
                     b.Property<int>("UserId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
 
                     b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text")
+                        .HasColumnName("login_provider");
 
                     b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
+                        .HasColumnType("text")
+                        .HasColumnName("name");
 
                     b.Property<string>("Value")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("value");
 
-                    b.HasKey("UserId", "LoginProvider", "Name");
+                    b.HasKey("UserId", "LoginProvider", "Name")
+                        .HasName("pk_user_tokens");
 
                     b.ToTable("UserTokens", (string)null);
                 });
@@ -159,854 +190,1095 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<int?>("FacultadId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("facultad_id");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_careers");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_careers_created_by_id");
 
-                    b.HasIndex("FacultadId");
+                    b.HasIndex("FacultadId")
+                        .HasDatabaseName("ix_careers_facultad_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_careers_modified_by_id");
 
-                    b.ToTable("Careers");
+                    b.ToTable("careers", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.City", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("CountryId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("country_id");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
 
                     b.Property<string>("Region")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("region");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_cities");
 
-                    b.HasIndex("CountryId");
+                    b.HasIndex("CountryId")
+                        .HasDatabaseName("ix_cities_country_id");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_cities_created_by_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_cities_modified_by_id");
 
-                    b.ToTable("Cities");
+                    b.ToTable("cities", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.CostDetail", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("Category")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("category");
 
                     b.Property<string>("Concept")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("concept");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
 
                     b.Property<string>("InvoiceNumber")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("invoice_number");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("MaintenanceId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("maintenance_id");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Provider")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider");
 
                     b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(10,2)");
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("quantity");
 
                     b.Property<int?>("RequestId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("request_id");
 
                     b.Property<string>("UnitOfMeasure")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("unit_of_measure");
 
                     b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("unit_price");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_cost_details");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_cost_details_created_by_id");
 
-                    b.HasIndex("MaintenanceId");
+                    b.HasIndex("MaintenanceId")
+                        .HasDatabaseName("ix_cost_details_maintenance_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_cost_details_modified_by_id");
 
-                    b.HasIndex("RequestId");
+                    b.HasIndex("RequestId")
+                        .HasDatabaseName("ix_cost_details_request_id");
 
-                    b.ToTable("CostDetails");
+                    b.ToTable("cost_details", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Country", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_countries");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_countries_created_by_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_countries_modified_by_id");
 
-                    b.ToTable("Countries");
+                    b.ToTable("countries", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Equipment", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Brand")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("brand");
 
                     b.Property<int>("Category")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("category");
 
                     b.Property<int?>("CityId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("city_id");
 
                     b.Property<int?>("CountryId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("country_id");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
 
                     b.Property<int?>("EquipmentTypeId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("equipment_type_id");
 
                     b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("image_url");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<string>("Model")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("model");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
 
                     b.Property<int?>("UsefulLifeYears")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("useful_life_years");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_equipments");
 
-                    b.HasIndex("CityId");
+                    b.HasIndex("CityId")
+                        .HasDatabaseName("ix_equipments_city_id");
 
-                    b.HasIndex("CountryId");
+                    b.HasIndex("CountryId")
+                        .HasDatabaseName("ix_equipments_country_id");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_equipments_created_by_id");
 
-                    b.HasIndex("EquipmentTypeId");
+                    b.HasIndex("EquipmentTypeId")
+                        .HasDatabaseName("ix_equipments_equipment_type_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_equipments_modified_by_id");
 
-                    b.ToTable("Equipments");
+                    b.ToTable("equipments", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.EquipmentStateHistory", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<DateTime?>("EndDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_date");
 
                     b.Property<int?>("EquipmentUnitId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("equipment_unit_id");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Reason")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
 
                     b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
 
                     b.Property<int>("Status")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_equipment_state_histories");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_equipment_state_histories_created_by_id");
 
-                    b.HasIndex("EquipmentUnitId");
+                    b.HasIndex("EquipmentUnitId")
+                        .HasDatabaseName("ix_equipment_state_histories_equipment_unit_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_equipment_state_histories_modified_by_id");
 
-                    b.ToTable("EquipmentStateHistories");
+                    b.ToTable("equipment_state_histories", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.EquipmentType", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("MaintenanceFrequencyMonths")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("maintenance_frequency_months");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
 
                     b.Property<bool>("RequiresCalibration")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean")
+                        .HasColumnName("requires_calibration");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_equipment_types");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_equipment_types_created_by_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_equipment_types_modified_by_id");
 
-                    b.ToTable("EquipmentTypes");
+                    b.ToTable("equipment_types", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime?>("AcquisitionDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acquisition_date");
 
                     b.Property<decimal?>("AcquisitionValue")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("acquisition_value");
 
                     b.Property<int?>("CareerId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("career_id");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<int>("CurrentStatus")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("current_status");
 
                     b.Property<int>("EquipmentId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("equipment_id");
 
                     b.Property<string>("InternalLocation")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("internal_location");
 
                     b.Property<string>("InventoryNumber")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("inventory_number");
 
                     b.Property<int?>("LaboratoryId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("laboratory_id");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<DateTime?>("ManufacturingDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("manufacturing_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
 
                     b.Property<int?>("PhysicalCondition")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("physical_condition");
 
                     b.Property<string>("SerialNumber")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("serial_number");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_equipment_units");
 
-                    b.HasIndex("CareerId");
+                    b.HasIndex("CareerId")
+                        .HasDatabaseName("ix_equipment_units_career_id");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_equipment_units_created_by_id");
 
-                    b.HasIndex("EquipmentId");
+                    b.HasIndex("EquipmentId")
+                        .HasDatabaseName("ix_equipment_units_equipment_id");
 
                     b.HasIndex("InventoryNumber")
                         .IsUnique()
-                        .HasFilter("[CurrentStatus] != 99");
+                        .HasDatabaseName("ix_equipment_units_inventory_number")
+                        .HasFilter("current_status != 99");
 
-                    b.HasIndex("LaboratoryId");
+                    b.HasIndex("LaboratoryId")
+                        .HasDatabaseName("ix_equipment_units_laboratory_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_equipment_units_modified_by_id");
 
-                    b.ToTable("EquipmentUnits");
+                    b.ToTable("equipment_units", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Faculty", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("code");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_faculties");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_faculties_created_by_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_faculties_modified_by_id");
 
-                    b.ToTable("Faculties");
+                    b.ToTable("faculties", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Laboratory", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Building")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("building");
 
                     b.Property<int?>("CityId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("city_id");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
 
                     b.Property<int>("FacultyId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("faculty_id");
 
                     b.Property<string>("Floor")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("floor");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
                     b.Property<string>("Type")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("type");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_laboratories");
 
                     b.HasIndex("Code")
                         .IsUnique()
-                        .HasFilter("[Status] != 2");
+                        .HasDatabaseName("ix_laboratories_code")
+                        .HasFilter("status != 2");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_laboratories_created_by_id");
 
-                    b.HasIndex("FacultyId");
+                    b.HasIndex("FacultyId")
+                        .HasDatabaseName("ix_laboratories_faculty_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_laboratories_modified_by_id");
 
-                    b.ToTable("Laboratories");
+                    b.ToTable("laboratories", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Loan", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime?>("ActualReturnDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("actual_return_date");
 
                     b.Property<int>("BorrowerId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("borrower_id");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("DepartureObservations")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("departure_observations");
 
                     b.Property<int>("EquipmentUnitId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("equipment_unit_id");
 
                     b.Property<DateTime>("EstimatedReturnDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("estimated_return_date");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<DateTime>("LoanDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("loan_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("ReturnObservations")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("return_observations");
 
                     b.Property<int>("Status")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_loans");
 
-                    b.HasIndex("BorrowerId");
+                    b.HasIndex("BorrowerId")
+                        .HasDatabaseName("ix_loans_borrower_id");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_loans_created_by_id");
 
-                    b.HasIndex("EquipmentUnitId");
+                    b.HasIndex("EquipmentUnitId")
+                        .HasDatabaseName("ix_loans_equipment_unit_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_loans_modified_by_id");
 
-                    b.ToTable("Loans");
+                    b.ToTable("loans", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Maintenance", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal?>("ActualCost")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("actual_cost");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
 
                     b.Property<DateTime?>("EndDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end_date");
 
                     b.Property<int>("EquipmentUnitId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("equipment_unit_id");
 
                     b.Property<decimal?>("EstimatedCost")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("estimated_cost");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int>("MaintenanceTypeId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("maintenance_type_id");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Observations")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observations");
 
                     b.Property<string>("Recommendations")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("recommendations");
 
                     b.Property<int?>("RequestId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("request_id");
 
                     b.Property<int?>("SatisfactionLevel")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("satisfaction_level");
 
                     b.Property<DateTime?>("ScheduledDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("scheduled_date");
 
                     b.Property<DateTime?>("StartDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start_date");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
                     b.Property<DateTime?>("SuggestedNextMaintenanceDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("suggested_next_maintenance_date");
 
                     b.Property<int?>("TechnicianId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("technician_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_maintenances");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_maintenances_created_by_id");
 
-                    b.HasIndex("EquipmentUnitId");
+                    b.HasIndex("EquipmentUnitId")
+                        .HasDatabaseName("ix_maintenances_equipment_unit_id");
 
-                    b.HasIndex("MaintenanceTypeId");
+                    b.HasIndex("MaintenanceTypeId")
+                        .HasDatabaseName("ix_maintenances_maintenance_type_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_maintenances_modified_by_id");
 
                     b.HasIndex("RequestId")
                         .IsUnique()
-                        .HasFilter("[RequestId] IS NOT NULL");
+                        .HasDatabaseName("ix_maintenances_request_id");
 
-                    b.HasIndex("TechnicianId");
+                    b.HasIndex("TechnicianId")
+                        .HasDatabaseName("ix_maintenances_technician_id");
 
-                    b.ToTable("Maintenances");
+                    b.ToTable("maintenances", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.MaintenancePlan", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal?>("ActualTime")
-                        .HasColumnType("decimal(10,2)");
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("actual_time");
 
                     b.Property<int?>("AssignedTechnicianId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("assigned_technician_id");
 
                     b.Property<string>("BlockSnapshot")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("block_snapshot");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<int?>("EquipmentUnitId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("equipment_unit_id");
 
                     b.Property<decimal?>("EstimatedTime")
-                        .HasColumnType("decimal(10,2)");
+                        .HasColumnType("decimal(10,2)")
+                        .HasColumnName("estimated_time");
 
                     b.Property<int?>("LaboratoryId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("laboratory_id");
 
                     b.Property<string>("LaboratorySnapshot")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("laboratory_snapshot");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Service")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("service");
 
                     b.Property<int>("ServiceType")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("service_type");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_maintenance_plans");
 
-                    b.HasIndex("AssignedTechnicianId");
+                    b.HasIndex("AssignedTechnicianId")
+                        .HasDatabaseName("ix_maintenance_plans_assigned_technician_id");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_maintenance_plans_created_by_id");
 
-                    b.HasIndex("EquipmentUnitId");
+                    b.HasIndex("EquipmentUnitId")
+                        .HasDatabaseName("ix_maintenance_plans_equipment_unit_id");
 
-                    b.HasIndex("LaboratoryId");
+                    b.HasIndex("LaboratoryId")
+                        .HasDatabaseName("ix_maintenance_plans_laboratory_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_maintenance_plans_modified_by_id");
 
-                    b.ToTable("MaintenancePlans");
+                    b.ToTable("maintenance_plans", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.MaintenanceType", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_maintenance_types");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_maintenance_types_created_by_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_maintenance_types_modified_by_id");
 
-                    b.ToTable("MaintenanceTypes");
+                    b.ToTable("maintenance_types", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Person", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Email")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("email");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone_number");
 
                     b.Property<int>("Status")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_people_created_by_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_people_modified_by_id");
 
                     b.ToTable("People", (string)null);
 
@@ -1017,220 +1289,279 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime?>("ApprovalDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approval_date");
 
                     b.Property<int?>("ApprovedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("approved_by_id");
 
                     b.Property<string>("CostCenter")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("cost_center");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
 
                     b.Property<int>("EquipmentId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("equipment_id");
 
                     b.Property<int?>("EquipmentUnitId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("equipment_unit_id");
 
                     b.Property<string>("EstimatedRepairTime")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("estimated_repair_time");
 
                     b.Property<string>("InvestmentCode")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("investment_code");
 
                     b.Property<int>("LaboratoryId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("laboratory_id");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Observations")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("observations");
 
                     b.Property<int>("Priority")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("priority");
 
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("rejection_reason");
 
                     b.Property<int?>("RequestedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("requested_by_id");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
                     b.Property<int>("Type")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_requests");
 
-                    b.HasIndex("ApprovedById");
+                    b.HasIndex("ApprovedById")
+                        .HasDatabaseName("ix_requests_approved_by_id");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_requests_created_by_id");
 
-                    b.HasIndex("EquipmentId");
+                    b.HasIndex("EquipmentId")
+                        .HasDatabaseName("ix_requests_equipment_id");
 
-                    b.HasIndex("EquipmentUnitId");
+                    b.HasIndex("EquipmentUnitId")
+                        .HasDatabaseName("ix_requests_equipment_unit_id");
 
-                    b.HasIndex("LaboratoryId");
+                    b.HasIndex("LaboratoryId")
+                        .HasDatabaseName("ix_requests_laboratory_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_requests_modified_by_id");
 
-                    b.HasIndex("RequestedById");
+                    b.HasIndex("RequestedById")
+                        .HasDatabaseName("ix_requests_requested_by_id");
 
-                    b.ToTable("Requests");
+                    b.ToTable("requests", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("access_failed_count");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("concurrency_stamp");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("Department")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("department");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("email");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_confirmed");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_name");
 
                     b.Property<DateTime?>("HireDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("hire_date");
 
                     b.Property<string>("IdentityCard")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("identity_card");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_name");
 
                     b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean")
+                        .HasColumnName("lockout_enabled");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lockout_end");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("normalized_email");
 
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("normalized_user_name");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("phone_number");
 
                     b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean")
+                        .HasColumnName("phone_number_confirmed");
 
                     b.Property<string>("Position")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("position");
 
                     b.Property<int>("Role")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("role");
 
                     b.Property<string>("SecondLastName")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("second_last_name");
 
                     b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("text")
+                        .HasColumnName("security_stamp");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean")
+                        .HasColumnName("two_factor_enabled");
 
                     b.Property<string>("UserName")
                         .IsRequired()
                         .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("user_name");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_users");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_users_created_by_id");
 
                     b.HasIndex("IdentityCard")
                         .IsUnique()
-                        .HasFilter("[Status] != 2");
+                        .HasDatabaseName("ix_users_identity_card")
+                        .HasFilter("status != 2");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_users_modified_by_id");
 
                     b.HasIndex("NormalizedEmail")
                         .HasDatabaseName("EmailIndex");
 
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
+                        .HasDatabaseName("UserNameIndex");
 
                     b.ToTable("Users", (string)null);
                 });
@@ -1239,117 +1570,153 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("BurnerCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("burner_check");
 
                     b.Property<int>("CablingCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("cabling_check");
 
                     b.Property<int>("CombustionFlameCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("combustion_flame_check");
 
                     b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_id");
 
                     b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_date");
 
                     b.Property<string>("CriticalFindings")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("critical_findings");
 
                     b.Property<DateTime>("Date")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date");
 
                     b.Property<int>("ElectrodeIgniterCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("electrode_igniter_check");
 
                     b.Property<int>("EquipmentUnitId")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("equipment_unit_id");
 
                     b.Property<int>("ExternalCleaningCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("external_cleaning_check");
 
                     b.Property<int>("FanCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("fan_check");
 
                     b.Property<int>("FlameSensorCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("flame_sensor_check");
 
                     b.Property<int>("GasHoseCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("gas_hose_check");
 
                     b.Property<int>("HeatExchangerCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("heat_exchanger_check");
 
                     b.Property<int>("HighTempSteamCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("high_temp_steam_check");
 
                     b.Property<int>("InternalCleaningCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("internal_cleaning_check");
 
                     b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_modified_date");
 
                     b.Property<int>("LedDisplayCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("led_display_check");
 
                     b.Property<int>("LightsCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("lights_check");
 
                     b.Property<int>("LubricationCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("lubrication_check");
 
                     b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("modified_by_id");
 
                     b.Property<string>("Observations")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("observations");
 
                     b.Property<int>("OvenIgnitionCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("oven_ignition_check");
 
                     b.Property<string>("Recommendations")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("recommendations");
 
                     b.Property<int>("SolenoidValveCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("solenoid_valve_check");
 
                     b.Property<int>("SoundAlarmCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("sound_alarm_check");
 
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
                     b.Property<int>("SteamOutletCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("steam_outlet_check");
 
                     b.Property<int>("TemperatureControlCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("temperature_control_check");
 
                     b.Property<int>("ThermocoupleCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("thermocouple_check");
 
                     b.Property<int>("WaterHoseCheck")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("water_hose_check");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id")
+                        .HasName("pk_verifications");
 
-                    b.HasIndex("CreatedById");
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_verifications_created_by_id");
 
-                    b.HasIndex("EquipmentUnitId");
+                    b.HasIndex("EquipmentUnitId")
+                        .HasDatabaseName("ix_verifications_equipment_unit_id");
 
-                    b.HasIndex("ModifiedById");
+                    b.HasIndex("ModifiedById")
+                        .HasDatabaseName("ix_verifications_modified_by_id");
 
-                    b.ToTable("Verifications");
+                    b.ToTable("verifications", (string)null);
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Extern", b =>
@@ -1359,18 +1726,22 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<string>("Address")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
 
                     b.Property<int>("ExternStatus")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("extern_status");
 
                     b.Property<bool>("IsEntity")
-                        .HasColumnType("bit");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_entity");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
 
                     b.ToTable("Externs", (string)null);
                 });
@@ -1380,12 +1751,14 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasBaseType("Proyecto_Laboratorios_Univalle.Models.Person");
 
                     b.Property<int>("InternStatus")
-                        .HasColumnType("int");
+                        .HasColumnType("integer")
+                        .HasColumnName("intern_status");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
 
                     b.ToTable("Interns", (string)null);
                 });
@@ -1396,7 +1769,8 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_role_claims_roles_role_id");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
@@ -1405,7 +1779,8 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_user_claims_users_user_id");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
@@ -1414,7 +1789,8 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_user_logins_users_user_id");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
@@ -1423,13 +1799,15 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_user_roles_roles_role_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_user_roles_users_user_id");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
@@ -1438,7 +1816,8 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_user_tokens_users_user_id");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Career", b =>
@@ -1446,16 +1825,19 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_careers_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Faculty", "Facultad")
                         .WithMany()
                         .HasForeignKey("FacultadId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_careers_faculties_facultad_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_careers_user_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1470,15 +1852,18 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithMany("Cities")
                         .HasForeignKey("CountryId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_cities_countries_country_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_cities_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_cities_user_modified_by_id");
 
                     b.Navigation("Country");
 
@@ -1491,21 +1876,25 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_cost_details_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Maintenance", "Maintenance")
                         .WithMany("CostDetails")
                         .HasForeignKey("MaintenanceId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_cost_details_maintenances_maintenance_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_cost_details_user_modified_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Request", "Request")
                         .WithMany("CostDetails")
                         .HasForeignKey("RequestId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_cost_details_requests_request_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1520,11 +1909,13 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_countries_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_countries_user_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1536,26 +1927,31 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.City", "City")
                         .WithMany("Equipments")
                         .HasForeignKey("CityId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_equipments_cities_city_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Country", "Country")
                         .WithMany("Equipments")
                         .HasForeignKey("CountryId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_equipments_countries_country_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_equipments_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentType", "EquipmentType")
                         .WithMany("Equipments")
                         .HasForeignKey("EquipmentTypeId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_equipments_equipment_types_equipment_type_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_equipments_user_modified_by_id");
 
                     b.Navigation("City");
 
@@ -1572,16 +1968,19 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_equipment_state_histories_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
                         .WithMany("StateHistory")
                         .HasForeignKey("EquipmentUnitId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_equipment_state_histories_equipment_units_equipment_unit_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_equipment_state_histories_user_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1594,11 +1993,13 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_equipment_types_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_equipment_types_user_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1610,27 +2011,32 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Career", "Career")
                         .WithMany("EquipmentUnits")
                         .HasForeignKey("CareerId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_equipment_units_careers_career_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_equipment_units_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Equipment", "Equipment")
                         .WithMany("Units")
                         .HasForeignKey("EquipmentId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_equipment_units_equipments_equipment_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Laboratory", "Laboratory")
                         .WithMany("EquipmentUnits")
                         .HasForeignKey("LaboratoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_equipment_units_laboratories_laboratory_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_equipment_units_user_modified_by_id");
 
                     b.Navigation("Career");
 
@@ -1647,11 +2053,13 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_faculties_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_faculties_user_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1663,17 +2071,20 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedById")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_laboratories_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Faculty", "Faculty")
                         .WithMany("Laboratories")
                         .HasForeignKey("FacultyId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_laboratories_faculties_faculty_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_laboratories_user_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1688,21 +2099,25 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithMany("Loans")
                         .HasForeignKey("BorrowerId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_loans_people_borrower_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_loans_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
                         .WithMany("Loans")
                         .HasForeignKey("EquipmentUnitId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_loans_equipment_units_equipment_unit_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_loans_user_modified_by_id");
 
                     b.Navigation("Borrower");
 
@@ -1717,32 +2132,38 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_maintenances_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
                         .WithMany("Maintenances")
                         .HasForeignKey("EquipmentUnitId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_maintenances_equipment_units_equipment_unit_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.MaintenanceType", "MaintenanceType")
                         .WithMany("Maintenances")
                         .HasForeignKey("MaintenanceTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_maintenances_maintenance_types_maintenance_type_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_maintenances_user_modified_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Request", "Request")
                         .WithOne("Maintenance")
                         .HasForeignKey("Proyecto_Laboratorios_Univalle.Models.Maintenance", "RequestId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_maintenances_requests_request_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Person", "Technician")
                         .WithMany()
-                        .HasForeignKey("TechnicianId");
+                        .HasForeignKey("TechnicianId")
+                        .HasConstraintName("fk_maintenances_people_technician_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1761,24 +2182,29 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "Technician")
                         .WithMany()
-                        .HasForeignKey("AssignedTechnicianId");
+                        .HasForeignKey("AssignedTechnicianId")
+                        .HasConstraintName("fk_maintenance_plans_user_assigned_technician_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_maintenance_plans_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
                         .WithMany("MaintenancePlans")
                         .HasForeignKey("EquipmentUnitId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_maintenance_plans_equipment_units_equipment_unit_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Laboratory", null)
                         .WithMany("MaintenancePlans")
-                        .HasForeignKey("LaboratoryId");
+                        .HasForeignKey("LaboratoryId")
+                        .HasConstraintName("fk_maintenance_plans_laboratories_laboratory_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_maintenance_plans_user_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1793,11 +2219,13 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_maintenance_types_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_maintenance_types_user_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1808,11 +2236,13 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_people_users_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_people_users_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1823,35 +2253,42 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ApprovedBy")
                         .WithMany()
-                        .HasForeignKey("ApprovedById");
+                        .HasForeignKey("ApprovedById")
+                        .HasConstraintName("fk_requests_user_approved_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_requests_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Equipment", "Equipment")
                         .WithMany()
                         .HasForeignKey("EquipmentId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_requests_equipments_equipment_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
                         .WithMany()
-                        .HasForeignKey("EquipmentUnitId");
+                        .HasForeignKey("EquipmentUnitId")
+                        .HasConstraintName("fk_requests_equipment_units_equipment_unit_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Laboratory", "Laboratory")
                         .WithMany()
                         .HasForeignKey("LaboratoryId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_requests_laboratories_laboratory_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_requests_user_modified_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "RequestedBy")
                         .WithMany()
-                        .HasForeignKey("RequestedById");
+                        .HasForeignKey("RequestedById")
+                        .HasConstraintName("fk_requests_user_requested_by_id");
 
                     b.Navigation("ApprovedBy");
 
@@ -1872,11 +2309,13 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_users_users_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_users_users_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1887,17 +2326,20 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
-                        .HasForeignKey("CreatedById");
+                        .HasForeignKey("CreatedById")
+                        .HasConstraintName("fk_verifications_user_created_by_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
                         .WithMany("Verifications")
                         .HasForeignKey("EquipmentUnitId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_verifications_equipment_units_equipment_unit_id");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
-                        .HasForeignKey("ModifiedById");
+                        .HasForeignKey("ModifiedById")
+                        .HasConstraintName("fk_verifications_user_modified_by_id");
 
                     b.Navigation("CreatedBy");
 
@@ -1912,7 +2354,8 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithOne()
                         .HasForeignKey("Proyecto_Laboratorios_Univalle.Models.Extern", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_externs_people_id");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Intern", b =>
@@ -1921,7 +2364,8 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithOne()
                         .HasForeignKey("Proyecto_Laboratorios_Univalle.Models.Intern", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("fk_interns_people_id");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Career", b =>

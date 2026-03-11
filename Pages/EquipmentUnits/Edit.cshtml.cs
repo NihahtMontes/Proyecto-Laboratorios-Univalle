@@ -81,7 +81,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 
                 if (lastHistory != null)
                 {
-                    lastHistory.EndDate = DateTime.Now;
+                    lastHistory.EndDate = DateTime.UtcNow;
                     _context.EquipmentStateHistories.Update(lastHistory);
                 }
 
@@ -90,7 +90,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 {
                     EquipmentUnitId = dbUnit.Id,
                     Status = EquipmentUnit.CurrentStatus,
-                    StartDate = DateTime.Now,
+                    StartDate = DateTime.UtcNow,
                     Reason = "Actualización manual de estado/condición. " + stateChangeMessage
                 };
                 _context.EquipmentStateHistories.Add(newHistory);

@@ -134,7 +134,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             {
                 EquipmentUnitId = unit.Id,
                 Status = unit.CurrentStatus,
-                StartDate = DateTime.Now,
+                StartDate = DateTime.UtcNow,
                 Reason = $"Alta inicial en sistema. Condición: {unit.PhysicalCondition}"
             };
             _context.EquipmentStateHistories.Add(initialHistory);

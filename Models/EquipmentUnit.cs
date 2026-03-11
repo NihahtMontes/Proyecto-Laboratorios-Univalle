@@ -75,7 +75,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // AUDIT
         // ========================================
         public int? CreatedById { get; set; }
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public int? ModifiedById { get; set; }
         public DateTime? LastModifiedDate { get; set; }
 
@@ -111,8 +111,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
             get
             {
                 if (!ManufacturingDate.HasValue) return null;
-                var years = DateTime.Now.Year - ManufacturingDate.Value.Year;
-                if (DateTime.Now < ManufacturingDate.Value.AddYears(years)) years--;
+                var years = DateTime.UtcNow.Year - ManufacturingDate.Value.Year;
+                if (DateTime.UtcNow < ManufacturingDate.Value.AddYears(years)) years--;
                 return years;
             }
         }

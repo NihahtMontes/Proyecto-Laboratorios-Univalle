@@ -63,7 +63,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 var prefix = requestType == RequestType.Purchasing ? "Solicitud_Adquisicion" : "Solicitud_Mantenimiento";
                 
                 var excelBytes = await _reportService.GenerateReport(id);
-                var fileName = $"{prefix}_{id}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+                var fileName = $"{prefix}_{id}_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
 
                 return File(
                     excelBytes,

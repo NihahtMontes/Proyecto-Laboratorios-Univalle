@@ -64,7 +64,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             {
                 Name = Input.Name.Clean(),
                 Status = GeneralStatus.Activo,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             var currentUser = await _userManager.GetUserAsync(User);

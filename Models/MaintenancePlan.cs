@@ -64,7 +64,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int? AssignedTechnicianId { get; set; }
 
         [Display(Name = "Fecha de Creación")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         [ForeignKey("EquipmentUnitId")]
         public virtual EquipmentUnit? EquipmentUnit { get; set; }

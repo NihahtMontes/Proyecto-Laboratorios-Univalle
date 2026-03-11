@@ -81,7 +81,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             {
                 Verification.ModifiedById = user.Id;
             }
-            Verification.LastModifiedDate = DateTime.Now;
+            Verification.LastModifiedDate = DateTime.UtcNow;
 
             _context.Attach(Verification).State = EntityState.Modified;
 

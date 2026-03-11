@@ -115,7 +115,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 worksheet.Cells["Q8"].Style.Font.Size = 14;
 
                 // FECHA DESGLOSADA (Bloques 10-11 - CORREGIDO a Fecha Actual)
-                var fechaActual = DateTime.Now;
+                var fechaActual = DateTime.UtcNow;
 
                 // Día (D10:E11)
                 var rangeDia = worksheet.Cells["D10:E11"];

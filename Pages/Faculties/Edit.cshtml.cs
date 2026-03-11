@@ -71,7 +71,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             facultyToUpdate.Code = Faculty.Code?.Clean().ToUpper();
             facultyToUpdate.Description = Faculty.Description?.Clean();
             facultyToUpdate.Status = Faculty.Status;
-            facultyToUpdate.LastModifiedDate = DateTime.Now;
+            facultyToUpdate.LastModifiedDate = DateTime.UtcNow;
 
             // Set current auditor
             var currentUser = await _userManager.GetUserAsync(User);

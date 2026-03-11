@@ -48,7 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
             // Mapping and Normalization
             typeToUpdate.Name = MaintenanceType.Name.Clean();
             typeToUpdate.Description = MaintenanceType.Description?.Clean();
-            typeToUpdate.LastModifiedDate = DateTime.Now;
+            typeToUpdate.LastModifiedDate = DateTime.UtcNow;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)

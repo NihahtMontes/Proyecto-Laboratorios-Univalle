@@ -110,7 +110,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
                 Floor = Input.Floor?.Clean(),
                 Description = Input.Description?.Clean(),
                 Status = GeneralStatus.Activo,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             // Set current auditor

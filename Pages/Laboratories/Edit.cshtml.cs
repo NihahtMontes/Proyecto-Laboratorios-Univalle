@@ -150,7 +150,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             laboratory.Floor = Input.Floor?.Clean();
             laboratory.Description = Input.Description?.Clean();
             laboratory.Status = Input.Status;
-            laboratory.LastModifiedDate = DateTime.Now;
+            laboratory.LastModifiedDate = DateTime.UtcNow;
 
             // Set current auditor
             var currentUser = await _userManager.GetUserAsync(User);

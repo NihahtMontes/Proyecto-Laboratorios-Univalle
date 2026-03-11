@@ -48,7 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             PendingRequests = await _context.Requests.CountAsync(r => r.Status == RequestStatus.Pending);
             OngoingMaintenances = await _context.Maintenances.CountAsync(m => m.Status == MaintenanceStatus.InProgress);
             
-            var oneWeekAgo = DateTime.Now.AddDays(-7);
+            var oneWeekAgo = DateTime.UtcNow.AddDays(-7);
             RecentVerificationsCount = await _context.Verifications.CountAsync(v => v.Date >= oneWeekAgo);
 
             // Detailed Equipment Stats

@@ -84,7 +84,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             try
             {
                 var excelBytes = await _reportService.GenerateSolicitudMantenimientoExcel(id);
-                var fileName = $"Solicitud_Mantenimiento_{id}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+                var fileName = $"Solicitud_Mantenimiento_{id}_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
 
                 return File(
                     excelBytes,

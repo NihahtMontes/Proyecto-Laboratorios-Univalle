@@ -51,12 +51,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Loans
             [Required(ErrorMessage = "La fecha de préstamo es obligatoria")]
             [DataType(DataType.DateTime)]
             [Display(Name = "Fecha de Préstamo")]
-            public DateTime LoanDate { get; set; } = DateTime.Now;
+            public DateTime LoanDate { get; set; } = DateTime.UtcNow;
 
             [Required(ErrorMessage = "La fecha estimada de devolución es obligatoria")]
             [DataType(DataType.Date)]
             [Display(Name = "Devolución Estimada")]
-            public DateTime EstimatedReturnDate { get; set; } = DateTime.Now.AddDays(1);
+            public DateTime EstimatedReturnDate { get; set; } = DateTime.UtcNow.AddDays(1);
 
             [Display(Name = "Observaciones de Salida")]
             public string? DepartureObservations { get; set; }
@@ -140,7 +140,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Loans
             
             if (lastHistory != null)
             {
-                lastHistory.EndDate = DateTime.Now;
+                lastHistory.EndDate = DateTime.UtcNow;
                 _context.EquipmentStateHistories.Update(lastHistory);
             }
 
@@ -148,7 +148,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Loans
             {
                 EquipmentUnitId = unit.Id,
                 Status = EquipmentStatus.OnLoan,
-                StartDate = DateTime.Now,
+                StartDate = DateTime.UtcNow,
                 Reason = $"Préstamo asignado al solicitante (ID: {loan.BorrowerId}). " + Input.DepartureObservations
             };
             _context.EquipmentStateHistories.Add(newHistory);

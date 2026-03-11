@@ -160,7 +160,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             equipment.Model = Input.Model?.Clean();
             equipment.UsefulLifeYears = Input.UsefulLifeYears;
             equipment.Description = Input.Description?.Clean();
-            equipment.LastModifiedDate = DateTime.Now;
+            equipment.LastModifiedDate = DateTime.UtcNow;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)

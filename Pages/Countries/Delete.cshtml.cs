@@ -48,7 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
 
             // Perform Soft Delete (Logic Delete)
             country.Status = GeneralStatus.Eliminado;
-            country.LastModifiedDate = DateTime.Now;
+            country.LastModifiedDate = DateTime.UtcNow;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)

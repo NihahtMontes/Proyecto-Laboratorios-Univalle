@@ -21,7 +21,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Required]
         [Display(Name = "Fecha de Préstamo")]
         [DataType(DataType.Date)]
-        public DateTime LoanDate { get; set; } = DateTime.Now;
+        public DateTime LoanDate { get; set; } = DateTime.UtcNow;
 
         [Required]
         [Display(Name = "Fecha Estimada de Devolución")]
@@ -51,7 +51,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int? CreatedById { get; set; }
 
         [Display(Name = "Fecha de Creación")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Modificado Por")]
         public int? ModifiedById { get; set; }

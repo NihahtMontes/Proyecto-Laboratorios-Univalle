@@ -174,7 +174,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 CriticalFindings = Input.CriticalFindings,
                 Recommendations = Input.Recommendations,
                 Status = Input.Status,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             var user = await _userManager.GetUserAsync(User);

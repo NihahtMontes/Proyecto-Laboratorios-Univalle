@@ -50,7 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
             typeToUpdate.Description = EquipmentType.Description?.Clean();
             typeToUpdate.RequiresCalibration = EquipmentType.RequiresCalibration;
             typeToUpdate.MaintenanceFrequencyMonths = EquipmentType.MaintenanceFrequencyMonths;
-            typeToUpdate.LastModifiedDate = DateTime.Now;
+            typeToUpdate.LastModifiedDate = DateTime.UtcNow;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)

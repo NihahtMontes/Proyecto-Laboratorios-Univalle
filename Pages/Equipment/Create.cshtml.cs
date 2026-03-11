@@ -143,7 +143,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 Model = Input.Model,
                 UsefulLifeYears = Input.UsefulLifeYears,
                 Description = Input.Description,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             var currentUser = await _userManager.GetUserAsync(User);

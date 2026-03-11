@@ -131,11 +131,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 Role = Input.Role,
                 Position = Input.Position?.Clean(),
                 Department = Input.Department?.Clean(),
-                HireDate = Input.HireDate ?? DateTime.Now,
+                HireDate = Input.HireDate ?? DateTime.UtcNow,
                 PhoneNumber = Input.PhoneNumber?.Trim(),
                 Status = GeneralStatus.Activo,
                 EmailConfirmed = true,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             // Get current auditor

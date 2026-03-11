@@ -23,7 +23,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
 
         [Display(Name = "Fecha de Creación")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         // Relationships
         public virtual ICollection<City>? Cities { get; set; }

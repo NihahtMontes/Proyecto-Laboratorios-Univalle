@@ -74,7 +74,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
                 Code = Input.Code?.ToUpper().Trim(),
                 Description = Input.Description?.Clean(),
                 Status = GeneralStatus.Activo,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             // Set current auditor

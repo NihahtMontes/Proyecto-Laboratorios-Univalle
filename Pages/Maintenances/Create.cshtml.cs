@@ -29,7 +29,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             
             Input = new InputModel
             {
-                ScheduledDate = DateTime.Now,
+                ScheduledDate = DateTime.UtcNow,
                 CostDetails = new List<CostDetail>()
             };
 
@@ -71,7 +71,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Required]
             [Display(Name = "Fecha Programada")]
             [DataType(DataType.Date)]
-            public DateTime ScheduledDate { get; set; } = DateTime.Now;
+            public DateTime ScheduledDate { get; set; } = DateTime.UtcNow;
 
             [Display(Name = "Fecha Inicio Real")]
             [DataType(DataType.DateTime)]
@@ -179,7 +179,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     Recommendations = Input.Recommendations?.Clean(),
                     Status = Input.Status,
                     CostDetails = Input.CostDetails ?? new(),
-                    CreatedDate = DateTime.Now
+                    CreatedDate = DateTime.UtcNow
                 };
 
                 var currentUser = await _userManager.GetUserAsync(User);
@@ -198,7 +198,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     
                     if (lastHistory != null)
                     {
-                        lastHistory.EndDate = DateTime.Now;
+                        lastHistory.EndDate = DateTime.UtcNow;
                         _context.EquipmentStateHistories.Update(lastHistory);
                     }
 
@@ -207,7 +207,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     {
                         EquipmentUnitId = equipmentUnit.Id,
                         Status = EquipmentStatus.UnderMaintenance,
-                        StartDate = DateTime.Now,
+                        StartDate = DateTime.UtcNow,
                         Reason = "Ingreso a proceso de mantenimiento."
                     };
                     _context.EquipmentStateHistories.Add(newHistory);
