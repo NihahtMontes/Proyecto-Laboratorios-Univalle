@@ -40,5 +40,19 @@ Cuando el usuario haga una solicitud, debes:
 - **Skill a invocar**: `.agent/skills/reporting/SKILL.md`
 - **Cuándo Invocarlas**: Exportación a PDF (QuestPDF), generación de plantillas de Excel, impresión institucional de oficios (ClosedXML).
 
+## 4. Arquitectura: Wizard de Mantenimiento Inteligente (Flujo L6->L7->L8->L3)
+*Esta sección define las directrices estrictas para cuando se programe el nuevo flujo integrado de mantenimientos.*
+
+### 🚀 Directrices de Implementación Backend (PageModels & EF Core)
+1. **Dashboard Matriz Principal (L48 + L22)**:
+   - El **L48** es el componente orquestador central. Debe mostrarse como una matriz transversal (tipo Gantt) de mantenimientos planeados vs. ejecutados.
+   - El **L22** integrará métricas de % de avance (Overall, Subgrupos, Tipo de Equipo).
+2. **Máquina de Estados (State Machine) No Bloqueante**:
+   - El progreso por las fases del Wizard (`Verificación L6` -> `Solicitud L7` -> `Kardex L8` -> `Salida L3`) no debe bloquear un lote entero de equipos si uno falla.
+   - **Regla Estricta de Datos**: No borrar registros. Usar **"Soft Flags"** en las entidades (ej. `EstadoVerificacion = "Fallido"`, `RequiereMantenimiento = true`). Los `Select` o `Where` de la siguiente etapa del Wizard solo filtrarán los equipos que cumplen las banderas necesarias.
+3. **Flujo Preventivo vs. Correctivo**:
+   - **Flujo Lineal (Preventivo)**: Obligatorio pase por L6, L7, L8, apoyado en guardados intermedios.
+   - **Flujo de Excepción (Correctivo / Falla Rápida)**: Debe existir un "bypass" (atajo) que instancie directamente un requerimiento de **L8 (Kardex de Intervención)** para emergencias, brincando L6 y L7, de manera aislada al Wizard principal.
+
 ---
 *Nota para el Orquestador: Si el usuario solicita un refactor masivo de UI de más de 3 archivos, DEBES levantar un Subagente para procesar la petición y limpiar la memoria contextual.*
