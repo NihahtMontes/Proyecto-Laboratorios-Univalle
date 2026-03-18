@@ -12,8 +12,8 @@ using Proyecto_Laboratorios_Univalle.Data;
 namespace Proyecto_Laboratorios_Univalle.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260313040606_M02")]
-    partial class M02
+    [Migration("20260318171848_intial")]
+    partial class intial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -410,6 +410,9 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("TypeClassification")
+                        .HasColumnType("int");
+
                     b.Property<int?>("UsefulLifeYears")
                         .HasColumnType("int");
 
@@ -793,6 +796,9 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<decimal?>("ActualCost")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("CompletionPercentage")
+                        .HasColumnType("int");
+
                     b.Property<int?>("CreatedById")
                         .HasColumnType("int");
 
@@ -845,6 +851,18 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
+
+                    b.Property<bool>("Step1_Cleaning")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Step2_Calibration")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Step3_Testing")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("Step4_FinalReview")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("SuggestedNextMaintenanceDate")
                         .HasColumnType("datetime2");

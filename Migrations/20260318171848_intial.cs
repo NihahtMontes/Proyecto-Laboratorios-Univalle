@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Proyecto_Laboratorios_Univalle.Migrations
 {
     /// <inheritdoc />
-    public partial class SincronizacionFinal : Migration
+    public partial class intial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -488,6 +488,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Category = table.Column<int>(type: "int", nullable: false),
                     UtensilType = table.Column<int>(type: "int", nullable: false),
+                    TypeClassification = table.Column<int>(type: "int", nullable: false),
                     ImageUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CountryId = table.Column<int>(type: "int", nullable: true),
                     CityId = table.Column<int>(type: "int", nullable: true),
@@ -542,7 +543,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     EquipmentId = table.Column<int>(type: "int", nullable: false),
-                    LaboratoryId = table.Column<int>(type: "int", nullable: true),
+                    LaboratoryId = table.Column<int>(type: "int", nullable: false),
                     InventoryNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     SerialNumber = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     CareerId = table.Column<int>(type: "int", nullable: true),
@@ -578,7 +579,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         column: x => x.LaboratoryId,
                         principalTable: "Laboratories",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_EquipmentUnits_Users_CreatedById",
                         column: x => x.CreatedById,
@@ -868,6 +869,11 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     EndDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     Description = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     Status = table.Column<int>(type: "int", nullable: false, defaultValue: 0),
+                    CompletionPercentage = table.Column<int>(type: "int", nullable: false),
+                    Step1_Cleaning = table.Column<bool>(type: "bit", nullable: false),
+                    Step2_Calibration = table.Column<bool>(type: "bit", nullable: false),
+                    Step3_Testing = table.Column<bool>(type: "bit", nullable: false),
+                    Step4_FinalReview = table.Column<bool>(type: "bit", nullable: false),
                     EstimatedCost = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     ActualCost = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     Recommendations = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
