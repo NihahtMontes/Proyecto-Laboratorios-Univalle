@@ -33,17 +33,10 @@
                                 <span asp-validation-for="Input.Category" class="text-danger small"></span>
                             </div>
 
-                            <div class="form-group mb-3" id="utensilContainer" style="display:none;">
-                                <label asp-for="Input.UtensilType" class="control-label font-weight-bold small uppercase text-muted">Tipo de Material / Utensilio <span class="text-danger">*</span></label>
-                                <select asp-for="Input.UtensilType" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<UtensilType>()" id="utensilSelect">
-                                </select>
-                                <span asp-validation-for="Input.UtensilType" class="text-danger small"></span>
-                            </div>
-
                             <div class="form-group mb-3">
-                                <label asp-for="Input.TypeClassification" class="control-label font-weight-bold small uppercase text-muted">Clasificación Técnica <span class="text-danger">*</span></label>
-                                <select asp-for="Input.TypeClassification" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<EquipmentTypeClassification>()" required>
-                                    <option value="">-- Seleccione Clasificación --</option>
+                                <label id="labelDynamic" class="control-label font-weight-bold small uppercase text-muted">Categoría / Clasificación <span class="text-danger">*</span></label>
+                                <select asp-for="Input.TypeClassification" class="form-control custom-select border-info" id="dynamicSelect" required>
+                                    <option value="">-- Seleccione --</option>
                                 </select>
                                 <span asp-validation-for="Input.TypeClassification" class="text-danger small"></span>
                             </div>
@@ -70,7 +63,6 @@
 
                         <div class="col-md-6">
                             <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-cogs mr-2"></i> Ficha Técnica</h5>
-
 
                             <div class="row">
                                 <div class="col-md-6">
@@ -129,33 +121,51 @@
 @section Scripts {
     <script>
         $(function () {
-             // Custom file input label update
+            // Label de archivo
             $(".custom-file-input").on("change", function () {
                 var fileName = $(this).val().split("\\").pop();
                 $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
             });
 
-            // Toggle Equipment Type based on Category
-            function toggleType() {
-                var category = $('#categorySelect').val();
-                // 0 is Equipment, 1 is Utensil
-                if (category == '0') {
-                    $('#typeContainer').show();
-                } else {
-                    $('#typeContainer').hide();
-                    $('#Input_EquipmentTypeId').val('');
+            // --- LÓGICA DE DOBLE FILTRADO PARA LA INGE ---
+            const equipmentOptions = [
+                { val: '0', text: 'Electrónico / Eléctrico' },
+                { val: '1', text: 'Manual / Mecánico' },
+                { val: '2', text: 'Mobiliario' },
+                { val: '3', text: 'Instrumental de Medición' },
+                { val: '6', text: 'Informático / Software' },
+                { val: '7', text: 'Otro' }
+            ];
+
+            const utensilOptions = [
+                { val: '4', text: 'Material de Vidrio' },
+                { val: '2', text: 'Material de Plástico' },
+                { val: '3', text: 'Material de Metal' },
+                { val: '4', text: 'Porcelana' }
+            ];
+
+            function updateDynamicSelect() {
+                const category = $('#categorySelect').val(); // 0=Equipo, 1=Utensilio
+                const $select = $('#dynamicSelect');
+                const $label = $('#labelDynamic');
+
+                $select.empty().append('<option value="">-- Seleccione --</option>');
+
+                if (category == '0') { // Equipo
+                    $label.text('Clasificación Técnica');
+                    equipmentOptions.forEach(opt => {
+                        $select.append(`<option value="${opt.val}">${opt.text}</option>`);
+                    });
+                } else if (category == '1') { // Utensilio
+                    $label.text('Tipo de Material');
+                    utensilOptions.forEach(opt => {
+                        $select.append(`<option value="${opt.val}">${opt.text}</option>`);
+                    });
                 }
             }
 
-            $('#categorySelect').change(toggleType);
-            toggleType(); // Init
-
-            // Input Validation Logic
-            var alphanumericPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]*$/;
-
-            // Si necesitas bloquear caracteres específicos en el futuro, usa esta estructura:
-            // $('#Input_Name').on('input', function() { ... });
-
+            $('#categorySelect').on('change', updateDynamicSelect);
+            updateDynamicSelect();
         });
     </script>
     @{

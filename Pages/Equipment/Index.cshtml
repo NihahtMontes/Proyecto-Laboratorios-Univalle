@@ -18,12 +18,12 @@
             <div class="card-body">
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">"Registro y codificación de activos fijos del laboratorio</h3>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Registro y codificación de activos fijos del laboratorio</h3>
                         <h6 class="card-subtitle text-muted ml-2">Definiciones técnicas y control de inventario global.</h6>
                     </div>
                     <div class="ml-auto mt-3">
                         <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
-                            <i class="fas fa-plus-circle mr-1 text-info"></i> Registrar Nuevo Activo L-6
+                            <i class="fas fa-plus-circle mr-1 text-info"></i> Registrar nuevo activo
                         </a>
                     </div>
                 </div>
@@ -110,7 +110,6 @@
                                                 <i class="fas fa-microchip mr-1"></i> @Html.DisplayFor(modelItem => item.TypeClassification)
                                             </span>
                                         </td>
-
                                         <td class="v-middle">
                                             <div class="small">
                                                 @if (item.Units != null && item.Units.Any(u => u.Laboratory != null && u.CurrentStatus != EquipmentStatus.Deleted))
@@ -133,7 +132,6 @@
                                                 }
                                             </div>
                                         </td>
-
                                         <td>
                                             <div class="text-dark">@(item.Brand ?? "Catálogo")</div>
                                             <small class="text-muted italic">@(item.Model ?? "-")</small>

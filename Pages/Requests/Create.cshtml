@@ -2,50 +2,31 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.CreateModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
-
-
 <div class="row justify-content-center">
     <div class="col-lg-10 col-xl-9">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <!-- Header -->
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark">Registrar Requerimiento Técnico</h4>
+                        <h4 class="card-title text-dark">Registrar Requerimiento Técnico (L-7)</h4>
                         <h6 class="card-subtitle text-muted">Apertura de ficha para mantenimiento o asistencia técnica de activos.</h6>
                     </div>
                     <div class="ml-auto">
-                        <i class="fas fa-file-medical fa-2x text-info opacity-5"></i>
+                        <i class="fas fa-tools fa-2x text-info opacity-5"></i>
                     </div>
                 </div>
 
                 <form method="post" novalidate id="createRequestForm">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
-                    <!-- Hidden Type Input -->
-                    <input type="hidden" asp-for="Input.Type" id="Input_Type" />
-
-                    <!-- 1. SELECTOR DE TIPO (TABS) -->
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="nav nav-pills nav-fill p-1 bg-light rounded" role="tablist">
-                                <a class="nav-item nav-link active font-weight-bold py-3 shadow-sm" id="tab-technical" data-toggle="pill" href="#technical" role="tab" onclick="setType('Technical')">
-                                    <i class="fas fa-tools mr-2"></i> Solicitud Técnica
-                                </a>
-                                <a class="nav-item nav-link font-weight-bold py-3 shadow-sm" id="tab-purchasing" data-toggle="pill" href="#purchasing" role="tab" onclick="setType('Purchasing')">
-                                    <i class="fas fa-shopping-cart mr-2"></i> Solicitud Administrativa
-                                </a>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="hidden" asp-for="Input.Type" value="Technical" />
 
                     <div class="row">
-                        <!-- Column 1: Identification (Común) -->
                         <div class="col-md-5 border-right">
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-university mr-2"></i> Ubicación y Activo
                             </h5>
-                            
+
                             <div class="form-group mb-4">
                                 <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">
                                     Facultad <span class="text-danger">*</span>
@@ -74,98 +55,35 @@
                                 <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
                             </div>
 
-                            <!-- Campos Técnicos (Solo en modo Técnico) -->
-                            <div id="tech-only-fields" class="animated fadeIn">
-                                <hr class="my-4"/>
-                                <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-sliders-h mr-2"></i> Parametros Técnicos</h6>
-                                
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Grado de Prioridad <span class="text-danger">*</span></label>
-                                    <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
-                                    <span asp-validation-for="Input.Priority" class="text-danger small"></span>
-                                </div>
-                                
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.EstimatedRepairTime" class="control-label font-weight-bold small uppercase text-muted">Tiempo Estimado de Reparación</label>
-                                    <input asp-for="Input.EstimatedRepairTime" class="form-control" placeholder="Ej: 2 horas, 1 día..." />
-                                </div>
+                            <hr class="my-4" />
+                            <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-sliders-h mr-2"></i> Parametros Técnicos</h6>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Grado de Prioridad <span class="text-danger">*</span></label>
+                                <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
+                                <span asp-validation-for="Input.Priority" class="text-danger small"></span>
                             </div>
-                            
-                            <!-- Campos Administrativos (Solo en modo Compra) -->
-                            <div id="admin-only-fields" class="animated fadeIn" style="display:none;">
-                                <hr class="my-4"/>
-                                <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-file-invoice-dollar mr-2"></i> Datos Financieros</h6>
-                                
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.InvestmentCode" class="control-label font-weight-bold small uppercase text-success">Código de Inversión (Activos) <span class="text-danger">*</span></label>
-                                    <input asp-for="Input.InvestmentCode" class="form-control border-success" id="investmentCodeInput" placeholder="Ej: INV-2024-001" />
-                                    <span asp-validation-for="Input.InvestmentCode" class="text-danger small"></span>
-                                    <small class="form-text text-muted">Código sugerido según la unidad seleccionada.</small>
-                                </div>
 
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.CostCenter" class="control-label font-weight-bold small uppercase text-success">Centro de Costos <span class="text-danger">*</span></label>
-                                    <input asp-for="Input.CostCenter" class="form-control border-success" placeholder="Ej: FAC-MED-01" />
-                                    <span asp-validation-for="Input.CostCenter" class="text-danger small"></span>
-                                </div>
-
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.MaintenanceId" class="control-label font-weight-bold small uppercase text-info">Importar de Mantenimiento</label>
-                                    <select asp-for="Input.MaintenanceId" class="form-control select2" id="maintenanceSelect" disabled>
-                                        <option value="">-- No referenciar mantenimiento --</option>
-                                    </select>
-                                    <small class="form-text text-muted">Mantenimientos encontrados para esta unidad específica.</small>
-                                </div>
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.EstimatedRepairTime" class="control-label font-weight-bold small uppercase text-muted">Tiempo Estimado de Reparación</label>
+                                <input asp-for="Input.EstimatedRepairTime" class="form-control" placeholder="Ej: 2 horas, 1 día..." />
                             </div>
                         </div>
 
-                        <!-- Column 2: Details & Dynamic Table -->
                         <div class="col-md-7 pl-lg-4">
-                            <!-- Sección Variable: Descripción -->
                             <h5 class="font-weight-bold text-info mb-3">
-                                <i class="fas fa-align-left mr-2"></i> <span id="desc-title">Naturaleza del Problema</span>
+                                <i class="fas fa-align-left mr-2"></i> Naturaleza del Problema
                             </h5>
-                            
-                            <div class="form-group mb-4 pl-3 bg-light p-2 rounded" id="desc-container" style="border-left: 4px solid #ffc107;">
-                                <label asp-for="Input.Description" class="control-label font-weight-bold small text-uppercase" id="desc-label">Descripción del Fallo <span class="text-danger">*</span></label>
-                                <textarea asp-for="Input.Description" class="form-control shadow-none" rows="3" placeholder="Describa el fallo detectado..."></textarea>
+
+                            <div class="form-group mb-4 pl-3 bg-light p-2 rounded" style="border-left: 4px solid #ffc107;">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small text-uppercase">Descripción del Fallo <span class="text-danger">*</span></label>
+                                <textarea asp-for="Input.Description" class="form-control shadow-none" rows="4" placeholder="Describa el fallo detectado o la asistencia técnica necesaria..."></textarea>
                                 <span asp-validation-for="Input.Description" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-4">
                                 <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones Adicionales</label>
-                                <textarea asp-for="Input.Observations" class="form-control" rows="2" placeholder="Notas adicionales o contexto..."></textarea>
-                            </div>
-
-                            <!-- RESUMEN DE COSTOS CARGADOS (Solo Administrativo) -->
-                            <div id="cost-summary-section" style="display:none;" class="animated fadeInUp">
-                                <hr />
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <h5 class="font-weight-bold text-success mb-0"><i class="fas fa-receipt mr-2"></i> Detalle de Items (Importados)</h5>
-                                </div>
-                                
-                                <div class="table-responsive border rounded bg-white shadow-sm" style="max-height: 400px; overflow-y: auto;">
-                                    <table class="table table-sm table-hover mb-0" id="itemsTable">
-                                        <thead class="thead-light">
-                                            <tr>
-                                                <th style="width: 50%">Concepto</th>
-                                                <th style="width: 25%">Cantidad</th>
-                                                <th style="width: 25%">Total Estimado</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="itemsSummaryBody">
-                                            <tr>
-                                                <td colspan="3" class="text-center text-muted py-3">No hay ítems cargados. Seleccione un mantenimiento.</td>
-                                            </tr>
-                                        </tbody>
-                                        <tfoot class="bg-light font-weight-bold" id="itemsFooter" style="display:none;">
-                                            <tr>
-                                                <td colspan="2" class="text-right">Total Solicitado:</td>
-                                                <td class="text-success" id="totalAmount">0.00</td>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
+                                <textarea asp-for="Input.Observations" class="form-control" rows="3" placeholder="Notas adicionales o contexto..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -173,12 +91,12 @@
                     <hr class="mt-5" />
 
                     <div class="form-actions text-right mt-4">
-                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold" id="submitBtn">
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded mr-2 px-4">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
                             <i class="fas fa-save mr-2"></i> Crear Solicitud Técnica
                         </button>
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
-                             Cancelar
-                        </a>
                     </div>
                 </form>
             </div>
@@ -187,40 +105,13 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
     <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
-        // ESTADO GLOBAL
-        let currentType = 'Technical';
-
-        function setType(type) {
-            currentType = type;
-            $('#Input_Type').val(type);
-            
-            if (type === 'Technical') {
-                $('#tech-only-fields').show();
-                $('#admin-only-fields').hide();
-                $('#cost-summary-section').hide();
-                $('#desc-title').html('<i class="fas fa-align-left mr-2"></i> Naturaleza del Problema');
-                $('#desc-label').html('Descripción del Fallo <span class="text-danger">*</span>');
-                $('#Input_Description').attr('placeholder', 'Describa el fallo detectado o la asistencia técnica necesaria...');
-                $('#desc-container').css('border-left', '4px solid #ffc107');
-                $('#submitBtn').html('<i class="fas fa-save mr-2"></i> Crear Solicitud Técnica').removeClass('btn-success').addClass('btn-info');
-            } 
-            else {
-                $('#tech-only-fields').hide();
-                $('#admin-only-fields').show();
-                $('#cost-summary-section').show();
-                $('#desc-title').html('<i class="fas fa-comment-dollar mr-2"></i> Justificación');
-                $('#desc-label').html('Justificación del Pedido <span class="text-danger">*</span>');
-                $('#Input_Description').attr('placeholder', 'Justifique por qué es necesaria esta adquisición o servicio...');
-                $('#desc-container').css('border-left', '4px solid #28a745');
-                $('#submitBtn').html('<i class="fas fa-file-invoice-dollar mr-2"></i> Crear Solicitud de Compra').removeClass('btn-info').addClass('btn-success');
-            }
-        }
-
         $(function() {
             $(".select2").select2({ width: '100%', allowClear: true });
 
@@ -229,10 +120,10 @@
                 let id = $(this).val();
                 let $lab = $('#laboratorySelect');
                 let $unit = $('#equipmentUnitSelect');
-                
+
                 $lab.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
                 $unit.empty().append('<option value="">-- Seleccione laboratorio --</option>').prop('disabled', true);
-                
+
                 if (!id) {
                     $lab.html('<option value="">-- Primero seleccione facultad --</option>');
                     return;
@@ -248,9 +139,9 @@
             $('#laboratorySelect').on('change', function() {
                 let id = $(this).val();
                 let $unit = $('#equipmentUnitSelect');
-                
+
                 $unit.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
-                
+
                 if (!id) {
                     $unit.html('<option value="">-- Seleccione laboratorio --</option>');
                     return;
@@ -262,65 +153,6 @@
                     $unit.html(opts).prop('disabled', false).trigger('change');
                 });
             });
-
-            $('#equipmentUnitSelect').on('change', function() {
-                let id = $(this).val();
-                let $mnt = $('#maintenanceSelect');
-                
-                if (!id) {
-                    $mnt.empty().append('<option value="">-- No referenciar mantenimiento --</option>').prop('disabled', true);
-                    return;
-                }
-
-                // Cargar Código de Inversión Sugerido
-                if (currentType === 'Purchasing') {
-                    $.get('/Requests/Create?handler=NextInvestmentCode', { unitId: id }, function(data) {
-                        if (data.code) $('#investmentCodeInput').val(data.code);
-                    });
-
-                    // Cargar Mantenimientos
-                    $.get('/Requests/Create?handler=MaintenancesByUnit', { unitId: id }, function(data) {
-                        let opts = '<option value="">-- No referenciar mantenimiento --</option>';
-                        $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.displayName}</option>`; });
-                        $mnt.html(opts).prop('disabled', false).trigger('change');
-                    });
-                }
-            });
-
-            $('#maintenanceSelect').on('change', function() {
-                let id = $(this).val();
-                let $body = $('#itemsSummaryBody');
-                let $footer = $('#itemsFooter');
-                
-                if (!id) {
-                    $body.html('<tr><td colspan="3" class="text-center text-muted py-3">No hay ítems cargados. Seleccione un mantenimiento.</td></tr>');
-                    $footer.hide();
-                    return;
-                }
-
-                $.get('/Requests/Create?handler=MaintenanceCosts', { maintenanceId: id }, function(data) {
-                    $body.empty();
-                    let total = 0;
-                    if (data.length === 0) {
-                        $body.html('<tr><td colspan="3" class="text-center text-muted py-3">Este mantenimiento no tiene costos registrados.</td></tr>');
-                        $footer.hide();
-                    } else {
-                        $.each(data, function(i, item) {
-                            let sub = item.quantity * item.unitPrice;
-                            total += sub;
-                            $body.append(`<tr><td>${item.concept}</td><td>${item.quantity} ${item.unitOfMeasure || ''}</td><td>${sub.toFixed(2)}</td></tr>`);
-                        });
-                        $('#totalAmount').text(total.toFixed(2));
-                        $footer.show();
-                    }
-                });
-            });
-
-            // Initial setup
-            let initialType = $('#Input_Type').val() || 'Technical';
-            setType(initialType);
         });
-    </script>
-}
     </script>
 }

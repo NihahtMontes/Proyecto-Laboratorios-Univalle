@@ -139,35 +139,32 @@
                         </div>
                     </div>
 
+                    @* SECCIÓN L-48 DINÁMICA: CAMBIOS REALIZADOS AQUÍ *@
                     <div class="card border border-light shadow-none mb-4">
-                        <div class="card-header bg-white border-bottom-0 pt-4 px-4">
+                        <div class="card-header bg-white border-bottom-0 pt-4 px-4 d-md-flex align-items-center">
                             <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Lista de Verificación Técnica (L-48)</h5>
+                            <div class="input-group ml-auto mt-3 mt-md-0" style="max-width: 450px;">
+                                <input type="text" id="newTaskInput" class="form-control form-control-sm" placeholder="Nueva tarea (ej: Calibración sensor)...">
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-primary btn-sm px-3" onclick="addTask()">
+                                        <i class="fas fa-plus mr-1"></i> Añadir
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="card-body px-4 pt-2">
                             <div class="row align-items-center">
                                 <div class="col-md-7 border-right">
-                                    <div class="custom-control custom-checkbox mb-3">
-                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep1Create" asp-for="Input.Step1_Cleaning" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep1Create">Limpieza y Desinfección de Componentes</label>
-                                    </div>
-                                    <div class="custom-control custom-checkbox mb-3">
-                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep2Create" asp-for="Input.Step2_Calibration" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep2Create">Calibración y Ajuste de Sistema</label>
-                                    </div>
-                                    <div class="custom-control custom-checkbox mb-3">
-                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep3Create" asp-for="Input.Step3_Testing" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep3Create">Pruebas de Esfuerzo y Carga Operativa</label>
-                                    </div>
-                                    <div class="custom-control custom-checkbox mb-2">
-                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep4Create" asp-for="Input.Step4_FinalReview" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep4Create">Revisión Final de Seguridad y Cierre</label>
+                                    @* Contenedor para las tareas dinámicas *@
+                                    <div id="tasksContainer" class="p-2" style="min-height: 100px; max-height: 300px; overflow-y: auto;">
+                                        @* Se llena vía JS *@
                                     </div>
                                 </div>
                                 <div class="col-md-5 text-center">
                                     <h6 class="text-muted text-uppercase font-weight-bold mb-3">Avance del Mantenimiento</h6>
-                                    <h2 id="displayProgressText" class="display-4 font-weight-bold text-primary mb-2">0%</h2>
-                                    <div class="progress rounded-pill shadow-sm" style="height: 12px;">
-                                        <div id="visualProgressBar" class="progress-bar bg-primary progress-bar-striped" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                    <h2 id="displayProgressText" class="display-3 font-weight-bold text-primary mb-2">0%</h2>
+                                    <div class="progress rounded-pill shadow-sm" style="height: 15px;">
+                                        <div id="visualProgressBar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                                     </div>
                                     <input type="hidden" asp-for="Input.CompletionPercentage" id="hiddenPercentageInput" />
                                 </div>
@@ -310,6 +307,15 @@
         .v-middle td {
             vertical-align: middle !important;
         }
+
+        .task-row {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f1f1f1;
+        }
+
+            .task-row:hover {
+                background-color: #f8f9fa;
+            }
     </style>
 }
 
@@ -321,35 +327,29 @@
     <script>
         $(function () {
             "use strict";
-
             $(".select2").select2({ width: '100%', allowClear: true });
 
             const container = $('#costsContainer');
             if (container.children().length === 0) addRow();
 
-            // Iniciar cálculos del porcentaje visual y de costos
             calculatePercentage();
             calculateTotals();
 
             $('#statusSelector').on('change', function() {
                 toggleCostWarning($(this).val());
             });
-            toggleCostWarning($('#statusSelector').val());
 
-            // Cascading
+            // Cascading Logic
             $('#facultySelect').on('change', function() {
                 let id = $(this).val();
                 let $lab = $('#laboratorySelect');
                 let $unit = $('#equipmentUnitSelect');
-
                 $lab.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
                 $unit.empty().append('<option value="">-- Seleccione laboratorio --</option>').prop('disabled', true);
-
                 if (!id) {
                     $lab.html('<option value="">-- Primero seleccione facultad --</option>');
                     return;
                 }
-
                 $.get('/Maintenances/Create?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
                     let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
                     $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
@@ -360,33 +360,78 @@
             $('#laboratorySelect').on('change', function() {
                 let id = $(this).val();
                 let $unit = $('#equipmentUnitSelect');
-
                 $unit.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
-
                 if (!id) {
                     $unit.html('<option value="">-- Seleccione laboratorio --</option>');
                     return;
                 }
-
                 $.get('/Maintenances/Create?handler=UnitsByLab', { laboratoryId: id }, function(data) {
                     let opts = '<option value="">-- Seleccionar Unidad Física --</option>';
                     $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
                     $unit.html(opts).prop('disabled', false).trigger('change');
                 });
             });
+
+            // Tecla Enter para añadir tareas
+            $('#newTaskInput').on('keypress', function (e) {
+                if (e.which == 13) {
+                    e.preventDefault();
+                    addTask();
+                }
+            });
         });
 
-        // --- LÓGICA DE CHECKBOXES (PORCENTAJE L-48) ---
+        // --- LÓGICA DE TAREAS DINÁMICAS (L-48) ---
+        function addTask() {
+            const input = $('#newTaskInput');
+            const text = input.val().trim();
+            if (!text) return;
+
+            const container = $('#tasksContainer');
+            const id = 'task_' + Date.now();
+
+            const html = `
+                <div class="custom-control custom-checkbox mb-3 d-flex align-items-center task-row pb-2">
+                    <input type="checkbox" class="custom-control-input maintenance-check" id="${id}" onchange="calculatePercentage()">
+                    <label class="custom-control-label font-weight-bold flex-grow-1" for="${id}">${text}</label>
+                    <button type="button" class="btn btn-link text-danger p-0 ml-2" onclick="removeTask(this)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>`;
+
+            container.append(html);
+            input.val('').focus();
+            calculatePercentage();
+        }
+
+        function removeTask(btn) {
+            $(btn).closest('.task-row').remove();
+            calculatePercentage();
+        }
+
         function calculatePercentage() {
             const checkboxes = $('.maintenance-check');
-            if (checkboxes.length === 0) return;
+            const total = checkboxes.length;
+            if (total === 0) {
+                $('#displayProgressText').text('0%');
+                $('#visualProgressBar').css('width', '0%');
+                return;
+            }
 
-            const completedTasks = checkboxes.filter(':checked').length;
-            const percentage = Math.round((completedTasks / checkboxes.length) * 100);
+            const checked = checkboxes.filter(':checked').length;
+            const percentage = Math.round((checked / total) * 100);
 
             $('#displayProgressText').text(percentage + '%');
             $('#visualProgressBar').css('width', percentage + '%').attr('aria-valuenow', percentage);
             $('#hiddenPercentageInput').val(percentage);
+
+            if (percentage === 100) {
+                $('#displayProgressText').removeClass('text-primary').addClass('text-success');
+                $('#visualProgressBar').removeClass('bg-primary').addClass('bg-success');
+            } else {
+                $('#displayProgressText').removeClass('text-success').addClass('text-primary');
+                $('#visualProgressBar').removeClass('bg-success').addClass('bg-primary');
+            }
         }
 
         // --- LÓGICA DE COSTOS ---
@@ -411,7 +456,6 @@
                     const name = $(this).attr('name');
                     if (name) {
                         $(this).attr('name', name.replace(/\[\d+\]/, `[${i}]`));
-                        $(this).attr('id', $(this).attr('id')?.replace(/_\d+__/, `_${i}__`));
                     }
                 });
             });

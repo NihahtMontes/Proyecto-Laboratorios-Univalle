@@ -12,5 +12,7 @@
     <WebStackScaffolding_LayoutPageFile />
     <WebStackScaffolding_DbContextTypeFullName>Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext</WebStackScaffolding_DbContextTypeFullName>
     <NameOfLastUsedPublishProfile>D:\Vuelta a Bolivia\Proyecto-Laboratorios-Univalle\Properties\PublishProfiles\ProyectoLaboratoriosUnivalle20260227171646 - Web Deploy.pubxml</NameOfLastUsedPublishProfile>
+    <RazorPage_SelectedScaffolderID>RazorPageScaffolder</RazorPage_SelectedScaffolderID>
+    <RazorPage_SelectedScaffolderCategoryPath>root/Common/RazorPage</RazorPage_SelectedScaffolderCategoryPath>
   </PropertyGroup>
 </Project>

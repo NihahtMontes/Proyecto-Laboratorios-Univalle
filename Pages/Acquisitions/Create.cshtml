@@ -1,0 +1,246 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.CreateModel
+
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-9">
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark">Formulario de Solicitud de Adquisición</h4>
+                        <h6 class="card-subtitle text-muted">Gestión de compra de nuevos activos, repuestos e insumos.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-shopping-cart fa-2x text-success opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate id="createAcquisitionForm">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-5 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-university mr-2"></i> Ubicación y Activo
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">
+                                    Facultad <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId">
+                                    <option value="">-- Seleccionar Facultad --</option>
+                                </select>
+                                <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2 rounded">
+                                <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-info text-uppercase">
+                                    Laboratorio <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" disabled>
+                                    <option value="">-- Primero seleccione facultad --</option>
+                                </select>
+                                <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2 rounded">
+                                <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-warning text-uppercase">Unidad Física Afectada <span class="text-danger">*</span></label>
+                                <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" disabled>
+                                    <option value="">-- Seleccione laboratorio --</option>
+                                </select>
+                                <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                            </div>
+
+                            <hr class="my-4" />
+                            <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-file-invoice-dollar mr-2"></i> Datos Financieros</h6>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.InvestmentCode" class="control-label font-weight-bold small uppercase text-success">Código de Inversión (Activos) <span class="text-danger">*</span></label>
+                                <input asp-for="Input.InvestmentCode" class="form-control border-success" id="investmentCodeInput" placeholder="Ej: INV-2024-001" />
+                                <span asp-validation-for="Input.InvestmentCode" class="text-danger small"></span>
+                                <small class="form-text text-muted">Código sugerido según la unidad seleccionada.</small>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.CostCenter" class="control-label font-weight-bold small uppercase text-success">Centro de Costos <span class="text-danger">*</span></label>
+                                <input asp-for="Input.CostCenter" class="form-control border-success" placeholder="Ej: FAC-MED-01" />
+                                <span asp-validation-for="Input.CostCenter" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.MaintenanceId" class="control-label font-weight-bold small uppercase text-info">Importar de Mantenimiento</label>
+                                <select asp-for="Input.MaintenanceId" class="form-control select2" id="maintenanceSelect" disabled>
+                                    <option value="">-- No referenciar mantenimiento --</option>
+                                </select>
+                                <small class="form-text text-muted">Mantenimientos encontrados para esta unidad específica.</small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-7 pl-lg-4">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-comment-dollar mr-2"></i> Justificación
+                            </h5>
+
+                            <div class="form-group mb-4 pl-3 bg-light p-2 rounded" style="border-left: 4px solid #28a745;">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small text-uppercase">Justificación del Pedido <span class="text-danger">*</span></label>
+                                <textarea asp-for="Input.Description" class="form-control shadow-none" rows="4" placeholder="Justifique por qué es necesaria esta adquisición o servicio..."></textarea>
+                                <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones Adicionales</label>
+                                <textarea asp-for="Input.Observations" class="form-control" rows="3" placeholder="Notas adicionales o contexto..."></textarea>
+                            </div>
+
+                            <div id="cost-summary-section" class="animated fadeInUp">
+                                <hr />
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="font-weight-bold text-success mb-0"><i class="fas fa-receipt mr-2"></i> Detalle de Items (Importados)</h5>
+                                </div>
+
+                                <div class="table-responsive border rounded bg-white shadow-sm" style="max-height: 400px; overflow-y: auto;">
+                                    <table class="table table-sm table-hover mb-0" id="itemsTable">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th style="width: 50%">Concepto</th>
+                                                <th style="width: 25%">Cantidad</th>
+                                                <th style="width: 25%">Total Estimado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="itemsSummaryBody">
+                                            <tr>
+                                                <td colspan="3" class="text-center text-muted py-3">No hay ítems cargados. Seleccione un mantenimiento.</td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot class="bg-light font-weight-bold" id="itemsFooter" style="display:none;">
+                                            <tr>
+                                                <td colspan="2" class="text-right">Total Solicitado:</td>
+                                                <td class="text-success" id="totalAmount">0.00</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="mt-5" />
+
+                    <div class="form-actions text-right mt-4">
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded mr-2 px-4">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold">
+                            <i class="fas fa-file-invoice-dollar mr-2"></i> Crear Solicitud de Compra
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script>
+        $(function() {
+            $(".select2").select2({ width: '100%', allowClear: true });
+
+            // Cascading Selectors
+            $('#facultySelect').on('change', function() {
+                let id = $(this).val();
+                let $lab = $('#laboratorySelect');
+                let $unit = $('#equipmentUnitSelect');
+
+                $lab.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
+                $unit.empty().append('<option value="">-- Seleccione laboratorio --</option>').prop('disabled', true);
+
+                if (!id) {
+                    $lab.html('<option value="">-- Primero seleccione facultad --</option>');
+                    return;
+                }
+
+                $.get('/Acquisitions/Create?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
+                    let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
+                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
+                    $lab.html(opts).prop('disabled', false).trigger('change');
+                });
+            });
+
+            $('#laboratorySelect').on('change', function() {
+                let id = $(this).val();
+                let $unit = $('#equipmentUnitSelect');
+
+                $unit.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
+
+                if (!id) {
+                    $unit.html('<option value="">-- Seleccione laboratorio --</option>');
+                    return;
+                }
+
+                $.get('/Acquisitions/Create?handler=UnitsByLab', { laboratoryId: id }, function(data) {
+                    let opts = '<option value="">-- Seleccionar Unidad Física --</option>';
+                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
+                    $unit.html(opts).prop('disabled', false).trigger('change');
+                });
+            });
+
+            $('#equipmentUnitSelect').on('change', function() {
+                let id = $(this).val();
+                let $mnt = $('#maintenanceSelect');
+
+                if (!id) {
+                    $mnt.empty().append('<option value="">-- No referenciar mantenimiento --</option>').prop('disabled', true);
+                    return;
+                }
+
+                // Cargar Código de Inversión Sugerido
+                $.get('/Acquisitions/Create?handler=NextInvestmentCode', { unitId: id }, function(data) {
+                    if (data.code) $('#investmentCodeInput').val(data.code);
+                });
+
+                // Cargar Mantenimientos
+                $.get('/Acquisitions/Create?handler=MaintenancesByUnit', { unitId: id }, function(data) {
+                    let opts = '<option value="">-- No referenciar mantenimiento --</option>';
+                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.displayName}</option>`; });
+                    $mnt.html(opts).prop('disabled', false).trigger('change');
+                });
+            });
+
+            $('#maintenanceSelect').on('change', function() {
+                let id = $(this).val();
+                let $body = $('#itemsSummaryBody');
+                let $footer = $('#itemsFooter');
+
+                if (!id) {
+                    $body.html('<tr><td colspan="3" class="text-center text-muted py-3">No hay ítems cargados. Seleccione un mantenimiento.</td></tr>');
+                    $footer.hide();
+                    return;
+                }
+
+                $.get('/Acquisitions/Create?handler=MaintenanceCosts', { maintenanceId: id }, function(data) {
+                    $body.empty();
+                    let total = 0;
+                    if (data.length === 0) {
+                        $body.html('<tr><td colspan="3" class="text-center text-muted py-3">Este mantenimiento no tiene costos registrados.</td></tr>');
+                        $footer.hide();
+                    } else {
+                        $.each(data, function(i, item) {
+                            let sub = item.quantity * item.unitPrice;
+                            total += sub;
+                            $body.append(`<tr><td>${item.concept}</td><td>${item.quantity} ${item.unitOfMeasure || ''}</td><td>${sub.toFixed(2)}</td></tr>`);
+                        });
+                        $('#totalAmount').text(total.toFixed(2));
+                        $footer.show();
+                    }
+                });
+            });
+        });
+    </script>
+}
