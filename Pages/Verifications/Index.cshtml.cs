@@ -103,10 +103,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     units, 
                     ReportInput.Term ?? "II/2025", 
                     ReportInput.Responsible ?? "N/A", 
-                    DateTime.Now
+                    DateTime.UtcNow
                 );
 
-                string fileName = $"Reporte_L6_{lab.Name}_{DateTime.Now:yyyyMMdd}.xlsx";
+                string fileName = $"Reporte_L6_{lab.Name}_{DateTime.UtcNow:yyyyMMdd}.xlsx";
                 return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
             }
             catch (Exception ex)
@@ -138,7 +138,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 var excelBytes = _reportingService.GenerateVerificationsExcel(list);
                 
                 return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-                    $"Verificaciones_{DateTime.Now:yyyyMMdd}.xlsx");
+                    $"Verificaciones_{DateTime.UtcNow:yyyyMMdd}.xlsx");
             }
             catch (Exception ex)
             {

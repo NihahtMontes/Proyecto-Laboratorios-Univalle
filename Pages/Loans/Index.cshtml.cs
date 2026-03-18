@@ -53,7 +53,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Loans
                 .ToListAsync();
 
             // Auto-update 'Vencido' status for display purposes (optional logic)
-            foreach (var loan in Loans.Where(l => l.Status == LoanStatus.Active && l.EstimatedReturnDate < DateTime.Now))
+            foreach (var loan in Loans.Where(l => l.Status == LoanStatus.Active && l.EstimatedReturnDate < DateTime.UtcNow))
             {
                 loan.Status = LoanStatus.Overdue;
             }

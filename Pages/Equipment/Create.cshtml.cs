@@ -41,10 +41,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             [Display(Name = "Tipo de Recurso")]
             public EquipmentCategory Category { get; set; }
 
-            [Display(Name = "Tipo de Equipo")]
-            public int? EquipmentTypeId { get; set; }
+            [Display(Name = "Tipo de Material")]
+            public UtensilType UtensilType { get; set; }
 
-
+            //[Display(Name = "Tipo de Equipo")]
+            //public int? EquipmentTypeId { get; set; }
 
             [Display(Name = "Imagen del Equipo")]
             public IFormFile? ImageUpload { get; set; }
@@ -54,7 +55,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             // City removed from UI requirement
             public int? CityId { get; set; }
-            
+
             [Required(ErrorMessage = "El nombre del equipo es obligatorio")]
             [Display(Name = "Nombre del Equipo")]
             [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres")]
@@ -72,6 +73,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             [Display(Name = "Descripción / Especificaciones")]
             public string? Description { get; set; }
+
+            [Required(ErrorMessage = "La clasificación técnica es obligatoria")]
+            [Display(Name = "Clasificación de Tipo")]
+            public EquipmentTypeClassification TypeClassification { get; set; } = EquipmentTypeClassification.Otro;
         }
 
         public async Task<JsonResult> OnGetCitiesByCountryAsync(int countryId)
@@ -103,7 +108,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             var normalizedModel = Input.Model?.ToLower();
 
             var exists = await _context.Equipments
-                .AnyAsync(e => e.Name.ToLower() == normalizedName && 
+                .AnyAsync(e => e.Name.ToLower() == normalizedName &&
                                (string.IsNullOrEmpty(Input.Model) || e.Model.ToLower() == normalizedModel));
 
             if (exists)
@@ -112,18 +117,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 LoadLists();
                 return Page();
             }
-            
+
             // Image Upload Handling
             string? uniqueFileName = null;
             if (Input.ImageUpload != null)
             {
                 string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "equipment");
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-                
+
                 // Sanitizar nombre de archivo para evitar caracteres inválidos
-                string safeFileName = Path.GetFileName(Input.ImageUpload.FileName); 
+                string safeFileName = Path.GetFileName(Input.ImageUpload.FileName);
                 uniqueFileName = $"{Guid.NewGuid()}_{safeFileName}";
-                
+
                 string filePath = Path.Combine(uploadsFolder, uniqueFileName);
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
@@ -134,7 +139,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             var equipment = new Models.Equipment
             {
                 Category = Input.Category,
-                EquipmentTypeId = Input.EquipmentTypeId,
+                UtensilType = Input.UtensilType, // Asignamos el nuevo Enum
+                TypeClassification = Input.TypeClassification, // CORRECCIÓN: Se añade el mapeo de la clasificación dinámica
+
+                //EquipmentTypeId = Input.EquipmentTypeId,
                 ImageUrl = uniqueFileName,
                 CountryId = Input.CountryId,
                 CityId = Input.CityId,
@@ -143,7 +151,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 Model = Input.Model,
                 UsefulLifeYears = Input.UsefulLifeYears,
                 Description = Input.Description,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             var currentUser = await _userManager.GetUserAsync(User);
@@ -161,8 +169,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
         private void LoadLists()
         {
-            ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes.OrderBy(et => et.Name), "Id", "Name");
-            
+            //ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes.OrderBy(et => et.Name), "Id", "Name");
+
             var countries = _context.Countries
                 .Where(c => c.Status == GeneralStatus.Activo)
                 .OrderBy(c => c.Name)

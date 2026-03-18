@@ -48,7 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 
             // Perform Soft Delete (Logic Delete for Audit)
             faculty.Status = GeneralStatus.Eliminado;
-            faculty.LastModifiedDate = DateTime.Now;
+            faculty.LastModifiedDate = DateTime.UtcNow;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)

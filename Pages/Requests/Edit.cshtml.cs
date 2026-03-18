@@ -159,7 +159,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             requestToUpdate.Description = Input.Description.Clean();
             requestToUpdate.Priority = Input.Priority;
             requestToUpdate.Observations = Input.Observations?.Clean();
-            requestToUpdate.LastModifiedDate = DateTime.Now;
+            requestToUpdate.LastModifiedDate = DateTime.UtcNow;
             requestToUpdate.ModifiedById = currentUser?.Id;
 
             // 2. Update Type-Specific Fields
@@ -187,7 +187,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                             UnitOfMeasure = item.UnitOfMeasure?.Clean(),
                             Provider = item.Provider?.Clean(),
                             Category = item.Category,
-                            CreatedDate = DateTime.Now
+                            CreatedDate = DateTime.UtcNow
                         });
                     }
                 }
@@ -198,7 +198,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             {
                 if (requestToUpdate.Status == RequestStatus.Pending && Input.Status != RequestStatus.Pending)
                 {
-                    requestToUpdate.ApprovalDate = DateTime.Now;
+                    requestToUpdate.ApprovalDate = DateTime.UtcNow;
                     requestToUpdate.ApprovedById = currentUser?.Id;
                 }
                 

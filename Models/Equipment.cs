@@ -5,29 +5,30 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
-    /// <summary>
-    /// Represents the concept/definition of an Equipment (e.g. "Microscope Model X").
-    /// </summary>
     public class Equipment : IAuditable
     {
-        // ========================================
-        // PRIMARY KEY
-        // ========================================
         [Key]
         public int Id { get; set; }
 
         // ========================================
-        // FOREIGN KEYS
+        // ENUMS SEGÚN FORMULARIOS (L-6)
         // ========================================
-        [Display(Name = "Tipo de Equipamiento")]
-        public int? EquipmentTypeId { get; set; }
 
-        // 0 = Equipment, 1 = Utensil
+        // Reemplazamos el ID de la tabla externa por el Enum de Categoría
         [Required]
-        [Display(Name = "Categoría")]
+        [Display(Name = "Categoría (L-6)")]
         public EquipmentCategory Category { get; set; } = EquipmentCategory.Equipment;
 
+        // Añadimos el Enum de Tipo de Utensilio (Material)
+        [Display(Name = "Tipo de Material / Utensilio")]
+        public UtensilType UtensilType { get; set; } = UtensilType.NoAplica;
 
+        [Display(Name = "Clasificación de Tipo")]
+        public EquipmentTypeClassification TypeClassification { get; set; } = EquipmentTypeClassification.Otro;
+
+        // ========================================
+        // IDENTIFICACIÓN Y ORIGEN
+        // ========================================
 
         [Display(Name = "Imagen")]
         public string? ImageUrl { get; set; }
@@ -38,12 +39,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Ciudad / Sede de Origen")]
         public int? CityId { get; set; }
 
-        // ========================================
-        // ASSET IDENTIFICATION (Shared)
-        // ========================================
         [Required(ErrorMessage = "El nombre es obligatorio")]
         [StringLength(200)]
-        [Display(Name = "Nombre del Equipamiento")]
+        [Display(Name = "Nombre del Activo")]
         public string Name { get; set; } = string.Empty;
 
         [StringLength(100)]
@@ -55,8 +53,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public string? Model { get; set; }
 
         // ========================================
-        // SPECS & LIFECYCLE (Shared)
+        // ESPECIFICACIONES
         // ========================================
+
         [Display(Name = "Vida Útil Estimada (años)")]
         [Range(0, 100)]
         public int? UsefulLifeYears { get; set; }
@@ -66,13 +65,14 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public string? Description { get; set; }
 
         // ========================================
-        // AUDIT
+        // AUDITORÍA (Se mantiene original)
         // ========================================
+
         [Display(Name = "Creado Por")]
         public int? CreatedById { get; set; }
 
         [Display(Name = "Fecha de Creación")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Modificado Por")]
         public int? ModifiedById { get; set; }
@@ -81,10 +81,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public DateTime? LastModifiedDate { get; set; }
 
         // ========================================
-        // NAVIGATION PROPERTIES
+        // PROPIEDADES DE NAVEGACIÓN
         // ========================================
-        public virtual EquipmentType? EquipmentType { get; set; }
 
+        // Quitamos EquipmentType porque ahora es un Enum
         public virtual Country? Country { get; set; }
 
         public virtual City? City { get; set; }
@@ -93,9 +93,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         public virtual User? ModifiedBy { get; set; }
 
-        // ========================================
-        // INVERSE RELATIONSHIPS
-        // ========================================
         public virtual ICollection<EquipmentUnit>? Units { get; set; }
     }
 }

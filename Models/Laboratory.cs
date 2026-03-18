@@ -44,8 +44,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Tipo de Laboratorio")]
         public string? Type { get; set; }
 
+        // ✅ Usaremos este campo "Building" como nuestro "Bloque"
         [StringLength(100)]
-        [Display(Name = "Edificio")]
+        [Display(Name = "Edificio / Bloque")]
         public string? Building { get; set; }
 
         [StringLength(50)]
@@ -70,7 +71,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int? CreatedById { get; set; }
 
         [Display(Name = "Fecha de Creación")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Modificado Por")]
         public int? ModifiedById { get; set; }

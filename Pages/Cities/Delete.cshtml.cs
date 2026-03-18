@@ -49,7 +49,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 
             // Perform Soft Delete (Logic Delete)
             city.Status = GeneralStatus.Eliminado;
-            city.LastModifiedDate = DateTime.Now;
+            city.LastModifiedDate = DateTime.UtcNow;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)

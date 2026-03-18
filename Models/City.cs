@@ -31,7 +31,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
 
         [Display(Name = "Fecha de Creación")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         [ForeignKey("CountryId")]
         public virtual Country? Country { get; set; }

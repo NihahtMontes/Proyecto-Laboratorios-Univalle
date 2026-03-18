@@ -16,11 +16,10 @@
                         </button>
                     </div>
                 }
-                <!-- Header -->
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Bitácora de Verificaciones Técnicas</h3>
-                        <h6 class="card-subtitle text-muted ml-2">Registro de inspecciones y checklist de funcionamiento de equipos.</h6>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Control Pre-Mantenimiento (Formulario L-6)</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Evaluación previa y generación de solicitudes de mantenimiento.</h6>
                     </div>
 
                     <div class="ml-auto mt-3">
@@ -30,16 +29,14 @@
                     </div>
                 </div>
 
-                <!-- 🛠️ Unified Toolbar -->
                 <div class="bg-light p-4 mb-4 rounded border shadow-sm">
-                    <!-- Level 1: Report Generation (Topbar) -->
                     <form method="post" asp-page-handler="GenerateReport">
                         <div class="d-lg-flex align-items-center mb-4 pb-3 border-bottom border-muted">
                             <div class="mb-2 mb-lg-0 mr-auto">
                                 <h6 class="font-weight-bold text-dark mb-1"><i class="fas fa-file-excel mr-2 text-success"></i> Reporte Oficial L-6</h6>
                                 <small class="text-muted d-block">Seleccione los parámetros para descargar el inventario.</small>
                             </div>
-                            
+
                             <div class="d-flex flex-wrap align-items-center justify-content-lg-end">
                                 <div class="input-group input-group-sm mr-2 mb-2" style="width: 220px;">
                                     <div class="input-group-prepend">
@@ -52,14 +49,14 @@
 
                                 <div class="input-group input-group-sm mr-2 mb-2" style="width: 140px;">
                                     <div class="input-group-prepend">
-                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-calendar-alt text-muted"></i></span>
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-calendar-alt text-muted"></i></span>
                                     </div>
                                     <input asp-for="ReportInput.Term" class="form-control border-left-0" placeholder="Gestión" required />
                                 </div>
 
                                 <div class="input-group input-group-sm mr-2 mb-2" style="width: 180px;">
                                     <div class="input-group-prepend">
-                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-user text-muted"></i></span>
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-user text-muted"></i></span>
                                     </div>
                                     <input asp-for="ReportInput.Responsible" class="form-control border-left-0" placeholder="Responsable" required />
                                 </div>
@@ -71,7 +68,6 @@
                         </div>
                     </form>
 
-                    <!-- Level 2: Search & Filter -->
                     <form method="get">
                         <div class="row align-items-end">
                             <div class="col-md-5">
@@ -121,58 +117,59 @@
                             {
                                 foreach (var item in Model.Verifications)
                                 {
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="m-r-10">
-                                                <span class="btn btn-circle btn-sm btn-light-success text-success"><i class="fas fa-check-double"></i></span>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="m-r-10">
+                                                    <span class="btn btn-circle btn-sm btn-light-success text-success"><i class="fas fa-check-double"></i></span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
+                                                    <span class="text-muted small">Inv: @item.EquipmentUnit?.InventoryNumber</span>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
-                                                <span class="text-muted small">Inv: @item.EquipmentUnit?.InventoryNumber</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="text-dark font-weight-bold small">@item.Date.ToString("dd/MM/yyyy")</span>
+                                        </td>
+                                        <td>
+                                            <div class="small text-dark font-weight-bold">@(item.CreatedBy?.FullName ?? "Sistema")</div>
+                                            <small class="text-muted">Inspector</small>
+                                        </td>
+                                        <td class="text-center" style="width: 15%;">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <span class="small font-weight-bold mr-2">@item.CompletionPercentage%</span>
+                                                <div class="progress flex-grow-1" style="height: 6px;">
+                                                    <div class="progress-bar bg-info" role="progressbar" style="width: @item.CompletionPercentage%;" aria-valuenow="@item.CompletionPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="text-dark font-weight-bold small">@item.Date.ToString("dd/MM/yyyy")</span>
-                                    </td>
-                                    <td>
-                                        <div class="small text-dark font-weight-bold">@(item.CreatedBy?.FullName ?? "Sistema")</div>
-                                        <small class="text-muted">Inspector</small>
-                                    </td>
-                                    <td class="text-center" style="width: 15%;">
-                                        <div class="d-flex align-items-center justify-content-center">
-                                            <span class="small font-weight-bold mr-2">@item.CompletionPercentage%</span>
-                                            <div class="progress flex-grow-1" style="height: 6px;">
-                                                <div class="progress-bar bg-info" role="progressbar" style="width: @item.CompletionPercentage%;" aria-valuenow="@item.CompletionPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </td>
+                                        <td class="text-center">
+                                            @{
+                                                var (statusClass, statusText) = item.Status switch
+                                                {
+                                                    VerificationStatus.Completed => ("badge-success", "COMPLETADA"),
+                                                    VerificationStatus.Draft => ("badge-warning", "BORRADOR"),
+                                                    VerificationStatus.Reviewed => ("badge-info", "REVISADA"),
+                                                    _ => ("badge-secondary", "DESCONOCIDO")
+                                                };
+                                            }
+                                            <span class="badge @statusClass px-3 py-1">@statusText</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group">
+                                                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Continuar / Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Ver Detalles">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </a>
+                                                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        @{
-                                            var (statusClass, statusText) = item.Status switch {
-                                                VerificationStatus.Completed => ("badge-success", "COMPLETADA"),
-                                                VerificationStatus.Draft => ("badge-warning", "BORRADOR"),
-                                                VerificationStatus.Reviewed => ("badge-info", "REVISADA"),
-                                                _ => ("badge-secondary", "DESCONOCIDO")
-                                            };
-                                        }
-                                        <span class="badge @statusClass px-3 py-1">@statusText</span>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="btn-group">
-                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Continuar / Editar">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Ver Detalles">
-                                                <i class="fas fa-search-plus"></i>
-                                            </a>
-                                            <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
+                                        </td>
+                                    </tr>
                                 }
                             }
                         </tbody>
@@ -185,9 +182,21 @@
 
 @section Styles {
     <style>
-        .v-middle td { vertical-align: middle !important; }
-        .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
-        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
-        .italic { font-style: italic; }
+        .v-middle td {
+            vertical-align: middle !important;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .drop-shadow {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
+        }
+
+        .italic {
+            font-style: italic;
+        }
     </style>
 }

@@ -60,7 +60,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.MaintenanceTypes
             {
                 Name = cleanName,
                 Description = Input.Description?.Clean(),
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             var currentUser = await _userManager.GetUserAsync(User);

@@ -91,7 +91,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Required]
         [Display(Name = "Fecha de Verificación")]
         [DataType(DataType.Date)]
-        public DateTime Date { get; set; } = DateTime.Now;
+        public DateTime Date { get; set; } = DateTime.UtcNow;
 
         [StringLength(2000)]
         [Display(Name = "Observaciones Formulario")]
@@ -116,7 +116,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int? CreatedById { get; set; }
 
         [Display(Name = "Fecha de Creación")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Modificado Por")]
         public int? ModifiedById { get; set; }

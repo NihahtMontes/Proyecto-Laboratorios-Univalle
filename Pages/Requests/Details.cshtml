@@ -13,11 +13,9 @@
 }
 
 <div class="row">
-    <!-- Main Column: Request Data -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4">
-                <!-- Header -->
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
                         <h4 class="card-title text-dark font-weight-bold">Expediente de Solicitud: #@Model.Request.Id</h4>
@@ -28,7 +26,6 @@
                     </div>
                 </div>
 
-                <!-- Equipment Reference Block (Full Width) -->
                 <div class="row mb-4">
                     <div class="col-12">
                         <label class="small text-muted font-weight-bold uppercase mb-1">Equipamiento Afectado</label>
@@ -37,7 +34,7 @@
                                 <i class="fas fa-tools mr-2 text-info"></i> @Model.Request.Equipment?.Name 
                                 <span class="text-muted font-weight-normal small ml-1">(@(Model.Request.EquipmentUnit?.InventoryNumber ?? "-"))</span>
                             </span>
-                            <span class="badge badge-pill badge-info px-3">@Model.Request.Equipment?.EquipmentType?.Name</span>
+                            <span class="badge badge-pill badge-info px-3">@Model.Request.Equipment?.Category</span>
                         </div>
                     </div>
                 </div>
@@ -54,7 +51,6 @@
                 </h5>
 
                 <div class="row">
-                    <!-- Column: Description / Priority / Time -->
                     <div class="col-12">
                         <div class="mb-4">
                             <label class="control-label font-weight-bold small uppercase text-muted mb-1">Contenido de la Solicitud / Justificación</label>
@@ -101,7 +97,6 @@
                     </div>
                 </div>
 
-                <!-- COST ITEMS TABLE (Only for Purchasing) -->
                 @if (Model.Request.Type == RequestType.Purchasing && Model.Request.CostDetails.Any())
                 {
                     <div class="mt-4 mb-4">
@@ -145,7 +140,6 @@
                     </div>
                 }
 
-                <!-- Resolution Block -->
                 @if (Model.Request.Status != RequestStatus.Pending)
                 {
                     <div class="mt-5 border-top pt-4">
@@ -190,9 +184,7 @@
         </div>
     </div>
 
-    <!-- Side Column: Control and Actions -->
     <div class="col-lg-4">
-        <!-- Status Card -->
         <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
             <div class="card-body">
                 <h5 class="card-title text-white font-weight-bold small uppercase"><i class="fas fa-shield-alt mr-2 text-info"></i> Estado de Trámite</h5>
@@ -213,7 +205,6 @@
             </div>
         </div>
 
-        <!-- Audit Log Card -->
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
                 <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Bitácora de Auditoría</h5>
@@ -236,7 +227,6 @@
             </div>
         </div>
 
-        <!-- Action Buttons -->
         <div class="form-actions mt-4">
             @if (Model.Request.Status == RequestStatus.Pending || User.IsInRole("Administrator") || User.IsInRole("SuperAdmin"))
             {

@@ -1,0 +1,111 @@
+﻿@page
+@model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.IndexModel
+@{
+    ViewData["Title"] = "Solicitudes de Adquisición";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de Adquisición</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Gestión de compra de nuevos activos e insumos.</h6>
+                    </div>
+                    <div class="ml-auto mt-3">
+                        <a asp-page="Create" class="btn btn-success btn-rounded shadow-sm text-white px-4 font-weight-bold">
+                            <i class="fas fa-cart-plus mr-1"></i> Añadir nueva Adquisición
+                        </a>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="thead-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Ítem Solicitado</th>
+                                <th>Justificación</th>
+                                <th class="text-center">Prioridad</th>
+                                <th class="text-center">Estado</th>
+                                <th>Solicitante</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+
+                            @{
+                                // Aseguramos que solo vengan las de tipo Purchasing
+                                var adminRequests = Model.Requests?.Where(r => r.Type == Proyecto_Laboratorios_Univalle.Models.Enums.RequestType.Purchasing) ?? Enumerable.Empty<Proyecto_Laboratorios_Univalle.Models.Request>();
+                            }
+
+                            @if (!adminRequests.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted font-weight-bold">
+                                        <i class="fas fa-shopping-basket fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron solicitudes de adquisición registradas.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var item in adminRequests)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="m-r-10">
+                                                    <span class="btn btn-circle btn-light-success text-success"><i class="fas fa-shopping-cart"></i></span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="m-b-0 font-weight-bold text-dark">@(item.Equipment?.Name ?? "Ítem de Adquisición")</h6>
+                                                    <small class="text-muted">Ref: #@item.Id</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="text-dark text-truncate" style="max-width: 250px;">@item.Description</div>
+                                            <small class="text-muted italic">@item.CreatedDate.ToString("dd/MM/yyyy")</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge badge-pill badge-info px-3 py-1">@item.Priority</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge badge-pill badge-warning px-3 py-1">@item.Status</span>
+                                        </td>
+                                        <td>
+                                            <div class="font-weight-bold text-dark">@(item.RequestedBy?.FullName ?? "Usuario externo")</div>
+                                        </td>
+                                        <td class="text-center">
+                                            @* Apuntamos a los detalles de la solicitud general *@
+                                            <a asp-page="/Requests/Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded" title="Ver detalle de compra">
+                                                <i class="fas fa-search-plus"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .v-middle td {
+            vertical-align: middle !important;
+        }
+
+        .opacity-2 {
+            opacity: 0.2;
+        }
+
+        .italic {
+            font-style: italic;
+        }
+    </style>
+}

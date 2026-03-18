@@ -77,7 +77,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Loans
                 EstimatedReturnDate = loan.EstimatedReturnDate,
                 DepartureObservations = loan.DepartureObservations,
                 IsReturned = loan.Status == LoanStatus.Returned,
-                ActualReturnDate = loan.ActualReturnDate ?? DateTime.Now,
+                ActualReturnDate = loan.ActualReturnDate ?? DateTime.UtcNow,
                 ReturnObservations = loan.ReturnObservations
             };
 
@@ -106,7 +106,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Loans
             if (Input.IsReturned && loan.Status != LoanStatus.Returned)
             {
                 loan.Status = LoanStatus.Returned;
-                loan.ActualReturnDate = Input.ActualReturnDate ?? DateTime.Now;
+                loan.ActualReturnDate = Input.ActualReturnDate ?? DateTime.UtcNow;
                 loan.ReturnObservations = Input.ReturnObservations;
 
                 // Set Unit back to Operational
@@ -129,7 +129,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Loans
                     _context.EquipmentUnits.Update(loan.EquipmentUnit);
                 }
             }
-            else if (loan.Status == LoanStatus.Active && loan.EstimatedReturnDate < DateTime.Now)
+            else if (loan.Status == LoanStatus.Active && loan.EstimatedReturnDate < DateTime.UtcNow)
             {
                  // Auto update to Overdue if not returned and past date
                  // logic handled in Index mostly, but good to keep consistency if saved

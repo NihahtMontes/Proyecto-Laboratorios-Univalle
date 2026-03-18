@@ -48,6 +48,24 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Pending;
 
         // ========================================
+        // PROGRESS TRACKING (L-48 Checkboxes)
+        // ========================================
+        [Display(Name = "% de Avance")]
+        public int CompletionPercentage { get; set; } = 0;
+
+        [Display(Name = "Limpieza y Desinfección")]
+        public bool Step1_Cleaning { get; set; } = false;
+
+        [Display(Name = "Calibración de Sistema")]
+        public bool Step2_Calibration { get; set; } = false;
+
+        [Display(Name = "Pruebas de Esfuerzo/Carga")]
+        public bool Step3_Testing { get; set; } = false;
+
+        [Display(Name = "Revisión Final de Seguridad")]
+        public bool Step4_FinalReview { get; set; } = false;
+
+        // ========================================
         // COSTS
         // ========================================
         [Column(TypeName = "decimal(18,2)")]
@@ -83,7 +101,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int? CreatedById { get; set; }
 
         [Display(Name = "Fecha de Creación")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Modificado Por")]
         public int? ModifiedById { get; set; }

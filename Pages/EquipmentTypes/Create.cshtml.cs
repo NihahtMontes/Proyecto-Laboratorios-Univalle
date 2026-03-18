@@ -74,7 +74,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentTypes
                 Description = Input.Description?.Clean(),
                 RequiresCalibration = Input.RequiresCalibration,
                 MaintenanceFrequencyMonths = Input.MaintenanceFrequencyMonths,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             var currentUser = await _userManager.GetUserAsync(User);

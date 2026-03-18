@@ -2,10 +2,7 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
-
-
 <div class="row">
-    <!-- Main Column: Request Management -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
@@ -24,7 +21,6 @@
                     <input type="hidden" asp-for="Input.Id" />
                     <input type="hidden" asp-for="Input.Type" />
 
-                    <!-- Reference Block -->
                     <div class="row mb-4">
                         <div class="col-12">
                             <label class="small text-muted font-weight-bold uppercase mb-1">Equipamiento Afectado</label>
@@ -33,7 +29,7 @@
                                     <i class="fas fa-tools mr-2 text-info"></i> @Model.Request.Equipment?.Name 
                                     <span class="text-muted font-weight-normal small ml-1">(@(Model.Request.EquipmentUnit?.InventoryNumber ?? "-"))</span>
                                 </span>
-                                <span class="badge badge-pill badge-info px-3">@Model.Request.Equipment?.EquipmentType?.Name</span>
+                                <span class="badge badge-pill badge-info px-3">@Model.Request.Equipment?.Category</span>
                             </div>
                         </div>
                     </div>
@@ -55,7 +51,6 @@
                         <span asp-validation-for="Input.Description" class="text-danger small"></span>
                     </div>
 
-                    <!-- Type Specific Fields -->
                     @if (Model.Input.Type == RequestType.Technical)
                     {
                         <div class="form-group mb-4">
@@ -89,8 +84,7 @@
                         </div>
                     </div>
 
-                     <!-- Cost Items Table (Purchasing Only) -->
-                    @if (Model.Input.Type == RequestType.Purchasing)
+                     @if (Model.Input.Type == RequestType.Purchasing)
                     {
                         <div id="cost-table-section" class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -112,8 +106,7 @@
                                         </tr>
                                     </thead>
                                     <tbody id="itemsBody">
-                                        <!-- Dynamically filled -->
-                                    </tbody>
+                                        </tbody>
                                     <tfoot class="bg-light font-weight-bold">
                                         <tr>
                                             <td colspan="2" class="text-right">Total Estimado:</td>
@@ -165,7 +158,6 @@
         </div>
     </div>
 
-    <!-- Side Column: Traceability -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
             <div class="card-body">
@@ -214,10 +206,8 @@
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
-        // Global variables for Items management
         let itemCount = 0;
 
-        // Functions for Items Table (Purchasing)
         function addItem(concept = '', quantity = 1, price = 0, unit = 'Unidad', category = 'SparePart') {
             const index = itemCount++;
             const row = `
@@ -255,7 +245,7 @@
             let total = 0;
             $('#itemsBody tr').each(function() {
                 const qty = parseFloat($(this).find('.qty-input').val()) || 0;
-                const price = $(this).find('.price-input').val().replace(',', '.'); // Fix locale issues simply
+                const price = $(this).find('.price-input').val().replace(',', '.'); 
                 const pVal = parseFloat(price) || 0;
                 total += qty * pVal;
             });
@@ -263,7 +253,6 @@
         }
 
         $(function() {
-            // Initialize existing items if any (Server-side rendering to JS)
             @if (Model.Input.Type == RequestType.Purchasing && Model.Input.Items != null)
             {
                 foreach (var item in Model.Input.Items)
@@ -274,7 +263,6 @@
                 }
             }
             
-            // Visual control for "Rejected" status
             $('#Input_Status').on('change', function() {
                 if ($(this).val() == '@((int)RequestStatus.Rejected)') {
                     $('#rejectionSection').slideDown();
@@ -285,4 +273,17 @@
             });
         });
     </script>
+}
+
+@section Styles {
+    <style>
+        .bg-light-success { background-color: rgba(40, 167, 69, 0.05); }
+        .bg-light-danger { background-color: rgba(220, 53, 69, 0.05); }
+        .bg-light-info { background-color: rgba(0, 192, 239, 0.05); }
+        .bg-light-warning { background-color: rgba(255, 193, 7, 0.05); }
+        .border-left-3 { border-left-width: 4px !important; }
+        .italic { font-style: italic; }
+        .opacity-5 { opacity: 0.15; }
+        .audit-log label { letter-spacing: 0.5px; }
+    </style>
 }

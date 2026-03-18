@@ -17,10 +17,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int EquipmentId { get; set; }
 
         // ========================================
-        // LOCATION & ORIGIN (Moved from Definition)
+        // LOCATION & ORIGIN (Verificación por Laboratorio)
         // ========================================
+        [Required(ErrorMessage = "El laboratorio es obligatorio para la verificación")]
         [Display(Name = "Laboratorio Asignado")]
-        public int? LaboratoryId { get; set; }
+        public int LaboratoryId { get; set; } // Cambio: Ahora es obligatorio (sin ?)
+
 
         // ========================================
         // ASSET IDENTIFICATION (Unit Specific)
@@ -75,7 +77,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // AUDIT
         // ========================================
         public int? CreatedById { get; set; }
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public int? ModifiedById { get; set; }
         public DateTime? LastModifiedDate { get; set; }
 
@@ -93,7 +95,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }
-        
+
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
 
@@ -106,13 +108,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         // Calculated Properties
         [NotMapped]
-        public int? YearsInOperation 
+        public int? YearsInOperation
         {
             get
             {
                 if (!ManufacturingDate.HasValue) return null;
-                var years = DateTime.Now.Year - ManufacturingDate.Value.Year;
-                if (DateTime.Now < ManufacturingDate.Value.AddYears(years)) years--;
+                var years = DateTime.UtcNow.Year - ManufacturingDate.Value.Year;
+                if (DateTime.UtcNow < ManufacturingDate.Value.AddYears(years)) years--;
                 return years;
             }
         }

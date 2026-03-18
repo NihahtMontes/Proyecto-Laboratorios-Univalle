@@ -39,8 +39,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 .Select(r => r.Type)
                 .FirstOrDefaultAsync();
 
-            return type == RequestType.Purchasing 
-                ? await GenerateSolicitudAdquisicionExcel(requestId) 
+            return type == RequestType.Purchasing
+                ? await GenerateSolicitudAdquisicionExcel(requestId)
                 : await GenerateSolicitudMantenimientoExcel(requestId);
         }
 
@@ -76,17 +76,17 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 worksheet.Cells["F11"].Value = null; // Fecha - Mes
                 worksheet.Cells["H11"].Value = null; // Fecha - Año
                 worksheet.Cells["C14"].Value = null; // Justificación/Requerimiento
-                
+
                 // Limpiar el cuerpo de la tabla (Filas 19 a 37, Columnas A a Z - CORREGIDO)
                 // Des-fusionamos primero para evitar errores con celdas combinadas largas como E35:U36
                 worksheet.Cells["A19:Z37"].Merge = false;
-                worksheet.Cells["A19:Z37"].Value = null; 
+                worksheet.Cells["A19:Z37"].Value = null;
                 worksheet.Cells["A19:Z37"].Style.WrapText = true;
-                
+
                 // Limpiar fila de totales y área de firmas (Fila 38 a 55, Columnas A a Z - CORREGIDO)
                 // Des-fusionamos un rango mucho más amplio horizontalmente para evitar errores con celdas combinadas largas
                 // Esto soluciona errores como: "Can't delete/overwrite merged cells... P40:U40"
-                worksheet.Cells["A38:Z55"].Merge = false; 
+                worksheet.Cells["A38:Z55"].Merge = false;
                 worksheet.Cells["A38:Z55"].Value = null;
 
                 // ===============================================
@@ -115,7 +115,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 worksheet.Cells["Q8"].Style.Font.Size = 14;
 
                 // FECHA DESGLOSADA (Bloques 10-11 - CORREGIDO a Fecha Actual)
-                var fechaActual = DateTime.Now;
+                var fechaActual = DateTime.UtcNow;
 
                 // Día (D10:E11)
                 var rangeDia = worksheet.Cells["D10:E11"];
@@ -148,10 +148,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 int startRow = 19;
                 var items = request.CostDetails.ToList();
                 decimal granTotal = 0;
-                
+
                 // Limpiar rango de items de forma segura
                 worksheet.Cells["A19:Z37"].Merge = false;
-                worksheet.Cells["A19:Z37"].Value = null; 
+                worksheet.Cells["A19:Z37"].Value = null;
                 worksheet.Cells["A19:Z37"].Style.WrapText = true;
 
                 // Etiqueta OBSERVACIONES (A35:D35) - Según imagen
@@ -170,7 +170,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     int currentRow = startRow + i;
 
                     // Protección contra desbordamiento hacia el footer
-                    if (currentRow >= 38) break; 
+                    if (currentRow >= 38) break;
 
                     var subtotal = item.Quantity * item.UnitPrice;
                     granTotal += subtotal;
@@ -192,7 +192,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     worksheet.Cells[currentRow, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left; // Alineado a la izquierda
                     worksheet.Cells[currentRow, 5].Style.Font.Italic = true; // Estilo cursiva como se ve en la imagen
                     worksheet.Cells[currentRow, 5].Style.Font.Bold = true;   // Negrita como se ve en la imagen
-                    
+
                     // Precio Unitario -> Fusionar N, O, P (Col 14-16)
                     var rangePU = worksheet.Cells[currentRow, 14, currentRow, 16];
                     rangePU.Merge = true;
@@ -200,7 +200,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     rangePU.Style.Numberformat.Format = "#,##0.00";
                     rangePU.Style.Font.Italic = true; // Cursiva como en la imagen
                     rangePU.Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                    
+
                     // Valor Total -> Fusionar Q, R, S, T, U (Col 17-21)
                     var rangeSubtotal = worksheet.Cells[currentRow, 17, currentRow, 21];
                     rangeSubtotal.Merge = true;
@@ -224,22 +224,22 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // ===============================================
                 // TOTALES (Fila 38 y 39)
                 // ===============================================
-                int rowTotal = 38; 
-                
+                int rowTotal = 38;
+
                 // Etiqueta "Son:" (En A38)
                 worksheet.Cells[rowTotal, 1].Value = "Son:";
                 worksheet.Cells[rowTotal, 1].Style.Font.Bold = true;
 
                 // Monto en Letras -> Fusionar C38:O39 (DOS FILAS)
                 var montoLetras = ConvertirNumeroALetras(granTotal);
-                
+
                 // Asegurar que no esté fusionado antes de fusionar
                 var rangeLetras = worksheet.Cells[38, 3, 39, 15]; // C38:O39
-                rangeLetras.Merge = false; 
+                rangeLetras.Merge = false;
                 rangeLetras.Merge = true;
-                
+
                 rangeLetras.Value = montoLetras;
-                rangeLetras.Style.Font.Bold = true; 
+                rangeLetras.Style.Font.Bold = true;
                 rangeLetras.Style.Font.Italic = true; // Cursiva como en la imagen
                 rangeLetras.Style.Font.Size = 14;   // Tamaño más grande
                 rangeLetras.Style.WrapText = true;
@@ -251,7 +251,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 rangeGranTotal.Merge = true;
                 rangeGranTotal.Value = granTotal;
                 rangeGranTotal.Style.Font.Bold = true;
-                rangeGranTotal.Style.Font.Size = 14; 
+                rangeGranTotal.Style.Font.Size = 14;
                 rangeGranTotal.Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
                 rangeGranTotal.Style.Numberformat.Format = "#,##0.00";
 
@@ -266,7 +266,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // ===============================================
                 // RECONSTRUCCIÓN DE FIRMAS Y PIE DE PÁGINA (Filas 40-48)
                 // ===============================================
-                
+
                 // 1. ÁREAS DE FIRMAS (Fila 41 a 44) - AJUSTADO A 5 BLOQUES SEGÚN IMÁGENES
                 // Bloque 1 (A-D)
                 var box1 = worksheet.Cells["A41:D44"];
@@ -317,7 +317,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 worksheet.Cells["M45"].Value = "P A G I N A";
                 worksheet.Cells["M45"].Style.Font.Bold = true;
                 worksheet.Cells["M45"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                
+
                 worksheet.Cells["S45:T45"].Merge = true;
                 worksheet.Cells["S45"].Value = "DE";
                 worksheet.Cells["S45"].Style.Font.Bold = true;
@@ -349,10 +349,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
         private string ConvertirNumeroALetras(decimal numero)
         {
             if (numero == 0) return "CERO ( 00/100 bolivianos )";
-            
+
             long entero = (long)numero;
             int centavos = (int)Math.Round((numero - entero) * 100);
-            
+
             string texto = ConvertirEnteroATexto(entero);
             return $"{texto.Trim()} ( {centavos:00}/100 bolivianos )";
         }
@@ -360,49 +360,49 @@ namespace Proyecto_Laboratorios_Univalle.Services
         private string ConvertirEnteroATexto(long numero)
         {
             if (numero == 0) return "";
-            
-            string[] unidades = {"", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"};
-            string[] decenas = {"", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"};
-            string[] especiales = {"DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"};
-            string[] centenas = {"", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"};
-            
+
+            string[] unidades = { "", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE" };
+            string[] decenas = { "", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA" };
+            string[] especiales = { "DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE" };
+            string[] centenas = { "", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS" };
+
             if (numero >= 1000000)
             {
                 long millones = numero / 1000000;
                 string textoMillones = millones == 1 ? "UN MILLON " : ConvertirEnteroATexto(millones) + "MILLONES ";
                 return textoMillones + ConvertirEnteroATexto(numero % 1000000);
             }
-            
+
             if (numero >= 1000)
             {
                 long miles = numero / 1000;
                 string textoMiles = miles == 1 ? "MIL " : ConvertirEnteroATexto(miles) + "MIL ";
                 return textoMiles + ConvertirEnteroATexto(numero % 1000);
             }
-            
+
             if (numero >= 100)
             {
                 if (numero == 100) return "CIEN ";
                 return centenas[numero / 100] + " " + ConvertirEnteroATexto(numero % 100);
             }
-            
+
             if (numero >= 20)
             {
                 long dec = numero / 10;
                 long uni = numero % 10;
                 return decenas[dec] + (uni > 0 ? " Y " + unidades[uni] : "") + " ";
             }
-            
+
             if (numero >= 10)
             {
                 return especiales[numero - 10] + " ";
             }
-            
+
             if (numero > 0)
             {
                 return unidades[numero] + " ";
             }
-            
+
             return "";
         }
 
@@ -418,7 +418,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     .Include(r => r.Equipment)
                         .ThenInclude(e => e.Country)
                     .Include(r => r.RequestedBy)
-                    .Include(r => r.EquipmentUnit) 
+                    .Include(r => r.EquipmentUnit)
                         .ThenInclude(u => u.Laboratory)
                             .ThenInclude(l => l.Faculty)
                     .FirstOrDefaultAsync(r => r.Id == requestId);
@@ -431,7 +431,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 // 2. CARGAR PLANTILLA
                 var templatePath = Path.Combine(_env.WebRootPath, "templates", "solicitud_mantenimiento_template.xlsx");
-                
+
                 if (!File.Exists(templatePath))
                 {
                     throw new FileNotFoundException("Plantilla de Excel no encontrada.");
@@ -485,39 +485,39 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // SECCIÓN: EQUIPO
                 // Equipo (celda B11 - merged B11:D11)
                 worksheet.Cells["B11"].Value = request.Equipment?.Name?.ToUpper() ?? "";
-                
+
                 // Laboratorio (celda B12)
                 var labName = (request.EquipmentUnit?.Laboratory?.Name ?? request.Laboratory?.Name ?? "").ToUpper();
                 worksheet.Cells["B12"].Value = labName;
                 worksheet.Cells["B12"].Style.WrapText = true;
                 AjustarAlturaFila(worksheet, 12, labName.ToString());
-                
+
                 // Fecha (celda D12)
                 worksheet.Cells["D12"].Value = request.CreatedDate.ToString("M/d/yyyy");
                 worksheet.Cells["D12"].Style.Font.Bold = true;
-                
+
                 // Responsable (celda B13) - BORRADO por solicitud de usuario
                 worksheet.Cells["B13"].Value = "";
 
                 // SECCIÓN: MARCA, MODELO, SERIE
                 // Marca (celda B17)
                 worksheet.Cells["B17"].Value = request.Equipment?.Brand ?? "";
-                
+
                 // Serie (celda D17)
                 worksheet.Cells["D17"].Value = request.EquipmentUnit?.SerialNumber ?? "";
-                
+
                 // Modelo (celda B18)
                 worksheet.Cells["B18"].Value = request.Equipment?.Model ?? "";
-                
+
                 // Procedencia (celda D18) format: Ciudad - País
                 var ciudad = request.Equipment?.City?.Name ?? "";
                 var pais = request.Equipment?.Country?.Name ?? "";
-                var procedencia = string.IsNullOrEmpty(ciudad) && string.IsNullOrEmpty(pais) 
-                                  ? "" 
-                                  : $"{ciudad} - {pais}".Trim(new char[]{' ', '-'});
-                
+                var procedencia = string.IsNullOrEmpty(ciudad) && string.IsNullOrEmpty(pais)
+                                  ? ""
+                                  : $"{ciudad} - {pais}".Trim(new char[] { ' ', '-' });
+
                 worksheet.Cells["D18"].Value = procedencia;
-                
+
                 // # de Inventario (celda B19)
                 worksheet.Cells["B19"].Value = request.EquipmentUnit?.InventoryNumber ?? "";
 
@@ -542,7 +542,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // PERIODO EN QUE FUE UTILIZADO (Fila 32 y 33)
                 // Ponemos en negrita el título de la sección
                 worksheet.Cells["A32"].Style.Font.Bold = true;
-                
+
                 var yearsUsed = request.EquipmentUnit?.YearsInOperation ?? 0;
                 worksheet.Cells["A33"].Value = $"AÑOS: {yearsUsed}";
                 worksheet.Cells["A33"].Style.Font.Bold = true;
@@ -551,6 +551,21 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 var repairTime = request.EstimatedRepairTime ?? "";
                 worksheet.Cells["A35"].Value = $"TIEMPO ESTIMADO DE REPARACIÓN: {repairTime}";
                 worksheet.Cells["A35"].Style.Font.Bold = true;
+
+                // ===============================================
+                // NUEVO: FIRMA DEL ENCARGADO DE LABORATORIO
+                // ===============================================
+                // Se coloca en la fila 50, centrado entre la columna B y D
+                var firmaRange = worksheet.Cells["B50:D50"];
+                firmaRange.Merge = true;
+                firmaRange.Value = "____________________________________";
+                firmaRange.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                var labelFirmaRange = worksheet.Cells["B51:D51"];
+                labelFirmaRange.Merge = true;
+                labelFirmaRange.Value = "Firma Encargado de Laboratorio";
+                labelFirmaRange.Style.Font.Bold = true;
+                labelFirmaRange.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                 // 5. ASEGURAR FORMATO (bordes, fuentes, etc.)
                 AplicarEstilosACeldas(worksheet);
@@ -583,7 +598,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
         {
             // Aplicar bordes a celdas de datos
             var celdasDatos = new[] { "B11", "B12", "D12", "B13", "B17", "D17", "B18", "D18", "B19" };
-            
+
             foreach (var celda in celdasDatos)
             {
                 var cell = worksheet.Cells[celda];

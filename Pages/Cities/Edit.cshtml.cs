@@ -78,7 +78,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
             cityToUpdate.CountryId = City.CountryId;
             cityToUpdate.Region = City.Region?.Clean();
             cityToUpdate.Status = City.Status;
-            cityToUpdate.LastModifiedDate = DateTime.Now;
+            cityToUpdate.LastModifiedDate = DateTime.UtcNow;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)

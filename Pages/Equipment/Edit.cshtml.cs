@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -18,7 +17,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
-
         private readonly IWebHostEnvironment _environment;
 
         public EditModel(ApplicationDbContext context, UserManager<User> userManager, IWebHostEnvironment environment)
@@ -39,10 +37,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             [Display(Name = "Tipo de Recurso")]
             public EquipmentCategory Category { get; set; }
 
-            [Display(Name = "Tipo de Equipo")]
-            public int? EquipmentTypeId { get; set; }
+            // AÑADIDO: Soporte para el Enum de material/utensilio
+            [Display(Name = "Tipo de Material")]
+            public UtensilType UtensilType { get; set; }
 
-
+            // ELIMINADO: EquipmentTypeId ya no se utiliza
 
             [Display(Name = "Imagen del Equipo")]
             public IFormFile? ImageUpload { get; set; }
@@ -81,7 +80,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 .IgnoreQueryFilters()
                 .Include(e => e.CreatedBy)
                 .Include(e => e.ModifiedBy)
-                .Include(e => e.Units) 
+                .Include(e => e.Units)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (equipment == null) return NotFound();
@@ -92,7 +91,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             {
                 Id = equipment.Id,
                 Category = equipment.Category,
-                EquipmentTypeId = equipment.EquipmentTypeId,
+                UtensilType = equipment.UtensilType, // Carga el valor actual del Enum
 
                 ExistingImageUrl = equipment.ImageUrl,
                 CountryId = equipment.CountryId,
@@ -129,7 +128,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             var equipment = await _context.Equipments
                 .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(e => e.Id == Input.Id); 
+                .FirstOrDefaultAsync(e => e.Id == Input.Id);
 
             if (equipment == null) return NotFound();
 
@@ -138,21 +137,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             {
                 string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "equipment");
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-                
+
                 string uniqueFileName = Guid.NewGuid().ToString() + "_" + Input.ImageUpload.FileName;
                 string filePath = Path.Combine(uploadsFolder, uniqueFileName);
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
                     await Input.ImageUpload.CopyToAsync(fileStream);
                 }
-                
+
                 equipment.ImageUrl = uniqueFileName;
             }
 
-            // Update Fields
+            // Update Fields (Manteniendo tu lógica de .Clean())
             equipment.Name = Input.Name.Clean();
             equipment.Category = Input.Category;
-            equipment.EquipmentTypeId = Input.EquipmentTypeId;
+            equipment.UtensilType = Input.UtensilType; // Actualizamos el Enum
 
             equipment.CountryId = Input.CountryId;
             equipment.CityId = Input.CityId;
@@ -160,7 +159,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             equipment.Model = Input.Model?.Clean();
             equipment.UsefulLifeYears = Input.UsefulLifeYears;
             equipment.Description = Input.Description?.Clean();
-            equipment.LastModifiedDate = DateTime.Now;
+            equipment.LastModifiedDate = DateTime.UtcNow;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)
@@ -186,8 +185,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
         private void LoadLists()
         {
-            ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes.OrderBy(et => et.Name), "Id", "Name", Input.EquipmentTypeId);
-            
+            // ELIMINADA: La carga de EquipmentTypes (ya no es necesaria)
+
             var countries = _context.Countries
                 .Where(c => c.Status == GeneralStatus.Activo)
                 .OrderBy(c => c.Name)

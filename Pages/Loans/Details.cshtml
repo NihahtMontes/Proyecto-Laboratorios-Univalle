@@ -55,7 +55,7 @@
                     <div class="col-md-6 mb-4">
                         <label class="control-label font-weight-bold small uppercase text-muted mb-1">Devolución Estimada</label>
                         @{
-                            var overdue = Model.Loan.Status == LoanStatus.Active && Model.Loan.EstimatedReturnDate < DateTime.Now;
+                            var overdue = Model.Loan.Status == LoanStatus.Active && Model.Loan.EstimatedReturnDate < DateTime.UtcNow;
                             var estClass = overdue ? "border-danger text-danger bg-light-danger" : "bg-white border text-dark";
                         }
                         <div class="p-2 px-3 rounded font-weight-bold @estClass">

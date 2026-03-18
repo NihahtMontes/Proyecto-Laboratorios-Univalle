@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 {
@@ -19,18 +20,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         }
 
         public IList<Proyecto_Laboratorios_Univalle.Models.Equipment> Equipment { get; set; } = default!;
-        public IList<EquipmentType> EquipmentTypes { get; set; } = default!;
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
 
         [BindProperty(SupportsGet = true)]
-        public int? TypeId { get; set; }
+        public int? SelectedLaboratoryId { get; set; }
+
+        public SelectList LaboratoriesList { get; set; } = default!;
+
+        [BindProperty(SupportsGet = true)]
+        public EquipmentCategory? SelectedCategory { get; set; }
 
         public async Task OnGetAsync()
         {
             var equipmentQuery = _context.Equipments
-                .Include(e => e.EquipmentType)
                 .Include(e => e.City)
                 .Include(e => e.Country)
                 .Include(e => e.Units!)
@@ -38,27 +42,36 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                         .ThenInclude(l => l.Faculty)
                 .AsQueryable();
 
+            // A) CARGAR LA LISTA DE LABORATORIOS PARA EL DESPLEGABLE
+            var labs = await _context.Laboratories
+                .Where(l => l.Status == GeneralStatus.Activo)
+                .OrderBy(l => l.Name)
+                .ToListAsync();
+            LaboratoriesList = new SelectList(labs, "Id", "Name");
+
+            // Lógica de Búsqueda 
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                equipmentQuery = equipmentQuery.Where(e => e.Name.ToLower().Contains(term) || 
-                                                         e.Units!.Any(u => u.InventoryNumber.Contains(term) || (u.Career != null && u.Career.Name.ToLower().Contains(term))) || 
-                                                         (e.Brand != null && e.Brand.ToLower().Contains(term)));
+                equipmentQuery = equipmentQuery.Where(e => e.Name.ToLower().Contains(term) ||
+                                                           e.Units!.Any(u => u.InventoryNumber.Contains(term) || (u.Career != null && u.Career.Name.ToLower().Contains(term))) ||
+                                                           (e.Brand != null && e.Brand.ToLower().Contains(term)));
             }
 
-            if (TypeId.HasValue)
+            // Filtro por Categoría (Enum)
+            if (SelectedCategory.HasValue)
             {
-                equipmentQuery = equipmentQuery.Where(e => e.EquipmentTypeId == TypeId.Value);
+                equipmentQuery = equipmentQuery.Where(e => e.Category == SelectedCategory.Value);
             }
 
+            // B) APLICAR EL FILTRO POR AMBIENTE (LABORATORIO)
+            if (SelectedLaboratoryId.HasValue)
+            {
+                equipmentQuery = equipmentQuery.Where(e => e.Units!.Any(u => u.LaboratoryId == SelectedLaboratoryId.Value));
+            }
+
+            // C) ORDENAR ALFABÉTICAMENTE POR NOMBRE
             Equipment = await equipmentQuery.OrderBy(e => e.Name).ToListAsync();
-
-            ViewData["TypeId"] = new SelectList(await _context.EquipmentTypes.OrderBy(t => t.Name).ToListAsync(), "Id", "Name", TypeId);
-
-            EquipmentTypes = await _context.EquipmentTypes
-                .Include(Et => Et.CreatedBy)
-                .OrderBy(t => t.Name)
-                .ToListAsync();
         }
     }
 }

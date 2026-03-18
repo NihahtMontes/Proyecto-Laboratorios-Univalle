@@ -23,7 +23,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Required]
         [Display(Name = "Fecha de Inicio")]
         [DataType(DataType.DateTime)]
-        public DateTime StartDate { get; set; } = DateTime.Now;
+        public DateTime StartDate { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Fecha de Fin")]
         [DataType(DataType.DateTime)]
@@ -40,7 +40,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int? CreatedById { get; set; }
 
         [Display(Name = "Fecha de Registro")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Modificado Por")]
         public int? ModifiedById { get; set; }
@@ -70,7 +70,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         {
             get
             {
-                var finalDate = EndDate ?? DateTime.Now;
+                var finalDate = EndDate ?? DateTime.UtcNow;
                 return (int)(finalDate - StartDate).TotalDays;
             }
         }

@@ -6,6 +6,7 @@ using Proyecto_Laboratorios_Univalle.Services;
 using Proyecto_Laboratorios_Univalle.Services.Reporting;
 using QuestPDF.Infrastructure;
 using OfficeOpenXml;
+using Microsoft.EntityFrameworkCore;
 
 QuestPDF.Settings.License = LicenseType.Community;
 
@@ -16,8 +17,9 @@ Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIB
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+// Configuración de la base de datos SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString, sqlOptions => sqlOptions.EnableRetryOnFailure()));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -68,6 +70,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IVerificationReportService, VerificationReportService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<DatabaseErrorHandler>();
+builder.Services.AddScoped<DataMigrationService>();
 
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 

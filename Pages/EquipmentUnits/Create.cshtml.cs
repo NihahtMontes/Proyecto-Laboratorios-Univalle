@@ -103,7 +103,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             // Validar que el número de inventario sea único
             var existing = await _context.EquipmentUnits
                 .AnyAsync(u => u.InventoryNumber == Input.InventoryNumber && u.CurrentStatus != EquipmentStatus.Deleted);
-            
+
             if (existing)
             {
                 ModelState.AddModelError("Input.InventoryNumber", "Este número de inventario ya está registrado.");
@@ -114,7 +114,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             var unit = new EquipmentUnit
             {
                 EquipmentId = Input.EquipmentId!.Value,
-                LaboratoryId = Input.LaboratoryId,
+                // CORRECCIÓN: Se agrega .Value para convertir de int? a int, ya validado por [Required]
+                LaboratoryId = Input.LaboratoryId!.Value,
                 CareerId = Input.CareerId,
                 InventoryNumber = Input.InventoryNumber.Clean()!,
                 SerialNumber = Input.SerialNumber?.Clean(),
@@ -134,7 +135,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             {
                 EquipmentUnitId = unit.Id,
                 Status = unit.CurrentStatus,
-                StartDate = DateTime.Now,
+                StartDate = DateTime.UtcNow,
                 Reason = $"Alta inicial en sistema. Condición: {unit.PhysicalCondition}"
             };
             _context.EquipmentStateHistories.Add(initialHistory);
@@ -147,11 +148,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
         private void LoadLists()
         {
             ViewData["EquipmentId"] = new SelectList(_context.Equipments.OrderBy(e => e.Name), "Id", "Name", Input.EquipmentId);
-            
+
             ViewData["FacultyId"] = new SelectList(_context.Faculties
                 .Where(f => f.Status == GeneralStatus.Activo)
                 .OrderBy(f => f.Name), "Id", "Name", Input.FacultyId);
-            
+
             // Si hay una facultad seleccionada (ej. tras un error de validación), cargamos sus laboratorios
             if (Input.FacultyId.HasValue)
             {
@@ -165,7 +166,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             {
                 ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
             }
-            
+
             ViewData["CareerId"] = new SelectList(_context.Careers.OrderBy(c => c.Name), "Id", "Name", Input.CareerId);
         }
     }

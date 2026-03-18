@@ -2,7 +2,7 @@
 @model IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    var now = DateTime.Now;
+    var now = DateTime.UtcNow;
     string greeting = now.Hour < 12 ? "Buenos días" : now.Hour < 18 ? "Buenas tardes" : "Buenas noches";
 }
 

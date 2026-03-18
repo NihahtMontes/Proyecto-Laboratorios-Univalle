@@ -73,7 +73,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             // Perform Soft Delete (Logic Delete for Audit)
             user.Status = GeneralStatus.Eliminado;
-            user.LastModifiedDate = DateTime.Now;
+            user.LastModifiedDate = DateTime.UtcNow;
 
             // Get current user for audit tracking - Use base.User to refer to ClaimsPrincipal
             var currentUser = await _userManager.GetUserAsync(base.User);

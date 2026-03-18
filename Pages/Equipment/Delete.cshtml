@@ -1,20 +1,17 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.DeleteModel
-
-
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 <div class="row justify-content-center align-items-center" style="min-height: 80vh;">
     <div class="col-md-6 col-lg-5 col-xl-4">
         <div class="card shadow-lg border-0 rounded-lg">
             <div class="card-body p-5 text-center">
 
-                <!-- Animated Icon -->
                 <div class="mb-4 d-inline-block position-relative">
                     <div class="icon-circle bg-soft-danger text-danger d-flex align-items-center justify-content-center rounded-circle mx-auto"
                          style="width: 80px; height: 80px;">
                         <i class="fas fa-trash-alt fa-3x"></i>
                     </div>
-                    <!-- Decorative pulse effect -->
                     <div class="position-absolute w-100 h-100 rounded-circle bg-danger opacity-1"
                          style="top:0; left:0; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; z-index: -1;">
                     </div>
@@ -25,7 +22,6 @@
                     Estás a punto de eliminar la definición de catálogo <span class="font-weight-bold text-dark">@Model.Equipment.Name</span>. Esta acción solo es posible si <span class="text-danger font-weight-bold">no existen unidades físicas</span> asociadas.
                 </p>
 
-                <!-- Summary Card -->
                 <div class="card bg-light border-0 mb-4 p-3 text-left shadow-none">
                     <div class="d-flex align-items-start mb-3">
                         <div class="mr-3 mt-1 text-muted">
@@ -34,7 +30,7 @@
                         <div>
                             <small class="text-uppercase text-muted font-weight-bold d-block" style="font-size: 0.7rem;">Definición</small>
                             <h6 class="font-weight-bold text-dark mb-0">@Model.Equipment.Name</h6>
-                            <small class="text-muted font-weight-bold">Cat: @Model.Equipment.EquipmentType?.Name</small>
+                            <small class="text-muted font-weight-bold">Cat: @Model.Equipment.Category</small>
                         </div>
                     </div>
 
@@ -43,9 +39,9 @@
                             <small class="text-uppercase text-muted font-weight-bold d-block" style="font-size: 0.7rem;">Ubicación</small>
                             @{
                                 var locations = Model.Equipment.Units?.Select(u => u.Laboratory?.Name).Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList();
-                                var locationText = (locations != null && locations.Any()) 
-                                    ? (locations.Count == 1 ? locations.First() : "Múltiples Ubicaciones") 
-                                    : "Sin Unidades";
+                                var locationText = (locations != null && locations.Any())
+                                ? (locations.Count == 1 ? locations.First() : "Múltiples Ubicaciones")
+                                : "Sin Unidades";
                             }
                             <span class="text-dark font-weight-bold small"><i class="fas fa-flask mr-1 text-info"></i>@locationText</span>
                         </div>
@@ -56,7 +52,6 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
                 <form method="post" class="d-flex justify-content-center">
                     <input type="hidden" asp-for="Equipment.Id" />
 
@@ -74,12 +69,12 @@
 
 @section Styles {
     <style>
-        .bg-soft-danger { background-color: #ffebee; }
-        .icon-circle { transition: transform 0.3s ease; }
-        .icon-circle:hover { transform: scale(1.1); }
-        .opacity-1 { opacity: 0.15; }
-        .opacity-7 { opacity: 0.7; }
-        .btn-rounded { border-radius: 50px; }
+        .bg-soft-danger {  background-color: #ffebee;  }
+        .icon-circle {transition: transform 0.3s ease;}
+        .icon-circle:hover {transform: scale(1.1); }
+        .opacity-1 {opacity: 0.15;}
+        .opacity-7 {opacity: 0.7;}
+        .btn-rounded {border-radius: 50px;}
 
         @@keyframes ping {
             75%, 100% {

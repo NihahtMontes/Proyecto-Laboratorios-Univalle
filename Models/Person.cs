@@ -33,7 +33,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // AUDIT
         // ========================================
         [Display(Name = "Fecha de Registro")]
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Creado Por")]
         public int? CreatedById { get; set; }

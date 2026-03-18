@@ -85,7 +85,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
                 Name = Input.Name.Clean(),
                 Region = Input.Region?.Clean(),
                 Status = GeneralStatus.Activo,
-                CreatedDate = DateTime.Now
+                CreatedDate = DateTime.UtcNow
             };
 
             var currentUser = await _userManager.GetUserAsync(User);

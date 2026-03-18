@@ -52,7 +52,7 @@
                                         <strong>Base de Datos:</strong> @Model.DatabaseInfo
                                     </li>
                                     <li class="list-group-item">
-                                        <strong>Hora del Servidor:</strong> @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                                        <strong>Hora del Servidor:</strong> @DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
                                     </li>
                                 </ul>
                             </div>

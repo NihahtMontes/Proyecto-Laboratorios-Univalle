@@ -21,8 +21,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var userId = _currentUserService.UserId;
-            var now = DateTime.Now; 
-            
+            var now = DateTime.UtcNow;
+
             foreach (var entry in ChangeTracker.Entries<IAuditable>())
             {
                 if (entry.State == EntityState.Added)
@@ -115,12 +115,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<City>().HasOne(c => c.Country).WithMany(p => p.Cities).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Laboratory>().HasOne(l => l.Faculty).WithMany(f => f.Laboratories).OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Equipment>().HasOne(e => e.EquipmentType).WithMany(t => t.Equipments).OnDelete(DeleteBehavior.Restrict);
+            // CORRECCIÓN: Se eliminó la relación Equipment -> EquipmentType porque ahora se usa Enum Category
             modelBuilder.Entity<Equipment>().HasOne(e => e.Country).WithMany(c => c.Equipments).HasForeignKey(e => e.CountryId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.City).WithMany(c => c.Equipments).HasForeignKey(e => e.CityId).OnDelete(DeleteBehavior.Restrict);
 
             // EquipmentUnit Relationships
-            modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Laboratory).WithMany(l => l.EquipmentUnits).HasForeignKey(u => u.LaboratoryId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Laboratory).WithMany(l => l.EquipmentUnits).HasForeignKey(u => u.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<EquipmentStateHistory>().HasOne(ee => ee.EquipmentUnit).WithMany(e => e.StateHistory).HasForeignKey(ee => ee.EquipmentUnitId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<Maintenance>().HasOne(m => m.EquipmentUnit).WithMany(e => e.Maintenances).OnDelete(DeleteBehavior.Restrict);
@@ -151,9 +151,6 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Person>().ToTable("People");
             modelBuilder.Entity<Intern>().ToTable("Interns");
             modelBuilder.Entity<Extern>().ToTable("Externs");
-
-            // ... other specific audit links if needed, following the pattern
         }
-       
     }
 }

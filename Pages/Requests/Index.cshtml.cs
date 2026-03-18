@@ -36,7 +36,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             var query = _context.Requests
                 .Include(r => r.Equipment)
-                    .ThenInclude(e => e!.EquipmentType)
+                // .ThenInclude(e => e!.EquipmentType) // CORRECCIÓN: Se elimina esta línea porque la relación ya no existe
                 .Include(r => r.EquipmentUnit)
                 .Include(r => r.RequestedBy)
                 .Include(r => r.ApprovedBy)
@@ -48,7 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                query = query.Where(r => 
+                query = query.Where(r =>
                     r.Description.ToLower().Contains(term) ||
                     r.Equipment!.Name.ToLower().Contains(term) ||
                     (r.EquipmentUnit != null && r.EquipmentUnit.InventoryNumber.ToLower().Contains(term)) ||
@@ -84,7 +84,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             try
             {
                 var excelBytes = await _reportService.GenerateSolicitudMantenimientoExcel(id);
-                var fileName = $"Solicitud_Mantenimiento_{id}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+                var fileName = $"Solicitud_Mantenimiento_{id}_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
 
                 return File(
                     excelBytes,

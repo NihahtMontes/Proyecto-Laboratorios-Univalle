@@ -1,16 +1,13 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 <aside class="left-sidebar" data-sidebarbg="skin5">
-    <!-- Sidebar scroll-->
     <div class="scroll-sidebar">
-        <!-- Sidebar navigation-->
         <nav class="sidebar-nav">
             <ul id="sidebarnav">
                 <li class="nav-small-cap">
                     <i class="mdi mdi-dots-horizontal"></i>
                     <span class="hide-menu">Navegación</span>
                 </li>
-                
-                <!-- Dashboard -->
+
                 <li class="sidebar-item">
                     <a class="sidebar-link waves-effect waves-dark sidebar-link" asp-page="/Index" aria-expanded="false">
                         <i class="mdi mdi-view-dashboard"></i>
@@ -23,12 +20,8 @@
                     <span class="hide-menu">Elementos</span>
                 </li>
 
-                <!-- Módulo: Gestión de Activos -->
-
-
                 @* Pendiente poner en equipos tipos de equipo *@
-
-               @*  <li class="sidebar-item">
+                @* <li class="sidebar-item">
                     <a asp-page="/EquipmentTypes/Index" class="sidebar-link">
                         <i class="mdi mdi-settings"></i>
                         <span class="hide-menu"> Tipos de Equipo </span>
@@ -42,40 +35,27 @@
                     </a>
                     <ul aria-expanded="false" class="collapse first-level">
 
-
                         <li class="sidebar-item">
-                            <a class="sidebar-link waves-effect waves-dark sidebar-link" asp-page="/Equipment/Index" aria-expanded="false">
+                            <a asp-page="/Equipment/Index" class="sidebar-link">
                                 <i class="mdi mdi-cube-outline"></i>
-                                <span class="hide-menu">Equipos</span>
+                                <span class="hide-menu">Equipo</span>
                             </a>
                         </li>
-                        
-
 
                         <li class="sidebar-item">
                             <a asp-page="/Verifications/Index" class="sidebar-link">
                                 <i class="mdi mdi-check-circle-outline"></i>
-                                <span class="hide-menu"> Verificaciones </span>
+                                <span class="hide-menu"> Verificaciones (L6) </span>
                             </a>
                         </li>
-
-
-
                     </ul>
                 </li>
-
-              
-
 
                 <li class="nav-small-cap">
                     <i class="mdi mdi-dots-horizontal"></i>
                     <span class="hide-menu">Contenido Técnico</span>
                 </li>
 
-
-                
-
-                <!-- Módulo: Operaciones -->
                 <li class="sidebar-item">
                     <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
                         <i class="mdi mdi-wrench"></i>
@@ -85,30 +65,26 @@
                         <li class="sidebar-item">
                             <a asp-page="/Requests/Index" class="sidebar-link">
                                 <i class="mdi mdi-message-text-outline"></i>
-                                <span class="hide-menu"> Solicitudes </span>
+                                <span class="hide-menu"> Solicitudes de Servicio (L-7) </span>
                             </a>
                         </li>
+
+                        <li class="sidebar-item">
+                            <a asp-page="/Acquisitions/Index" class="sidebar-link">
+                                <i class="mdi mdi-cart-outline"></i>
+                                <span class="hide-menu"> Solicitudes de Adquisición </span>
+                            </a>
+                        </li>
+
                         <li class="sidebar-item">
                             <a asp-page="/Maintenances/Index" class="sidebar-link">
-                                <i class="mdi mdi-playlist-check"></i>
-                                <span class="hide-menu"> Mantenimientos </span>
+                                <i class="mdi mdi-view-quilt"></i>
+                                <span class="hide-menu"> Mantenimiento </span>
                             </a>
-
                         </li>
-
-                        <li class="sidebar-item">
-                            <a asp-page="/Loans/Index" class="sidebar-link">
-                                <i class="mdi mdi-playlist-check"></i>
-                                <span class="hide-menu"> Préstamos </span>
-                            </a>
-
-                        </li>
-                        
-                        
-                    </ul>
+                      </ul>
                 </li>
 
-                <!-- Módulo: Catálogos -->
                 <li class="sidebar-item">
                     <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
                         <i class="mdi mdi-book-open-variant"></i>
@@ -121,25 +97,20 @@
                                 <span class="hide-menu"> Laboratorios </span>
                             </a>
                         </li>
-
                         <li class="sidebar-item">
                             <a asp-page="/Cities/Index" class="sidebar-link">
                                 <i class="mdi mdi-earth"></i>
                                 <span class="hide-menu">Regiones</span>
                             </a>
                         </li>
-                        
                     </ul>
                 </li>
-
-
 
                 <li class="nav-small-cap">
                     <i class="mdi mdi-dots-horizontal"></i>
                     <span class="hide-menu">Personas</span>
                 </li>
 
-                <!-- Módulo: Seguridad -->
                 <li class="sidebar-item">
                     <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
                         <i class="mdi mdi-account-key"></i>
@@ -152,21 +123,15 @@
                                 <span class="hide-menu"> Usuarios </span>
                             </a>
                         </li>
-
                         <li class="sidebar-item">
                             <a asp-page="/Persons/Index" class="sidebar-link">
                                 <i class="mdi mdi-account-multiple"></i>
                                 <span class="hide-menu"> Personas </span>
                             </a>
                         </li>
-
-                        
-
                     </ul>
                 </li>
             </ul>
         </nav>
-        <!-- End Sidebar navigation -->
     </div>
-    <!-- End Sidebar scroll-->
 </aside>

@@ -185,7 +185,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             if (currentUser != null)
             {
                 userToUpdate.ModifiedById = currentUser.Id;
-                userToUpdate.LastModifiedDate = DateTime.Now;
+                userToUpdate.LastModifiedDate = DateTime.UtcNow;
             }
 
             try
