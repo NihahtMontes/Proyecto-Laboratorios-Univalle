@@ -6,353 +6,582 @@
     string greeting = now.Hour < 12 ? "Buenos días" : now.Hour < 18 ? "Buenas tardes" : "Buenas noches";
 }
 
-<div class="container-fluid">
-    
-    <!-- 🌟 HERO SECTION: BIENVENIDA MÁS PROFESIONAL -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-white shadow-sm border-0 rounded-lg overflow-hidden dashboard-hero">
-                <div class="card-body p-4 d-flex align-items-center">
-                    <div class="hero-icon mr-4 d-none d-md-flex">
-                        <i class="fas fa-chart-line fa-3x text-primary opacity-2"></i>
-                    </div>
-                    <div>
-                        <h2 class="font-weight-bold text-dark mb-1">@greeting, @User.Identity?.Name</h2>
-                        <p class="text-muted mb-0">
-                            <span class="badge badge-soft-primary px-3 mr-2">
-                                <i class="far fa-calendar-alt mr-1"></i> @now.ToString("dd 'de' MMMM, yyyy")
-                            </span>
-                            Resumen operativo del Sistema de Gestión de Laboratorios.
-                        </p>
-                    </div>
-                    <div class="ml-auto d-none d-lg-block">
-                        <div class="text-right">
-                            <h4 class="mb-0 font-weight-bold text-primary">@Model.OperationalPercent%</h4>
-                            <small class="text-muted uppercase font-weight-bold" style="letter-spacing: 1px;">Operatividad Total</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ⚡ QUICK ACTIONS: ACCESOS RÁPIDOS ELEGANTES -->
-    <div class="row mb-4">
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <a asp-page="/Equipment/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-info-soft text-info mb-3 mx-auto">
-                        <i class="fas fa-plus"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Nuevo Equipo</h6>
-                    <p class="small text-muted mb-0">Registrar activo técnico</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <a asp-page="/Requests/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-warning-soft text-warning mb-3 mx-auto">
-                        <i class="fas fa-file-signature"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Nueva Solicitud</h6>
-                    <p class="small text-muted mb-0">Reportar falla o daño</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3 mb-sm-0">
-            <a asp-page="/Maintenances/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-success-soft text-success mb-3 mx-auto">
-                        <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Mantenimiento</h6>
-                    <p class="small text-muted mb-0">Programar intervención</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-sm-6">
-            <a asp-page="/Verifications/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-primary-soft text-primary mb-3 mx-auto">
-                        <i class="fas fa-check-double"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Inspección</h6>
-                    <p class="small text-muted mb-0">Verificar estado técnico</p>
-                </div>
-            </a>
-        </div>
-    </div>
-
-    <!-- 📊 INDICADORES PRINCIPALES (KPIs) -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-4 mb-lg-0">
-            <div class="card border-0 shadow-sm card-stats h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-info text-white mr-3">
-                            <i class="fas fa-boxes"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.TotalEquipment</h3>
-                            <small class="text-muted font-weight-bold uppercase">Total Activos</small>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="d-flex justify-content-between mb-1 small">
-                            <span>Estado Operativo</span>
-                            <span class="text-success font-weight-bold">@Model.OperationalPercent%</span>
-                        </div>
-                        <div class="progress" style="height: 5px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: @Model.OperationalPercent%"></div>
-                        </div>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Equipment/Index" class="btn btn-link btn-sm text-info font-weight-bold">Ver Inventario <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6 mb-4 mb-lg-0">
-            <div class="card border-0 shadow-sm card-stats h-100 border-left-warning">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-warning text-white mr-3">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.PendingRequests</h3>
-                            <small class="text-muted font-weight-bold uppercase">Req. Pendientes</small>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <span class="badge badge-soft-warning px-3 py-2 btn-rounded w-100">
-                            Acción Requerida
-                        </span>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Requests/Index" class="btn btn-link btn-sm text-warning font-weight-bold">Gestionar Buzón <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
-            <div class="card border-0 shadow-sm card-stats h-100 border-left-success">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-success text-white mr-3">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.OngoingMaintenances</h3>
-                            <small class="text-muted font-weight-bold uppercase">En Progreso</small>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <span class="badge badge-soft-success px-3 py-2 btn-rounded w-100">
-                            Servicios Activos
-                        </span>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Maintenances/Index" class="btn btn-link btn-sm text-success font-weight-bold">Ver Historial <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-            <div class="card border-0 shadow-sm card-stats h-100 border-left-primary">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-primary text-white mr-3">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.RecentVerificationsCount</h3>
-                            <small class="text-muted font-weight-bold uppercase">Verif. Semanal</small>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <span class="badge badge-soft-primary px-3 py-2 btn-rounded w-100">
-                            Inspecciones OK
-                        </span>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Verifications/Index" class="btn btn-link btn-sm text-primary font-weight-bold">Bitácora Técnica <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 📂 MAIN CONTENT AREA -->
-    <div class="row">
-        <!-- SOLICITUDES RECIENTES -->
-        <div class="col-lg-8 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3 d-flex align-items-center">
-                    <h5 class="card-title font-weight-bold mb-0 text-dark">Actividad Reciente del Buzón</h5>
-                    <div class="ml-auto">
-                        <span class="badge badge-light text-muted">Últimos 6 registros</span>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover table-borderless v-middle">
-                        <thead class="bg-light-soft text-muted small uppercase">
-                            <tr>
-                                <th class="px-4">Equipo / ID</th>
-                                <th>Solicitante</th>
-                                <th>Prioridad</th>
-                                <th class="text-center">Estado</th>
-                                <th class="text-right px-4">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (!Model.LatestRequests.Any())
-                            {
-                                <tr><td colspan="5" class="text-center py-5 text-muted">No hay solicitudes recientes registradas.</td></tr>
-                            }
-                            @foreach (var request in Model.LatestRequests)
-                            {
-                                <tr>
-                                    <td class="px-4">
-                                        <div class="font-weight-bold text-dark">@(request.EquipmentUnit?.Equipment?.Name ?? request.Equipment?.Name)</div>
-                                        <div class="small text-muted">@(request.EquipmentUnit?.InventoryNumber ?? "-")</div>
-                                    </td>
-                                    <td>
-                                        <div class="small text-dark font-weight-bold">@request.RequestedBy?.FullName</div>
-                                        <div class="small text-muted">@request.RequestedBy?.IdentityCard</div>
-                                    </td>
-                                    <td>
-                                        @{
-                                            var pClass = request.Priority == RequestPriority.High ? "badge-soft-danger text-danger" : 
-                                                       request.Priority == RequestPriority.Medium ? "badge-soft-warning text-warning" : "badge-soft-info text-info";
-                                        }
-                                        <span class="badge @pClass px-3 py-1 rounded-pill small">@request.Priority</span>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge badge-dot bg-warning mr-1"></span> @request.Status
-                                    </td>
-                                    <td class="text-right px-4">
-                                        <a href="/Requests/Details/@request.Id" class="btn btn-sm btn-soft-secondary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ALERTAS Y CONTINGENCIAS -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="card-title font-weight-bold mb-0 text-dark">Alertas de Contingencia</h5>
-                </div>
-                <div class="card-body pt-0">
-                    <div class="contingency-list">
-                        @if (!Model.CriticalEquipment.Any())
-                        {
-                            <div class="text-center py-5">
-                                <i class="fas fa-check-double text-success fa-3x mb-3 opacity-2"></i>
-                                <h6 class="text-dark">Sistemas Estables</h6>
-                                <p class="text-muted small">No hay equipos críticos fuera de servicio en este momento.</p>
-                            </div>
-                        }
-                        @foreach (var eq in Model.CriticalEquipment)
-                        {
-                            <div class="contingency-item p-3 mb-3 border rounded-lg bg-light-soft border-danger-soft">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="stats-icon bg-danger-soft text-danger mr-2" style="width: 30px; height: 30px; font-size: 14px;">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                    </div>
-                                    <h6 class="font-weight-bold text-dark mb-0">@eq.Equipment?.Name</h6>
-                                </div>
-                                <div class="small text-muted mb-2">
-                                    <i class="fas fa-map-marker-alt mr-1"></i> Lab: @(eq.Laboratory?.Name ?? "S/L") | Inv: @eq.InventoryNumber
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="badge badge-danger px-2 py-1">CRÍTICO</span>
-                                    <a href="/Equipment/Details/@eq.Id" class="small font-weight-bold text-primary">Ver detalle</a>
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    @if (Model.CriticalEquipment.Any())
-                    {
-                        <div class="alert alert-soft-danger py-2 px-3 small mt-3">
-                            <i class="fas fa-info-circle mr-2"></i> @Model.CriticalEquipment.Count equipos requieren atención urgente.
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 @section Styles {
+    <!-- Tailwind Generated Scoped CSS -->
+    <link rel="stylesheet" href="~/css/tailwind-dashboard.css" asp-append-version="true" />
+    
+    <!-- Evitar conflictos con Bootstrap -->
     <style>
-        :root {
-            --soft-bg-info: #e1f5fe;
-            --soft-bg-success: #e8f5e9;
-            --soft-bg-warning: #fff3e0;
-            --soft-bg-danger: #ffebee;
-            --soft-bg-primary: #e8eaf6;
+        .tailwind-scope {
+            /* Resetting some Bootstrap conflicts if needed inside the dashboard scope */
+            text-align: left;
         }
-
-        .dashboard-hero { border-left: 5px solid #2962ff !important; }
-        .hero-icon { width: 80px; height: 80px; background: var(--soft-bg-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        
-        .card-stats { transition: transform 0.3s ease; border-bottom: 3px solid transparent !important; }
-        .card-stats:hover { transform: translateY(-5px); }
-        .stats-icon { width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-
-        .action-card { transition: all 0.3s ease; }
-        .action-card:hover { transform: scale(1.03); background: #f8f9fa; }
-        .action-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-
-        /* Soft utility classes */
-        .bg-info-soft { background-color: var(--soft-bg-info); }
-        .bg-warning-soft { background-color: var(--soft-bg-warning); }
-        .bg-success-soft { background-color: var(--soft-bg-success); }
-        .bg-primary-soft { background-color: var(--soft-bg-primary); }
-        .bg-light-soft { background-color: #f8f9fa; }
-        
-        .badge-soft-primary { background-color: #e8eaf6; color: #3f51b5; }
-        .badge-soft-warning { background-color: #fff3e0; color: #ef6c00; }
-        .badge-soft-info { background-color: #e1f5fe; color: #0288d1; }
-        .badge-soft-success { background-color: #e8f5e9; color: #2e7d32; }
-
-        .btn-soft-secondary { background-color: #f5f5f5; color: #424242; border: none; }
-        .btn-soft-secondary:hover { background-color: #eeeeee; }
-
-        .alert-soft-danger { background-color: #ffebee; color: #c62828; border: none; }
-        .border-danger-soft { border-color: #ffcdd2 !important; }
-        .bg-danger-soft { background-color: #ffebee; }
-
-        .v-middle td { vertical-align: middle !important; }
-        .uppercase { text-transform: uppercase; letter-spacing: 0.8px; font-size: 11px; }
-        .opacity-1 { opacity: 0.1; }
-        .opacity-2 { opacity: 0.2; }
-
-        .badge-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: middle; }
+        .tailwind-scope a:hover {
+            text-decoration: none;
+        }
     </style>
 }
 
+<div class="tailwind-scope p-6 max-w-[1600px] mx-auto space-y-6">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center">
+        Planificación Global
+        <!-- Management System Component -->
+        <div class="relative inline-block ml-4" id="managementSystemDropdown">
+          <button
+            onclick="toggleManagement()"
+            class="flex items-center gap-2 bg-white border border-gray-200 shadow-sm rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors focus:outline-none"
+          >
+            <span class="text-sm font-semibold text-slate-800">Gestión 2025-I</span>
+            <span class="text-xs text-slate-500">| Junio – Julio 2025</span>
+            <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
+          </button>
+
+          <!-- Dropdown -->
+          <div id="mgmntDropdown" class="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50 hidden" style="opacity: 0; transform: translateY(5px); transition: all 0.15s ease-in-out;">
+            <div class="px-4 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Gestiones Disponibles
+            </div>
+            
+            <button class="w-full text-left px-4 py-2.5 bg-[#28A745]/5 hover:bg-[#28A745]/10 flex items-center justify-between group transition-colors">
+              <div>
+                <div class="text-sm font-bold text-[#28A745]">Gestión 2025-I</div>
+                <div class="text-xs text-slate-500">Junio – Julio 2025</div>
+              </div>
+              <i class="fas fa-check text-[#28A745]"></i>
+            </button>
+            
+            <button class="w-full text-left px-4 py-2.5 hover:bg-slate-50 flex items-center justify-between group transition-colors opacity-70">
+              <div>
+                <div class="text-sm font-semibold text-slate-600">Gestión 2024-II</div>
+                <div class="text-xs text-slate-500">Diciembre – Enero 2024</div>
+              </div>
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">Archivada</span>
+            </button>
+
+            <div class="my-1 border-t border-gray-100"></div>
+            
+            <button onclick="openWizardModal()" class="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 text-sm font-semibold text-[#3B82F6] transition-colors">
+              <i class="fas fa-plus"></i> Nueva Gestión Semestral
+            </button>
+          </div>
+        </div>
+      </h1>
+      <p class="text-slate-500 text-sm mt-1">Avance de Mantenimientos por Laboratorio y Equipos</p>
+    </div>
+    
+    <div class="flex gap-3">
+      <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-[#DC3545] text-white hover:bg-red-700 active:bg-red-800 border border-transparent shadow-sm h-10 px-4 text-sm gap-2 shrink-0">
+        <i class="fas fa-exclamation-circle text-xs"></i>
+        <span class="hidden sm:inline">Falla Rápida</span>
+      </button>
+      <a href="/Wizard" class="inline-flex">
+        <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-[#28A745] text-white hover:bg-green-700 active:bg-green-800 border border-transparent shadow-sm h-10 px-5 text-sm gap-2 shrink-0 !bg-slate-900 !hover:bg-slate-800">
+          <i class="fas fa-play text-xs"></i>
+          <span>Iniciar Ronda (Wizard)</span>
+        </button>
+      </a>
+    </div>
+  </div>
+
+  <!-- L22: Top Widgets -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Chart: Avance Global -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 flex flex-col items-center justify-center relative">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 self-start w-full text-left">Avance Global</h3>
+      <div class="h-40 w-full relative content-center flex items-center justify-center">
+        <!-- Recharts Placeholder -> Chart.js canvas -->
+        <div style="height: 140px; width: 140px;" class="relative">
+            <canvas id="globalProgressChart"></canvas>
+            <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+              <span class="text-2xl font-bold text-slate-800">45%</span>
+              <span class="text-[10px] text-slate-400 font-medium uppercase mt-1">Completado</span>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart: Por Tipo de Equipo -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Por Tipo de Equipo</h3>
+      <div class="h-40 w-full relative">
+        <canvas id="typeProgressChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart: Avance de Subgrupos -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Avance de Subgrupos</h3>
+      <div class="h-40 w-full relative">
+        <canvas id="subgroupsProgressChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- LabProgress Component -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Bars -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 lg:col-span-2">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-5">Avance por Laboratorio</h3>
+      <div class="space-y-4">
+          
+        <div class="flex items-center gap-4">
+          <span class="w-20 text-sm font-semibold text-slate-700">Civil</span>
+          <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden flex">
+            <div class="h-full bg-[#FFC107] transition-all duration-500" style="width: 78%"></div>
+          </div>
+          <div class="w-12 text-right text-sm font-bold text-slate-800">78%</div>
+          <div class="w-20 text-right text-xs text-slate-500">12/15 eq.</div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <span class="w-20 text-sm font-semibold text-slate-700">H-1</span>
+          <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden flex">
+            <div class="h-full bg-[#FFC107] transition-all duration-500" style="width: 60%"></div>
+          </div>
+          <div class="w-12 text-right text-sm font-bold text-slate-800">60%</div>
+          <div class="w-20 text-right text-xs text-slate-500">9/15 eq.</div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <span class="w-20 text-sm font-semibold text-slate-700">Química</span>
+          <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden flex">
+            <div class="h-full bg-[#DC3545] transition-all duration-500" style="width: 40%"></div>
+          </div>
+          <div class="w-12 text-right text-sm font-bold text-slate-800">40%</div>
+          <div class="w-20 text-right text-xs text-slate-500">6/15 eq.</div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <span class="w-20 text-sm font-semibold text-slate-700">Electrónica</span>
+          <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden flex">
+            <div class="h-full bg-[#DC3545] transition-all duration-500" style="width: 20%"></div>
+          </div>
+          <div class="w-12 text-right text-sm font-bold text-slate-800">20%</div>
+          <div class="w-20 text-right text-xs text-slate-500">3/15 eq.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-0 flex flex-col">
+      <div class="px-4 py-3 bg-[#DC3545]/10 border-b border-[#DC3545]/20 flex items-center gap-2">
+        <i class="fas fa-exclamation-circle text-[#DC3545]"></i>
+        <h3 class="text-xs font-bold text-red-800 uppercase tracking-wider">Vencidos</h3>
+      </div>
+      <div class="p-4 space-y-3 bg-white">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-sm font-semibold text-slate-800">Horno PINZUAR</p>
+            <p class="text-xs text-slate-500">Civil</p>
+          </div>
+          <span class="text-[10px] font-bold text-[#DC3545] bg-[#DC3545]/10 px-2 py-0.5 rounded-full mt-1">Hace 5 días</span>
+        </div>
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-sm font-semibold text-slate-800">Balanza OHAUS</p>
+            <p class="text-xs text-slate-500">H-1</p>
+          </div>
+          <span class="text-[10px] font-bold text-[#DC3545] bg-[#DC3545]/10 px-2 py-0.5 rounded-full mt-1">Hace 2 días</span>
+        </div>
+      </div>
+
+      <div class="px-4 py-3 bg-[#FFC107]/10 border-y border-[#FFC107]/20 flex items-center gap-2 mt-auto">
+        <i class="fas fa-clock text-[#FFC107]"></i>
+        <h3 class="text-xs font-bold text-yellow-800 uppercase tracking-wider">Próximos a Vencer</h3>
+      </div>
+      <div class="p-4 space-y-3 bg-white">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-sm font-semibold text-slate-800">Fermentador INOX</p>
+            <p class="text-xs text-slate-500">H-1</p>
+          </div>
+          <span class="text-[10px] font-bold text-yellow-800 bg-[#FFC107]/20 px-2 py-0.5 rounded-full mt-1">En 3 días</span>
+        </div>
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-sm font-semibold text-slate-800">Campana WILDA</p>
+            <p class="text-xs text-slate-500">H-1</p>
+          </div>
+          <span class="text-[10px] font-bold text-yellow-800 bg-[#FFC107]/20 px-2 py-0.5 rounded-full mt-1">En 6 días</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- L48: Main Gantt / Table Area -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-visible">
+    <div class="px-6 py-4 border-b border-gray-100 flex flex-col gap-4 bg-white rounded-t-xl">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-800">Cronograma de Intervenciones</h2>
+        <div class="flex gap-2">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-700 border border-slate-200 text-[10px]">Semana 12 - 16</span>
+        </div>
+      </div>
+      
+      <!-- Filters Bar -->
+      <div class="flex flex-wrap items-center gap-3 pt-2">
+        <div class="flex items-center gap-2 text-sm text-slate-500 font-medium mr-2">
+          <i class="fas fa-filter text-xs"></i> Filtros:
+        </div>
+        
+        <div class="relative group">
+          <button class="flex items-center gap-2 bg-[#F8F9FA] hover:bg-slate-100 border border-gray-200 px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-700 transition-colors">
+            Laboratorio <i class="fas fa-chevron-down text-slate-400 text-[10px]"></i>
+          </button>
+        </div>
+        
+        <div class="relative group">
+          <button class="flex items-center gap-2 bg-[#F8F9FA] hover:bg-slate-100 border border-gray-200 px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-700 transition-colors">
+            Categoría <i class="fas fa-chevron-down text-slate-400 text-[10px]"></i>
+          </button>
+        </div>
+        
+        <div class="relative group">
+          <button class="flex items-center gap-2 bg-[#F8F9FA] hover:bg-slate-100 border border-gray-200 px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-700 transition-colors">
+            Técnico <i class="fas fa-chevron-down text-slate-400 text-[10px]"></i>
+          </button>
+        </div>
+
+        <div class="h-6 w-px bg-gray-200 mx-1"></div>
+
+        <div class="flex bg-[#F8F9FA] rounded-lg p-0.5 border border-gray-200">
+            <button class="px-3 py-1 text-xs font-semibold rounded-md transition-colors bg-white shadow-sm text-slate-800">Todos</button>
+            <button class="px-3 py-1 text-xs font-semibold rounded-md transition-colors text-slate-500 hover:text-slate-700 hover:bg-slate-100">Planeado</button>
+            <button class="px-3 py-1 text-xs font-semibold rounded-md transition-colors text-slate-500 hover:text-slate-700 hover:bg-slate-100">En Progreso</button>
+            <button class="px-3 py-1 text-xs font-semibold rounded-md transition-colors text-slate-500 hover:text-slate-700 hover:bg-slate-100">Ejecutado</button>
+            <button class="px-3 py-1 text-xs font-semibold rounded-md transition-colors text-slate-500 hover:text-slate-700 hover:bg-slate-100">Externo</button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm whitespace-nowrap m-0 border-0">
+        <thead class="bg-[#F8F9FA] text-slate-500 uppercase font-semibold text-xs tracking-wider border-b-2 border-gray-200">
+          <tr>
+            <th class="px-6 py-4 font-semibold border-0">Laboratorio</th>
+            <th class="px-6 py-4 font-semibold border-0">Equipo / Inv.</th>
+            <th class="px-6 py-4 font-semibold border-0">Falla Reportada</th>
+            <th class="px-6 py-4 font-semibold border-0">Servicio</th>
+            <th class="px-6 py-4 font-semibold border-0">S12</th>
+            <th class="px-6 py-4 font-semibold border-0">S13</th>
+            <th class="px-6 py-4 font-semibold border-0">S14</th>
+            <th class="px-6 py-4 font-semibold border-0 text-center w-12"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+            
+            <!-- Item 1: Ejecutado -->
+            <tr class="hover:bg-slate-50/50 transition-colors group">
+              <td class="px-6 py-4 border-0">
+                <span class="font-medium text-slate-700">Civil y Suelos</span>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <button class="font-semibold text-[#3B82F6] hover:underline cursor-pointer text-left focus:outline-none bg-transparent border-0 p-0 m-0 shadow-none">Prensa Hidráulica 200T</button>
+                <p class="text-xs text-slate-400 mt-0.5 mb-0">INV-11201</p>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <span class="text-slate-600 truncate max-w-[200px] inline-block">Fuga de aceite en cilindro</span>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">Interno</span>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <div class="h-6 bg-[#28A745]/20 border border-[#28A745]/40 rounded w-full relative group-hover:bg-[#28A745]/30 transition-colors"><span class="absolute inset-0 flex items-center justify-center text-[10px] text-[#28A745] font-bold">OK</span></div>
+              </td>
+              <td class="px-6 py-4 border-0"></td>
+              <td class="px-6 py-4 border-0"></td>
+              <td class="px-6 py-4 text-center border-0">
+                <button class="text-slate-400 hover:text-slate-700 focus:outline-none bg-transparent border-0"><i class="fas fa-ellipsis-v"></i></button>
+              </td>
+            </tr>
+
+            <!-- Item 2: Planeado -->
+            <tr class="hover:bg-slate-50/50 transition-colors group">
+              <td class="px-6 py-4 border-0">
+                <span class="font-medium text-slate-700">Biotecnología</span>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <button class="font-semibold text-[#3B82F6] hover:underline cursor-pointer text-left focus:outline-none bg-transparent border-0 p-0 m-0 shadow-none">Espectrofotómetro UV/VIS</button>
+                <p class="text-xs text-slate-400 mt-0.5 mb-0">INV-11202</p>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <span class="text-slate-600 truncate max-w-[200px] inline-block">Calibración Lámpara D2</span>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">Externo</span>
+              </td>
+              <td class="px-6 py-4 border-0"></td>
+              <td class="px-6 py-4 border-0">
+                <div class="h-6 bg-[#FFC107]/20 border border-[#FFC107]/40 rounded w-full relative"><span class="absolute inset-0 flex items-center justify-center text-[10px] text-yellow-800 font-bold">Prev.</span></div>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <div class="h-6 bg-slate-100 border border-slate-200 rounded w-full opacity-50"></div>
+              </td>
+              <td class="px-6 py-4 text-center border-0">
+                <button class="text-slate-400 hover:text-slate-700 focus:outline-none bg-transparent border-0"><i class="fas fa-ellipsis-v"></i></button>
+              </td>
+            </tr>
+
+            <!-- Item 3: Ejecutado -->
+            <tr class="hover:bg-slate-50/50 transition-colors group">
+              <td class="px-6 py-4 border-0">
+                <span class="font-medium text-slate-700">Laboratorios H</span>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <button class="font-semibold text-[#3B82F6] hover:underline cursor-pointer text-left focus:outline-none bg-transparent border-0 p-0 m-0 shadow-none">Torno CNC Haas</button>
+                <p class="text-xs text-slate-400 mt-0.5 mb-0">INV-11203</p>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <span class="text-slate-600 truncate max-w-[200px] inline-block">Mantenimiento husillo principal</span>
+              </td>
+              <td class="px-6 py-4 border-0">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">Interno</span>
+              </td>
+              <td class="px-6 py-4 border-0"></td>
+              <td class="px-6 py-4 border-0"></td>
+              <td class="px-6 py-4 border-0">
+                <div class="h-6 bg-[#28A745]/20 border border-[#28A745]/40 rounded w-full relative group-hover:bg-[#28A745]/30 transition-colors"><span class="absolute inset-0 flex items-center justify-center text-[10px] text-[#28A745] font-bold">OK</span></div>
+              </td>
+              <td class="px-6 py-4 text-center border-0">
+                <button class="text-slate-400 hover:text-slate-700 focus:outline-none bg-transparent border-0"><i class="fas fa-ellipsis-v"></i></button>
+              </td>
+            </tr>
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL WIZARD: Asistente de Inicio de Gestión -->
+<div class="modal fade" id="wizardModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content border-0 rounded-2xl shadow-xl overflow-hidden tailwind-scope">
+      <div class="bg-slate-900 text-white px-6 py-4 flex items-center gap-3">
+        <i class="fas fa-calendar-alt text-blue-400 text-xl"></i>
+        <h2 class="text-lg font-bold m-0 text-white">Asistente de Inicio de Gestión</h2>
+      </div>
+      
+      <div class="p-6">
+        <!-- Step 1 -->
+        <div id="wizardStep1" class="space-y-5">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">Año de Gestión</label>
+              <input type="number" value="2025" id="wizardYear" class="w-full h-10 px-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" />
+            </div>
+            
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">Semestre</label>
+              <div class="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                <button type="button" onclick="setSemester('I')" id="btnSemI" class="flex-1 py-2 text-sm font-semibold rounded-md transition-colors bg-white text-slate-800 shadow-sm border border-gray-200 focus:outline-none">
+                  I — Jun/Jul
+                </button>
+                <button type="button" onclick="setSemester('II')" id="btnSemII" class="flex-1 py-2 text-sm font-semibold rounded-md transition-colors text-slate-500 hover:text-slate-700 focus:outline-none border border-transparent">
+                  II — Dic/Ene
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-50 border border-slate-100 rounded-lg text-center">
+            <span class="text-xs text-slate-500 block mb-1">Vista Previa</span>
+            <span class="text-sm font-bold text-[#3B82F6]" id="wizardPreview">
+              Gestión 2025-I | Jun – Jul 2025
+            </span>
+          </div>
+
+          <div class="flex items-start gap-3 p-3 bg-[#FFC107]/10 border border-[#FFC107]/30 rounded-lg text-yellow-800">
+            <i class="fas fa-exclamation-triangle text-[#FFC107] text-lg mt-0.5"></i>
+            <p class="text-xs font-medium leading-relaxed m-0">
+              <strong class="block mb-0.5">Atención:</strong>
+              Al activar esta nueva gestión, todos los mantenimientos de la gestión actual serán archivados automáticamente y se iniciará un periodo en blanco.
+            </p>
+          </div>
+
+          <div class="flex justify-end pt-2">
+            <button type="button" onclick="nextStep()" class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-[#28A745] text-white hover:bg-green-700 active:bg-green-800 border border-transparent shadow-sm h-10 px-4 text-sm w-full sm:w-auto gap-2">
+              Siguiente <i class="fas fa-arrow-right text-[10px]"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="wizardStep2" class="space-y-6 hidden">
+          <div class="text-center space-y-2">
+            <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-check text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 m-0">Confirmar Activación</h3>
+            <p class="text-sm text-slate-500 m-0 mt-1">Revise los datos antes de proceder.</p>
+          </div>
+
+          <div class="bg-slate-50 rounded-xl shadow-sm border border-gray-100 overflow-hidden p-4 flex flex-col items-center justify-center text-center">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Se activará</span>
+            <span class="text-xl font-black text-slate-800" id="wizardTargetTitle">Gestión 2025-I</span>
+            <span class="text-sm text-slate-500 mt-1" id="wizardTargetDesc">Junio – Julio 2025</span>
+          </div>
+
+          <div class="flex gap-3 pt-2">
+            <button type="button" onclick="$('#wizardModal').modal('hide')" class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-white border border-gray-300 text-slate-700 hover:bg-gray-50 active:bg-gray-100 h-10 px-4 text-sm flex-1">
+              Cancelar
+            </button>
+            <button type="button" onclick="finishWizard()" class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-[#28A745] text-white hover:bg-green-700 active:bg-green-800 border border-transparent shadow-sm h-10 px-4 text-sm flex-1">
+              Activar Gestión
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 @section Scripts {
+    <!-- Chart.js for rendering the graphical data from Tailwind component -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        $(function () {
-             $('[data-toggle="tooltip"]').tooltip();
+        let currentSem = 'I';
+
+        // Custom JS to handle dropdown and modal behavior to mimic React state
+        function toggleManagement() {
+            var dd = document.getElementById('mgmntDropdown');
+            if (dd.classList.contains('hidden')) {
+                dd.classList.remove('hidden');
+                setTimeout(() => { dd.style.opacity = '1'; dd.style.transform = 'translateY(0)'; }, 10);
+            } else {
+                dd.style.opacity = '0'; dd.style.transform = 'translateY(5px)';
+                setTimeout(() => dd.classList.add('hidden'), 150);
+            }
+        }
+
+        // Close dropdown when clicking outside
+        window.addEventListener('click', function(e) {
+            if (!document.getElementById('managementSystemDropdown').contains(e.target)) {
+                var dd = document.getElementById('mgmntDropdown');
+                if (!dd.classList.contains('hidden')) {
+                    dd.style.opacity = '0'; dd.style.transform = 'translateY(5px)';
+                    setTimeout(() => dd.classList.add('hidden'), 150);
+                }
+            }
+        });
+
+        function openWizardModal() {
+            toggleManagement(); // close dropdown
+            document.getElementById('wizardStep1').classList.remove('hidden');
+            document.getElementById('wizardStep2').classList.add('hidden');
+            $('#wizardModal').modal('show');
+        }
+
+        function setSemester(sem) {
+            currentSem = sem;
+            var year = document.getElementById('wizardYear').value;
+            
+            if (sem === 'I') {
+                document.getElementById('btnSemI').className = "flex-1 py-2 text-sm font-semibold rounded-md transition-colors bg-white text-slate-800 shadow-sm border border-gray-200 focus:outline-none";
+                document.getElementById('btnSemII').className = "flex-1 py-2 text-sm font-semibold rounded-md transition-colors text-slate-500 hover:text-slate-700 focus:outline-none border border-transparent";
+                document.getElementById('wizardPreview').innerText = `Gestión ${year}-I | Jun – Jul ${year}`;
+            } else {
+                document.getElementById('btnSemII').className = "flex-1 py-2 text-sm font-semibold rounded-md transition-colors bg-white text-slate-800 shadow-sm border border-gray-200 focus:outline-none";
+                document.getElementById('btnSemI').className = "flex-1 py-2 text-sm font-semibold rounded-md transition-colors text-slate-500 hover:text-slate-700 focus:outline-none border border-transparent";
+                document.getElementById('wizardPreview').innerText = `Gestión ${year}-II | Dic – Ene ${year}`;
+            }
+        }
+
+        document.getElementById('wizardYear').addEventListener('input', function() {
+            setSemester(currentSem);
+        });
+
+        function nextStep() {
+            var year = document.getElementById('wizardYear').value;
+            document.getElementById('wizardStep1').classList.add('hidden');
+            document.getElementById('wizardStep2').classList.remove('hidden');
+            
+            document.getElementById('wizardTargetTitle').innerText = `Gestión ${year}-${currentSem}`;
+            document.getElementById('wizardTargetDesc').innerText = currentSem === 'I' ? `Junio – Julio ${year}` : `Diciembre – Enero ${year}`;
+        }
+
+        function finishWizard() {
+            $('#wizardModal').modal('hide');
+            // Trigger SweetAlert defined in Layout using TempData-like mechanism natively
+            if(window.Swal) {
+                Swal.fire('Gestión Activada', 'La nueva gestión se ha iniciado exitosamente.', 'success');
+            }
+        }
+
+        // Initialize Charts with Chart.js mimicking Recharts
+        document.addEventListener('DOMContentLoaded', function() {
+            // Global Progress Pie
+            const ctxGlobal = document.getElementById('globalProgressChart').getContext('2d');
+            new Chart(ctxGlobal, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ejecutado', 'Planeado'],
+                    datasets: [{
+                        data: [45, 55],
+                        backgroundColor: ['#28A745', '#E2E8F0'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(c) { return c.parsed + '%'; } } } }
+                }
+            });
+
+            // Type Progress Bar
+            const ctxType = document.getElementById('typeProgressChart').getContext('2d');
+            new Chart(ctxType, {
+                type: 'bar',
+                data: {
+                    labels: ['Mecánicos', 'Eléctricos', 'Ópticos', 'Térmicos'],
+                    datasets: [{
+                        data: [80, 50, 90, 30],
+                        backgroundColor: ['#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'],
+                        borderRadius: 4,
+                        barThickness: 16
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: false },
+                        y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 12 } } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Subgroups Progress Bar
+            const ctxSub = document.getElementById('subgroupsProgressChart').getContext('2d');
+            new Chart(ctxSub, {
+                type: 'bar',
+                data: {
+                    labels: ['Laboratorios H', 'Biotecnología', 'Civil y Suelos'],
+                    datasets: [{
+                        data: [65, 40, 85],
+                        backgroundColor: ['#10B981', '#F43F5E', '#3B82F6'],
+                        borderRadius: 4,
+                        barThickness: 16
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: false },
+                        y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 12 } } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
         });
     </script>
 }

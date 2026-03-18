@@ -42,16 +42,16 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options => {
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {
     options.CheckConsentNeeded = context => false;
-    options.MinimumSameSitePolicy = SameSiteMode.None; // Permisivo
-    options.Secure = CookieSecurePolicy.Always;      // Requerido si usamos None
+    options.MinimumSameSitePolicy = SameSiteMode.Lax; // Cambiado a Lax para compatibilidad local
+    options.Secure = CookieSecurePolicy.SameAsRequest; 
 });
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = ".ProyectoUnivalle.Auth.vUniversal"; 
     options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = SameSiteMode.None; // Fundamental para evitar el error
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax; 
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.LoginPath = "/Login";
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(1);
@@ -60,8 +60,8 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddAntiforgery(options =>
 {
     options.Cookie.Name = ".ProyectoUnivalle.Antiforgery.vUniversal";
-    options.Cookie.SameSite = SameSiteMode.None; // Fundamental para evitar el error
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax; 
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
 
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, UserClaimsPrincipalFactory>();
