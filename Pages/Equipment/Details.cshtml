@@ -6,7 +6,6 @@
 }
 
 <div class="row">
-    <!-- Main Column: Technical Record -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
@@ -23,7 +22,6 @@
                 </div>
 
                 <div class="row mt-4">
-                    <!-- Column 1: Equipment Specs -->
                     <div class="col-md-6 border-right">
                         <h5 class="font-weight-bold text-info mb-3">
                             <i class="fas fa-microscope mr-2"></i> Especificaciones del Activo
@@ -40,20 +38,24 @@
                                 </tr>
                                 <tr>
                                     <th class="text-muted small uppercase pl-3 pb-3">Categoría</th>
-                                    <td class="font-weight-bold pb-3 text-dark">@(Model.Equipment.EquipmentType?.Name ?? "Utensilio")</td>
+                                    <td class="font-weight-bold pb-3 text-dark">
+                                        @Model.Equipment.Category
+                                        @if (Model.Equipment.Category == EquipmentCategory.Utensil && Model.Equipment.UtensilType != UtensilType.NoAplica)
+                                        {
+                                            <span>(@Model.Equipment.UtensilType)</span>
+                                        }
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <!-- Column 2: Origin & Deployment -->
                     <div class="col-md-6">
                         <h5 class="font-weight-bold text-info mb-3">
                             <i class="fas fa-globe-americas mr-2"></i> Origen y Procedencia
                         </h5>
                         <table class="table table-sm table-borderless bg-light rounded p-3">
                             <tbody>
-                                
                                 <tr>
                                     <th class="text-muted small uppercase pl-3 pb-3">País</th>
                                     <td class="font-weight-bold pb-3 text-dark">@(Model.Equipment.Country?.Name ?? "No Definido")</td>
@@ -66,7 +68,6 @@
                     </div>
                 </div>
 
-                <!-- Units Details Table -->
                 <div class="mt-5">
                     <div class="d-flex align-items-center mb-4 pb-2 border-bottom">
                         <h5 class="font-weight-bold text-dark mb-0">
@@ -79,7 +80,6 @@
                         </div>
                     </div>
 
-                    <!-- 🔍 Search & Filter Zone -->
                     <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
                         <form method="get">
                             <div class="row align-items-end">
@@ -108,7 +108,7 @@
                                 <thead class="bg-light text-muted uppercase small font-weight-bold">
                                     <tr>
                                         <th>Identificación</th>
-                                        <th>Ubicación (Laboratorio)</th>
+                                        <th>Laboratorio / Facultad</th>
                                         <th>Estado Operativo</th>
                                         <th>Condición Física</th>
                                         <th class="text-center">Acciones</th>
@@ -127,8 +127,8 @@
                                                 }
                                             </td>
                                             <td class="v-middle">
-                                                <div class="font-weight-bold text-info small uppercase">@(unit.Laboratory?.Name ?? "PENDIENTE")</div>
-                                                <small class="text-muted">@(unit.Laboratory?.Faculty?.Name ?? "Sin Facultad")</small>
+                                                <div class="font-weight-bold">@(unit.Laboratory?.Name ?? "No asignado")</div>
+                                                <small class="text-muted">@(unit.Laboratory?.Faculty?.Name ?? "Sin facultad")</small>
                                             </td>
                                             <td class="v-middle">
                                                 @{
@@ -188,10 +188,8 @@
         </div>
     </div>
 
-    <!-- Sidebar: Lifecycle and Control -->
     <div class="col-lg-4">
-        
-        <!-- Image Card -->
+
         @if (!string.IsNullOrEmpty(Model.Equipment.ImageUrl))
         {
             <div class="card shadow-sm border-0 mb-4 overflow-hidden">
@@ -225,7 +223,6 @@
             </div>
         </div>
 
-        <!-- Action Buttons -->
         <div class="form-actions mt-4">
             <a asp-page="./Edit" asp-route-id="@Model.Equipment.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
                 <i class="fas fa-edit mr-1"></i> Modificar Ficha Técnica
@@ -233,7 +230,7 @@
             <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
                 <i class="fas fa-list mr-1"></i> Volver al Catálogo
             </a>
-            
+
             <a asp-page="./Delete" asp-route-id="@Model.Equipment.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">
                 <i class="fas fa-trash-alt mr-1"></i> Eliminar Definición del Sistema
             </a>
@@ -243,11 +240,30 @@
 
 @section Styles {
     <style>
-        .v-middle { vertical-align: middle !important; }
-        .italic { font-style: italic; }
-        .opacity-7 { opacity: 0.7; }
-        .opacity-5 { opacity: 0.5; }
-        .border-dashed { border-style: dashed !important; }
-        .alert-soft-info { background-color: #e1f5fe; color: #01579b; border-left: 5px solid #03a9f4; }
+        .v-middle {
+            vertical-align: middle !important;
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .opacity-7 {
+            opacity: 0.7;
+        }
+
+        .opacity-5 {
+            opacity: 0.5;
+        }
+
+        .border-dashed {
+            border-style: dashed !important;
+        }
+
+        .alert-soft-info {
+            background-color: #e1f5fe;
+            color: #01579b;
+            border-left: 5px solid #03a9f4;
+        }
     </style>
 }

@@ -26,7 +26,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         public IActionResult OnGet()
         {
             LoadLists();
-            
+
             Input = new InputModel
             {
                 ScheduledDate = DateTime.UtcNow,
@@ -95,6 +95,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Scheduled;
 
             public List<CostDetail> CostDetails { get; set; } = new();
+
+            // --- PROPIEDADES AGREGADAS PARA LOS CHECKBOXES (L-48) ---
+            public int CompletionPercentage { get; set; } = 0;
+            public bool Step1_Cleaning { get; set; } = false;
+            public bool Step2_Calibration { get; set; } = false;
+            public bool Step3_Testing { get; set; } = false;
+            public bool Step4_FinalReview { get; set; } = false;
+            // --------------------------------------------------------
         }
 
         // AJAX Handlers
@@ -115,8 +123,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
                 .OrderBy(u => u.Equipment!.Name)
                 .ThenBy(u => u.InventoryNumber)
-                .Select(u => new { 
-                    id = u.Id, 
+                .Select(u => new {
+                    id = u.Id,
                     eqName = u.Equipment != null ? u.Equipment.Name : "Equipo",
                     inv = u.InventoryNumber
                 })
@@ -140,7 +148,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             }
 
             var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
-            if (equipmentUnit == null) 
+            if (equipmentUnit == null)
             {
                 ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física no existe.");
             }
@@ -162,7 +170,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 return Page();
             }
 
-            try 
+            try
             {
                 var maintenance = new Maintenance
                 {
@@ -179,14 +187,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     Recommendations = Input.Recommendations?.Clean(),
                     Status = Input.Status,
                     CostDetails = Input.CostDetails ?? new(),
-                    CreatedDate = DateTime.UtcNow
+                    CreatedDate = DateTime.UtcNow,
+
+                    // --- MAPEO DE DATOS DE LOS CHECKBOXES AL MODELO FINAL ---
+                    CompletionPercentage = Input.CompletionPercentage,
+                    Step1_Cleaning = Input.Step1_Cleaning,
+                    Step2_Calibration = Input.Step2_Calibration,
+                    Step3_Testing = Input.Step3_Testing,
+                    Step4_FinalReview = Input.Step4_FinalReview
+                    // --------------------------------------------------------
                 };
 
                 var currentUser = await _userManager.GetUserAsync(User);
                 maintenance.CreatedById = currentUser?.Id;
 
                 _context.Maintenances.Add(maintenance);
-                
+
                 // Actualizar estado de la unidad física a En Mantenimiento y registrar historial
                 if (equipmentUnit != null && equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
                 {
@@ -195,7 +211,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
                         .OrderByDescending(h => h.StartDate)
                         .FirstOrDefaultAsync();
-                    
+
                     if (lastHistory != null)
                     {
                         lastHistory.EndDate = DateTime.UtcNow;
@@ -220,7 +236,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 await _context.SaveChangesAsync();
 
                 TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
-                
+
                 return RedirectToPage("./Index");
             }
             catch (Exception ex)
@@ -236,7 +252,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             ViewData["FacultyId"] = new SelectList(_context.Faculties
                 .Where(f => f.Status == GeneralStatus.Activo)
                 .OrderBy(f => f.Name), "Id", "Name");
-            
+
             ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
             ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
 
@@ -252,8 +268,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .OrderByDescending(r => r.CreatedDate)
                 .Take(20)
                 .ToList()
-                .Select(r => new { 
-                    Id = r.Id, 
+                .Select(r => new {
+                    Id = r.Id,
                     DisplayText = $"#{r.Id} - {r.Laboratory?.Name} ({r.CreatedDate:dd/MM}): " + (r.Description.Length > 40 ? r.Description.Substring(0, 40) + "..." : r.Description)
                 });
             ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText");

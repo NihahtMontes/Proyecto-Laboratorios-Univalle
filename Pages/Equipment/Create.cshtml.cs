@@ -41,8 +41,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             [Display(Name = "Tipo de Recurso")]
             public EquipmentCategory Category { get; set; }
 
-            [Display(Name = "Tipo de Equipo")]
-            public int? EquipmentTypeId { get; set; }
+            [Display(Name = "Tipo de Material")]
+            public UtensilType UtensilType { get; set; }
+
+            //[Display(Name = "Tipo de Equipo")]
+            //public int? EquipmentTypeId { get; set; }
 
 
 
@@ -72,6 +75,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             [Display(Name = "Descripción / Especificaciones")]
             public string? Description { get; set; }
+
+            [Required(ErrorMessage = "La clasificación técnica es obligatoria")]
+            [Display(Name = "Clasificación de Tipo")]
+            public EquipmentTypeClassification TypeClassification { get; set; } = EquipmentTypeClassification.Otro;
         }
 
         public async Task<JsonResult> OnGetCitiesByCountryAsync(int countryId)
@@ -134,7 +141,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             var equipment = new Models.Equipment
             {
                 Category = Input.Category,
-                EquipmentTypeId = Input.EquipmentTypeId,
+                UtensilType = Input.UtensilType, // Asignamos el nuevo Enum
+
+                //EquipmentTypeId = Input.EquipmentTypeId,
                 ImageUrl = uniqueFileName,
                 CountryId = Input.CountryId,
                 CityId = Input.CityId,
@@ -161,7 +170,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
         private void LoadLists()
         {
-            ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes.OrderBy(et => et.Name), "Id", "Name");
+            //ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes.OrderBy(et => et.Name), "Id", "Name");
             
             var countries = _context.Countries
                 .Where(c => c.Status == GeneralStatus.Activo)

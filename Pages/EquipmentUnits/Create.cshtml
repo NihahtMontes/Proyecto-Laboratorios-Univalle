@@ -23,10 +23,9 @@
                     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
 
                     <div class="row">
-                        <!-- Left Column: Reference and Identification -->
                         <div class="col-md-6 border-right">
                             <h5 class="font-weight-bold text-primary mb-3"><i class="fas fa-tag mr-2"></i> Identificación del Activo</h5>
-                            
+
                             <div class="form-group mb-4">
                                 <label asp-for="Input.EquipmentId" class="control-label font-weight-bold small uppercase text-muted">Modelo de Equipo (Catálogo)</label>
                                 <input type="hidden" asp-for="Input.EquipmentId" />
@@ -68,7 +67,7 @@
                                     <span asp-validation-for="Input.ManufacturingDate" class="text-danger small"></span>
                                 </div>
                             </div>
-                            
+
                             <div class="form-group mb-3">
                                 <label asp-for="Input.AcquisitionValue" class="control-label font-weight-bold small uppercase text-muted">Precio de Adquisición (Bs.)</label>
                                 <div class="input-group">
@@ -81,10 +80,9 @@
                             </div>
                         </div>
 
-                        <!-- Right Column: Specific Location and Condition -->
                         <div class="col-md-6">
-                            <h5 class="font-weight-bold text-primary mb-3"><i class="fas fa-map-marker-alt mr-2"></i> Ubicación Destino</h5>
-                            
+                            <h5 class="font-weight-bold text-primary mb-3"><i class="fas fa-map-marker-alt mr-2"></i> Ubicación Destino (Verificación)</h5>
+
                             <div class="form-group mb-3">
                                 <label asp-for="Input.FacultyId" class="control-label font-weight-bold small uppercase text-muted">Facultad <span class="text-danger">*</span></label>
                                 <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId" required>
@@ -95,7 +93,7 @@
 
                             <div class="form-group mb-4">
                                 <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small uppercase text-muted">Laboratorio Destino <span class="text-danger">*</span></label>
-                                <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" 
+                                <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect"
                                         asp-items="ViewBag.LaboratoryId"
                                         disabled="@(Model.Input.FacultyId == null)" required>
                                     @if (Model.Input.FacultyId == null)
@@ -135,7 +133,7 @@
                             <i class="fas fa-save mr-2"></i> Registrar Unidad Física
                         </button>
                         <a href="javascript:history.back()" class="btn btn-outline-secondary px-4 py-2 ml-2 font-weight-bold btn-rounded">
-                            Cancelar
+                            <i class="fas fa-times mr-2"></i> Cancelar
                         </a>
                     </div>
                 </form>
@@ -147,34 +145,48 @@
 @section Styles {
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
     <style>
-        .select2-container--default .select2-selection--single { height: 38px; border: 1px solid #ced4da; }
-        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 38px; }
-        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px; }
+        .select2-container--default .select2-selection--single {
+            height: 38px;
+            border: 1px solid #ced4da;
+        }
+
+            .select2-container--default .select2-selection--single .select2-selection__rendered {
+                line-height: 38px;
+            }
+
+            .select2-container--default .select2-selection--single .select2-selection__arrow {
+                height: 36px;
+            }
     </style>
 }
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
     <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         $(document).ready(function() {
             $('.select2').select2({ width: '100%' });
 
-            // Cascading
+            // Cascading 
             $('#facultySelect').on('change', function() {
                 let id = $(this).val();
                 let $lab = $('#laboratorySelect');
-                
+
                 $lab.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
-                
+
                 if (!id) {
                     $lab.html('<option value="">-- Primero seleccione facultad --</option>');
                     return;
                 }
 
-                $.get('/EquipmentUnits/Create?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
+                
+                $.get('?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
                     let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
-                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
+                    $.each(data, function(i, item) {
+                        opts += `<option value="${item.id}">${item.name}</option>`;
+                    });
                     $lab.html(opts).prop('disabled', false).trigger('change');
                 });
             });

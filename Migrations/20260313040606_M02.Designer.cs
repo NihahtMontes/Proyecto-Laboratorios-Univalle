@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Proyecto_Laboratorios_Univalle.Data;
 
@@ -11,9 +12,11 @@ using Proyecto_Laboratorios_Univalle.Data;
 namespace Proyecto_Laboratorios_Univalle.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260313040606_M02")]
+    partial class M02
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -407,9 +410,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<int>("TypeClassification")
-                        .HasColumnType("int");
-
                     b.Property<int?>("UsefulLifeYears")
                         .HasColumnType("int");
 
@@ -793,9 +793,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<decimal?>("ActualCost")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<int>("CompletionPercentage")
-                        .HasColumnType("int");
-
                     b.Property<int?>("CreatedById")
                         .HasColumnType("int");
 
@@ -848,18 +845,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
-
-                    b.Property<bool>("Step1_Cleaning")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("Step2_Calibration")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("Step3_Testing")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("Step4_FinalReview")
-                        .HasColumnType("bit");
 
                     b.Property<DateTime?>("SuggestedNextMaintenanceDate")
                         .HasColumnType("datetime2");

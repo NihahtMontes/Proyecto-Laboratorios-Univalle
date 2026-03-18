@@ -30,7 +30,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             int addedUnits = 0;
 
             // 1. Setup Base Hierarchy
-            var country = await _context.Countries.FirstOrDefaultAsync(c => c.Name.Contains("Bolivia")) 
+            var country = await _context.Countries.FirstOrDefaultAsync(c => c.Name.Contains("Bolivia"))
                           ?? new Country { Name = "Bolivia" };
             if (country.Id == 0) _context.Countries.Add(country);
             await _context.SaveChangesAsync();
@@ -76,11 +76,11 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     var equipment = await _context.Equipments.FirstOrDefaultAsync(e => e.Name == item.TypeName.Trim() && e.Description == item.Description);
                     if (equipment == null)
                     {
-                        equipment = new Equipment 
-                        { 
-                            Name = item.TypeName.Trim(), 
-                            Description = item.Description, 
-                            EquipmentTypeId = type.Id,
+                        equipment = new Equipment
+                        {
+                            Name = item.TypeName.Trim(),
+                            Description = item.Description,
+                            // CORRECCIÓN: Se eliminó EquipmentTypeId ya que no existe en el modelo Equipment
                             Category = EquipmentCategory.Equipment,
                             CreatedDate = DateTime.UtcNow
                         };
@@ -123,10 +123,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     var equipment = await _context.Equipments.FirstOrDefaultAsync(e => e.Name == item.Name.Trim() && e.Category == EquipmentCategory.Utensil);
                     if (equipment == null)
                     {
-                        equipment = new Equipment 
-                        { 
-                            Name = item.Name.Trim(), 
-                            Description = $"Presentación: {item.Presentation}, Unidad: {item.Unit}", 
+                        equipment = new Equipment
+                        {
+                            Name = item.Name.Trim(),
+                            Description = $"Presentación: {item.Presentation}, Unidad: {item.Unit}",
                             Category = EquipmentCategory.Utensil,
                             CreatedDate = DateTime.UtcNow
                         };

@@ -29,13 +29,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             if (id == null) return NotFound();
 
             var equipment = await _context.Equipments
-                .Include(m => m.EquipmentType)
+                // .Include(m => m.EquipmentType) // CORRECCIÓN: Se elimina esta línea porque ya no existe la relación física
                 .Include(m => m.Units!)
                     .ThenInclude(u => u.Laboratory)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (equipment == null) return NotFound();
-            
+
             Equipment = equipment;
             return Page();
         }
@@ -47,7 +47,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             var equipment = await _context.Equipments
                 .Include(e => e.Units)
                 .FirstOrDefaultAsync(e => e.Id == id);
-                
+
             if (equipment == null) return NotFound();
 
             if (equipment.Units != null && equipment.Units.Any(u => u.CurrentStatus != EquipmentStatus.Deleted))

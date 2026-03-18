@@ -32,14 +32,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 .Include(r => r.ApprovedBy)
                 .Include(r => r.CreatedBy)
                 .Include(r => r.Equipment)
-                    .ThenInclude(e => e!.EquipmentType)
+                // .ThenInclude(e => e!.EquipmentType) // CORRECCIÓN: Se elimina porque la relación ya no existe
                 .Include(r => r.ModifiedBy)
                 .Include(r => r.RequestedBy)
                 .Include(r => r.CostDetails)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (request == null) return NotFound();
-            
+
             Request = request;
             return Page();
         }
@@ -61,7 +61,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     .FirstOrDefaultAsync();
 
                 var prefix = requestType == RequestType.Purchasing ? "Solicitud_Adquisicion" : "Solicitud_Mantenimiento";
-                
+
                 var excelBytes = await _reportService.GenerateReport(id);
                 var fileName = $"{prefix}_{id}_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
 

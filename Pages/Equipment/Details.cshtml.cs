@@ -28,7 +28,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             if (id == null) return NotFound();
 
             var equipment = await _context.Equipments
-                .Include(e => e.EquipmentType)
+                // .Include(e => e.EquipmentType) Se elimina esta línea porque EquipmentType ya no existe como propiedad de navegación
                 .Include(e => e.City)
                 .Include(e => e.Country)
                 .Include(e => e.CreatedBy)
@@ -39,26 +39,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             Equipment = equipment;
 
-            // Cargar unidades con filtros, búsqueda e inclusiones específicas de ubicación
+            // Cargar unidades con filtros
             var unitsQuery = _context.EquipmentUnits
                 .Include(u => u.Laboratory)
                     .ThenInclude(l => l!.Faculty)
                 .Include(u => u.Career)
                 .Where(u => u.EquipmentId == id);
 
-            // Filtro por Estado (Soft Delete) - Mostrar activos por defecto
+            // Filtro por Estado, mostrar activos por defecto
             unitsQuery = unitsQuery.Where(u => u.CurrentStatus != EquipmentStatus.Deleted);
 
             // Búsqueda inteligente
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.ToLower();
-                unitsQuery = unitsQuery.Where(u => 
-                    u.InventoryNumber.ToLower().Contains(term) || 
+                unitsQuery = unitsQuery.Where(u =>
+                    u.InventoryNumber.ToLower().Contains(term) ||
                     (u.SerialNumber != null && u.SerialNumber.ToLower().Contains(term)) ||
                     (u.Career != null && u.Career.Name.ToLower().Contains(term)));
             }
-            
+
             // Re-asignar las unidades cargadas al modelo para la vista
             Equipment.Units = await unitsQuery.OrderBy(u => u.InventoryNumber).ToListAsync();
 
@@ -74,7 +74,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 unit.CurrentStatus = EquipmentStatus.Deleted;
                 _context.Attach(unit).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                
+
                 TempData.Success($"Unidad '{unit.InventoryNumber}' eliminada correctamente.");
             }
 

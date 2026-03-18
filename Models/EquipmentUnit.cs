@@ -17,10 +17,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int EquipmentId { get; set; }
 
         // ========================================
-        // LOCATION & ORIGIN (Moved from Definition)
+        // LOCATION & ORIGIN (Verificación por Laboratorio)
         // ========================================
+        [Required(ErrorMessage = "El laboratorio es obligatorio para la verificación")]
         [Display(Name = "Laboratorio Asignado")]
-        public int? LaboratoryId { get; set; }
+        public int LaboratoryId { get; set; } // Cambio: Ahora es obligatorio (sin ?)
+
 
         // ========================================
         // ASSET IDENTIFICATION (Unit Specific)
@@ -93,7 +95,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }
-        
+
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
 
@@ -106,7 +108,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         // Calculated Properties
         [NotMapped]
-        public int? YearsInOperation 
+        public int? YearsInOperation
         {
             get
             {

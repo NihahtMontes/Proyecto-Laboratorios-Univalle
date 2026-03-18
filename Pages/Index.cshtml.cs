@@ -47,7 +47,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             TotalEquipment = await _context.EquipmentUnits.CountAsync();
             PendingRequests = await _context.Requests.CountAsync(r => r.Status == RequestStatus.Pending);
             OngoingMaintenances = await _context.Maintenances.CountAsync(m => m.Status == MaintenanceStatus.InProgress);
-            
+
             var oneWeekAgo = DateTime.UtcNow.AddDays(-7);
             RecentVerificationsCount = await _context.Verifications.CountAsync(v => v.Date >= oneWeekAgo);
 
@@ -64,7 +64,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             // Critical Lists
             CriticalEquipment = await _context.EquipmentUnits
                 .Include(u => u.Equipment)
-                .Include(u => u.Laboratory) // Location is now on the unit
+                .Include(u => u.Laboratory)
                 .Where(u => u.CurrentStatus == EquipmentStatus.OutOfService)
                 .OrderByDescending(u => u.AcquisitionValue)
                 .Take(5)

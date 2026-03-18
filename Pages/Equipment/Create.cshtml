@@ -9,7 +9,6 @@
     <div class="col-lg-11 col-xl-10">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <!-- Header -->
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
                         <h4 class="card-title text-dark font-weight-bold">Registrar Definición de Equipo (Catálogo)</h4>
@@ -24,24 +23,29 @@
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
                     <div class="row">
-                        <!-- Column 1: Identification & Origin -->
-                        <!-- Column 1: Identification & Origin -->
                         <div class="col-md-6 border-right">
                             <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-barcode mr-2"></i> Identificación y Clasificación</h5>
-                            
+
                             <div class="form-group mb-3">
                                 <label asp-for="Input.Category" class="control-label font-weight-bold small uppercase text-muted">Tipo de Recurso <span class="text-danger">*</span></label>
-                                <select asp-for="Input.Category" class="form-control custom-select" asp-items="Html.GetEnumSelectList<EquipmentCategory>()" id="categorySelect" required>
+                                <select asp-for="Input.Category" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<EquipmentCategory>()" id="categorySelect" required>
                                 </select>
                                 <span asp-validation-for="Input.Category" class="text-danger small"></span>
                             </div>
 
-                            <div class="form-group mb-3" id="typeContainer">
-                                <label asp-for="Input.EquipmentTypeId" class="control-label font-weight-bold small uppercase text-muted">Categoría del Equipo <span class="text-danger">*</span></label>
-                                <select asp-for="Input.EquipmentTypeId" class="form-control custom-select" asp-items="ViewBag.EquipmentTypeId">
-                                    <option value="">-- Seleccione Categoría --</option>
+                            <div class="form-group mb-3" id="utensilContainer" style="display:none;">
+                                <label asp-for="Input.UtensilType" class="control-label font-weight-bold small uppercase text-muted">Tipo de Material / Utensilio <span class="text-danger">*</span></label>
+                                <select asp-for="Input.UtensilType" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<UtensilType>()" id="utensilSelect">
                                 </select>
-                                <span asp-validation-for="Input.EquipmentTypeId" class="text-danger small"></span>
+                                <span asp-validation-for="Input.UtensilType" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.TypeClassification" class="control-label font-weight-bold small uppercase text-muted">Clasificación Técnica <span class="text-danger">*</span></label>
+                                <select asp-for="Input.TypeClassification" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<EquipmentTypeClassification>()" required>
+                                    <option value="">-- Seleccione Clasificación --</option>
+                                </select>
+                                <span asp-validation-for="Input.TypeClassification" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-3">
@@ -64,10 +68,8 @@
                             </div>
                         </div>
 
-                        <!-- Column 2: Specifications -->
                         <div class="col-md-6">
                             <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-cogs mr-2"></i> Ficha Técnica</h5>
-                            
 
 
                             <div class="row">
@@ -137,11 +139,11 @@
             function toggleType() {
                 var category = $('#categorySelect').val();
                 // 0 is Equipment, 1 is Utensil
-                if (category == '0') { 
+                if (category == '0') {
                     $('#typeContainer').show();
                 } else {
                     $('#typeContainer').hide();
-                    $('#Input_EquipmentTypeId').val(''); 
+                    $('#Input_EquipmentTypeId').val('');
                 }
             }
 
@@ -150,11 +152,13 @@
 
             // Input Validation Logic
             var alphanumericPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]*$/;
-            
+
             // Si necesitas bloquear caracteres específicos en el futuro, usa esta estructura:
             // $('#Input_Name').on('input', function() { ... });
 
         });
     </script>
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

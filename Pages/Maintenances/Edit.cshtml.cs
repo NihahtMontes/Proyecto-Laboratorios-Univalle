@@ -75,6 +75,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             public decimal ActualCost { get; set; }
 
             public List<CostDetail> CostDetails { get; set; } = new();
+
+            // --- PROPIEDADES AGREGADAS PARA LOS CHECKBOXES (L-48) ---
+            public int CompletionPercentage { get; set; } = 0;
+            public bool Step1_Cleaning { get; set; } = false;
+            public bool Step2_Calibration { get; set; } = false;
+            public bool Step3_Testing { get; set; } = false;
+            public bool Step4_FinalReview { get; set; } = false;
+            // --------------------------------------------------------
         }
 
         public async Task<IActionResult> OnGetAsync(int? id)
@@ -88,7 +96,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (maintenance == null) return NotFound();
-            
+
             Input = new InputModel
             {
                 Id = maintenance.Id,
@@ -104,7 +112,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 Recommendations = maintenance.Recommendations,
                 Observations = maintenance.Observations,
                 ActualCost = maintenance.ActualCost ?? 0m,
-                CostDetails = maintenance.CostDetails.ToList()
+                CostDetails = maintenance.CostDetails.ToList(),
+
+                // --- RECUPERAR DATOS DE CHECKBOXES DESDE LA BD ---
+                CompletionPercentage = maintenance.CompletionPercentage,
+                Step1_Cleaning = maintenance.Step1_Cleaning,
+                Step2_Calibration = maintenance.Step2_Calibration,
+                Step3_Testing = maintenance.Step3_Testing,
+                Step4_FinalReview = maintenance.Step4_FinalReview
+                // -------------------------------------------------
             };
 
             CargarListas();
@@ -119,7 +135,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             Input.Observations = Input.Observations.Clean();
             Input.Recommendations = Input.Recommendations.Clean();
 
-            // Validaciones Lógicas Rigurosas
+            // Validaciones Lógicas
             if (Input.StartDate.HasValue && Input.EndDate.HasValue)
             {
                 if (Input.EndDate < Input.StartDate)
@@ -128,7 +144,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 }
             }
 
-            // Recalcular costo real basado en detalles
             decimal totalCosts = Input.CostDetails?.Sum(d => d.Quantity * d.UnitPrice) ?? 0;
             Input.ActualCost = totalCosts;
 
@@ -151,7 +166,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             if (maintenanceDB == null) return NotFound();
 
-            // Actualizar campos desde InputModel (Protegemos propiedades de navegación de Overposting)
             maintenanceDB.EquipmentUnitId = Input.EquipmentUnitId;
             maintenanceDB.MaintenanceTypeId = Input.MaintenanceTypeId;
             maintenanceDB.TechnicianId = Input.TechnicianId;
@@ -165,6 +179,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             maintenanceDB.Observations = Input.Observations;
             maintenanceDB.ActualCost = Input.ActualCost;
 
+            // --- GUARDAR LOS DATOS DE CHECKBOXES EN LA BD ---
+            maintenanceDB.CompletionPercentage = Input.CompletionPercentage;
+            maintenanceDB.Step1_Cleaning = Input.Step1_Cleaning;
+            maintenanceDB.Step2_Calibration = Input.Step2_Calibration;
+            maintenanceDB.Step3_Testing = Input.Step3_Testing;
+            maintenanceDB.Step4_FinalReview = Input.Step4_FinalReview;
+            // ------------------------------------------------
+
             if (Input.CostDetails != null)
             {
                 Input.CostDetails = Input.CostDetails.Where(d => !string.IsNullOrWhiteSpace(d.Concept)).ToList();
@@ -174,18 +196,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 Input.CostDetails = new List<CostDetail>();
             }
 
-            foreach (var existingDetail in maintenanceDB.CostDetails.ToList())
+            // Eliminar detalles que ya no están
+            var inputDetailIds = Input.CostDetails.Select(d => d.Id).ToList();
+            var detailsToRemove = maintenanceDB.CostDetails.Where(d => !inputDetailIds.Contains(d.Id)).ToList();
+
+            foreach (var detail in detailsToRemove)
             {
-                if (!Input.CostDetails.Any(d => d.Id == existingDetail.Id))
-                {
-                    _context.Remove(existingDetail);
-                }
+                maintenanceDB.CostDetails.Remove(detail);
+                _context.Remove(detail);
             }
 
+            // Actualizar o agregar detalles
             foreach (var detailForm in Input.CostDetails)
             {
                 detailForm.MaintenanceId = maintenanceDB.Id;
-
                 var existingDetail = maintenanceDB.CostDetails.FirstOrDefault(d => d.Id == detailForm.Id && d.Id != 0);
                 if (existingDetail != null)
                 {
@@ -215,34 +239,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         {
             var equipos = _context.EquipmentUnits
                 .Include(u => u.Equipment)
-                    .ThenInclude(e => e.EquipmentType)
                 .Where(u => u.CurrentStatus != EquipmentStatus.Deleted)
                 .OrderBy(u => u.Equipment!.Name)
+                .AsEnumerable()
                 .Select(u => new
                 {
                     Id = u.Id,
-                    DisplayName = $"{u.Equipment!.Name} (Inv: {u.InventoryNumber}) - {(u.Equipment.Brand ?? "S/M")} {(u.Equipment.Model ?? "S/M")} [S/N: {u.SerialNumber ?? "N/A"}] - [{u.Equipment!.EquipmentType!.Name}]"
+                    DisplayName = $"{u.Equipment!.Name} (Inv: {u.InventoryNumber}) - {(u.Equipment.Brand ?? "S/M")} [S/N: {u.SerialNumber ?? "N/A"}] - [{u.Equipment.Category}]"
                 })
                 .ToList();
 
             ViewData["EquipmentUnitId"] = new SelectList(equipos, "Id", "DisplayName");
-            
+
             var tecnicos = _context.People
                 .Where(p => p.Status == GeneralStatus.Activo)
                 .OrderBy(p => p.Id)
                 .AsEnumerable()
                 .Select(p => new { Id = p.Id, FullName = p.FullName })
                 .ToList();
-            
+
             ViewData["TechnicianId"] = new SelectList(tecnicos, "Id", "FullName");
             ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes.OrderBy(mt => mt.Name), "Id", "Name");
+
             var requests = _context.Requests
                 .Include(r => r.Laboratory)
                 .OrderByDescending(r => r.CreatedDate)
                 .Take(20)
                 .ToList()
-                .Select(r => new { 
-                    Id = r.Id, 
+                .Select(r => new {
+                    Id = r.Id,
                     DisplayText = $"#{r.Id} - {r.Laboratory?.Name} ({r.CreatedDate:dd/MM}): " + (r.Description.Length > 40 ? r.Description.Substring(0, 40) + "..." : r.Description)
                 });
             ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText");
