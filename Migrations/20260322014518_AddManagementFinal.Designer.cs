@@ -12,8 +12,8 @@ using Proyecto_Laboratorios_Univalle.Data;
 namespace Proyecto_Laboratorios_Univalle.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260318171848_intial")]
-    partial class intial
+    [Migration("20260322014518_AddManagementFinal")]
+    partial class AddManagementFinal
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -995,6 +995,127 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.ToTable("MaintenanceTypes");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Management", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ActualClosedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ModifiedById")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("PlannedEndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Responsible")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("ModifiedById");
+
+                    b.ToTable("Managements");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.ManagementPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentReference")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("EquipmentUnitId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("MaintenanceId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ManagementId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ModifiedById")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("PlanStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("PlannedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Responsible")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("EquipmentUnitId");
+
+                    b.HasIndex("MaintenanceId");
+
+                    b.HasIndex("ManagementId");
+
+                    b.HasIndex("ModifiedById");
+
+                    b.ToTable("ManagementPlans");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Person", b =>
                 {
                     b.Property<int>("Id")
@@ -1647,7 +1768,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Laboratory", "Laboratory")
                         .WithMany("EquipmentUnits")
                         .HasForeignKey("LaboratoryId")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
@@ -1822,6 +1943,56 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasForeignKey("ModifiedById");
 
                     b.Navigation("CreatedBy");
+
+                    b.Navigation("ModifiedBy");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Management", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById");
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
+                        .WithMany()
+                        .HasForeignKey("ModifiedById");
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("ModifiedBy");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.ManagementPlan", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById");
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
+                        .WithMany()
+                        .HasForeignKey("EquipmentUnitId");
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Maintenance", "Maintenance")
+                        .WithMany()
+                        .HasForeignKey("MaintenanceId");
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Management", "Management")
+                        .WithMany("ManagementPlans")
+                        .HasForeignKey("ManagementId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
+                        .WithMany()
+                        .HasForeignKey("ModifiedById");
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("EquipmentUnit");
+
+                    b.Navigation("Maintenance");
+
+                    b.Navigation("Management");
 
                     b.Navigation("ModifiedBy");
                 });
@@ -2006,6 +2177,11 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.MaintenanceType", b =>
                 {
                     b.Navigation("Maintenances");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Management", b =>
+                {
+                    b.Navigation("ManagementPlans");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Person", b =>

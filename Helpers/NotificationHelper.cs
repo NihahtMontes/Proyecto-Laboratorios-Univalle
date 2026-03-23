@@ -1,4 +1,4 @@
-﻿namespace Proyecto_Laboratorios_Univalle.Helpers
+namespace Proyecto_Laboratorios_Univalle.Helpers
 {
     public static class NotificationHelper
     {

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +27,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? FilterLaboratoryId { get; set; }
+
         // Reporte L-6 Input
         [BindProperty]
         public ReportInputModel ReportInput { get; set; } = new();
@@ -51,8 +54,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                verificationIQ = verificationIQ.Where(s => s.EquipmentUnit.Equipment.Name.ToLower().Contains(term) 
+                verificationIQ = verificationIQ.Where(s => s.EquipmentUnit.Equipment.Name.ToLower().Contains(term)
                                        || s.EquipmentUnit.InventoryNumber.ToLower().Contains(term));
+            }
+
+            if (FilterLaboratoryId.HasValue)
+            {
+                verificationIQ = verificationIQ.Where(v => v.EquipmentUnit.LaboratoryId == FilterLaboratoryId.Value);
             }
 
             Verifications = await verificationIQ.OrderByDescending(v => v.Date).ToListAsync();

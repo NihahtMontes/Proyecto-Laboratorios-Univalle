@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -23,9 +23,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             _userManager = userManager;
         }
 
-        public IActionResult OnGet()
+        public IActionResult OnGet(int? equipmentUnitId = null, int? returnFacultyId = null, int? returnLaboratoryId = null)
         {
             LoadLists();
+            // Pre-select the equipment unit if passed from ByAmbient
+            if (equipmentUnitId.HasValue)
+            {
+                Input.EquipmentUnitId = equipmentUnitId.Value;
+            }
+            // Store return context
+            ViewData["ReturnFacultyId"] = returnFacultyId;
+            ViewData["ReturnLaboratoryId"] = returnLaboratoryId;
             return Page();
         }
 
@@ -185,6 +193,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             var unit = await _context.EquipmentUnits.Include(u => u.Equipment).FirstOrDefaultAsync(u => u.Id == verification.EquipmentUnitId);
             TempData.Success(NotificationHelper.Verifications.Created(unit?.Equipment?.Name ?? "equipo"));
+
+            // If we came from ByAmbient, go back there preserving the lab selection
+            if (Request.Form.TryGetValue("returnFacultyId", out var retFaculty) &&
+                Request.Form.TryGetValue("returnLaboratoryId", out var retLab) &&
+                int.TryParse(retFaculty, out int retFacultyInt) &&
+                int.TryParse(retLab, out int retLabInt))
+            {
+                return RedirectToPage("./ByAmbient",
+                    new { SelectedFacultyId = retFacultyInt, SelectedLaboratoryId = retLabInt });
+            }
 
             return RedirectToPage("./Index");
         }

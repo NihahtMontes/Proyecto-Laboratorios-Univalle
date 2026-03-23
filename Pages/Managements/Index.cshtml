@@ -1,0 +1,155 @@
+@page
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@model Proyecto_Laboratorios_Univalle.Pages.Managements.IndexModel
+
+@{
+    ViewData["Title"] = "Gestiones de Mantenimiento L-48";
+}
+
+<div class="row page-titles">
+    <div class="col-md-5 align-self-center">
+        <h3 class="text-themecolor">Gestiones L-48</h3>
+    </div>
+    <div class="col-md-7 align-self-center">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="javascript:void(0)">Operaciones</a></li>
+            <li class="breadcrumb-item active">Gestión de Planes Mantenimiento</li>
+        </ol>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Título y Botón Nuevo -->
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">Listado de Gestiones <small class="text-muted">(Períodos Activos e Históricos)</small></h4>
+            <a asp-page="./Create" class="btn btn-info btn-rounded shadow-sm">
+                <i class="fas fa-plus-circle"></i> Nueva Gestión
+            </a>
+        </div>
+    </div>
+
+    @if (!Model.ManagementList.Any())
+    {
+        <!-- Empty State -->
+        <div class="card text-center py-5">
+            <div class="card-body">
+                <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">Aún no se han configurado gestiones.</h4>
+                <p>Las gestiones (ej: L-48 2024) agrupan todos los planes de mantenimiento para un lapso definido.</p>
+                <a asp-page="./Create" class="btn btn-outline-info btn-rounded mt-3">Comenzar primera gestión</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var item in Model.ManagementList)
+            {
+                var isClosed = item.Status == ManagementStatus.Closed;
+                var badgeClass = isClosed ? "badge-danger" : "badge-success";
+                var opacityStyle = isClosed ? "opacity: 0.85; filter: grayscale(10%);" : "";
+
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card shadow-sm h-100" style="@opacityStyle">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom">
+                            <h5 class="mb-0 font-weight-bold text-dark">
+                                <i class="fas fa-folder-open text-info mr-2"></i> @item.Code
+                            </h5>
+                            <span class="badge @badgeClass badge-pill">
+                                @(isClosed ? "CERRADA" : "ACTIVA")
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="card-subtitle mb-2 text-muted">@item.Name</h6>
+                            <p class="card-text text-truncate" title="@item.Description">
+                                @(string.IsNullOrEmpty(item.Description) ? "Sin descripción" : item.Description)
+                            </p>
+                            
+                            <hr />
+
+                            <div class="d-flex justify-content-between mb-2">
+                                <small class="text-muted"><i class="fas fa-user"></i> Resp: @item.Responsible</small>
+                                <small class="text-muted"><i class="far fa-calendar-alt"></i> Inicio: @(item.StartDate?.ToString("dd/MMM/yyyy") ?? "N/A")</small>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between">
+                                    <small>Avance Total L-48</small>
+                                    <small class="font-weight-bold">@item.CompletionPercentage%</small>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-success progress-bar-striped @(item.CompletionPercentage < 100 ? "progress-bar-animated" : "")" 
+                                         role="progressbar" 
+                                         style="width: @item.CompletionPercentage%;" 
+                                         aria-valuenow="@item.CompletionPercentage" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100"></div>
+                                </div>
+                                <small class="text-muted d-block mt-1">@item.CompletedMaintenances de @item.TotalEquipments mantenimientos planificados completados.</small>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light d-flex justify-content-between">
+                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info rounded-pill">
+                                <i class="fas fa-chart-pie"></i> Ver Dashboard
+                            </a>
+
+                            @if (!isClosed)
+                            {
+                                <div class="btn-group">
+                                    <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <!-- Botón Cerrar Gestión via Form -->
+                                    <form method="post" asp-page-handler="CloseManagement" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('¿Estás seguro de cerrar esta Gestión? Al cerrarla, ninguna entidad relacionada podrá modificarse ni registrarse más.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Cerrar Gestión Bloqueada">
+                                            <i class="fas fa-lock"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-danger rounded-pill" disabled>
+                                    <i class="fas fa-lock text-white"></i> Inmutable
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(document).ready(function () {
+            // SweetAlert para notificaciones TempData
+            @if (TempData["Success"] != null)
+            {
+                <text>
+                Swal.fire({
+                    position: 'top-end',
+                    icon: 'success',
+                    title: '@TempData["Success"]',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+                </text>
+            }
+            @if (TempData["Error"] != null)
+            {
+                <text>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: '@TempData["Error"]'
+                });
+                </text>
+            }
+        });
+    </script>
+}

@@ -1,0 +1,339 @@
+@page
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@model Proyecto_Laboratorios_Univalle.Pages.Managements.DetailsModel
+
+@{
+    ViewData["Title"] = $"Dashboard L-48 | {Model.Management.Code}";
+    var isClosed = Model.Management.IsClosed;
+}
+
+<div class="row page-titles">
+    <div class="col-md-5 align-self-center">
+        <h3 class="text-themecolor">Dashboard de Gestión L-48</h3>
+    </div>
+    <div class="col-md-7 align-self-center">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="./Index">Gestiones</a></li>
+            <li class="breadcrumb-item active">@Model.Management.Code</li>
+        </ol>
+    </div>
+</div>
+
+<div class="container-fluid">
+    
+    <!-- Alertas Generales -->
+    @if (isClosed)
+    {
+        <div class="alert alert-danger shadow-sm">
+            <i class="fas fa-lock"></i> <strong>Esta Gestión está CERRADA.</strong> Ningún plan de mantenimiento ni verificación se puede modificar o alterar (Modo Solo Lectura Institucional). Cerrada el: @Model.Management.ActualClosedDate?.ToString("dd/MMM/yyyy")
+        </div>
+    }
+
+    <!-- 1. AVANCE GLOBAL -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-left-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h4 class="card-title text-info mb-0">Avance Global del Período</h4>
+                        <span class="badge badge-pill badge-info">@Model.GlobalProgress%</span>
+                    </div>
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-info progress-bar-striped @(Model.GlobalProgress < 100 && !isClosed ? "progress-bar-animated" : "")" 
+                             role="progressbar" 
+                             style="width: @Model.GlobalProgress.ToString(System.Globalization.CultureInfo.InvariantCulture)%;" 
+                             aria-valuenow="@Model.GlobalProgress.ToString(System.Globalization.CultureInfo.InvariantCulture)" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                             @(Model.GlobalProgress)% (@Model.CompletedPlans de @Model.TotalPlans completados)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÉTRICAS: TIPOS DE EQUIPO, GRUPOS Y LABORATORIOS -->
+    <div class="row">
+        <!-- 2. AVANCE POR TIPO DE EQUIPO (Top 4) -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-microscope text-primary"></i> Avance por Tipo</h5>
+                    <ul class="list-group list-group-flush mt-3">
+                        @if (!Model.TopEquipmentTypes.Any())
+                        {
+                            <li class="list-group-item text-muted text-center border-0">Sin equipos planificados</li>
+                        }
+                        else
+                        {
+                            var topTypes = Model.TopEquipmentTypes.Take(4).ToList();
+                            var restTypes = Model.TopEquipmentTypes.Skip(4).ToList();
+
+                            foreach(var item in topTypes)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2">
+                                    <span class="text-truncate">@item.Key</span>
+                                    <span class="badge badge-primary badge-pill ml-2">@item.Value</span>
+                                </li>
+                            }
+
+                            if (restTypes.Any())
+                            {
+                                <div class="collapse" id="collapseTypes">
+                                    @foreach(var item in restTypes)
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2 bg-light">
+                                            <span class="text-truncate">@item.Key</span>
+                                            <span class="badge badge-secondary badge-pill ml-2">@item.Value</span>
+                                        </li>
+                                    }
+                                </div>
+                                <div class="text-center mt-2">
+                                    <a class="text-info font-12" data-toggle="collapse" href="#collapseTypes" aria-expanded="false" aria-controls="collapseTypes" onclick="$(this).text($(this).text() == 'Ver todos los tipos' ? 'Ocultar' : 'Ver todos los tipos');">Ver todos los tipos</a>
+                                </div>
+                            }
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. AVANCE POR GRUPOS (Top 3) -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-layer-group text-success"></i> Avance por Grupo</h5>
+                    <ul class="list-group list-group-flush mt-3">
+                        @if (!Model.TopGroups.Any())
+                        {
+                            <li class="list-group-item text-muted text-center border-0">Sin grupos planificados</li>
+                        }
+                        else
+                        {
+                            var topGroups = Model.TopGroups.Take(3).ToList();
+                            var restGroups = Model.TopGroups.Skip(3).ToList();
+
+                            foreach(var item in topGroups)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2">
+                                    <span class="text-truncate">@item.Key</span>
+                                    <span class="badge badge-success badge-pill ml-2">@item.Value</span>
+                                </li>
+                            }
+
+                            if (restGroups.Any())
+                            {
+                                <div class="collapse" id="collapseGroups">
+                                    @foreach(var item in restGroups)
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2 bg-light">
+                                            <span class="text-truncate">@item.Key</span>
+                                            <span class="badge badge-secondary badge-pill ml-2">@item.Value</span>
+                                        </li>
+                                    }
+                                </div>
+                                <div class="text-center mt-2">
+                                    <a class="text-success font-12" data-toggle="collapse" href="#collapseGroups" aria-expanded="false" aria-controls="collapseGroups" onclick="$(this).text($(this).text() == 'Ver todos los grupos' ? 'Ocultar' : 'Ver todos los grupos');">Ver todos los grupos</a>
+                                </div>
+                            }
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. AVANCE POR LABORATORIO/AMBIENTE (Top 4) -->
+        <div class="col-lg-4 col-md-12 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-door-open text-info"></i> Avance por Laboratorio</h5>
+                    <ul class="list-group list-group-flush mt-3">
+                        @if (!Model.TopLaboratories.Any())
+                        {
+                            <li class="list-group-item text-muted text-center border-0">Sin ambientes planificados</li>
+                        }
+                        else
+                        {
+                            var topLabs = Model.TopLaboratories.Take(4).ToList();
+                            var restLabs = Model.TopLaboratories.Skip(4).ToList();
+
+                            foreach(var item in topLabs)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2">
+                                    <span class="text-truncate" title="@item.Key">@item.Key</span>
+                                    <span class="badge badge-info badge-pill ml-2">@item.Value</span>
+                                </li>
+                            }
+
+                            if (restLabs.Any())
+                            {
+                                <div class="collapse" id="collapseLabs">
+                                    @foreach(var item in restLabs)
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2 bg-light">
+                                            <span class="text-truncate" title="@item.Key">@item.Key</span>
+                                            <span class="badge badge-secondary badge-pill ml-2">@item.Value</span>
+                                        </li>
+                                    }
+                                </div>
+                                <div class="text-center mt-2">
+                                    <a class="text-info font-12" data-toggle="collapse" href="#collapseLabs" aria-expanded="false" aria-controls="collapseLabs" onclick="$(this).text($(this).text() == 'Ver todos los laboratorios' ? 'Ocultar' : 'Ver todos los laboratorios');">Ver todos los laboratorios</a>
+                                </div>
+                            }
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. VENCIDOS Y PRÓXIMOS A VENCER -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-left-warning">
+                <div class="card-body">
+                    <h5 class="card-title text-warning"><i class="fas fa-exclamation-triangle"></i> Próximos a Vencer (7 días)</h5>
+                    <div class="table-responsive mt-3" style="max-height: 200px; overflow-y: auto;">
+                        <table class="table table-sm table-hover">
+                            <tbody>
+                                @if(!Model.OverduePlans.Any())
+                                {
+                                    <tr><td class="text-center text-muted">Todo está al día en la planificación.</td></tr>
+                                }
+                                @foreach(var overdue in Model.OverduePlans)
+                                {
+                                    <tr>
+                                        <td>
+                                            @overdue.EquipmentUnit?.Equipment?.Name<br/>
+                                            <small class="text-muted">@overdue.EquipmentUnit?.Laboratory?.Name</small>
+                                        </td>
+                                        <td class="text-right text-danger font-weight-bold">
+                                            @(overdue.PlannedDate?.ToString("dd/MMM"))
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABLA MAESTRA L-48 -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="card-title">Planificación de Mantenimientos (Tabla L-48)</h4>
+                        @if (!isClosed)
+                        {
+                            <!-- Podría haber un botón de Añadir de forma individual o importar -->
+                            <button class="btn btn-sm btn-outline-success"><i class="fas fa-file-excel"></i> Exportar L-48</button>
+                        }
+                    </div>
+
+                    <!-- Filtros -->
+                    <form method="get" class="form-inline mb-4">
+                        <input type="hidden" name="id" value="@Model.Management.Id" />
+                        <div class="form-group mr-3">
+                            <input type="text" asp-for="SearchResponsible" class="form-control" placeholder="Buscar Responsable..." />
+                        </div>
+                        <div class="form-group mr-3">
+                            <select asp-for="FilterStatus" asp-items="@Html.GetEnumSelectList<ManagementPlanStatus>()" class="form-control">
+                                <option value="">Todos los Estados</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-info"><i class="fas fa-search"></i> Filtrar</button>
+                        <a asp-page="./Details" asp-route-id="@Model.Management.Id" class="btn btn-light ml-2">Limpiar</a>
+                    </form>
+
+                    <!-- Lista -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped custom-table">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Equipo / Activo</th>
+                                    <th>Ubicación</th>
+                                    <th>Responsable</th>
+                                    <th>Fecha Planificada</th>
+                                    <th>Notas</th>
+                                    <th>Estado</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.ManagementPlans.Any())
+                                {
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            No se encontraron filas en el Plan L-48 de esta gestión.
+                                        </td>
+                                    </tr>
+                                }
+                                @foreach (var plan in Model.ManagementPlans)
+                                {
+                                    <tr>
+                                        <td class="font-weight-bold align-middle">
+                                            @(plan.EquipmentUnit?.Equipment?.Name ?? "S/D") <br/>
+                                            <small class="text-info">UNI-@plan.EquipmentUnit?.Id</small>
+                                        </td>
+                                        <td class="align-middle">@plan.EquipmentUnit?.Laboratory?.Name</td>
+                                        <td class="align-middle">@(string.IsNullOrEmpty(plan.Responsible) ? "No Asignado" : plan.Responsible)</td>
+                                        <td class="align-middle">@(plan.PlannedDate?.ToString("dd/MM/yyyy") ?? "-")</td>
+                                        <td class="align-middle text-truncate" style="max-width: 150px;" title="@plan.Notes">@plan.Notes</td>
+                                        <td class="align-middle">
+                                            @switch (plan.PlanStatus)
+                                            {
+                                                case ManagementPlanStatus.Pending:
+                                                    <span class="badge badge-secondary">Pendiente</span> break;
+                                                case ManagementPlanStatus.InProgress:
+                                                    <span class="badge badge-warning">En Progreso</span> break;
+                                                case ManagementPlanStatus.Completed:
+                                                    <span class="badge badge-success">Completado</span> break;
+                                                case ManagementPlanStatus.Overdue:
+                                                    <span class="badge badge-danger">Vencido</span> break;
+                                            }
+                                        </td>
+                                        <td class="text-center align-middle">
+                                            <div class="btn-group">
+                                                @if (plan.MaintenanceId.HasValue)
+                                                {
+                                                    <a asp-page="/Maintenances/Details" asp-route-id="@plan.MaintenanceId" class="btn btn-sm btn-info" title="Ver Mantenimiento L-8" target="_blank">
+                                                        <i class="fas fa-eye"></i> L-8
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <!-- Aún no tiene un Módulo 8 explícito generado -->
+                                                    <a href="javascript:void(0)" class="btn btn-sm btn-outline-secondary disabled" title="Sin mantenimiento en DB" aria-disabled="true">
+                                                       <i class="fas fa-times-circle"></i>
+                                                    </a>
+                                                }
+                                                
+                                                @if(!isClosed)
+                                                {
+                                                    <!-- Acciones Adicionales -->
+                                                    <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary" title="Editar fila (Dummy)">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

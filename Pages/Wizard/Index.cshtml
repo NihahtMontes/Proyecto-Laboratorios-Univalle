@@ -1,0 +1,224 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Wizard.IndexModel
+@{
+    ViewData["Title"] = "Asistente de Gestión";
+    var steps = new[]
+    {
+        "L6 Verificación",
+        "L7 Solicitud",
+        "L8 Mantenimiento",
+        "L3 Salida",
+        "Kardex",
+        "Desembolso"
+    };
+}
+
+@section Styles {
+    <!-- Tailwind Generated Scoped CSS for the Wizard -->
+    <link rel="stylesheet" href="~/css/tailwind-dashboard.css" asp-append-version="true" />
+    
+    <style>
+        .tailwind-scope {
+            text-align: left;
+        }
+        .tailwind-scope a:hover {
+            text-decoration: none;
+        }
+        /* Custom Stepper styles for transitions */
+        .step-transition {
+            transition: all 0.3s ease-in-out;
+        }
+    </style>
+}
+
+<div class="tailwind-scope p-6 max-w-[1200px] mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-200">
+    <!-- Encabezado del Wizard -->
+    <div class="flex items-center gap-3 mb-6 bg-slate-900 text-white p-4 rounded-xl shadow-md">
+        <i class="fas fa-magic text-[#28A745] text-2xl"></i>
+        <div>
+            <h2 class="text-xl font-bold m-0 text-white">Ronda de Mantenimiento</h2>
+            <p class="text-sm text-slate-300 m-0">Gestión de Equipos Paso a Paso</p>
+        </div>
+    </div>
+
+    <!-- Stepper Navigation -->
+    <div class="mb-8 px-4">
+        <div class="flex items-center justify-between relative max-w-5xl mx-auto">
+            <!-- Línea de fondo -->
+            <div class="absolute left-[5%] top-[1.25rem] w-[90%] h-0.5 bg-gray-200 -z-10"></div>
+            
+            @for (int i = 0; i < steps.Length; i++)
+            {
+                int stepNum = i + 1;
+                bool isActive = stepNum == Model.Step;
+                bool isPast = stepNum < Model.Step;
+                
+                string circleClass = "w-10 h-10 rounded-full flex items-center justify-center font-bold border-2 step-transition z-10 ";
+                string textClass = "text-[10px] md:text-xs font-bold uppercase tracking-wider text-center px-1 leading-tight mt-2 ";
+                
+                if (isActive || isPast)
+                {
+                    circleClass += "bg-[#28A745] text-white border-[#28A745]";
+                    textClass += isActive ? "text-slate-800" : "text-slate-600";
+                }
+                else
+                {
+                    circleClass += "bg-white text-gray-400 border-gray-300";
+                    textClass += "text-gray-400";
+                }
+
+                <div class="flex flex-col items-center gap-2 w-28 relative">
+                    <div class="@circleClass">
+                        @if (isPast)
+                        {
+                            <i class="fas fa-check"></i>
+                        }
+                        else
+                        {
+                            <span>@stepNum</span>
+                        }
+                    </div>
+                    <span class="@textClass">@steps[i]</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Contenido del Paso -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 min-h-[400px]">
+        
+        @if (Model.Step == 1)
+        {
+            <div class="py-4">
+                <div class="text-center mb-6">
+                    <i class="fas fa-clipboard-check text-5xl text-slate-300 mb-2"></i>
+                    <h3 class="text-xl font-bold text-slate-800">Paso 1: Verificación Física L-6</h3>
+                    <p class="text-slate-500">Seleccione el equipo e indique su condición general.</p>
+                </div>
+                
+                <form method="post" asp-page-handler="NextStep" class="max-w-xl mx-auto space-y-4">
+                    <div asp-validation-summary="ModelOnly" class="text-red-500 text-sm"></div>
+
+                    <div class="space-y-1">
+                        <label class="block text-sm font-semibold text-slate-700">Facultad (Filtro)</label>
+                        <select asp-for="L6Input.FacultyId" asp-items="Model.FacultiesList" class="form-control" onchange="this.form.submit()" asp-page-handler="">
+                            <option value="">-- Todas --</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-sm font-semibold text-slate-700">Laboratorio (Filtro)</label>
+                        <select asp-for="L6Input.LaboratoryId" asp-items="Model.LaboratoriesList" class="form-control" onchange="this.form.submit()" asp-page-handler="">
+                            <option value="">-- Todos --</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-sm font-semibold text-slate-700">Equipo a Verificar <span class="text-red-500">*</span></label>
+                        <select asp-for="L6Input.EquipmentUnitId" asp-items="Model.EquipmentUnitsList" class="form-control border-blue-200 focus:border-blue-500 focus:ring-blue-500" required>
+                            <option value="">-- Seleccione el Equipo --</option>
+                        </select>
+                        <span asp-validation-for="L6Input.EquipmentUnitId" class="text-red-500 text-xs"></span>
+                    </div>
+
+                    <div class="space-y-1 pt-3 border-t">
+                        <label class="block text-sm font-semibold text-slate-700">Estado Físico / Funcional</label>
+                        <select asp-for="L6Input.GeneralCondition" class="form-control" required>
+                            <option value="Good">Operativo / Sin Daños</option>
+                            <option value="Bad">Con Desperfectos (Requiere L-7/L-8)</option>
+                            <option value="NotApplicable">No Aplica Mantenimiento</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-sm font-semibold text-slate-700">Observaciones Generales</label>
+                        <textarea asp-for="L6Input.Observations" class="form-control" rows="3" placeholder="Detalle rápido de la revisión..."></textarea>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="bg-[#28A745] hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-sm transition-colors flex items-center gap-2">
+                            Guardar L-6 y Avanzar <i class="fas fa-arrow-right text-xs"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        }
+        else if (Model.Step == 2)
+        {
+            <div class="py-4">
+                <div class="text-center mb-6">
+                    <i class="fas fa-file-invoice text-5xl text-slate-300 mb-2"></i>
+                    <h3 class="text-xl font-bold text-slate-800">Paso 2: Solicitud de Servicio L-7</h3>
+                    <p class="text-slate-500">Se detectaron fallos en el equipo en L-6. Describe el problema central para emitir la orden.</p>
+                </div>
+                
+                <form method="post" asp-page-handler="NextStep" class="max-w-xl mx-auto space-y-4">
+                    <div asp-validation-summary="ModelOnly" class="text-red-500 text-sm"></div>
+
+                    <div class="space-y-1">
+                        <label class="block text-sm font-semibold text-slate-700">Descripción del Problema <span class="text-red-500">*</span></label>
+                        <textarea asp-for="L7Input.Description" class="form-control" rows="4" required placeholder="Describe qué fallas viste en la Verificación L-6 que requieren mantenimiento urgente..."></textarea>
+                        <span asp-validation-for="L7Input.Description" class="text-red-500 text-xs"></span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="block text-sm font-semibold text-slate-700">Prioridad</label>
+                            <select asp-for="L7Input.Priority" class="form-control">
+                                <option value="Low">Baja (Revisión de Rutina)</option>
+                                <option value="Medium" selected>Media (Falla Parcial)</option>
+                                <option value="High">Alta (Detiene la Operación)</option>
+                                <option value="Critical">Crítica (Riesgo Físico)</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="block text-sm font-semibold text-slate-700">Tiempo Estimado</label>
+                            <input asp-for="L7Input.EstimatedRepairTime" class="form-control" placeholder="Ej: 2 horas, 1 día..." />
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end">
+                        <button type="submit" class="bg-[#28A745] hover:bg-green-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-sm transition-colors flex items-center gap-2">
+                            Autorizar Mantenimiento <i class="fas fa-arrow-right text-xs"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-10">
+                <h3 class="text-xl font-bold text-slate-800">Paso @Model.Step: @steps[Model.Step - 1]</h3>
+                <p class="text-slate-500 mb-6">Área en construcción para este módulo.</p>
+                
+                <form method="post" asp-page-handler="NextStep" class="inline-block">
+                    <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 px-6 rounded-lg shadow-sm transition-colors mx-2">
+                        Siguiente <i class="fas fa-arrow-right ml-2 text-xs"></i>
+                    </button>
+                </form>
+            </div>
+        }
+        
+    </div>
+    
+    <!-- Controles de Navegación Abajo (Back) -->
+    <div class="flex justify-between items-center px-2">
+        @if (Model.Step > 1)
+        {
+            <form method="post" asp-page-handler="PreviousStep">
+                 <button type="submit" class="flex items-center text-slate-500 hover:text-slate-800 font-semibold transition-colors">
+                    <i class="fas fa-arrow-left mr-2"></i> Retroceder
+                </button>
+            </form>
+        }
+        else
+        {
+            <div></div> <!-- Spacer -->
+        }
+        
+        <a asp-page="/Index" class="text-slate-400 hover:text-[#DC3545] font-semibold transition-colors">
+            Cancelar Wizard
+        </a>
+    </div>
+
+</div>

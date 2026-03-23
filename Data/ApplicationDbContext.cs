@@ -63,6 +63,10 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<Intern> Interns { get; set; } = null!;
         public DbSet<Extern> Externs { get; set; } = null!;
         public DbSet<Career> Careers { get; set; } = null!;
+        public DbSet<Management> Managements { get; set; } = null!;
+        public DbSet<ManagementPlan> ManagementPlans { get; set; } = null!;
+        
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -115,7 +119,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<City>().HasOne(c => c.Country).WithMany(p => p.Cities).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Laboratory>().HasOne(l => l.Faculty).WithMany(f => f.Laboratories).OnDelete(DeleteBehavior.Restrict);
 
-            // CORRECCIÓN: Se eliminó la relación Equipment -> EquipmentType porque ahora se usa Enum Category
+            // CORRECCIï¿½N: Se eliminï¿½ la relaciï¿½n Equipment -> EquipmentType porque ahora se usa Enum Category
             modelBuilder.Entity<Equipment>().HasOne(e => e.Country).WithMany(c => c.Equipments).HasForeignKey(e => e.CountryId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.City).WithMany(c => c.Equipments).HasForeignKey(e => e.CityId).OnDelete(DeleteBehavior.Restrict);
 
