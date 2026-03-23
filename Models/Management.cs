@@ -6,37 +6,39 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
-    /// Represents a Maintenance Management Period (e.g., "Gestión L-48").
-    /// It is the root entity that groups all maintenance activities for a given period.
-    /// Once CLOSED, no new records can be added and existing ones cannot be modified.
+    /// Representa un Periodo de Gestión de Mantenimiento (ej. "Gestión L-48").
+    /// Es la entidad raíz que agrupa todas las actividades de mantenimiento para un periodo dado.
+    /// Solo puede existir UNA gestión ACTIVA a la vez.
     /// </summary>
     public class Management : IAuditable
     {
-        // ========================================
-        // PRIMARY KEY
-        // ========================================
         [Key]
         public int Id { get; set; }
 
         // ========================================
-        // IDENTIFICATION
+        // IDENTIFICACIÓN (Clave de Negocio AAAA-S)
         // ========================================
+        [Required(ErrorMessage = "El año es obligatorio")]
+        [Range(2000, 2100, ErrorMessage = "Año fuera de rango permitido")]
+        [Display(Name = "Año")]
+        public int Year { get; set; }
+
+        [Required(ErrorMessage = "El semestre es obligatorio")]
+        [Range(1, 2, ErrorMessage = "El semestre debe ser 1 o 2")]
+        [Display(Name = "Semestre")]
+        public int Semester { get; set; }
+
         [Required(ErrorMessage = "El código de gestión es obligatorio")]
         [StringLength(50)]
         [Display(Name = "Código de Gestión")]
-        public string Code { get; set; } = string.Empty; // e.g., "L-48"
-
-        [Required(ErrorMessage = "El nombre es obligatorio")]
-        [StringLength(200)]
-        [Display(Name = "Nombre / Descripción")]
-        public string Name { get; set; } = string.Empty;
+        public string Code { get; set; } = string.Empty; // e.g., "2026-1"
 
         [StringLength(1000)]
         [Display(Name = "Descripción Detallada")]
         public string? Description { get; set; }
 
         // ========================================
-        // PERIOD
+        // PERIODO
         // ========================================
         [Display(Name = "Fecha de Inicio")]
         [DataType(DataType.Date)]
@@ -51,18 +53,18 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public DateTime? ActualClosedDate { get; set; }
 
         // ========================================
-        // STATUS & RESPONSIBILITY
+        // ESTADO Y RESPONSABILIDAD
         // ========================================
         [Required]
         [Display(Name = "Estado")]
-        public ManagementStatus Status { get; set; } = ManagementStatus.Active;
+        public ManagementStatus Status { get; set; } = ManagementStatus.Activo;
 
         [StringLength(200)]
-        [Display(Name = "Responsable de la Gestión")]
+        [Display(Name = "Responsable")]
         public string? Responsible { get; set; }
 
         // ========================================
-        // AUDIT
+        // AUDITORÍA (IAuditable)
         // ========================================
         [Display(Name = "Creado Por")]
         public int? CreatedById { get; set; }
@@ -77,7 +79,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public DateTime? LastModifiedDate { get; set; }
 
         // ========================================
-        // NAVIGATION PROPERTIES
+        // NAVEGACIÓN
         // ========================================
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }
@@ -85,14 +87,14 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
 
-        // Inverse: All plan entries for this Management period
+        // Todas las entradas del plan para este periodo
         public virtual ICollection<ManagementPlan> ManagementPlans { get; set; } = new List<ManagementPlan>();
 
         // ========================================
-        // CALCULATED PROPERTIES
+        // PROPIEDADES CALCULADAS
         // ========================================
         [NotMapped]
-        public bool IsClosed => Status == ManagementStatus.Closed;
+        public bool IsClosed => Status == ManagementStatus.Terminado;
 
         [NotMapped]
         public int TotalEquipments => ManagementPlans?.Count ?? 0;

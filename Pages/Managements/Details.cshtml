@@ -1,339 +1,287 @@
 @page
-@using Proyecto_Laboratorios_Univalle.Models.Enums
 @model Proyecto_Laboratorios_Univalle.Pages.Managements.DetailsModel
-
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@using System.Text.Json
 @{
-    ViewData["Title"] = $"Dashboard L-48 | {Model.Management.Code}";
-    var isClosed = Model.Management.IsClosed;
+    ViewData["Title"] = $"Dashboard Gestión {Model.Management.Year}-{Model.Management.Semester}";
+    var isManagementActive = Model.Management.Status == ManagementStatus.Activo;
 }
 
-<div class="row page-titles">
-    <div class="col-md-5 align-self-center">
-        <h3 class="text-themecolor">Dashboard de Gestión L-48</h3>
-    </div>
-    <div class="col-md-7 align-self-center">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a asp-page="./Index">Gestiones</a></li>
-            <li class="breadcrumb-item active">@Model.Management.Code</li>
-        </ol>
-    </div>
-</div>
+@section Styles {
+    <link rel="stylesheet" href="~/css/tailwind-dashboard.css" asp-append-version="true" />
+    <style>
+        .tailwind-scope { text-align: left; }
+        .tailwind-scope a:hover { text-decoration: none; }
+    </style>
+}
 
-<div class="container-fluid">
+<div class="tailwind-scope p-6 max-w-[1600px] mx-auto space-y-6">
+  
+  <!-- Header / Breadcrumb Clone -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+    <div>
+      <div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+          <a asp-page="./Index" class="hover:text-slate-600">Gestiones L-48</a>
+          <i class="fas fa-chevron-right text-[8px]"></i>
+          <span>Detalle de Período</span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center">
+        Planificación @Model.Management.Year - Semestre @(Model.Management.Semester == 1 ? "I" : "II")
+        <div class="ml-4">
+            @{
+                var badgeColor = Model.Management.Status == ManagementStatus.Activo ? "bg-green-100 text-green-700 border-green-200" :
+                                Model.Management.Status == ManagementStatus.Terminado ? "bg-red-100 text-red-700 border-red-200" :
+                                "bg-slate-100 text-slate-600 border-slate-200";
+                var statusText = Model.Management.Status.ToString().ToUpper();
+            }
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold @badgeColor border uppercase">
+                @statusText
+            </span>
+        </div>
+      </h1>
+      <p class="text-slate-500 text-sm mt-1">
+          @(string.IsNullOrEmpty(Model.Management.Description) ? "Resumen de indicadores para este período administrativo." : Model.Management.Description)
+      </p>
+    </div>
     
-    <!-- Alertas Generales -->
-    @if (isClosed)
-    {
-        <div class="alert alert-danger shadow-sm">
-            <i class="fas fa-lock"></i> <strong>Esta Gestión está CERRADA.</strong> Ningún plan de mantenimiento ni verificación se puede modificar o alterar (Modo Solo Lectura Institucional). Cerrada el: @Model.Management.ActualClosedDate?.ToString("dd/MMM/yyyy")
-        </div>
-    }
+    <div class="flex gap-3">
+      @if (isManagementActive)
+      {
+          <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-[#DC3545] text-white hover:bg-red-700 h-10 px-4 text-sm gap-2 shrink-0">
+            <i class="fas fa-exclamation-circle text-xs"></i>
+            <span>Falla Rápida</span>
+          </button>
+          <a asp-page="/Wizard/Index" class="inline-flex">
+            <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-slate-900 text-white hover:bg-slate-800 h-10 px-5 text-sm gap-2 shrink-0">
+              <i class="fas fa-play text-xs"></i>
+              <span>Iniciar Ronda (Wizard)</span>
+            </button>
+          </a>
+      }
+      else
+      {
+          <button class="inline-flex items-center justify-center rounded-lg font-medium bg-slate-100 text-slate-400 border border-slate-200 h-10 px-4 text-sm gap-2 cursor-not-allowed" disabled>
+            <i class="fas fa-lock text-xs"></i>
+            <span>Histórico Inmutable</span>
+          </button>
+      }
+    </div>
+  </div>
 
-    <!-- 1. AVANCE GLOBAL -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm border-left-info">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h4 class="card-title text-info mb-0">Avance Global del Período</h4>
-                        <span class="badge badge-pill badge-info">@Model.GlobalProgress%</span>
-                    </div>
-                    <div class="progress" style="height: 25px;">
-                        <div class="progress-bar bg-info progress-bar-striped @(Model.GlobalProgress < 100 && !isClosed ? "progress-bar-animated" : "")" 
-                             role="progressbar" 
-                             style="width: @Model.GlobalProgress.ToString(System.Globalization.CultureInfo.InvariantCulture)%;" 
-                             aria-valuenow="@Model.GlobalProgress.ToString(System.Globalization.CultureInfo.InvariantCulture)" 
-                             aria-valuemin="0" 
-                             aria-valuemax="100">
-                             @(Model.GlobalProgress)% (@Model.CompletedPlans de @Model.TotalPlans completados)
-                        </div>
-                    </div>
-                </div>
+  <!-- Identical Layout to Dashboard -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Chart: Avance Global -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 flex flex-col items-center justify-center relative">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 self-start w-full text-left">Avance Global</h3>
+      <div class="h-40 w-full relative content-center flex items-center justify-center">
+        <div style="height: 140px; width: 140px;" class="relative">
+            <canvas id="globalProgressChart"></canvas>
+            <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+              <span class="text-2xl font-bold text-slate-800">@Model.Management.CompletionPercentage%</span>
+              <span class="text-[10px] text-slate-400 font-medium uppercase mt-1">Completado</span>
             </div>
         </div>
+      </div>
     </div>
 
-    <!-- MÉTRICAS: TIPOS DE EQUIPO, GRUPOS Y LABORATORIOS -->
-    <div class="row">
-        <!-- 2. AVANCE POR TIPO DE EQUIPO (Top 4) -->
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-microscope text-primary"></i> Avance por Tipo</h5>
-                    <ul class="list-group list-group-flush mt-3">
-                        @if (!Model.TopEquipmentTypes.Any())
-                        {
-                            <li class="list-group-item text-muted text-center border-0">Sin equipos planificados</li>
-                        }
-                        else
-                        {
-                            var topTypes = Model.TopEquipmentTypes.Take(4).ToList();
-                            var restTypes = Model.TopEquipmentTypes.Skip(4).ToList();
-
-                            foreach(var item in topTypes)
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2">
-                                    <span class="text-truncate">@item.Key</span>
-                                    <span class="badge badge-primary badge-pill ml-2">@item.Value</span>
-                                </li>
-                            }
-
-                            if (restTypes.Any())
-                            {
-                                <div class="collapse" id="collapseTypes">
-                                    @foreach(var item in restTypes)
-                                    {
-                                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2 bg-light">
-                                            <span class="text-truncate">@item.Key</span>
-                                            <span class="badge badge-secondary badge-pill ml-2">@item.Value</span>
-                                        </li>
-                                    }
-                                </div>
-                                <div class="text-center mt-2">
-                                    <a class="text-info font-12" data-toggle="collapse" href="#collapseTypes" aria-expanded="false" aria-controls="collapseTypes" onclick="$(this).text($(this).text() == 'Ver todos los tipos' ? 'Ocultar' : 'Ver todos los tipos');">Ver todos los tipos</a>
-                                </div>
-                            }
-                        }
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. AVANCE POR GRUPOS (Top 3) -->
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-layer-group text-success"></i> Avance por Grupo</h5>
-                    <ul class="list-group list-group-flush mt-3">
-                        @if (!Model.TopGroups.Any())
-                        {
-                            <li class="list-group-item text-muted text-center border-0">Sin grupos planificados</li>
-                        }
-                        else
-                        {
-                            var topGroups = Model.TopGroups.Take(3).ToList();
-                            var restGroups = Model.TopGroups.Skip(3).ToList();
-
-                            foreach(var item in topGroups)
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2">
-                                    <span class="text-truncate">@item.Key</span>
-                                    <span class="badge badge-success badge-pill ml-2">@item.Value</span>
-                                </li>
-                            }
-
-                            if (restGroups.Any())
-                            {
-                                <div class="collapse" id="collapseGroups">
-                                    @foreach(var item in restGroups)
-                                    {
-                                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2 bg-light">
-                                            <span class="text-truncate">@item.Key</span>
-                                            <span class="badge badge-secondary badge-pill ml-2">@item.Value</span>
-                                        </li>
-                                    }
-                                </div>
-                                <div class="text-center mt-2">
-                                    <a class="text-success font-12" data-toggle="collapse" href="#collapseGroups" aria-expanded="false" aria-controls="collapseGroups" onclick="$(this).text($(this).text() == 'Ver todos los grupos' ? 'Ocultar' : 'Ver todos los grupos');">Ver todos los grupos</a>
-                                </div>
-                            }
-                        }
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. AVANCE POR LABORATORIO/AMBIENTE (Top 4) -->
-        <div class="col-lg-4 col-md-12 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-door-open text-info"></i> Avance por Laboratorio</h5>
-                    <ul class="list-group list-group-flush mt-3">
-                        @if (!Model.TopLaboratories.Any())
-                        {
-                            <li class="list-group-item text-muted text-center border-0">Sin ambientes planificados</li>
-                        }
-                        else
-                        {
-                            var topLabs = Model.TopLaboratories.Take(4).ToList();
-                            var restLabs = Model.TopLaboratories.Skip(4).ToList();
-
-                            foreach(var item in topLabs)
-                            {
-                                <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2">
-                                    <span class="text-truncate" title="@item.Key">@item.Key</span>
-                                    <span class="badge badge-info badge-pill ml-2">@item.Value</span>
-                                </li>
-                            }
-
-                            if (restLabs.Any())
-                            {
-                                <div class="collapse" id="collapseLabs">
-                                    @foreach(var item in restLabs)
-                                    {
-                                        <li class="list-group-item d-flex justify-content-between align-items-center border-0 p-2 bg-light">
-                                            <span class="text-truncate" title="@item.Key">@item.Key</span>
-                                            <span class="badge badge-secondary badge-pill ml-2">@item.Value</span>
-                                        </li>
-                                    }
-                                </div>
-                                <div class="text-center mt-2">
-                                    <a class="text-info font-12" data-toggle="collapse" href="#collapseLabs" aria-expanded="false" aria-controls="collapseLabs" onclick="$(this).text($(this).text() == 'Ver todos los laboratorios' ? 'Ocultar' : 'Ver todos los laboratorios');">Ver todos los laboratorios</a>
-                                </div>
-                            }
-                        }
-                    </ul>
-                </div>
-            </div>
-        </div>
+    <!-- Chart: Por Tipo de Equipo -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Por Categoría</h3>
+      <div class="h-40 w-full relative">
+        @if (Model.TopEquipmentTypes.Any()) {
+            <canvas id="typeProgressChart"></canvas>
+        } else {
+            <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
+        }
+      </div>
     </div>
 
-    <!-- 5. VENCIDOS Y PRÓXIMOS A VENCER -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm border-left-warning">
-                <div class="card-body">
-                    <h5 class="card-title text-warning"><i class="fas fa-exclamation-triangle"></i> Próximos a Vencer (7 días)</h5>
-                    <div class="table-responsive mt-3" style="max-height: 200px; overflow-y: auto;">
-                        <table class="table table-sm table-hover">
-                            <tbody>
-                                @if(!Model.OverduePlans.Any())
-                                {
-                                    <tr><td class="text-center text-muted">Todo está al día en la planificación.</td></tr>
-                                }
-                                @foreach(var overdue in Model.OverduePlans)
-                                {
-                                    <tr>
-                                        <td>
-                                            @overdue.EquipmentUnit?.Equipment?.Name<br/>
-                                            <small class="text-muted">@overdue.EquipmentUnit?.Laboratory?.Name</small>
-                                        </td>
-                                        <td class="text-right text-danger font-weight-bold">
-                                            @(overdue.PlannedDate?.ToString("dd/MMM"))
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+    <!-- Chart: Avance de Subgrupos -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Por Clasificación</h3>
+      <div class="h-40 w-full relative">
+        @if (Model.TopGroups.Any()) {
+            <canvas id="subgroupsProgressChart"></canvas>
+        } else {
+            <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- LabProgress Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 lg:col-span-2">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-5">Eficiencia por Laboratorio</h3>
+      <div class="space-y-4">
+        @foreach (var lab in Model.TopLaboratories)
+        {
+            <div class="flex items-center gap-4">
+              <span class="w-24 text-sm font-semibold text-slate-700 truncate">@lab.Key</span>
+              <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                <div class="h-full bg-blue-500" style="width: 50%"></div> 
+              </div>
+              <div class="w-12 text-right text-sm font-bold text-slate-800">@lab.Value</div>
+              <div class="w-20 text-right text-xs text-slate-500">equipos</div>
             </div>
-        </div>
+        }
+      </div>
     </div>
 
-    <!-- TABLA MAESTRA L-48 -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="card-title">Planificación de Mantenimientos (Tabla L-48)</h4>
-                        @if (!isClosed)
-                        {
-                            <!-- Podría haber un botón de Añadir de forma individual o importar -->
-                            <button class="btn btn-sm btn-outline-success"><i class="fas fa-file-excel"></i> Exportar L-48</button>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-0 flex flex-col">
+      <div class="px-4 py-3 bg-[#DC3545]/10 border-b border-[#DC3545]/20 flex items-center gap-2">
+        <i class="fas fa-exclamation-circle text-[#DC3545]"></i>
+        <h3 class="text-xs font-bold text-red-800 uppercase tracking-wider">Vencidos</h3>
+      </div>
+      <div class="p-4 space-y-3 bg-white">
+        @foreach (var plan in Model.OverduePlans)
+        {
+            <div class="flex justify-between items-start border-b border-slate-50 pb-2">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</p>
+                <p class="text-[10px] text-slate-500">@plan.EquipmentUnit?.Laboratory?.Name</p>
+              </div>
+              <span class="text-[10px] font-bold text-[#DC3545] bg-[#DC3545]/10 px-2 py-0.5 rounded-full mt-1">RETRASO</span>
+            </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Table -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-visible mt-6">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white rounded-t-xl">
+        <h2 class="text-lg font-bold text-slate-800">Cronograma Detallado @Model.Management.Code</h2>
+        <div class="text-xs text-slate-500">Responsable: <span class="font-bold text-slate-700">@Model.Management.Responsible</span></div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm whitespace-nowrap m-0 border-0">
+        <thead class="bg-[#F8F9FA] text-slate-500 uppercase font-semibold text-xs tracking-wider border-b-2 border-gray-200">
+          <tr>
+            <th class="px-6 py-4 font-semibold border-0">Equipo</th>
+            <th class="px-6 py-4 font-semibold border-0">Laboratorio</th>
+            <th class="px-6 py-4 font-semibold border-0">Notas</th>
+            <th class="px-6 py-4 font-semibold border-0">Estado</th>
+            <th class="px-6 py-4 font-semibold border-0">Planificado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+            @foreach (var plan in Model.ManagementPlans)
+            {
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="px-6 py-4 border-0">
+                        <div class="font-semibold text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</div>
+                        <div class="text-xs text-slate-400">Inv: @plan.EquipmentUnit?.InventoryNumber</div>
+                    </td>
+                    <td class="px-6 py-4 border-0 text-slate-600">@plan.EquipmentUnit?.Laboratory?.Name</td>
+                    <td class="px-6 py-4 border-0 text-slate-600 italic">
+                        <span class="truncate max-w-[200px] inline-block">@plan.Notes</span>
+                    </td>
+                    <td class="px-6 py-4 border-0">
+                        @{
+                            var badgeClass = plan.PlanStatus == ManagementPlanStatus.Completed ? "bg-green-100 text-green-700 border-green-200" :
+                                            plan.PlanStatus == ManagementPlanStatus.InProgress ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+                                            "bg-red-100 text-red-700 border-red-200";
                         }
-                    </div>
-
-                    <!-- Filtros -->
-                    <form method="get" class="form-inline mb-4">
-                        <input type="hidden" name="id" value="@Model.Management.Id" />
-                        <div class="form-group mr-3">
-                            <input type="text" asp-for="SearchResponsible" class="form-control" placeholder="Buscar Responsable..." />
-                        </div>
-                        <div class="form-group mr-3">
-                            <select asp-for="FilterStatus" asp-items="@Html.GetEnumSelectList<ManagementPlanStatus>()" class="form-control">
-                                <option value="">Todos los Estados</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-info"><i class="fas fa-search"></i> Filtrar</button>
-                        <a asp-page="./Details" asp-route-id="@Model.Management.Id" class="btn btn-light ml-2">Limpiar</a>
-                    </form>
-
-                    <!-- Lista -->
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped custom-table">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th>Equipo / Activo</th>
-                                    <th>Ubicación</th>
-                                    <th>Responsable</th>
-                                    <th>Fecha Planificada</th>
-                                    <th>Notas</th>
-                                    <th>Estado</th>
-                                    <th class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @if (!Model.ManagementPlans.Any())
-                                {
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">
-                                            No se encontraron filas en el Plan L-48 de esta gestión.
-                                        </td>
-                                    </tr>
-                                }
-                                @foreach (var plan in Model.ManagementPlans)
-                                {
-                                    <tr>
-                                        <td class="font-weight-bold align-middle">
-                                            @(plan.EquipmentUnit?.Equipment?.Name ?? "S/D") <br/>
-                                            <small class="text-info">UNI-@plan.EquipmentUnit?.Id</small>
-                                        </td>
-                                        <td class="align-middle">@plan.EquipmentUnit?.Laboratory?.Name</td>
-                                        <td class="align-middle">@(string.IsNullOrEmpty(plan.Responsible) ? "No Asignado" : plan.Responsible)</td>
-                                        <td class="align-middle">@(plan.PlannedDate?.ToString("dd/MM/yyyy") ?? "-")</td>
-                                        <td class="align-middle text-truncate" style="max-width: 150px;" title="@plan.Notes">@plan.Notes</td>
-                                        <td class="align-middle">
-                                            @switch (plan.PlanStatus)
-                                            {
-                                                case ManagementPlanStatus.Pending:
-                                                    <span class="badge badge-secondary">Pendiente</span> break;
-                                                case ManagementPlanStatus.InProgress:
-                                                    <span class="badge badge-warning">En Progreso</span> break;
-                                                case ManagementPlanStatus.Completed:
-                                                    <span class="badge badge-success">Completado</span> break;
-                                                case ManagementPlanStatus.Overdue:
-                                                    <span class="badge badge-danger">Vencido</span> break;
-                                            }
-                                        </td>
-                                        <td class="text-center align-middle">
-                                            <div class="btn-group">
-                                                @if (plan.MaintenanceId.HasValue)
-                                                {
-                                                    <a asp-page="/Maintenances/Details" asp-route-id="@plan.MaintenanceId" class="btn btn-sm btn-info" title="Ver Mantenimiento L-8" target="_blank">
-                                                        <i class="fas fa-eye"></i> L-8
-                                                    </a>
-                                                }
-                                                else
-                                                {
-                                                    <!-- Aún no tiene un Módulo 8 explícito generado -->
-                                                    <a href="javascript:void(0)" class="btn btn-sm btn-outline-secondary disabled" title="Sin mantenimiento en DB" aria-disabled="true">
-                                                       <i class="fas fa-times-circle"></i>
-                                                    </a>
-                                                }
-                                                
-                                                @if(!isClosed)
-                                                {
-                                                    <!-- Acciones Adicionales -->
-                                                    <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary" title="Editar fila (Dummy)">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                }
-                                            </div>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-
-                </div>
-            </div>
-        </div>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold @badgeClass border">
+                            @plan.PlanStatus.ToString().ToUpper()
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 border-0 text-slate-600">@plan.PlannedDate?.ToString("dd/MM/yyyy")</td>
+                </tr>
+            }
+        </tbody>
+      </table>
     </div>
+  </div>
 </div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Global Progress Pie
+            const ctxGlobal = document.getElementById('globalProgressChart').getContext('2d');
+            new Chart(ctxGlobal, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [@Model.Management.CompletionPercentage, @(100 - Model.Management.CompletionPercentage)],
+                        backgroundColor: ['#28A745', '#E2E8F0'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                }
+            });
+
+            // Type Progress Bar
+            @if (Model.TopEquipmentTypes.Any())
+            {
+                <text>
+                const ctxType = document.getElementById('typeProgressChart').getContext('2d');
+                if (ctxType) {
+                    new Chart(ctxType, {
+                        type: 'bar',
+                        data: {
+                            labels: @Html.Raw(JsonSerializer.Serialize(Model.TopEquipmentTypes.Keys)),
+                            datasets: [{
+                                data: @Html.Raw(JsonSerializer.Serialize(Model.TopEquipmentTypes.Values)),
+                                backgroundColor: ['#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'],
+                                borderRadius: 4,
+                                barThickness: 16
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { display: false },
+                                y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } }
+                            },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+                </text>
+            }
+
+            // Subgroups Progress Bar
+            @if (Model.TopGroups.Any())
+            {
+                <text>
+                const ctxSub = document.getElementById('subgroupsProgressChart').getContext('2d');
+                if (ctxSub) {
+                    new Chart(ctxSub, {
+                        type: 'bar',
+                        data: {
+                            labels: @Html.Raw(JsonSerializer.Serialize(Model.TopGroups.Keys)),
+                            datasets: [{
+                                data: @Html.Raw(JsonSerializer.Serialize(Model.TopGroups.Values)),
+                                backgroundColor: ['#10B981', '#F43F5E', '#3B82F6'],
+                                borderRadius: 4,
+                                barThickness: 16
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { display: false },
+                                y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } }
+                            },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+                </text>
+            }
+        });
+    </script>
 }

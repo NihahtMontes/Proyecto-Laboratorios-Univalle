@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using System.ComponentModel.DataAnnotations;
 
@@ -13,10 +15,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
     public class EditModel : PageModel
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
 
-        public EditModel(ApplicationDbContext context)
+        public EditModel(ApplicationDbContext context, UserManager<User> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         [BindProperty]
@@ -26,13 +30,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         {
             public int Id { get; set; }
 
-            [Required(ErrorMessage = "El código es obligatorio")]
-            [Display(Name = "Código (Ej: L-48 2024)")]
-            public string Code { get; set; } = string.Empty;
+            [Required(ErrorMessage = "El año es obligatorio")]
+            [Range(2000, 2100, ErrorMessage = "Año fuera de rango")]
+            [Display(Name = "Año")]
+            public int Year { get; set; }
 
-            [Required(ErrorMessage = "El nombre es obligatorio")]
-            [Display(Name = "Nombre de la Gestión")]
-            public string Name { get; set; } = string.Empty;
+            [Required(ErrorMessage = "El semestre es obligatorio")]
+            [Range(1, 2, ErrorMessage = "Semestre inválido (1 o 2)")]
+            [Display(Name = "Semestre")]
+            public int Semester { get; set; }
 
             [Display(Name = "Descripción general")]
             public string? Description { get; set; }
@@ -45,43 +51,30 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             [DataType(DataType.Date)]
             public DateTime? PlannedEndDate { get; set; }
 
-            [Required(ErrorMessage = "Responsable de la gestión es requerido")]
-            [Display(Name = "Responsable (Líder / Creador)")]
-            public string Responsible { get; set; } = string.Empty;
-            
-            public Models.Enums.ManagementStatus Status { get; set; }
+            [Required]
+            [Display(Name = "Estado")]
+            public ManagementStatus Status { get; set; }
         }
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null || _context.Managements == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var management = await _context.Managements.FirstOrDefaultAsync(m => m.Id == id);
             
-            if (management == null)
-            {
-                return NotFound();
-            }
+            if (management == null) return NotFound();
             
-            // Check if Immutable
-            if (management.Status == Models.Enums.ManagementStatus.Closed)
-            {
-                TempData["Error"] = "Esta gestión está CERRADA y no puede modificarse.";
-                return RedirectToPage("./Index");
-            }
+            // Si está eliminada, no se debería editar por esta vía
+            if (management.Status == ManagementStatus.Eliminado) return NotFound();
 
             Input = new EditManagementInputModel
             {
                 Id = management.Id,
-                Code = management.Code,
-                Name = management.Name,
+                Year = management.Year,
+                Semester = management.Semester,
                 Description = management.Description,
                 StartDate = management.StartDate,
                 PlannedEndDate = management.PlannedEndDate,
-                Responsible = management.Responsible,
                 Status = management.Status
             };
 
@@ -90,30 +83,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
+            if (!ModelState.IsValid) return Page();
 
             var management = await _context.Managements.FindAsync(Input.Id);
-            if (management == null)
+            if (management == null) return NotFound();
+
+            // Bloqueo si ya estaba terminada? El usuario dijo que se puede editar el estado.
+            // Pero validamos la regla de "Única Activa" si cambia a Activo
+            if (Input.Status == ManagementStatus.Activo && management.Status != ManagementStatus.Activo)
             {
-                return NotFound();
+                var anyActive = await _context.Managements.AnyAsync(m => m.Status == ManagementStatus.Activo && m.Id != management.Id);
+                if (anyActive)
+                {
+                    ModelState.AddModelError(string.Empty, "Ya existe otra gestión activa. Debe desactivarla antes de activar esta.");
+                    return Page();
+                }
             }
 
-            if (management.Status == Models.Enums.ManagementStatus.Closed)
-            {
-                TempData["Error"] = "Error de Seguridad: Intento de modificación sobre Gestión CERRADA.";
-                return RedirectToPage("./Index");
-            }
+            var currentUser = await _userManager.GetUserAsync(User);
 
-            management.Code = Input.Code;
-            management.Name = Input.Name;
+            management.Year = Input.Year;
+            management.Semester = Input.Semester;
+            management.Code = $"{Input.Year}-{Input.Semester}";
             management.Description = Input.Description;
             management.StartDate = Input.StartDate;
             management.PlannedEndDate = Input.PlannedEndDate;
-            management.Responsible = Input.Responsible;
-            // Status remains active or isn't changed here explicitly (use the grid lock for closing)
+            management.Status = Input.Status;
+            
+            management.ModifiedById = currentUser?.Id;
+            management.LastModifiedDate = DateTime.UtcNow;
 
             try
             {
@@ -121,23 +119,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!ManagementExists(management.Id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                if (!ManagementExists(management.Id)) return NotFound();
+                else throw;
             }
             
-            TempData["Success"] = "La información de la Gestión ha sido actualizada con éxito.";
+            TempData["Success"] = "Gestión actualizada correctamente.";
             return RedirectToPage("./Index");
         }
 
         private bool ManagementExists(int id)
         {
-            return (_context.Managements?.Any(e => e.Id == id)).GetValueOrDefault();
+            return _context.Managements.Any(e => e.Id == id);
         }
     }
 }
