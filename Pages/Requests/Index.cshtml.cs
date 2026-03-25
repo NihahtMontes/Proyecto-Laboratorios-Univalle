@@ -49,7 +49,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 .Include(r => r.ModifiedBy)
                 .AsQueryable();
 
-            // Apply search filter (Case-insensitive)
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
@@ -61,13 +60,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 );
             }
 
-            // Apply status filter
             if (StatusFilter.HasValue)
             {
                 query = query.Where(r => r.Status == StatusFilter.Value);
             }
 
-            // Apply priority filter
             if (PriorityFilter.HasValue)
             {
                 query = query.Where(r => r.Priority == PriorityFilter.Value);
@@ -109,7 +106,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             }
             catch (Exception ex)
             {
-                _context.ChangeTracker.Clear(); // Evitar problemas de estado si hubo error en BD
+                _context.ChangeTracker.Clear();
                 TempData.Error(NotificationHelper.Requests.SaveError($"Error técnico: {ex.Message}"));
                 return RedirectToPage();
             }

@@ -21,12 +21,12 @@
 
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de Adquisición (L-12)</h3>
-                        <h6 class="card-subtitle text-muted ml-2">Gestión de compra de nuevos activos, repuestos e insumos.</h6>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de AdquisiciÃ³n (L-12)</h3>
+                        <h6 class="card-subtitle text-muted ml-2">GestiÃ³n de compra de nuevos activos, repuestos e insumos.</h6>
                     </div>
                     <div class="ml-auto mt-3">
                         <a asp-page="Create" class="btn btn-success btn-rounded shadow-sm text-white px-4 font-weight-bold">
-                            <i class="fas fa-cart-plus mr-1"></i> Nueva Adquisición
+                            <i class="fas fa-cart-plus mr-1"></i> Nueva AdquisiciÃ³n
                         </a>
                     </div>
                 </div>
@@ -42,12 +42,12 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
+                                <label class="small font-weight-bold text-muted uppercase">BÃºsqueda RÃ¡pida</label>
                                 <div class="input-group drop-shadow">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                                     </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Ítem, código o solicitante..." />
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Ã�tem, cÃ³digo o solicitante..." />
                                 </div>
                             </div>
                             <div class="col-md-2">
@@ -77,12 +77,19 @@
                 </div>
 
                 <!-- TABLA -->
+                <div id="localNotificationsArea" class="mb-4" style="display: none;">
+                    <h5 class="font-weight-bold text-success mb-3 border-bottom pb-2">
+                        <i class="fas fa-shopping-basket mr-2"></i> Alertas de Adquisiciones
+                    </h5>
+                    <div id="localNotificationsList">
+                    </div>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-hover v-middle">
                         <thead class="thead-light">
                             <tr class="small uppercase font-weight-bold">
-                                <th>Ítem / Concepto</th>
-                                <th>Ubicación</th>
+                                <th>Ã�tem / Concepto</th>
+                                <th>UbicaciÃ³n</th>
                                 <th class="text-center">Prioridad</th>
                                 <th class="text-center">Estado</th>
                                 <th>Solicitante</th>
@@ -95,7 +102,7 @@
                                 <tr>
                                     <td colspan="6" class="text-center py-5 text-muted font-weight-bold">
                                         <i class="fas fa-shopping-basket fa-3x mb-3 d-block opacity-2"></i>
-                                        No se encontraron solicitudes de adquisición registradas.
+                                        No se encontraron solicitudes de adquisiciÃ³n registradas.
                                     </td>
                                 </tr>
                             }
@@ -112,12 +119,13 @@
                                                 <div>
                                                     <h6 class="m-b-0 font-weight-bold text-dark">@(item.Equipment?.Name ?? "Item Especial")</h6>
                                                     <small class="text-muted text-truncate d-block" style="max-width: 200px;">@item.Description</small>
+                                                    <small class="text-muted d-block">Ref: #@item.Id</small>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
                                             <div class="text-dark font-weight-bold">@item.Laboratory?.Name</div>
-                                            <small class="text-muted">Cód. Inv: @(item.InvestmentCode ?? "-")</small>
+                                            <small class="text-muted">CÃ³d. Inv: @(item.InvestmentCode ?? "-")</small>
                                         </td>
                                         <td class="text-center">
                                             @{
@@ -165,4 +173,70 @@
         .opacity-2 { opacity: 0.2; }
         .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
     </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // ==============================================================
+            // AÃ‘ADIDO: LÃ“GICA DE NOTIFICACIONES LOCALES PARA ADQUISICIONES
+            // ==============================================================
+            function loadLocalAcquisitionNotifications() {
+                // Le pasamos el filtro 'AdquisiciÃ³n' a la API
+                $.get('/Api/Notifications?handler=Unread&filter=AdquisiciÃ³n', function(data) {
+                    const $area = $('#localNotificationsArea');
+                    const $list = $('#localNotificationsList');
+                    
+                    if (data.items && data.items.length > 0) {
+                        $list.empty();
+                        $.each(data.items, function(i, item) {
+                            const icon = item.icon || 'fas fa-shopping-cart text-success';
+                            const url = item.url ? item.url : 'javascript:void(0)';
+                            
+                            $list.append(`
+                                <div class="alert alert-light border border-success shadow-sm d-flex align-items-center mb-2" id="local-notif-${item.id}">
+                                    <div class="mr-3"><i class="${icon} fa-2x"></i></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="alert-heading font-weight-bold mb-1 text-dark">${item.title}</h6>
+                                        <p class="mb-0 small text-muted">${item.message}</p>
+                                        <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${item.time}</small>
+                                    </div>
+                                    <div class="ml-3">
+                                        <a href="${url}" class="btn btn-sm btn-success btn-rounded px-3 font-weight-bold shadow-sm" onclick="markLocalAsRead(event, ${item.id}, '${url}')">
+                                            Ver Detalles <i class="fas fa-arrow-right ml-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            `);
+                        });
+                        $area.slideDown();
+                    } else {
+                        $area.slideUp();
+                    }
+                });
+            }
+
+            // Ejecutamos al cargar la vista
+            loadLocalAcquisitionNotifications();
+
+            // FunciÃ³n para marcar como leÃ­da y desaparecer la alerta
+            window.markLocalAsRead = function(e, id, url) {
+                $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
+                    if (url && url !== 'javascript:void(0)') {
+                        window.location.href = url;
+                    } else {
+                        // Ocultamos el cuadro suavemente
+                        $(`#local-notif-${id}`).fadeOut(300, function() {
+                            $(this).remove();
+                            // Si era la Ãºltima alerta, ocultamos todo el panel principal
+                            if ($('#localNotificationsList').children().length === 0) {
+                                $('#localNotificationsArea').slideUp();
+                            }
+                        });
+                    }
+                });
+            };
+            
+        });
+    </script>
 }

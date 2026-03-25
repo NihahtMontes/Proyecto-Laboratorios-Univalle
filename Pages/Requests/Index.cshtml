@@ -27,6 +27,13 @@
                     </div>
                 </div>
 
+                <div id="localNotificationsArea" class="mb-4" style="display: none;">
+                    <h5 class="font-weight-bold text-danger mb-3 border-bottom pb-2">
+                        <i class="fas fa-exclamation-circle mr-2"></i> Alertas de Requerimientos L-7
+                    </h5>
+                    <div id="localNotificationsList">
+                    </div>
+                </div>
                 <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
                     <form method="get">
                         <div class="row align-items-end">
@@ -84,7 +91,6 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @* Filtrado lógico: Solo mostramos solicitudes Técnicas (L-7) *@
                             @{
                                 var technicalRequests = Model.Requests?.Where(r => r.Type == Proyecto_Laboratorios_Univalle.Models.Enums.RequestType.Technical) ?? Enumerable.Empty<Proyecto_Laboratorios_Univalle.Models.Request>();
                             }
@@ -197,22 +203,66 @@
             });
 
             updateDownloadButtons();
+
+            function loadLocalL7Notifications() {
+                $.get('/Api/Notifications?handler=Unread&filter=L-7', function(data) {
+                    const $area = $('#localNotificationsArea');
+                    const $list = $('#localNotificationsList');
+                    
+                    if (data.items && data.items.length > 0) {
+                        $list.empty();
+                        $.each(data.items, function(i, item) {
+                            const icon = item.icon || 'fas fa-tools text-danger';
+                            const url = item.url ? item.url : 'javascript:void(0)';
+                            
+                            $list.append(`
+                                <div class="alert alert-light border border-danger shadow-sm d-flex align-items-center mb-2" id="local-notif-${item.id}">
+                                    <div class="mr-3"><i class="${icon} fa-2x"></i></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="alert-heading font-weight-bold mb-1 text-dark">${item.title}</h6>
+                                        <p class="mb-0 small text-muted">${item.message}</p>
+                                        <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${item.time}</small>
+                                    </div>
+                                    <div class="ml-3">
+                                        <a href="${url}" class="btn btn-sm btn-danger btn-rounded px-3 font-weight-bold shadow-sm" onclick="markLocalAsRead(event, ${item.id}, '${url}')">
+                                            Ver Detalles <i class="fas fa-arrow-right ml-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            `);
+                        });
+                        $area.slideDown(); 
+                    } else {
+                        $area.slideUp(); 
+                    }
+                });
+            }
+
+            loadLocalL7Notifications();
+
+            window.markLocalAsRead = function(e, id, url) {
+                $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
+                    if (url && url !== 'javascript:void(0)') {
+                        window.location.href = url;
+                    } else {
+                        $(`#local-notif-${id}`).fadeOut(300, function() {
+                            $(this).remove();
+                            if ($('#localNotificationsList').children().length === 0) {
+                                $('#localNotificationsArea').slideUp();
+                            }
+                        });
+                    }
+                });
+            };
+            
         });
     </script>
 }
 
 @section Styles {
     <style>
-        .v-middle td {
-            vertical-align: middle !important;
-        }
-
-        .drop-shadow {
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
-        }
-
-        .italic {
-            font-style: italic;
-        }
+        .v-middle td { vertical-align: middle !important; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+        .italic { font-style: italic; }
     </style>
 }

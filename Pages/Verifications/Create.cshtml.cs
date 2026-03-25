@@ -130,8 +130,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
                 .OrderBy(u => u.Equipment!.Name)
                 .ThenBy(u => u.InventoryNumber)
-                .Select(u => new { 
-                    id = u.Id, 
+                .Select(u => new {
+                    id = u.Id,
                     eqName = u.Equipment != null ? u.Equipment.Name : "Equipo",
                     inv = u.InventoryNumber
                 })
@@ -212,7 +212,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             ViewData["FacultyId"] = new SelectList(_context.Faculties
                 .Where(f => f.Status == GeneralStatus.Activo)
                 .OrderBy(f => f.Name), "Id", "Name");
-            
+
             ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
             ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
         }

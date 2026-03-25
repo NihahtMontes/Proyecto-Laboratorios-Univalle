@@ -17,6 +17,7 @@ Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIB
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
 // Configuración de la base de datos SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -38,7 +39,6 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options => {
 // ESTRATEGIA DEFINITIVA: SameSite=None + Secure=Always
 // Esto permite que las cookies funcionen incluso si el navegador detecta navegación cruzada o mixta (HTTP/HTTPS).
 // Es la solución estándar para problemas de "Schemeful Same-Site".
-
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {
     options.CheckConsentNeeded = context => false;
@@ -48,7 +48,7 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.Cookie.Name = ".ProyectoUnivalle.Auth.vUniversal"; 
+    options.Cookie.Name = ".ProyectoUnivalle.Auth.vUniversal";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax; 
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
@@ -63,6 +63,19 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.SameSite = SameSiteMode.Lax; 
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
+
+// ==============================================================
+// AÑADIDO: Configuración de Sesiones para el Wizard (Módulo TX-1)
+// ==============================================================
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(4); // Tiempo que dura la memoria del Wizard
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.Name = ".ProyectoUnivalle.WizardSession";
+});
+// ==============================================================
 
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, UserClaimsPrincipalFactory>();
 builder.Services.AddHttpContextAccessor();
@@ -93,13 +106,16 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
+// ==============================================================
+// AÑADIDO: Activar Middleware de Sesiones (Módulo TX-1)
+// ==============================================================
+app.UseSession();
+// ==============================================================
+
 app.UseRouting();
-
 app.UseCookiePolicy(); // Middleware crítico
-
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapRazorPages();
 
 // INICIALIZACIÓN Y SEMILLA DE BASE DE DATOS

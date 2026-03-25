@@ -65,7 +65,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             public string? EstimatedRepairTime { get; set; }
         }
 
-        // AJAX Handler: Get laboratories by faculty
         public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
         {
             var labs = await _context.Laboratories
@@ -76,7 +75,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             return new JsonResult(labs);
         }
 
-        // AJAX Handler: Get units by laboratory
         public async Task<JsonResult> OnGetUnitsByLabAsync(int laboratoryId)
         {
             var units = await _context.EquipmentUnits
@@ -101,7 +99,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Forzamos el tipo a Técnico por seguridad
             Input.Type = RequestType.Technical;
 
             if (!ModelState.IsValid)
@@ -141,6 +138,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             _context.Requests.Add(request);
             await _context.SaveChangesAsync();
+
+            if (currentUser != null)
+            {
+                var notification = new Notification
+                {
+                    UserId = currentUser.Id,
+                    Title = "Requerimiento Técnico L-7",
+                    Message = $"Se reportó exitosamente el fallo para la unidad {unit.InventoryNumber}.",
+                    ActionUrl = $"/Requests/Details?id={request.Id}",
+                    IconClass = "fas fa-tools text-danger",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+            }
 
             TempData.Success($"Solicitud técnica L-7 para '{unit.InventoryNumber}' registrada exitosamente.");
             return RedirectToPage("./Index");
