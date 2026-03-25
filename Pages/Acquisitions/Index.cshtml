@@ -20,6 +20,13 @@
                     </div>
                 </div>
 
+                <div id="localNotificationsArea" class="mb-4" style="display: none;">
+                    <h5 class="font-weight-bold text-success mb-3 border-bottom pb-2">
+                        <i class="fas fa-shopping-basket mr-2"></i> Alertas de Adquisiciones
+                    </h5>
+                    <div id="localNotificationsList">
+                    </div>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-hover v-middle">
                         <thead class="thead-light">
@@ -60,6 +67,7 @@
                                                 </div>
                                                 <div>
                                                     <h6 class="m-b-0 font-weight-bold text-dark">@(item.Equipment?.Name ?? "Ítem de Adquisición")</h6>
+
                                                     <small class="text-muted">Ref: #@item.Id</small>
                                                 </div>
                                             </div>
@@ -108,4 +116,70 @@
             font-style: italic;
         }
     </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // ==============================================================
+            // AÑADIDO: LÓGICA DE NOTIFICACIONES LOCALES PARA ADQUISICIONES
+            // ==============================================================
+            function loadLocalAcquisitionNotifications() {
+                // Le pasamos el filtro 'Adquisición' a la API
+                $.get('/Api/Notifications?handler=Unread&filter=Adquisición', function(data) {
+                    const $area = $('#localNotificationsArea');
+                    const $list = $('#localNotificationsList');
+                    
+                    if (data.items && data.items.length > 0) {
+                        $list.empty();
+                        $.each(data.items, function(i, item) {
+                            const icon = item.icon || 'fas fa-shopping-cart text-success';
+                            const url = item.url ? item.url : 'javascript:void(0)';
+                            
+                            $list.append(`
+                                <div class="alert alert-light border border-success shadow-sm d-flex align-items-center mb-2" id="local-notif-${item.id}">
+                                    <div class="mr-3"><i class="${icon} fa-2x"></i></div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="alert-heading font-weight-bold mb-1 text-dark">${item.title}</h6>
+                                        <p class="mb-0 small text-muted">${item.message}</p>
+                                        <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${item.time}</small>
+                                    </div>
+                                    <div class="ml-3">
+                                        <a href="${url}" class="btn btn-sm btn-success btn-rounded px-3 font-weight-bold shadow-sm" onclick="markLocalAsRead(event, ${item.id}, '${url}')">
+                                            Ver Detalles <i class="fas fa-arrow-right ml-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            `);
+                        });
+                        $area.slideDown();
+                    } else {
+                        $area.slideUp();
+                    }
+                });
+            }
+
+            // Ejecutamos al cargar la vista
+            loadLocalAcquisitionNotifications();
+
+            // Función para marcar como leída y desaparecer la alerta
+            window.markLocalAsRead = function(e, id, url) {
+                $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
+                    if (url && url !== 'javascript:void(0)') {
+                        window.location.href = url;
+                    } else {
+                        // Ocultamos el cuadro suavemente
+                        $(`#local-notif-${id}`).fadeOut(300, function() {
+                            $(this).remove();
+                            // Si era la última alerta, ocultamos todo el panel principal
+                            if ($('#localNotificationsList').children().length === 0) {
+                                $('#localNotificationsArea').slideUp();
+                            }
+                        });
+                    }
+                });
+            };
+            
+        });
+    </script>
 }

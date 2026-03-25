@@ -204,13 +204,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             _context.Requests.Add(request);
             await _context.SaveChangesAsync();
 
+            // ====================================================================
+            // AÑADIDO: DISPARADOR DE NOTIFICACIONES PARA ADQUISICIÓN
+            // ====================================================================
+            if (currentUser != null)
+            {
+                var notification = new Notification
+                {
+                    UserId = currentUser.Id,
+                    Title = "Adquisición Solicitada",
+                    Message = $"Se registró correctamente tu solicitud de compra para la unidad {unit.InventoryNumber}.",
+                    ActionUrl = $"/Requests/Details?id={request.Id}",
+                    IconClass = "fas fa-shopping-cart text-success",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+            }
+            // ====================================================================
+
             TempData.Success($"Solicitud de Adquisición para '{unit.InventoryNumber}' registrada exitosamente.");
             return RedirectToPage("./Index");
         }
 
         private async Task LoadLists()
         {
-            ViewData["FacultyId"] = new SelectList(await _context.Faculties
+            // CAMBIO: Renombramos ViewData para evitar colisión con Input.FacultyId
+            ViewData["FacultiesList"] = new SelectList(await _context.Faculties
                 .Where(f => f.Status == GeneralStatus.Activo)
                 .OrderBy(f => f.Name)
                 .ToListAsync(), "Id", "Name");

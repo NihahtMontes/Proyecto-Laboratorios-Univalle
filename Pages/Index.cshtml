@@ -6,295 +6,538 @@
     string greeting = now.Hour < 12 ? "Buenos días" : now.Hour < 18 ? "Buenas tardes" : "Buenas noches";
 }
 
+@Html.AntiForgeryToken()
+
 <div class="container-fluid">
     
-    <!-- 🌟 HERO SECTION: BIENVENIDA MÁS PROFESIONAL -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-white shadow-sm border-0 rounded-lg overflow-hidden dashboard-hero">
-                <div class="card-body p-4 d-flex align-items-center">
-                    <div class="hero-icon mr-4 d-none d-md-flex">
-                        <i class="fas fa-chart-line fa-3x text-primary opacity-2"></i>
+    <div id="mainDashboard" class="d-print-none">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center">
+                <h3 class="font-weight-bold text-dark mb-0 mr-3">Planificación Global</h3>
+                <div class="dropdown">
+                    <button class="btn btn-light bg-white border btn-sm shadow-sm dropdown-toggle font-weight-bold text-dark" type="button" data-toggle="dropdown" style="border-radius: 20px; padding: 5px 15px;">
+                        Gestión 2025-I | <span class="text-muted font-weight-normal">Junio - Julio 2025</span>
+                    </button>
+                    <div class="dropdown-menu shadow-lg border-0" style="border-radius: 12px; min-width: 250px;">
+                        <h6 class="dropdown-header text-muted uppercase font-weight-bold small">Gestiones Disponibles</h6>
+                        <a class="dropdown-item d-flex justify-content-between align-items-center py-2 bg-light-success text-success font-weight-bold" href="#">
+                            <div>Gestión 2025-I<br><small class="text-muted font-weight-normal">Junio - Julio 2025</small></div>
+                            <i class="fas fa-check"></i>
+                        </a>
+                        <a class="dropdown-item d-flex justify-content-between align-items-center py-2" href="#">
+                            <div>Gestión 2024-II<br><small class="text-muted font-weight-normal">Diciembre - Enero 2024</small></div>
+                            <span class="badge badge-light border">Archivada</span>
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item text-primary font-weight-bold py-2" href="#" data-toggle="modal" data-target="#wizardGestionModal">
+                            <i class="fas fa-plus mr-2"></i> Nueva Gestión Semestral
+                        </a>
                     </div>
-                    <div>
-                        <h2 class="font-weight-bold text-dark mb-1">@greeting, @User.Identity?.Name</h2>
-                        <p class="text-muted mb-0">
-                            <span class="badge badge-soft-primary px-3 mr-2">
-                                <i class="far fa-calendar-alt mr-1"></i> @now.ToString("dd 'de' MMMM, yyyy")
-                            </span>
-                            Resumen operativo del Sistema de Gestión de Laboratorios.
-                        </p>
+                </div>
+            </div>
+            <div>
+                <button type="button" class="btn btn-danger btn-rounded shadow-sm px-4 font-weight-bold mr-2">
+                    <i class="fas fa-exclamation-circle mr-2"></i> Falla Rápida
+                </button>
+                <button type="button" class="btn btn-primary btn-rounded shadow-sm px-4 font-weight-bold" data-toggle="modal" data-target="#wizardGestionModal" style="background-color: #1a237e; border:none;">
+                    <i class="fas fa-play mr-2"></i> Iniciar Ronda (Wizard)
+                </button>
+            </div>
+        </div>
+
+        <p class="text-muted small mb-4">Avance de Mantenimientos por Laboratorio y Equipos</p>
+
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                    <div class="card-body p-4">
+                        <h6 class="text-muted font-weight-bold uppercase mb-4 small">Avance Global</h6>
+                        <div class="text-center position-relative mx-auto mt-2" style="width: 140px; height: 140px;">
+                            <svg viewBox="0 0 36 36" class="circular-chart green" data-toggle="tooltip" data-placement="right" title="Planeado: 55%">
+                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="circle" stroke-dasharray="45, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div class="position-absolute d-flex flex-column align-items-center justify-content-center" style="top:0; left:0; right:0; bottom:0;">
+                                <h2 class="font-weight-bold mb-0 text-dark">45%</h2>
+                                <span class="small text-muted font-weight-bold" style="font-size: 9px;">COMPLETADO</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="ml-auto d-none d-lg-block">
-                        <div class="text-right">
-                            <h4 class="mb-0 font-weight-bold text-primary">@Model.OperationalPercent%</h4>
-                            <small class="text-muted uppercase font-weight-bold" style="letter-spacing: 1px;">Operatividad Total</small>
+                </div>
+            </div>
+
+            <div class="col-md-4 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                    <div class="card-body p-4">
+                        <h6 class="text-muted font-weight-bold uppercase mb-4 small">Por Tipo de Equipo</h6>
+                        <div class="mb-3 d-flex align-items-center">
+                            <span class="small text-muted mr-3" style="width: 60px;">Mecánicos</span>
+                            <div class="progress flex-grow-1" style="height: 12px; cursor:pointer;" data-toggle="tooltip" title="Mecánicos: 80%"><div class="progress-bar" style="background-color: #2962ff; width: 80%"></div></div>
+                        </div>
+                        <div class="mb-3 d-flex align-items-center">
+                            <span class="small text-muted mr-3" style="width: 60px;">Eléctricos</span>
+                            <div class="progress flex-grow-1" style="height: 12px; cursor:pointer;" data-toggle="tooltip" title="Eléctricos: 65%"><div class="progress-bar" style="background-color: #ff9800; width: 65%"></div></div>
+                        </div>
+                        <div class="mb-3 d-flex align-items-center">
+                            <span class="small text-muted mr-3" style="width: 60px;">Ópticos</span>
+                            <div class="progress flex-grow-1" style="height: 12px; cursor:pointer;" data-toggle="tooltip" title="Ópticos: 90%"><div class="progress-bar" style="background-color: #9c27b0; width: 90%"></div></div>
+                        </div>
+                        <div class="mb-0 d-flex align-items-center">
+                            <span class="small text-muted mr-3" style="width: 60px;">Térmicos</span>
+                            <div class="progress flex-grow-1" style="height: 12px; cursor:pointer;" data-toggle="tooltip" title="Térmicos: 40%"><div class="progress-bar" style="background-color: #e91e63; width: 40%"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                    <div class="card-body p-4">
+                        <h6 class="text-muted font-weight-bold uppercase mb-4 small">Avance de Subgrupos</h6>
+                        <div class="mb-4 d-flex align-items-center">
+                            <span class="small text-muted mr-3 text-right" style="width: 70px;">H-1</span>
+                            <div class="progress flex-grow-1" style="height: 12px;"><div class="progress-bar" style="background-color: #00c853; width: 75%"></div></div>
+                        </div>
+                        <div class="mb-4 d-flex align-items-center">
+                            <span class="small text-muted mr-3 text-right" style="width: 70px;">Microbiología</span>
+                            <div class="progress flex-grow-1" style="height: 12px;"><div class="progress-bar" style="background-color: #e91e63; width: 45%"></div></div>
+                        </div>
+                        <div class="mb-0 d-flex align-items-center">
+                            <span class="small text-muted mr-3 text-right line-height-normal" style="width: 70px;">Civil y<br>Suelos</span>
+                            <div class="progress flex-grow-1" style="height: 12px;"><div class="progress-bar" style="background-color: #2962ff; width: 85%"></div></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- ⚡ QUICK ACTIONS: ACCESOS RÁPIDOS ELEGANTES -->
-    <div class="row mb-4">
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <a asp-page="/Equipment/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-info-soft text-info mb-3 mx-auto">
-                        <i class="fas fa-plus"></i>
+        <div class="row mb-4">
+            <div class="col-md-8 mb-3 mb-md-0">
+                <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                    <div class="card-body p-4">
+                        <h6 class="text-muted font-weight-bold uppercase mb-4 small">Avance por Laboratorio</h6>
+                        
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="small font-weight-bold text-dark" style="width: 100px;">Civil</span>
+                            <div class="progress flex-grow-1 mr-3" style="height: 8px;"><div class="progress-bar bg-warning" style="width: 78%"></div></div>
+                            <span class="small font-weight-bold text-dark" style="width: 30px;">78%</span>
+                            <span class="small text-muted" style="width: 50px;">12 / 15 eq.</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="small font-weight-bold text-dark" style="width: 100px;">H-1</span>
+                            <div class="progress flex-grow-1 mr-3" style="height: 8px;"><div class="progress-bar bg-warning" style="width: 60%"></div></div>
+                            <span class="small font-weight-bold text-dark" style="width: 30px;">60%</span>
+                            <span class="small text-muted" style="width: 50px;">9 / 15 eq.</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="small font-weight-bold text-dark" style="width: 100px;">Química</span>
+                            <div class="progress flex-grow-1 mr-3" style="height: 8px;"><div class="progress-bar bg-danger" style="width: 40%"></div></div>
+                            <span class="small font-weight-bold text-dark" style="width: 30px;">40%</span>
+                            <span class="small text-muted" style="width: 50px;">6 / 15 eq.</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-0">
+                            <span class="small font-weight-bold text-dark" style="width: 100px;">Electrónica</span>
+                            <div class="progress flex-grow-1 mr-3" style="height: 8px;"><div class="progress-bar bg-danger" style="width: 20%"></div></div>
+                            <span class="small font-weight-bold text-dark" style="width: 30px;">20%</span>
+                            <span class="small text-muted" style="width: 50px;">3 / 15 eq.</span>
+                        </div>
                     </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Nuevo Equipo</h6>
-                    <p class="small text-muted mb-0">Registrar activo técnico</p>
                 </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <a asp-page="/Requests/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-warning-soft text-warning mb-3 mx-auto">
-                        <i class="fas fa-file-signature"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Nueva Solicitud</h6>
-                    <p class="small text-muted mb-0">Reportar falla o daño</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3 mb-sm-0">
-            <a asp-page="/Maintenances/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-success-soft text-success mb-3 mx-auto">
-                        <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Mantenimiento</h6>
-                    <p class="small text-muted mb-0">Programar intervención</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-sm-6">
-            <a asp-page="/Verifications/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-primary-soft text-primary mb-3 mx-auto">
-                        <i class="fas fa-check-double"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Inspección</h6>
-                    <p class="small text-muted mb-0">Verificar estado técnico</p>
-                </div>
-            </a>
-        </div>
-    </div>
+            </div>
 
-    <!-- 📊 INDICADORES PRINCIPALES (KPIs) -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-4 mb-lg-0">
-            <div class="card border-0 shadow-sm card-stats h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-info text-white mr-3">
-                            <i class="fas fa-boxes"></i>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100 bg-transparent">
+                    <div class="card-body p-0 d-flex flex-column">
+                        
+                        <div class="bg-danger-soft border border-danger-soft rounded-lg p-3 mb-3 flex-grow-1">
+                            <h6 class="font-weight-bold text-danger small uppercase mb-3"><i class="fas fa-exclamation-circle mr-1"></i> Vencidos</h6>
+                            <div class="d-flex justify-content-between border-bottom border-danger-soft pb-2 mb-2">
+                                <div>
+                                    <div class="small font-weight-bold text-dark">Horno PINZUAR</div>
+                                    <div class="small text-muted" style="font-size:10px;">Civil</div>
+                                </div>
+                                <span class="small text-danger font-weight-bold">Hace 5 días</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="small font-weight-bold text-dark">Balanza OHAUS</div>
+                                    <div class="small text-muted" style="font-size:10px;">H-1</div>
+                                </div>
+                                <span class="small text-danger font-weight-bold">Hace 2 días</span>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.TotalEquipment</h3>
-                            <small class="text-muted font-weight-bold uppercase">Total Activos</small>
+
+                        <div class="bg-warning-soft border border-warning-soft rounded-lg p-3 flex-grow-1">
+                            <h6 class="font-weight-bold text-warning small uppercase mb-3" style="color:#d48806 !important;"><i class="fas fa-clock mr-1"></i> Próximos a Vencer</h6>
+                            <div class="d-flex justify-content-between border-bottom border-warning-soft pb-2 mb-2">
+                                <div>
+                                    <div class="small font-weight-bold text-dark">Fermentador INOX</div>
+                                    <div class="small text-muted" style="font-size:10px;">H-1</div>
+                                </div>
+                                <span class="small font-weight-bold" style="color:#d48806;">En 2 días</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="small font-weight-bold text-dark">Campana WILDA</div>
+                                    <div class="small text-muted" style="font-size:10px;">H-1</div>
+                                </div>
+                                <span class="small font-weight-bold" style="color:#d48806;">En 5 días</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="d-flex justify-content-between mb-1 small">
-                            <span>Estado Operativo</span>
-                            <span class="text-success font-weight-bold">@Model.OperationalPercent%</span>
-                        </div>
-                        <div class="progress" style="height: 5px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: @Model.OperationalPercent%"></div>
-                        </div>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Equipment/Index" class="btn btn-link btn-sm text-info font-weight-bold">Ver Inventario <i class="fas fa-arrow-right ml-1"></i></a>
+
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-3 col-md-6 mb-4 mb-lg-0">
-            <div class="card border-0 shadow-sm card-stats h-100 border-left-warning">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-warning text-white mr-3">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.PendingRequests</h3>
-                            <small class="text-muted font-weight-bold uppercase">Req. Pendientes</small>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <span class="badge badge-soft-warning px-3 py-2 btn-rounded w-100">
-                            Acción Requerida
-                        </span>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Requests/Index" class="btn btn-link btn-sm text-warning font-weight-bold">Gestionar Buzón <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
+        <div class="card border-0 shadow-sm mb-5" style="border-radius: 12px;">
+            <div class="card-header bg-white border-0 p-4 d-flex justify-content-between align-items-center">
+                <h5 class="font-weight-bold text-dark mb-0">Cronograma de Intervenciones</h5>
+                <span class="badge badge-light border text-muted px-3 py-1 rounded-pill">Semana 12 - 16</span>
             </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
-            <div class="card border-0 shadow-sm card-stats h-100 border-left-success">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-success text-white mr-3">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.OngoingMaintenances</h3>
-                            <small class="text-muted font-weight-bold uppercase">En Progreso</small>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <span class="badge badge-soft-success px-3 py-2 btn-rounded w-100">
-                            Servicios Activos
-                        </span>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Maintenances/Index" class="btn btn-link btn-sm text-success font-weight-bold">Ver Historial <i class="fas fa-arrow-right ml-1"></i></a>
+            <div class="card-body px-4 pt-0 pb-4">
+                
+                <div class="d-flex flex-wrap align-items-center mb-4">
+                    <span class="text-muted mr-3"><i class="fas fa-filter"></i> Filtros:</span>
+                    <select id="filterLab" class="form-control form-control-sm mr-2 filter-cronograma" style="width: 130px; border-radius:20px;"><option value="Todos">Laboratorio</option><option value="Civil">Civil</option><option value="H-1">H-1</option><option value="Química">Química</option></select>
+                    <select id="filterCat" class="form-control form-control-sm mr-2 filter-cronograma" style="width: 140px; border-radius:20px;"><option value="Todas">Categoría</option><option value="Equipos de Calentamiento">Calentamiento</option><option value="Equipos de Ensayo">Ensayo</option><option value="Equipos de Medición">Medición</option></select>
+                    <select id="filterTech" class="form-control form-control-sm mr-4 filter-cronograma" style="width: 150px; border-radius:20px;"><option value="Todos">Técnico</option><option value="Ing. Carlos Mamani">Ing. Carlos</option><option value="PCS Proyectos">PCS Proyectos</option></select>
+                    
+                    <div class="btn-group btn-group-sm bg-light rounded-pill p-1 border">
+                        <button class="btn btn-white btn-pill-filter active" data-filter="Todos">Todos</button>
+                        <button class="btn btn-transparent btn-pill-filter text-muted" data-filter="Planeado">Planeado</button>
+                        <button class="btn btn-transparent btn-pill-filter text-muted" data-filter="En Progreso">En Progreso</button>
+                        <button class="btn btn-transparent btn-pill-filter text-muted" data-filter="Ejecutado">Ejecutado</button>
+                        <button class="btn btn-transparent btn-pill-filter text-muted" data-filter="Externo">Externo</button>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="col-lg-3 col-md-6">
-            <div class="card border-0 shadow-sm card-stats h-100 border-left-primary">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-primary text-white mr-3">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.RecentVerificationsCount</h3>
-                            <small class="text-muted font-weight-bold uppercase">Verif. Semanal</small>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <span class="badge badge-soft-primary px-3 py-2 btn-rounded w-100">
-                            Inspecciones OK
-                        </span>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Verifications/Index" class="btn btn-link btn-sm text-primary font-weight-bold">Bitácora Técnica <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 📂 MAIN CONTENT AREA -->
-    <div class="row">
-        <!-- SOLICITUDES RECIENTES -->
-        <div class="col-lg-8 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3 d-flex align-items-center">
-                    <h5 class="card-title font-weight-bold mb-0 text-dark">Actividad Reciente del Buzón</h5>
-                    <div class="ml-auto">
-                        <span class="badge badge-light text-muted">Últimos 6 registros</span>
-                    </div>
-                </div>
                 <div class="table-responsive">
-                    <table class="table table-hover table-borderless v-middle">
-                        <thead class="bg-light-soft text-muted small uppercase">
-                            <tr>
-                                <th class="px-4">Equipo / ID</th>
-                                <th>Solicitante</th>
-                                <th>Prioridad</th>
+                    <table class="table table-hover table-borderless v-middle mb-0">
+                        <thead class="border-bottom border-light">
+                            <tr class="small uppercase font-weight-bold text-muted" style="font-size: 9px; letter-spacing:1px;">
+                                <th class="pl-3">Laboratorio</th>
+                                <th>Equipo / Inv</th>
+                                <th>Falla Reportada</th>
+                                <th class="text-center">Servicio</th>
                                 <th class="text-center">Estado</th>
-                                <th class="text-right px-4">Acción</th>
+                                <th class="text-center" style="width:60px;">S12</th>
+                                <th class="text-center" style="width:60px;">S13</th>
+                                <th class="text-center" style="width:60px;">S14</th>
+                                <th style="width:30px;"></th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @if (!Model.LatestRequests.Any())
-                            {
-                                <tr><td colspan="5" class="text-center py-5 text-muted">No hay solicitudes recientes registradas.</td></tr>
-                            }
-                            @foreach (var request in Model.LatestRequests)
-                            {
-                                <tr>
-                                    <td class="px-4">
-                                        <div class="font-weight-bold text-dark">@(request.EquipmentUnit?.Equipment?.Name ?? request.Equipment?.Name)</div>
-                                        <div class="small text-muted">@(request.EquipmentUnit?.InventoryNumber ?? "-")</div>
-                                    </td>
-                                    <td>
-                                        <div class="small text-dark font-weight-bold">@request.RequestedBy?.FullName</div>
-                                        <div class="small text-muted">@request.RequestedBy?.IdentityCard</div>
-                                    </td>
-                                    <td>
-                                        @{
-                                            var pClass = request.Priority == RequestPriority.High ? "badge-soft-danger text-danger" : 
-                                                       request.Priority == RequestPriority.Medium ? "badge-soft-warning text-warning" : "badge-soft-info text-info";
-                                        }
-                                        <span class="badge @pClass px-3 py-1 rounded-pill small">@request.Priority</span>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge badge-dot bg-warning mr-1"></span> @request.Status
-                                    </td>
-                                    <td class="text-right px-4">
-                                        <a href="/Requests/Details/@request.Id" class="btn btn-sm btn-soft-secondary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
+                        <tbody id="cronogramaTableBody">
+                            </tbody>
                     </table>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <div id="wizardApp" style="display: none; max-width: 1100px; margin: 0 auto;">
+        
+        <div class="d-flex align-items-center mb-4 d-print-none">
+            <h4 class="font-weight-bold text-dark mb-0">Ronda Activa: <span class="text-primary" id="wizardGestTitle">Gestión 2025-I</span></h4>
+            <div class="ml-auto d-flex align-items-center">
+                <select id="wizardLabSelect" class="form-control form-control-sm font-weight-bold mr-3" style="border-radius: 20px; width: 180px; border: 2px solid #2962ff; color: #2962ff; outline: none; box-shadow: none;" onchange="loadWizardUnits(currentWizardStep)">
+                    <option value="">-- Cambiar Laboratorio --</option>
+                </select>
+                <button class="btn btn-outline-danger btn-sm btn-rounded font-weight-bold" onclick="cancelWizard()">
+                    <i class="fas fa-times mr-1"></i> Salir
+                </button>
+            </div>
+        </div>
+
+        <div class="wizard-steps mb-5 d-flex justify-content-between position-relative mt-3 d-print-none">
+            <div class="step-line"></div>
+            <div class="step-item active" id="barStep1"><span class="step-number">1</span><span class="step-label">L6 Verificación</span></div>
+            <div class="step-item" id="barStep2"><span class="step-number">2</span><span class="step-label">L7 Solicitud</span></div>
+            <div class="step-item" id="barStep3"><span class="step-number">3</span><span class="step-label">L8 Mantenimiento</span></div>
+            <div class="step-item" id="barStep4"><span class="step-number">4</span><span class="step-label">L3 Salida</span></div>
+            <div class="step-item" id="barStep5"><span class="step-number">5</span><span class="step-label">Kardex</span></div>
+            <div class="step-item" id="barStep6"><span class="step-number">6</span><span class="step-label">Desembolso</span></div>
+        </div>
+
+        <div id="wizardStep1Container" class="card shadow-sm border-0 mb-5 d-print-none" style="border-radius: 12px;">
+            <div class="card-body p-4 p-md-5">
+                <h4 class="font-weight-bold text-dark mb-1">Paso 1: L6 Verificación</h4>
+                <p class="text-muted small mb-4">Selecciona un ambiente arriba para verificar sus equipos.</p>
+                <div id="wizardUnitsList"><div class="text-center py-5 text-muted"><i class="fas fa-arrow-up mr-2"></i>Selecciona un laboratorio para comenzar.</div></div>
+                <div class="text-right mt-4 pt-3 border-top">
+                    <button id="btnNextStep1" class="btn btn-primary btn-rounded font-weight-bold px-4 py-2 shadow-sm disabled-btn" style="background-color: #2962ff; border:none;" onclick="goToWizardStep(2)" disabled>
+                        Avanzar a L7 Solicitud <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- ALERTAS Y CONTINGENCIAS -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="card-title font-weight-bold mb-0 text-dark">Alertas de Contingencia</h5>
+        <div id="wizardStep2Container" class="card shadow-sm border-0 mb-5 d-print-none" style="border-radius: 12px; display: none;">
+            <div class="card-body p-4 p-md-5">
+                <h4 class="font-weight-bold text-dark mb-1">Paso 2: L7 Solicitud Técnica</h4>
+                <p class="text-muted small mb-4">Solo se muestran los equipos reportados con fallas en L6.</p>
+                <div id="wizardFaultyUnitsList"></div>
+                <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <button class="btn btn-light btn-rounded px-4 font-weight-bold text-muted border" onclick="goToWizardStep(1)"><i class="fas fa-arrow-left mr-2"></i> Volver a L6</button>
+                    <button id="btnNextStep2" class="btn btn-primary btn-rounded font-weight-bold px-4 py-2 shadow-sm disabled-btn" style="background-color: #2962ff; border:none;" onclick="goToWizardStep(3)" disabled>
+                        Avanzar a L8 Mantenimiento <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
                 </div>
-                <div class="card-body pt-0">
-                    <div class="contingency-list">
-                        @if (!Model.CriticalEquipment.Any())
-                        {
-                            <div class="text-center py-5">
-                                <i class="fas fa-check-double text-success fa-3x mb-3 opacity-2"></i>
-                                <h6 class="text-dark">Sistemas Estables</h6>
-                                <p class="text-muted small">No hay equipos críticos fuera de servicio en este momento.</p>
-                            </div>
-                        }
-                        @foreach (var eq in Model.CriticalEquipment)
-                        {
-                            <div class="contingency-item p-3 mb-3 border rounded-lg bg-light-soft border-danger-soft">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="stats-icon bg-danger-soft text-danger mr-2" style="width: 30px; height: 30px; font-size: 14px;">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                    </div>
-                                    <h6 class="font-weight-bold text-dark mb-0">@eq.Equipment?.Name</h6>
-                                </div>
-                                <div class="small text-muted mb-2">
-                                    <i class="fas fa-map-marker-alt mr-1"></i> Lab: @(eq.Laboratory?.Name ?? "S/L") | Inv: @eq.InventoryNumber
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="badge badge-danger px-2 py-1">CRÍTICO</span>
-                                    <a href="/Equipment/Details/@eq.Id" class="small font-weight-bold text-primary">Ver detalle</a>
-                                </div>
-                            </div>
-                        }
-                    </div>
+            </div>
+        </div>
 
-                    @if (Model.CriticalEquipment.Any())
-                    {
-                        <div class="alert alert-soft-danger py-2 px-3 small mt-3">
-                            <i class="fas fa-info-circle mr-2"></i> @Model.CriticalEquipment.Count equipos requieren atención urgente.
-                        </div>
-                    }
+        <div id="wizardStep3Container" class="card shadow-sm border-0 mb-5 d-print-none" style="border-radius: 12px; display: none;">
+            <div class="card-body p-4 p-md-5">
+                <h4 class="font-weight-bold text-dark mb-1">Paso 3: L8 Mantenimiento</h4>
+                <p class="text-muted small mb-4">Ejecuta las reparaciones de las solicitudes generadas llenando el check-list.</p>
+                <div id="wizardMaintenanceList"></div>
+                <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <button class="btn btn-light btn-rounded px-4 font-weight-bold text-muted border" onclick="goToWizardStep(2)"><i class="fas fa-arrow-left mr-2"></i> Volver a L7</button>
+                    <button id="btnNextStep3" class="btn btn-primary btn-rounded font-weight-bold px-4 py-2 shadow-sm disabled-btn" style="background-color: #2962ff; border:none;" onclick="goToWizardStep(4)" disabled>
+                        Avanzar a L3 Salida <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
                 </div>
+            </div>
+        </div>
+
+        <div id="wizardStep4Container" style="display: none;">
+            <div class="card shadow-sm border-0 mb-5 d-print-none" style="border-radius: 12px;">
+                <div class="card-body p-4 p-md-5">
+                    <h4 class="font-weight-bold text-dark mb-1">Paso 4: L3 Acta de Salida</h4>
+                    <p class="text-muted small mb-4">Visualiza e imprime las actas de conformidad de los mantenimientos externos.</p>
+                    <div id="wizardActaL3List"></div>
+                    <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                        <button class="btn btn-light btn-rounded px-4 font-weight-bold text-muted border" onclick="goToWizardStep(3)"><i class="fas fa-arrow-left mr-2"></i> Volver a L8</button>
+                        <button class="btn btn-primary btn-rounded font-weight-bold px-4 py-2 shadow-sm" style="background-color: #2962ff; border:none;" onclick="goToWizardStep(5)">
+                            Avanzar a Kardex <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="printAreaL3" style="display:none;" class="p-5 bg-white print-only"></div>
+        </div>
+
+        <div id="wizardStep5Container" class="card shadow-sm border-0 mb-5 d-print-none" style="border-radius: 12px; display: none;">
+            <div class="card-body p-4 p-md-5">
+                <h4 class="font-weight-bold text-dark mb-1">Paso 5: Actualización de Kardex</h4>
+                <p class="text-muted small mb-4">Registro de intervenciones realizadas en esta gestión, guardado automáticamente.</p>
+                <div id="wizardKardexList"></div>
+                <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                    <button class="btn btn-light btn-rounded px-4 font-weight-bold text-muted border" onclick="goToWizardStep(4)"><i class="fas fa-arrow-left mr-2"></i> Volver a L3</button>
+                    <button class="btn btn-primary btn-rounded font-weight-bold px-4 py-2 shadow-sm" style="background-color: #2962ff; border:none;" onclick="goToWizardStep(6)">
+                        Avanzar a Desembolso <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="wizardStep6Container" class="card shadow-sm border-0 mb-5 d-print-none" style="border-radius: 12px; display: none;">
+            <div class="card-body p-4 p-md-5 text-center">
+                <h4 class="font-weight-bold text-dark mb-1">Solicitud de Desembolso</h4>
+                <p class="text-muted small mb-4">Equipos con mantenimiento completado listos para facturación.</p>
+                
+                <div class="table-responsive mb-5 border rounded-lg">
+                    <table class="table table-borderless table-hover v-middle mb-0 text-left">
+                        <thead class="bg-light border-bottom">
+                            <tr class="small uppercase font-weight-bold text-muted">
+                                <th class="pl-4">Código/Inv</th>
+                                <th>Nombre del Equipo</th>
+                                <th>Tipo de Servicio</th>
+                                <th>Costo Bs.</th>
+                                <th>Estado Solicitud</th>
+                                <th class="text-center pr-4">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wizardDesembolsoTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded-lg border">
+                    <button class="btn btn-white btn-rounded px-4 font-weight-bold text-muted border" onclick="goToWizardStep(5)"><i class="fas fa-arrow-left mr-2"></i> Volver a Kardex</button>
+                    <h5 class="mb-0 text-dark">Total general de desembolso a solicitar: <span class="font-weight-bold text-success ml-2" id="wizardTotalDesembolso">Bs 0.00</span></h5>
+                    <button class="btn btn-success btn-rounded font-weight-bold px-4 py-2 shadow-sm" onclick="finishWizardRound()">
+                        <i class="fas fa-check-circle mr-2"></i> Finalizar Gestión de Laboratorio
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="kardexOffcanvas" class="kardex-offcanvas shadow-lg d-print-none">
+    <div class="bg-dark text-white p-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+                <span class="badge badge-primary rounded-pill px-3" style="background:#2962ff;">Kardex Histórico</span> 
+                <span class="badge badge-secondary rounded-pill px-2 ml-1" id="kdxInv"></span>
+            </div>
+            <button type="button" class="close text-white" onclick="closeKardex()">&times;</button>
+        </div>
+        <h4 class="font-weight-bold mb-1 text-white uppercase" id="kdxName"></h4>
+        <div class="small text-light"><i class="fas fa-wrench mr-1"></i> Laboratorio: <span id="kdxLab"></span></div>
+    </div>
+    <div class="p-4 bg-light" style="overflow-y: auto; height: calc(100vh - 120px);">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h6 class="font-weight-bold text-dark mb-0">Línea de Intervenciones</h6>
+            <button class="btn btn-outline-secondary btn-sm btn-rounded font-weight-bold bg-white"><i class="far fa-file-pdf mr-1"></i> Generar PDF</button>
+        </div>
+        <div class="timeline" id="kardexTimeline">
+            </div>
+    </div>
+    <div class="p-3 border-top bg-white text-right">
+        <button class="btn btn-dark btn-rounded px-4 font-weight-bold" onclick="closeKardex()">Cerrar Panel</button>
+    </div>
+</div>
+<div id="kardexOverlay" class="kardex-overlay" onclick="closeKardex()"></div>
+
+<div class="modal fade" id="wizardGestionModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white p-4 border-0">
+                <h5 class="modal-title font-weight-bold">Asistente de Inicio de Gestión</h5>
+            </div>
+            <div class="modal-body p-5 text-center">
+                <div class="bg-light p-4 rounded-lg my-4 border">
+                    <h3 class="text-dark font-weight-bold mb-1">Gestión 2025-I</h3>
+                    <p class="text-muted mb-0 small">Junio – Julio 2025</p>
+                </div>
+                <div class="alert alert-warning border-0 small rounded-lg py-3 text-left">
+                    <i class="fas fa-exclamation-triangle mr-2 text-warning"></i>
+                    <strong>Atención:</strong> Al activar esta nueva gestión, se iniciará un periodo en blanco para el flujo.
+                </div>
+                <div class="row mt-4">
+                    <div class="col-6"><button type="button" class="btn btn-outline-secondary btn-rounded btn-block" data-dismiss="modal">Cancelar</button></div>
+                    <div class="col-6"><button type="button" class="btn btn-success btn-rounded btn-block shadow-sm" onclick="startWizardApp()">Siguiente</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalL6" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; background-color:#f4f6f9;">
+            <div class="modal-header bg-white p-4 border-bottom">
+                <div>
+                    <h4 class="modal-title font-weight-bold text-dark">Lista de Verificación Técnica</h4>
+                    <p class="text-muted small mb-0">Protocolo de inspección de estado operativo de equipos.</p>
+                </div>
+                <button class="btn btn-outline-success btn-rounded font-weight-bold btn-sm px-3" onclick="checkAllL6()">Marcar Todo OK</button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row mb-4">
+                    <div class="col-md-4"><label class="small uppercase font-weight-bold text-muted">Facultad *</label><input type="text" class="form-control bg-white" value="Ingeniería" readonly></div>
+                    <div class="col-md-4"><label class="small uppercase font-weight-bold text-muted">Laboratorio *</label><input type="text" class="form-control bg-white" id="l6ModalLabName" readonly></div>
+                    <div class="col-md-4"><label class="small uppercase font-weight-bold text-muted">Unidad Física *</label><input type="text" class="form-control bg-white font-weight-bold" id="l6ModalUnitName" readonly></div>
+                </div>
+                <h5 class="font-weight-bold text-dark mb-3">Puntos de Control</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="bg-white p-3 rounded border">
+                            <h6 class="font-weight-bold text-primary mb-3">Sistema Mecánico y Fluidos</h6>
+                            <div class="custom-control custom-checkbox mb-2"><input type="checkbox" class="custom-control-input l6-check" id="chk_m1"><label class="custom-control-label" for="chk_m1">Válvulas y Mangueras</label></div>
+                            <div class="custom-control custom-checkbox mb-2"><input type="checkbox" class="custom-control-input l6-check" id="chk_m2"><label class="custom-control-label" for="chk_m2">Lubricación y Ejes</label></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="bg-white p-3 rounded border">
+                            <h6 class="font-weight-bold text-primary mb-3">Eléctrico y Control</h6>
+                            <div class="custom-control custom-checkbox mb-2"><input type="checkbox" class="custom-control-input l6-check" id="chk_e1"><label class="custom-control-label" for="chk_e1">Cableado y Conexiones</label></div>
+                            <div class="custom-control custom-checkbox mb-2"><input type="checkbox" class="custom-control-input l6-check" id="chk_e2"><label class="custom-control-label" for="chk_e2">Display y Botoneras</label></div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="l6ModalUnitId">
+            </div>
+            <div class="modal-footer bg-white border-top p-4">
+                <button type="button" class="btn btn-light btn-rounded px-4 font-weight-bold text-muted border" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-rounded px-5 font-weight-bold shadow-sm" style="background-color: #2962ff; border:none;" onclick="saveL6Form()">Guardar Verificación</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalL7" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; background-color:#f4f6f9;">
+            <div class="modal-header bg-white p-4 border-bottom d-flex align-items-center">
+                <div>
+                    <h4 class="modal-title font-weight-bold" style="color: #2962ff;">Formulario de Solicitud</h4>
+                    <span class="badge badge-primary rounded-pill bg-primary-soft text-primary px-2">L7 Solicitud de Mantenimiento Correctivo</span>
+                </div>
+                <div class="badge badge-light border px-3 py-2 text-muted ml-auto">Laboratorio: <span id="l7ModalLabNameInput2" class="font-weight-bold text-dark"></span></div>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row">
+                    <div class="col-md-5 pr-md-4 border-right">
+                        <h6 class="font-weight-bold text-primary mb-3">Ubicación y Activo</h6>
+                        <div class="form-group"><label class="small uppercase font-weight-bold text-muted">Facultad *</label><input type="text" class="form-control bg-light border-0" value="Ingeniería" readonly></div>
+                        <div class="form-group"><label class="small uppercase font-weight-bold text-muted">Laboratorio *</label><input type="text" class="form-control bg-light border-0" id="l7ModalLabNameInput" readonly></div>
+                        <div class="form-group"><label class="small uppercase font-weight-bold text-muted">Unidad Física Afectada *</label><input type="text" class="form-control font-weight-bold border-warning" style="background:#fffaf0;" id="l7ModalUnitName" readonly></div>
+                        <div class="form-group mt-4">
+                            <label class="small uppercase font-weight-bold text-muted">Grado de Prioridad *</label>
+                            <select id="l7Priority" class="form-control border-primary text-primary font-weight-bold">
+                                <option value="Alta">Alta</option>
+                                <option value="Media" selected>Media</option>
+                                <option value="Baja">Baja</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-7 pl-md-4">
+                        <h6 class="font-weight-bold text-primary mb-3">Naturaleza del Problema</h6>
+                        <div class="form-group border-left border-warning pl-3" style="border-width: 4px !important;">
+                            <label class="small uppercase font-weight-bold text-dark">Descripción del Fallo *</label>
+                            <textarea id="l7Desc" class="form-control bg-white shadow-sm" rows="5" placeholder="Describa el fallo detectado..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="l7ModalUnitId">
+            </div>
+            <div class="modal-footer bg-white border-top p-4">
+                <button type="button" class="btn btn-light btn-rounded px-4 font-weight-bold text-muted border" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-rounded px-5 font-weight-bold shadow-sm" style="background-color: #007bff; border:none;" onclick="saveL7Form()">Enviar Solicitud</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDesembolso" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-body p-4">
+                <h5 class="font-weight-bold text-dark mb-1"><i class="fas fa-dollar-sign text-success mr-2"></i> Solicitud de Desembolso</h5>
+                <p class="text-muted small mb-4">Ingresa los datos para generar la solicitud.</p>
+                
+                <div class="border p-3 rounded-lg bg-light d-flex justify-content-between mb-3">
+                    <div>
+                        <h6 class="font-weight-bold text-dark mb-0" id="desembEqName">Equipo</h6>
+                        <small class="text-muted" id="desembEqInv">INV-XXX</small>
+                    </div>
+                    <div class="text-right">
+                        <small class="text-muted uppercase font-weight-bold">Costo Total</small>
+                        <h5 class="font-weight-bold text-success mb-0" id="desembEqCost">0 Bs.</h5>
+                    </div>
+                </div>
+
+                <div class="form-group mb-3">
+                    <label class="font-weight-bold text-dark small">Descripción del Servicio</label>
+                    <textarea class="form-control" rows="2" placeholder="Mantenimiento correctivo ejecutado..."></textarea>
+                </div>
+                <div class="form-group mb-4">
+                    <label class="font-weight-bold text-dark small">Número de factura / comprobante</label>
+                    <input type="text" class="form-control" placeholder="Ej: F-2025-00123">
+                </div>
+
+                <div class="text-right">
+                    <button class="btn btn-light btn-rounded px-3 mr-2 border" data-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary btn-rounded px-4 font-weight-bold shadow-sm" style="background-color: #007bff; border:none;" onclick="submitDesembolso()">
+                        <i class="fas fa-check-circle mr-1"></i> Enviar Solicitud
+                    </button>
+                </div>
+                <input type="hidden" id="currentDesembUnitId">
             </div>
         </div>
     </div>
@@ -302,57 +545,532 @@
 
 @section Styles {
     <style>
-        :root {
-            --soft-bg-info: #e1f5fe;
-            --soft-bg-success: #e8f5e9;
-            --soft-bg-warning: #fff3e0;
-            --soft-bg-danger: #ffebee;
-            --soft-bg-primary: #e8eaf6;
-        }
-
+        :root { --soft-bg-info: #e1f5fe; --soft-bg-success: #e8f5e9; --soft-bg-warning: #fff3e0; --soft-bg-danger: #ffebee; --soft-bg-primary: #e8eaf6; }
         .dashboard-hero { border-left: 5px solid #2962ff !important; }
         .hero-icon { width: 80px; height: 80px; background: var(--soft-bg-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        
         .card-stats { transition: transform 0.3s ease; border-bottom: 3px solid transparent !important; }
         .card-stats:hover { transform: translateY(-5px); }
         .stats-icon { width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-
         .action-card { transition: all 0.3s ease; }
         .action-card:hover { transform: scale(1.03); background: #f8f9fa; }
         .action-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-
-        /* Soft utility classes */
         .bg-info-soft { background-color: var(--soft-bg-info); }
         .bg-warning-soft { background-color: var(--soft-bg-warning); }
         .bg-success-soft { background-color: var(--soft-bg-success); }
         .bg-primary-soft { background-color: var(--soft-bg-primary); }
         .bg-light-soft { background-color: #f8f9fa; }
-        
         .badge-soft-primary { background-color: #e8eaf6; color: #3f51b5; }
         .badge-soft-warning { background-color: #fff3e0; color: #ef6c00; }
         .badge-soft-info { background-color: #e1f5fe; color: #0288d1; }
         .badge-soft-success { background-color: #e8f5e9; color: #2e7d32; }
-
         .btn-soft-secondary { background-color: #f5f5f5; color: #424242; border: none; }
         .btn-soft-secondary:hover { background-color: #eeeeee; }
-
+        .alert-soft-warning { background-color: #fff3e0; color: #ef6c00; border: none; }
         .alert-soft-danger { background-color: #ffebee; color: #c62828; border: none; }
         .border-danger-soft { border-color: #ffcdd2 !important; }
         .bg-danger-soft { background-color: #ffebee; }
-
         .v-middle td { vertical-align: middle !important; }
         .uppercase { text-transform: uppercase; letter-spacing: 0.8px; font-size: 11px; }
         .opacity-1 { opacity: 0.1; }
         .opacity-2 { opacity: 0.2; }
-
         .badge-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: middle; }
+
+        /* Estilos Píldoras Cronograma */
+        .btn-pill-filter { font-size: 11px; font-weight: 600; text-transform: uppercase; padding: 4px 12px; border-radius: 20px; transition: 0.3s; border:none; }
+        .btn-pill-filter.active { background: white; color: #343a40 !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .cronograma-gantt-box { display: inline-block; padding: 3px 6px; border-radius: 4px; font-size: 9px; font-weight: bold; width: 45px; text-align: center; }
+        .gantt-prev { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+        .gantt-ok { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .gantt-empty { background: #f8f9fa; border: 1px solid #e9ecef; }
+        
+        /* Offcanvas Kardex */
+        .kardex-offcanvas { position: fixed; top: 0; right: -450px; width: 420px; height: 100vh; background: #fff; z-index: 1050; transition: right 0.3s ease; display: flex; flex-direction: column; }
+        .kardex-offcanvas.open { right: 0; }
+        .kardex-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1040; display: none; }
+        .timeline { position: relative; padding-left: 30px; }
+        .timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: #e9ecef; }
+        .timeline-item { position: relative; margin-bottom: 20px; }
+        .timeline-dot { position: absolute; left: -30px; top: 5px; width: 16px; height: 16px; border-radius: 50%; background: #28a745; border: 3px solid #fff; box-shadow: 0 0 0 2px #e9ecef; }
+        .timeline-card { border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; background: white; }
+
+        /* WIZARD BAR & CARDS */
+        .wizard-steps { margin-bottom: 40px; }
+        .step-line { position: absolute; top: 15px; left: 5%; width: 90%; height: 2px; background: #e9ecef; z-index: 1; }
+        .step-item { position: relative; z-index: 2; text-align: center; width: 15%; }
+        .step-number { width: 32px; height: 32px; line-height: 32px; border-radius: 50%; background: #fff; border: 2px solid #e9ecef; display: block; margin: 0 auto 5px; font-weight: bold; color: #adb5bd; }
+        .step-label { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #adb5bd; }
+        .step-item.active .step-number { background: #79a1f2; border-color: #79a1f2; color: #fff; }
+        .step-item.active .step-label { color: #79a1f2; }
+        .step-item.completed .step-number { background: #28a745; border-color: #28a745; color: #fff; }
+        .step-item.completed .step-label { color: #28a745; }
+
+        .wizard-equipment-card { border: 1px solid #e9ecef; border-radius: 12px; margin-bottom: 12px; background: #fff; transition: box-shadow 0.2s; }
+        .wizard-equipment-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .badge-inv { background-color: #f1f3f5; color: #6c757d; border: 1px solid #dee2e6; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 4px; margin-left: 10px; }
+        .btn-wizard-action { border-radius: 20px; font-weight: 600; font-size: 13px; padding: 6px 16px; border: 1px solid #dee2e6; background: white; color: #495057; transition: all 0.2s; cursor: pointer; }
+        .btn-wizard-action:hover { background: #f8f9fa; }
+        .btn-wizard-primary { border-color: #79a1f2; color: #79a1f2; background: white; }
+        .btn-wizard-primary:hover { background: #e8f0fe; }
+
+        .disabled-btn { background-color: #e9ecef !important; color: #adb5bd !important; pointer-events: none; }
+        .task-row { transition: background 0.3s; border-bottom: 1px solid #f1f3f5; padding: 10px 0; }
+        .task-row:hover { background: #f8f9fa; }
+        .task-completed { text-decoration: line-through; color: #adb5bd !important; }
+
+        .acta-l3-paper { border: 1px solid #dee2e6; box-shadow: 0 0 15px rgba(0,0,0,0.1); margin: 0 auto; max-width: 800px; padding: 40px; background: white;}
+        @@media print {
+            body * { visibility: hidden; }
+            #printAreaL3, #printAreaL3 * { visibility: visible; }
+            #printAreaL3 { position: absolute; left: 0; top: 0; width: 100%; border: none !important; box-shadow: none !important; }
+            .d-print-none { display: none !important; }
+        }
+
+        /* SVG Circle Chart */
+        .circular-chart { display: block; margin: 0 auto; max-width: 80%; max-height: 250px; }
+        .circle-bg { fill: none; stroke: #eee; stroke-width: 3.8; }
+        .circle { fill: none; stroke-width: 2.8; stroke-linecap: round; animation: progress 1s ease-out forwards; }
+        @@keyframes progress { 0% { stroke-dasharray: 0 100; } }
+        .circular-chart.green .circle { stroke: #28a745; }
     </style>
 }
 
 @section Scripts {
+    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
     <script>
+        // =========================================================================
+        // LÓGICA DEL DASHBOARD PRINCIPAL (FILTROS Y KARDEX)
+        // =========================================================================
+        let allInterventions = [];
+
         $(function () {
-             $('[data-toggle="tooltip"]').tooltip();
+            $('[data-toggle="tooltip"]').tooltip();
+            loadDashboardInterventions();
+
+            // Filtros Dashboard
+            $('.filter-cronograma').on('change', applyDashboardFilters);
+            $('.btn-pill-filter').on('click', function() {
+                $('.btn-pill-filter').removeClass('active text-dark').addClass('text-muted');
+                $(this).addClass('active text-dark').removeClass('text-muted');
+                applyDashboardFilters();
+            });
         });
+
+        function loadDashboardInterventions() {
+            $.get('/Index?handler=DashboardInterventions', function(data) {
+                allInterventions = data;
+                applyDashboardFilters();
+            });
+        }
+
+        function applyDashboardFilters() {
+            let labFilter = $('#filterLab').val();
+            let catFilter = $('#filterCat').val();
+            let techFilter = $('#filterTech').val();
+            let pillFilter = $('.btn-pill-filter.active').data('filter');
+
+            let filtered = allInterventions.filter(item => {
+                let matchLab = (labFilter === 'Todos' || item.lab === labFilter);
+                let matchCat = (catFilter === 'Todas' || item.cat === catFilter);
+                let matchTech = (techFilter === 'Todos' || item.tech === techFilter);
+                
+                let matchPill = true;
+                if (pillFilter !== 'Todos') {
+                    if(pillFilter === 'Externo') matchPill = item.servicio === 'Externo';
+                    else matchPill = item.estado === pillFilter;
+                }
+
+                return matchLab && matchCat && matchTech && matchPill;
+            });
+
+            renderCronogramaTable(filtered);
+        }
+
+        function renderCronogramaTable(data) {
+            let $tbody = $('#cronogramaTableBody');
+            $tbody.empty();
+
+            if(data.length === 0) {
+                $tbody.append('<tr><td colspan="9" class="text-center py-4 text-muted">No se encontraron registros con los filtros actuales.</td></tr>');
+                return;
+            }
+
+            data.forEach(item => {
+                let servBadge = item.servicio === 'Interno' ? 'badge-soft-primary text-primary' : 'badge-light border text-muted';
+                let estBadge = item.estado === 'Planeado' ? 'badge-light border text-muted' : (item.estado === 'En Progreso' ? 'badge-soft-warning text-warning' : 'badge-soft-success text-success');
+                
+                let s12Box = item.s12 ? `<span class="cronograma-gantt-box gantt-${item.s12 === 'OK' ? 'ok' : 'prev'}">${item.s12}</span>` : `<span class="cronograma-gantt-box gantt-empty">&nbsp;</span>`;
+                let s13Box = item.s13 ? `<span class="cronograma-gantt-box gantt-${item.s13 === 'OK' ? 'ok' : (item.s13 === 'En curso' ? 'prev' : 'prev')}">${item.s13}</span>` : `<span class="cronograma-gantt-box gantt-empty">&nbsp;</span>`;
+                let s14Box = item.s14 ? `<span class="cronograma-gantt-box gantt-${item.s14 === 'OK' ? 'ok' : 'prev'}">${item.s14}</span>` : `<span class="cronograma-gantt-box gantt-empty">&nbsp;</span>`;
+
+                let html = `<tr>
+                                <td class="pl-3 font-weight-bold text-muted small">${item.lab}</td>
+                                <td><div class="font-weight-bold text-primary small">${item.eqName}</div><div class="text-muted" style="font-size:10px;">${item.inv}</div></td>
+                                <td class="small text-dark">${item.falla}</td>
+                                <td class="text-center"><span class="badge ${servBadge} rounded-pill px-2 py-1">${item.servicio}</span></td>
+                                <td class="text-center"><span class="badge ${estBadge} rounded-pill px-2 py-1">${item.estado}</span></td>
+                                <td class="text-center">${s12Box}</td>
+                                <td class="text-center">${s13Box}</td>
+                                <td class="text-center">${s14Box}</td>
+                                <td class="text-center"><button class="btn btn-sm btn-link text-muted p-0" onclick="openKardex(${item.unitId}, '${item.eqName}', '${item.inv}', '${item.lab}')"><i class="fas fa-ellipsis-v"></i></button></td>
+                            </tr>`;
+                $tbody.append(html);
+            });
+        }
+
+        function openKardex(unitId, name, inv, lab) {
+            $('#kdxName').text(name);
+            $('#kdxInv').text(inv);
+            $('#kdxLab').text(lab);
+            
+            $('#kardexTimeline').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Cargando historial...</div>');
+            
+            $.get(`/Index?handler=KardexHistory&unitId=${unitId}`, function(data) {
+                $('#kardexTimeline').empty();
+                data.forEach(h => {
+                    $('#kardexTimeline').append(`
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="small font-weight-bold text-primary mb-1">${h.date}</div>
+                            <div class="timeline-card shadow-sm">
+                                <h6 class="font-weight-bold text-dark mb-2">${h.action}</h6>
+                                <p class="small text-muted mb-3 bg-light p-2 rounded">${h.detail}</p>
+                                <div class="d-flex justify-content-between small">
+                                    <span class="text-muted"><i class="far fa-user mr-1"></i> Ejecutor: <span class="text-dark">${h.exec}</span></span>
+                                </div>
+                                <div class="small mt-1"><span class="text-muted"><i class="fas fa-money-bill-wave mr-1"></i> Importe:</span> <span class="text-success font-weight-bold">${h.cost}</span></div>
+                            </div>
+                        </div>
+                    `);
+                });
+                
+                $('#kardexOverlay').fadeIn(200);
+                $('#kardexOffcanvas').addClass('open');
+            });
+        }
+
+        function closeKardex() {
+            $('#kardexOffcanvas').removeClass('open');
+            $('#kardexOverlay').fadeOut(200);
+        }
+
+        // =========================================================================
+        // AJAX WIZARD LOGIC CON MOCK DB
+        // =========================================================================
+        let currentWizardStep = 1;
+
+        function startWizardApp() {
+            $('#wizardGestionModal').modal('hide');
+            Swal.fire({
+                title: 'Activando Ronda...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading() },
+                timer: 800
+            }).then(() => {
+                $('#mainDashboard').slideUp(300, function() {
+                    $('#wizardApp').fadeIn(300);
+                    loadWizardLabs();
+                });
+            });
+        }
+
+        function cancelWizard() {
+            Swal.fire({
+                title: '¿Abortar ronda?',
+                text: "Volverás al dashboard principal. Los datos temporales se perderán al refrescar.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, salir',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if(result.isConfirmed) {
+                    $('#wizardApp').slideUp(300, function() {
+                        $('#mainDashboard').fadeIn(300);
+                    });
+                }
+            });
+        }
+
+        function loadWizardLabs() {
+            $.get('/Index?handler=WizardLabs', function(data) {
+                let $select = $('#wizardLabSelect');
+                $select.empty().append('<option value="">-- Selecciona --</option>');
+                data.forEach(l => {
+                    $select.append(`<option value="${l.id}">${l.name}</option>`);
+                });
+            });
+        }
+
+        function loadWizardUnits(stepNum) {
+            let labId = $('#wizardLabSelect').val();
+            if (!labId) return;
+
+            let handlerUrl = '';
+            let $container = null;
+            
+            if (stepNum === 1) { handlerUrl = 'WizardUnitsL6'; $container = $('#wizardUnitsList'); }
+            else if (stepNum === 2) { handlerUrl = 'WizardFaultyUnitsL7'; $container = $('#wizardFaultyUnitsList'); }
+            else if (stepNum === 3) { handlerUrl = 'WizardPendingL8'; $container = $('#wizardMaintenanceList'); }
+            else if (stepNum === 4) { handlerUrl = 'WizardCompletedL8ForL3'; $container = $('#wizardActaL3List'); }
+            else if (stepNum === 5) { handlerUrl = 'WizardKardex'; $container = $('#wizardKardexList'); }
+            else if (stepNum === 6) { handlerUrl = 'WizardDesembolso'; $container = $('#wizardDesembolsoTableBody'); }
+
+            if(stepNum < 6) $container.html('<div class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>');
+
+            $.get(`/Index?handler=${handlerUrl}&labId=${labId}`, function(data) {
+                if(stepNum < 6) $container.empty();
+                let itemsArray = stepNum === 6 ? data.items : data;
+
+                if(itemsArray.length === 0) {
+                    if(stepNum < 6) $container.html(`<div class="text-center py-4 text-muted">No hay equipos pendientes en esta fase.</div>`);
+                    if(stepNum === 1) $('#btnNextStep1').removeClass('disabled-btn').prop('disabled', false);
+                    if(stepNum === 2) $('#btnNextStep2').removeClass('disabled-btn').prop('disabled', false);
+                    if(stepNum === 3) $('#btnNextStep3').removeClass('disabled-btn').prop('disabled', false);
+                    if(stepNum === 6) { $container.empty(); $('#wizardTotalDesembolso').text('Bs 0.00'); }
+                    return;
+                }
+
+                if(stepNum === 6) {
+                    $('#wizardTotalDesembolso').text('Bs ' + data.total.toLocaleString('es-BO', { minimumFractionDigits: 2 }));
+                    $container.empty();
+                    data.items.forEach(u => {
+                        let actionHtml = u.isRequested 
+                            ? `<span class="badge badge-primary px-3 py-1 rounded-pill" style="background:#2962ff;"><i class="fas fa-check mr-1"></i> Solicitado</span>`
+                            : `<button class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold px-3" onclick="openDesembolsoModal(${u.id}, '${u.name}', '${u.inventory}', ${u.cost})"><i class="far fa-file-alt mr-1"></i> Hacer solicitud</button>`;
+
+                        $container.append(`
+                            <tr>
+                                <td class="pl-4"><span class="text-muted small">Inv: ${u.inventory}</span></td>
+                                <td class="font-weight-bold text-dark">${u.name}</td>
+                                <td><span class="text-muted small">Correctivo</span></td>
+                                <td class="font-weight-bold">Bs. ${u.cost.toLocaleString('es-BO', { minimumFractionDigits: 2 })}</td>
+                                <td>${actionHtml}</td>
+                                <td class="text-center pr-4">...</td>
+                            </tr>
+                        `);
+                    });
+                    return;
+                }
+
+                let allCompleted = true;
+
+                data.forEach(u => {
+                    let html = `<div class="wizard-equipment-card p-3 d-flex flex-column flex-md-row justify-content-between align-items-center">
+                                    <div class="mb-3 mb-md-0 text-center text-md-left">
+                                        <div class="d-flex align-items-center justify-content-center justify-content-md-start mb-1">
+                                            <h6 class="font-weight-bold text-dark mb-0">${u.name}</h6>
+                                            <span class="badge-inv">${u.inventory}</span>
+                                        </div>
+                                        <small class="text-muted">${u.category || u.description || u.faultDetails || u.technician || ''}</small>
+                                    </div>
+                                    <div>`;
+                    
+                    if (stepNum === 1) {
+                        if(!u.isVerified) allCompleted = false;
+                        if(u.isVerified) html += `<span class="badge ${u.isOk ? 'badge-success' : 'badge-danger'} px-3 py-2 border-0 rounded-pill"><i class="fas ${u.isOk ? 'fa-check' : 'fa-times'} mr-1"></i> ${u.isOk ? 'Todo bien' : u.faults + ' desperfecto(s)'}</span>`;
+                        else html += `<span class="btn-wizard-action mr-2 border-0 text-muted">Sin verificar</span><button class="btn-wizard-action btn-wizard-primary" onclick="openModalL6(${u.id}, '${u.name}', '${u.inventory}')">Verificar</button>`;
+                    } 
+                    else if (stepNum === 2) {
+                        if(!u.hasRequest) allCompleted = false;
+                        if(u.hasRequest) html += `<span class="badge badge-primary px-3 py-2 border-0 rounded-pill" style="background:#2962ff;"><i class="fas fa-check mr-1"></i> Solicitud enviada</span>`;
+                        else html += `<span class="btn-wizard-action mr-2 border-0 text-muted">Sin solicitud</span><button class="btn-wizard-action btn-wizard-primary" onclick="openModalL7(${u.id}, '${u.name}', '${u.inventory}', '${u.faultDetails}')">Hacer Solicitud</button>`;
+                    }
+                    else if (stepNum === 3) {
+                        if(!u.isMaintained) allCompleted = false;
+                        if(u.isMaintained) html += `<span class="badge badge-success px-3 py-2 border-0 rounded-pill"><i class="fas fa-check-double mr-1"></i> Mantenimiento OK</span>`;
+                        else html += `<button class="btn-wizard-action btn-wizard-primary" onclick="toggleTaskPanel(${u.id})"><i class="fas fa-wrench mr-1"></i> Ejecutar Mantenimiento</button>`;
+                    }
+                    else if (stepNum === 4) {
+                        html += `<button class="btn-wizard-action btn-wizard-primary" onclick="renderActaL3('${u.name}', '${u.inventory}', '${u.description}')"><i class="fas fa-print mr-1"></i> Generar L3</button>`;
+                    }
+                    else if (stepNum === 5) {
+                        html += `<span class="badge badge-success px-3 py-2 border-0 rounded-pill bg-success-soft text-success"><i class="fas fa-check-circle mr-1"></i> Kardex Actualizado</span>`;
+                    }
+
+                    html += `</div></div>`;
+
+                    if(stepNum === 3 && !u.isMaintained) {
+                        html += `<div id="taskPanel_${u.id}" class="mt-2 p-4 bg-white border rounded-lg" style="display:none; margin-bottom:15px;">
+                                    <h6 class="font-weight-bold text-dark mb-3">Avance del Mantenimiento</h6>
+                                    <div class="d-flex justify-content-between small font-weight-bold mb-1"><span>Progreso Total</span><span id="txtProg_${u.id}" class="text-warning">0%</span></div>
+                                    <div class="progress mb-4" style="height: 10px;"><div id="barProg_${u.id}" class="progress-bar bg-warning" style="width: 0%"></div></div>
+                                    <p class="small text-muted font-weight-bold uppercase mb-2">TAREAS DE MANTENIMIENTO</p>
+                                    
+                                    <div class="task-row custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input chk-${u.id}" id="chk1_${u.id}" onchange="calcProg(${u.id})">
+                                        <label class="custom-control-label text-dark font-weight-bold small pt-1" for="chk1_${u.id}">Limpieza exterior e interior del equipo</label>
+                                    </div>
+                                    <div class="task-row custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input chk-${u.id}" id="chk2_${u.id}" onchange="calcProg(${u.id})">
+                                        <label class="custom-control-label text-dark font-weight-bold small pt-1" for="chk2_${u.id}">Revisión y ajuste de componentes mecánicos</label>
+                                    </div>
+                                    <div class="task-row custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input chk-${u.id}" id="chk3_${u.id}" onchange="calcProg(${u.id})">
+                                        <label class="custom-control-label text-dark font-weight-bold small pt-1" for="chk3_${u.id}">Calibración y verificación de parámetros</label>
+                                    </div>
+                                    
+                                    <div class="row mt-4 align-items-center">
+                                        <div class="col-md-4"><input type="number" id="cost_${u.id}" class="form-control form-control-sm" placeholder="Costo Total (Bs.)"></div>
+                                        <div class="col-md-8 text-right"><button class="btn btn-primary btn-sm btn-rounded font-weight-bold px-4" style="background:#2962ff; border:none;" onclick="saveTaskL8(${u.id}, ${u.requestId})">Guardar Mantenimiento <i class="fas fa-check ml-1"></i></button></div>
+                                    </div>
+                                 </div>`;
+                    }
+                    $container.append(html);
+                });
+
+                if(stepNum === 1) $('#btnNextStep1').prop('disabled', !allCompleted).toggleClass('disabled-btn', !allCompleted);
+                if(stepNum === 2) $('#btnNextStep2').prop('disabled', !allCompleted).toggleClass('disabled-btn', !allCompleted);
+                if(stepNum === 3) $('#btnNextStep3').prop('disabled', !allCompleted).toggleClass('disabled-btn', !allCompleted);
+            });
+        }
+
+        // ================= MODAL L6 =================
+        function openModalL6(unitId, name, inv) {
+            $('#l6ModalLabName').val($('#wizardLabSelect option:selected').text());
+            $('#l6ModalUnitName').val(name + ' (Inv: ' + inv + ')');
+            $('#l6ModalUnitId').val(unitId);
+            $('.l6-check').prop('checked', false); 
+            $('#modalL6').modal('show');
+        }
+        function checkAllL6() { $('.l6-check').prop('checked', false); }
+        
+        function saveL6Form() {
+            let faults = $('.l6-check:checked').length;
+            let unitId = $('#l6ModalUnitId').val();
+            let token = $('input[name="__RequestVerificationToken"]').val();
+            $.post({ url: '/Index?handler=WizardVerifyL6', data: { __RequestVerificationToken: token, unitId: unitId, faultCount: faults }, success: function() {
+                $('#modalL6').modal('hide');
+                loadWizardUnits(1);
+            }});
+        }
+
+        // ================= MODAL L7 =================
+        function openModalL7(unitId, name, inv, desc) {
+            $('#l7ModalLabNameInput').val($('#wizardLabSelect option:selected').text());
+            $('#l7ModalLabName2').text($('#wizardLabSelect option:selected').text());
+            $('#l7ModalUnitName').val(name + ' (Inv: ' + inv + ')');
+            $('#l7Desc').val(desc);
+            $('#l7ModalUnitId').val(unitId);
+            $('#modalL7').modal('show');
+        }
+        function saveL7Form() {
+            let unitId = $('#l7ModalUnitId').val();
+            let labId = $('#wizardLabSelect').val();
+            let token = $('input[name="__RequestVerificationToken"]').val();
+            $.post({ url: '/Index?handler=WizardGenerateL7', data: { __RequestVerificationToken: token, unitId: unitId, labId: labId }, success: function() {
+                $('#modalL7').modal('hide');
+                loadWizardUnits(2);
+            }});
+        }
+
+        // ================= PASO 3 (L8) =================
+        function toggleTaskPanel(unitId) { $('#taskPanel_'+unitId).slideToggle(); }
+        function calcProg(unitId) {
+            let total = $('.chk-'+unitId).length;
+            let checked = $('.chk-'+unitId+':checked').length;
+            let perc = Math.round((checked/total)*100);
+            $('#txtProg_'+unitId).text(perc+'%');
+            $('#barProg_'+unitId).css('width', perc+'%');
+            $('.chk-'+unitId).each(function(){
+                if($(this).is(':checked')) $(this).next('label').addClass('task-completed');
+                else $(this).next('label').removeClass('task-completed');
+            });
+        }
+        function saveTaskL8(unitId, reqId) {
+            let labId = $('#wizardLabSelect').val();
+            let cost = $('#cost_'+unitId).val() || 0;
+            let token = $('input[name="__RequestVerificationToken"]').val();
+            $.post({ url: '/Index?handler=WizardSaveL8', data: { __RequestVerificationToken: token, unitId: unitId, requestId: reqId, labId: labId, cost: cost, description: '' }, success: () => loadWizardUnits(3) });
+        }
+
+        // ================= PASO 4 (L3 Acta Print) =================
+        function renderActaL3(name, inv, desc) {
+            let labName = $('#wizardLabSelect option:selected').text();
+            let html = `
+                <div class="acta-l3-paper">
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-4 mb-4">
+                        <div class="bg-light text-muted font-weight-bold p-3 text-center" style="width: 120px;">LOGO</div>
+                        <div class="text-center">
+                            <h4 class="font-weight-bold text-dark mb-0">ACTA DE SALIDA — MANTENIMIENTO</h4>
+                            <h5 class="font-weight-bold text-dark">EXTERNO</h5>
+                            <small class="text-muted">Gestión 2025-I</small>
+                        </div>
+                        <div class="text-danger font-weight-bold h5">N° ACT-001</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 pr-4 border-right">
+                            <h6 class="font-weight-bold text-dark uppercase mb-3">Datos del Equipo</h6>
+                            <p class="small text-muted mb-0 uppercase">Inventario</p><p class="font-weight-bold text-dark">${inv}</p>
+                            <p class="small text-muted mb-0 uppercase">Equipo</p><p class="font-weight-bold text-dark">${name}</p>
+                            <p class="small text-muted mb-0 uppercase">Laboratorio</p><p class="font-weight-bold text-dark">${labName}</p>
+                        </div>
+                        <div class="col-6 pl-4">
+                            <h6 class="font-weight-bold text-dark uppercase mb-3">Datos Empresa Externa</h6>
+                            <div class="form-group mb-2"><label class="small text-muted uppercase mb-1">Empresa</label><input type="text" class="form-control form-control-sm" value="Tech Services S.R.L."></div>
+                            <div class="form-group mb-2"><label class="small text-muted uppercase mb-1">NIT</label><input type="text" class="form-control form-control-sm" value="123456789"></div>
+                            <div class="row mb-3">
+                                <div class="col-6"><label class="small text-muted uppercase mb-1">Fecha Salida</label><input type="date" class="form-control form-control-sm"></div>
+                                <div class="col-6"><label class="small text-muted uppercase mb-1">Retorno Est.</label><input type="date" class="form-control form-control-sm"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-5 pt-5 px-5 text-center">
+                        <div class="border-top pt-2" style="width: 200px;"><small class="font-weight-bold text-dark d-block">Responsable Laboratorio</small></div>
+                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-muted small font-weight-bold" style="width:80px; height:80px;">SELLO</div>
+                        <div class="border-top pt-2" style="width: 200px;"><small class="font-weight-bold text-dark d-block">Empresa Externa</small></div>
+                    </div>
+                    <div class="text-center mt-5 d-print-none">
+                        <button class="btn btn-secondary btn-rounded px-4 mr-2" onclick="$('#printAreaL3').hide()">Cerrar</button>
+                        <button class="btn btn-primary btn-rounded px-5 font-weight-bold shadow" onclick="window.print()"><i class="fas fa-print mr-2"></i> Imprimir</button>
+                    </div>
+                </div>`;
+            $('#printAreaL3').html(html).fadeIn();
+        }
+
+        // ================= PASO 6 (Desembolso Modal) =================
+        function openDesembolsoModal(id, name, inv, cost) {
+            $('#currentDesembUnitId').val(id);
+            $('#desembEqName').text(name);
+            $('#desembEqInv').text(inv);
+            $('#desembEqCost').text(cost + ' Bs.');
+            $('#modalDesembolso').modal('show');
+        }
+
+        function submitDesembolso() {
+            let id = $('#currentDesembUnitId').val();
+            let token = $('input[name="__RequestVerificationToken"]').val();
+            $.post({ url: '/Index?handler=WizardRequestDesembolso', data: { __RequestVerificationToken: token, unitId: id }, success: function() {
+                $('#modalDesembolso').modal('hide');
+                loadWizardUnits(6);
+            }});
+        }
+
+        // === NAVEGACIÓN ===
+        function goToWizardStep(stepNumber) {
+            if (!$("#wizardLabSelect").val()) { Swal.fire('Atención', 'Selecciona un laboratorio en el Paso 1.', 'warning'); return; }
+            $('#wizardStep1Container, #wizardStep2Container, #wizardStep3Container, #wizardStep4Container, #wizardStep5Container, #wizardStep6Container, #printAreaL3').hide();
+            
+            $('.step-item').removeClass('active completed');
+            for(let i=1; i<stepNumber; i++) $('.step-item:nth-child('+(i+1)+')').addClass('completed');
+            $('.step-item:nth-child('+(stepNumber+1)+')').addClass('active');
+            
+            currentWizardStep = stepNumber;
+            $('#wizardStep' + stepNumber + 'Container').fadeIn(300);
+            loadWizardUnits(stepNumber);
+        }
+
+        function finishWizardRound() {
+            let token = $('input[name="__RequestVerificationToken"]').val();
+            let labId = $('#wizardLabSelect').val();
+            $.post({ url: '/Index?handler=WizardFinishRound', data: { __RequestVerificationToken: token, labId: labId }, success: function() {
+                Swal.fire('Gestión del laboratorio finalizada con éxito', 'Los registros han sido archivados.', 'success').then(() => {
+                    $('#wizardApp').slideUp(300, () => $('#mainDashboard').fadeIn(300));
+                    $('#wizardLabSelect').val('');
+                    $('.step-item').removeClass('active completed');
+                    $('#barStep1').addClass('active');
+                    $('#wizardStep6Container').hide();
+                    $('#wizardStep1Container').show();
+                });
+            }});
+        }
     </script>
 }

@@ -14,14 +14,25 @@
 
 <div class="row">
     <div class="col-lg-8">
-        <div class="card shadow-sm border-0 mb-4">
+        
+        <div class="wizard-steps mb-4 d-flex justify-content-between position-relative d-print-none">
+            <div class="step-line"></div>
+            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L6 Verificación</span></div>
+            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L7 Solicitud</span></div>
+            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L8 Mantenimiento</span></div>
+            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L3 Salida</span></div>
+            <div class="step-item active"><span class="step-number">5</span><span class="step-label">Kardex</span></div>
+            <div class="step-item"><span class="step-number">6</span><span class="step-label">Desembolso</span></div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4 printable-card">
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Expediente de Solicitud: #@Model.Request.Id</h4>
-                        <h6 class="card-subtitle text-muted small">Información técnica y estado administrativo del requerimiento.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Paso 5: Actualización de Kardex</h4>
+                        <h6 class="card-subtitle text-muted small">Registro de intervenciones realizadas en esta gestión. (Expediente: #@Model.Request.Id)</h6>
                     </div>
-                    <div class="ml-auto">
+                    <div class="ml-auto d-print-none">
                         <i class="fas fa-clipboard-check fa-2x text-info opacity-5"></i>
                     </div>
                 </div>
@@ -42,7 +53,7 @@
                 <h5 class="font-weight-bold text-dark mb-3">
                     @if (Model.Request.Type == RequestType.Technical)
                     {
-                        <i class="fas fa-align-left mr-2 text-info"></i> <span>Detalles Técnicos</span>
+                        <i class="fas fa-align-left mr-2 text-info"></i> <span>Detalles Técnicos de Intervención</span>
                     }
                     else
                     {
@@ -61,7 +72,7 @@
                             @if (Model.Request.Type == RequestType.Technical)
                             {
                                 <div class="col-md-6">
-                                    <label class="control-label font-weight-bold small uppercase text-muted mb-1">Tiempo Estimado de Reparación</label>
+                                    <label class="control-label font-weight-bold small uppercase text-muted mb-1">Tiempo de Reparación Registrado</label>
                                     <div class="p-2 px-3 bg-light rounded border text-dark font-weight-bold">
                                         <i class="far fa-clock mr-2 text-info"></i> @(string.IsNullOrEmpty(Model.Request.EstimatedRepairTime) ? "No especificado" : Model.Request.EstimatedRepairTime)
                                     </div>
@@ -97,11 +108,11 @@
                     </div>
                 </div>
 
-                @if (Model.Request.Type == RequestType.Purchasing && Model.Request.CostDetails.Any())
+                @if (Model.Request.CostDetails != null && Model.Request.CostDetails.Any())
                 {
                     <div class="mt-4 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h5 class="font-weight-bold text-success mb-0 small uppercase"><i class="fas fa-list-ol mr-2"></i> Ítems del Presupuesto</h5>
+                            <h5 class="font-weight-bold text-success mb-0 small uppercase"><i class="fas fa-list-ol mr-2"></i> Ítems del Presupuesto (Costos Registrados)</h5>
                         </div>
                         <div class="table-responsive border rounded bg-white shadow-none">
                             <table class="table table-sm table-hover mb-0">
@@ -184,7 +195,7 @@
         </div>
     </div>
 
-    <div class="col-lg-4">
+    <div class="col-lg-4 d-print-none">
         <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
             <div class="card-body">
                 <h5 class="card-title text-white font-weight-bold small uppercase"><i class="fas fa-shield-alt mr-2 text-info"></i> Estado de Trámite</h5>
@@ -228,26 +239,19 @@
         </div>
 
         <div class="form-actions mt-4">
-            @if (Model.Request.Status == RequestStatus.Pending || User.IsInRole("Administrator") || User.IsInRole("SuperAdmin"))
-            {
-                <a asp-page="./Edit" asp-route-id="@Model.Request.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-3">
-                    <i class="fas fa-edit mr-2"></i> Gestionar / Editar
-                </a>
-            }
+            <button type="button" class="btn btn-primary btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3" onclick="advanceToStep6()">
+                Avanzar a Desembolso <i class="fas fa-arrow-right ml-2"></i>
+            </button>
 
             <a asp-page="./Details" asp-page-handler="DescargarReporte" asp-route-id="@Model.Request.Id" 
-               class="btn btn-success btn-block btn-rounded shadow-sm font-weight-bold py-2 mb-3 btn-download-report" 
+               class="btn btn-outline-success btn-block btn-rounded font-weight-bold py-2 mb-3 btn-download-report" 
                data-id="@Model.Request.Id">
-                <i class="fas fa-file-download mr-2"></i> <span class="download-text">Descargar Informe (Excel)</span>
+                <i class="fas fa-file-excel mr-2"></i> <span class="download-text">Exportar Excel</span>
             </a>
 
-            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-5">
-                <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
-            </a>
-            
-            <a asp-page="./Delete" asp-route-id="@Model.Request.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
-                <i class="fas fa-trash-alt mr-2"></i> Anular Solicitud
-            </a>
+            <button type="button" class="btn btn-outline-info btn-block btn-rounded font-weight-bold py-2 mb-4" onclick="window.print()">
+                <i class="fas fa-print mr-2"></i> Imprimir Kardex
+            </button>
         </div>
     </div>
 </div>
@@ -255,11 +259,12 @@
 @section Scripts {
     <script>
         $(document).ready(function() {
+            // Lógica de botones de descarga
             function updateDownloadButtons() {
                 $('.btn-download-report').each(function() {
                     const id = $(this).data('id');
                     if (id && localStorage.getItem('downloaded_request_' + id)) {
-                        $(this).removeClass('btn-success').addClass('btn-info');
+                        $(this).removeClass('btn-outline-success').addClass('btn-outline-info');
                         $(this).attr('title', 'Volver a descargar reporte');
                         const $text = $(this).find('.download-text');
                         if ($text && $text.length > 0) {
@@ -279,11 +284,33 @@
 
             updateDownloadButtons();
         });
+
+        // ==============================================================
+        // AÑADIDO: Lógica de navegación del Wizard
+        // ==============================================================
+        function advanceToStep6() {
+            // Guardamos bandera en localStorage
+            localStorage.setItem('wizard_next_step', 'L9'); // O la ruta de Desembolso que tengas
+            
+            // En un flujo real, aquí harías: window.location.href = '/TuRutaDeDesembolso';
+            // Por ahora, simularemos el avance exitoso:
+            Swal.fire({
+                title: 'Kardex Confirmado',
+                text: "Avanzando a la ventana de Desembolso Financiero...",
+                icon: 'success',
+                showConfirmButton: false,
+                timer: 1500
+            }).then(() => {
+                // window.location.href = '/ruta-al-paso-6'; 
+                console.log("Navegando al paso 6...");
+            });
+        }
     </script>
 }
 
 @section Styles {
     <style>
+        /* Estilos del Sistema Originales */
         .bg-light-success { background-color: rgba(40, 167, 69, 0.05); }
         .bg-light-danger { background-color: rgba(220, 53, 69, 0.05); }
         .bg-light-warning { background-color: rgba(255, 193, 7, 0.05); }
@@ -291,5 +318,37 @@
         .italic { font-style: italic; }
         .opacity-5 { opacity: 0.15; }
         .audit-log label { letter-spacing: 0.5px; }
+
+        /* Estilos del Wizard (Paso 5) */
+        .wizard-steps { margin-bottom: 40px; }
+        .step-line { position: absolute; top: 15px; left: 5%; width: 90%; height: 2px; background: #e9ecef; z-index: 1; }
+        .step-item { position: relative; z-index: 2; text-align: center; width: 15%; }
+        .step-number { width: 32px; height: 32px; line-height: 32px; border-radius: 50%; background: #fff; border: 2px solid #e9ecef; display: block; margin: 0 auto 5px; font-weight: bold; color: #adb5bd; }
+        .step-label { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #adb5bd; }
+        .step-item.active .step-number { background: #2962ff; border-color: #2962ff; color: #fff; }
+        .step-item.active .step-label { color: #2962ff; }
+
+        /* ============================================================== */
+        /* AÑADIDO: ESTILOS DE IMPRESIÓN (Tarea 2)                        */
+        /* ============================================================== */
+        @@media print {
+            body * {
+                visibility: hidden; /* Oculta todo por defecto */
+            }
+            .printable-card, .printable-card * {
+                visibility: visible; /* Muestra solo la tarjeta de datos */
+            }
+            .printable-card {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                border: none !important;
+                box-shadow: none !important;
+            }
+            .d-print-none {
+                display: none !important; /* Asegura que la barra del wizard y botones no salgan */
+            }
+        }
     </style>
 }

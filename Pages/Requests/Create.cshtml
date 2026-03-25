@@ -4,6 +4,17 @@
 
 <div class="row justify-content-center">
     <div class="col-lg-10 col-xl-9">
+        
+        <div class="wizard-steps mb-4 d-flex justify-content-between position-relative mt-3">
+            <div class="step-line"></div>
+            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L6 Verificación</span></div>
+            <div class="step-item active"><span class="step-number">2</span><span class="step-label">L7 Solicitud</span></div>
+            <div class="step-item"><span class="step-number">3</span><span class="step-label">L8 Mantenimiento</span></div>
+            <div class="step-item"><span class="step-number">4</span><span class="step-label">L3 Salida</span></div>
+            <div class="step-item"><span class="step-number">5</span><span class="step-label">Kardex</span></div>
+            <div class="step-item"><span class="step-number">6</span><span class="step-label">Desembolso</span></div>
+        </div>
+
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
@@ -56,7 +67,7 @@
                             </div>
 
                             <hr class="my-4" />
-                            <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-sliders-h mr-2"></i> Parametros Técnicos</h6>
+                            <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-sliders-h mr-2"></i> Parámetros Técnicos</h6>
 
                             <div class="form-group mb-3">
                                 <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Grado de Prioridad <span class="text-danger">*</span></label>
@@ -95,7 +106,7 @@
                             Cancelar
                         </a>
                         <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
-                            <i class="fas fa-save mr-2"></i> Crear Solicitud Técnica
+                            Guardar y volver a Lista L7 <i class="fas fa-arrow-right ml-2"></i>
                         </button>
                     </div>
                 </form>
@@ -104,12 +115,24 @@
     </div>
 </div>
 
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        /* Wizard Steps Style */
+        .wizard-steps { margin-bottom: 40px; }
+        .step-line { position: absolute; top: 15px; left: 5%; width: 90%; height: 2px; background: #e9ecef; z-index: 1; }
+        .step-item { position: relative; z-index: 2; text-align: center; width: 15%; }
+        .step-number { width: 32px; height: 32px; line-height: 32px; border-radius: 50%; background: #fff; border: 2px solid #e9ecef; display: block; margin: 0 auto 5px; font-weight: bold; color: #adb5bd; }
+        .step-label { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #adb5bd; }
+        .step-item.active .step-number { background: #2962ff; border-color: #2962ff; color: #fff; }
+        .step-item.active .step-label { color: #2962ff; }
+    </style>
+}
+
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
-
-    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
     <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         $(function() {
