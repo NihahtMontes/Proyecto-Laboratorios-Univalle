@@ -128,8 +128,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Wizard
 
                 var request = new Request
                 {
-                    LaboratoryId = unit.LaboratoryId,
-                    EquipmentId = unit.EquipmentId,
+                    LaboratoryId = (int)unit.LaboratoryId,
+                    EquipmentId = (int)unit.EquipmentId,
                     EquipmentUnitId = unit.Id,
                     Description = L7Input.Description,
                     Priority = L7Input.Priority,

@@ -562,7 +562,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<int>("LaboratoryId")
+                    b.Property<int?>("LaboratoryId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("LastModifiedDate")
@@ -1146,7 +1146,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -1808,8 +1808,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Laboratory", "Laboratory")
                         .WithMany("EquipmentUnits")
                         .HasForeignKey("LaboratoryId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
@@ -2041,9 +2040,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UserId");
 
                     b.Navigation("User");
                 });

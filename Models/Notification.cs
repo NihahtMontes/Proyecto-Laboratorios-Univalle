@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Proyecto_Laboratorios_Univalle.Models
@@ -8,8 +8,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
-        public int UserId { get; set; } 
+        public int? UserId { get; set; } 
 
         [Required]
         [StringLength(100)]

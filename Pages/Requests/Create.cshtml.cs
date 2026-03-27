@@ -34,7 +34,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 if (unit != null)
                 {
                     Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
-                    Input.LaboratoryId = unit.LaboratoryId;
+                    Input.LaboratoryId = (int)unit.LaboratoryId;
                     Input.EquipmentUnitId = unit.Id;
                 }
             }

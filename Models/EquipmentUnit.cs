@@ -19,9 +19,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // LOCATION & ORIGIN (Verificación por Laboratorio)
         // ========================================
-        [Required(ErrorMessage = "El laboratorio es obligatorio para la verificación")]
         [Display(Name = "Laboratorio Asignado")]
-        public int LaboratoryId { get; set; } // Cambio: Ahora es obligatorio (sin ?)
+        public int? LaboratoryId { get; set; } 
 
 
         // ========================================

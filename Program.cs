@@ -6,7 +6,7 @@ using Proyecto_Laboratorios_Univalle.Services;
 using Proyecto_Laboratorios_Univalle.Services.Reporting;
 using QuestPDF.Infrastructure;
 using OfficeOpenXml;
-using Microsoft.EntityFrameworkCore;
+
 
 QuestPDF.Settings.License = LicenseType.Community;
 
