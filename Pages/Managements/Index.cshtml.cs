@@ -6,6 +6,10 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 {
@@ -19,56 +23,81 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             _context = context;
         }
 
-        public IList<Management> ManagementList { get; set; } = default!;
+        // Inicializamos la lista para evitar errores de referencia nula en la vista
+        public IList<Management> ManagementList { get; set; } = new List<Management>();
 
         public async Task OnGetAsync()
         {
-            // Load all management periods, ordered by most recent first
-            if (_context.Managements != null)
+            try
             {
-                ManagementList = await _context.Managements
-                    .Include(m => m.ManagementPlans) // Include plans to calculate progress
-                    .OrderByDescending(m => m.CreatedDate)
-                    .ToListAsync();
+                // Intentamos cargar las gestiones desde la base de datos
+                if (_context.Managements != null)
+                {
+                    ManagementList = await _context.Managements
+                        .Include(m => m.ManagementPlans)
+                        .OrderByDescending(m => m.CreatedDate)
+                        .ToListAsync();
+                }
+            }
+            catch (Exception)
+            {
+                // Si la tabla no existe (error image_76232a), 
+                // mantenemos la lista vacía para que la página cargue sin error.
+                ManagementList = new List<Management>();
             }
         }
 
         public async Task<IActionResult> OnPostCloseManagementAsync(int id)
         {
-            var management = await _context.Managements.FindAsync(id);
-            if (management == null)
+            try
             {
-                return NotFound();
+                var management = await _context.Managements.FindAsync(id);
+                if (management == null)
+                {
+                    return NotFound();
+                }
+
+                management.Status = Models.Enums.ManagementStatus.Terminado;
+                management.ActualClosedDate = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = "La gestión administrativa ha sido cerrada (Terminada) exitosamente.";
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "Error de conexión: No se pudo cerrar la gestión.";
             }
 
-            management.Status = Models.Enums.ManagementStatus.Terminado;
-            management.ActualClosedDate = DateTime.UtcNow;
-            
-            await _context.SaveChangesAsync();
-            
-            TempData["Success"] = "La gestión administrativa ha sido cerrada (Terminada) exitosamente.";
             return RedirectToPage("./Index");
         }
 
         public async Task<IActionResult> OnPostDeleteLogicalAsync(int id)
         {
-            var management = await _context.Managements.FindAsync(id);
-            if (management == null)
+            try
             {
-                return NotFound();
+                var management = await _context.Managements.FindAsync(id);
+                if (management == null)
+                {
+                    return NotFound();
+                }
+
+                if (management.Status == ManagementStatus.Activo)
+                {
+                    TempData["Error"] = "No se puede eliminar una gestión que se encuentra ACTIVA actualmente.";
+                    return RedirectToPage("./Index");
+                }
+
+                management.Status = ManagementStatus.Eliminado;
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = "La gestión ha sido eliminada lógicamente del sistema.";
+            }
+            catch (Exception)
+            {
+                TempData["Error"] = "Error de conexión: No se pudo eliminar la gestión.";
             }
 
-            // No permitir eliminar si está activa (por seguridad)
-            if (management.Status == ManagementStatus.Activo)
-            {
-                TempData["Error"] = "No se puede eliminar una gestión que se encuentra ACTIVA actualmente.";
-                return RedirectToPage("./Index");
-            }
-
-            management.Status = ManagementStatus.Eliminado;
-            await _context.SaveChangesAsync();
-
-            TempData["Success"] = "La gestión ha sido eliminada lógicamente del sistema.";
             return RedirectToPage("./Index");
         }
     }

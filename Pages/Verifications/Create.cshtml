@@ -35,6 +35,9 @@
                 </div>
 
                 <form method="post" id="verificationForm" novalidate>
+                    <!-- PARTE AGREGADA: Mantiene el contexto del Wizard durante el POST -->
+                    <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString().ToLower() ?? "false")" />
+
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
 
                     <div class="bg-light p-4 rounded mb-4 border-left border-info border-3">
@@ -120,7 +123,7 @@
                             </div>
                             <div class="card border border-light bg-white shadow-sm mb-4">
                                 <div class="card-header bg-white font-weight-bold text-info border-bottom-0">
-                                    <i class="fas fa-cogs mr-1"></i> MecÃ¡nica y TÃ©rmica
+                                    <i class="fas fa-fan mr-1"></i> MecÃ¡nica y TÃ©rmica
                                 </div>
                                 <div class="card-body pt-0">
                                     <div class="row align-items-center py-2 border-bottom check-item">
@@ -228,11 +231,9 @@
                         </div>
                     </div>
 
-                    <!-- Hidden context for returning to ByAmbient flow -->
                     <input type="hidden" name="returnFacultyId" value="@ViewData["ReturnFacultyId"]" />
                     <input type="hidden" name="returnLaboratoryId" value="@ViewData["ReturnLaboratoryId"]" />
 
-                    <!-- 4. Report Status and Submission Actions -->
                     <div class="d-flex align-items-center bg-light p-4 rounded mt-2">
                         <div class="w-50 mr-4">
                             <label asp-for="Input.Status" class="font-weight-bold small uppercase text-black">Estado del Reporte</label>
@@ -251,7 +252,7 @@
                             }
                             else
                             {
-                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Cancelar</a>
+                                <a asp-page="/Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Cancelar</a>
                             }
                             <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
                                 Guardar y Avanzar <i class="fas fa-arrow-right ml-2"></i>
@@ -330,16 +331,13 @@
                 });
             });
 
-            // LÃ³gica de redireccionamiento del Wizard (Tarea 1)
             $('#verificationForm').on('submit', function(e) {
-                // Verificamos si hay fallas (Valor 2 en los selectores)
                 let hasFailures = false;
                 $(".verifier").each(function() {
                     if ($(this).val() == "2") hasFailures = true;
                 });
 
                 if (hasFailures) {
-                    // Si hay fallas, guardamos una bandera en localStorage para que el sistema sepa que debe ir a L7
                     localStorage.setItem('wizard_next_step', 'L7');
                     localStorage.setItem('wizard_failed_unit', $('#equipmentUnitSelect').val());
                 }

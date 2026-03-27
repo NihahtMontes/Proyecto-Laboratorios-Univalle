@@ -28,6 +28,8 @@
                 </div>
 
                 <form method="post" novalidate id="createRequestForm">
+                    <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString().ToLower() ?? "false")" />
+
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
                     <input type="hidden" asp-for="Input.Type" value="Technical" />
@@ -138,20 +140,13 @@
         $(function() {
             $(".select2").select2({ width: '100%', allowClear: true });
 
-            // Cascading Selectors
             $('#facultySelect').on('change', function() {
                 let id = $(this).val();
                 let $lab = $('#laboratorySelect');
                 let $unit = $('#equipmentUnitSelect');
-
                 $lab.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
                 $unit.empty().append('<option value="">-- Seleccione laboratorio --</option>').prop('disabled', true);
-
-                if (!id) {
-                    $lab.html('<option value="">-- Primero seleccione facultad --</option>');
-                    return;
-                }
-
+                if (!id) { $lab.html('<option value="">-- Primero seleccione facultad --</option>'); return; }
                 $.get('/Requests/Create?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
                     let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
                     $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
@@ -162,14 +157,8 @@
             $('#laboratorySelect').on('change', function() {
                 let id = $(this).val();
                 let $unit = $('#equipmentUnitSelect');
-
                 $unit.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
-
-                if (!id) {
-                    $unit.html('<option value="">-- Seleccione laboratorio --</option>');
-                    return;
-                }
-
+                if (!id) { $unit.html('<option value="">-- Seleccione laboratorio --</option>'); return; }
                 $.get('/Requests/Create?handler=UnitsByLab', { laboratoryId: id }, function(data) {
                     let opts = '<option value="">-- Seleccionar Unidad Física --</option>';
                     $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
