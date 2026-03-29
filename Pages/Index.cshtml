@@ -1,358 +1,238 @@
 @page
 @model IndexModel
-@using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    var now = DateTime.UtcNow;
-    string greeting = now.Hour < 12 ? "Buenos días" : now.Hour < 18 ? "Buenas tardes" : "Buenas noches";
+    ViewData["Title"] = "Dashboard Principal";
+    var steps = new[] { "L6 Verificación", "L7 Solicitud", "L8 Mantenimiento", "L3 Salida", "Kardex", "Desembolso" };
 }
 
-<div class="container-fluid">
-    
-    <!-- 🌟 HERO SECTION: BIENVENIDA MÁS PROFESIONAL -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card bg-white shadow-sm border-0 rounded-lg overflow-hidden dashboard-hero">
-                <div class="card-body p-4 d-flex align-items-center">
-                    <div class="hero-icon mr-4 d-none d-md-flex">
-                        <i class="fas fa-chart-line fa-3x text-primary opacity-2"></i>
-                    </div>
-                    <div>
-                        <h2 class="font-weight-bold text-dark mb-1">@greeting, @User.Identity?.Name</h2>
-                        <p class="text-muted mb-0">
-                            <span class="badge badge-soft-primary px-3 mr-2">
-                                <i class="far fa-calendar-alt mr-1"></i> @now.ToString("dd 'de' MMMM, yyyy")
-                            </span>
-                            Resumen operativo del Sistema de Gestión de Laboratorios.
-                        </p>
-                    </div>
-                    <div class="ml-auto d-none d-lg-block">
-                        <div class="text-right">
-                            <h4 class="mb-0 font-weight-bold text-primary">@Model.OperationalPercent%</h4>
-                            <small class="text-muted uppercase font-weight-bold" style="letter-spacing: 1px;">Operatividad Total</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ⚡ QUICK ACTIONS: ACCESOS RÁPIDOS ELEGANTES -->
-    <div class="row mb-4">
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <a asp-page="/Equipment/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-info-soft text-info mb-3 mx-auto">
-                        <i class="fas fa-plus"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Nuevo Equipo</h6>
-                    <p class="small text-muted mb-0">Registrar activo técnico</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3 mb-md-0">
-            <a asp-page="/Requests/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-warning-soft text-warning mb-3 mx-auto">
-                        <i class="fas fa-file-signature"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Nueva Solicitud</h6>
-                    <p class="small text-muted mb-0">Reportar falla o daño</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3 mb-sm-0">
-            <a asp-page="/Maintenances/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-success-soft text-success mb-3 mx-auto">
-                        <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Mantenimiento</h6>
-                    <p class="small text-muted mb-0">Programar intervención</p>
-                </div>
-            </a>
-        </div>
-        <div class="col-md-3 col-sm-6">
-            <a asp-page="/Verifications/Create" class="action-card card h-100 shadow-sm border-0 text-decoration-none">
-                <div class="card-body text-center p-4">
-                    <div class="action-icon bg-primary-soft text-primary mb-3 mx-auto">
-                        <i class="fas fa-check-double"></i>
-                    </div>
-                    <h6 class="font-weight-bold text-dark mb-1">Inspección</h6>
-                    <p class="small text-muted mb-0">Verificar estado técnico</p>
-                </div>
-            </a>
-        </div>
-    </div>
-
-    <!-- 📊 INDICADORES PRINCIPALES (KPIs) -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-4 mb-lg-0">
-            <div class="card border-0 shadow-sm card-stats h-100">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-info text-white mr-3">
-                            <i class="fas fa-boxes"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.TotalEquipment</h3>
-                            <small class="text-muted font-weight-bold uppercase">Total Activos</small>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <div class="d-flex justify-content-between mb-1 small">
-                            <span>Estado Operativo</span>
-                            <span class="text-success font-weight-bold">@Model.OperationalPercent%</span>
-                        </div>
-                        <div class="progress" style="height: 5px;">
-                            <div class="progress-bar bg-success" role="progressbar" style="width: @Model.OperationalPercent%"></div>
-                        </div>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Equipment/Index" class="btn btn-link btn-sm text-info font-weight-bold">Ver Inventario <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6 mb-4 mb-lg-0">
-            <div class="card border-0 shadow-sm card-stats h-100 border-left-warning">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-warning text-white mr-3">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.PendingRequests</h3>
-                            <small class="text-muted font-weight-bold uppercase">Req. Pendientes</small>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <span class="badge badge-soft-warning px-3 py-2 btn-rounded w-100">
-                            Acción Requerida
-                        </span>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Requests/Index" class="btn btn-link btn-sm text-warning font-weight-bold">Gestionar Buzón <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6 mb-4 mb-md-0">
-            <div class="card border-0 shadow-sm card-stats h-100 border-left-success">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-success text-white mr-3">
-                            <i class="fas fa-cogs"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.OngoingMaintenances</h3>
-                            <small class="text-muted font-weight-bold uppercase">En Progreso</small>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <span class="badge badge-soft-success px-3 py-2 btn-rounded w-100">
-                            Servicios Activos
-                        </span>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Maintenances/Index" class="btn btn-link btn-sm text-success font-weight-bold">Ver Historial <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-            <div class="card border-0 shadow-sm card-stats h-100 border-left-primary">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="stats-icon bg-primary text-white mr-3">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-weight-bold text-dark mb-0">@Model.RecentVerificationsCount</h3>
-                            <small class="text-muted font-weight-bold uppercase">Verif. Semanal</small>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <span class="badge badge-soft-primary px-3 py-2 btn-rounded w-100">
-                            Inspecciones OK
-                        </span>
-                    </div>
-                    <hr class="my-3 opacity-1">
-                    <div class="text-center">
-                        <a asp-page="/Verifications/Index" class="btn btn-link btn-sm text-primary font-weight-bold">Bitácora Técnica <i class="fas fa-arrow-right ml-1"></i></a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 📂 MAIN CONTENT AREA -->
-    <div class="row">
-        <!-- SOLICITUDES RECIENTES -->
-        <div class="col-lg-8 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3 d-flex align-items-center">
-                    <h5 class="card-title font-weight-bold mb-0 text-dark">Actividad Reciente del Buzón</h5>
-                    <div class="ml-auto">
-                        <span class="badge badge-light text-muted">Últimos 6 registros</span>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover table-borderless v-middle">
-                        <thead class="bg-light-soft text-muted small uppercase">
-                            <tr>
-                                <th class="px-4">Equipo / ID</th>
-                                <th>Solicitante</th>
-                                <th>Prioridad</th>
-                                <th class="text-center">Estado</th>
-                                <th class="text-right px-4">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (!Model.LatestRequests.Any())
-                            {
-                                <tr><td colspan="5" class="text-center py-5 text-muted">No hay solicitudes recientes registradas.</td></tr>
-                            }
-                            @foreach (var request in Model.LatestRequests)
-                            {
-                                <tr>
-                                    <td class="px-4">
-                                        <div class="font-weight-bold text-dark">@(request.EquipmentUnit?.Equipment?.Name ?? request.Equipment?.Name)</div>
-                                        <div class="small text-muted">@(request.EquipmentUnit?.InventoryNumber ?? "-")</div>
-                                    </td>
-                                    <td>
-                                        <div class="small text-dark font-weight-bold">@request.RequestedBy?.FullName</div>
-                                        <div class="small text-muted">@request.RequestedBy?.IdentityCard</div>
-                                    </td>
-                                    <td>
-                                        @{
-                                            var pClass = request.Priority == RequestPriority.High ? "badge-soft-danger text-danger" : 
-                                                       request.Priority == RequestPriority.Medium ? "badge-soft-warning text-warning" : "badge-soft-info text-info";
-                                        }
-                                        <span class="badge @pClass px-3 py-1 rounded-pill small">@request.Priority</span>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge badge-dot bg-warning mr-1"></span> @request.Status
-                                    </td>
-                                    <td class="text-right px-4">
-                                        <a href="/Requests/Details/@request.Id" class="btn btn-sm btn-soft-secondary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ALERTAS Y CONTINGENCIAS -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="card-title font-weight-bold mb-0 text-dark">Alertas de Contingencia</h5>
-                </div>
-                <div class="card-body pt-0">
-                    <div class="contingency-list">
-                        @if (!Model.CriticalEquipment.Any())
-                        {
-                            <div class="text-center py-5">
-                                <i class="fas fa-check-double text-success fa-3x mb-3 opacity-2"></i>
-                                <h6 class="text-dark">Sistemas Estables</h6>
-                                <p class="text-muted small">No hay equipos críticos fuera de servicio en este momento.</p>
-                            </div>
-                        }
-                        @foreach (var eq in Model.CriticalEquipment)
-                        {
-                            <div class="contingency-item p-3 mb-3 border rounded-lg bg-light-soft border-danger-soft">
-                                <div class="d-flex align-items-center mb-2">
-                                    <div class="stats-icon bg-danger-soft text-danger mr-2" style="width: 30px; height: 30px; font-size: 14px;">
-                                        <i class="fas fa-exclamation-triangle"></i>
-                                    </div>
-                                    <h6 class="font-weight-bold text-dark mb-0">@eq.Equipment?.Name</h6>
-                                </div>
-                                <div class="small text-muted mb-2">
-                                    <i class="fas fa-map-marker-alt mr-1"></i> Lab: @(eq.Laboratory?.Name ?? "S/L") | Inv: @eq.InventoryNumber
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="badge badge-danger px-2 py-1">CRÍTICO</span>
-                                    <a href="/Equipment/Details/@eq.Id" class="small font-weight-bold text-primary">Ver detalle</a>
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    @if (Model.CriticalEquipment.Any())
-                    {
-                        <div class="alert alert-soft-danger py-2 px-3 small mt-3">
-                            <i class="fas fa-info-circle mr-2"></i> @Model.CriticalEquipment.Count equipos requieren atención urgente.
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 @section Styles {
+    <link rel="stylesheet" href="~/css/tailwind-dashboard.css" asp-append-version="true" />
     <style>
-        :root {
-            --soft-bg-info: #e1f5fe;
-            --soft-bg-success: #e8f5e9;
-            --soft-bg-warning: #fff3e0;
-            --soft-bg-danger: #ffebee;
-            --soft-bg-primary: #e8eaf6;
-        }
-
-        .dashboard-hero { border-left: 5px solid #2962ff !important; }
-        .hero-icon { width: 80px; height: 80px; background: var(--soft-bg-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        
-        .card-stats { transition: transform 0.3s ease; border-bottom: 3px solid transparent !important; }
-        .card-stats:hover { transform: translateY(-5px); }
-        .stats-icon { width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-
-        .action-card { transition: all 0.3s ease; }
-        .action-card:hover { transform: scale(1.03); background: #f8f9fa; }
-        .action-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-
-        /* Soft utility classes */
-        .bg-info-soft { background-color: var(--soft-bg-info); }
-        .bg-warning-soft { background-color: var(--soft-bg-warning); }
-        .bg-success-soft { background-color: var(--soft-bg-success); }
-        .bg-primary-soft { background-color: var(--soft-bg-primary); }
-        .bg-light-soft { background-color: #f8f9fa; }
-        
-        .badge-soft-primary { background-color: #e8eaf6; color: #3f51b5; }
-        .badge-soft-warning { background-color: #fff3e0; color: #ef6c00; }
-        .badge-soft-info { background-color: #e1f5fe; color: #0288d1; }
-        .badge-soft-success { background-color: #e8f5e9; color: #2e7d32; }
-
-        .btn-soft-secondary { background-color: #f5f5f5; color: #424242; border: none; }
-        .btn-soft-secondary:hover { background-color: #eeeeee; }
-
-        .alert-soft-danger { background-color: #ffebee; color: #c62828; border: none; }
-        .border-danger-soft { border-color: #ffcdd2 !important; }
-        .bg-danger-soft { background-color: #ffebee; }
-
-        .v-middle td { vertical-align: middle !important; }
-        .uppercase { text-transform: uppercase; letter-spacing: 0.8px; font-size: 11px; }
-        .opacity-1 { opacity: 0.1; }
-        .opacity-2 { opacity: 0.2; }
-
-        .badge-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: middle; }
+        .tailwind-scope { text-align: left; }
+        .step-active { background-color: #28A745; border-color: #28A745; color: white; }
+        .step-inactive { background-color: white; border-color: #e2e8f0; color: #94a3b8; }
+        .wizard-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; background: white; }
+        .btn-status-gray { background-color: #f1f5f9; color: #64748b; font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .btn-verify-outline { background-color: white; color: #64748b; font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-decoration: none !important; transition: all 0.2s; }
+        .btn-verify-outline:hover { border-color: #3b82f6; color: #3b82f6; }
+        .wizard-header-dark { background-color: #1e293b; border-radius: 12px 12px 0 0; padding: 16px 24px; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .btn-blue-next { background-color: #3b82f6; color: white; padding: 10px 24px; border-radius: 10px; font-weight: bold; display: flex; align-items: center; gap: 8px; border: none; }
+        .btn-red-finish { background-color: #ef4444; color: white; padding: 10px 24px; border-radius: 10px; font-weight: bold; display: flex; align-items: center; gap: 8px; border: none; }
+        .lab-badge { background-color: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; font-size: 10px; font-weight: bold; padding: 4px 12px; border-radius: 20px; }
     </style>
 }
 
-@section Scripts {
-    <script>
-        $(function () {
-             $('[data-toggle="tooltip"]').tooltip();
-        });
-    </script>
-}
+<div class="tailwind-scope p-6 max-w-[1600px] mx-auto space-y-6">
+
+    @if (!Model.ShowWizard)
+    {
+        <div id="mainDashboard" class="animate-in fade-in duration-500">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Planificación Global Univalle</h1>
+                    <p class="text-sm text-slate-500">Estado general de los laboratorios y activos.</p>
+                </div>
+                
+                @* ÚNICO BOTÓN VISIBLE: INICIAR RONDA (Redirige en la misma página) *@
+                <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" class="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-slate-800 transition-all text-decoration-none">
+                    <i class="fas fa-play text-[10px]"></i> Iniciar Ronda (Wizard)
+                </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gestión Actual</p>
+                    <p class="text-2xl font-black text-slate-800">@Model.ActiveManagement?.Year - Sem @Model.ActiveManagement?.Semester</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Equipos Registrados</p>
+                    <p class="text-3xl font-black text-slate-800">@Model.TotalEquipment</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado Operativo</p>
+                    <div class="flex items-end gap-2">
+                        <p class="text-3xl font-black text-green-600">@Model.OperationalPercent%</p>
+                        <span class="text-[10px] text-slate-400 pb-1">Promedio Global</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px] flex items-center justify-center">
+                    <p class="text-slate-300 italic text-sm text-center">Gráfico: Avance de Verificación L-6</p>
+                </div>
+                <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px] flex items-center justify-center">
+                    <p class="text-slate-300 italic text-sm text-center">Gráfico: Estado de Activos por Facultad</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="max-w-[1200px] mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
+            <div class="wizard-header-dark shadow-lg">
+                <h2 class="text-xl font-bold m-0"><i class="fas fa-magic text-[#28A745] mr-2"></i>Ronda de Mantenimiento</h2>
+                <a asp-page="/Index" asp-route-ShowWizard="false" class="text-white opacity-70 hover:opacity-100 font-bold text-decoration-none">Cancelar</a>
+            </div>
+
+            <!-- Stepper -->
+            <div class="bg-white border-x p-8 flex justify-between relative shadow-sm">
+                <div class="absolute left-[10%] top-[3rem] w-[80%] h-0.5 bg-gray-100 -z-0"></div>
+                @for (int i = 0; i < steps.Length; i++)
+                {
+                    int stepNum = i + 1;
+                    <div class="flex flex-col items-center gap-2 z-10 w-32">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold border-4 @(Model.Step >= stepNum ? "step-active" : "step-inactive")">
+                            @if (Model.Step > stepNum) { <i class="fas fa-check"></i> } else { <span>@stepNum</span> }
+                        </div>
+                        <span class="text-[10px] font-bold uppercase text-center @(Model.Step == stepNum ? "text-slate-900" : "text-slate-400")">@steps[i]</span>
+                    </div>
+                }
+            </div>
+
+            <div class="bg-white border-x border-b p-0 rounded-b-2xl shadow-xl min-h-[500px]">
+                
+                @if (Model.Step == 1)
+                {
+                    <div class="p-8">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold text-slate-800">Paso 1: L6 Verificación</h3>
+                                <p class="text-sm text-slate-500">Selecciona un ambiente para verificar sus equipos.</p>
+                            </div>
+                            <form method="get" class="flex items-center gap-3">
+                                <input type="hidden" name="ShowWizard" value="true" />
+                                <input type="hidden" name="Step" value="1" />
+                                <label class="text-xs font-bold text-slate-600 uppercase">Laboratorio / Ambiente:</label>
+                                <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="border rounded-lg p-2 text-sm bg-slate-50 w-64 outline-blue-400 shadow-sm" onchange="this.form.submit()">
+                                    <option value="">-- Selecciona un laboratorio --</option>
+                                </select>
+                            </form>
+                        </div>
+
+                        <div class="space-y-3 min-h-[250px]">
+                            @if (!Model.EquipmentUnitsSimulated.Any())
+                            {
+                                <div class="border-2 border-dashed border-slate-100 rounded-2xl p-16 text-center text-slate-400 italic bg-slate-50">
+                                    <i class="fas fa-flask text-4xl mb-4 opacity-20"></i><br>
+                                    Selecciona un laboratorio para ver sus equipos.
+                                </div>
+                            }
+                            else
+                            {
+                                var step1Equipments = Model.EquipmentUnitsSimulated.Where(e => e.StatusStep == "Step1").ToList();
+                                foreach (var item in step1Equipments)
+                                {
+                                    <div class="wizard-card shadow-sm animate-in fade-in slide-in-from-bottom-2">
+                                        <div>
+                                            <h4 class="font-bold text-slate-800 m-0">@item.Name <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded ml-2 border border-slate-200">@item.InventoryNumber</span></h4>
+                                            <p class="text-xs text-slate-400 mt-1 m-0">@item.Category</p>
+                                        </div>
+                                        <div class="flex gap-2 items-center">
+                                            <span class="btn-status-gray border-0">Sin verificar</span>
+                                            @* COMO EN TU VIDEO: Dirige al formulario Real de Verificación *@
+                                            <a asp-page="/Verifications/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn-verify-outline hover:border-blue-500 hover:text-blue-600">
+                                                Reportar Falla
+                                            </a>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        <div class="flex justify-end mt-8 pt-6 border-t border-slate-50">
+                            <form method="post" asp-page-handler="NextStep">
+                                <input type="hidden" asp-for="Step" />
+                                <input type="hidden" asp-for="SelectedLabId" />
+                                <button type="submit" class="btn-blue-next">
+                                    Avanzar a L7 Solicitud <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+                else if (Model.Step == 2)
+                {
+                    <div class="p-8">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 class="text-xl font-bold text-slate-800">Paso 2: L7 Solicitud</h3>
+                                <p class="text-sm text-slate-500">Genera la solicitud para los equipos con desperfectos.</p>
+                            </div>
+                            <div class="lab-badge">Simulación Activa</div>
+                        </div>
+
+                        <div class="space-y-3 min-h-[250px]">
+                            @{ var step2Equipments = Model.EquipmentUnitsSimulated.Where(e => e.StatusStep == "Step2").ToList(); }
+                            
+                            @if (!step2Equipments.Any())
+                            {
+                                <div class="border-2 border-dashed border-slate-100 rounded-2xl p-16 text-center text-slate-400 italic bg-slate-50">
+                                    No se encontraron equipos reportados para este laboratorio.
+                                </div>
+                            }
+                            else
+                            {
+                                foreach (var item in step2Equipments)
+                                {
+                                    <div class="wizard-card shadow-sm border-l-4 border-l-blue-400">
+                                        <div>
+                                            <h4 class="font-bold text-slate-800 m-0">@item.Name</h4>
+                                            <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded border">@item.InventoryNumber</span>
+                                            <p class="text-xs text-blue-500 mt-1 m-0">1 desperfecto(s) reportado(s)</p>
+                                        </div>
+                                        <div class="flex gap-2 items-center">
+                                            <span class="btn-status-gray border-0">Sin solicitud</span>
+                                            @* COMO EN TU VIDEO: Dirige al formulario Real de L7 *@
+                                            <a asp-page="/Requests/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn-verify-outline text-blue-600 border-blue-200 hover:bg-blue-50">
+                                                Hacer Solicitud
+                                            </a>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        <div class="flex justify-between mt-8 pt-6 border-t border-slate-50">
+                            <form method="post" asp-page-handler="PreviousStep">
+                                <input type="hidden" asp-for="Step" />
+                                <input type="hidden" asp-for="SelectedLabId" />
+                                <button type="submit" class="border border-slate-200 text-slate-600 px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50">
+                                    <i class="fas fa-arrow-left"></i> Volver a L6
+                                </button>
+                            </form>
+                            <form method="post" asp-page-handler="NextStep">
+                                <input type="hidden" asp-for="Step" />
+                                <input type="hidden" asp-for="SelectedLabId" />
+                                <button type="submit" class="btn-blue-next border-0">
+                                    Avanzar a L8 Mantenimiento <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+                else if (Model.Step == 6)
+                {
+                    <div class="wizard-header-dark"><h3>Paso 6: Desembolso</h3></div>
+                    <div class="p-10 text-center">
+                        <form method="post" asp-page-handler="NextStep">
+                            <button type="submit" class="btn-red-finish border-0 mx-auto shadow-lg">Finalizar Ronda <i class="fas fa-check-double ml-2"></i></button>
+                        </form>
+                    </div>
+                }
+                else
+                {
+                    <div class="p-20 text-center text-slate-400 italic">
+                        <i class="fas fa-tools text-5xl mb-4 opacity-20"></i><br>
+                        Contenido del Paso @Model.Step (Simulación Activa).
+                        <form method="post" asp-page-handler="NextStep" class="mt-8">
+                            <input type="hidden" asp-for="Step" />
+                            <input type="hidden" asp-for="SelectedLabId" />
+                            <button class="bg-slate-900 text-white px-12 py-3 rounded-xl font-bold hover:bg-slate-800 shadow-md border-0">Continuar Paso @(Model.Step + 1)</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

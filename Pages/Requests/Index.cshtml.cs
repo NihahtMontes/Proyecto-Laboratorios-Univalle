@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -32,19 +32,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         [BindProperty(SupportsGet = true)]
         public RequestPriority? PriorityFilter { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? FilterLaboratoryId { get; set; }
+
+        public Microsoft.AspNetCore.Mvc.Rendering.SelectList LaboratoryList { get; set; } = default!;
+
         public async Task OnGetAsync()
         {
             var query = _context.Requests
                 .Include(r => r.Equipment)
-                // .ThenInclude(e => e!.EquipmentType) // CORRECCIÓN: Se elimina esta línea porque la relación ya no existe
                 .Include(r => r.EquipmentUnit)
+                    .ThenInclude(eu => eu != null ? eu.Laboratory : null)
                 .Include(r => r.RequestedBy)
                 .Include(r => r.ApprovedBy)
                 .Include(r => r.CreatedBy)
                 .Include(r => r.ModifiedBy)
                 .AsQueryable();
 
-            // Apply search filter (Case-insensitive)
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
@@ -56,21 +60,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 );
             }
 
-            // Apply status filter
             if (StatusFilter.HasValue)
             {
                 query = query.Where(r => r.Status == StatusFilter.Value);
             }
 
-            // Apply priority filter
             if (PriorityFilter.HasValue)
             {
                 query = query.Where(r => r.Priority == PriorityFilter.Value);
             }
 
+            // Apply laboratory filter
+            if (FilterLaboratoryId.HasValue)
+            {
+                query = query.Where(r => r.EquipmentUnit != null && r.EquipmentUnit.LaboratoryId == FilterLaboratoryId.Value);
+            }
+
             Requests = await query
                 .OrderByDescending(r => r.CreatedDate)
                 .ToListAsync();
+
+            // Load labs for the dropdown
+            var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();
+            LaboratoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(labs, "Id", "Name", FilterLaboratoryId);
         }
 
         public async Task<IActionResult> OnGetDescargarReporteAsync(int id)
@@ -94,7 +106,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             }
             catch (Exception ex)
             {
-                _context.ChangeTracker.Clear(); // Evitar problemas de estado si hubo error en BD
+                _context.ChangeTracker.Clear();
                 TempData.Error(NotificationHelper.Requests.SaveError($"Error técnico: {ex.Message}"));
                 return RedirectToPage();
             }

@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
@@ -70,7 +70,13 @@
 
                     <form method="get">
                         <div class="row align-items-end">
-                            <div class="col-md-5">
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold text-muted uppercase">Laboratorio / Ambiente</label>
+                                <select asp-for="FilterLaboratoryId" class="form-control custom-select" asp-items="Model.LaboratoryList">
+                                    <option value="">-- Todos --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
                                 <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
                                 <div class="input-group drop-shadow">
                                     <div class="input-group-prepend">
@@ -79,7 +85,7 @@
                                     <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo o código de inventario..." />
                                 </div>
                             </div>
-                            <div class="col-md-7 text-right mt-3 mt-md-0">
+                            <div class="col-md-5 text-right mt-3 mt-md-0">
                                 <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm font-weight-bold btn-sm">
                                     <i class="fas fa-filter mr-1"></i> Buscar
                                 </button>
@@ -179,24 +185,3 @@
         </div>
     </div>
 </div>
-
-@section Styles {
-    <style>
-        .v-middle td {
-            vertical-align: middle !important;
-        }
-
-        .uppercase {
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .drop-shadow {
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
-        }
-
-        .italic {
-            font-style: italic;
-        }
-    </style>
-}

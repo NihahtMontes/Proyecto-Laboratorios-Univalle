@@ -1,4 +1,4 @@
-﻿using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Models

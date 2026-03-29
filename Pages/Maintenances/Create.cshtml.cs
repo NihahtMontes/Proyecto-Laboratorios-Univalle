@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -96,16 +96,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             public List<CostDetail> CostDetails { get; set; } = new();
 
-            // --- PROPIEDADES AGREGADAS PARA LOS CHECKBOXES (L-48) ---
             public int CompletionPercentage { get; set; } = 0;
             public bool Step1_Cleaning { get; set; } = false;
             public bool Step2_Calibration { get; set; } = false;
             public bool Step3_Testing { get; set; } = false;
             public bool Step4_FinalReview { get; set; } = false;
-            // --------------------------------------------------------
         }
 
-        // AJAX Handlers
         public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
         {
             var labs = await _context.Laboratories
@@ -140,7 +137,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // technical validations
             if (Input.StartDate.HasValue && Input.EndDate.HasValue)
             {
                 if (Input.EndDate < Input.StartDate)
@@ -157,7 +153,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 ModelState.AddModelError("Input.EquipmentUnitId", "No se puede realizar mantenimiento a un equipo que actualmente está en préstamo.");
             }
 
-            // Sanitize CostDetails
             if (Input.CostDetails != null)
                 Input.CostDetails = Input.CostDetails.Where(d => !string.IsNullOrWhiteSpace(d.Concept)).ToList();
 
@@ -189,13 +184,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     CostDetails = Input.CostDetails ?? new(),
                     CreatedDate = DateTime.UtcNow,
 
-                    // --- MAPEO DE DATOS DE LOS CHECKBOXES AL MODELO FINAL ---
                     CompletionPercentage = Input.CompletionPercentage,
                     Step1_Cleaning = Input.Step1_Cleaning,
                     Step2_Calibration = Input.Step2_Calibration,
                     Step3_Testing = Input.Step3_Testing,
                     Step4_FinalReview = Input.Step4_FinalReview
-                    // --------------------------------------------------------
                 };
 
                 var currentUser = await _userManager.GetUserAsync(User);
@@ -203,10 +196,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 _context.Maintenances.Add(maintenance);
 
-                // Actualizar estado de la unidad física a En Mantenimiento y registrar historial
                 if (equipmentUnit != null && equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
                 {
-                    // 1. Cerrar historial anterior
                     var lastHistory = await _context.EquipmentStateHistories
                         .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
                         .OrderByDescending(h => h.StartDate)
@@ -218,7 +209,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         _context.EquipmentStateHistories.Update(lastHistory);
                     }
 
-                    // 2. Crear nuevo historial
                     var newHistory = new EquipmentStateHistory
                     {
                         EquipmentUnitId = equipmentUnit.Id,
@@ -228,11 +218,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     };
                     _context.EquipmentStateHistories.Add(newHistory);
 
-                    // 3. Actualizar estado
                     equipmentUnit.CurrentStatus = EquipmentStatus.UnderMaintenance;
                     _context.EquipmentUnits.Update(equipmentUnit);
                 }
 
+                await _context.SaveChangesAsync();
+
+                var notification = new Notification
+                {
+                    UserId = Input.TechnicianId,
+                    Title = "Nuevo Mantenimiento Asignado",
+                    Message = $"Se le ha asignado el mantenimiento de la unidad {equipmentUnit?.InventoryNumber}.",
+                    ActionUrl = $"/Maintenances/Details?id={maintenance.Id}",
+                    IconClass = "fas fa-wrench text-info",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
 
                 TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");

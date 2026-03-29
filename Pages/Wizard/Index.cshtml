@@ -1,0 +1,194 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Wizard.IndexModel
+@{
+    ViewData["Title"] = "Asistente de Gestión";
+    var steps = new[] { "L6 Verificación", "L7 Solicitud", "L8 Mantenimiento", "L3 Salida", "Kardex", "Desembolso" };
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/tailwind-dashboard.css" asp-append-version="true" />
+    <style>
+        .tailwind-scope { text-align: left; }
+        .step-active { background-color: #28A745; border-color: #28A745; color: white; }
+        .step-inactive { background-color: white; border-color: #e2e8f0; color: #94a3b8; }
+        .wizard-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; background: white; }
+        .btn-status-gray { background-color: #f1f5f9; color: #64748b; font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .btn-verify-outline { background-color: white; color: #64748b; font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-decoration: none !important; transition: all 0.2s; }
+        .wizard-header-dark { background-color: #1e293b; border-radius: 12px 12px 0 0; padding: 16px 24px; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .btn-blue-next { background-color: #3b82f6; color: white; padding: 10px 24px; border-radius: 10px; font-weight: bold; display: flex; align-items: center; gap: 8px; border: none; }
+        .btn-red-finish { background-color: #ef4444; color: white; padding: 10px 24px; border-radius: 10px; font-weight: bold; display: flex; align-items: center; gap: 8px; border: none; }
+    </style>
+}
+
+<div class="tailwind-scope max-w-[1200px] mx-auto mt-6 mb-12 animate-in fade-in zoom-in-95 duration-500">
+    <div class="wizard-header-dark shadow-lg">
+        <h2 class="text-xl font-bold m-0"><i class="fas fa-magic text-[#28A745] mr-2"></i>Ronda de Mantenimiento</h2>
+        <a asp-page="/Index" class="text-white opacity-70 hover:opacity-100 font-bold text-decoration-none">Cancelar</a>
+    </div>
+
+    <!-- Stepper -->
+    <div class="bg-white border-x p-8 flex justify-between relative shadow-sm">
+        <div class="absolute left-[10%] top-[3rem] w-[80%] h-0.5 bg-gray-100 -z-0"></div>
+        @for (int i = 0; i < steps.Length; i++)
+        {
+            int stepNum = i + 1;
+            <div class="flex flex-col items-center gap-2 z-10 w-32">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold border-4 @(Model.Step >= stepNum ? "step-active" : "step-inactive")">
+                    @if (Model.Step > stepNum)
+                    {
+                        <i class="fas fa-check"></i>
+                    }
+                    else
+                    {
+
+                        <span>@stepNum</span>
+                    }
+                </div>
+                <span class="text-[10px] font-bold uppercase text-center @(Model.Step == stepNum ? "text-slate-900" : "text-slate-400")">@steps[i]</span>
+            </div>
+        }
+    </div>
+
+    <div class="bg-white border-x border-b p-0 rounded-b-2xl shadow-xl min-h-[500px]">
+        
+        @if (Model.Step == 1)
+        {
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">Paso 1: L6 Verificación</h3>
+                        <p class="text-sm text-slate-500">Selecciona un ambiente para verificar sus equipos.</p>
+                    </div>
+                    <form method="get" class="flex items-center gap-3">
+                        <input type="hidden" name="Step" value="1" />
+                        <label class="text-xs font-bold text-slate-600 uppercase">Laboratorio / Ambiente:</label>
+                        <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="border rounded-lg p-2 text-sm bg-slate-50 w-64 outline-blue-400 shadow-sm" onchange="this.form.submit()">
+                            <option value="">-- Selecciona un laboratorio --</option>
+                        </select>
+                    </form>
+                </div>
+
+                <div class="space-y-3 min-h-[250px]">
+                    @if (!Model.EquipmentUnitsSimulated.Any())
+                    {
+                        <div class="border-2 border-dashed border-slate-200 rounded-2xl p-16 text-center text-slate-400 italic bg-slate-50">
+                            <i class="fas fa-flask text-4xl mb-4 opacity-20"></i><br>
+                            Selecciona un laboratorio para ver sus equipos.
+                        </div>
+                    }
+                    else
+                    {
+                        var step1Equipments = Model.EquipmentUnitsSimulated.Where(e => e.StatusStep == "Step1").ToList();
+                        foreach (var item in step1Equipments)
+                        {
+                            <div class="wizard-card shadow-sm">
+                                <div>
+                                    <h4 class="font-bold text-slate-800 m-0">@item.Name <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded ml-2 border border-slate-200">@item.InventoryNumber</span></h4>
+                                    <p class="text-xs text-slate-400 mt-1 m-0">@item.Category</p>
+                                </div>
+                                <div class="flex gap-2 items-center">
+                                    <span class="btn-status-gray border-0">Sin verificar</span>
+                                    <!-- ESTE ES EL BOTÓN REDIRECTOR DEL VIDEO -->
+                                    <a asp-page="/Verifications/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn-verify-outline hover:border-blue-500 hover:text-blue-600">
+                                        Verificar
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="flex justify-end mt-8 pt-6 border-t border-slate-50">
+                    <form method="post" asp-page-handler="NextStep">
+                        <input type="hidden" asp-for="Step" />
+                        <input type="hidden" asp-for="SelectedLabId" />
+                        <button type="submit" class="btn-blue-next">
+                            Avanzar a L7 Solicitud <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+        else if (Model.Step == 2)
+        {
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">Paso 2: L7 Solicitud</h3>
+                        <p class="text-sm text-slate-500">Genera la solicitud para los equipos con desperfectos.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3 min-h-[250px]">
+                    @{
+                        var step2Equipments = Model.EquipmentUnitsSimulated.Where(e => e.StatusStep == "Step2").ToList();
+                    }
+                    
+                    @if (!step2Equipments.Any())
+                    {
+                        <div class="border-2 border-dashed border-slate-200 rounded-2xl p-16 text-center text-slate-400 italic bg-slate-50">
+                            No se encontraron equipos reportados con fallas en L-6 para este laboratorio.
+                        </div>
+                    }
+                    else
+                    {
+                        foreach (var item in step2Equipments)
+                        {
+                            <div class="wizard-card shadow-sm border-l-4 border-l-red-400">
+                                <div>
+                                    <h4 class="font-bold text-slate-800 m-0">@item.Name <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded border">@item.InventoryNumber</span></h4>
+                                    <p class="text-xs text-red-500 mt-1 m-0">Falla detectada en L-6</p>
+                                </div>
+                                <div class="flex gap-2 items-center">
+                                    <span class="btn-status-gray border-0">Sin solicitud</span>
+                                    <!-- ESTE ES EL BOTÓN REDIRECTOR -->
+                                    <a asp-page="/Requests/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn-verify-outline border-blue-200 text-blue-600 hover:bg-blue-50">
+                                        Hacer Solicitud
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="flex justify-between mt-8 pt-6 border-t border-slate-50">
+                    <form method="post" asp-page-handler="PreviousStep">
+                        <input type="hidden" asp-for="Step" />
+                        <input type="hidden" asp-for="SelectedLabId" />
+                        <button type="submit" class="border border-slate-200 text-slate-600 px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50">
+                            <i class="fas fa-arrow-left"></i> Volver a L6
+                        </button>
+                    </form>
+                    <form method="post" asp-page-handler="NextStep">
+                        <input type="hidden" asp-for="Step" />
+                        <input type="hidden" asp-for="SelectedLabId" />
+                        <button type="submit" class="btn-blue-next">
+                            Avanzar a L8 Mantenimiento <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+        else if (Model.Step == 6)
+        {
+            <div class="p-20 text-center">
+                <h3 class="text-2xl font-bold text-slate-800 mb-6">Paso 6: Desembolso</h3>
+                <form method="post" asp-page-handler="NextStep">
+                    <button type="submit" class="btn-red-finish mx-auto shadow-lg">Finalizar Ronda <i class="fas fa-check-double ml-2"></i></button>
+                </form>
+            </div>
+        }
+        else
+        {
+            <div class="p-20 text-center text-slate-400 italic">
+                <i class="fas fa-tools text-5xl mb-4 opacity-20"></i><br>
+                Contenido del Paso @Model.Step (Simulación Activa).
+                <form method="post" asp-page-handler="NextStep" class="mt-8">
+                    <input type="hidden" asp-for="Step" />
+                    <input type="hidden" asp-for="SelectedLabId" />
+                    <button class="bg-slate-900 text-white px-12 py-3 rounded-xl font-bold hover:bg-slate-800 shadow-md">Continuar Paso @(Model.Step + 1)</button>
+                </form>
+            </div>
+        }
+    </div>
+</div>

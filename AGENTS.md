@@ -40,5 +40,9 @@ Cuando el usuario haga una solicitud, debes:
 - **Skill a invocar**: `.agent/skills/reporting/SKILL.md`
 - **Cuándo Invocarlas**: Exportación a PDF (QuestPDF), generación de plantillas de Excel, impresión institucional de oficios (ClosedXML).
 
+### 🔧 Configuración e Infraestructura (Onboarding)
+- **Localización**: `AGENTS_SETUP.md`
+- **Cuándo Invocarlas**: Al clonar el proyecto, errores de conexión (`Connection String`), restauración de paquetes, migraciones iniciales y configuración de SQL Server.
+
 ---
 *Nota para el Orquestador: Si el usuario solicita un refactor masivo de UI de más de 3 archivos, DEBES levantar un Subagente para procesar la petición y limpiar la memoria contextual.*

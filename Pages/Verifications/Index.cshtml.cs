@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +27,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? FilterLaboratoryId { get; set; }
+
         // Reporte L-6 Input
         [BindProperty]
         public ReportInputModel ReportInput { get; set; } = new();
@@ -51,8 +54,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                verificationIQ = verificationIQ.Where(s => s.EquipmentUnit.Equipment.Name.ToLower().Contains(term) 
+                verificationIQ = verificationIQ.Where(s => s.EquipmentUnit.Equipment.Name.ToLower().Contains(term)
                                        || s.EquipmentUnit.InventoryNumber.ToLower().Contains(term));
+            }
+
+            if (FilterLaboratoryId.HasValue)
+            {
+                verificationIQ = verificationIQ.Where(v => v.EquipmentUnit.LaboratoryId == FilterLaboratoryId.Value);
             }
 
             Verifications = await verificationIQ.OrderByDescending(v => v.Date).ToListAsync();
@@ -79,7 +87,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     .Include(u => u.Equipment)
                     .IgnoreQueryFilters()
                     .Where(u => u.LaboratoryId == ReportInput.LaboratoryId && u.CurrentStatus != Models.Enums.EquipmentStatus.Deleted)
-                    .OrderBy(u => u.InventoryNumber) 
+                    .OrderBy(u => u.InventoryNumber)
                     .ToListAsync();
 
                 // 2. Get LATEST Verification for each equipment unit
@@ -99,10 +107,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 }
 
                 var fileContent = _reportingService.GenerateLaboratoryReport(
-                    lab.Name, 
-                    units, 
-                    ReportInput.Term ?? "II/2025", 
-                    ReportInput.Responsible ?? "N/A", 
+                    lab.Name,
+                    units,
+                    ReportInput.Term ?? "II/2025",
+                    ReportInput.Responsible ?? "N/A",
                     DateTime.UtcNow
                 );
 
@@ -119,7 +127,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public async Task<IActionResult> OnGetExportExcelAsync()
         {
-            try 
+            try
             {
                 IQueryable<Verification> verificationIQ = _context.Verifications
                     .Include(v => v.CreatedBy)
@@ -130,14 +138,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 if (!string.IsNullOrEmpty(SearchTerm))
                 {
                     var term = SearchTerm.Trim().ToLower();
-                    verificationIQ = verificationIQ.Where(s => s.EquipmentUnit.Equipment.Name.ToLower().Contains(term) 
+                    verificationIQ = verificationIQ.Where(s => s.EquipmentUnit.Equipment.Name.ToLower().Contains(term)
                                            || s.EquipmentUnit.InventoryNumber.ToLower().Contains(term));
                 }
 
                 var list = await verificationIQ.OrderByDescending(v => v.Date).ToListAsync();
                 var excelBytes = _reportingService.GenerateVerificationsExcel(list);
-                
-                return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+
+                return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     $"Verificaciones_{DateTime.UtcNow:yyyyMMdd}.xlsx");
             }
             catch (Exception ex)

@@ -4,6 +4,17 @@
 
 <div class="row justify-content-center">
     <div class="col-lg-10 col-xl-9">
+        
+        <div class="wizard-steps mb-4 d-flex justify-content-between position-relative mt-3">
+            <div class="step-line"></div>
+            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L6 Verificación</span></div>
+            <div class="step-item active"><span class="step-number">2</span><span class="step-label">L7 Solicitud</span></div>
+            <div class="step-item"><span class="step-number">3</span><span class="step-label">L8 Mantenimiento</span></div>
+            <div class="step-item"><span class="step-number">4</span><span class="step-label">L3 Salida</span></div>
+            <div class="step-item"><span class="step-number">5</span><span class="step-label">Kardex</span></div>
+            <div class="step-item"><span class="step-number">6</span><span class="step-label">Desembolso</span></div>
+        </div>
+
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
@@ -16,9 +27,11 @@
                     </div>
                 </div>
 
-                <form method="post" novalidate id="createRequestForm">
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                <form method="post" id="createRequestForm">
+                    <!-- Mantiene el estado del Wizard -->
+                    <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString().ToLower() ?? "false")" />
 
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
                     <input type="hidden" asp-for="Input.Type" value="Technical" />
 
                     <div class="row">
@@ -28,44 +41,36 @@
                             </h5>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">
-                                    Facultad <span class="text-danger">*</span>
-                                </label>
+                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">Facultad <span class="text-danger">*</span></label>
                                 <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId">
                                     <option value="">-- Seleccionar Facultad --</option>
                                 </select>
-                                <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2 rounded">
-                                <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-info text-uppercase">
-                                    Laboratorio <span class="text-danger">*</span>
-                                </label>
-                                <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" disabled>
-                                    <option value="">-- Primero seleccione facultad --</option>
+                                <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-info text-uppercase">Laboratorio <span class="text-danger">*</span></label>
+                                <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" asp-items="ViewBag.LaboratoryId">
+                                    <option value="">-- Seleccione Facultad --</option>
                                 </select>
-                                <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2 rounded">
                                 <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-warning text-uppercase">Unidad Física Afectada <span class="text-danger">*</span></label>
-                                <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" disabled>
-                                    <option value="">-- Seleccione laboratorio --</option>
+                                <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" asp-items="ViewBag.EquipmentUnitId">
+                                    <option value="">-- Seleccione Laboratorio --</option>
                                 </select>
-                                <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
                             </div>
 
                             <hr class="my-4" />
-                            <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-sliders-h mr-2"></i> Parametros Técnicos</h6>
+                            <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-sliders-h mr-2"></i> Parámetros Técnicos</h6>
 
                             <div class="form-group mb-3">
                                 <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Grado de Prioridad <span class="text-danger">*</span></label>
                                 <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
-                                <span asp-validation-for="Input.Priority" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-3">
-                                <label asp-for="Input.EstimatedRepairTime" class="control-label font-weight-bold small uppercase text-muted">Tiempo Estimado de Reparación</label>
+                                <label asp-for="Input.EstimatedRepairTime" class="control-label font-weight-bold small uppercase text-muted">Tiempo Estimado</label>
                                 <input asp-for="Input.EstimatedRepairTime" class="form-control" placeholder="Ej: 2 horas, 1 día..." />
                             </div>
                         </div>
@@ -77,25 +82,20 @@
 
                             <div class="form-group mb-4 pl-3 bg-light p-2 rounded" style="border-left: 4px solid #ffc107;">
                                 <label asp-for="Input.Description" class="control-label font-weight-bold small text-uppercase">Descripción del Fallo <span class="text-danger">*</span></label>
-                                <textarea asp-for="Input.Description" class="form-control shadow-none" rows="4" placeholder="Describa el fallo detectado o la asistencia técnica necesaria..."></textarea>
-                                <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                                <textarea asp-for="Input.Description" class="form-control shadow-none" rows="4" placeholder="Describa el fallo detectado..."></textarea>
                             </div>
 
                             <div class="form-group mb-4">
                                 <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones Adicionales</label>
-                                <textarea asp-for="Input.Observations" class="form-control" rows="3" placeholder="Notas adicionales o contexto..."></textarea>
+                                <textarea asp-for="Input.Observations" class="form-control" rows="3"></textarea>
                             </div>
                         </div>
                     </div>
 
-                    <hr class="mt-5" />
-
                     <div class="form-actions text-right mt-4">
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded mr-2 px-4">
-                            Cancelar
-                        </a>
+                        <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" class="btn btn-outline-secondary btn-rounded mr-2 px-4">Volver al Wizard</a>
                         <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
-                            <i class="fas fa-save mr-2"></i> Crear Solicitud Técnica
+                            Guardar y continuar <i class="fas fa-arrow-right ml-2"></i>
                         </button>
                     </div>
                 </form>
@@ -105,52 +105,29 @@
 </div>
 
 @section Scripts {
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
-
-    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <partial name="_ValidationScriptsPartial" />
     <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         $(function() {
-            $(".select2").select2({ width: '100%', allowClear: true });
+            $(".select2").select2({ width: '100%' });
 
-            // Cascading Selectors
             $('#facultySelect').on('change', function() {
                 let id = $(this).val();
-                let $lab = $('#laboratorySelect');
-                let $unit = $('#equipmentUnitSelect');
-
-                $lab.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
-                $unit.empty().append('<option value="">-- Seleccione laboratorio --</option>').prop('disabled', true);
-
-                if (!id) {
-                    $lab.html('<option value="">-- Primero seleccione facultad --</option>');
-                    return;
-                }
-
-                $.get('/Requests/Create?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
+                if (!id) return;
+                $.get('?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
                     let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
                     $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
-                    $lab.html(opts).prop('disabled', false).trigger('change');
+                    $('#laboratorySelect').html(opts).prop('disabled', false).trigger('change');
                 });
             });
 
             $('#laboratorySelect').on('change', function() {
                 let id = $(this).val();
-                let $unit = $('#equipmentUnitSelect');
-
-                $unit.empty().append('<option value="">-- Cargando... --</option>').prop('disabled', true);
-
-                if (!id) {
-                    $unit.html('<option value="">-- Seleccione laboratorio --</option>');
-                    return;
-                }
-
-                $.get('/Requests/Create?handler=UnitsByLab', { laboratoryId: id }, function(data) {
+                if (!id) return;
+                $.get('?handler=UnitsByLab', { laboratoryId: id }, function(data) {
                     let opts = '<option value="">-- Seleccionar Unidad Física --</option>';
                     $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
-                    $unit.html(opts).prop('disabled', false).trigger('change');
+                    $('#equipmentUnitSelect').html(opts).prop('disabled', false).trigger('change');
                 });
             });
         });

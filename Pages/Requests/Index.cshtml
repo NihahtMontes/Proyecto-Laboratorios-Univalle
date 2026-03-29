@@ -27,10 +27,23 @@
                     </div>
                 </div>
 
+                <div id="localNotificationsArea" class="mb-4" style="display: none;">
+                    <h5 class="font-weight-bold text-danger mb-3 border-bottom pb-2">
+                        <i class="fas fa-exclamation-circle mr-2"></i> Alertas de Requerimientos L-7
+                    </h5>
+                    <div id="localNotificationsList">
+                    </div>
+                </div>
                 <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
                     <form method="get">
                         <div class="row align-items-end">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold text-muted uppercase">Laboratorio</label>
+                                <select asp-for="FilterLaboratoryId" class="form-control custom-select" asp-items="Model.LaboratoryList">
+                                    <option value="">-- Todos --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
                                 <div class="input-group drop-shadow">
                                     <div class="input-group-prepend">
@@ -39,14 +52,14 @@
                                     <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo, código o solicitante..." />
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="small font-weight-bold text-muted uppercase">Prioridad</label>
                                 <select asp-for="PriorityFilter" class="form-control custom-select"
                                         asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority>()">
                                     <option value="">-- Todas --</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="small font-weight-bold text-muted uppercase">Estado</label>
                                 <select asp-for="StatusFilter" class="form-control custom-select"
                                         asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus>()">
@@ -78,7 +91,6 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @* Filtrado lógico: Solo mostramos solicitudes Técnicas (L-7) *@
                             @{
                                 var technicalRequests = Model.Requests?.Where(r => r.Type == Proyecto_Laboratorios_Univalle.Models.Enums.RequestType.Technical) ?? Enumerable.Empty<Proyecto_Laboratorios_Univalle.Models.Request>();
                             }
@@ -164,49 +176,3 @@
         </div>
     </div>
 </div>
-
-@section Scripts {
-    <script>
-        $(document).ready(function() {
-            function updateDownloadButtons() {
-                $('.btn-download-report').each(function() {
-                    const id = $(this).data('id');
-                    if (id && localStorage.getItem('downloaded_request_' + id)) {
-                        $(this).removeClass('btn-success').addClass('btn-info');
-                        $(this).attr('title', 'Volver a descargar reporte');
-                        const $text = $(this).find('.download-text');
-                        if ($text && $text.length > 0) {
-                            $text.text('Volver a Descargar');
-                        }
-                    }
-                });
-            }
-
-            $('.btn-download-report').on('click', function() {
-                const id = $(this).data('id');
-                if (id) {
-                    localStorage.setItem('downloaded_request_' + id, 'true');
-                    setTimeout(updateDownloadButtons, 300);
-                }
-            });
-
-            updateDownloadButtons();
-        });
-    </script>
-}
-
-@section Styles {
-    <style>
-        .v-middle td {
-            vertical-align: middle !important;
-        }
-
-        .drop-shadow {
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
-        }
-
-        .italic {
-            font-style: italic;
-        }
-    </style>
-}
