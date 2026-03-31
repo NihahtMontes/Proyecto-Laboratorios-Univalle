@@ -18,5 +18,10 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         {
             tempData["WarningMessage"] = message;
         }
+
+        public static void Info(this ITempDataDictionary tempData, string message)
+        {
+            tempData["InfoMessage"] = message;
+        }
     }
 }

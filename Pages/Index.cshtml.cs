@@ -37,9 +37,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         }
 
         public Management? ActiveManagement { get; set; }
+        
+        // Propiedades Simuladas Antiguas (Se conservan para cuando NO haya Gestión Activa)
         public int TotalEquipment { get; set; }
         public int OperationalPercent { get; set; }
 
+        // Nuevas Propiedades Reales para el Dashboard 
+        public int TotalPlans { get; set; }
+        public int CompletedPlans { get; set; }
+        public double GlobalProgress { get; set; }
+        public Dictionary<string, int> TopEquipmentTypes { get; set; } = new();
+        public Dictionary<string, int> TopGroups { get; set; } = new();
+        public Dictionary<string, int> TopLaboratories { get; set; } = new();
+        public IList<ManagementPlan> OverduePlans { get; set; } = new List<ManagementPlan>();
+        public IList<ManagementPlan> ManagementPlans { get; set; } = new List<ManagementPlan>();
+
+        // Propiedades del Wizard Embebido
         [BindProperty(SupportsGet = true)]
         public bool ShowWizard { get; set; } = false;
 
@@ -56,22 +69,63 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         {
             try
             {
-                // Buscamos si existe gestión en BD
+                // Buscar si existe gestión Activa con todo su árbol de inclusiones para el Dashboard
                 ActiveManagement = await _context.Managements
-                    .Where(m => m.Status == ManagementStatus.Activo)
+                    .Include(mg => mg.ManagementPlans)
+                        .ThenInclude(p => p.EquipmentUnit)
+                            .ThenInclude(eu => eu.Equipment)
+                    .Include(mg => mg.ManagementPlans)
+                        .ThenInclude(p => p.EquipmentUnit)
+                            .ThenInclude(eu => eu.Laboratory)
+                    .Include(mg => mg.ManagementPlans)
+                        .ThenInclude(p => p.Maintenance)
+                    .Where(m => m.Status == ManagementStatus.Active)
                     .OrderByDescending(m => m.Year)
                     .ThenByDescending(m => m.Semester)
                     .FirstOrDefaultAsync();
+
+                if (ActiveManagement != null)
+                {
+                    TotalPlans = ActiveManagement.ManagementPlans.Count;
+                    CompletedPlans = ActiveManagement.ManagementPlans.Count(p => p.PlanStatus == ManagementPlanStatus.Completed);
+                    GlobalProgress = TotalPlans > 0 ? Math.Round((double)CompletedPlans / TotalPlans * 100, 1) : 0;
+
+                    TopEquipmentTypes = ActiveManagement.ManagementPlans
+                        .Where(p => p.EquipmentUnit?.Equipment != null)
+                        .GroupBy(p => p.EquipmentUnit.Equipment.Category.ToString())
+                        .OrderByDescending(g => g.Count())
+                        .ToDictionary(g => g.Key, g => g.Count());
+
+                    TopGroups = ActiveManagement.ManagementPlans
+                        .Where(p => p.EquipmentUnit?.Equipment != null)
+                        .GroupBy(p => p.EquipmentUnit.Equipment.TypeClassification.ToString())
+                        .OrderByDescending(g => g.Count())
+                        .ToDictionary(g => g.Key, g => g.Count());
+
+                    TopLaboratories = ActiveManagement.ManagementPlans
+                        .Where(p => p.EquipmentUnit?.Laboratory != null)
+                        .GroupBy(p => p.EquipmentUnit.Laboratory.Name)
+                        .OrderByDescending(g => g.Count())
+                        .ToDictionary(g => g.Key, g => g.Count());
+
+                    OverduePlans = ActiveManagement.ManagementPlans
+                        .Where(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate.Value < DateTime.Now.AddDays(7))
+                        .OrderBy(p => p.PlannedDate)
+                        .ToList();
+
+                    ManagementPlans = ActiveManagement.ManagementPlans
+                        .OrderBy(p => p.PlannedDate)
+                        .ToList();
+                }
             }
             catch { }
 
-            // Simulamos datos globales para que el dashboard nunca se vea vacío en la demo
+            // Simulamos datos globales para que si no hay ActiveManagement, el dashboard nunca se vea vacío
             if (ActiveManagement == null)
             {
-                ActiveManagement = new Management { Year = 2026, Semester = 1 };
+                TotalEquipment = 15;
+                OperationalPercent = 85;
             }
-            TotalEquipment = 15;
-            OperationalPercent = 85;
 
             if (ShowWizard)
             {
@@ -108,11 +162,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             var allEquipment = new List<EquipmentSimulated>
             {
                 new() { Id = 101, LabId = 1, Name = "Horno PINZUAR", InventoryNumber = "INV-11202", Category = "Equipos de Calentamiento", StatusStep = "Step1" },
-                new() { Id = 102, LabId = 1, Name = "Prensa Ensayo Compresión", InventoryNumber = "INV-10900", Category = "Equipos de Ensayo", StatusStep = "Step2" }, // Simulado con falla para el Paso 2
+                new() { Id = 102, LabId = 1, Name = "Prensa Ensayo Compresión", InventoryNumber = "INV-10900", Category = "Equipos de Ensayo", StatusStep = "Step2" }, 
                 new() { Id = 103, LabId = 1, Name = "Tamizadora Eléctrica", InventoryNumber = "INV-10901", Category = "Equipos de Ensayo", StatusStep = "Step1" },
 
                 new() { Id = 201, LabId = 2, Name = "Balanza Digital OHAUS", InventoryNumber = "INV-39170", Category = "Equipos de Medición", StatusStep = "Step1" },
-                new() { Id = 202, LabId = 2, Name = "Campana Extracción WILDA", InventoryNumber = "INV-34745", Category = "Equipos de Ventilación", StatusStep = "Step2" }, // Simulado con falla para el Paso 2
+                new() { Id = 202, LabId = 2, Name = "Campana Extracción WILDA", InventoryNumber = "INV-34745", Category = "Equipos de Ventilación", StatusStep = "Step2" }, 
                 new() { Id = 203, LabId = 2, Name = "Microscopio Binocular", InventoryNumber = "INV-88211", Category = "Equipos de Observación", StatusStep = "Step2" },
                 new() { Id = 204, LabId = 2, Name = "Centrífuga de Mesa", InventoryNumber = "INV-88300", Category = "Equipos de Proceso", StatusStep = "Step1" },
 

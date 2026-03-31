@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
-    public class Loan : IAuditable
+    public class Departure : IAuditable
     {
         [Key]
         public int Id { get; set; }
@@ -19,9 +19,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int BorrowerId { get; set; }
 
         [Required]
-        [Display(Name = "Fecha de Préstamo")]
+        [Display(Name = "Tipo de Salida")]
+        public DepartureType Type { get; set; } = DepartureType.InternalLoan;
+
+        [Required]
+        [Display(Name = "Fecha de Salida")]
         [DataType(DataType.Date)]
-        public DateTime LoanDate { get; set; } = DateTime.UtcNow;
+        public DateTime DepartureDate { get; set; } = DateTime.UtcNow;
 
         [Required]
         [Display(Name = "Fecha Estimada de Devolución")]

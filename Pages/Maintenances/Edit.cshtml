@@ -41,11 +41,11 @@
                             </div>
                             <div class="col-md-3">
                                 <div class="form-group mb-3">
-                                    <label asp-for="Input.MaintenanceTypeId" class="control-label font-weight-bold small uppercase text-muted">Tipo de Servicio</label>
-                                    <select asp-for="Input.MaintenanceTypeId" class="form-control custom-select" asp-items="ViewBag.MaintenanceTypeId" required>
+                                    <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small uppercase text-muted">Tipo de Servicio</label>
+                                    <select asp-for="Input.MaintenanceType" class="form-control custom-select" asp-items="ViewBag.MaintenanceType" required>
                                         <option value="">-- Categoría --</option>
                                     </select>
-                                    <span asp-validation-for="Input.MaintenanceTypeId" class="text-danger small"></span>
+                                    <span asp-validation-for="Input.MaintenanceType" class="text-danger small"></span>
                                 </div>
                             </div>
                             <div class="col-md-4">

@@ -23,7 +23,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             _userManager = userManager;
         }
 
-        public IActionResult OnGet()
+        public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false, int? managementPlanId = null)
         {
             LoadLists();
 
@@ -33,11 +33,45 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 CostDetails = new List<CostDetail>()
             };
 
+            if (equipmentUnitId.HasValue)
+            {
+                var unit = await _context.EquipmentUnits
+                    .Include(u => u.Laboratory)
+                    .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
+
+                if (unit != null)
+                {
+                    Input.EquipmentUnitId = unit.Id;
+                    Input.LaboratoryId = unit.LaboratoryId ?? 0;
+                    Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
+
+                    ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == Input.FacultyId).ToListAsync(), "Id", "Name", Input.LaboratoryId);
+                    ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == Input.LaboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", Input.EquipmentUnitId);
+                }
+            }
+
+            if (managementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans.FindAsync(managementPlanId.Value);
+                if (plan != null && plan.RequestId.HasValue)
+                {
+                    Input.RequestId = plan.RequestId;
+                }
+            }
+
+            ViewData["IsWizard"] = isWizard;
+            ManagementPlanId = managementPlanId;
+
+
+
             return Page();
         }
 
         [BindProperty]
         public InputModel Input { get; set; } = default!;
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementPlanId { get; set; }
 
         public class InputModel
         {
@@ -55,7 +89,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             [Required(ErrorMessage = "El tipo de mantenimiento es obligatorio")]
             [Display(Name = "Tipo de Mantenimiento")]
-            public int MaintenanceTypeId { get; set; }
+            public MaintenanceType MaintenanceType { get; set; } = MaintenanceType.Otros;
 
             [Required(ErrorMessage = "El técnico es obligatorio")]
             [Display(Name = "Técnico Responsable")]
@@ -135,7 +169,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             return new JsonResult(result);
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
             if (Input.StartDate.HasValue && Input.EndDate.HasValue)
             {
@@ -170,7 +204,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 var maintenance = new Maintenance
                 {
                     EquipmentUnitId = Input.EquipmentUnitId,
-                    MaintenanceTypeId = Input.MaintenanceTypeId,
+                    MaintenanceType = Input.MaintenanceType,
                     TechnicianId = Input.TechnicianId,
                     RequestId = Input.RequestId,
                     Description = Input.Description.Clean(),
@@ -240,6 +274,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
 
+                if (ManagementPlanId.HasValue)
+                {
+                    var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                    if (plan != null)
+                    {
+                        plan.MaintenanceId = maintenance.Id;
+                        plan.CurrentPhase = WizardPhase.Exit;
+                        plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                        await _context.SaveChangesAsync();
+                        
+                        if (isWizard)
+                        {
+                            return RedirectToPage("/Wizard/Index", new { Step = 4, SelectedLabId = Input.LaboratoryId });
+                        }
+                    }
+                }
+
                 return RedirectToPage("./Index");
             }
             catch (Exception ex)
@@ -265,7 +316,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .ToList();
             ViewData["TechnicianId"] = new SelectList(technicians, "Id", "FullName");
 
-            ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes.OrderBy(mt => mt.Name), "Id", "Name");
+            // ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
             var requests = _context.Requests
                 .Include(r => r.Laboratory)
                 .OrderByDescending(r => r.CreatedDate)

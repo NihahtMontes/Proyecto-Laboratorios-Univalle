@@ -71,7 +71,7 @@
                             <div class="col-md-6 mb-3">
                                 <label asp-for="Input.Status" class="control-label font-weight-bold"></label>
                                 <select asp-for="Input.Status" class="form-control custom-select" 
-                                        asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.ManagementStatus>().Where(x => x.Value != ((int)Proyecto_Laboratorios_Univalle.Models.Enums.ManagementStatus.Eliminado).ToString())">
+                                        asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.ManagementStatus>().Where(x => x.Value != ((int)Proyecto_Laboratorios_Univalle.Models.Enums.ManagementStatus.Deleted).ToString())">
                                 </select>
                                 <span asp-validation-for="Input.Status" class="text-danger"></span>
                             </div>

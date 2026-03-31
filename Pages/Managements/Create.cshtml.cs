@@ -58,7 +58,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             [Required]
             [Display(Name = "Estado Inicial")]
-            public ManagementStatus Status { get; set; } = ManagementStatus.Activo;
+            public ManagementStatus Status { get; set; } = ManagementStatus.Active;
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -77,7 +77,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             // Validar que no exista ya esta gestión (Año-Semestre)
             var code = $"{Input.Year}-{Input.Semester}";
-            var exists = await _context.Managements.AnyAsync(m => m.Year == Input.Year && m.Semester == Input.Semester && m.Status != ManagementStatus.Eliminado);
+            var exists = await _context.Managements.AnyAsync(m => m.Year == Input.Year && m.Semester == Input.Semester && m.Status != ManagementStatus.Deleted);
             if (exists)
             {
                 ModelState.AddModelError(string.Empty, $"Ya existe una gestión registrada para {code}.");
@@ -85,9 +85,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             }
 
             // Si se intenta crear como ACTIVA, validar que no haya otra activa
-            if (Input.Status == ManagementStatus.Activo)
+            if (Input.Status == ManagementStatus.Active)
             {
-                var anyActive = await _context.Managements.AnyAsync(m => m.Status == ManagementStatus.Activo);
+                var anyActive = await _context.Managements.AnyAsync(m => m.Status == ManagementStatus.Active);
                 if (anyActive)
                 {
                     ModelState.AddModelError(string.Empty, "Ya existe una gestión activa. Por favor, cierre o inactive la gestión actual antes de activar una nueva.");
@@ -106,15 +106,32 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 StartDate = Input.StartDate,
                 PlannedEndDate = Input.PlannedEndDate,
                 Status = Input.Status,
-                Responsible = currentUser?.FullName ?? User.Identity?.Name ?? "Sistema",
-                CreatedById = currentUser?.Id,
-                CreatedDate = DateTime.UtcNow
+                Responsible = currentUser?.FullName ?? User.Identity?.Name ?? "Sistema"
             };
 
             _context.Managements.Add(management);
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = $"La Gestión {code} ha sido creada correctamente.";
+            // Sincronización Automática: Cargar todos los equipos activos a la nueva ronda
+            var activeUnits = await _context.EquipmentUnits
+                .Where(u => u.CurrentStatus != EquipmentStatus.Deleted)
+                .ToListAsync();
+
+            foreach (var unit in activeUnits)
+            {
+                _context.ManagementPlans.Add(new ManagementPlan
+                {
+                    ManagementId = management.Id,
+                    EquipmentUnitId = unit.Id,
+                    CurrentPhase = WizardPhase.Verification,
+                    CurrentState = WizardEquipmentState.PendingVerification,
+                    PlanStatus = ManagementPlanStatus.Pending,
+                    PlannedDate = DateTime.Today.AddDays(7)
+                });
+            }
+            await _context.SaveChangesAsync();
+
+            TempData.Success($"La Gestión {code} ha sido creada correctamente con todos los equipos activos.");
             return RedirectToPage("./Index");
         }
     }

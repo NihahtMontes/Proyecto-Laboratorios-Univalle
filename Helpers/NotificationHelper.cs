@@ -132,10 +132,10 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
             public const string InvalidId = "Identificador de solicitud no válido.";
         }
 
-        public static class Loans
+        public static class Departures
         {
-            public static string Created(string equipmentName) => $"Préstamo registrado correctamente. Activo: {equipmentName}.";
-            public static string Updated() => "Préstamo actualizado correctamente.";
+            public static string Created(string equipmentName) => $"Salida registrada correctamente. Activo: {equipmentName}.";
+            public static string Updated() => "Salida actualizada correctamente.";
         }
 
         public static class Verifications

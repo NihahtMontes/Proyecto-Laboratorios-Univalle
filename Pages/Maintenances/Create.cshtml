@@ -1,281 +1,409 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using Proyecto_Laboratorios_Univalle.Helpers;
-using Proyecto_Laboratorios_Univalle.Models;
-using Proyecto_Laboratorios_Univalle.Models.Enums;
-using System.ComponentModel.DataAnnotations;
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Maintenances.CreateModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
-{
-    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
-    public class CreateModel : PageModel
-    {
-        private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
-        private readonly UserManager<User> _userManager;
+@{
+    ViewData["Title"] = "Registrar Mantenimiento (L-8)";
+    bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+    var categoryList = Html.GetEnumSelectList<CostCategory>();
+}
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+<div class="row justify-content-center">
+    <div class="col-lg-12">
+
+        @if (isWizard)
         {
-            _context = context;
-            _userManager = userManager;
+            <div class="wizard-steps mb-4 d-flex justify-content-between position-relative mt-2 px-5">
+                <div class="step-line"></div>
+                <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L6 Verificación</span></div>
+                <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L7 Solicitud</span></div>
+                <div class="step-item active"><span class="step-number">3</span><span class="step-label">L8 Mantenimiento</span></div>
+                <div class="step-item"><span class="step-number">4</span><span class="step-label">L3 Salida</span></div>
+                <div class="step-item"><span class="step-number">5</span><span class="step-label">Kardex</span></div>
+                <div class="step-item"><span class="step-number">6</span><span class="step-label">Desembolso</span></div>
+            </div>
         }
 
-        public IActionResult OnGet()
-        {
-            LoadLists();
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Registrar Mantenimiento / Servicio (L-8)</h4>
+                        <h6 class="card-subtitle text-muted">Complete el registro técnico de la intervención realizada al equipo.</h6>
+                    </div>
+                    <div class="ml-auto text-right">
+                         <i class="fas fa-tools fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
 
-            Input = new InputModel
-            {
-                ScheduledDate = DateTime.UtcNow,
-                CostDetails = new List<CostDetail>()
-            };
+                <form method="post" id="maintenanceForm" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4"></div>
+                    
+                    <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
+                    <input type="hidden" asp-for="ManagementPlanId" />
 
-            return Page();
-        }
+                    <div class="bg-light p-4 rounded mb-4 border-left border-warning" style="border-left-width: 4px;">
+                        <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-microchip mr-2 text-warning"></i>Contexto del Servicio</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad</label>
+                                    <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="ViewBag.FacultyId" id="facultySelector" required>
+                                        <option value="">-- Seleccione Facultad --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio</label>
+                                    <select asp-for="Input.LaboratoryId" class="form-control custom-select" asp-items="ViewBag.LaboratoryId" id="labSelector" required>
+                                        <option value="">-- Seleccione Laboratorio --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Unidad Física</label>
+                                    <select asp-for="Input.EquipmentUnitId" class="form-control custom-select" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" required>
+                                        <option value="">-- Seleccione Equipo --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                             <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small text-uppercase text-muted">Tipo de Servicio</label>
+                                    <select asp-for="Input.MaintenanceType" class="form-control custom-select" asp-items="ViewBag.MaintenanceType" required>
+                                        <option value="">-- Categoría --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.MaintenanceType" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small text-uppercase text-muted">Técnico Responsable</label>
+                                    <select asp-for="Input.TechnicianId" class="form-control custom-select" asp-items="ViewBag.TechnicianId">
+                                        <option value="">-- Asignar Técnico --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.RequestId" class="control-label font-weight-bold small text-uppercase text-muted">Solicitud Técnica Relacionada</label>
+                                    <select asp-for="Input.RequestId" class="form-control custom-select" asp-items="ViewBag.RequestId">
+                                        <option value="">-- Sin Solicitud --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-        [BindProperty]
-        public InputModel Input { get; set; } = default!;
+                    <div class="row">
+                        <div class="col-lg-7">
+                            <h5 class="text-dark font-weight-bold mb-3"><i class="far fa-calendar-alt mr-2 text-info"></i>Planificación Temporal</h5>
+                            <div class="card border mb-4 shadow-none">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 border-right">
+                                            <div class="form-group">
+                                                <label asp-for="Input.ScheduledDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Programada</label>
+                                                <input asp-for="Input.ScheduledDate" class="form-control" type="date" />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-3">
+                                                <label asp-for="Input.StartDate" class="control-label font-weight-bold small text-uppercase text-muted">Inicio Real</label>
+                                                <input asp-for="Input.StartDate" class="form-control" type="datetime-local" />
+                                            </div>
+                                            <div class="form-group mb-0">
+                                                <label asp-for="Input.EndDate" class="control-label font-weight-bold small text-uppercase text-muted">Finalización</label>
+                                                <input asp-for="Input.EndDate" class="form-control" type="datetime-local" />
+                                                <span asp-validation-for="Input.EndDate" class="text-danger small"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-        public class InputModel
-        {
-            [Required(ErrorMessage = "La facultad es obligatoria")]
-            [Display(Name = "Facultad")]
-            public int FacultyId { get; set; }
+                        <div class="col-lg-5">
+                            <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-thermometer-half mr-2 text-danger"></i>Estado Final</h5>
+                            <div class="card bg-light border-0 mb-4 shadow-none">
+                                <div class="card-body">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.Status" class="control-label font-weight-bold small text-uppercase text-muted">Estado del Proceso</label>
+                                        <select asp-for="Input.Status" class="form-control custom-select border-warning font-weight-bold text-dark"
+                                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<MaintenanceStatus>()"
+                                                id="statusSelector">
+                                        </select>
+                                    </div>
+                                    <p class="text-muted small mb-0"><i class="fas fa-info-circle mr-1"></i> Defina si el equipo está reparado o requiere mayor intervención.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-            [Required(ErrorMessage = "El laboratorio es obligatorio")]
-            [Display(Name = "Laboratorio")]
-            public int LaboratoryId { get; set; }
+                    <div class="card border mb-4 shadow-none">
+                        <div class="card-header bg-white border-bottom-0 pt-4 px-4">
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Lista de Verificación Técnica (L-48)</h5>
+                        </div>
+                        <div class="card-body px-4 pt-2">
+                            <div class="row align-items-center">
+                                <div class="col-md-7 border-right">
+                                    <div class="custom-control custom-checkbox mb-3">
+                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep1" asp-for="Input.Step1_Cleaning" onchange="calculatePercentage()">
+                                        <label class="custom-control-label font-weight-bold" for="chkStep1">Limpieza y Desinfección de Componentes</label>
+                                    </div>
+                                    <div class="custom-control custom-checkbox mb-3">
+                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep2" asp-for="Input.Step2_Calibration" onchange="calculatePercentage()">
+                                        <label class="custom-control-label font-weight-bold" for="chkStep2">Calibración y Ajuste de Sistema</label>
+                                    </div>
+                                    <div class="custom-control custom-checkbox mb-3">
+                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep3" asp-for="Input.Step3_Testing" onchange="calculatePercentage()">
+                                        <label class="custom-control-label font-weight-bold" for="chkStep3">Pruebas de Esfuerzo y Carga Operativa</label>
+                                    </div>
+                                    <div class="custom-control custom-checkbox mb-2">
+                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep4" asp-for="Input.Step4_FinalReview" onchange="calculatePercentage()">
+                                        <label class="custom-control-label font-weight-bold" for="chkStep4">Revisión Final de Seguridad y Cierre</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-5 text-center px-4">
+                                    <h6 class="text-muted text-uppercase font-weight-bold mb-3">Avance del Mantenimiento</h6>
+                                    <h2 id="displayProgressText" class="display-4 font-weight-bold text-primary mb-2">0%</h2>
+                                    <div class="progress rounded-pill shadow-sm" style="height: 12px;">
+                                        <div id="visualProgressBar" class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <input type="hidden" asp-for="Input.CompletionPercentage" id="hiddenPercentageInput" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-            [Required(ErrorMessage = "La unidad física es obligatoria")]
-            [Display(Name = "Unidad Física")]
-            public int EquipmentUnitId { get; set; }
+                    <div class="form-group mb-4">
+                        <label asp-for="Input.Description" class="control-label font-weight-bold text-dark">Descripción del Trabajo Realizado / Observaciones Técnicas</label>
+                        <textarea asp-for="Input.Description" class="form-control rounded" rows="3" required placeholder="Detalle las fallas encontradas y las soluciones aplicadas..."></textarea>
+                        <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                    </div>
 
-            [Required(ErrorMessage = "El tipo de mantenimiento es obligatorio")]
-            [Display(Name = "Tipo de Mantenimiento")]
-            public int MaintenanceTypeId { get; set; }
+                    <div class="card border shadow-none mb-4">
+                        <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-4 px-4">
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Control de Costos y Repuestos</h5>
+                            <button type="button" class="btn btn-sm btn-success btn-rounded shadow-sm ml-auto font-weight-bold px-3" onclick="addRow()">
+                                <i class="fas fa-plus mr-1"></i> Agregar Ítem
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover v-middle mb-0" id="costsTable">
+                                    <thead class="bg-light text-uppercase small font-weight-bold text-muted">
+                                        <tr>
+                                            <th class="pl-4" style="width: 30%">Concepto</th>
+                                            <th style="width: 20%">Categoría</th>
+                                            <th style="width: 10%" class="text-center">Cant.</th>
+                                            <th style="width: 15%" class="text-center">Unitario (Bs)</th>
+                                            <th style="width: 15%" class="text-center">Subtotal</th>
+                                            <th style="width: 10%"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="costsContainer">
+                                        <!-- Rows injected by JS -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="bg-light">
+                                            <td colspan="4" class="text-right font-weight-bold text-dark py-3">COSTO TOTAL DEL SERVICIO:</td>
+                                            <td class="text-center font-weight-bold text-success h5 py-3 mb-0" id="totalDisplay">Bs 0.00</td>
+                                            <td></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <input type="hidden" asp-for="Input.ActualCost" id="hiddenActualCost" />
+                        </div>
+                    </div>
 
-            [Required(ErrorMessage = "El técnico es obligatorio")]
-            [Display(Name = "Técnico Responsable")]
-            public int TechnicianId { get; set; }
+                    <div class="form-group">
+                        <label asp-for="Input.Recommendations" class="control-label font-weight-bold small text-uppercase text-muted">Recomendaciones Post-Servicio para el Usuario</label>
+                        <textarea asp-for="Input.Recommendations" class="form-control" rows="2" placeholder="Ej: No forzar el mando, limpiar después de cada uso..."></textarea>
+                    </div>
 
-            [Display(Name = "Solicitud Relacionada")]
-            public int? RequestId { get; set; }
+                    <hr />
 
-            [Required(ErrorMessage = "La descripción es obligatoria")]
-            [Display(Name = "Descripción del Trabajo")]
-            public string Description { get; set; } = string.Empty;
+                    <div class="form-actions text-right pb-4">
+                        @if (isWizard)
+                        {
+                            <a asp-page="/Wizard/Index" asp-route-Step="3" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Volver al Wizard</a>
+                        }
+                        else
+                        {
+                            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Cancelar</a>
+                        }
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark">
+                            <i class="fas fa-save mr-1"></i> Registrar Mantenimiento
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
-            [Required]
-            [Display(Name = "Fecha Programada")]
-            [DataType(DataType.Date)]
-            public DateTime ScheduledDate { get; set; } = DateTime.UtcNow;
+@* Template para filas de costo *@
+<table style="display:none">
+    <tbody id="costTemplate">
+        <tr class="cost-row">
+            <td class="pl-4">
+                <input name="Input.CostDetails[INDEX].Concept" class="form-control" required placeholder="Nombre del repuesto o servicio" />
+            </td>
+            <td>
+                <select name="Input.CostDetails[INDEX].Category" class="form-control custom-select" asp-items="@categoryList">
+                </select>
+            </td>
+            <td>
+                <input name="Input.CostDetails[INDEX].Quantity" class="form-control text-center txt-qty" type="number" step="0.01" value="1" min="0" onchange="calculateTotals()" required />
+            </td>
+            <td>
+                <input name="Input.CostDetails[INDEX].UnitPrice" class="form-control text-center txt-price" type="number" step="0.01" value="0.00" min="0" onchange="calculateTotals()" required />
+            </td>
+            <td class="text-center font-weight-bold txt-subtotal py-3 text-dark">Bs 0.00</td>
+            <td class="text-center">
+                <button type="button" class="btn btn-circle btn-sm btn-outline-danger" onclick="removeRow(this)" data-toggle="tooltip" title="Quitar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    </tbody>
+</table>
 
-            [Display(Name = "Fecha Inicio Real")]
-            [DataType(DataType.DateTime)]
-            public DateTime? StartDate { get; set; }
+@section Styles {
+    <style>
+        .wizard-steps { height: 70px; }
+        .step-line { border-bottom: 2px solid #e9ecef; position: absolute; top: 20px; left: 10%; right: 10%; z-index: 1; }
+        .step-item { position: relative; z-index: 2; text-align: center; width: 100px; }
+        .step-number { width: 40px; height: 40px; border-radius: 50%; background: white; border: 2px solid #e9ecef; display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; font-weight: bold; color: #adb5bd; }
+        .step-label { font-size: 0.75rem; font-weight: bold; color: #adb5bd; display: block; }
+        .step-item.active .step-number { border-color: #f59e0b; color: #f59e0b; background: #fffcf0; }
+        .step-item.active .step-label { color: #f59e0b; }
+    </style>
+}
 
-            [Display(Name = "Fecha Fin Real")]
-            [DataType(DataType.DateTime)]
-            public DateTime? EndDate { get; set; }
+@section Scripts {
+    <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
 
-            [Display(Name = "Costo Real Total")]
-            public decimal ActualCost { get; set; }
+            // Selectores cascada
+            $('#facultySelector').change(function () {
+                var facultyId = $(this).val();
+                $('#labSelector').empty().append('<option value="">-- Seleccione Laboratorio --</option>');
+                $('#unitSelector').empty().append('<option value="">-- Seleccione Equipo --</option>');
+                if (!facultyId) return;
 
-            [Display(Name = "Observaciones")]
-            public string? Observations { get; set; }
-
-            [Display(Name = "Recomendaciones")]
-            public string? Recommendations { get; set; }
-
-            [Required]
-            [Display(Name = "Estado Inicial")]
-            public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Scheduled;
-
-            public List<CostDetail> CostDetails { get; set; } = new();
-
-            public int CompletionPercentage { get; set; } = 0;
-            public bool Step1_Cleaning { get; set; } = false;
-            public bool Step2_Calibration { get; set; } = false;
-            public bool Step3_Testing { get; set; } = false;
-            public bool Step4_FinalReview { get; set; } = false;
-        }
-
-        public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
-        {
-            var labs = await _context.Laboratories
-                .Where(l => l.FacultyId == facultyId && l.Status == GeneralStatus.Activo)
-                .Select(l => new { id = l.Id, name = l.Name })
-                .OrderBy(x => x.name)
-                .ToListAsync();
-            return new JsonResult(labs);
-        }
-
-        public async Task<JsonResult> OnGetUnitsByLabAsync(int laboratoryId)
-        {
-            var units = await _context.EquipmentUnits
-                .Include(u => u.Equipment)
-                .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
-                .OrderBy(u => u.Equipment!.Name)
-                .ThenBy(u => u.InventoryNumber)
-                .Select(u => new {
-                    id = u.Id,
-                    eqName = u.Equipment != null ? u.Equipment.Name : "Equipo",
-                    inv = u.InventoryNumber
-                })
-                .ToListAsync();
-
-            var result = units.Select(x => new {
-                id = x.id,
-                name = $"{x.eqName} (Inv: {x.inv})"
+                $.get('?handler=LaboratoriesByFaculty&facultyId=' + facultyId, function (data) {
+                    $.each(data, function (i, item) {
+                        $('#labSelector').append('<option value="' + item.id + '">' + item.name + '</option>');
+                    });
+                });
             });
 
-            return new JsonResult(result);
-        }
+            $('#labSelector').change(function () {
+                var labId = $(this).val();
+                $('#unitSelector').empty().append('<option value="">-- Seleccione Equipo --</option>');
+                if (!labId) return;
 
-        public async Task<IActionResult> OnPostAsync()
-        {
-            if (Input.StartDate.HasValue && Input.EndDate.HasValue)
-            {
-                if (Input.EndDate < Input.StartDate)
-                    ModelState.AddModelError("Input.EndDate", "La fecha de finalización no puede ser anterior al inicio.");
-            }
-
-            var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
-            if (equipmentUnit == null)
-            {
-                ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física no existe.");
-            }
-            else if (equipmentUnit.CurrentStatus == EquipmentStatus.OnLoan)
-            {
-                ModelState.AddModelError("Input.EquipmentUnitId", "No se puede realizar mantenimiento a un equipo que actualmente está en préstamo.");
-            }
-
-            if (Input.CostDetails != null)
-                Input.CostDetails = Input.CostDetails.Where(d => !string.IsNullOrWhiteSpace(d.Concept)).ToList();
-
-            decimal totalCosts = Input.CostDetails?.Sum(d => d.Subtotal) ?? 0;
-            Input.ActualCost = totalCosts;
-
-            if (!ModelState.IsValid)
-            {
-                LoadLists();
-                return Page();
-            }
-
-            try
-            {
-                var maintenance = new Maintenance
-                {
-                    EquipmentUnitId = Input.EquipmentUnitId,
-                    MaintenanceTypeId = Input.MaintenanceTypeId,
-                    TechnicianId = Input.TechnicianId,
-                    RequestId = Input.RequestId,
-                    Description = Input.Description.Clean(),
-                    ScheduledDate = Input.ScheduledDate,
-                    StartDate = Input.StartDate,
-                    EndDate = Input.EndDate,
-                    ActualCost = Input.ActualCost,
-                    Observations = Input.Observations?.Clean(),
-                    Recommendations = Input.Recommendations?.Clean(),
-                    Status = Input.Status,
-                    CostDetails = Input.CostDetails ?? new(),
-                    CreatedDate = DateTime.UtcNow,
-
-                    CompletionPercentage = Input.CompletionPercentage,
-                    Step1_Cleaning = Input.Step1_Cleaning,
-                    Step2_Calibration = Input.Step2_Calibration,
-                    Step3_Testing = Input.Step3_Testing,
-                    Step4_FinalReview = Input.Step4_FinalReview
-                };
-
-                var currentUser = await _userManager.GetUserAsync(User);
-                maintenance.CreatedById = currentUser?.Id;
-
-                _context.Maintenances.Add(maintenance);
-
-                if (equipmentUnit != null && equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
-                {
-                    var lastHistory = await _context.EquipmentStateHistories
-                        .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
-                        .OrderByDescending(h => h.StartDate)
-                        .FirstOrDefaultAsync();
-
-                    if (lastHistory != null)
-                    {
-                        lastHistory.EndDate = DateTime.UtcNow;
-                        _context.EquipmentStateHistories.Update(lastHistory);
-                    }
-
-                    var newHistory = new EquipmentStateHistory
-                    {
-                        EquipmentUnitId = equipmentUnit.Id,
-                        Status = EquipmentStatus.UnderMaintenance,
-                        StartDate = DateTime.UtcNow,
-                        Reason = "Ingreso a proceso de mantenimiento."
-                    };
-                    _context.EquipmentStateHistories.Add(newHistory);
-
-                    equipmentUnit.CurrentStatus = EquipmentStatus.UnderMaintenance;
-                    _context.EquipmentUnits.Update(equipmentUnit);
-                }
-
-                await _context.SaveChangesAsync();
-
-                var notification = new Notification
-                {
-                    UserId = Input.TechnicianId,
-                    Title = "Nuevo Mantenimiento Asignado",
-                    Message = $"Se le ha asignado el mantenimiento de la unidad {equipmentUnit?.InventoryNumber}.",
-                    ActionUrl = $"/Maintenances/Details?id={maintenance.Id}",
-                    IconClass = "fas fa-wrench text-info",
-                    IsRead = false,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.Notifications.Add(notification);
-                await _context.SaveChangesAsync();
-
-                TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
-
-                return RedirectToPage("./Index");
-            }
-            catch (Exception ex)
-            {
-                TempData.Error($"Error al guardar el registro: {ex.Message}");
-                LoadLists();
-                return Page();
-            }
-        }
-
-        private void LoadLists()
-        {
-            ViewData["FacultyId"] = new SelectList(_context.Faculties
-                .Where(f => f.Status == GeneralStatus.Activo)
-                .OrderBy(f => f.Name), "Id", "Name");
-
-            ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
-            ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
-
-            var technicians = _context.People
-                .Where(p => p.Status == GeneralStatus.Activo)
-                .Select(p => new { Id = p.Id, FullName = p.FullName })
-                .ToList();
-            ViewData["TechnicianId"] = new SelectList(technicians, "Id", "FullName");
-
-            ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes.OrderBy(mt => mt.Name), "Id", "Name");
-            var requests = _context.Requests
-                .Include(r => r.Laboratory)
-                .OrderByDescending(r => r.CreatedDate)
-                .Take(20)
-                .ToList()
-                .Select(r => new {
-                    Id = r.Id,
-                    DisplayText = $"#{r.Id} - {r.Laboratory?.Name} ({r.CreatedDate:dd/MM}): " + (r.Description.Length > 40 ? r.Description.Substring(0, 40) + "..." : r.Description)
+                $.get('?handler=UnitsByLab&laboratoryId=' + labId, function (data) {
+                    $.each(data, function (i, item) {
+                        $('#unitSelector').append('<option value="' + item.id + '">' + item.name + '</option>');
+                    });
                 });
-            ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText");
+            });
+
+            // Inicializar fila por defecto
+            addRow();
+            
+            // Si ya hay datos (por redirección del wizard o recarga) inicializar porcentajes
+            calculatePercentage();
+        });
+
+        // --- LÓGICA DE CHECKBOXES (PORCENTAJE L-48) ---
+        function calculatePercentage() {
+            const checkboxes = $('.maintenance-check');
+            const completedTasks = checkboxes.filter(':checked').length;
+            const percentage = Math.round((completedTasks / checkboxes.length) * 100);
+
+            $('#displayProgressText').text(percentage + '%');
+            $('#visualProgressBar').css('width', percentage + '%').attr('aria-valuenow', percentage);
+            $('#hiddenPercentageInput').val(percentage);
+            
+            // Actualizar color de barra basado en avance
+            if(percentage < 50) $('#visualProgressBar').removeClass('bg-success bg-warning').addClass('bg-primary');
+            else if(percentage < 100) $('#visualProgressBar').removeClass('bg-success bg-primary').addClass('bg-warning');
+            else $('#visualProgressBar').removeClass('bg-warning bg-primary').addClass('bg-success');
         }
+
+        // --- LÓGICA DE COSTOS ---
+        function addRow() {
+            const container = $('#costsContainer');
+            const template = $('#costTemplate').html();
+            const index = container.children().length;
+
+            const newRow = template.replace(/\[INDEX\]/g, `[${index}]`);
+            container.append(newRow);
+
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+        }
+
+        function removeRow(btn) {
+            const rows = $('#costsContainer tr').length;
+            if (rows <= 1) {
+                // No eliminar la última fila, solo limpiarla
+                const row = $(btn).closest('tr');
+                row.find('input').val('');
+                row.find('.txt-qty').val('1');
+                row.find('.txt-price').val('0.00');
+                calculateTotals();
+                return;
+            }
+
+            $(btn).closest('tr').fadeOut(200, function () {
+                $(this).remove();
+                reindexRows();
+                calculateTotals();
+            });
+        }
+
+        function reindexRows() {
+            $('#costsContainer tr').each(function (i) {
+                $(this).find('input, select').each(function () {
+                    const name = $(this).attr('name');
+                    if (name) {
+                        $(this).attr('name', name.replace(/\[\d+\]/, `[${i}]`));
+                    }
+                });
+            });
+        }
+
+        function calculateTotals() {
+            let totalGeneral = 0;
+            $('#costsContainer tr').each(function () {
+                const qty = parseFloat($(this).find('.txt-qty').val()) || 0;
+                const price = parseFloat($(this).find('.txt-price').val()) || 0;
+                const subtotal = qty * price;
+
+                $(this).find('.txt-subtotal').text('Bs ' + subtotal.toLocaleString('es-BO', { minimumFractionDigits: 2 }));
+                totalGeneral += subtotal;
+            });
+
+            $('#totalDisplay').text('Bs ' + totalGeneral.toLocaleString('es-BO', { minimumFractionDigits: 2 }));
+            $('#hiddenActualCost').val(totalGeneral.toFixed(2));
+        }
+    </script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
 }

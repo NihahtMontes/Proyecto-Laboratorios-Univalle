@@ -76,7 +76,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IVerificationReportService, VerificationReportService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<DatabaseErrorHandler>();
-builder.Services.AddScoped<DataMigrationService>();
+// builder.Services.AddScoped<DataMigrationService>(); // Removido: Mantenimiento de modelos a enums completado.
 
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 

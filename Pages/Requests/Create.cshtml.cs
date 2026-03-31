@@ -52,6 +52,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementPlanId { get; set; }
+
         public class InputModel
         {
             public RequestType Type { get; set; } = RequestType.Technical;
@@ -98,13 +101,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             _context.Requests.Add(request);
             await _context.SaveChangesAsync();
 
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                if (plan != null)
+                {
+                    plan.RequestId = request.Id;
+                    plan.CurrentPhase = WizardPhase.Maintenance;
+                    plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+                    await _context.SaveChangesAsync();
+                }
+            }
+
             TempData.Success($"Solicitud técnica L-7 registrada exitosamente.");
 
             if (isWizard)
             {
                 // Al ser Wizard, el sistema entiende que ya se cumplió el paso de Solicitud (Paso 2)
-                // y te devuelve al Dashboard con el Wizard activo en el Paso 3 o listo para el siguiente activo
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, SelectedLabId = Input.LaboratoryId });
+                return RedirectToPage("/Wizard/Index", new { Step = 3, SelectedLabId = Input.LaboratoryId });
             }
 
             return RedirectToPage("./Index");

@@ -34,8 +34,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 .Include(e => e.Career)
                 .Include(e => e.Maintenances!)
                     .ThenInclude(m => m.Technician)
-                .Include(e => e.Maintenances!)
-                    .ThenInclude(m => m.MaintenanceType)
                 .Include(e => e.Verifications!)
                 .Include(e => e.StateHistory!)
                 .FirstOrDefaultAsync(m => m.Id == id);

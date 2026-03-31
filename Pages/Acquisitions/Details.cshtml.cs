@@ -20,7 +20,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             _reportService = reportService;
         }
 
-        public Request Request { get; set; } = default!;
+        public Request AcquisitionRequest { get; set; } = default!;
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
@@ -39,7 +39,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
             if (request == null) return NotFound();
 
-            Request = request;
+            AcquisitionRequest = request;
             return Page();
         }
 

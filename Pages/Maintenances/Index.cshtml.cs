@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
@@ -19,7 +20,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         }
 
         public IList<Maintenance> Maintenances { get; set; } = default!;
-        public IList<MaintenanceType> MaintenanceTypes { get; set; } = default!;
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -53,12 +53,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             var labs = await labsQuery.OrderBy(l => l.Name).ToListAsync();
             LaboratoryList = new SelectList(labs, "Id", "Name");
 
-            MaintenanceTypes = await _context.MaintenanceTypes
-                .Include(mt => mt.CreatedBy)
-                .OrderBy(mt => mt.Name)
-                .ToListAsync();
 
-            var query = _context.Maintenances
+
+                var query = _context.Maintenances
                 .Include(m => m.CreatedBy)
                 .Include(m => m.EquipmentUnit)
                     .ThenInclude(eu => eu.Equipment)
@@ -66,7 +63,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     .ThenInclude(eu => eu.Laboratory)
                 .Include(m => m.ModifiedBy)
                 .Include(m => m.Technician)
-                .Include(m => m.MaintenanceType)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(SearchTerm))

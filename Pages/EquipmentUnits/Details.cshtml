@@ -151,13 +151,13 @@
                                 <tbody>
                                     @if (Model.EquipmentUnit.Maintenances != null && Model.EquipmentUnit.Maintenances.Any())
                                     {
-                                        foreach (var m in Model.EquipmentUnit.Maintenances.OrderByDescending(x => x.MaintenanceDate))
+                                        foreach (var m in Model.EquipmentUnit.Maintenances.OrderByDescending(x => x.ScheduledDate))
                                         {
                                             <tr>
-                                                <td class="font-weight-bold text-dark pl-4">@m.MaintenanceDate.ToString("dd/MM/yyyy")</td>
-                                                <td>@m.MaintenanceType?.Name</td>
-                                                <td class="small text-muted">@m.TechnicianName</td>
-                                                <td><span class="badge badge-pill badge-primary px-2 py-1">@m.Status</span></td>
+                                                <td class="font-weight-bold text-dark pl-4">@(m.ScheduledDate?.ToString("dd/MM/yyyy") ?? "-")</td>
+                                                <td>@Html.DisplayFor(modelItem => m.MaintenanceType)</td>
+                                                <td class="small text-muted">@(m.Technician?.FullName ?? "-")</td>
+                                                <td><span class="badge badge-pill badge-primary px-2 py-1">@Html.DisplayFor(modelItem => m.Status)</span></td>
                                             </tr>
                                         }
                                     }

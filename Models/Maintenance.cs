@@ -16,7 +16,14 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [Required]
         [Display(Name = "Tipo de Mantenimiento")]
-        public int MaintenanceTypeId { get; set; }
+        public MaintenanceType MaintenanceType { get; set; } = MaintenanceType.Otros;
+
+        [Display(Name = "Tipo de Servicio")]
+        public ServiceType ServiceType { get; set; } = ServiceType.Internal;
+
+        [StringLength(50)]
+        [Display(Name = "Código Institucional (CLYB)")]
+        public string? InstitutionalCode { get; set; }
 
         [Display(Name = "Técnico Responsable")]
         public int? TechnicianId { get; set; }
@@ -114,9 +121,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         [ForeignKey("EquipmentUnitId")]
         public virtual EquipmentUnit? EquipmentUnit { get; set; }
-
-        [ForeignKey("MaintenanceTypeId")]
-        public virtual MaintenanceType? MaintenanceType { get; set; }
 
         [ForeignKey("TechnicianId")]
         public virtual Person? Technician { get; set; }

@@ -10,7 +10,7 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "Programado")]
         Scheduled = 1,
 
-        [Display(Name = "Programado")]
+        [Display(Name = "En Progreso")]
         InProgress = 2,
 
         [Display(Name = "Aprobado")]

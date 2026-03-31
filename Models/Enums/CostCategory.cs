@@ -4,6 +4,9 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
 {
     public enum CostCategory
     {
+        [Display(Name = "Ninguno / N/A")]
+        None = 0,
+
         [Display(Name = "Repuesto/Material")]
         SparePart = 1,
 

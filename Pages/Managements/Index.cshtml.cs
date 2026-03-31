@@ -26,11 +26,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         // Inicializamos la lista para evitar errores de referencia nula en la vista
         public IList<Management> ManagementList { get; set; } = new List<Management>();
 
-        public async Task OnGetAsync()
+        public async Task<IActionResult> OnGetAsync()
         {
             try
             {
-                // Intentamos cargar las gestiones desde la base de datos
                 if (_context.Managements != null)
                 {
                     ManagementList = await _context.Managements
@@ -41,10 +40,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             }
             catch (Exception)
             {
-                // Si la tabla no existe (error image_76232a), 
-                // mantenemos la lista vacía para que la página cargue sin error.
                 ManagementList = new List<Management>();
             }
+
+            return Page();
         }
 
         public async Task<IActionResult> OnPostCloseManagementAsync(int id)
@@ -57,7 +56,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     return NotFound();
                 }
 
-                management.Status = Models.Enums.ManagementStatus.Terminado;
+                management.Status = Models.Enums.ManagementStatus.Completed;
                 management.ActualClosedDate = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -82,13 +81,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     return NotFound();
                 }
 
-                if (management.Status == ManagementStatus.Activo)
+                if (management.Status == ManagementStatus.Active)
                 {
                     TempData["Error"] = "No se puede eliminar una gestión que se encuentra ACTIVA actualmente.";
                     return RedirectToPage("./Index");
                 }
 
-                management.Status = ManagementStatus.Eliminado;
+                management.Status = ManagementStatus.Deleted;
                 await _context.SaveChangesAsync();
 
                 TempData["Success"] = "La gestión ha sido eliminada lógicamente del sistema.";

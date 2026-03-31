@@ -8,7 +8,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Required(ErrorMessage = "El nombre del Laboratorio Especializado es obligatorio")]
         [StringLength(100)]
         [RegularExpression(@"^[a-zA-Z0-9\s\-]*$", ErrorMessage = "Formato de nombre inválido (use letras, números y guiones)")]
-        [Display(Name = "Laboratorio Especializado")]
+        [Display(Name = "Nombre / Denominación")]
         public string Name { get; set; } = string.Empty;
 
         [Required]

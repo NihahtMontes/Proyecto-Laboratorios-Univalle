@@ -12,8 +12,8 @@ using Proyecto_Laboratorios_Univalle.Data;
 namespace Proyecto_Laboratorios_Univalle.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260327144938_InitialCleanFix")]
-    partial class InitialCleanFix
+    [Migration("20260331171128_FixModelsAndEnums")]
+    partial class FixModelsAndEnums
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -358,6 +358,68 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.ToTable("Countries");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Departure", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ActualReturnDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("BorrowerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("DepartureDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DepartureObservations")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("EquipmentUnitId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EstimatedReturnDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ModifiedById")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReturnObservations")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BorrowerId");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("EquipmentUnitId");
+
+                    b.HasIndex("ModifiedById");
+
+                    b.ToTable("Departures");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Equipment", b =>
                 {
                     b.Property<int>("Id")
@@ -388,9 +450,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
-
-                    b.Property<int?>("EquipmentTypeId")
-                        .HasColumnType("int");
 
                     b.Property<string>("ImageUrl")
                         .HasColumnType("nvarchar(max)");
@@ -426,8 +485,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("CountryId");
 
                     b.HasIndex("CreatedById");
-
-                    b.HasIndex("EquipmentTypeId");
 
                     b.HasIndex("ModifiedById");
 
@@ -479,50 +536,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("ModifiedById");
 
                     b.ToTable("EquipmentStateHistories");
-                });
-
-            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.EquipmentType", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("MaintenanceFrequencyMonths")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("RequiresCalibration")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("ModifiedById");
-
-                    b.ToTable("EquipmentTypes");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", b =>
@@ -726,65 +739,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.ToTable("Laboratories");
                 });
 
-            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Loan", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ActualReturnDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("BorrowerId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("DepartureObservations")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("EquipmentUnitId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("EstimatedReturnDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("LoanDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ReturnObservations")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BorrowerId");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("EquipmentUnitId");
-
-                    b.HasIndex("ModifiedById");
-
-                    b.ToTable("Loans");
-                });
-
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Maintenance", b =>
                 {
                     b.Property<int>("Id")
@@ -818,10 +772,14 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<decimal?>("EstimatedCost")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("InstitutionalCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<DateTime?>("LastModifiedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("MaintenanceTypeId")
+                    b.Property<int>("MaintenanceType")
                         .HasColumnType("int");
 
                     b.Property<int?>("ModifiedById")
@@ -843,6 +801,9 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
 
                     b.Property<DateTime?>("ScheduledDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("ServiceType")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
@@ -875,8 +836,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("CreatedById");
 
                     b.HasIndex("EquipmentUnitId");
-
-                    b.HasIndex("MaintenanceTypeId");
 
                     b.HasIndex("ModifiedById");
 
@@ -934,6 +893,10 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<int?>("ModifiedById")
                         .HasColumnType("int");
 
+                    b.Property<string>("ProviderSnapshot")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("Service")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -955,44 +918,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("ModifiedById");
 
                     b.ToTable("MaintenancePlans");
-                });
-
-            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.MaintenanceType", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("CreatedById")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("LastModifiedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("ModifiedById")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedById");
-
-                    b.HasIndex("ModifiedById");
-
-                    b.ToTable("MaintenanceTypes");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Management", b =>
@@ -1063,11 +988,23 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AcquisitionRequestId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("CreatedById")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("CurrentPhase")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CurrentState")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DepartureId")
+                        .HasColumnType("int");
 
                     b.Property<string>("DocumentReference")
                         .HasMaxLength(500)
@@ -1098,13 +1035,23 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<DateTime?>("PlannedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("RequestId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Responsible")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int?>("VerificationId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("AcquisitionRequestId");
+
                     b.HasIndex("CreatedById");
+
+                    b.HasIndex("DepartureId");
 
                     b.HasIndex("EquipmentUnitId");
 
@@ -1113,6 +1060,10 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("ManagementId");
 
                     b.HasIndex("ModifiedById");
+
+                    b.HasIndex("RequestId");
+
+                    b.HasIndex("VerificationId");
 
                     b.ToTable("ManagementPlans");
                 });
@@ -1166,6 +1117,9 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Category")
+                        .HasColumnType("int");
 
                     b.Property<int?>("CreatedById")
                         .HasColumnType("int");
@@ -1719,6 +1673,37 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("ModifiedBy");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Departure", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Person", "Borrower")
+                        .WithMany("Departures")
+                        .HasForeignKey("BorrowerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById");
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
+                        .WithMany("Departures")
+                        .HasForeignKey("EquipmentUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
+                        .WithMany()
+                        .HasForeignKey("ModifiedById");
+
+                    b.Navigation("Borrower");
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("EquipmentUnit");
+
+                    b.Navigation("ModifiedBy");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Equipment", b =>
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.City", "City")
@@ -1735,10 +1720,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentType", null)
-                        .WithMany("Equipments")
-                        .HasForeignKey("EquipmentTypeId");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
@@ -1771,21 +1752,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("EquipmentUnit");
-
-                    b.Navigation("ModifiedBy");
-                });
-
-            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.EquipmentType", b =>
-                {
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById");
-
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
-                        .WithMany()
-                        .HasForeignKey("ModifiedById");
-
-                    b.Navigation("CreatedBy");
 
                     b.Navigation("ModifiedBy");
                 });
@@ -1867,37 +1833,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("ModifiedBy");
                 });
 
-            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Loan", b =>
-                {
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Person", "Borrower")
-                        .WithMany("Loans")
-                        .HasForeignKey("BorrowerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById");
-
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
-                        .WithMany("Loans")
-                        .HasForeignKey("EquipmentUnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
-                        .WithMany()
-                        .HasForeignKey("ModifiedById");
-
-                    b.Navigation("Borrower");
-
-                    b.Navigation("CreatedBy");
-
-                    b.Navigation("EquipmentUnit");
-
-                    b.Navigation("ModifiedBy");
-                });
-
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Maintenance", b =>
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
@@ -1907,12 +1842,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
                         .WithMany("Maintenances")
                         .HasForeignKey("EquipmentUnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.MaintenanceType", "MaintenanceType")
-                        .WithMany("Maintenances")
-                        .HasForeignKey("MaintenanceTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1932,8 +1861,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("EquipmentUnit");
-
-                    b.Navigation("MaintenanceType");
 
                     b.Navigation("ModifiedBy");
 
@@ -1974,21 +1901,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("Technician");
                 });
 
-            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.MaintenanceType", b =>
-                {
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedById");
-
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
-                        .WithMany()
-                        .HasForeignKey("ModifiedById");
-
-                    b.Navigation("CreatedBy");
-
-                    b.Navigation("ModifiedBy");
-                });
-
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Management", b =>
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
@@ -2006,9 +1918,17 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.ManagementPlan", b =>
                 {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Request", "AcquisitionRequest")
+                        .WithMany()
+                        .HasForeignKey("AcquisitionRequestId");
+
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
                         .WithMany()
                         .HasForeignKey("CreatedById");
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Departure", "Departure")
+                        .WithMany()
+                        .HasForeignKey("DepartureId");
 
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
                         .WithMany()
@@ -2028,7 +1948,19 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .WithMany()
                         .HasForeignKey("ModifiedById");
 
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Request", "TechnicalRequest")
+                        .WithMany()
+                        .HasForeignKey("RequestId");
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Verification", "Verification")
+                        .WithMany()
+                        .HasForeignKey("VerificationId");
+
+                    b.Navigation("AcquisitionRequest");
+
                     b.Navigation("CreatedBy");
+
+                    b.Navigation("Departure");
 
                     b.Navigation("EquipmentUnit");
 
@@ -2037,6 +1969,10 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("Management");
 
                     b.Navigation("ModifiedBy");
+
+                    b.Navigation("TechnicalRequest");
+
+                    b.Navigation("Verification");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Notification", b =>
@@ -2190,14 +2126,9 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("Units");
                 });
 
-            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.EquipmentType", b =>
-                {
-                    b.Navigation("Equipments");
-                });
-
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", b =>
                 {
-                    b.Navigation("Loans");
+                    b.Navigation("Departures");
 
                     b.Navigation("MaintenancePlans");
 
@@ -2225,11 +2156,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("CostDetails");
                 });
 
-            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.MaintenanceType", b =>
-                {
-                    b.Navigation("Maintenances");
-                });
-
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Management", b =>
                 {
                     b.Navigation("ManagementPlans");
@@ -2237,7 +2163,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Person", b =>
                 {
-                    b.Navigation("Loans");
+                    b.Navigation("Departures");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Request", b =>

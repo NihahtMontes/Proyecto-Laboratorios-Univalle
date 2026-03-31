@@ -128,7 +128,9 @@
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <div class="text-dark">@item.MaintenanceType?.Name</div>
+                                                    <div class="text-dark font-weight-bold">
+                                                        @(Html.DisplayFor(modelItem => item.MaintenanceType))
+                                                    </div>
                                                     <small class="text-muted d-block text-truncate" style="max-width: 150px;">
                                                         @(item.Description ?? "Sin descripción")
                                                     </small>

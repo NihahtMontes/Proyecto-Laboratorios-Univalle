@@ -8,18 +8,18 @@
                 <i class="fas fa-exclamation-triangle fa-4x text-danger mb-4"></i>
                 <h3 class="font-weight-bold text-dark">¿Anular Solicitud?</h3>
                 <p class="text-muted px-3">
-                    Está a punto de eliminar la solicitud de adquisición <strong>#@Model.Request.Id</strong> del item 
-                    <strong>@Model.Request.Equipment?.Name</strong>. Esta acción no se puede deshacer.
+                    Está a punto de eliminar la solicitud de adquisición <strong>#@Model.AcquisitionRequest.Id</strong> del item 
+                    <strong>@Model.AcquisitionRequest.Equipment?.Name</strong>. Esta acción no se puede deshacer.
                 </p>
 
                 <div class="bg-light p-3 rounded mb-4 text-left border-left border-danger">
                     <p class="mb-1 small font-weight-bold text-muted">DETALLES:</p>
-                    <p class="mb-0 text-dark">@Model.Request.Description</p>
+                    <p class="mb-0 text-dark">@Model.AcquisitionRequest.Description</p>
                 </div>
 
                 <form method="post">
-                    <input type="hidden" asp-for="Request.Id" />
-                    <a asp-page="./Details" asp-route-id="@Model.Request.Id" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+                    <input type="hidden" asp-for="AcquisitionRequest.Id" />
+                    <a asp-page="./Details" asp-route-id="@Model.AcquisitionRequest.Id" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
                         Cancelar
                     </a>
                     <button type="submit" class="btn btn-danger btn-rounded px-5 shadow-sm font-weight-bold">

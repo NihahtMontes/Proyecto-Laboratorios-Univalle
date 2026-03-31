@@ -23,7 +23,7 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "Desmantelado")]
         Dismantled = 4,
 
-        [Display(Name = "Desmantelado")]
+        [Display(Name = "Averiado")]
         Broken = 6,
 
         [Display(Name = "En Préstamo")]

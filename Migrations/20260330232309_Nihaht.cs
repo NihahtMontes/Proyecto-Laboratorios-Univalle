@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Proyecto_Laboratorios_Univalle.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCleanFix : Migration
+    public partial class Nihaht : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

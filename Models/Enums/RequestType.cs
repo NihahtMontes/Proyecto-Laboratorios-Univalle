@@ -8,6 +8,9 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         Technical = 1,
 
         [Display(Name = "Solicitud Administrativa (Adquisición de Bienes/Servicios)")]
-        Purchasing = 2
+        Purchasing = 2,
+
+        [Display(Name = "Solicitud de Calibración")]
+        Calibration = 3
     }
 }

@@ -103,7 +103,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual ICollection<Maintenance>? Maintenances { get; set; }
         public virtual ICollection<Verification>? Verifications { get; set; }
         public virtual ICollection<MaintenancePlan>? MaintenancePlans { get; set; }
-        public virtual ICollection<Loan>? Loans { get; set; }
+        public virtual ICollection<Departure>? Departures { get; set; }
 
         // Calculated Properties
         [NotMapped]

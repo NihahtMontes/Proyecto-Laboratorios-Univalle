@@ -4,6 +4,9 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
 {
     public enum PhysicalCondition
     {
+        [Display(Name = "REGULAR")]
+        Regular = 0,
+
         [Display(Name = "NUEVO")]
         New = 5,
 

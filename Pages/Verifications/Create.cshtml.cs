@@ -26,6 +26,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementPlanId { get; set; }
+
         public class InputModel
         {
             [Required(ErrorMessage = "La facultad es obligatoria")]
@@ -66,19 +69,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public IActionResult OnGet(int? equipmentUnitId = null, int? returnFacultyId = null, int? returnLaboratoryId = null, bool isWizard = false)
         {
-            LoadLists();
             if (equipmentUnitId.HasValue)
             {
                 Input.EquipmentUnitId = equipmentUnitId.Value;
-                // Intentar precargar facultad y lab si tenemos la unidad
-                var unit = _context.EquipmentUnits.Find(equipmentUnitId.Value);
+                var unit = _context.EquipmentUnits
+                    .Include(u => u.Laboratory)
+                    .FirstOrDefault(u => u.Id == equipmentUnitId.Value);
+
                 if (unit != null)
                 {
                     Input.LaboratoryId = unit.LaboratoryId ?? 0;
-                    var lab = _context.Laboratories.Find(unit.LaboratoryId);
-                    if (lab != null) Input.FacultyId = lab.FacultyId;
+                    if (unit.Laboratory != null)
+                    {
+                        Input.FacultyId = unit.Laboratory.FacultyId;
+                    }
                 }
             }
+
+            LoadLists();
+
             ViewData["ReturnFacultyId"] = returnFacultyId;
             ViewData["ReturnLaboratoryId"] = returnLaboratoryId;
             ViewData["IsWizard"] = isWizard;
@@ -151,17 +160,40 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             _context.Verifications.Add(verification);
             await _context.SaveChangesAsync();
 
+            bool hasFailures = typeof(InputModel).GetProperties()
+                .Where(p => p.PropertyType == typeof(VerificationResult))
+                .Any(p => (VerificationResult)p.GetValue(Input)! == VerificationResult.Bad);
+
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                if (plan != null)
+                {
+                    plan.VerificationId = verification.Id;
+                    
+                    if (hasFailures)
+                    {
+                        plan.CurrentPhase = WizardPhase.TechnicalRequest;
+                        plan.CurrentState = WizardEquipmentState.AwaitingRequest;
+                    }
+                    else
+                    {
+                        // Si es perfecto (sin fallas), salta L-7 y va directo a Mantenimiento (L-8 preventivo)
+                        plan.CurrentPhase = WizardPhase.Maintenance; 
+                        plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+                    }
+                    
+                    await _context.SaveChangesAsync();
+                }
+            }
+
             if (isWizard)
             {
-                // Si hay desperfectos, redirigir al paso 2 del Wizard
-                bool hasFailures = typeof(InputModel).GetProperties()
-                    .Where(p => p.PropertyType == typeof(VerificationResult))
-                    .Any(p => (VerificationResult)p.GetValue(Input)! == VerificationResult.Bad);
-
                 if (hasFailures)
-                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, CurrentEquipmentUnitId = Input.EquipmentUnitId, SelectedLabId = Input.LaboratoryId });
+                    return RedirectToPage("/Wizard/Index", new { Step = 2, SelectedLabId = Input.LaboratoryId });
 
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 1, SelectedLabId = Input.LaboratoryId });
+                // Al no tener fallos, lo mandamos al paso 3 (Mantenimiento preventivo)
+                return RedirectToPage("/Wizard/Index", new { Step = 3, SelectedLabId = Input.LaboratoryId });
             }
 
             return RedirectToPage("./Index");
@@ -169,7 +201,34 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         private void LoadLists()
         {
-            ViewData["FacultyId"] = new SelectList(_context.Faculties.Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name), "Id", "Name");
+            ViewData["FacultyId"] = new SelectList(_context.Faculties.Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name), "Id", "Name", Input.FacultyId);
+
+            if (Input.FacultyId > 0)
+            {
+                var labs = _context.Laboratories
+                    .Where(l => l.FacultyId == Input.FacultyId && l.Status == GeneralStatus.Activo)
+                    .OrderBy(l => l.Name)
+                    .ToList();
+                ViewData["LaboratoryId"] = new SelectList(labs, "Id", "Name", Input.LaboratoryId);
+            }
+            else
+            {
+                ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            }
+
+            if (Input.LaboratoryId > 0)
+            {
+                var units = _context.EquipmentUnits
+                    .Include(u => u.Equipment)
+                    .Where(u => u.LaboratoryId == Input.LaboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
+                    .Select(u => new { Id = u.Id, Name = u.Equipment.Name + " (" + u.InventoryNumber + ")" })
+                    .ToList();
+                ViewData["EquipmentUnitId"] = new SelectList(units, "Id", "Name", Input.EquipmentUnitId);
+            }
+            else
+            {
+                ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            }
         }
     }
 }

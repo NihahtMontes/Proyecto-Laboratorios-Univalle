@@ -34,6 +34,7 @@
 
                 <form method="post" id="verificationForm">
                     <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString().ToLower() ?? "false")" />
+                    <input type="hidden" asp-for="ManagementPlanId" />
 
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
 
@@ -50,7 +51,7 @@
                             <div class="col-md-4">
                                 <div class="form-group mb-0">
                                     <label asp-for="Input.LaboratoryId" class="font-weight-bold small uppercase text-muted">Laboratorio</label>
-                                    <select asp-for="Input.LaboratoryId" class="form-control select2 shadow-sm" id="laboratorySelect" required>
+                                    <select asp-for="Input.LaboratoryId" class="form-control select2 shadow-sm" id="laboratorySelect" asp-items="ViewBag.LaboratoryId" required>
                                         <option value="">-- Seleccionar Facultad Primero --</option>
                                     </select>
                                 </div>
@@ -58,7 +59,7 @@
                             <div class="col-md-4">
                                 <div class="form-group mb-0">
                                     <label asp-for="Input.EquipmentUnitId" class="font-weight-bold small uppercase text-muted">Unidad Física</label>
-                                    <select asp-for="Input.EquipmentUnitId" class="form-control select2 shadow-sm" id="equipmentUnitSelect" required>
+                                    <select asp-for="Input.EquipmentUnitId" class="form-control select2 shadow-sm" id="equipmentUnitSelect" asp-items="ViewBag.EquipmentUnitId" required>
                                         <option value="">-- Seleccionar Laboratorio Primero --</option>
                                     </select>
                                 </div>
@@ -130,7 +131,10 @@
             // Carga de Laboratorios
             $('#facultySelect').on('change', function() {
                 let id = $(this).val();
-                if (!id) return;
+                if (!id) {
+                    $('#laboratorySelect').html('<option value="">-- Seleccionar Facultad Primero --</option>').trigger('change');
+                    return;
+                }
                 $.get('/Verifications/Create?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
                     let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
                     $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });

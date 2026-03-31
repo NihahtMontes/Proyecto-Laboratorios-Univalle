@@ -18,7 +18,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Solicitud de Adquisición: #@Model.Request.Id</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Solicitud de Adquisición: #@Model.AcquisitionRequest.Id</h4>
                         <h6 class="card-subtitle text-muted small">Detalles del requerimiento de compra e inversión.</h6>
                     </div>
                     <div class="ml-auto">
@@ -31,10 +31,10 @@
                         <label class="small text-muted font-weight-bold uppercase mb-1">Unidad vinculada (si aplica)</label>
                         <div class="p-3 bg-light rounded border-left border-success font-weight-bold text-dark d-flex justify-content-between align-items-center">
                             <span>
-                                <i class="fas fa-cube mr-2 text-success"></i> @(Model.Request.Equipment?.Name ?? "Item Especial")
-                                <span class="text-muted font-weight-normal small ml-1">(@(Model.Request.EquipmentUnit?.InventoryNumber ?? "Nuevo Activo"))</span>
+                                <i class="fas fa-cube mr-2 text-success"></i> @(Model.AcquisitionRequest.Equipment?.Name ?? "Item Especial")
+                                <span class="text-muted font-weight-normal small ml-1">(@(Model.AcquisitionRequest.EquipmentUnit?.InventoryNumber ?? "Nuevo Activo"))</span>
                             </span>
-                            <span class="badge badge-pill badge-success px-3">@Model.Request.Equipment?.Category</span>
+                            <span class="badge badge-pill badge-success px-3">@Model.AcquisitionRequest.Equipment?.Category</span>
                         </div>
                     </div>
                 </div>
@@ -47,23 +47,23 @@
                     <div class="col-12">
                         <div class="mb-4">
                             <label class="control-label font-weight-bold small uppercase text-muted mb-1">Justificación del Pedido</label>
-                            <div class="p-3 bg-white border rounded text-dark" style="min-height: 80px; white-space: pre-wrap;">@Model.Request.Description</div>
+                            <div class="p-3 bg-white border rounded text-dark" style="min-height: 80px; white-space: pre-wrap;">@Model.AcquisitionRequest.Description</div>
                         </div>
 
                         <div class="row mb-4">
                             <div class="col-md-6">
                                 <label class="control-label font-weight-bold small uppercase text-success mb-1">Código de Inversión</label>
                                 <div class="p-2 px-3 bg-light rounded border border-success text-dark font-weight-bold">
-                                    <i class="fas fa-barcode mr-2 text-success"></i> @(Model.Request.InvestmentCode ?? "N/A")
+                                    <i class="fas fa-barcode mr-2 text-success"></i> @(Model.AcquisitionRequest.InvestmentCode ?? "N/A")
                                 </div>
                             </div>
                             <div class="col-md-6 mt-3 mt-md-0">
                                 <label class="control-label font-weight-bold small uppercase text-muted mb-1">Nivel de Prioridad</label>
                                 <div class="p-2 px-3 bg-light rounded border text-dark font-weight-bold">
                                     @{
-                                        var pIcon = Model.Request.Priority == RequestPriority.High ? "fa-bolt text-danger" : (Model.Request.Priority == RequestPriority.Medium ? "fa-info-circle text-warning" : "fa-check-circle text-info");
+                                        var pIcon = Model.AcquisitionRequest.Priority == RequestPriority.High ? "fa-bolt text-danger" : (Model.AcquisitionRequest.Priority == RequestPriority.Medium ? "fa-info-circle text-warning" : "fa-check-circle text-info");
                                     }
-                                    <i class="fas @pIcon mr-2"></i> @Model.Request.Priority
+                                    <i class="fas @pIcon mr-2"></i> @Model.AcquisitionRequest.Priority
                                 </div>
                             </div>
                         </div>
@@ -71,20 +71,20 @@
                         <div class="mb-4">
                             <label class="control-label font-weight-bold small uppercase text-muted mb-1">Centro de Costos</label>
                             <div class="p-2 px-3 bg-light rounded border text-dark font-weight-bold">
-                                <i class="fas fa-university mr-2 text-muted"></i> @(Model.Request.CostCenter ?? "No especificado")
+                                <i class="fas fa-university mr-2 text-muted"></i> @(Model.AcquisitionRequest.CostCenter ?? "No especificado")
                             </div>
                         </div>
 
                         <div class="mb-4">
                             <label class="control-label font-weight-bold small uppercase text-muted mb-1">Observaciones / Notas</label>
                             <div class="p-3 bg-light border rounded text-muted small italic">
-                                @(string.IsNullOrEmpty(Model.Request.Observations) ? "Sin observaciones registradas." : Model.Request.Observations)
+                                @(string.IsNullOrEmpty(Model.AcquisitionRequest.Observations) ? "Sin observaciones registradas." : Model.AcquisitionRequest.Observations)
                             </div>
                         </div>
                     </div>
                 </div>
 
-                @if (Model.Request.CostDetails.Any())
+                @if (Model.AcquisitionRequest.CostDetails.Any())
                 {
                     <div class="mt-4 mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -101,7 +101,7 @@
                                 </thead>
                                 <tbody>
                                     @{ decimal grandTotal = 0; }
-                                    @foreach (var item in Model.Request.CostDetails)
+                                    @foreach (var item in Model.AcquisitionRequest.CostDetails)
                                     {
                                         var subtotal = item.Quantity * item.UnitPrice;
                                         grandTotal += subtotal;
@@ -123,22 +123,22 @@
                     </div>
                 }
 
-                @if (Model.Request.Status != RequestStatus.Pending)
+                @if (Model.AcquisitionRequest.Status != RequestStatus.Pending)
                 {
                     <div class="mt-5 border-top pt-4">
                         <h5 class="font-weight-bold text-dark mb-3">
                             <i class="fas fa-check-double mr-2 text-info"></i> Resolución Administrativa
                         </h5>
                         @{
-                            var resClass = Model.Request.Status == RequestStatus.Approved ? "bg-light-success text-success border-success" : "bg-light-danger text-danger border-danger";
-                            var resIcon = Model.Request.Status == RequestStatus.Approved ? "fa-check-circle" : "fa-times-circle";
+                            var resClass = Model.AcquisitionRequest.Status == RequestStatus.Approved ? "bg-light-success text-success border-success" : "bg-light-danger text-danger border-danger";
+                            var resIcon = Model.AcquisitionRequest.Status == RequestStatus.Approved ? "fa-check-circle" : "fa-times-circle";
                         }
                         <div class="p-4 @resClass rounded border-left border-3 shadow-none">
                             <div class="d-flex align-items-center">
                                 <i class="fas @resIcon fa-2x mr-3"></i>
                                 <div>
-                                    <h6 class="mb-0 font-weight-bold uppercase">Estado: @Model.Request.Status</h6>
-                                    <small class="opacity-7">Evaluado el @Model.Request.ApprovalDate?.ToString("dd/MM/yyyy HH:mm")</small>
+                                    <h6 class="mb-0 font-weight-bold uppercase">Estado: @Model.AcquisitionRequest.Status</h6>
+                                    <small class="opacity-7">Evaluado el @(Model.AcquisitionRequest.ApprovalDate?.ToString("dd/MM/yyyy HH:mm") ?? "-")</small>
                                 </div>
                             </div>
                         </div>
@@ -156,14 +156,14 @@
                 <hr class="border-secondary mb-4" />
                 <div class="mb-3">
                     <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Identificador Único</label>
-                    <span class="font-weight-bold text-info" style="font-size: 1.1rem;">#ACQ-@Model.Request.Id.ToString("D5")</span>
+                    <span class="font-weight-bold text-info" style="font-size: 1.1rem;">#ACQ-@Model.AcquisitionRequest.Id.ToString("D5")</span>
                 </div>
                 <div class="mb-0">
                     <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estatus Actual</label>
                     @{
-                        var sBadge = Model.Request.Status == RequestStatus.Approved ? "badge-success" : (Model.Request.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
+                        var sBadge = Model.AcquisitionRequest.Status == RequestStatus.Approved ? "badge-success" : (Model.AcquisitionRequest.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
                     }
-                    <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold">@Model.Request.Status</span>
+                    <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold">@Model.AcquisitionRequest.Status</span>
                 </div>
             </div>
         </div>
@@ -175,22 +175,22 @@
                 <div class="audit-log">
                     <div class="mb-3">
                         <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Solicitado Por</label>
-                        <span class="font-weight-bold text-dark d-block">@(Model.Request.RequestedBy?.FullName ?? "N/A")</span>
-                        <span class="text-muted small">@Model.Request.CreatedDate.ToString("dd-MM-yyyy HH:mm")</span>
+                        <span class="font-weight-bold text-dark d-block">@(Model.AcquisitionRequest.RequestedBy?.FullName ?? "N/A")</span>
+                        <span class="text-muted small">@Model.AcquisitionRequest.CreatedDate.ToString("dd-MM-yyyy HH:mm")</span>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="form-actions mt-4">
-            @if (Model.Request.Status == RequestStatus.Pending)
+            @if (Model.AcquisitionRequest.Status == RequestStatus.Pending)
             {
-                <a asp-page="./Edit" asp-route-id="@Model.Request.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-3">
+                <a asp-page="./Edit" asp-route-id="@Model.AcquisitionRequest.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-3">
                     <i class="fas fa-edit mr-2"></i> Editar Solicitud
                 </a>
             }
 
-            <a asp-page="./Details" asp-page-handler="DescargarReporte" asp-route-id="@Model.Request.Id" 
+            <a asp-page="./Details" asp-page-handler="DescargarReporte" asp-route-id="@Model.AcquisitionRequest.Id" 
                class="btn btn-success btn-block btn-rounded shadow-sm font-weight-bold py-2 mb-3">
                 <i class="fas fa-file-download mr-2"></i> Descargar Reporte (Excel)
             </a>
@@ -199,7 +199,7 @@
                 <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
             </a>
             
-            <a asp-page="./Delete" asp-route-id="@Model.Request.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+            <a asp-page="./Delete" asp-route-id="@Model.AcquisitionRequest.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
                 <i class="fas fa-trash-alt mr-2"></i> Anular Solicitud
             </a>
         </div>

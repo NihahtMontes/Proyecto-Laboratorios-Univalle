@@ -120,5 +120,56 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             return Page();
         }
+
+        public async Task<IActionResult> OnPostSyncEquipmentsAsync(int id)
+        {
+            var management = await _context.Managements
+                .Include(m => m.ManagementPlans)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (management == null || management.Status != ManagementStatus.Active)
+            {
+                TempData.Error("No se puede sincronizar una gestión que no está activa.");
+                return RedirectToPage(new { id });
+            }
+
+            // Obtener todos los IDs de equipos ya en esta gestión
+            var existingEquipmentIds = management.ManagementPlans
+                .Select(p => p.EquipmentUnitId)
+                .Where(id => id.HasValue)
+                .Cast<int>()
+                .ToList();
+
+            // Obtener equipos activos no incluidos aún
+            var newEquipments = await _context.EquipmentUnits
+                .Where(eu => eu.CurrentStatus != EquipmentStatus.Deleted && !existingEquipmentIds.Contains(eu.Id))
+                .ToListAsync();
+
+            if (!newEquipments.Any())
+            {
+                TempData.Info("Todos los equipos activos ya están incluidos en esta ronda.");
+                return RedirectToPage(new { id });
+            }
+
+            foreach (var eu in newEquipments)
+            {
+                var plan = new ManagementPlan
+                {
+                    ManagementId = id,
+                    EquipmentUnitId = eu.Id,
+                    CurrentPhase = WizardPhase.Verification,
+                    CurrentState = WizardEquipmentState.PendingVerification,
+                    PlanStatus = ManagementPlanStatus.Pending,
+                    CreatedDate = DateTime.UtcNow,
+                    PlannedDate = DateTime.Today.AddDays(7) // Valor por defecto
+                };
+                _context.ManagementPlans.Add(plan);
+            }
+
+            await _context.SaveChangesAsync();
+            TempData.Success($"Se han sincronizado {newEquipments.Count} equipos nuevos a esta ronda.");
+
+            return RedirectToPage(new { id });
+        }
     }
 }

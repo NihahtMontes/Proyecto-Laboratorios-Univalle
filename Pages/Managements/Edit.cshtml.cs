@@ -65,7 +65,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             if (management == null) return NotFound();
             
             // Si está eliminada, no se debería editar por esta vía
-            if (management.Status == ManagementStatus.Eliminado) return NotFound();
+            if (management.Status == ManagementStatus.Deleted) return NotFound();
 
             Input = new EditManagementInputModel
             {
@@ -90,9 +90,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             // Bloqueo si ya estaba terminada? El usuario dijo que se puede editar el estado.
             // Pero validamos la regla de "Única Activa" si cambia a Activo
-            if (Input.Status == ManagementStatus.Activo && management.Status != ManagementStatus.Activo)
+            if (Input.Status == ManagementStatus.Active && management.Status != ManagementStatus.Active)
             {
-                var anyActive = await _context.Managements.AnyAsync(m => m.Status == ManagementStatus.Activo && m.Id != management.Id);
+                var anyActive = await _context.Managements.AnyAsync(m => m.Status == ManagementStatus.Active && m.Id != management.Id);
                 if (anyActive)
                 {
                     ModelState.AddModelError(string.Empty, "Ya existe otra gestión activa. Debe desactivarla antes de activar esta.");

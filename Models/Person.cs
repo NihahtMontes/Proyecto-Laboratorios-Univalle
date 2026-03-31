@@ -17,6 +17,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Estado")]
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
 
+        [Required]
+        [Display(Name = "Categoría")]
+        public PersonCategory Category { get; set; } = PersonCategory.Otro;
+
         
         [StringLength(100)]
         [EmailAddress(ErrorMessage = "Email inválido")]
@@ -55,6 +59,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Nombre / Razón Social")]
         public virtual string FullName => "Ficha de Persona";
 
-        public virtual ICollection<Loan>? Loans { get; set; }
+        public virtual ICollection<Departure>? Departures { get; set; }
     }
 }

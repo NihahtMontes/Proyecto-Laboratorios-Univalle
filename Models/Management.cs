@@ -57,7 +57,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         [Required]
         [Display(Name = "Estado")]
-        public ManagementStatus Status { get; set; } = ManagementStatus.Activo;
+        public ManagementStatus Status { get; set; } = ManagementStatus.Active;
 
         [StringLength(200)]
         [Display(Name = "Responsable")]
@@ -94,7 +94,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // PROPIEDADES CALCULADAS
         // ========================================
         [NotMapped]
-        public bool IsClosed => Status == ManagementStatus.Terminado;
+        public bool IsClosed => Status == ManagementStatus.Completed;
 
         [NotMapped]
         public int TotalEquipments => ManagementPlans?.Count ?? 0;

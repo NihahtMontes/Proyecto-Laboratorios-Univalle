@@ -31,6 +31,27 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Unidad de Equipo")]
         public int? EquipmentUnitId { get; set; }
 
+        // Nuevos Enlaces del Wizard
+        [Display(Name = "Verificación (L-6)")]
+        public int? VerificationId { get; set; }
+
+        [Display(Name = "Solicitud Técnica (L-7)")]
+        public int? RequestId { get; set; }
+
+        [Display(Name = "Salida de Equipo (L-3)")]
+        public int? DepartureId { get; set; }
+
+        [Display(Name = "Solicitud Adquisición (Desembolso)")]
+        public int? AcquisitionRequestId { get; set; }
+
+        [Required]
+        [Display(Name = "Fase Actual del Wizard")]
+        public WizardPhase CurrentPhase { get; set; } = WizardPhase.Verification;
+
+        [Required]
+        [Display(Name = "Estado Actual del Equipo")]
+        public WizardEquipmentState CurrentState { get; set; } = WizardEquipmentState.PendingVerification;
+
         // ========================================
         // PLAN DETAILS
         // ========================================
@@ -80,6 +101,18 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("EquipmentUnitId")]
         public virtual EquipmentUnit? EquipmentUnit { get; set; }
+
+        [ForeignKey("VerificationId")]
+        public virtual Verification? Verification { get; set; }
+
+        [ForeignKey("RequestId")]
+        public virtual Request? TechnicalRequest { get; set; }
+
+        [ForeignKey("DepartureId")]
+        public virtual Departure? Departure { get; set; }
+
+        [ForeignKey("AcquisitionRequestId")]
+        public virtual Request? AcquisitionRequest { get; set; }
 
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }

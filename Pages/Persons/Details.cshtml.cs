@@ -19,7 +19,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
 
         public Person Person { get; set; } = default!;
         public List<Maintenance> Maintenances { get; set; } = new();
-        public List<Loan> Loans { get; set; } = new();
+        public List<Departure> Departures { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
@@ -50,11 +50,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
                 .Take(10)
                 .ToListAsync();
 
-            Loans = await _context.Loans
+            Departures = await _context.Departures
                 .Include(l => l.EquipmentUnit)
                     .ThenInclude(u => u.Equipment)
                 .Where(l => l.BorrowerId == id)
-                .OrderByDescending(l => l.LoanDate)
+                .OrderByDescending(l => l.DepartureDate)
                 .Take(10)
                 .ToListAsync();
 

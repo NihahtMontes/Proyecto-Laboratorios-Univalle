@@ -1,5 +1,7 @@
 @page
 @model IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@using System.Text.Json
 @{
     ViewData["Title"] = "Dashboard Principal";
     var steps = new[] { "L6 Verificación", "L7 Solicitud", "L8 Mantenimiento", "L3 Salida", "Kardex", "Desembolso" };
@@ -19,6 +21,7 @@
         .btn-blue-next { background-color: #3b82f6; color: white; padding: 10px 24px; border-radius: 10px; font-weight: bold; display: flex; align-items: center; gap: 8px; border: none; }
         .btn-red-finish { background-color: #ef4444; color: white; padding: 10px 24px; border-radius: 10px; font-weight: bold; display: flex; align-items: center; gap: 8px; border: none; }
         .lab-badge { background-color: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; font-size: 10px; font-weight: bold; padding: 4px 12px; border-radius: 20px; }
+        .tailwind-scope a:hover { text-decoration: none; }
     </style>
 }
 
@@ -26,49 +29,217 @@
 
     @if (!Model.ShowWizard)
     {
-        <div id="mainDashboard" class="animate-in fade-in duration-500">
-            <div class="flex items-center justify-between mb-8">
+        @if (Model.ActiveManagement != null)
+        {
+            <!-- Header / Breadcrumb Clone (Dashboard de Gestión) -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 animate-in fade-in duration-500">
                 <div>
-                    <h1 class="text-2xl font-bold text-slate-900">Planificación Global Univalle</h1>
-                    <p class="text-sm text-slate-500">Estado general de los laboratorios y activos.</p>
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    <a asp-page="/Managements/Index" class="hover:text-slate-600">Gestiones L-48</a>
+                    <i class="fas fa-chevron-right text-[8px]"></i>
+                    <span>Detalle de Período</span>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center">
+                    Planificación @Model.ActiveManagement.Year - Semestre @(Model.ActiveManagement.Semester == 1 ? "I" : "II")
+                    <div class="ml-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 border-green-200 border uppercase">
+                            ACTIVO
+                        </span>
+                    </div>
+                </h1>
+                <p class="text-slate-500 text-sm mt-1">
+                    @(string.IsNullOrEmpty(Model.ActiveManagement.Description) ? "Resumen de indicadores para este período administrativo." : Model.ActiveManagement.Description)
+                </p>
                 </div>
                 
-                @* ÚNICO BOTÓN VISIBLE: INICIAR RONDA (Redirige en la misma página) *@
-                <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" class="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-slate-800 transition-all text-decoration-none">
-                    <i class="fas fa-play text-[10px]"></i> Iniciar Ronda (Wizard)
-                </a>
+                <div class="flex gap-3">
+                    <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-[#DC3545] text-white hover:bg-red-700 h-10 px-4 text-sm gap-2 shrink-0">
+                        <i class="fas fa-exclamation-circle text-xs"></i>
+                        <span>Falla Rápida</span>
+                    </button>
+                    <!-- SI LA GESTIÓN ES REAL, LO ENVIAMOS AL WIZARD REAL Y NO AL SIMULADO DE ESTA PANTALLA -->
+                    <a asp-page="/Wizard/Index" class="inline-flex">
+                        <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-slate-900 text-white hover:bg-slate-800 h-10 px-5 text-sm gap-2 shrink-0">
+                        <i class="fas fa-play text-xs"></i>
+                        <span>Iniciar Ronda (Wizard)</span>
+                        </button>
+                    </a>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gestión Actual</p>
-                    <p class="text-2xl font-black text-slate-800">@Model.ActiveManagement?.Year - Sem @Model.ActiveManagement?.Semester</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in zoom-in-95 duration-500">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 flex flex-col items-center justify-center relative">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 self-start w-full text-left">Avance Global</h3>
+                <div class="h-40 w-full relative content-center flex items-center justify-center">
+                    <div style="height: 140px; width: 140px;" class="relative">
+                        <canvas id="globalProgressChart"></canvas>
+                        <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                        <span class="text-2xl font-bold text-slate-800">@Model.GlobalProgress%</span>
+                        <span class="text-[10px] text-slate-400 font-medium uppercase mt-1">Completado</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Equipos Registrados</p>
-                    <p class="text-3xl font-black text-slate-800">@Model.TotalEquipment</p>
                 </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado Operativo</p>
-                    <div class="flex items-end gap-2">
-                        <p class="text-3xl font-black text-green-600">@Model.OperationalPercent%</p>
-                        <span class="text-[10px] text-slate-400 pb-1">Promedio Global</span>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Por Categoría</h3>
+                <div class="h-40 w-full relative">
+                    @if (Model.TopEquipmentTypes.Any()) {
+                        <canvas id="typeProgressChart"></canvas>
+                    } else {
+                        <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
+                    }
+                </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Por Clasificación</h3>
+                <div class="h-40 w-full relative">
+                    @if (Model.TopGroups.Any()) {
+                        <canvas id="subgroupsProgressChart"></canvas>
+                    } else {
+                        <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
+                    }
+                </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 animate-in fade-in duration-500">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 lg:col-span-2">
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-5">Eficiencia por Laboratorio</h3>
+                <div class="space-y-4">
+                    @foreach (var lab in Model.TopLaboratories)
+                    {
+                        <div class="flex items-center gap-4">
+                        <span class="w-24 text-sm font-semibold text-slate-700 truncate">@lab.Key</span>
+                        <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                            <div class="h-full bg-blue-500" style="width: 50%"></div> 
+                        </div>
+                        <div class="w-12 text-right text-sm font-bold text-slate-800">@lab.Value</div>
+                        <div class="w-20 text-right text-xs text-slate-500">equipos</div>
+                        </div>
+                    }
+                </div>
+                </div>
+
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-0 flex flex-col">
+                <div class="px-4 py-3 bg-[#DC3545]/10 border-b border-[#DC3545]/20 flex items-center gap-2">
+                    <i class="fas fa-exclamation-circle text-[#DC3545]"></i>
+                    <h3 class="text-xs font-bold text-red-800 uppercase tracking-wider">Vencidos</h3>
+                </div>
+                <div class="p-4 space-y-3 bg-white">
+                    @foreach (var plan in Model.OverduePlans)
+                    {
+                        <div class="flex justify-between items-start border-b border-slate-50 pb-2">
+                        <div>
+                            <p class="text-sm font-semibold text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</p>
+                            <p class="text-[10px] text-slate-500">@plan.EquipmentUnit?.Laboratory?.Name</p>
+                        </div>
+                        <span class="text-[10px] font-bold text-[#DC3545] bg-[#DC3545]/10 px-2 py-0.5 rounded-full mt-1">RETRASO</span>
+                        </div>
+                    }
+                    @if(!Model.OverduePlans.Any())
+                    {
+                        <div class="text-center text-xs text-slate-400 py-4 italic">No hay mantenimientos retrasados.</div>
+                    }
+                </div>
+                </div>
+            </div>
+
+            <!-- Detailed Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-visible mt-6 animate-in fade-in duration-500">
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white rounded-t-xl">
+                    <h2 class="text-lg font-bold text-slate-800">Cronograma Detallado @Model.ActiveManagement.Code</h2>
+                    <div class="text-xs text-slate-500">Responsable: <span class="font-bold text-slate-700">@Model.ActiveManagement.Responsible</span></div>
+                </div>
+                <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm whitespace-nowrap m-0 border-0">
+                    <thead class="bg-[#F8F9FA] text-slate-500 uppercase font-semibold text-xs tracking-wider border-b-2 border-gray-200">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold border-0">Equipo</th>
+                        <th class="px-6 py-4 font-semibold border-0">Laboratorio</th>
+                        <th class="px-6 py-4 font-semibold border-0">Notas</th>
+                        <th class="px-6 py-4 font-semibold border-0">Estado</th>
+                        <th class="px-6 py-4 font-semibold border-0">Planificado</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        @foreach (var plan in Model.ManagementPlans)
+                        {
+                            <tr class="hover:bg-slate-50/50 transition-colors">
+                                <td class="px-6 py-4 border-0">
+                                    <div class="font-semibold text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</div>
+                                    <div class="text-xs text-slate-400">Inv: @plan.EquipmentUnit?.InventoryNumber</div>
+                                </td>
+                                <td class="px-6 py-4 border-0 text-slate-600">@plan.EquipmentUnit?.Laboratory?.Name</td>
+                                <td class="px-6 py-4 border-0 text-slate-600 italic">
+                                    <span class="truncate max-w-[200px] inline-block">@plan.Notes</span>
+                                </td>
+                                <td class="px-6 py-4 border-0">
+                                    @{
+                                        var badgeClass = plan.PlanStatus == ManagementPlanStatus.Completed ? "bg-green-100 text-green-700 border-green-200" :
+                                                        plan.PlanStatus == ManagementPlanStatus.InProgress ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+                                                        "bg-red-100 text-red-700 border-red-200";
+                                    }
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold @badgeClass border">
+                                        @plan.PlanStatus.ToString().ToUpper()
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 border-0 text-slate-600">@plan.PlannedDate?.ToString("dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- ESTE ES EL DASHBOARD GLOBAL QUE SE MUESTRA CUANDO NO HAY UNA GESTIÓN EN CURSO -->
+            <div id="mainDashboard" class="animate-in fade-in duration-500">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 class="text-2xl font-bold text-slate-900">Planificación Global Univalle</h1>
+                        <p class="text-sm text-slate-500">Estado general de los laboratorios y activos.</p>
+                    </div>
+                    
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" class="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-slate-800 transition-all text-decoration-none">
+                        <i class="fas fa-play text-[10px]"></i> Iniciar Ronda (Wizard Simulada)
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gestión Actual</p>
+                        <p class="text-2xl font-black text-slate-800">INACTIVA</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Equipos Registrados</p>
+                        <p class="text-3xl font-black text-slate-800">@Model.TotalEquipment</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado Operativo</p>
+                        <div class="flex items-end gap-2">
+                            <p class="text-3xl font-black text-green-600">@Model.OperationalPercent%</p>
+                            <span class="text-[10px] text-slate-400 pb-1">Promedio Global</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px] flex items-center justify-center">
+                        <p class="text-slate-300 italic text-sm text-center">Gráfico: Avance de Verificación L-6</p>
+                    </div>
+                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px] flex items-center justify-center">
+                        <p class="text-slate-300 italic text-sm text-center">Gráfico: Estado de Activos por Facultad</p>
                     </div>
                 </div>
             </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px] flex items-center justify-center">
-                    <p class="text-slate-300 italic text-sm text-center">Gráfico: Avance de Verificación L-6</p>
-                </div>
-                <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px] flex items-center justify-center">
-                    <p class="text-slate-300 italic text-sm text-center">Gráfico: Estado de Activos por Facultad</p>
-                </div>
-            </div>
-        </div>
+        }
     }
     else
     {
+        <!-- SIMULACIÓN DEL WIZARD (Cuando se ejecuta la versión no-conectada a DB) -->
         <div class="max-w-[1200px] mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
             <div class="wizard-header-dark shadow-lg">
                 <h2 class="text-xl font-bold m-0"><i class="fas fa-magic text-[#28A745] mr-2"></i>Ronda de Mantenimiento</h2>
@@ -130,7 +301,6 @@
                                         </div>
                                         <div class="flex gap-2 items-center">
                                             <span class="btn-status-gray border-0">Sin verificar</span>
-                                            @* COMO EN TU VIDEO: Dirige al formulario Real de Verificación *@
                                             <a asp-page="/Verifications/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn-verify-outline hover:border-blue-500 hover:text-blue-600">
                                                 Reportar Falla
                                             </a>
@@ -183,7 +353,6 @@
                                         </div>
                                         <div class="flex gap-2 items-center">
                                             <span class="btn-status-gray border-0">Sin solicitud</span>
-                                            @* COMO EN TU VIDEO: Dirige al formulario Real de L7 *@
                                             <a asp-page="/Requests/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn-verify-outline text-blue-600 border-blue-200 hover:bg-blue-50">
                                                 Hacer Solicitud
                                             </a>
@@ -236,3 +405,94 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            @if(Model.ActiveManagement != null && !Model.ShowWizard)
+            {
+                <text>
+                // Global Progress Pie
+                const ctxGlobal = document.getElementById('globalProgressChart');
+                if(ctxGlobal) {
+                    new Chart(ctxGlobal.getContext('2d'), {
+                        type: 'doughnut',
+                        data: {
+                            datasets: [{
+                                data: [@Model.GlobalProgress, @(100 - Model.GlobalProgress)],
+                                backgroundColor: ['#28A745', '#E2E8F0'],
+                                borderWidth: 0,
+                                cutout: '75%'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                        }
+                    });
+                }
+
+                // Type Progress Bar
+                @if (Model.TopEquipmentTypes != null && Model.TopEquipmentTypes.Any())
+                {
+                    <text>
+                    const ctxType = document.getElementById('typeProgressChart');
+                    if (ctxType) {
+                        new Chart(ctxType.getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: @Html.Raw(JsonSerializer.Serialize(Model.TopEquipmentTypes.Keys)),
+                                datasets: [{
+                                    data: @Html.Raw(JsonSerializer.Serialize(Model.TopEquipmentTypes.Values)),
+                                    backgroundColor: ['#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'],
+                                    borderRadius: 4,
+                                    barThickness: 16
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y',
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: { x: { display: false }, y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } } },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                    }
+                    </text>
+                }
+
+                // Subgroups Progress Bar
+                @if (Model.TopGroups != null && Model.TopGroups.Any())
+                {
+                    <text>
+                    const ctxSub = document.getElementById('subgroupsProgressChart');
+                    if (ctxSub) {
+                        new Chart(ctxSub.getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: @Html.Raw(JsonSerializer.Serialize(Model.TopGroups.Keys)),
+                                datasets: [{
+                                    data: @Html.Raw(JsonSerializer.Serialize(Model.TopGroups.Values)),
+                                    backgroundColor: ['#10B981', '#F43F5E', '#3B82F6'],
+                                    borderRadius: 4,
+                                    barThickness: 16
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y',
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: { x: { display: false }, y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } } },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                    }
+                    </text>
+                }
+                </text>
+            }
+        });
+    </script>
+}
