@@ -62,7 +62,7 @@
                                     var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
                                     bool showBell = currentPage == "/Index" || currentPage == "/" || currentPage == "" ||
                                                     currentPage.StartsWith("/Acquisitions") || currentPage.StartsWith("/Requests") ||
-                                                    currentPage.StartsWith("/Maintenances");
+                                                    currentPage.StartsWith("/Maintenances") || currentPage.StartsWith("/Departures");
                                 }
 
                                 <ul class="navbar-nav float-right">

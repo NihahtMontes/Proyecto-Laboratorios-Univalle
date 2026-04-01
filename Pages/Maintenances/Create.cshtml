@@ -76,11 +76,18 @@
                         <div class="row">
                              <div class="col-md-4">
                                 <div class="form-group mb-3">
-                                    <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small text-uppercase text-muted">Tipo de Servicio</label>
+                                    <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small text-uppercase text-muted">Tipo de Mantenimiento</label>
                                     <select asp-for="Input.MaintenanceType" class="form-control custom-select" asp-items="ViewBag.MaintenanceType" required>
                                         <option value="">-- Categoría --</option>
                                     </select>
                                     <span asp-validation-for="Input.MaintenanceType" class="text-danger small"></span>
+                                </div>
+                            </div>
+                             <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.ServiceType" class="control-label font-weight-bold small text-uppercase text-muted">Ubicación del Servicio</label>
+                                    <select asp-for="Input.ServiceType" class="form-control custom-select" asp-items="ViewBag.ServiceType">
+                                    </select>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -91,8 +98,10 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="form-group mb-3">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group mb-0">
                                     <label asp-for="Input.RequestId" class="control-label font-weight-bold small text-uppercase text-muted">Solicitud Técnica Relacionada</label>
                                     <select asp-for="Input.RequestId" class="form-control custom-select" asp-items="ViewBag.RequestId">
                                         <option value="">-- Sin Solicitud --</option>
@@ -148,27 +157,35 @@
                     </div>
 
                     <div class="card border mb-4 shadow-none">
-                        <div class="card-header bg-white border-bottom-0 pt-4 px-4">
+                        <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-4 px-4">
                             <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Lista de Verificación Técnica (L-48)</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-rounded ml-auto font-weight-bold" onclick="addTask()">
+                                <i class="fas fa-plus mr-1"></i> Agregar Tarea
+                            </button>
                         </div>
                         <div class="card-body px-4 pt-2">
                             <div class="row align-items-center">
                                 <div class="col-md-7 border-right">
-                                    <div class="custom-control custom-checkbox mb-3">
-                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep1" asp-for="Input.Step1_Cleaning" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep1">Limpieza y Desinfección de Componentes</label>
-                                    </div>
-                                    <div class="custom-control custom-checkbox mb-3">
-                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep2" asp-for="Input.Step2_Calibration" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep2">Calibración y Ajuste de Sistema</label>
-                                    </div>
-                                    <div class="custom-control custom-checkbox mb-3">
-                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep3" asp-for="Input.Step3_Testing" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep3">Pruebas de Esfuerzo y Carga Operativa</label>
-                                    </div>
-                                    <div class="custom-control custom-checkbox mb-2">
-                                        <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep4" asp-for="Input.Step4_FinalReview" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep4">Revisión Final de Seguridad y Cierre</label>
+                                    <div id="tasksContainer">
+                                        @for (int i = 0; i < Model.Input.Tasks.Count; i++)
+                                        {
+                                            <div class="task-row mb-2 d-flex align-items-center p-2 rounded hover-light">
+                                                <div class="custom-control custom-checkbox flex-grow-1">
+                                                    <input type="checkbox" class="custom-control-input maintenance-check" id="chk_@i"
+                                                           name="Input.Tasks[@i].IsCompleted" value="true" onchange="calculatePercentage()"
+                                                           @(Model.Input.Tasks[i].IsCompleted ? "checked" : "")>
+                                                    <input type="hidden" name="Input.Tasks[@i].IsCompleted" value="false" />
+                                                    <label class="custom-control-label font-weight-bold w-100" for="chk_@i">
+                                                        <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" 
+                                                               class="form-control form-control-sm border-0 bg-transparent task-desc-input font-weight-bold h5 mb-0 py-0" 
+                                                               style="height: auto; cursor: text;" placeholder="Descripción de la tarea..." required />
+                                                    </label>
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-link text-danger p-0 ml-2" onclick="removeTask(this)">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        }
                                     </div>
                                 </div>
                                 <div class="col-md-5 text-center px-4">
@@ -251,6 +268,25 @@
     </div>
 </div>
 
+@* Template para filas de tareas *@
+<div style="display:none" id="taskTemplateContainer">
+    <div class="task-row mb-2 d-flex align-items-center p-2 rounded hover-light">
+        <div class="custom-control custom-checkbox flex-grow-1">
+            <input type="checkbox" class="custom-control-input maintenance-check" id="chk_INDEX"
+                   name="Input.Tasks[INDEX].IsCompleted" value="true" onchange="calculatePercentage()">
+            <input type="hidden" name="Input.Tasks[INDEX].IsCompleted" value="false" />
+            <label class="custom-control-label font-weight-bold w-100" for="chk_INDEX">
+                <input type="text" name="Input.Tasks[INDEX].Description" value="" 
+                       class="form-control form-control-sm border-0 bg-transparent task-desc-input font-weight-bold h5 mb-0 py-0" 
+                       style="height: auto; cursor: text;" placeholder="Descripción de la tarea..." required />
+            </label>
+        </div>
+        <button type="button" class="btn btn-sm btn-link text-danger p-0 ml-2" onclick="removeTask(this)">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+    </div>
+</div>
+
 @* Template para filas de costo *@
 <table style="display:none">
     <tbody id="costTemplate">
@@ -330,11 +366,12 @@
             calculatePercentage();
         });
 
-        // --- LÓGICA DE CHECKBOXES (PORCENTAJE L-48) ---
+        // --- LÓGICA DE CHECKBOXES (PORCENTAJE L-48 DINÁMICO) ---
         function calculatePercentage() {
             const checkboxes = $('.maintenance-check');
+            const totalTasks = checkboxes.length;
             const completedTasks = checkboxes.filter(':checked').length;
-            const percentage = Math.round((completedTasks / checkboxes.length) * 100);
+            const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
             $('#displayProgressText').text(percentage + '%');
             $('#visualProgressBar').css('width', percentage + '%').attr('aria-valuenow', percentage);
@@ -344,6 +381,45 @@
             if(percentage < 50) $('#visualProgressBar').removeClass('bg-success bg-warning').addClass('bg-primary');
             else if(percentage < 100) $('#visualProgressBar').removeClass('bg-success bg-primary').addClass('bg-warning');
             else $('#visualProgressBar').removeClass('bg-warning bg-primary').addClass('bg-success');
+        }
+
+        function addTask() {
+            const container = $('#tasksContainer');
+            const template = $('#taskTemplateContainer').html();
+            const index = container.children().length;
+
+            const newRow = template.replace(/INDEX/g, index);
+            container.append(newRow);
+            calculatePercentage();
+        }
+
+        function removeTask(btn) {
+            $(btn).closest('.task-row').fadeOut(200, function () {
+                $(this).remove();
+                reindexTasks();
+                calculatePercentage();
+            });
+        }
+
+        function reindexTasks() {
+            $('#tasksContainer .task-row').each(function (i) {
+                $(this).find('input').each(function () {
+                    const name = $(this).attr('name');
+                    if (name) {
+                        $(this).attr('name', name.replace(/Tasks\[\d+\]/, `Tasks[${i}]`));
+                    }
+                    const id = $(this).attr('id');
+                    if (id && id.startsWith('chk_')) {
+                        $(this).attr('id', `chk_${i}`);
+                    }
+                });
+                $(this).find('label').each(function () {
+                    const forAttr = $(this).attr('for');
+                    if (forAttr && forAttr.startsWith('chk_')) {
+                        $(this).attr('for', `chk_${i}`);
+                    }
+                });
+            });
         }
 
         // --- LÓGICA DE COSTOS ---

@@ -8,11 +8,11 @@
 }
 
 <div class="row justify-content-center">
-    <div class="col-lg-10 col-xl-9">
+    <div class="col-lg-12">
 
         @if (isWizard)
         {
-            <div class="wizard-steps mb-4 d-flex justify-content-between position-relative mt-3">
+            <div class="wizard-steps mb-4 d-flex justify-content-between position-relative mt-2 px-5">
                 <div class="step-line"></div>
                 <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L6 Verificación</span></div>
                 <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L7 Solicitud</span></div>
@@ -27,93 +27,133 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark">Registrar Salida de Equipo (L-3)</h4>
-                        <h6 class="card-subtitle text-muted">Registro de salida de equipo por préstamo o mantenimiento externo.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Registrar Salida de Equipo (L-3)</h4>
+                        <h6 class="card-subtitle text-muted">Apertura de ficha para el control de salida de activos fuera del laboratorio.</h6>
                     </div>
-                    <div class="ml-auto">
-                        <i class="fas fa-sign-out-alt fa-2x text-warning opacity-5"></i>
+                    <div class="ml-auto text-right">
+                         <i class="fas fa-sign-out-alt fa-2x text-warning opacity-5"></i>
                     </div>
                 </div>
 
-                <form method="post" id="createDepartureForm">
-                    <input type="hidden" name="isWizard" value="@(isWizard.ToString().ToLower())" />
-                    <input type="hidden" asp-for="ManagementPlanId" />
-
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
-
-                    <div class="row">
-                        <div class="col-md-6 border-right">
-                            <h5 class="font-weight-bold text-warning mb-3">
-                                <i class="fas fa-box mr-2"></i> Equipo y Responsable
-                            </h5>
-
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-warning text-uppercase">
-                                    Unidad Física <span class="text-danger">*</span>
-                                </label>
-                                <select asp-for="Input.EquipmentUnitId" class="form-control select2" asp-items="ViewBag.EquipmentUnitId">
-                                    <option value="">-- Seleccionar Equipo --</option>
-                                </select>
-                                <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
-                            </div>
-
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.BorrowerId" class="control-label font-weight-bold small text-uppercase text-muted">
-                                    Responsable / Solicitante <span class="text-danger">*</span>
-                                </label>
-                                <select asp-for="Input.BorrowerId" class="form-control select2" asp-items="ViewBag.BorrowerId">
-                                    <option value="">-- Seleccionar Persona --</option>
-                                </select>
-                                <span asp-validation-for="Input.BorrowerId" class="text-danger small"></span>
-                            </div>
-
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.Type" class="control-label font-weight-bold small text-uppercase text-muted">
-                                    Tipo de Salida <span class="text-danger">*</span>
-                                </label>
-                                <select asp-for="Input.Type" class="form-control custom-select" asp-items="Html.GetEnumSelectList<DepartureType>()"></select>
-                            </div>
+                <!-- TABS DE SELECCIÓN DE TIPO (Estilo Nueva Identidad) -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="btn-group btn-group-toggle d-flex w-100 shadow-sm rounded overflow-hidden" data-toggle="buttons">
+                            <label class="btn btn-outline-primary active border-0 py-3 w-50 font-weight-bold" id="label-loan-btn">
+                                <input type="radio" name="tempType" id="type-loan" autocomplete="off" checked data-type="2"> 
+                                <i class="fas fa-exchange-alt mr-2"></i> Préstamo Interno
+                            </label>
+                            <label class="btn btn-outline-info border-0 py-3 w-50 font-weight-bold" id="label-maintenance-btn">
+                                <input type="radio" name="tempType" id="type-maint" autocomplete="off" data-type="3"> 
+                                <i class="fas fa-tools mr-2"></i> Mantenimiento Externo
+                            </label>
                         </div>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-center mt-3 mt-md-0">
+                        <div class="alert alert-info py-2 px-3 mb-0 border-0 shadow-none small d-flex align-items-center">
+                            <i class="fas fa-info-circle mr-2 text-info fa-lg"></i>
+                            <span id="type-info-text">Este registro crea una orden de salida temporal para el control de activos institucionales.</span>
+                        </div>
+                    </div>
+                </div>
 
-                        <div class="col-md-6 pl-lg-4">
-                            <h5 class="font-weight-bold text-muted mb-3">
-                                <i class="fas fa-calendar-alt mr-2"></i> Fechas y Observaciones
-                            </h5>
+                <form method="post" id="departureForm" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4"></div>
+                    
+                    <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
+                    <input type="hidden" asp-for="ManagementPlanId" />
+                    <input type="hidden" asp-for="Input.Type" id="hiddenType" />
 
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.DepartureDate" class="control-label font-weight-bold small text-uppercase text-muted">
-                                    Fecha de Salida <span class="text-danger">*</span>
-                                </label>
-                                <input asp-for="Input.DepartureDate" class="form-control" type="date" />
-                                <span asp-validation-for="Input.DepartureDate" class="text-danger small"></span>
+                    <div class="bg-light p-4 rounded mb-4 border-left border-warning" style="border-left-width: 4px;">
+                        <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-microchip mr-2 text-warning"></i>Localización del Activo</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad</label>
+                                    <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="ViewBag.FacultyId" id="facultySelector" required>
+                                        <option value="">-- Seleccione Facultad --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
+                                </div>
                             </div>
-
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.EstimatedReturnDate" class="control-label font-weight-bold small text-uppercase text-muted">
-                                    Fecha Estimada de Devolución <span class="text-danger">*</span>
-                                </label>
-                                <input asp-for="Input.EstimatedReturnDate" class="form-control" type="date" />
-                                <span asp-validation-for="Input.EstimatedReturnDate" class="text-danger small"></span>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio</label>
+                                    <select asp-for="Input.LaboratoryId" class="form-control custom-select" asp-items="ViewBag.LaboratoryId" id="labSelector" required>
+                                        <option value="">-- Seleccione Laboratorio --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
+                                </div>
                             </div>
-
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.DepartureObservations" class="control-label font-weight-bold small text-uppercase text-muted">Observaciones</label>
-                                <textarea asp-for="Input.DepartureObservations" class="form-control" rows="3" placeholder="Notas sobre el estado del equipo al salir..."></textarea>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Unidad Física</label>
+                                    <select asp-for="Input.EquipmentUnitId" class="form-control custom-select" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" required>
+                                        <option value="">-- Seleccione Equipo --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-actions text-right mt-4">
+                    <div class="row">
+                        <div class="col-lg-7">
+                            <h5 class="text-dark font-weight-bold mb-3"><i class="far fa-user mr-2 text-info"></i>Identificación General</h5>
+                            <div class="card border mb-4 shadow-none">
+                                <div class="card-body">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.BorrowerId" class="control-label font-weight-bold small text-uppercase text-muted" id="label-borrower">Responsable / Solicitante</label>
+                                        <select asp-for="Input.BorrowerId" class="form-control custom-select bg-white" asp-items="ViewBag.BorrowerId" required>
+                                            <option value="">-- Seleccione del Catálogo --</option>
+                                        </select>
+                                        <span asp-validation-for="Input.BorrowerId" class="text-danger small"></span>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6 border-right">
+                                            <div class="form-group mb-0">
+                                                <label asp-for="Input.DepartureDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha de Salida</label>
+                                                <input asp-for="Input.DepartureDate" class="form-control" type="date" required />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-0">
+                                                <label asp-for="Input.EstimatedReturnDate" class="control-label font-weight-bold small text-uppercase text-muted">Retorno Estimado</label>
+                                                <input asp-for="Input.EstimatedReturnDate" class="form-control" type="date" required />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-5">
+                            <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-comment-dots mr-2 text-primary"></i>Notas de Salida</h5>
+                            <div class="card bg-light border-0 mb-4 shadow-none">
+                                <div class="card-body p-4">
+                                    <div class="form-group mb-0">
+                                        <label asp-for="Input.DepartureObservations" class="control-label font-weight-bold small text-uppercase text-muted">Observaciones del Activo</label>
+                                        <textarea asp-for="Input.DepartureObservations" class="form-control bg-white" rows="4" placeholder="Ej: Equipo sale en buen estado, con todos los accesorios..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right pb-4">
                         @if (isWizard)
                         {
-                            <a asp-page="/Wizard/Index" asp-route-Step="4" class="btn btn-outline-secondary btn-rounded mr-2 px-4">Volver al Wizard</a>
+                            <a asp-page="/Wizard/Index" asp-route-Step="4" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Volver al Wizard</a>
                         }
                         else
                         {
-                            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded mr-2 px-4">Cancelar</a>
+                            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Cancelar</a>
                         }
-                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold">
-                            Registrar Salida <i class="fas fa-arrow-right ml-2"></i>
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark">
+                            <i class="fas fa-save mr-1"></i> Registrar Salida Técnica
                         </button>
                     </div>
                 </form>
@@ -122,12 +162,82 @@
     </div>
 </div>
 
+@section Styles {
+    <style>
+        .wizard-steps { height: 70px; }
+        .step-line { border-bottom: 2px solid #e9ecef; position: absolute; top: 20px; left: 10%; right: 10%; z-index: 1; }
+        .step-item { position: relative; z-index: 2; text-align: center; width: 100px; }
+        .step-number { width: 40px; height: 40px; border-radius: 50%; background: white; border: 2px solid #e9ecef; display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; font-weight: bold; color: #adb5bd; }
+        .step-label { font-size: 0.75rem; font-weight: bold; color: #adb5bd; display: block; }
+        .step-item.active .step-number { border-color: #f59e0b; color: #f59e0b; background: #fffcf0; }
+        .step-item.active .step-label { color: #f59e0b; }
+
+        .btn-group-toggle .btn { border: 1px solid #e9ecef !important; color: #6c757d; background: #f8f9fa; }
+        .btn-group-toggle .btn.active { background: #2962ff !important; color: white !important; border-color: #2962ff !important; box-shadow: 0 4px 10px rgba(41, 98, 255, 0.2) !important; }
+        #label-maintenance-btn.active { background: #4fc3f7 !important; border-color: #4fc3f7 !important; }
+    </style>
+}
+
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
     <script>
-        $(function() {
-            $(".select2").select2({ width: '100%' });
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+
+            // LÓGICA DE TABS (TIPO DE SALIDA)
+            $('input[name="tempType"]').change(function() {
+                const type = $(this).data('type');
+                $('#hiddenType').val(type);
+                
+                if(type == 3) { // Mantenimiento
+                    $('#type-info-text').text("La salida por mantenimiento externo registra la custodia temporal por parte de un proveedor autorizado.");
+                    $('#label-borrower').text("Proveedor / Técnico Externo");
+                } else { // Préstamo
+                    $('#type-info-text').text("Este registro crea una orden de salida temporal para el control de activos institucionales.");
+                    $('#label-borrower').text("Responsable / Solicitante");
+                }
+            });
+
+            // Sincronizar estado inicial de tabs si el modelo trae un valor (Wizard)
+            const initialType = $('#hiddenType').val();
+            if(initialType == 3) {
+                $('#type-maint').prop('checked', true);
+                $('#label-loan-btn').removeClass('active');
+                $('#label-maintenance-btn').addClass('active');
+                $('#type-maint').trigger('change');
+            } else {
+                $('#hiddenType').val(2); // Préstamo por defecto
+            }
+
+            // Selectores cascada
+            $('#facultySelector').change(function () {
+                var facultyId = $(this).val();
+                $('#labSelector').empty().append('<option value="">-- Seleccione Laboratorio --</option>');
+                $('#unitSelector').empty().append('<option value="">-- Seleccione Equipo --</option>');
+                if (!facultyId) return;
+
+                $.get('?handler=LaboratoriesByFaculty&facultyId=' + facultyId, function (data) {
+                    $.each(data, function (i, item) {
+                        $('#labSelector').append('<option value="' + item.id + '">' + item.name + '</option>');
+                    });
+                });
+            });
+
+            $('#labSelector').change(function () {
+                var labId = $(this).val();
+                $('#unitSelector').empty().append('<option value="">-- Seleccione Equipo --</option>');
+                if (!labId) return;
+
+                $.get('?handler=UnitsByLab&laboratoryId=' + labId, function (data) {
+                    $.each(data, function (i, item) {
+                        $('#unitSelector').append('<option value="' + item.id + '">' + item.name + '</option>');
+                    });
+                });
+            });
         });
     </script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

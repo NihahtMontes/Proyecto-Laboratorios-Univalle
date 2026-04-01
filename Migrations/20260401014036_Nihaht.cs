@@ -125,36 +125,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "EquipmentTypes",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    RequiresCalibration = table.Column<bool>(type: "bit", nullable: false),
-                    MaintenanceFrequencyMonths = table.Column<int>(type: "int", nullable: true),
-                    CreatedById = table.Column<int>(type: "int", nullable: true),
-                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ModifiedById = table.Column<int>(type: "int", nullable: true),
-                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_EquipmentTypes", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_EquipmentTypes_Users_CreatedById",
-                        column: x => x.CreatedById,
-                        principalTable: "Users",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_EquipmentTypes_Users_ModifiedById",
-                        column: x => x.ModifiedById,
-                        principalTable: "Users",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Faculties",
                 columns: table => new
                 {
@@ -179,34 +149,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Faculties_Users_ModifiedById",
-                        column: x => x.ModifiedById,
-                        principalTable: "Users",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "MaintenanceTypes",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    CreatedById = table.Column<int>(type: "int", nullable: true),
-                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ModifiedById = table.Column<int>(type: "int", nullable: true),
-                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_MaintenanceTypes", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_MaintenanceTypes_Users_CreatedById",
-                        column: x => x.CreatedById,
-                        principalTable: "Users",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_MaintenanceTypes_Users_ModifiedById",
                         column: x => x.ModifiedById,
                         principalTable: "Users",
                         principalColumn: "Id");
@@ -278,6 +220,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Status = table.Column<int>(type: "int", nullable: false),
+                    Category = table.Column<int>(type: "int", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     PhoneNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -559,8 +502,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     CreatedById = table.Column<int>(type: "int", nullable: true),
                     CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ModifiedById = table.Column<int>(type: "int", nullable: true),
-                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    EquipmentTypeId = table.Column<int>(type: "int", nullable: true)
+                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -577,11 +519,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         principalTable: "Countries",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Equipments_EquipmentTypes_EquipmentTypeId",
-                        column: x => x.EquipmentTypeId,
-                        principalTable: "EquipmentTypes",
-                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Equipments_Users_CreatedById",
                         column: x => x.CreatedById,
@@ -653,6 +590,53 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Departures",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    EquipmentUnitId = table.Column<int>(type: "int", nullable: false),
+                    BorrowerId = table.Column<int>(type: "int", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
+                    DepartureDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EstimatedReturnDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ActualReturnDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DepartureObservations = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    ReturnObservations = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    CreatedById = table.Column<int>(type: "int", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ModifiedById = table.Column<int>(type: "int", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Departures", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Departures_EquipmentUnits_EquipmentUnitId",
+                        column: x => x.EquipmentUnitId,
+                        principalTable: "EquipmentUnits",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Departures_People_BorrowerId",
+                        column: x => x.BorrowerId,
+                        principalTable: "People",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Departures_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Departures_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "EquipmentStateHistories",
                 columns: table => new
                 {
@@ -690,52 +674,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Loans",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    EquipmentUnitId = table.Column<int>(type: "int", nullable: false),
-                    BorrowerId = table.Column<int>(type: "int", nullable: false),
-                    LoanDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    EstimatedReturnDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ActualReturnDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    DepartureObservations = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    ReturnObservations = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    CreatedById = table.Column<int>(type: "int", nullable: true),
-                    CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ModifiedById = table.Column<int>(type: "int", nullable: true),
-                    LastModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Loans", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Loans_EquipmentUnits_EquipmentUnitId",
-                        column: x => x.EquipmentUnitId,
-                        principalTable: "EquipmentUnits",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Loans_People_BorrowerId",
-                        column: x => x.BorrowerId,
-                        principalTable: "People",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Loans_Users_CreatedById",
-                        column: x => x.CreatedById,
-                        principalTable: "Users",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Loans_Users_ModifiedById",
-                        column: x => x.ModifiedById,
-                        principalTable: "Users",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "MaintenancePlans",
                 columns: table => new
                 {
@@ -753,6 +691,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     ActualTime = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
                     AssignedTechnicianId = table.Column<int>(type: "int", nullable: true),
                     CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    ProviderSnapshot = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     LaboratoryId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
@@ -920,7 +859,9 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     EquipmentUnitId = table.Column<int>(type: "int", nullable: false),
-                    MaintenanceTypeId = table.Column<int>(type: "int", nullable: false),
+                    MaintenanceType = table.Column<int>(type: "int", nullable: false),
+                    ServiceType = table.Column<int>(type: "int", nullable: false),
+                    InstitutionalCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     TechnicianId = table.Column<int>(type: "int", nullable: true),
                     RequestId = table.Column<int>(type: "int", nullable: true),
                     ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -951,12 +892,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         name: "FK_Maintenances_EquipmentUnits_EquipmentUnitId",
                         column: x => x.EquipmentUnitId,
                         principalTable: "EquipmentUnits",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_Maintenances_MaintenanceTypes_MaintenanceTypeId",
-                        column: x => x.MaintenanceTypeId,
-                        principalTable: "MaintenanceTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
@@ -1039,6 +974,12 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     ManagementId = table.Column<int>(type: "int", nullable: false),
                     MaintenanceId = table.Column<int>(type: "int", nullable: true),
                     EquipmentUnitId = table.Column<int>(type: "int", nullable: true),
+                    VerificationId = table.Column<int>(type: "int", nullable: true),
+                    RequestId = table.Column<int>(type: "int", nullable: true),
+                    DepartureId = table.Column<int>(type: "int", nullable: true),
+                    AcquisitionRequestId = table.Column<int>(type: "int", nullable: true),
+                    CurrentPhase = table.Column<int>(type: "int", nullable: false),
+                    CurrentState = table.Column<int>(type: "int", nullable: false),
                     Responsible = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
                     DocumentReference = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     Notes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true),
@@ -1052,6 +993,11 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ManagementPlans", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Departures_DepartureId",
+                        column: x => x.DepartureId,
+                        principalTable: "Departures",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_ManagementPlans_EquipmentUnits_EquipmentUnitId",
                         column: x => x.EquipmentUnitId,
@@ -1069,6 +1015,16 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
+                        name: "FK_ManagementPlans_Requests_AcquisitionRequestId",
+                        column: x => x.AcquisitionRequestId,
+                        principalTable: "Requests",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Requests_RequestId",
+                        column: x => x.RequestId,
+                        principalTable: "Requests",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_ManagementPlans_Users_CreatedById",
                         column: x => x.CreatedById,
                         principalTable: "Users",
@@ -1077,6 +1033,11 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         name: "FK_ManagementPlans_Users_ModifiedById",
                         column: x => x.ModifiedById,
                         principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Verifications_VerificationId",
+                        column: x => x.VerificationId,
+                        principalTable: "Verifications",
                         principalColumn: "Id");
                 });
 
@@ -1141,6 +1102,26 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 column: "ModifiedById");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Departures_BorrowerId",
+                table: "Departures",
+                column: "BorrowerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Departures_CreatedById",
+                table: "Departures",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Departures_EquipmentUnitId",
+                table: "Departures",
+                column: "EquipmentUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Departures_ModifiedById",
+                table: "Departures",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Equipments_CityId",
                 table: "Equipments",
                 column: "CityId");
@@ -1154,11 +1135,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 name: "IX_Equipments_CreatedById",
                 table: "Equipments",
                 column: "CreatedById");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Equipments_EquipmentTypeId",
-                table: "Equipments",
-                column: "EquipmentTypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Equipments_ModifiedById",
@@ -1178,16 +1154,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_EquipmentStateHistories_ModifiedById",
                 table: "EquipmentStateHistories",
-                column: "ModifiedById");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_EquipmentTypes_CreatedById",
-                table: "EquipmentTypes",
-                column: "CreatedById");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_EquipmentTypes_ModifiedById",
-                table: "EquipmentTypes",
                 column: "ModifiedById");
 
             migrationBuilder.CreateIndex(
@@ -1255,26 +1221,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 column: "ModifiedById");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Loans_BorrowerId",
-                table: "Loans",
-                column: "BorrowerId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Loans_CreatedById",
-                table: "Loans",
-                column: "CreatedById");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Loans_EquipmentUnitId",
-                table: "Loans",
-                column: "EquipmentUnitId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Loans_ModifiedById",
-                table: "Loans",
-                column: "ModifiedById");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_MaintenancePlans_AssignedTechnicianId",
                 table: "MaintenancePlans",
                 column: "AssignedTechnicianId");
@@ -1310,11 +1256,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 column: "EquipmentUnitId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Maintenances_MaintenanceTypeId",
-                table: "Maintenances",
-                column: "MaintenanceTypeId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_Maintenances_ModifiedById",
                 table: "Maintenances",
                 column: "ModifiedById");
@@ -1332,19 +1273,19 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 column: "TechnicianId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_MaintenanceTypes_CreatedById",
-                table: "MaintenanceTypes",
-                column: "CreatedById");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MaintenanceTypes_ModifiedById",
-                table: "MaintenanceTypes",
-                column: "ModifiedById");
+                name: "IX_ManagementPlans_AcquisitionRequestId",
+                table: "ManagementPlans",
+                column: "AcquisitionRequestId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ManagementPlans_CreatedById",
                 table: "ManagementPlans",
                 column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_DepartureId",
+                table: "ManagementPlans",
+                column: "DepartureId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ManagementPlans_EquipmentUnitId",
@@ -1365,6 +1306,16 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 name: "IX_ManagementPlans_ModifiedById",
                 table: "ManagementPlans",
                 column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_RequestId",
+                table: "ManagementPlans",
+                column: "RequestId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_VerificationId",
+                table: "ManagementPlans",
+                column: "VerificationId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Managements_CreatedById",
@@ -1514,9 +1465,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 name: "Interns");
 
             migrationBuilder.DropTable(
-                name: "Loans");
-
-            migrationBuilder.DropTable(
                 name: "MaintenancePlans");
 
             migrationBuilder.DropTable(
@@ -1541,7 +1489,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 name: "UserTokens");
 
             migrationBuilder.DropTable(
-                name: "Verifications");
+                name: "Departures");
 
             migrationBuilder.DropTable(
                 name: "Maintenances");
@@ -1550,10 +1498,10 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                 name: "Managements");
 
             migrationBuilder.DropTable(
-                name: "Roles");
+                name: "Verifications");
 
             migrationBuilder.DropTable(
-                name: "MaintenanceTypes");
+                name: "Roles");
 
             migrationBuilder.DropTable(
                 name: "People");
@@ -1575,9 +1523,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
 
             migrationBuilder.DropTable(
                 name: "Cities");
-
-            migrationBuilder.DropTable(
-                name: "EquipmentTypes");
 
             migrationBuilder.DropTable(
                 name: "Faculties");

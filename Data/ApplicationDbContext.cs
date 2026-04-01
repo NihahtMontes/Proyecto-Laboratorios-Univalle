@@ -80,6 +80,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<Career> Careers { get; set; } = null!;
         public DbSet<Management> Managements { get; set; } = null!;
         public DbSet<ManagementPlan> ManagementPlans { get; set; } = null!;
+        public DbSet<MaintenanceTask> MaintenanceTasks { get; set; } = null!;
         
 
 
@@ -151,6 +152,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Request>().HasOne(s => s.Equipment).WithMany().OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Verification>().HasOne(v => v.EquipmentUnit).WithMany(e => e.Verifications).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<MaintenancePlan>().HasOne(p => p.EquipmentUnit).WithMany(e => e.MaintenancePlans).HasForeignKey(p => p.EquipmentUnitId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<MaintenanceTask>().HasOne(t => t.Maintenance).WithMany(m => m.Tasks).HasForeignKey(t => t.MaintenanceId).OnDelete(DeleteBehavior.Cascade);
 
             // Departure Relationships
             modelBuilder.Entity<Departure>().HasOne(l => l.EquipmentUnit).WithMany(u => u.Departures).HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);

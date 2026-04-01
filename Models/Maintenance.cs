@@ -136,6 +136,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         public virtual List<CostDetail> CostDetails { get; set; } = new List<CostDetail>();
 
+        public virtual List<MaintenanceTask> Tasks { get; set; } = new List<MaintenanceTask>();
+
         // ========================================
         // CALCULATED PROPERTIES
         // ========================================

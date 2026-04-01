@@ -32,12 +32,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
         public class InputModel
         {
+            [Required(ErrorMessage = "La facultad es obligatoria")]
+            [Display(Name = "Facultad")]
+            public int FacultyId { get; set; }
+
+            [Required(ErrorMessage = "El laboratorio es obligatorio")]
+            [Display(Name = "Laboratorio")]
+            public int LaboratoryId { get; set; }
+
             [Required(ErrorMessage = "La unidad física es obligatoria")]
             [Display(Name = "Unidad Física")]
             public int EquipmentUnitId { get; set; }
 
             [Required(ErrorMessage = "El responsable/solicitante es obligatorio")]
-            [Display(Name = "Responsable / Solicitante")]
+            [Display(Name = "Responsable / Solicitante / Proveedor")]
             public int BorrowerId { get; set; }
 
             [Required(ErrorMessage = "El tipo de salida es obligatorio")]
@@ -52,7 +60,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             [Required(ErrorMessage = "La fecha estimada de devolución es obligatoria")]
             [Display(Name = "Fecha Estimada de Devolución")]
             [DataType(DataType.Date)]
-            public DateTime EstimatedReturnDate { get; set; } = DateTime.Today.AddDays(30);
+            public DateTime EstimatedReturnDate { get; set; } = DateTime.Today.AddDays(15);
 
             [StringLength(500)]
             [Display(Name = "Observaciones")]
@@ -61,17 +69,62 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
         public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false, int? managementPlanId = null)
         {
-            await LoadLists();
-
-            if (equipmentUnitId.HasValue)
-            {
-                Input.EquipmentUnitId = equipmentUnitId.Value;
-            }
-
             ManagementPlanId = managementPlanId;
             ViewData["IsWizard"] = isWizard;
 
+            if (equipmentUnitId.HasValue)
+            {
+                var unit = await _context.EquipmentUnits
+                    .Include(u => u.Laboratory)
+                    .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
+
+                if (unit != null)
+                {
+                    Input.EquipmentUnitId = unit.Id;
+                    Input.LaboratoryId = unit.LaboratoryId ?? 0;
+                    Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
+
+                    if (isWizard)
+                    {
+                        Input.Type = DepartureType.ExternalMaintenance;
+                    }
+                }
+            }
+
+            await LoadLists();
             return Page();
+        }
+
+        public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
+        {
+            var labs = await _context.Laboratories
+                .Where(l => l.FacultyId == facultyId && l.Status == GeneralStatus.Activo)
+                .Select(l => new { id = l.Id, name = l.Name })
+                .OrderBy(x => x.name)
+                .ToListAsync();
+            return new JsonResult(labs);
+        }
+
+        public async Task<JsonResult> OnGetUnitsByLabAsync(int laboratoryId)
+        {
+            var units = await _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
+                .OrderBy(u => u.Equipment!.Name)
+                .ThenBy(u => u.InventoryNumber)
+                .Select(u => new {
+                    id = u.Id,
+                    eqName = u.Equipment != null ? u.Equipment.Name : "Equipo",
+                    inv = u.InventoryNumber
+                })
+                .ToListAsync();
+
+            var result = units.Select(x => new {
+                id = x.id,
+                name = $"{x.eqName} (Inv: {x.inv})"
+            });
+
+            return new JsonResult(result);
         }
 
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
@@ -142,20 +195,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
         private async Task LoadLists()
         {
-            ViewData["EquipmentUnitId"] = new SelectList(
-                await _context.EquipmentUnits
-                    .Include(u => u.Equipment)
-                    .Where(u => u.CurrentStatus != EquipmentStatus.Deleted)
-                    .Select(u => new { u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" })
-                    .ToListAsync(),
-                "Id", "Name");
+            ViewData["FacultyId"] = new SelectList(await _context.Faculties
+                .Where(f => f.Status == GeneralStatus.Activo)
+                .OrderBy(f => f.Name).ToListAsync(), "Id", "Name", Input.FacultyId);
+
+            if (Input.FacultyId > 0)
+                ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == Input.FacultyId).ToListAsync(), "Id", "Name", Input.LaboratoryId);
+            else
+                ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+
+            if (Input.LaboratoryId > 0)
+                ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == Input.LaboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", Input.EquipmentUnitId);
+            else
+                ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
 
             ViewData["BorrowerId"] = new SelectList(
                 await _context.People
                     .Where(p => p.Status == GeneralStatus.Activo)
+                    .OrderBy(p => p.FullName)
                     .Select(p => new { p.Id, p.FullName })
                     .ToListAsync(),
-                "Id", "FullName");
+                "Id", "FullName", Input.BorrowerId);
         }
     }
 }

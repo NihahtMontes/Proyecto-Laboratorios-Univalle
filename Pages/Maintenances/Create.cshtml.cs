@@ -30,7 +30,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             Input = new InputModel
             {
                 ScheduledDate = DateTime.UtcNow,
-                CostDetails = new List<CostDetail>()
+                CostDetails = new List<CostDetail>(),
+                Tasks = new List<MaintenanceTask>
+                {
+                    new MaintenanceTask { Description = "Limpieza y Desinfección de Componentes" },
+                    new MaintenanceTask { Description = "Calibración y Ajuste de Sistema" },
+                    new MaintenanceTask { Description = "Pruebas de Esfuerzo y Carga Operativa" },
+                    new MaintenanceTask { Description = "Revisión Final de Seguridad y Cierre" }
+                }
             };
 
             if (equipmentUnitId.HasValue)
@@ -128,9 +135,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Estado Inicial")]
             public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Scheduled;
 
+            [Display(Name = "Tipo de Servicio")]
+            public ServiceType ServiceType { get; set; } = ServiceType.Internal;
+
             public List<CostDetail> CostDetails { get; set; } = new();
 
             public int CompletionPercentage { get; set; } = 0;
+            public List<MaintenanceTask> Tasks { get; set; } = new();
+            
+            // Legacy steps (to be removed once fully migrated if needed)
             public bool Step1_Cleaning { get; set; } = false;
             public bool Step2_Calibration { get; set; } = false;
             public bool Step3_Testing { get; set; } = false;
@@ -219,10 +232,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     CreatedDate = DateTime.UtcNow,
 
                     CompletionPercentage = Input.CompletionPercentage,
-                    Step1_Cleaning = Input.Step1_Cleaning,
-                    Step2_Calibration = Input.Step2_Calibration,
-                    Step3_Testing = Input.Step3_Testing,
-                    Step4_FinalReview = Input.Step4_FinalReview
+                    Tasks = Input.Tasks ?? new()
                 };
 
                 var currentUser = await _userManager.GetUserAsync(User);
@@ -316,7 +326,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .ToList();
             ViewData["TechnicianId"] = new SelectList(technicians, "Id", "FullName");
 
-            // ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
+            ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
+            ViewData["ServiceType"] = EnumHelper.GetStatusSelectList<ServiceType>();
             var requests = _context.Requests
                 .Include(r => r.Laboratory)
                 .OrderByDescending(r => r.CreatedDate)

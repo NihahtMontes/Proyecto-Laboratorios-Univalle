@@ -12,8 +12,8 @@ using Proyecto_Laboratorios_Univalle.Data;
 namespace Proyecto_Laboratorios_Univalle.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260331171128_FixModelsAndEnums")]
-    partial class FixModelsAndEnums
+    [Migration("20260401014036_Nihaht")]
+    partial class Nihaht
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
