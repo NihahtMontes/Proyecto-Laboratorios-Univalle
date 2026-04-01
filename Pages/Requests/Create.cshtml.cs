@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -23,87 +23,56 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             _userManager = userManager;
         }
 
-        public async Task<IActionResult> OnGetAsync()
+        public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false)
         {
             await LoadLists();
+
+            if (equipmentUnitId.HasValue)
+            {
+                var unit = await _context.EquipmentUnits
+                    .Include(u => u.Laboratory)
+                    .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
+
+                if (unit != null)
+                {
+                    Input.EquipmentUnitId = unit.Id;
+                    Input.LaboratoryId = unit.LaboratoryId ?? 0;
+                    Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
+
+                    // Forzar carga de listas para que el Select2 muestre los valores
+                    ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == Input.FacultyId).ToListAsync(), "Id", "Name", Input.LaboratoryId);
+                    ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == Input.LaboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", Input.EquipmentUnitId);
+                }
+            }
+
+            ViewData["IsWizard"] = isWizard;
             return Page();
         }
 
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementPlanId { get; set; }
+
         public class InputModel
         {
             public RequestType Type { get; set; } = RequestType.Technical;
-
             [Required(ErrorMessage = "La facultad es obligatoria")]
-            [Display(Name = "Facultad")]
             public int FacultyId { get; set; }
-
             [Required(ErrorMessage = "El laboratorio es obligatorio")]
-            [Display(Name = "Laboratorio")]
             public int LaboratoryId { get; set; }
-
             [Required(ErrorMessage = "La unidad física es obligatoria")]
-            [Display(Name = "Unidad Física (Activo)")]
             public int EquipmentUnitId { get; set; }
-
             [Required(ErrorMessage = "La descripción del fallo es obligatoria")]
-            [Display(Name = "Descripción del Fallo")]
-            [StringLength(1000, ErrorMessage = "La descripción no puede superar los 1000 caracteres")]
             public string Description { get; set; } = string.Empty;
-
-            [Display(Name = "Observaciones Adicionales")]
-            [StringLength(500, ErrorMessage = "Las observaciones no pueden superar los 500 caracteres")]
             public string? Observations { get; set; }
-
-            [Display(Name = "Prioridad")]
             public RequestPriority Priority { get; set; } = RequestPriority.Medium;
-
-            [Display(Name = "Tiempo Estimado de Reparación")]
-            [StringLength(100)]
             public string? EstimatedRepairTime { get; set; }
         }
 
-        // AJAX Handler: Get laboratories by faculty
-        public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
+        public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
-            var labs = await _context.Laboratories
-                .Where(l => l.FacultyId == facultyId && l.Status == GeneralStatus.Activo)
-                .Select(l => new { id = l.Id, name = l.Name })
-                .OrderBy(x => x.name)
-                .ToListAsync();
-            return new JsonResult(labs);
-        }
-
-        // AJAX Handler: Get units by laboratory
-        public async Task<JsonResult> OnGetUnitsByLabAsync(int laboratoryId)
-        {
-            var units = await _context.EquipmentUnits
-                .Include(u => u.Equipment)
-                .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
-                .OrderBy(u => u.Equipment!.Name)
-                .ThenBy(u => u.InventoryNumber)
-                .Select(u => new {
-                    id = u.Id,
-                    eqName = u.Equipment != null ? u.Equipment.Name : "Equipo",
-                    inv = u.InventoryNumber
-                })
-                .ToListAsync();
-
-            var result = units.Select(x => new {
-                id = x.id,
-                name = $"{x.eqName} (Inv: {x.inv})"
-            });
-
-            return new JsonResult(result);
-        }
-
-        public async Task<IActionResult> OnPostAsync()
-        {
-            // Forzamos el tipo a Técnico por seguridad
-            Input.Type = RequestType.Technical;
-
             if (!ModelState.IsValid)
             {
                 await LoadLists();
@@ -111,19 +80,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             }
 
             var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
-            if (unit == null)
-            {
-                ModelState.AddModelError("Input.EquipmentUnitId", "La unidad seleccionada no es válida.");
-                await LoadLists();
-                return Page();
-            }
 
             var request = new Request
             {
-                Type = Input.Type,
+                Type = RequestType.Technical,
                 LaboratoryId = Input.LaboratoryId,
-                EquipmentId = unit.EquipmentId,
-                EquipmentUnitId = unit.Id,
+                EquipmentId = unit?.EquipmentId ?? 0,
+                EquipmentUnitId = Input.EquipmentUnitId,
                 Description = Input.Description.Clean()!,
                 Priority = Input.Priority,
                 Observations = Input.Observations?.Clean(),
@@ -133,28 +96,52 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             };
 
             var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser != null)
-            {
-                request.CreatedById = currentUser.Id;
-                request.RequestedById = currentUser.Id;
-            }
+            if (currentUser != null) { request.CreatedById = currentUser.Id; request.RequestedById = currentUser.Id; }
 
             _context.Requests.Add(request);
             await _context.SaveChangesAsync();
 
-            TempData.Success($"Solicitud técnica L-7 para '{unit.InventoryNumber}' registrada exitosamente.");
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                if (plan != null)
+                {
+                    plan.RequestId = request.Id;
+                    plan.CurrentPhase = WizardPhase.Maintenance;
+                    plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            TempData.Success($"Solicitud técnica L-7 registrada exitosamente.");
+
+            if (isWizard)
+            {
+                // Al ser Wizard, el sistema entiende que ya se cumplió el paso de Solicitud (Paso 2)
+                return RedirectToPage("/Wizard/Index", new { Step = 3, SelectedLabId = Input.LaboratoryId });
+            }
+
             return RedirectToPage("./Index");
         }
 
         private async Task LoadLists()
         {
-            ViewData["FacultyId"] = new SelectList(await _context.Faculties
-                .Where(f => f.Status == GeneralStatus.Activo)
-                .OrderBy(f => f.Name)
-                .ToListAsync(), "Id", "Name");
+            ViewData["FacultyId"] = new SelectList(await _context.Faculties.Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name).ToListAsync(), "Id", "Name");
+            if (Input.FacultyId == 0) ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            if (Input.LaboratoryId == 0) ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+        }
 
-            ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
-            ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+        // Handlers para AJAX (Asegúrate de que existan en tu controlador o aquí)
+        public async Task<JsonResult> OnGetLaboratoriesByFaculty(int facultyId)
+        {
+            var labs = await _context.Laboratories.Where(l => l.FacultyId == facultyId).Select(l => new { id = l.Id, name = l.Name }).ToListAsync();
+            return new JsonResult(labs);
+        }
+
+        public async Task<JsonResult> OnGetUnitsByLab(int laboratoryId)
+        {
+            var units = await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == laboratoryId).Select(u => new { id = u.Id, name = u.Equipment.Name + " (" + u.InventoryNumber + ")" }).ToListAsync();
+            return new JsonResult(units);
         }
     }
 }

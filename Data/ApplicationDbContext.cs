@@ -13,7 +13,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         private readonly ICurrentUserService _currentUserService;
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ICurrentUserService currentUserService)
-            : base(options)
+          : base(options)
         {
             _currentUserService = currentUserService;
         }
@@ -27,7 +27,15 @@ namespace Proyecto_Laboratorios_Univalle.Data
             {
                 if (entry.State == EntityState.Added)
                 {
-                    entry.Entity.CreatedById = userId;
+                    // Solo asignar si el ID es un entero positivo válido (FK de SQL)
+                    if (userId.HasValue && userId.Value > 0)
+                    {
+                        entry.Entity.CreatedById = userId;
+                    }
+                    else
+                    {
+                        entry.Entity.CreatedById = null;
+                    }
                     entry.Entity.CreatedDate = now;
                 }
                 else if (entry.State == EntityState.Modified)
@@ -35,7 +43,14 @@ namespace Proyecto_Laboratorios_Univalle.Data
                     entry.Property(x => x.CreatedDate).IsModified = false;
                     entry.Property(x => x.CreatedById).IsModified = false;
 
-                    entry.Entity.ModifiedById = userId;
+                    if (userId.HasValue && userId.Value > 0)
+                    {
+                        entry.Entity.ModifiedById = userId;
+                    }
+                    else
+                    {
+                        entry.Entity.ModifiedById = null;
+                    }
                     entry.Entity.LastModifiedDate = now;
                 }
             }
@@ -49,20 +64,25 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<Laboratory> Laboratories { get; set; } = null!;
         public DbSet<Country> Countries { get; set; } = null!;
         public DbSet<City> Cities { get; set; } = null!;
-        public DbSet<EquipmentType> EquipmentTypes { get; set; } = null!;
-        public DbSet<MaintenanceType> MaintenanceTypes { get; set; } = null!;
+
         public DbSet<Equipment> Equipments { get; set; } = null!;
         public DbSet<EquipmentUnit> EquipmentUnits { get; set; } = null!;
         public DbSet<EquipmentStateHistory> EquipmentStateHistories { get; set; } = null!;
         public DbSet<Request> Requests { get; set; } = null!;
         public DbSet<Maintenance> Maintenances { get; set; } = null!;
+        public DbSet<Notification> Notifications { get; set; }
         public DbSet<CostDetail> CostDetails { get; set; } = null!;
         public DbSet<MaintenancePlan> MaintenancePlans { get; set; } = null!;
         public DbSet<Verification> Verifications { get; set; } = null!;
-        public DbSet<Loan> Loans { get; set; } = null!;
+        public DbSet<Departure> Departures { get; set; } = null!;
         public DbSet<Intern> Interns { get; set; } = null!;
         public DbSet<Extern> Externs { get; set; } = null!;
         public DbSet<Career> Careers { get; set; } = null!;
+        public DbSet<Management> Managements { get; set; } = null!;
+        public DbSet<ManagementPlan> ManagementPlans { get; set; } = null!;
+        public DbSet<MaintenanceTask> MaintenanceTasks { get; set; } = null!;
+        
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -108,23 +128,23 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Maintenance>().HasQueryFilter(m => m.Status != MaintenanceStatus.Cancelled);
             modelBuilder.Entity<Request>().HasQueryFilter(s => s.Status != RequestStatus.Cancelled);
             modelBuilder.Entity<Verification>().HasQueryFilter(v => v.Status != VerificationStatus.Annulled);
-            modelBuilder.Entity<Loan>().HasQueryFilter(l => l.Status != LoanStatus.Cancelled);
+            modelBuilder.Entity<Departure>().HasQueryFilter(l => l.Status != LoanStatus.Cancelled);
             modelBuilder.Entity<Career>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
 
-            // Relationships
-            modelBuilder.Entity<City>().HasOne(c => c.Country).WithMany(p => p.Cities).OnDelete(DeleteBehavior.Restrict);
+            // Relationships
+            modelBuilder.Entity<City>().HasOne(c => c.Country).WithMany(p => p.Cities).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Laboratory>().HasOne(l => l.Faculty).WithMany(f => f.Laboratories).OnDelete(DeleteBehavior.Restrict);
 
-            // CORRECCI�N: Se elimin� la relaci�n Equipment -> EquipmentType porque ahora se usa Enum Category
+            // CORRECCIÓN: Se eliminó la relación Equipment -> EquipmentType porque ahora se usa Enum Category
             modelBuilder.Entity<Equipment>().HasOne(e => e.Country).WithMany(c => c.Equipments).HasForeignKey(e => e.CountryId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.City).WithMany(c => c.Equipments).HasForeignKey(e => e.CityId).OnDelete(DeleteBehavior.Restrict);
 
             // EquipmentUnit Relationships
-            modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Laboratory).WithMany(l => l.EquipmentUnits).HasForeignKey(u => u.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Laboratory).WithMany(l => l.EquipmentUnits).HasForeignKey(u => u.LaboratoryId).OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<EquipmentStateHistory>().HasOne(ee => ee.EquipmentUnit).WithMany(e => e.StateHistory).HasForeignKey(ee => ee.EquipmentUnitId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<Maintenance>().HasOne(m => m.EquipmentUnit).WithMany(e => e.Maintenances).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<Maintenance>().HasOne(m => m.MaintenanceType).WithMany(t => t.Maintenances).OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<Maintenance>().HasOne(m => m.Request).WithOne(s => s.Maintenance).HasForeignKey<Maintenance>(m => m.RequestId).OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<CostDetail>().HasOne(d => d.Maintenance).WithMany(m => m.CostDetails).HasForeignKey(d => d.MaintenanceId).OnDelete(DeleteBehavior.Cascade);
@@ -132,13 +152,14 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Request>().HasOne(s => s.Equipment).WithMany().OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Verification>().HasOne(v => v.EquipmentUnit).WithMany(e => e.Verifications).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<MaintenancePlan>().HasOne(p => p.EquipmentUnit).WithMany(e => e.MaintenancePlans).HasForeignKey(p => p.EquipmentUnitId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<MaintenanceTask>().HasOne(t => t.Maintenance).WithMany(m => m.Tasks).HasForeignKey(t => t.MaintenanceId).OnDelete(DeleteBehavior.Cascade);
 
-            // Loan Relationships
-            modelBuilder.Entity<Loan>().HasOne(l => l.EquipmentUnit).WithMany(u => u.Loans).HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<Loan>().HasOne(l => l.Borrower).WithMany(p => p.Loans).HasForeignKey(l => l.BorrowerId).OnDelete(DeleteBehavior.Restrict);
+            // Departure Relationships
+            modelBuilder.Entity<Departure>().HasOne(l => l.EquipmentUnit).WithMany(u => u.Departures).HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Departure>().HasOne(l => l.Borrower).WithMany(p => p.Departures).HasForeignKey(l => l.BorrowerId).OnDelete(DeleteBehavior.Restrict);
 
-            // Audit relationships
-            modelBuilder.Entity<Laboratory>().HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            // Audit relationships
+            modelBuilder.Entity<Laboratory>().HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.CreatedBy).WithMany().HasForeignKey(u => u.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Equipment).WithMany(e => e.Units).HasForeignKey(u => u.EquipmentId).OnDelete(DeleteBehavior.Restrict);
@@ -147,8 +168,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Career>().HasOne(c => c.Facultad).WithMany().HasForeignKey(c => c.FacultadId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Career>().HasOne(c => c.CreatedBy).WithMany().HasForeignKey(c => c.CreatedById).OnDelete(DeleteBehavior.Restrict);
 
-            // Inheritance TPT (Table Per Type)
-            modelBuilder.Entity<Person>().ToTable("People");
+            // Inheritance TPT (Table Per Type)
+            modelBuilder.Entity<Person>().ToTable("People");
             modelBuilder.Entity<Intern>().ToTable("Interns");
             modelBuilder.Entity<Extern>().ToTable("Externs");
         }

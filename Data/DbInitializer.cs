@@ -14,8 +14,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             var userManager = serviceProvider.GetRequiredService<UserManager<User>>();
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
 
-            // 1. Asegurar que la base de datos esté migrada
-            await context.Database.MigrateAsync();
+            // 1. (Omitido) La migración se maneja en Program.cs
 
             // 2. Crear Roles si no existen
             string[] roles = { AuthorizationHelper.RoleSupervisor, AuthorizationHelper.RoleAdministrator, AuthorizationHelper.RoleSuperAdmin };

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -36,7 +36,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             [Required(ErrorMessage = "El tipo de mantenimiento es obligatorio")]
             [Display(Name = "Tipo de Servicio")]
-            public int MaintenanceTypeId { get; set; }
+            public MaintenanceType MaintenanceType { get; set; }
 
             [Display(Name = "Técnico Responsable")]
             public int? TechnicianId { get; set; }
@@ -101,7 +101,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             {
                 Id = maintenance.Id,
                 EquipmentUnitId = maintenance.EquipmentUnitId,
-                MaintenanceTypeId = maintenance.MaintenanceTypeId,
+                MaintenanceType = maintenance.MaintenanceType,
                 TechnicianId = maintenance.TechnicianId,
                 ScheduledDate = maintenance.ScheduledDate,
                 StartDate = maintenance.StartDate,
@@ -167,7 +167,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             if (maintenanceDB == null) return NotFound();
 
             maintenanceDB.EquipmentUnitId = Input.EquipmentUnitId;
-            maintenanceDB.MaintenanceTypeId = Input.MaintenanceTypeId;
+            maintenanceDB.MaintenanceType = Input.MaintenanceType;
             maintenanceDB.TechnicianId = Input.TechnicianId;
             maintenanceDB.ScheduledDate = Input.ScheduledDate;
             maintenanceDB.StartDate = Input.StartDate;
@@ -259,7 +259,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .ToList();
 
             ViewData["TechnicianId"] = new SelectList(tecnicos, "Id", "FullName");
-            ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes.OrderBy(mt => mt.Name), "Id", "Name");
+            ViewData["TechnicianId"] = new SelectList(tecnicos, "Id", "FullName");
 
             var requests = _context.Requests
                 .Include(r => r.Laboratory)

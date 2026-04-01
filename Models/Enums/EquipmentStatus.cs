@@ -1,3 +1,4 @@
+using DocumentFormat.OpenXml.Wordprocessing;
 using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Models.Enums
@@ -21,6 +22,9 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
 
         [Display(Name = "Desmantelado")]
         Dismantled = 4,
+
+        [Display(Name = "Averiado")]
+        Broken = 6,
 
         [Display(Name = "En Préstamo")]
         OnLoan = 10,

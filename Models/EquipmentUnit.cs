@@ -19,9 +19,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // LOCATION & ORIGIN (Verificación por Laboratorio)
         // ========================================
-        [Required(ErrorMessage = "El laboratorio es obligatorio para la verificación")]
         [Display(Name = "Laboratorio Asignado")]
-        public int LaboratoryId { get; set; } // Cambio: Ahora es obligatorio (sin ?)
+        public int? LaboratoryId { get; set; } 
 
 
         // ========================================
@@ -104,7 +103,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual ICollection<Maintenance>? Maintenances { get; set; }
         public virtual ICollection<Verification>? Verifications { get; set; }
         public virtual ICollection<MaintenancePlan>? MaintenancePlans { get; set; }
-        public virtual ICollection<Loan>? Loans { get; set; }
+        public virtual ICollection<Departure>? Departures { get; set; }
 
         // Calculated Properties
         [NotMapped]

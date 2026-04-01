@@ -71,5 +71,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("AssignedTechnicianId")]
         public virtual User? Technician { get; set; }
+
+        [StringLength(200)]
+        [Display(Name = "Proveedor / Ejecutor")]
+        public string? ProviderSnapshot { get; set; }
     }
 }

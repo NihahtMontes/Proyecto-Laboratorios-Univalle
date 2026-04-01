@@ -1,0 +1,78 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Departures.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@{
+    ViewData["Title"] = "Salidas de Equipos (L-3)";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Control de Salidas de Equipos</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Préstamos y salidas por mantenimiento externo (L-3).</h6>
+                    </div>
+                    <div class="ml-auto mt-3">
+                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                            <i class="fas fa-plus-circle mr-1 text-warning"></i> Nueva Salida
+                        </a>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="border-top-0">Equipo</th>
+                                <th class="border-top-0">Responsable</th>
+                                <th class="border-top-0 text-center">Tipo</th>
+                                <th class="border-top-0 text-center">Fecha Salida</th>
+                                <th class="border-top-0 text-center">Retorno Est.</th>
+                                <th class="border-top-0 text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.Departures.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
+                                        No hay salidas registradas.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var item in Model.Departures)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</div>
+                                            <small class="text-muted">Inv: @item.EquipmentUnit?.InventoryNumber</small>
+                                        </td>
+                                        <td>@item.Borrower?.FullName</td>
+                                        <td class="text-center">
+                                            <span class="badge @(item.Type == DepartureType.ExternalMaintenance ? "badge-info" : "badge-secondary") px-3 py-1">
+                                                @item.Type.ToString()
+                                            </span>
+                                        </td>
+                                        <td class="text-center">@item.DepartureDate.ToString("dd/MM/yyyy")</td>
+                                        <td class="text-center">@item.EstimatedReturnDate.ToString("dd/MM/yyyy")</td>
+                                        <td class="text-center">
+                                            <span class="badge @(item.Status == LoanStatus.Active ? "badge-warning" : "badge-success") px-3 py-1">
+                                                @(item.Status == LoanStatus.Active ? "ACTIVO" : "DEVUELTO")
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

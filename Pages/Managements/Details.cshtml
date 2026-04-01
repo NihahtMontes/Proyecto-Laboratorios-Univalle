@@ -1,0 +1,293 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Managements.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@using System.Text.Json
+@{
+    ViewData["Title"] = $"Dashboard Gestión {Model.Management.Year}-{Model.Management.Semester}";
+    var isManagementActive = Model.Management.Status == ManagementStatus.Active;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/tailwind-dashboard.css" asp-append-version="true" />
+    <style>
+        .tailwind-scope { text-align: left; }
+        .tailwind-scope a:hover { text-decoration: none; }
+    </style>
+}
+
+<div class="tailwind-scope p-6 max-w-[1600px] mx-auto space-y-6">
+  
+  <!-- Header / Breadcrumb Clone -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+    <div>
+      <div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+          <a asp-page="./Index" class="hover:text-slate-600">Gestiones L-48</a>
+          <i class="fas fa-chevron-right text-[8px]"></i>
+          <span>Detalle de Período</span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center">
+        Planificación @Model.Management.Year - Semestre @(Model.Management.Semester == 1 ? "I" : "II")
+        <div class="ml-4">
+            @{
+                var badgeColor = Model.Management.Status == ManagementStatus.Active ? "bg-green-100 text-green-700 border-green-200" :
+                                Model.Management.Status == ManagementStatus.Completed ? "bg-red-100 text-red-700 border-red-200" :
+                                "bg-slate-100 text-slate-600 border-slate-200";
+                var statusText = Model.Management.Status.ToString().ToUpper();
+            }
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold @badgeColor border uppercase">
+                @statusText
+            </span>
+        </div>
+      </h1>
+      <p class="text-slate-500 text-sm mt-1">
+          @(string.IsNullOrEmpty(Model.Management.Description) ? "Resumen de indicadores para este período administrativo." : Model.Management.Description)
+      </p>
+    </div>
+    
+    <div class="flex gap-3">
+      @if (isManagementActive)
+      {
+          <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-[#DC3545] text-white hover:bg-red-700 h-10 px-4 text-sm gap-2 shrink-0">
+            <i class="fas fa-exclamation-circle text-xs"></i>
+            <span>Falla Rápida</span>
+          </button>
+          <form method="post" asp-page-handler="SyncEquipments" asp-route-id="@Model.Management.Id" class="inline-flex">
+            <button type="submit" class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 text-sm gap-2 shrink-0">
+              <i class="fas fa-sync-alt text-xs"></i>
+              <span>Sincronizar Equipos</span>
+            </button>
+          </form>
+          <a asp-page="/Wizard/Index" class="inline-flex">
+            <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-slate-900 text-white hover:bg-slate-800 h-10 px-5 text-sm gap-2 shrink-0">
+              <i class="fas fa-play text-xs"></i>
+              <span>Iniciar Ronda (Wizard)</span>
+            </button>
+          </a>
+      }
+      else
+      {
+          <button class="inline-flex items-center justify-center rounded-lg font-medium bg-slate-100 text-slate-400 border border-slate-200 h-10 px-4 text-sm gap-2 cursor-not-allowed" disabled>
+            <i class="fas fa-lock text-xs"></i>
+            <span>Histórico Inmutable</span>
+          </button>
+      }
+    </div>
+  </div>
+
+  <!-- Identical Layout to Dashboard -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Chart: Avance Global -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 flex flex-col items-center justify-center relative">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 self-start w-full text-left">Avance Global</h3>
+      <div class="h-40 w-full relative content-center flex items-center justify-center">
+        <div style="height: 140px; width: 140px;" class="relative">
+            <canvas id="globalProgressChart"></canvas>
+            <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+              <span class="text-2xl font-bold text-slate-800">@Model.Management.CompletionPercentage%</span>
+              <span class="text-[10px] text-slate-400 font-medium uppercase mt-1">Completado</span>
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart: Por Tipo de Equipo -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Por Categoría</h3>
+      <div class="h-40 w-full relative">
+        @if (Model.TopEquipmentTypes.Any()) {
+            <canvas id="typeProgressChart"></canvas>
+        } else {
+            <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
+        }
+      </div>
+    </div>
+
+    <!-- Chart: Avance de Subgrupos -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Por Clasificación</h3>
+      <div class="h-40 w-full relative">
+        @if (Model.TopGroups.Any()) {
+            <canvas id="subgroupsProgressChart"></canvas>
+        } else {
+            <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- LabProgress Section -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 lg:col-span-2">
+      <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-5">Eficiencia por Laboratorio</h3>
+      <div class="space-y-4">
+        @foreach (var lab in Model.TopLaboratories)
+        {
+            <div class="flex items-center gap-4">
+              <span class="w-24 text-sm font-semibold text-slate-700 truncate">@lab.Key</span>
+              <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                <div class="h-full bg-blue-500" style="width: 50%"></div> 
+              </div>
+              <div class="w-12 text-right text-sm font-bold text-slate-800">@lab.Value</div>
+              <div class="w-20 text-right text-xs text-slate-500">equipos</div>
+            </div>
+        }
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-0 flex flex-col">
+      <div class="px-4 py-3 bg-[#DC3545]/10 border-b border-[#DC3545]/20 flex items-center gap-2">
+        <i class="fas fa-exclamation-circle text-[#DC3545]"></i>
+        <h3 class="text-xs font-bold text-red-800 uppercase tracking-wider">Vencidos</h3>
+      </div>
+      <div class="p-4 space-y-3 bg-white">
+        @foreach (var plan in Model.OverduePlans)
+        {
+            <div class="flex justify-between items-start border-b border-slate-50 pb-2">
+              <div>
+                <p class="text-sm font-semibold text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</p>
+                <p class="text-[10px] text-slate-500">@plan.EquipmentUnit?.Laboratory?.Name</p>
+              </div>
+              <span class="text-[10px] font-bold text-[#DC3545] bg-[#DC3545]/10 px-2 py-0.5 rounded-full mt-1">RETRASO</span>
+            </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Table -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-visible mt-6">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white rounded-t-xl">
+        <h2 class="text-lg font-bold text-slate-800">Cronograma Detallado @Model.Management.Code</h2>
+        <div class="text-xs text-slate-500">Responsable: <span class="font-bold text-slate-700">@Model.Management.Responsible</span></div>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-sm whitespace-nowrap m-0 border-0">
+        <thead class="bg-[#F8F9FA] text-slate-500 uppercase font-semibold text-xs tracking-wider border-b-2 border-gray-200">
+          <tr>
+            <th class="px-6 py-4 font-semibold border-0">Equipo</th>
+            <th class="px-6 py-4 font-semibold border-0">Laboratorio</th>
+            <th class="px-6 py-4 font-semibold border-0">Notas</th>
+            <th class="px-6 py-4 font-semibold border-0">Estado</th>
+            <th class="px-6 py-4 font-semibold border-0">Planificado</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100 bg-white">
+            @foreach (var plan in Model.ManagementPlans)
+            {
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="px-6 py-4 border-0">
+                        <div class="font-semibold text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</div>
+                        <div class="text-xs text-slate-400">Inv: @plan.EquipmentUnit?.InventoryNumber</div>
+                    </td>
+                    <td class="px-6 py-4 border-0 text-slate-600">@plan.EquipmentUnit?.Laboratory?.Name</td>
+                    <td class="px-6 py-4 border-0 text-slate-600 italic">
+                        <span class="truncate max-w-[200px] inline-block">@plan.Notes</span>
+                    </td>
+                    <td class="px-6 py-4 border-0">
+                        @{
+                            var badgeClass = plan.PlanStatus == ManagementPlanStatus.Completed ? "bg-green-100 text-green-700 border-green-200" :
+                                            plan.PlanStatus == ManagementPlanStatus.InProgress ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+                                            "bg-red-100 text-red-700 border-red-200";
+                        }
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold @badgeClass border">
+                            @plan.PlanStatus.ToString().ToUpper()
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 border-0 text-slate-600">@plan.PlannedDate?.ToString("dd/MM/yyyy")</td>
+                </tr>
+            }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Global Progress Pie
+            const ctxGlobal = document.getElementById('globalProgressChart').getContext('2d');
+            new Chart(ctxGlobal, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [@Model.Management.CompletionPercentage, @(100 - Model.Management.CompletionPercentage)],
+                        backgroundColor: ['#28A745', '#E2E8F0'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                }
+            });
+
+            // Type Progress Bar
+            @if (Model.TopEquipmentTypes.Any())
+            {
+                <text>
+                const ctxType = document.getElementById('typeProgressChart').getContext('2d');
+                if (ctxType) {
+                    new Chart(ctxType, {
+                        type: 'bar',
+                        data: {
+                            labels: @Html.Raw(JsonSerializer.Serialize(Model.TopEquipmentTypes.Keys)),
+                            datasets: [{
+                                data: @Html.Raw(JsonSerializer.Serialize(Model.TopEquipmentTypes.Values)),
+                                backgroundColor: ['#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'],
+                                borderRadius: 4,
+                                barThickness: 16
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { display: false },
+                                y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } }
+                            },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+                </text>
+            }
+
+            // Subgroups Progress Bar
+            @if (Model.TopGroups.Any())
+            {
+                <text>
+                const ctxSub = document.getElementById('subgroupsProgressChart').getContext('2d');
+                if (ctxSub) {
+                    new Chart(ctxSub, {
+                        type: 'bar',
+                        data: {
+                            labels: @Html.Raw(JsonSerializer.Serialize(Model.TopGroups.Keys)),
+                            datasets: [{
+                                data: @Html.Raw(JsonSerializer.Serialize(Model.TopGroups.Values)),
+                                backgroundColor: ['#10B981', '#F43F5E', '#3B82F6'],
+                                borderRadius: 4,
+                                barThickness: 16
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { display: false },
+                                y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } }
+                            },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+                </text>
+            }
+        });
+    </script>
+}

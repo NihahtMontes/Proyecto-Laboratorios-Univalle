@@ -112,6 +112,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
             EquipmentUnits?.Where(u => u.AcquisitionValue.HasValue)
                            .Sum(u => u.AcquisitionValue ?? 0) ?? 0;
 
-        public int? CityId { get; internal set; }
+        public int? CityId { get; set; }
     }
 }

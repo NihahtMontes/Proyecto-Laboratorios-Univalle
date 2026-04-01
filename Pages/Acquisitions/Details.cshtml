@@ -1,0 +1,217 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <i class="fas fa-exclamation-triangle mr-2"></i> @TempData["Error"]
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Solicitud de Adquisición: #@Model.AcquisitionRequest.Id</h4>
+                        <h6 class="card-subtitle text-muted small">Detalles del requerimiento de compra e inversión.</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-shopping-cart fa-2x text-success opacity-5"></i>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <label class="small text-muted font-weight-bold uppercase mb-1">Unidad vinculada (si aplica)</label>
+                        <div class="p-3 bg-light rounded border-left border-success font-weight-bold text-dark d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-cube mr-2 text-success"></i> @(Model.AcquisitionRequest.Equipment?.Name ?? "Item Especial")
+                                <span class="text-muted font-weight-normal small ml-1">(@(Model.AcquisitionRequest.EquipmentUnit?.InventoryNumber ?? "Nuevo Activo"))</span>
+                            </span>
+                            <span class="badge badge-pill badge-success px-3">@Model.AcquisitionRequest.Equipment?.Category</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="font-weight-bold text-dark mb-3">
+                    <i class="fas fa-file-invoice-dollar mr-2 text-success"></i> <span>Justificación y Datos</span>
+                </h5>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="mb-4">
+                            <label class="control-label font-weight-bold small uppercase text-muted mb-1">Justificación del Pedido</label>
+                            <div class="p-3 bg-white border rounded text-dark" style="min-height: 80px; white-space: pre-wrap;">@Model.AcquisitionRequest.Description</div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="control-label font-weight-bold small uppercase text-success mb-1">Código de Inversión</label>
+                                <div class="p-2 px-3 bg-light rounded border border-success text-dark font-weight-bold">
+                                    <i class="fas fa-barcode mr-2 text-success"></i> @(Model.AcquisitionRequest.InvestmentCode ?? "N/A")
+                                </div>
+                            </div>
+                            <div class="col-md-6 mt-3 mt-md-0">
+                                <label class="control-label font-weight-bold small uppercase text-muted mb-1">Nivel de Prioridad</label>
+                                <div class="p-2 px-3 bg-light rounded border text-dark font-weight-bold">
+                                    @{
+                                        var pIcon = Model.AcquisitionRequest.Priority == RequestPriority.High ? "fa-bolt text-danger" : (Model.AcquisitionRequest.Priority == RequestPriority.Medium ? "fa-info-circle text-warning" : "fa-check-circle text-info");
+                                    }
+                                    <i class="fas @pIcon mr-2"></i> @Model.AcquisitionRequest.Priority
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="control-label font-weight-bold small uppercase text-muted mb-1">Centro de Costos</label>
+                            <div class="p-2 px-3 bg-light rounded border text-dark font-weight-bold">
+                                <i class="fas fa-university mr-2 text-muted"></i> @(Model.AcquisitionRequest.CostCenter ?? "No especificado")
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="control-label font-weight-bold small uppercase text-muted mb-1">Observaciones / Notas</label>
+                            <div class="p-3 bg-light border rounded text-muted small italic">
+                                @(string.IsNullOrEmpty(Model.AcquisitionRequest.Observations) ? "Sin observaciones registradas." : Model.AcquisitionRequest.Observations)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.AcquisitionRequest.CostDetails.Any())
+                {
+                    <div class="mt-4 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="font-weight-bold text-success mb-0 small uppercase"><i class="fas fa-list-ol mr-2"></i> Desglose de Gastos Estimados</h5>
+                        </div>
+                        <div class="table-responsive border rounded bg-white shadow-none">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="bg-light text-muted small uppercase">
+                                    <tr>
+                                        <th class="border-top-0 pl-3">Concepto</th>
+                                        <th class="border-top-0 text-center">Cant.</th>
+                                        <th class="border-top-0 text-right">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @{ decimal grandTotal = 0; }
+                                    @foreach (var item in Model.AcquisitionRequest.CostDetails)
+                                    {
+                                        var subtotal = item.Quantity * item.UnitPrice;
+                                        grandTotal += subtotal;
+                                        <tr>
+                                            <td class="pl-3 font-weight-bold text-dark">@item.Concept</td>
+                                            <td class="text-center font-weight-bold">@item.Quantity.ToString("0.##")</td>
+                                            <td class="text-right pr-3 font-weight-bold text-dark">Bs @subtotal.ToString("N2")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot class="bg-light">
+                                    <tr class="font-weight-bold">
+                                        <td colspan="2" class="text-right text-dark uppercase pr-3 pt-2 pb-2 small">Total Estimado:</td>
+                                        <td class="text-right text-success pr-3 pt-2 pb-2" style="font-size: 1rem;">Bs @grandTotal.ToString("N2")</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+                @if (Model.AcquisitionRequest.Status != RequestStatus.Pending)
+                {
+                    <div class="mt-5 border-top pt-4">
+                        <h5 class="font-weight-bold text-dark mb-3">
+                            <i class="fas fa-check-double mr-2 text-info"></i> Resolución Administrativa
+                        </h5>
+                        @{
+                            var resClass = Model.AcquisitionRequest.Status == RequestStatus.Approved ? "bg-light-success text-success border-success" : "bg-light-danger text-danger border-danger";
+                            var resIcon = Model.AcquisitionRequest.Status == RequestStatus.Approved ? "fa-check-circle" : "fa-times-circle";
+                        }
+                        <div class="p-4 @resClass rounded border-left border-3 shadow-none">
+                            <div class="d-flex align-items-center">
+                                <i class="fas @resIcon fa-2x mr-3"></i>
+                                <div>
+                                    <h6 class="mb-0 font-weight-bold uppercase">Estado: @Model.AcquisitionRequest.Status</h6>
+                                    <small class="opacity-7">Evaluado el @(Model.AcquisitionRequest.ApprovalDate?.ToString("dd/MM/yyyy HH:mm") ?? "-")</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Sidebar Detalles -->
+        <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase"><i class="fas fa-shield-alt mr-2 text-info"></i> Control de Compra</h5>
+                <hr class="border-secondary mb-4" />
+                <div class="mb-3">
+                    <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Identificador Único</label>
+                    <span class="font-weight-bold text-info" style="font-size: 1.1rem;">#ACQ-@Model.AcquisitionRequest.Id.ToString("D5")</span>
+                </div>
+                <div class="mb-0">
+                    <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estatus Actual</label>
+                    @{
+                        var sBadge = Model.AcquisitionRequest.Status == RequestStatus.Approved ? "badge-success" : (Model.AcquisitionRequest.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
+                    }
+                    <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold">@Model.AcquisitionRequest.Status</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Bitácora</h5>
+                <hr />
+                <div class="audit-log">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Solicitado Por</label>
+                        <span class="font-weight-bold text-dark d-block">@(Model.AcquisitionRequest.RequestedBy?.FullName ?? "N/A")</span>
+                        <span class="text-muted small">@Model.AcquisitionRequest.CreatedDate.ToString("dd-MM-yyyy HH:mm")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions mt-4">
+            @if (Model.AcquisitionRequest.Status == RequestStatus.Pending)
+            {
+                <a asp-page="./Edit" asp-route-id="@Model.AcquisitionRequest.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-3">
+                    <i class="fas fa-edit mr-2"></i> Editar Solicitud
+                </a>
+            }
+
+            <a asp-page="./Details" asp-page-handler="DescargarReporte" asp-route-id="@Model.AcquisitionRequest.Id" 
+               class="btn btn-success btn-block btn-rounded shadow-sm font-weight-bold py-2 mb-3">
+                <i class="fas fa-file-download mr-2"></i> Descargar Reporte (Excel)
+            </a>
+
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-5">
+                <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+            </a>
+            
+            <a asp-page="./Delete" asp-route-id="@Model.AcquisitionRequest.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+                <i class="fas fa-trash-alt mr-2"></i> Anular Solicitud
+            </a>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .bg-light-success { background-color: rgba(40, 167, 69, 0.05); }
+        .bg-light-danger { background-color: rgba(220, 53, 69, 0.05); }
+        .opacity-5 { opacity: 0.15; }
+        .italic { font-style: italic; }
+        .border-left-3 { border-left-width: 4px !important; }
+    </style>
+}

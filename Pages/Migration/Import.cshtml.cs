@@ -26,11 +26,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Migration
             using (var scope = _serviceProvider.CreateScope())
             {
                 var scopedContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                // We manually substitute the service for this operation
-                var migrationService = new DataMigrationService(scopedContext);
-                
-                string jsonPath = Path.Combine(Directory.GetCurrentDirectory(), "tmp", "migration_data.json");
-                Message = await migrationService.MigrateFromJsonAsync(jsonPath);
+                Message = "Servicio de migración no disponible durante el periodo de refactorización de modelos.";
             }
             
             return Page();

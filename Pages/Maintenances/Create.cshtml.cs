@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -23,21 +23,62 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             _userManager = userManager;
         }
 
-        public IActionResult OnGet()
+        public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false, int? managementPlanId = null)
         {
             LoadLists();
 
             Input = new InputModel
             {
                 ScheduledDate = DateTime.UtcNow,
-                CostDetails = new List<CostDetail>()
+                CostDetails = new List<CostDetail>(),
+                Tasks = new List<MaintenanceTask>
+                {
+                    new MaintenanceTask { Description = "Limpieza y Desinfección de Componentes" },
+                    new MaintenanceTask { Description = "Calibración y Ajuste de Sistema" },
+                    new MaintenanceTask { Description = "Pruebas de Esfuerzo y Carga Operativa" },
+                    new MaintenanceTask { Description = "Revisión Final de Seguridad y Cierre" }
+                }
             };
+
+            if (equipmentUnitId.HasValue)
+            {
+                var unit = await _context.EquipmentUnits
+                    .Include(u => u.Laboratory)
+                    .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
+
+                if (unit != null)
+                {
+                    Input.EquipmentUnitId = unit.Id;
+                    Input.LaboratoryId = unit.LaboratoryId ?? 0;
+                    Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
+
+                    ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == Input.FacultyId).ToListAsync(), "Id", "Name", Input.LaboratoryId);
+                    ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == Input.LaboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", Input.EquipmentUnitId);
+                }
+            }
+
+            if (managementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans.FindAsync(managementPlanId.Value);
+                if (plan != null && plan.RequestId.HasValue)
+                {
+                    Input.RequestId = plan.RequestId;
+                }
+            }
+
+            ViewData["IsWizard"] = isWizard;
+            ManagementPlanId = managementPlanId;
+
+
 
             return Page();
         }
 
         [BindProperty]
         public InputModel Input { get; set; } = default!;
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementPlanId { get; set; }
 
         public class InputModel
         {
@@ -55,7 +96,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             [Required(ErrorMessage = "El tipo de mantenimiento es obligatorio")]
             [Display(Name = "Tipo de Mantenimiento")]
-            public int MaintenanceTypeId { get; set; }
+            public MaintenanceType MaintenanceType { get; set; } = MaintenanceType.Otros;
 
             [Required(ErrorMessage = "El técnico es obligatorio")]
             [Display(Name = "Técnico Responsable")]
@@ -94,18 +135,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Estado Inicial")]
             public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Scheduled;
 
+            [Display(Name = "Tipo de Servicio")]
+            public ServiceType ServiceType { get; set; } = ServiceType.Internal;
+
             public List<CostDetail> CostDetails { get; set; } = new();
 
-            // --- PROPIEDADES AGREGADAS PARA LOS CHECKBOXES (L-48) ---
             public int CompletionPercentage { get; set; } = 0;
+            public List<MaintenanceTask> Tasks { get; set; } = new();
+            
+            // Legacy steps (to be removed once fully migrated if needed)
             public bool Step1_Cleaning { get; set; } = false;
             public bool Step2_Calibration { get; set; } = false;
             public bool Step3_Testing { get; set; } = false;
             public bool Step4_FinalReview { get; set; } = false;
-            // --------------------------------------------------------
         }
 
-        // AJAX Handlers
         public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
         {
             var labs = await _context.Laboratories
@@ -138,9 +182,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             return new JsonResult(result);
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
-            // technical validations
             if (Input.StartDate.HasValue && Input.EndDate.HasValue)
             {
                 if (Input.EndDate < Input.StartDate)
@@ -157,7 +200,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 ModelState.AddModelError("Input.EquipmentUnitId", "No se puede realizar mantenimiento a un equipo que actualmente está en préstamo.");
             }
 
-            // Sanitize CostDetails
             if (Input.CostDetails != null)
                 Input.CostDetails = Input.CostDetails.Where(d => !string.IsNullOrWhiteSpace(d.Concept)).ToList();
 
@@ -175,7 +217,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 var maintenance = new Maintenance
                 {
                     EquipmentUnitId = Input.EquipmentUnitId,
-                    MaintenanceTypeId = Input.MaintenanceTypeId,
+                    MaintenanceType = Input.MaintenanceType,
                     TechnicianId = Input.TechnicianId,
                     RequestId = Input.RequestId,
                     Description = Input.Description.Clean(),
@@ -189,13 +231,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     CostDetails = Input.CostDetails ?? new(),
                     CreatedDate = DateTime.UtcNow,
 
-                    // --- MAPEO DE DATOS DE LOS CHECKBOXES AL MODELO FINAL ---
                     CompletionPercentage = Input.CompletionPercentage,
-                    Step1_Cleaning = Input.Step1_Cleaning,
-                    Step2_Calibration = Input.Step2_Calibration,
-                    Step3_Testing = Input.Step3_Testing,
-                    Step4_FinalReview = Input.Step4_FinalReview
-                    // --------------------------------------------------------
+                    Tasks = Input.Tasks ?? new()
                 };
 
                 var currentUser = await _userManager.GetUserAsync(User);
@@ -203,10 +240,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 _context.Maintenances.Add(maintenance);
 
-                // Actualizar estado de la unidad física a En Mantenimiento y registrar historial
                 if (equipmentUnit != null && equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
                 {
-                    // 1. Cerrar historial anterior
                     var lastHistory = await _context.EquipmentStateHistories
                         .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
                         .OrderByDescending(h => h.StartDate)
@@ -218,7 +253,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         _context.EquipmentStateHistories.Update(lastHistory);
                     }
 
-                    // 2. Crear nuevo historial
                     var newHistory = new EquipmentStateHistory
                     {
                         EquipmentUnitId = equipmentUnit.Id,
@@ -228,14 +262,44 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     };
                     _context.EquipmentStateHistories.Add(newHistory);
 
-                    // 3. Actualizar estado
                     equipmentUnit.CurrentStatus = EquipmentStatus.UnderMaintenance;
                     _context.EquipmentUnits.Update(equipmentUnit);
                 }
 
                 await _context.SaveChangesAsync();
 
+                var notification = new Notification
+                {
+                    UserId = Input.TechnicianId,
+                    Title = "Nuevo Mantenimiento Asignado",
+                    Message = $"Se le ha asignado el mantenimiento de la unidad {equipmentUnit?.InventoryNumber}.",
+                    ActionUrl = $"/Maintenances/Details?id={maintenance.Id}",
+                    IconClass = "fas fa-wrench text-info",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Notifications.Add(notification);
+                await _context.SaveChangesAsync();
+
                 TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
+
+                if (ManagementPlanId.HasValue)
+                {
+                    var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                    if (plan != null)
+                    {
+                        plan.MaintenanceId = maintenance.Id;
+                        plan.CurrentPhase = WizardPhase.Exit;
+                        plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                        await _context.SaveChangesAsync();
+                        
+                        if (isWizard)
+                        {
+                            return RedirectToPage("/Wizard/Index", new { Step = 4, SelectedLabId = Input.LaboratoryId });
+                        }
+                    }
+                }
 
                 return RedirectToPage("./Index");
             }
@@ -262,7 +326,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .ToList();
             ViewData["TechnicianId"] = new SelectList(technicians, "Id", "FullName");
 
-            ViewData["MaintenanceTypeId"] = new SelectList(_context.MaintenanceTypes.OrderBy(mt => mt.Name), "Id", "Name");
+            ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
+            ViewData["ServiceType"] = EnumHelper.GetStatusSelectList<ServiceType>();
             var requests = _context.Requests
                 .Include(r => r.Laboratory)
                 .OrderByDescending(r => r.CreatedDate)

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace Proyecto_Laboratorios_Univalle.Helpers
 {
@@ -17,6 +17,11 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         public static void Warning(this ITempDataDictionary tempData, string message)
         {
             tempData["WarningMessage"] = message;
+        }
+
+        public static void Info(this ITempDataDictionary tempData, string message)
+        {
+            tempData["InfoMessage"] = message;
         }
     }
 }
