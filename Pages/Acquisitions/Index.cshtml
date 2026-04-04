@@ -21,12 +21,12 @@
 
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de AdquisiciÃ³n (L-12)</h3>
-                        <h6 class="card-subtitle text-muted ml-2">GestiÃ³n de compra de nuevos activos, repuestos e insumos.</h6>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de Adquisición (L-12)</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Gestión de compra de nuevos activos, repuestos e insumos.</h6>
                     </div>
                     <div class="ml-auto mt-3">
                         <a asp-page="Create" class="btn btn-success btn-rounded shadow-sm text-white px-4 font-weight-bold">
-                            <i class="fas fa-cart-plus mr-1"></i> Nueva AdquisiciÃ³n
+                            <i class="fas fa-cart-plus mr-1"></i> Nueva Adquisición
                         </a>
                     </div>
                 </div>
@@ -42,12 +42,12 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="small font-weight-bold text-muted uppercase">BÃºsqueda RÃ¡pida</label>
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
                                 <div class="input-group drop-shadow">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                                     </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Ã�tem, cÃ³digo o solicitante..." />
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Ítem, código o solicitante..." />
                                 </div>
                             </div>
                             <div class="col-md-2">
@@ -88,8 +88,8 @@
                     <table class="table table-hover v-middle">
                         <thead class="thead-light">
                             <tr class="small uppercase font-weight-bold">
-                                <th>Ã�tem / Concepto</th>
-                                <th>UbicaciÃ³n</th>
+                                <th>Ítem / Concepto</th>
+                                <th>Ubicación</th>
                                 <th class="text-center">Prioridad</th>
                                 <th class="text-center">Estado</th>
                                 <th>Solicitante</th>
@@ -102,7 +102,7 @@
                                 <tr>
                                     <td colspan="6" class="text-center py-5 text-muted font-weight-bold">
                                         <i class="fas fa-shopping-basket fa-3x mb-3 d-block opacity-2"></i>
-                                        No se encontraron solicitudes de adquisiciÃ³n registradas.
+                                        No se encontraron solicitudes de adquisición registradas.
                                     </td>
                                 </tr>
                             }
@@ -125,7 +125,7 @@
                                         </td>
                                         <td>
                                             <div class="text-dark font-weight-bold">@item.Laboratory?.Name</div>
-                                            <small class="text-muted">CÃ³d. Inv: @(item.InvestmentCode ?? "-")</small>
+                                            <small class="text-muted">Cód. Inv: @(item.InvestmentCode ?? "-")</small>
                                         </td>
                                         <td class="text-center">
                                             @{
@@ -179,11 +179,11 @@
     <script>
         $(document).ready(function() {
             // ==============================================================
-            // AÃ‘ADIDO: LÃ“GICA DE NOTIFICACIONES LOCALES PARA ADQUISICIONES
+            // AÑADIDO: LÓGICA DE NOTIFICACIONES LOCALES PARA ADQUISICIONES
             // ==============================================================
             function loadLocalAcquisitionNotifications() {
-                // Le pasamos el filtro 'AdquisiciÃ³n' a la API
-                $.get('/Api/Notifications?handler=Unread&filter=AdquisiciÃ³n', function(data) {
+                // Le pasamos el filtro 'Adquisición' a la API
+                $.get('/Api/Notifications?handler=Unread&filter=Adquisición', function(data) {
                     const $area = $('#localNotificationsArea');
                     const $list = $('#localNotificationsList');
                     
@@ -219,7 +219,7 @@
             // Ejecutamos al cargar la vista
             loadLocalAcquisitionNotifications();
 
-            // FunciÃ³n para marcar como leÃ­da y desaparecer la alerta
+            // Función para marcar como leída y desaparecer la alerta
             window.markLocalAsRead = function(e, id, url) {
                 $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
                     if (url && url !== 'javascript:void(0)') {
@@ -228,7 +228,7 @@
                         // Ocultamos el cuadro suavemente
                         $(`#local-notif-${id}`).fadeOut(300, function() {
                             $(this).remove();
-                            // Si era la Ãºltima alerta, ocultamos todo el panel principal
+                            // Si era la última alerta, ocultamos todo el panel principal
                             if ($('#localNotificationsList').children().length === 0) {
                                 $('#localNotificationsArea').slideUp();
                             }

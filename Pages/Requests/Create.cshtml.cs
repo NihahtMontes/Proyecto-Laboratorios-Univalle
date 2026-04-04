@@ -8,6 +8,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 {
@@ -16,11 +17,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IManagementContextService _managementContext;
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, 
+            UserManager<User> userManager,
+            IManagementContextService managementContext)
         {
             _context = context;
             _userManager = userManager;
+            _managementContext = managementContext;
         }
 
         public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false)
@@ -43,6 +48,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == Input.FacultyId).ToListAsync(), "Id", "Name", Input.LaboratoryId);
                     ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == Input.LaboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", Input.EquipmentUnitId);
                 }
+            }
+
+            if (isWizard)
+            {
+                Input.Observations = @"1. Desconexión del cable de la alimentación eléctrica para mantenimiento preventivo/correctivo 12 horas antes.
+2. Limpieza y desinfección interna con productos no abrasivos.
+3. Limpieza externa de condensador, serpentín, evaporador y retiro de polvo y grasas adheridas.
+4. Verificación de presión del refrigerante.
+5. Revisión de fugas y/o microfugas en serpentín.
+6. Revisión de formaciones de hielo y condensaciones superficiales no esporádicas.
+7. Control de temperatura y termostatos según norma.
+8. Revisión de puertas y sellos de goma (empaques).
+9. Limpieza de drenajes de deshielo.
+10. Verificación del funcionamiento de ventiladores.
+11. Mantenimiento eléctrico: inspección de cableado, terminales, protecciones eléctricas, etc.
+12. Lubricación de partes móviles.
+13. Mantenimiento con personal externo capacitado.";
             }
 
             ViewData["IsWizard"] = isWizard;
@@ -80,10 +102,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             }
 
             var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
+            var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+            if (currentMgmt == null)
+            {
+                TempData["Warning"] = "No se ha detectado una gestión activa. Debe activar un periodo de gestión o aplicar las migraciones de base de datos para poder registrar solicitudes.";
+                await LoadLists();
+                return Page();
+            }
 
             var request = new Request
             {
                 Type = RequestType.Technical,
+                ManagementId = currentMgmt.Id,
                 LaboratoryId = Input.LaboratoryId,
                 EquipmentId = unit?.EquipmentId ?? 0,
                 EquipmentUnitId = Input.EquipmentUnitId,

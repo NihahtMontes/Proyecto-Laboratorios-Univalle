@@ -17,19 +17,16 @@
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center mb-4">
-                    <div>
-                        <h4 class="card-title text-dark font-weight-bold">Paso 1: Lista de Verificación Técnica (L6)</h4>
-                        <h6 class="card-subtitle text-muted">Protocolo de inspección de estado operativo de equipos.</h6>
+                    <div class="w-100 mr-4">
+                        <h4 class="card-title text-dark font-weight-bold m-0">Paso 1: Lista de Verificación Técnica (L6)</h4>
+                        <div class="d-flex justify-content-between align-items-end mt-1">
+                            <h6 class="card-subtitle text-muted mb-0">Protocolo de inspección de estado operativo de equipos.</h6>
+                            <span class="text-info font-weight-bold small"><i class="fas fa-chart-line mr-1"></i>Avance: <span id="percentText">0%</span></span>
+                        </div>
+                        <div class="progress mt-2" style="height: 8px; border-radius: 4px; background-color: #f0f0f0;">
+                            <div id="checkProgress" class="progress-bar bg-info" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
                     </div>
-                    <div class="ml-auto">
-                        <button type="button" class="btn btn-outline-success btn-sm btn-rounded font-weight-bold shadow-sm" onclick="markAllGood()">
-                            <i class="fas fa-check-double mr-1"></i> Marcar Todo OK
-                        </button>
-                    </div>
-                </div>
-
-                <div class="progress mb-4" style="height: 6px;">
-                    <div id="checkProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
                 </div>
 
                 <form method="post" id="verificationForm">
@@ -38,7 +35,8 @@
 
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
 
-                    <div class="bg-light p-4 rounded mb-4 border-left border-info border-3">
+                    @* Selección de equipo *@
+                    <div class="bg-light p-4 rounded mb-4 border-left border-info border-3 shadow-none" style="border-width: 4px !important;">
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group mb-0">
@@ -67,44 +65,54 @@
                         </div>
                     </div>
 
+                    @* CHECKLIST DINÁMICA CON CHECKBOXES *@
+                    @{
+                        var grouped = Model.CheckItems
+                            .GroupBy(c => c.Category ?? "General")
+                            .OrderBy(g => g.Min(c => c.Order));
+                    }
+
                     <div class="row">
-                        <div class="col-md-6">
-                            <div class="card border border-light bg-white shadow-sm mb-4">
-                                <div class="card-header bg-white font-weight-bold text-info">Sistema de Combustión y Fluidos</div>
-                                <div class="card-body pt-2">
-                                    @foreach (var property in new[] { "GasHoseCheck", "WaterHoseCheck", "SolenoidValveCheck", "BurnerCheck", "FlameSensorCheck", "CombustionFlameCheck", "ElectrodeIgniterCheck" })
-                                    {
-                                        <div class="row align-items-center py-2 border-bottom check-item">
-                                            <div class="col-8"><label class="mb-0 small font-weight-bold text-dark">@property</label></div>
-                                            <div class="col-4">
-                                                <select name="Input.@property" class="form-control custom-select verifier border-0 bg-light" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
+                        @foreach (var group in grouped)
+                        {
+                            <div class="col-md-6">
+                                <div class="card border border-light bg-white shadow-sm mb-4">
+                                    <div class="card-header bg-white font-weight-bold text-info border-bottom d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-check-circle mr-2"></i>@group.Key</span>
+                                        <button type="button" class="btn btn-link p-0 text-success font-weight-bold text-xs-premium" onclick="markGroupDone(this)">Marcar Grupo</button>
+                                    </div>
+                                    <div class="card-body pt-2 pb-0">
+                                        @foreach (var item in group.OrderBy(c => c.Order))
+                                        {
+                                            <div class="row align-items-center py-2 border-bottom check-item hover:bg-slate-50 transition-all duration-200">
+                                                <div class="col-1 text-muted small font-weight-bold">@item.Order.</div>
+                                                <div class="col-9">
+                                                    <label class="mb-0 small font-weight-bold text-dark cursor-pointer" for="chk_@item.Id">@item.Name</label>
+                                                </div>
+                                                <div class="col-2 text-right">
+                                                    <div class="custom-control custom-checkbox custom-control-inline m-0">
+                                                        <input type="checkbox" name="Input.Results[@item.Id]" value="Completed" 
+                                                               class="custom-control-input verifier" id="chk_@item.Id">
+                                                        <label class="custom-control-label" for="chk_@item.Id"></label>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    }
+                                        }
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card border border-light bg-white shadow-sm mb-4">
-                                <div class="card-header bg-white font-weight-bold text-info">Eléctrico y Control</div>
-                                <div class="card-body pt-2">
-                                    @foreach (var property in new[] { "CablingCheck", "TemperatureControlCheck", "LedDisplayCheck", "LightsCheck", "SoundAlarmCheck", "ThermocoupleCheck" })
-                                    {
-                                        <div class="row align-items-center py-2 border-bottom check-item">
-                                            <div class="col-8"><label class="mb-0 small font-weight-bold text-dark">@property</label></div>
-                                            <div class="col-4">
-                                                <select name="Input.@property" class="form-control custom-select verifier border-0 bg-light" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
+                        }
                     </div>
 
+                    @* OBSERVACIONES *@
                     <div class="row mb-3">
-                        <div class="col-md-6"><label asp-for="Input.CriticalFindings" class="font-weight-bold small uppercase text-danger">Hallazgos Críticos</label><textarea asp-for="Input.CriticalFindings" class="form-control border-danger" rows="3"></textarea></div>
-                        <div class="col-md-6"><label asp-for="Input.Recommendations" class="font-weight-bold small uppercase text-success">Recomendaciones</label><textarea asp-for="Input.Recommendations" class="form-control border-success" rows="3"></textarea></div>
+                        <div class="col-12">
+                            <label asp-for="Input.Observations" class="font-weight-bold small uppercase text-danger">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>OBSERVACIONES (FALLAS O PROBLEMAS DEL EQUIPO)
+                            </label>
+                            <textarea asp-for="Input.Observations" class="form-control border-danger" rows="3"
+                                      placeholder="Describa aquí las fallas o problemas encontrados durante la inspección..."></textarea>
+                        </div>
                     </div>
 
                     <div class="d-flex align-items-center bg-light p-4 rounded mt-2">
@@ -113,7 +121,9 @@
                             <select asp-for="Input.Status" class="form-control custom-select font-weight-bold" asp-items="Html.GetEnumSelectList<VerificationStatus>()"></select>
                         </div>
                         <div class="ml-auto">
-                            <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">Guardar y Avanzar <i class="fas fa-arrow-right ml-2"></i></button>
+                            <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                                Guardar y Avanzar <i class="fas fa-arrow-right ml-2"></i>
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -128,7 +138,6 @@
         $(document).ready(function () {
             $(".select2").select2({ width: '100%' });
 
-            // Carga de Laboratorios
             $('#facultySelect').on('change', function() {
                 let id = $(this).val();
                 if (!id) {
@@ -142,7 +151,6 @@
                 });
             });
 
-            // Carga de Unidades
             $('#laboratorySelect').on('change', function() {
                 let id = $(this).val();
                 if (!id) return;
@@ -157,12 +165,23 @@
             updateProgress();
         });
 
-        function markAllGood() { $(".verifier").val("1").trigger("change"); }
+        function markGroupDone(btn) {
+            $(btn).closest('.card').find('.verifier').prop('checked', true).trigger('change');
+        }
+
         function updateProgress() {
             var total = $(".verifier").length;
-            var checked = $(".verifier").filter(function () { return $(this).val() != "0"; }).length;
-            var percent = Math.round((checked / total) * 100);
+            var checked = $(".verifier:checked").length;
+            var percent = total > 0 ? Math.round((checked / total) * 100) : 0;
+            
             $("#checkProgress").css("width", percent + "%");
+            $("#percentText").text(percent + "%");
+            
+            if (percent === 100) {
+                $("#checkProgress").addClass("bg-success").removeClass("bg-info");
+            } else {
+                $("#checkProgress").addClass("bg-info").removeClass("bg-success");
+            }
         }
     </script>
 }

@@ -8,6 +8,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
 {
@@ -15,10 +16,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
     public class CreateModel : PageModel
     {
         private readonly ApplicationDbContext _context;
+        private readonly IManagementContextService _managementService;
 
-        public CreateModel(ApplicationDbContext context)
+        public CreateModel(ApplicationDbContext context, IManagementContextService managementService)
         {
             _context = context;
+            _managementService = managementService;
         }
 
         [BindProperty]
@@ -56,7 +59,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             public EquipmentStatus CurrentStatus { get; set; } = EquipmentStatus.Operational;
 
             [Display(Name = "Condición Física")]
-            public PhysicalCondition PhysicalCondition { get; set; } = PhysicalCondition.New;
+            public PhysicalCondition PhysicalCondition { get; set; } = PhysicalCondition.Excellent;
 
             [DataType(DataType.Date)]
             [Display(Name = "Fecha de Adquisición")]
@@ -111,6 +114,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 return Page();
             }
 
+            var currentMgmt = await _managementService.GetCurrentManagementAsync();
+            if (currentMgmt == null)
+            {
+                TempData["Warning"] = "No se ha detectado una gestión activa o el esquema de base de datos no está actualizado. Por favor, asegúrese de aplicar las migraciones o de activar un periodo de gestión para poder registrar activos.";
+                LoadLists();
+                return Page();
+            }
+
             var unit = new EquipmentUnit
             {
                 EquipmentId = Input.EquipmentId!.Value,
@@ -124,7 +135,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 PhysicalCondition = Input.PhysicalCondition,
                 AcquisitionDate = Input.AcquisitionDate,
                 ManufacturingDate = Input.ManufacturingDate,
-                AcquisitionValue = Input.AcquisitionValue
+                AcquisitionValue = Input.AcquisitionValue,
+                ManagementId = currentMgmt.Id
             };
 
             _context.EquipmentUnits.Add(unit);

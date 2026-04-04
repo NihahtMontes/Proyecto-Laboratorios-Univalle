@@ -75,6 +75,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IVerificationReportService, VerificationReportService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IManagementContextService, ManagementContextService>();
 builder.Services.AddScoped<DatabaseErrorHandler>();
 // builder.Services.AddScoped<DataMigrationService>(); // Removido: Mantenimiento de modelos a enums completado.
 

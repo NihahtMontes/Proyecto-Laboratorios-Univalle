@@ -58,14 +58,7 @@
                             <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-map-marker-alt mr-2"></i> Localización Física</h5>
 
                             <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-4">
-                                        <label asp-for="Input.Building" class="control-label font-weight-bold small uppercase text-muted">Edificio / Bloque</label>
-                                        <input asp-for="Input.Building" class="form-control" placeholder="Ej. Bloque Industrial" />
-                                        <span asp-validation-for="Input.Building" class="text-danger small"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <div class="form-group mb-4">
                                         <label asp-for="Input.Floor" class="control-label font-weight-bold small uppercase text-muted">Nivel / Piso</label>
                                         <input asp-for="Input.Floor" class="form-control" placeholder="Ej. Planta Baja" />
@@ -74,11 +67,6 @@
                                 </div>
                             </div>
 
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.Type" class="control-label font-weight-bold small uppercase text-muted">Especialidad Técnica</label>
-                                <input asp-for="Input.Type" class="form-control" placeholder="Ej. Automatización / Biomedicina" />
-                                <span asp-validation-for="Input.Type" class="text-danger small"></span>
-                            </div>
                             
                             <div class="form-group mb-0">
                                 <label asp-for="Input.Description" class="control-label font-weight-bold small uppercase text-muted">Notas de Ambiente</label>
@@ -191,8 +179,6 @@
             // Apply aggressive validation
             setupBlocking('#Input_Name', textPattern);
             setupBlocking('#Input_Code', textPattern);
-            setupBlocking('#Input_Type', textPattern);
-            setupBlocking('#Input_Building', textPattern);
             setupBlocking('#Input_Floor', textPattern);
         });
     </script>

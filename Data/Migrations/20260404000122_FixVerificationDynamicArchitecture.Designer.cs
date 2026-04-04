@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Proyecto_Laboratorios_Univalle.Data;
 
 #nullable disable
 
-namespace Proyecto_Laboratorios_Univalle.Migrations
+namespace Proyecto_Laboratorios_Univalle.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260404000122_FixVerificationDynamicArchitecture")]
+    partial class FixVerificationDynamicArchitecture
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -391,9 +394,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<DateTime?>("LastModifiedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("ManagementId")
-                        .HasColumnType("int");
-
                     b.Property<int?>("ModifiedById")
                         .HasColumnType("int");
 
@@ -414,8 +414,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("CreatedById");
 
                     b.HasIndex("EquipmentUnitId");
-
-                    b.HasIndex("ManagementId");
 
                     b.HasIndex("ModifiedById");
 
@@ -586,9 +584,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<DateTime?>("LastModifiedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("ManagementId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("ManufacturingDate")
                         .HasColumnType("datetime2");
 
@@ -619,8 +614,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasFilter("[CurrentStatus] != 99");
 
                     b.HasIndex("LaboratoryId");
-
-                    b.HasIndex("ManagementId");
 
                     b.HasIndex("ModifiedById");
 
@@ -682,6 +675,10 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Building")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int?>("CityId")
                         .HasColumnType("int");
 
@@ -722,6 +719,10 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -781,9 +782,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<int>("MaintenanceType")
                         .HasColumnType("int");
 
-                    b.Property<int>("ManagementId")
-                        .HasColumnType("int");
-
                     b.Property<int?>("ModifiedById")
                         .HasColumnType("int");
 
@@ -838,8 +836,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("CreatedById");
 
                     b.HasIndex("EquipmentUnitId");
-
-                    b.HasIndex("ManagementId");
 
                     b.HasIndex("ModifiedById");
 
@@ -1234,9 +1230,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<DateTime?>("LastModifiedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("ManagementId")
-                        .HasColumnType("int");
-
                     b.Property<int?>("ModifiedById")
                         .HasColumnType("int");
 
@@ -1273,8 +1266,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("EquipmentUnitId");
 
                     b.HasIndex("LaboratoryId");
-
-                    b.HasIndex("ManagementId");
 
                     b.HasIndex("ModifiedById");
 
@@ -1435,9 +1426,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Property<DateTime?>("LastModifiedDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("ManagementId")
-                        .HasColumnType("int");
-
                     b.Property<int?>("ModifiedById")
                         .HasColumnType("int");
 
@@ -1457,8 +1445,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("CreatedById");
 
                     b.HasIndex("EquipmentUnitId");
-
-                    b.HasIndex("ManagementId");
 
                     b.HasIndex("ModifiedById");
 
@@ -1498,7 +1484,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                             Id = 1,
                             Category = "Seguridad",
                             IsActive = true,
-                            Name = "Desconexión del cable de la alimentación eléctrica para mantenimiento preventivo/correctivo 12 horas antes.",
+                            Name = "Desconexion del cable de alimentacion electrica para mantenimiento 12 horas antes",
                             Order = 1
                         },
                         new
@@ -1506,7 +1492,7 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                             Id = 2,
                             Category = "Higiene",
                             IsActive = true,
-                            Name = "Limpieza y desinfección interna con productos no abrasivos.",
+                            Name = "Limpieza y desinfeccion interna con productos no abrasivos",
                             Order = 2
                         },
                         new
@@ -1514,31 +1500,31 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                             Id = 3,
                             Category = "Higiene",
                             IsActive = true,
-                            Name = "Limpieza externa de condensador, serpentín, evaporador y retiro de polvo y grasas adheridas.",
+                            Name = "Limpieza externa de condensador, serpentin, evaporador y retiro de polvo y grasas",
                             Order = 3
                         },
                         new
                         {
                             Id = 4,
-                            Category = "Refrigeración",
+                            Category = "Refrigeracion",
                             IsActive = true,
-                            Name = "Verificación de presión del refrigerante.",
+                            Name = "Verificacion de presion del refrigerante",
                             Order = 4
                         },
                         new
                         {
                             Id = 5,
-                            Category = "Refrigeración",
+                            Category = "Refrigeracion",
                             IsActive = true,
-                            Name = "Revisión de fugas y/o microfugas en serpentín.",
+                            Name = "Revision de fugas y/o microfugas en serpentin",
                             Order = 5
                         },
                         new
                         {
                             Id = 6,
-                            Category = "Refrigeración",
+                            Category = "Refrigeracion",
                             IsActive = true,
-                            Name = "Revisión de formaciones de hielo y condensaciones superficiales no esporádicas.",
+                            Name = "Revision de formaciones de hielo y condensaciones superficiales no esporadicas",
                             Order = 6
                         },
                         new
@@ -1546,15 +1532,15 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                             Id = 7,
                             Category = "Control",
                             IsActive = true,
-                            Name = "Control de temperatura y termostatos según norma.",
+                            Name = "Control de temperatura y termostatos segun norma",
                             Order = 7
                         },
                         new
                         {
                             Id = 8,
-                            Category = "Mecánica",
+                            Category = "Mecanica",
                             IsActive = true,
-                            Name = "Revisión de puertas y sellos de goma (empaques).",
+                            Name = "Revision de puertas y sellos de goma (empaques)",
                             Order = 8
                         },
                         new
@@ -1562,39 +1548,39 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                             Id = 9,
                             Category = "Higiene",
                             IsActive = true,
-                            Name = "Limpieza de drenajes de deshielo.",
+                            Name = "Limpieza de drenajes de deshielo",
                             Order = 9
                         },
                         new
                         {
                             Id = 10,
-                            Category = "Mecánica",
+                            Category = "Mecanica",
                             IsActive = true,
-                            Name = "Verificación del funcionamiento de ventiladores.",
+                            Name = "Verificacion del funcionamiento de ventiladores",
                             Order = 10
                         },
                         new
                         {
                             Id = 11,
-                            Category = "Eléctrico",
+                            Category = "Electrico",
                             IsActive = true,
-                            Name = "Mantenimiento eléctrico: inspección de cableado, terminales, protecciones eléctricas, etc.",
+                            Name = "Mantenimiento electrico: inspeccion de cableado, terminales, protecciones electricas",
                             Order = 11
                         },
                         new
                         {
                             Id = 12,
-                            Category = "Mecánica",
+                            Category = "Mecanica",
                             IsActive = true,
-                            Name = "Lubricación de partes móviles.",
+                            Name = "Lubricacion de partes moviles",
                             Order = 12
                         },
                         new
                         {
                             Id = 13,
-                            Category = "Gestión",
+                            Category = "Gestion",
                             IsActive = true,
-                            Name = "Mantenimiento con personal externo capacitado.",
+                            Name = "Mantenimiento con personal externo capacitado",
                             Order = 13
                         });
                 });
@@ -1822,12 +1808,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Management", "Management")
-                        .WithMany()
-                        .HasForeignKey("ManagementId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
                         .HasForeignKey("ModifiedById");
@@ -1837,8 +1817,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("EquipmentUnit");
-
-                    b.Navigation("Management");
 
                     b.Navigation("ModifiedBy");
                 });
@@ -1918,12 +1896,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasForeignKey("LaboratoryId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Management", "Management")
-                        .WithMany()
-                        .HasForeignKey("ManagementId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
                         .HasForeignKey("ModifiedById");
@@ -1935,8 +1907,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("Equipment");
 
                     b.Navigation("Laboratory");
-
-                    b.Navigation("Management");
 
                     b.Navigation("ModifiedBy");
                 });
@@ -1992,12 +1962,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Management", "Management")
-                        .WithMany()
-                        .HasForeignKey("ManagementId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
                         .HasForeignKey("ModifiedById");
@@ -2014,8 +1978,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("EquipmentUnit");
-
-                    b.Navigation("Management");
 
                     b.Navigation("ModifiedBy");
 
@@ -2191,12 +2153,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Management", "Management")
-                        .WithMany()
-                        .HasForeignKey("ManagementId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
                         .HasForeignKey("ModifiedById");
@@ -2214,8 +2170,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("EquipmentUnit");
 
                     b.Navigation("Laboratory");
-
-                    b.Navigation("Management");
 
                     b.Navigation("ModifiedBy");
 
@@ -2249,12 +2203,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Management", "Management")
-                        .WithMany()
-                        .HasForeignKey("ManagementId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
                         .HasForeignKey("ModifiedById");
@@ -2262,8 +2210,6 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("EquipmentUnit");
-
-                    b.Navigation("Management");
 
                     b.Navigation("ModifiedBy");
                 });

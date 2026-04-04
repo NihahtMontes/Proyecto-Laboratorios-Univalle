@@ -9,6 +9,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 {
@@ -17,11 +18,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IManagementContextService _managementService;
 
-        public CreateModel(ApplicationDbContext context, UserManager<User> userManager)
+        public CreateModel(ApplicationDbContext context, UserManager<User> userManager, IManagementContextService managementService)
         {
             _context = context;
             _userManager = userManager;
+            _managementService = managementService;
         }
 
         [BindProperty]
@@ -146,7 +149,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     EstimatedReturnDate = Input.EstimatedReturnDate,
                     DepartureObservations = Input.DepartureObservations?.Trim(),
                     Status = LoanStatus.Active,
-                    CreatedDate = DateTime.UtcNow
+                    CreatedDate = DateTime.UtcNow,
+                    ManagementId = (await _managementService.GetCurrentManagementAsync()).Id
                 };
 
                 var currentUser = await _userManager.GetUserAsync(User);
@@ -209,13 +213,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             else
                 ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
 
-            ViewData["BorrowerId"] = new SelectList(
-                await _context.People
-                    .Where(p => p.Status == GeneralStatus.Activo)
-                    .OrderBy(p => p.FullName)
-                    .Select(p => new { p.Id, p.FullName })
-                    .ToListAsync(),
-                "Id", "FullName", Input.BorrowerId);
+            // Fix: FullName is NotMapped and TPT inheritance causes translation issues.
+            // We fetch the data and then evaluate the FullName in memory.
+            var people = await _context.People
+                .Where(p => p.Status == GeneralStatus.Activo)
+                .ToListAsync();
+
+            var borrowerList = people
+                .Select(p => new { 
+                    Id = p.Id, 
+                    Name = p is Intern i ? i.Name : (p is Extern e ? e.Name : "Persona #" + p.Id) 
+                })
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            ViewData["BorrowerId"] = new SelectList(borrowerList, "Id", "Name", Input.BorrowerId);
         }
     }
 }

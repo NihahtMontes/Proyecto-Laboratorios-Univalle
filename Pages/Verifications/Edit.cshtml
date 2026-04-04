@@ -1,381 +1,174 @@
-@page "{id:int}"
-@using Proyecto_Laboratorios_Univalle.Models.Enums
+@page
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Editar Verificación L-6";
+}
 
-
-
-<form method="post" id="editForm">
-    <div class="row">
-        <!-- Header and Top Navigation -->
-        <div class="col-12 mb-4">
-            <div class="d-flex align-items-center justify-content-between p-4 bg-white rounded shadow-sm">
-                <div>
-                    <h4 class="font-weight-bold text-dark mb-1">Editar Verificación #@Model.Verification.Id</h4>
-                    <p class="text-muted mb-0 small">Modo de edición para auditoría técnica de equipos.</p>
-                </div>
-                <div>
-                    <button type="button" class="btn btn-outline-success btn-rounded font-weight-bold shadow-sm" onclick="markAllGood()">
-                        <i class="fas fa-check-double mr-2"></i> Marcar Todo OK
-                    </button>
-                </div>
-            </div>
-            <!-- Discreet Progress Bar -->
-            <div class="progress mt-2" style="height: 4px;">
-                <div id="checkProgress" class="progress-bar bg-warning" role="progressbar" style="width: 0%; transition: width 0.5s ease;"></div>
-            </div>
-        </div>
-
-        <!-- Left Column: Checklist (8 Columns) -->
-        <div class="col-lg-8">
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small mb-4"></div>
-            <input type="hidden" asp-for="Verification.Id" />
-            <input type="hidden" asp-for="Verification.CreatedDate" />
-            <input type="hidden" asp-for="Verification.CreatedById" />
-            <input type="hidden" asp-for="Verification.EquipmentUnitId" />
-
-            <!-- Group 1: Combustion System -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white font-weight-bold text-dark border-bottom pt-3 pb-2">
-                    <i class="fas fa-burn mr-2 text-warning"></i> Sistema de Combustión y Fluidos
-                </div>
-                <div class="card-body pt-0">
-                    <div class="row pt-2">
-                        <!-- Combustion Items -->
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-fire-alt fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.GasHoseCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.GasHoseCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
+<div class="row justify-content-center">
+    <div class="col-lg-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-0">
+                <div class="d-flex align-items-center mb-0">
+                    <div class="icon-box bg-soft-warning text-warning rounded-circle mr-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                        <i class="fas fa-edit fa-lg"></i>
+                    </div>
+                    <div class="w-100 pr-5">
+                        <div class="d-flex justify-content-between align-items-end">
+                            <h4 class="card-title text-dark font-weight-bold mb-0">Editar Verificación Técnica (L-6)</h4>
+                            <span class="text-info font-weight-bold small"><i class="fas fa-chart-line mr-1"></i>Avance: <span id="percentText">0%</span></span>
                         </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-tint fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.WaterHoseCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.WaterHoseCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                         <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-filter fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.SolenoidValveCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.SolenoidValveCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-fire fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.BurnerCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.BurnerCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                         <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-eye fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.FlameSensorCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.FlameSensorCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-fire-extinguisher fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.CombustionFlameCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.CombustionFlameCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-bolt fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.ElectrodeIgniterCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.ElectrodeIgniterCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
+                        <h6 class="card-subtitle text-muted small mt-1">Actualización de puntos de control e inspección.</h6>
+                        <div class="progress mt-2" style="height: 8px; border-radius: 4px; background-color: #f0f0f0;">
+                            <div id="checkProgress" class="progress-bar bg-info" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Group 2: Mechanical System -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white font-weight-bold text-dark border-bottom pt-3 pb-2">
-                    <i class="fas fa-cogs mr-2 text-warning"></i> Mecánica y Térmica
-                </div>
-                <div class="card-body pt-0">
-                    <div class="row pt-2">
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-fan fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.FanCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.FanCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-exchange-alt fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.HeatExchangerCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.HeatExchangerCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-oil-can fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.LubricationCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.LubricationCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                         <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-cloud fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.SteamOutletCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.SteamOutletCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                         <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-thermometer-full fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.HighTempSteamCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.HighTempSteamCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Group 3: Electrical System -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white font-weight-bold text-dark border-bottom pt-3 pb-2">
-                    <i class="fas fa-plug mr-2 text-warning"></i> Eléctrico y Control
-                </div>
-                <div class="card-body pt-0">
-                    <div class="row pt-2">
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-network-wired fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.CablingCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.CablingCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-temperature-high fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.TemperatureControlCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.TemperatureControlCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-digital-tachograph fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.LedDisplayCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.LedDisplayCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                         <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="far fa-lightbulb fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.LightsCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.LightsCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                         <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-volume-up fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.SoundAlarmCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.SoundAlarmCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-microchip fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.ThermocoupleCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.ThermocoupleCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                         <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-power-off fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.OvenIgnitionCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.OvenIgnitionCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Group 4: Hygiene System -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white font-weight-bold text-dark border-bottom pt-3 pb-2">
-                    <i class="fas fa-broom mr-2 text-warning"></i> Estética e Higiene
-                </div>
-                <div class="card-body pt-0">
-                    <div class="row pt-2">
-                         <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-box-open fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.InternalCleaningCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.InternalCleaningCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 mb-3">
-                            <div class="d-flex align-items-center bg-light rounded p-2 border-hover">
-                                <div class="mr-3 text-muted pl-2 text-center icon-width"><i class="fas fa-box fa-lg"></i></div>
-                                <div class="flex-grow-1 pr-2">
-                                    <label asp-for="Verification.ExternalCleaningCheck" class="mb-0 small font-weight-bold text-dark d-block text-truncate"></label>
-                                    <select asp-for="Verification.ExternalCleaningCheck" class="form-control custom-select verifier border-0 bg-transparent p-0 mt-1 small font-weight-bold text-muted h-auto" asp-items="Html.GetEnumSelectList<VerificationResult>()"></select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Column: Control Panel (4 Columns) -->
-        <div class="col-lg-4">
-            <!-- Equipment Information -->
-            <div class="card shadow-sm border-0 mb-4 bg-white border-left-info">
-                <div class="card-body">
-                    <h6 class="text-uppercase text-muted font-weight-bold small mb-2">Equipo en Revisión</h6>
-                    <h5 class="text-dark font-weight-bold mb-1">
-                        <i class="fas fa-microscope mr-2 text-info"></i>@Model.Verification.EquipmentUnit?.Equipment?.Name
-                    </h5>
-                    <span class="badge badge-light border">Inv: @Model.Verification.EquipmentUnit?.InventoryNumber</span>
+            
+            <div class="card-body p-4">
+                <form method="post">
+                    <input type="hidden" asp-for="Input.Id" />
                     
-                    <hr class="my-3"/>
-                    
-                    <div class="form-group mb-0">
-                        <label asp-for="Verification.Date" class="control-label font-weight-bold small uppercase text-muted">Fecha Inspección</label>
-                        <input asp-for="Verification.Date" class="form-control bg-light border-0" type="date" />
-                    </div>
-                </div>
-            </div>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small mb-4"></div>
 
-            <!-- Conclusions and Results -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white font-weight-bold border-bottom-0 pb-0">
-                    Resoluciones
-                </div>
-                <div class="card-body">
-                    <div class="form-group">
-                        <label asp-for="Verification.CriticalFindings" class="font-weight-bold small uppercase text-danger">Hallazgos Críticos</label>
-                        <textarea asp-for="Verification.CriticalFindings" class="form-control border-danger bg-soft-danger" rows="3" placeholder="Describa fallos graves..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label asp-for="Verification.Recommendations" class="font-weight-bold small uppercase text-success">Recomendaciones</label>
-                        <textarea asp-for="Verification.Recommendations" class="form-control border-success bg-soft-success" rows="3" placeholder="Sugerencias..."></textarea>
-                    </div>
-                    <div class="form-group mb-0">
-                        <label asp-for="Verification.Observations" class="font-weight-bold small uppercase text-muted">Observaciones Formulario</label>
-                        <textarea asp-for="Verification.Observations" class="form-control bg-light" rows="2"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Form Actions -->
-            <div class="card shadow-lg border-0 bg-gradient-light">
-                <div class="card-body">
-                    <div class="form-group mb-4">
-                        <label asp-for="Verification.Status" class="font-weight-bold small uppercase text-dark">Dictamen Final</label>
-                        <select asp-for="Verification.Status" class="form-control custom-select font-weight-bold text-dark border-dark h-auto py-2" asp-items="Html.GetEnumSelectList<VerificationStatus>()"></select>
+                    @* Metadata Card *@
+                    <div class="bg-light p-4 rounded mb-4 border-left border-warning border-3 shadow-none" style="border-width: 4px !important;">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.EquipmentUnitId" class="font-weight-bold small uppercase text-muted">Unidad Física Inspeccionada</label>
+                                    <select asp-for="Input.EquipmentUnitId" class="form-control select2 shadow-sm" asp-items="ViewBag.EquipmentUnitId">
+                                        <option value="">-- Seleccionar Unidad --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.Date" class="font-weight-bold small uppercase text-muted">Fecha Inspección</label>
+                                    <input asp-for="Input.Date" class="form-control shadow-sm" type="date" />
+                                    <span asp-validation-for="Input.Date" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.Status" class="font-weight-bold small uppercase text-muted">Estado Reporte</label>
+                                    <select asp-for="Input.Status" class="form-control custom-select shadow-sm font-weight-bold" asp-items="Html.GetEnumSelectList<VerificationStatus>()"></select>
+                                    <span asp-validation-for="Input.Status" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <button type="submit" class="btn btn-warning btn-block btn-rounded shadow font-weight-bold py-2 mb-3 text-white">
-                        <i class="fas fa-save mr-2"></i> Guardar Cambios
-                    </button>
-                    <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2">
-                        <i class="fas fa-times mr-2"></i> Cancelar
-                    </a>
-                </div>
+                    @* Checklist Dinámica *@
+                    @{
+                        var grouped = Model.CheckItems
+                            .GroupBy(c => c.Category ?? "General")
+                            .OrderBy(g => g.Min(c => c.Order));
+                    }
+
+                    <div class="row">
+                        @foreach (var group in grouped)
+                        {
+                            <div class="col-md-6 mb-4">
+                                <div class="card border border-light bg-white shadow-sm h-100">
+                                    <div class="card-header bg-white font-weight-bold text-info border-bottom d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-check-circle mr-2"></i> @group.Key</span>
+                                        <button type="button" class="btn btn-link p-0 text-success font-weight-bold text-xs-premium" onclick="markGroupDone(this)">Marcar Grupo</button>
+                                    </div>
+                                    <div class="card-body pt-2 pb-0">
+                                        @foreach (var item in group.OrderBy(c => c.Order))
+                                        {
+                                            var isCompleted = Model.Input.Results.ContainsKey(item.Id) && Model.Input.Results[item.Id] == VerificationResult.Completed;
+
+                                            <div class="row align-items-center py-2 border-bottom check-item hover:bg-slate-50 transition-all">
+                                                <div class="col-1 text-muted small font-weight-bold">@item.Order.</div>
+                                                <div class="col-9">
+                                                    <label class="mb-0 small font-weight-bold text-dark cursor-pointer" for="chk_@item.Id">@item.Name</label>
+                                                </div>
+                                                <div class="col-2 text-right">
+                                                    <div class="custom-control custom-checkbox custom-control-inline m-0">
+                                                        <input type="checkbox" name="Input.Results[@item.Id]" value="Completed" 
+                                                               class="custom-control-input verifier" id="chk_@item.Id" @(isCompleted ? "checked" : "")>
+                                                        <label class="custom-control-label" for="chk_@item.Id"></label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @* Observaciones Unificadas *@
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card shadow-sm border-0 bg-soft-danger">
+                                <div class="card-body p-3">
+                                    <label asp-for="Input.Observations" class="font-weight-bold small uppercase text-danger mb-2">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>Observaciones (Fallas, Hallazgos y Recomendaciones)
+                                    </label>
+                                    <textarea asp-for="Input.Observations" class="form-control border-danger font-weight-bold" rows="4" 
+                                              placeholder="Describa aquí todos los hallazgos técnicos o sugerencias encontradas en vez de las columnas antiguas..."></textarea>
+                                    <span asp-validation-for="Input.Observations" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center bg-light p-4 rounded shadow-sm border">
+                        <a asp-page="./Index" class="btn btn-rounded btn-outline-secondary px-4 font-weight-bold">
+                            <i class="fas fa-arrow-left mr-2"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold">
+                            <i class="fas fa-save mr-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
-</form>
-
-@section Styles {
-    <style>
-        .border-left-info { border-left: 4px solid #17a2b8 !important; }
-        .bg-soft-danger { background-color: #ffebee; }
-        .bg-soft-success { background-color: #e8f5e9; }
-        .border-hover:hover { background-color: #e9ecef !important; cursor: pointer; }
-        .icon-width { width: 25px; }
-    </style>
-}
+</div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
-        $(document).ready(function() {
-            updateProgress();
-            
-            // Monitorizar cambios
-            $(".verifier").on('change', function() {
-                updateColor($(this));
-                updateProgress();
-            });
+        $(document).ready(function () {
+            $(".select2").select2({ width: '100%' });
 
-            // Inicializar colores
-            $(".verifier").each(function() { updateColor($(this)); });
+            $(".verifier").on("change", function () { updateProgress(); });
+            updateProgress();
         });
 
-        function markAllGood() {
-            $(".verifier").val("1").trigger('change');
+        function markGroupDone(btn) {
+            $(btn).closest('.card').find('.verifier').prop('checked', true).trigger('change');
         }
 
         function updateProgress() {
             var total = $(".verifier").length;
-            var checked = $(".verifier").filter(function() { return $(this).val() != "0"; }).length; 
-            var percent = Math.round((checked / total) * 100);
+            var checked = $(".verifier:checked").length;
+            var percent = total > 0 ? Math.round((checked / total) * 100) : 0;
             
             $("#checkProgress").css("width", percent + "%");
+            $("#percentText").text(percent + "%");
             
-            if(percent === 100) $("#checkProgress").removeClass("bg-warning").addClass("bg-success");
-            else $("#checkProgress").removeClass("bg-success").addClass("bg-warning");
-        }
-
-        function updateColor($select) {
-            $select.removeClass("text-success text-danger text-muted font-weight-bold");
-            var val = $select.val();
-            if(val == "1") $select.addClass("text-success font-weight-bold"); 
-            else if(val == "2") $select.addClass("text-danger font-weight-bold"); 
-            else $select.addClass("text-muted"); 
+            if (percent === 100) {
+                $("#checkProgress").addClass("bg-success").removeClass("bg-info");
+            } else {
+                $("#checkProgress").addClass("bg-info").removeClass("bg-success");
+            }
         }
     </script>
+}
+
+@section Styles {
+    <style>
+        .bg-soft-warning { background-color: #fff8e1; }
+        .bg-soft-danger { background-color: #ffebee; }
+        .bg-soft-success { background-color: #e8f5e9; }
+        .select2-container--default .select2-selection--single { border: 1px solid #e2e8f0; border-radius: 8px; }
+        .check-item:hover { background-color: #fafafa; }
+    </style>
 }

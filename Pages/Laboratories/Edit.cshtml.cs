@@ -46,12 +46,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres")]
             public string Name { get; set; } = string.Empty;
 
-            [Display(Name = "Tipo/Especialidad")]
-            public string? Type { get; set; }
-
-            [Display(Name = "Edificio")]
-            public string? Building { get; set; }
-
             [Display(Name = "Piso/Nivel")]
             public string? Floor { get; set; }
 
@@ -83,8 +77,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
                 FacultyId = laboratory.FacultyId,
                 Code = laboratory.Code,
                 Name = laboratory.Name,
-                Type = laboratory.Type,
-                Building = laboratory.Building,
                 Floor = laboratory.Floor,
                 Description = laboratory.Description,
                 Status = laboratory.Status
@@ -145,8 +137,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             laboratory.FacultyId = Input.FacultyId;
             laboratory.Code = normalizedCode;
             laboratory.Name = Input.Name.Clean();
-            laboratory.Type = Input.Type?.Clean();
-            laboratory.Building = Input.Building?.Clean();
             laboratory.Floor = Input.Floor?.Clean();
             laboratory.Description = Input.Description?.Clean();
             laboratory.Status = Input.Status;

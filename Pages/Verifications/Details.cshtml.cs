@@ -36,6 +36,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 .Include(v => v.EquipmentUnit)
                     .ThenInclude(eu => eu.Equipment)
                 .Include(v => v.ModifiedBy)
+                .Include(v => v.CheckResults)
+                    .ThenInclude(r => r.CheckItem)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (verification == null)

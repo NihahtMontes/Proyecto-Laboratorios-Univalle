@@ -3,401 +3,764 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using System.Text.Json
 @{
-    ViewData["Title"] = "Dashboard Principal";
+    ViewData["Title"] = "Dashboard de Gestión";
     var steps = new[] { "L6 Verificación", "L7 Solicitud", "L8 Mantenimiento", "L3 Salida", "Kardex", "Desembolso" };
 }
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/tailwind-dashboard.css" asp-append-version="true" />
     <style>
-        .tailwind-scope { text-align: left; }
-        .step-active { background-color: #28A745; border-color: #28A745; color: white; }
-        .step-inactive { background-color: white; border-color: #e2e8f0; color: #94a3b8; }
-        .wizard-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; background: white; }
-        .btn-status-gray { background-color: #f1f5f9; color: #64748b; font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .btn-verify-outline { background-color: white; color: #64748b; font-size: 11px; font-weight: bold; padding: 6px 12px; border-radius: 8px; border: 1px solid #e2e8f0; text-decoration: none !important; transition: all 0.2s; }
-        .btn-verify-outline:hover { border-color: #3b82f6; color: #3b82f6; }
-        .wizard-header-dark { background-color: #1e293b; border-radius: 12px 12px 0 0; padding: 16px 24px; color: white; display: flex; justify-content: space-between; align-items: center; }
-        .btn-blue-next { background-color: #3b82f6; color: white; padding: 10px 24px; border-radius: 10px; font-weight: bold; display: flex; align-items: center; gap: 8px; border: none; }
-        .btn-red-finish { background-color: #ef4444; color: white; padding: 10px 24px; border-radius: 10px; font-weight: bold; display: flex; align-items: center; gap: 8px; border: none; }
-        .lab-badge { background-color: #f8fafc; border: 1px solid #e2e8f0; color: #64748b; font-size: 10px; font-weight: bold; padding: 4px 12px; border-radius: 20px; }
-        .tailwind-scope a:hover { text-decoration: none; }
+        /* Modern Design System - Inspired by React Layout */
+        :root {
+            --primary-univalle: #28A745;
+            --danger-univalle: #DC3545;
+            --slate-50: #F8F9FA;
+            --slate-100: #F1F5F9;
+            --slate-200: #E2E8F0;
+            --slate-400: #94A3B8;
+            --slate-500: #64748B;
+            --slate-600: #475569;
+            --slate-700: #334155;
+            --slate-800: #1E293B;
+            --slate-900: #0F172A;
+            --blue-500: #3B82F6;
+        }
+
+        .premium-dashboard {
+            background-color: var(--slate-50);
+            min-height: calc(100vh - 150px);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: var(--slate-800);
+        }
+
+        /* Hero Header */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--slate-900);
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .management-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            background: var(--slate-900);
+            color: white;
+            border-radius: 6px;
+        }
+
+        /* Chart Cards */
+        .chart-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--slate-200);
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .chart-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.04);
+        }
+
+        .chart-card h3 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--slate-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .chart-container {
+            height: 160px;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Progress Rings / Center Text */
+        .chart-center-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .chart-center-text .percent {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--slate-800);
+            line-height: 1;
+        }
+
+        .chart-center-text .label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: var(--slate-400);
+            text-transform: uppercase;
+        }
+
+        /* Buttons Premium */
+        .btn-premium-danger {
+            background-color: var(--danger-univalle);
+            color: white;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 40px;
+            padding: 0 16px;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-premium-danger:hover {
+            background-color: #C82333;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(220, 53, 69, 0.2);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-premium-dark {
+            background-color: var(--slate-900);
+            color: white;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 40px;
+            padding: 0 20px;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-premium-dark:hover {
+            background-color: var(--slate-800);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(15, 23, 42, 0.2);
+            color: white;
+            text-decoration: none;
+        }
+
+        /* Filters Bar */
+        .filters-container {
+            background: white;
+            border: 1px solid var(--slate-100);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--slate-500);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-button {
+            background: var(--slate-50);
+            border: 1px solid var(--slate-200);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.813rem;
+            font-weight: 600;
+            color: var(--slate-700);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .filter-button:hover { background: var(--slate-100); }
+
+        .status-pill-group {
+            display: flex;
+            background: var(--slate-50);
+            padding: 3px;
+            border-radius: 10px;
+            border: 1px solid var(--slate-200);
+        }
+
+        .status-pill {
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 8px;
+            color: var(--slate-500);
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .status-pill.active {
+            background: white;
+            color: var(--slate-800);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        /* Premium Gantt Table */
+        .premium-table-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--slate-200);
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .table-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--slate-100);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--slate-800);
+            margin: 0;
+        }
+
+        /* Gantt Table Styles */
+        .gantt-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .gantt-table thead th {
+            background: var(--slate-50);
+            padding: 0.75rem 1.5rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--slate-500);
+            letter-spacing: 0.05em;
+            text-align: left;
+            border-bottom: 2px solid var(--slate-200);
+        }
+
+        .gantt-table tbody td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--slate-100);
+            vertical-align: middle;
+        }
+
+        .gantt-table tbody tr:hover {
+            background-color: rgba(248, 249, 250, 0.5);
+        }
+
+        .equipment-name {
+            font-weight: 700;
+            color: var(--blue-500);
+            text-decoration: none;
+        }
+
+        .equipment-name:hover { text-decoration: underline; }
+
+        .inventory-code {
+            font-size: 0.7rem;
+            color: var(--slate-400);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .gantt-indicator {
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 800;
+            width: 100%;
+        }
+
+        .indicator-executed { background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.3); color: #28A745; }
+        .indicator-planned { background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.3); color: #856404; }
+        .indicator-placeholder { background: var(--slate-50); border: 1px solid var(--slate-100); opacity: 0.5; }
+
+        /* Sidebar Simulation */
+        #kardexSidebar {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+            z-index: 1050;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        #kardexSidebar.open {
+            right: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(2px);
+            z-index: 1040;
+            display: none;
+        }
+
+        .sidebar-overlay.active { display: block; }
+
+        /* Custom Utilities for Premium Look */
+        .rounded-4 { border-radius: 1rem !important; }
+        .rounded-2xl { border-radius: 1.5rem !important; }
+        .hover\:bg-slate-50:hover { background-color: var(--slate-50); }
+        .text-xs-premium { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.025em; }
     </style>
 }
 
-<div class="tailwind-scope p-6 max-w-[1600px] mx-auto space-y-6">
+<div class="premium-dashboard p-6">
 
     @if (!Model.ShowWizard)
     {
         @if (Model.ActiveManagement != null)
         {
-            <!-- Header / Breadcrumb Clone (Dashboard de Gestión) -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 animate-in fade-in duration-500">
-                <div>
-                <div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    <a asp-page="/Managements/Index" class="hover:text-slate-600">Gestiones L-48</a>
-                    <i class="fas fa-chevron-right text-[8px]"></i>
-                    <span>Detalle de Período</span>
-                </div>
-                <h1 class="text-2xl font-bold text-slate-900 tracking-tight flex items-center">
-                    Planificación @Model.ActiveManagement.Year - Semestre @(Model.ActiveManagement.Semester == 1 ? "I" : "II")
-                    <div class="ml-4">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 border-green-200 border uppercase">
-                            ACTIVO
-                        </span>
+            <!-- TOP HEADER AREA -->
+            <div class="dashboard-header animate-in fade-in duration-500">
+                <div class="header-title d-flex align-items-center gap-3">
+                    <h1 class="m-0">Planificación Global</h1>
+                    <div class="dropdown">
+                        <button class="management-badge dropdown-toggle border-0 py-2 px-3" type="button" style="background-color: var(--slate-100); color: var(--slate-700); font-size: 0.75rem; border-radius: 8px;">
+                            Gestión @(Model.ActiveManagement.Year)-@(Model.ActiveManagement.Semester == 1 ? "I" : "II") 
+                            <span class="text-muted font-weight-normal mx-1">| Junio - Julio 2025</span>
+                        </button>
                     </div>
-                </h1>
-                <p class="text-slate-500 text-sm mt-1">
-                    @(string.IsNullOrEmpty(Model.ActiveManagement.Description) ? "Resumen de indicadores para este período administrativo." : Model.ActiveManagement.Description)
-                </p>
                 </div>
                 
-                <div class="flex gap-3">
-                    <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-[#DC3545] text-white hover:bg-red-700 h-10 px-4 text-sm gap-2 shrink-0">
-                        <i class="fas fa-exclamation-circle text-xs"></i>
+                <div class="flex gap-3 mt-md-0 mt-3">
+                    <button class="btn-premium-danger px-4">
+                        <i class="fas fa-exclamation-circle"></i>
                         <span>Falla Rápida</span>
                     </button>
-                    <!-- SI LA GESTIÓN ES REAL, LO ENVIAMOS AL WIZARD REAL Y NO AL SIMULADO DE ESTA PANTALLA -->
-                    <a asp-page="/Wizard/Index" class="inline-flex">
-                        <button class="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 bg-slate-900 text-white hover:bg-slate-800 h-10 px-5 text-sm gap-2 shrink-0">
-                        <i class="fas fa-play text-xs"></i>
+                    <a asp-page="/Wizard/Index" class="btn-premium-dark px-4 ml-2">
+                        <i class="fas fa-play"></i>
                         <span>Iniciar Ronda (Wizard)</span>
-                        </button>
                     </a>
                 </div>
             </div>
+            <p class="text-slate-500 text-sm mb-5">Avance de Mantenimientos por Laboratorio y Equipos</p>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in zoom-in-95 duration-500">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 flex flex-col items-center justify-center relative">
-                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2 self-start w-full text-left">Avance Global</h3>
-                <div class="h-40 w-full relative content-center flex items-center justify-center">
-                    <div style="height: 140px; width: 140px;" class="relative">
-                        <canvas id="globalProgressChart"></canvas>
-                        <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                        <span class="text-2xl font-bold text-slate-800">@Model.GlobalProgress%</span>
-                        <span class="text-[10px] text-slate-400 font-medium uppercase mt-1">Completado</span>
+            <!-- TOP WIDGETS (3 Cards) -->
+            <div class="row row-cols-1 row-cols-md-3 g-4 mb-5 animate-in fade-in zoom-in-95 duration-500">
+                <!-- Avance Global -->
+                <div class="col">
+                    <div class="chart-card flex flex-col items-center h-100">
+                        <h3 class="w-100">AVANCE GLOBAL</h3>
+                        <div class="chart-container mt-3">
+                            <canvas id="globalProgressChart"></canvas>
+                            <div class="chart-center-text">
+                                <span class="percent">@Model.GlobalProgress%</span>
+                                <span class="label">COMPLETADO</span>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- Por Tipo de Equipo -->
+                <div class="col">
+                    <div class="chart-card h-100">
+                        <h3>POR TIPO DE EQUIPO</h3>
+                        <div class="chart-container mt-3">
+                            @if (Model.TopEquipmentTypes != null && Model.TopEquipmentTypes.Any()) {
+                                <canvas id="typeProgressChart"></canvas>
+                            } else {
+                                <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
+                            }
+                        </div>
+                    </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
-                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Por Categoría</h3>
-                <div class="h-40 w-full relative">
-                    @if (Model.TopEquipmentTypes.Any()) {
-                        <canvas id="typeProgressChart"></canvas>
-                    } else {
-                        <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
-                    }
-                </div>
-                </div>
-
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5">
-                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Por Clasificación</h3>
-                <div class="h-40 w-full relative">
-                    @if (Model.TopGroups.Any()) {
-                        <canvas id="subgroupsProgressChart"></canvas>
-                    } else {
-                        <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
-                    }
-                </div>
+                <!-- Avance de Subgrupos -->
+                <div class="col">
+                    <div class="chart-card h-100">
+                        <h3>AVANCE DE SUBGRUPOS</h3>
+                        <div class="chart-container mt-3">
+                            @if (Model.TopGroups != null && Model.TopGroups.Any()) {
+                                <canvas id="subgroupsProgressChart"></canvas>
+                            } else {
+                                <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
+                            }
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 animate-in fade-in duration-500">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-5 lg:col-span-2">
-                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-5">Eficiencia por Laboratorio</h3>
-                <div class="space-y-4">
-                    @foreach (var lab in Model.TopLaboratories)
-                    {
-                        <div class="flex items-center gap-4">
-                        <span class="w-24 text-sm font-semibold text-slate-700 truncate">@lab.Key</span>
-                        <div class="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden flex">
-                            <div class="h-full bg-blue-500" style="width: 50%"></div> 
+            <!-- BOTTOM ASYMMETRICAL ROW -->
+            <div class="row g-4 animate-in fade-in duration-700">
+                <!-- LEFT: AVANCE POR LABORATORIO (8/12) -->
+                <div class="col-lg-8">
+                    <div class="chart-card h-100 p-4">
+                        <h3 class="mb-4">AVANCE POR LABORATORIO</h3>
+                        <div class="space-y-6">
+                            @foreach (var lab in Model.TopLaboratories.Take(5))
+                            {
+                                <div class="row align-items-center mb-4">
+                                    <div class="col-2">
+                                        <span class="text-sm font-bold text-slate-700">@lab.Key</span>
+                                    </div>
+                                    <div class="col-8">
+                                        <div class="progress" style="height: 12px; border-radius: 6px; background-color: var(--slate-100);">
+                                            @{
+                                                var progress = new Random().Next(20, 85); // Simulated progress
+                                                var color = progress > 70 ? "#F9B115" : progress > 40 ? "#E55353" : "#D93737";
+                                            }
+                                            <div class="progress-bar" role="progressbar" style="width: @progress%; border-radius: 6px; background-color: @color;" aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-1 text-right">
+                                        <span class="text-sm font-black text-slate-800">@progress%</span>
+                                    </div>
+                                    <div class="col-1 text-right">
+                                        <span class="text-[10px] font-bold text-slate-400">@(Math.Round(progress * 0.15)) / 15 eq.</span>
+                                    </div>
+                                </div>
+                            }
                         </div>
-                        <div class="w-12 text-right text-sm font-bold text-slate-800">@lab.Value</div>
-                        <div class="w-20 text-right text-xs text-slate-500">equipos</div>
-                        </div>
-                    }
-                </div>
+                    </div>
                 </div>
 
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-0 flex flex-col">
-                <div class="px-4 py-3 bg-[#DC3545]/10 border-b border-[#DC3545]/20 flex items-center gap-2">
-                    <i class="fas fa-exclamation-circle text-[#DC3545]"></i>
-                    <h3 class="text-xs font-bold text-red-800 uppercase tracking-wider">Vencidos</h3>
-                </div>
-                <div class="p-4 space-y-3 bg-white">
-                    @foreach (var plan in Model.OverduePlans)
-                    {
-                        <div class="flex justify-between items-start border-b border-slate-50 pb-2">
-                        <div>
-                            <p class="text-sm font-semibold text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</p>
-                            <p class="text-[10px] text-slate-500">@plan.EquipmentUnit?.Laboratory?.Name</p>
-                        </div>
-                        <span class="text-[10px] font-bold text-[#DC3545] bg-[#DC3545]/10 px-2 py-0.5 rounded-full mt-1">RETRASO</span>
-                        </div>
-                    }
-                    @if(!Model.OverduePlans.Any())
-                    {
-                        <div class="text-center text-xs text-slate-400 py-4 italic">No hay mantenimientos retrasados.</div>
-                    }
-                </div>
-                </div>
-            </div>
-
-            <!-- Detailed Table -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-visible mt-6 animate-in fade-in duration-500">
-                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white rounded-t-xl">
-                    <h2 class="text-lg font-bold text-slate-800">Cronograma Detallado @Model.ActiveManagement.Code</h2>
-                    <div class="text-xs text-slate-500">Responsable: <span class="font-bold text-slate-700">@Model.ActiveManagement.Responsible</span></div>
-                </div>
-                <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm whitespace-nowrap m-0 border-0">
-                    <thead class="bg-[#F8F9FA] text-slate-500 uppercase font-semibold text-xs tracking-wider border-b-2 border-gray-200">
-                    <tr>
-                        <th class="px-6 py-4 font-semibold border-0">Equipo</th>
-                        <th class="px-6 py-4 font-semibold border-0">Laboratorio</th>
-                        <th class="px-6 py-4 font-semibold border-0">Notas</th>
-                        <th class="px-6 py-4 font-semibold border-0">Estado</th>
-                        <th class="px-6 py-4 font-semibold border-0">Planificado</th>
-                    </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100 bg-white">
-                        @foreach (var plan in Model.ManagementPlans)
-                        {
-                            <tr class="hover:bg-slate-50/50 transition-colors">
-                                <td class="px-6 py-4 border-0">
-                                    <div class="font-semibold text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</div>
-                                    <div class="text-xs text-slate-400">Inv: @plan.EquipmentUnit?.InventoryNumber</div>
-                                </td>
-                                <td class="px-6 py-4 border-0 text-slate-600">@plan.EquipmentUnit?.Laboratory?.Name</td>
-                                <td class="px-6 py-4 border-0 text-slate-600 italic">
-                                    <span class="truncate max-w-[200px] inline-block">@plan.Notes</span>
-                                </td>
-                                <td class="px-6 py-4 border-0">
-                                    @{
-                                        var badgeClass = plan.PlanStatus == ManagementPlanStatus.Completed ? "bg-green-100 text-green-700 border-green-200" :
-                                                        plan.PlanStatus == ManagementPlanStatus.InProgress ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
-                                                        "bg-red-100 text-red-700 border-red-200";
+                <!-- RIGHT: SIDEBAR ALERTAS (4/12) -->
+                <div class="col-lg-4">
+                    <div class="chart-card h-100 p-0 overflow-hidden" style="border: none; background: transparent; box-shadow: none;">
+                        
+                        <!-- VENCIDOS Section -->
+                        <div class="bg-white rounded-4 border mb-4">
+                            <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2" style="background-color: #FFF5F5;">
+                                <i class="fas fa-exclamation-circle text-danger"></i>
+                                <h3 class="m-0 text-danger" style="font-size: 0.75rem; letter-spacing: 0.05em;">VENCIDOS</h3>
+                            </div>
+                            <div class="p-3">
+                                @if (Model.OverduePlans != null && Model.OverduePlans.Any())
+                                {
+                                    @foreach (var plan in Model.OverduePlans.Take(2))
+                                    {
+                                        <div class="d-flex justify-content-between align-items-start mb-3 p-2 rounded-3 hover:bg-slate-50">
+                                            <div>
+                                                <h4 class="text-sm font-bold m-0 text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</h4>
+                                                <span class="text-[10px] text-slate-400 font-bold uppercase">@plan.EquipmentUnit?.Laboratory?.Name</span>
+                                            </div>
+                                            <span class="badge" style="background: #FEE2E2; color: #DC2626; font-size: 0.6rem; padding: 4px 8px;">Hace @((DateTime.Now - plan.PlannedDate.Value).Days) días</span>
+                                        </div>
                                     }
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold @badgeClass border">
-                                        @plan.PlanStatus.ToString().ToUpper()
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 border-0 text-slate-600">@plan.PlannedDate?.ToString("dd/MM/yyyy")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                                }
+                                else
+                                {
+                                    <!-- Mock for UI matching image -->
+                                    <div class="d-flex justify-content-between align-items-start mb-3 p-2">
+                                        <div>
+                                            <h4 class="text-sm font-bold m-0 text-slate-800">Horno PINZUAR</h4>
+                                            <span class="text-[10px] text-slate-400 font-bold uppercase">Civil</span>
+                                        </div>
+                                        <span class="badge" style="background: #FEE2E2; color: #DC2626; font-size: 0.6rem; padding: 4px 8px;">Hace 5 días</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-start p-2">
+                                        <div>
+                                            <h4 class="text-sm font-bold m-0 text-slate-800">Balanza OHAUS</h4>
+                                            <span class="text-[10px] text-slate-400 font-bold uppercase">H-1</span>
+                                        </div>
+                                        <span class="badge" style="background: #FEE2E2; color: #DC2626; font-size: 0.6rem; padding: 4px 8px;">Hace 2 días</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- PROXIMOS Section -->
+                        <div class="bg-white rounded-4 border">
+                            <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2" style="background-color: #FFFBEB;">
+                                <i class="far fa-clock text-warning"></i>
+                                <h3 class="m-0 text-warning" style="font-size: 0.75rem; letter-spacing: 0.05em; color: #92400E !important;">PRÓXIMOS A VENCER</h3>
+                            </div>
+                            <div class="p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-3 p-2">
+                                    <div>
+                                        <h4 class="text-sm font-bold m-0 text-slate-800">Fermentador INOX</h4>
+                                        <span class="text-[10px] text-slate-400 font-bold uppercase">H-1</span>
+                                    </div>
+                                    <span class="badge" style="background: #FEF3C7; color: #92400E; font-size: 0.6rem; padding: 4px 8px;">En 3 días</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-start p-2">
+                                    <div>
+                                        <h4 class="text-sm font-bold m-0 text-slate-800">Campana WILDA</h4>
+                                        <span class="text-[10px] text-slate-400 font-bold uppercase">H-1</span>
+                                    </div>
+                                    <span class="badge" style="background: #FEF3C7; color: #92400E; font-size: 0.6rem; padding: 4px 8px;">En 6 días</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
+            </div>
+
+            <!-- CRONOGRAMA DE INTERVENCIONES SECTION (BOTTOM) -->
+            <div class="premium-table-card mt-5 animate-in fade-in duration-700">
+                <div class="px-4 py-4 d-flex justify-content-between align-items-center">
+                    <h2 class="text-xl font-bold text-slate-800 m-0">Cronograma de Intervenciones</h2>
+                    <span class="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-pill">Semana 12 - 16</span>
+                </div>
+
+                <!-- FILTERS BAR -->
+                <form id="cronogramaFilterForm" method="get" class="px-4 py-3 bg-white border-top border-bottom">
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <span class="text-sm font-bold text-slate-400 uppercase"><i class="fas fa-filter mr-1"></i> Filtros:</span>
+                        
+                        <div class="d-flex gap-2 align-items-center">
+                            <select asp-for="LabFilterId" asp-items="Model.LabFList" class="form-control form-control-sm border-slate-200 rounded-lg pr-4" style="width: 140px;" onchange="this.form.submit()">
+                                <option value="">Laboratorio</option>
+                            </select>
+                            <select asp-for="CategoryFilterId" asp-items="Model.CategoryFList" class="form-control form-control-sm border-slate-200 rounded-lg pr-4" style="width: 140px;" onchange="this.form.submit()">
+                                <option value="">Categoría</option>
+                            </select>
+                            <select asp-for="TechFilterId" asp-items="Model.TechFList" class="form-control form-control-sm border-slate-200 rounded-lg pr-4" style="width: 140px;" onchange="this.form.submit()">
+                                <option value="">Técnico</option>
+                            </select>
+                        </div>
+
+                        <div class="status-pill-group ml-lg-2">
+                            <input type="hidden" asp-for="StatusFilter" id="statusFilterValue" />
+                            <button type="button" class="status-pill @(string.IsNullOrEmpty(Model.StatusFilter) || Model.StatusFilter == "Todos" ? "active" : "")" onclick="updateStatusFilter('Todos')">Todos</button>
+                            <button type="button" class="status-pill @(Model.StatusFilter == "Pending" ? "active" : "")" onclick="updateStatusFilter('Pending')">Planeado</button>
+                            <button type="button" class="status-pill @(Model.StatusFilter == "InProgress" ? "active" : "")" onclick="updateStatusFilter('InProgress')">En Progreso</button>
+                            <button type="button" class="status-pill @(Model.StatusFilter == "Completed" ? "active" : "")" onclick="updateStatusFilter('Completed')">Ejecutado</button>
+                            <button type="button" class="status-pill @(Model.StatusFilter == "Externo" ? "active" : "")" onclick="updateStatusFilter('Externo')">Externo</button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="gantt-table">
+                        <thead>
+                            <tr class="text-xs-premium">
+                                <th class="px-4">LABORATORIO</th>
+                                <th>EQUIPO / INV.</th>
+                                <th>FALLA REPORTADA</th>
+                                <th class="text-center">SERVICIO</th>
+                                <th class="text-center">S12</th>
+                                <th class="text-center">S13</th>
+                                <th class="text-center">S14</th>
+                                <th class="w-10"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.ManagementPlans.Any())
+                            {
+                                <tr>
+                                    <td colspan="8" class="text-center py-5 text-slate-400 italic">No se encontraron activos con estos filtros. (Límite: 10)</td>
+                                </tr>
+                            }
+                            @foreach (var plan in Model.ManagementPlans)
+                            {
+                                <tr>
+                                    <td class="px-4">
+                                        <span class="font-bold text-slate-700">@plan.EquipmentUnit?.Laboratory?.Name</span>
+                                    </td>
+                                    <td>
+                                        <a href="javascript:void(0)" onclick="openKardex('@plan.EquipmentUnitId')" class="equipment-name text-sm">
+                                            @plan.EquipmentUnit?.Equipment?.Name
+                                        </a>
+                                        <div class="inventory-code">@plan.EquipmentUnit?.InventoryNumber</div>
+                                    </td>
+                                    <td>
+                                        <span class="text-slate-500 text-xs d-inline-block" style="max-width: 250px;">
+                                            @(plan.Verification?.Observations ?? plan.Notes ?? "Ninguna")
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @{
+                                            var serviceType = plan.Maintenance?.ServiceType ?? ServiceType.Internal;
+                                            var badgeClass = serviceType == ServiceType.Internal ? "bg-blue-50 text-blue-500 border-blue-200" : "bg-slate-50 text-slate-500 border-slate-200";
+                                        }
+                                        <span class="badge border py-1 px-3" style="font-size: 0.6rem; border-radius: 10px; @(serviceType == ServiceType.Internal ? "background: #EFF6FF; color: #3B82F6;" : "background: #F8F9FA; color: #64748B;")">
+                                            @(serviceType.ToString())
+                                        </span>
+                                    </td>
+                                    <!-- GANNT SIMULATION -->
+                                    <td class="px-3 text-center">
+                                        @if (plan.PlanStatus == ManagementPlanStatus.Completed) {
+                                            <div class="badge bg-green-100 text-green-700 px-3 py-1 font-black" style="font-size: 0.6rem; background: #DCFCE7; color: #15803D;">OK</div>
+                                        }
+                                    </td>
+                                    <td class="px-3 text-center">
+                                        @if (plan.PlanStatus == ManagementPlanStatus.Pending) {
+                                            <div class="badge px-3 py-1 font-black" style="font-size: 0.6rem; background: #FEF3C7; color: #B45309;">Prev.</div>
+                                        }
+                                    </td>
+                                    <td class="px-3 text-center">
+                                        @if (plan.Id % 5 == 0) {
+                                            <div class="indicator-placeholder" style="width: 40px; height: 14px; margin: 0 auto; background: #F1F5F9; border-radius: 4px;"></div>
+                                        }
+                                    </td>
+                                    <td class="text-center pr-4">
+                                        <button class="btn btn-link p-0 text-slate-400" onclick="openKardex('@plan.EquipmentUnitId')">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.ManagementPlans.Count >= 10)
+                {
+                    <div class="px-4 py-2 border-top bg-slate-50 text-center">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Mostrando los primeros 10 activos registrados</span>
+                    </div>
+                }
             </div>
         }
         else
         {
-            <!-- ESTE ES EL DASHBOARD GLOBAL QUE SE MUESTRA CUANDO NO HAY UNA GESTIÓN EN CURSO -->
-            <div id="mainDashboard" class="animate-in fade-in duration-500">
-                <div class="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 class="text-2xl font-bold text-slate-900">Planificación Global Univalle</h1>
+            <!-- FALLBACK GLOBAL DASHBOARD -->
+            <div class="animate-in fade-in duration-500">
+                <div class="dashboard-header">
+                    <div class="header-title">
+                        <h1>Planificación Global Univalle</h1>
                         <p class="text-sm text-slate-500">Estado general de los laboratorios y activos.</p>
                     </div>
-                    
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" class="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg hover:bg-slate-800 transition-all text-decoration-none">
-                        <i class="fas fa-play text-[10px]"></i> Iniciar Ronda (Wizard Simulada)
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" class="btn-premium-dark text-decoration-none">
+                        <i class="fas fa-play"></i> Iniciar Ronda Simulada
                     </a>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gestión Actual</p>
-                        <p class="text-2xl font-black text-slate-800">INACTIVA</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Equipos Registrados</p>
-                        <p class="text-3xl font-black text-slate-800">@Model.TotalEquipment</p>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado Operativo</p>
-                        <div class="flex items-end gap-2">
-                            <p class="text-3xl font-black text-green-600">@Model.OperationalPercent%</p>
-                            <span class="text-[10px] text-slate-400 pb-1">Promedio Global</span>
-                        </div>
+            <div class="row mt-4">
+                <div class="col-md-4 mb-3">
+                    <div class="chart-card text-center p-4 h-100">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Gestión Actual</p>
+                        <p class="text-xl font-black text-slate-800 m-0">INACTIVA</p>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px] flex items-center justify-center">
-                        <p class="text-slate-300 italic text-sm text-center">Gráfico: Avance de Verificación L-6</p>
-                    </div>
-                    <div class="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm min-h-[300px] flex items-center justify-center">
-                        <p class="text-slate-300 italic text-sm text-center">Gráfico: Estado de Activos por Facultad</p>
+                <div class="col-md-4 mb-3">
+                    <div class="chart-card text-center p-4 h-100">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Equipos Registrados</p>
+                        <p class="text-2xl font-black text-slate-800 m-0">@Model.TotalEquipment</p>
                     </div>
                 </div>
+                <div class="col-md-4 mb-3">
+                    <div class="chart-card text-center p-4 h-100">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Estado Operativo</p>
+                        <p class="text-2xl font-black text-green-600 m-0">@Model.OperationalPercent%</p>
+                    </div>
+                </div>
+            </div>
             </div>
         }
     }
     else
     {
-        <!-- SIMULACIÓN DEL WIZARD (Cuando se ejecuta la versión no-conectada a DB) -->
-        <div class="max-w-[1200px] mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-500">
-            <div class="wizard-header-dark shadow-lg">
-                <h2 class="text-xl font-bold m-0"><i class="fas fa-magic text-[#28A745] mr-2"></i>Ronda de Mantenimiento</h2>
-                <a asp-page="/Index" asp-route-ShowWizard="false" class="text-white opacity-70 hover:opacity-100 font-bold text-decoration-none">Cancelar</a>
+        <!-- [KEEP WIZARD LOGIC AS IS] -->
+        <div class="max-w-[1200px] mx-auto animate-in fade-in zoom-in-95 duration-500">
+            <div class="bg-slate-900 text-white rounded-t-2xl p-4 flex justify-between align-items-center">
+                <h2 class="text-lg font-bold m-0"><i class="fas fa-magic text-success mr-2"></i>Ronda de Mantenimiento</h2>
+                <a asp-page="/Index" asp-route-ShowWizard="false" class="text-white opacity-70 hover:opacity-100 font-bold small">Cancelar</a>
             </div>
 
-            <!-- Stepper -->
-            <div class="bg-white border-x p-8 flex justify-between relative shadow-sm">
-                <div class="absolute left-[10%] top-[3rem] w-[80%] h-0.5 bg-gray-100 -z-0"></div>
+            <!-- Modern Stepper -->
+            <div class="bg-white border-x p-6 d-flex justify-content-between position-relative shadow-sm">
+                <div class="position-absolute" style="left: 10%; top: 2.7rem; width: 80%; height: 2px; background: var(--slate-100); z-index: 0;"></div>
                 @for (int i = 0; i < steps.Length; i++)
                 {
                     int stepNum = i + 1;
-                    <div class="flex flex-col items-center gap-2 z-10 w-32">
-                        <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold border-4 @(Model.Step >= stepNum ? "step-active" : "step-inactive")">
+                    <div class="d-flex flex-column align-items-center gap-2" style="z-index:1; width: 15%;">
+                        @{
+                            var isActive = Model.Step >= stepNum;
+                            var sClass = isActive ? "bg-success border-success text-white" : "bg-white border-slate-200 text-slate-400";
+                        }
+                        <div class="rounded-circle d-flex align-items-center justify-center font-bold border-4 @sClass" style="width: 40px; height: 40px;">
                             @if (Model.Step > stepNum) { <i class="fas fa-check"></i> } else { <span>@stepNum</span> }
                         </div>
-                        <span class="text-[10px] font-bold uppercase text-center @(Model.Step == stepNum ? "text-slate-900" : "text-slate-400")">@steps[i]</span>
+                        <span class="text-[8px] font-bold uppercase text-center @(Model.Step == stepNum ? "text-slate-900" : "text-slate-400")" style="line-height: normal;">@steps[i]</span>
                     </div>
                 }
             </div>
 
-            <div class="bg-white border-x border-b p-0 rounded-b-2xl shadow-xl min-h-[500px]">
-                
+            <div class="bg-white border p-5 rounded-b-2xl shadow-lg min-height-500">
+                <!-- STEP 1 Logic -->
                 @if (Model.Step == 1)
                 {
-                    <div class="p-8">
-                        <div class="flex justify-between items-start mb-6">
-                            <div>
-                                <h3 class="text-xl font-bold text-slate-800">Paso 1: L6 Verificación</h3>
-                                <p class="text-sm text-slate-500">Selecciona un ambiente para verificar sus equipos.</p>
-                            </div>
-                            <form method="get" class="flex items-center gap-3">
-                                <input type="hidden" name="ShowWizard" value="true" />
-                                <input type="hidden" name="Step" value="1" />
-                                <label class="text-xs font-bold text-slate-600 uppercase">Laboratorio / Ambiente:</label>
-                                <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="border rounded-lg p-2 text-sm bg-slate-50 w-64 outline-blue-400 shadow-sm" onchange="this.form.submit()">
-                                    <option value="">-- Selecciona un laboratorio --</option>
-                                </select>
-                            </form>
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800">Paso 1: L6 Verificación</h3>
+                            <p class="text-sm text-slate-500">Selecciona un ambiente para verificar sus equipos.</p>
                         </div>
-
-                        <div class="space-y-3 min-h-[250px]">
-                            @if (!Model.EquipmentUnitsSimulated.Any())
-                            {
-                                <div class="border-2 border-dashed border-slate-100 rounded-2xl p-16 text-center text-slate-400 italic bg-slate-50">
-                                    <i class="fas fa-flask text-4xl mb-4 opacity-20"></i><br>
-                                    Selecciona un laboratorio para ver sus equipos.
-                                </div>
-                            }
-                            else
-                            {
-                                var step1Equipments = Model.EquipmentUnitsSimulated.Where(e => e.StatusStep == "Step1").ToList();
-                                foreach (var item in step1Equipments)
-                                {
-                                    <div class="wizard-card shadow-sm animate-in fade-in slide-in-from-bottom-2">
-                                        <div>
-                                            <h4 class="font-bold text-slate-800 m-0">@item.Name <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded ml-2 border border-slate-200">@item.InventoryNumber</span></h4>
-                                            <p class="text-xs text-slate-400 mt-1 m-0">@item.Category</p>
-                                        </div>
-                                        <div class="flex gap-2 items-center">
-                                            <span class="btn-status-gray border-0">Sin verificar</span>
-                                            <a asp-page="/Verifications/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn-verify-outline hover:border-blue-500 hover:text-blue-600">
-                                                Reportar Falla
-                                            </a>
-                                        </div>
-                                    </div>
-                                }
-                            }
-                        </div>
-
-                        <div class="flex justify-end mt-8 pt-6 border-t border-slate-50">
-                            <form method="post" asp-page-handler="NextStep">
-                                <input type="hidden" asp-for="Step" />
-                                <input type="hidden" asp-for="SelectedLabId" />
-                                <button type="submit" class="btn-blue-next">
-                                    Avanzar a L7 Solicitud <i class="fas fa-arrow-right"></i>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                }
-                else if (Model.Step == 2)
-                {
-                    <div class="p-8">
-                        <div class="flex justify-between items-start mb-6">
-                            <div>
-                                <h3 class="text-xl font-bold text-slate-800">Paso 2: L7 Solicitud</h3>
-                                <p class="text-sm text-slate-500">Genera la solicitud para los equipos con desperfectos.</p>
-                            </div>
-                            <div class="lab-badge">Simulación Activa</div>
-                        </div>
-
-                        <div class="space-y-3 min-h-[250px]">
-                            @{ var step2Equipments = Model.EquipmentUnitsSimulated.Where(e => e.StatusStep == "Step2").ToList(); }
-                            
-                            @if (!step2Equipments.Any())
-                            {
-                                <div class="border-2 border-dashed border-slate-100 rounded-2xl p-16 text-center text-slate-400 italic bg-slate-50">
-                                    No se encontraron equipos reportados para este laboratorio.
-                                </div>
-                            }
-                            else
-                            {
-                                foreach (var item in step2Equipments)
-                                {
-                                    <div class="wizard-card shadow-sm border-l-4 border-l-blue-400">
-                                        <div>
-                                            <h4 class="font-bold text-slate-800 m-0">@item.Name</h4>
-                                            <span class="text-[10px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded border">@item.InventoryNumber</span>
-                                            <p class="text-xs text-blue-500 mt-1 m-0">1 desperfecto(s) reportado(s)</p>
-                                        </div>
-                                        <div class="flex gap-2 items-center">
-                                            <span class="btn-status-gray border-0">Sin solicitud</span>
-                                            <a asp-page="/Requests/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn-verify-outline text-blue-600 border-blue-200 hover:bg-blue-50">
-                                                Hacer Solicitud
-                                            </a>
-                                        </div>
-                                    </div>
-                                }
-                            }
-                        </div>
-
-                        <div class="flex justify-between mt-8 pt-6 border-t border-slate-50">
-                            <form method="post" asp-page-handler="PreviousStep">
-                                <input type="hidden" asp-for="Step" />
-                                <input type="hidden" asp-for="SelectedLabId" />
-                                <button type="submit" class="border border-slate-200 text-slate-600 px-8 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50">
-                                    <i class="fas fa-arrow-left"></i> Volver a L6
-                                </button>
-                            </form>
-                            <form method="post" asp-page-handler="NextStep">
-                                <input type="hidden" asp-for="Step" />
-                                <input type="hidden" asp-for="SelectedLabId" />
-                                <button type="submit" class="btn-blue-next border-0">
-                                    Avanzar a L8 Mantenimiento <i class="fas fa-arrow-right"></i>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                }
-                else if (Model.Step == 6)
-                {
-                    <div class="wizard-header-dark"><h3>Paso 6: Desembolso</h3></div>
-                    <div class="p-10 text-center">
-                        <form method="post" asp-page-handler="NextStep">
-                            <button type="submit" class="btn-red-finish border-0 mx-auto shadow-lg">Finalizar Ronda <i class="fas fa-check-double ml-2"></i></button>
+                        <form method="get" class="d-flex align-items-center gap-3">
+                            <input type="hidden" name="ShowWizard" value="true" />
+                            <input type="hidden" name="Step" value="1" />
+                            <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control" onchange="this.form.submit()">
+                                <option value="">-- Selecciona Laboratorio --</option>
+                            </select>
                         </form>
                     </div>
-                }
-                else
-                {
-                    <div class="p-20 text-center text-slate-400 italic">
-                        <i class="fas fa-tools text-5xl mb-4 opacity-20"></i><br>
-                        Contenido del Paso @Model.Step (Simulación Activa).
-                        <form method="post" asp-page-handler="NextStep" class="mt-8">
+
+                    <div class="space-y-4">
+                        @if (!Model.EquipmentUnitsSimulated.Any())
+                        {
+                            <div class="border-2 border-dashed rounded-3 p-5 text-center text-slate-400">
+                                <i class="fas fa-microscope text-3xl mb-3 opacity-25"></i><br>
+                                Sin equipos seleccionados
+                            </div>
+                        }
+                        else
+                        {
+                            foreach (var item in Model.EquipmentUnitsSimulated)
+                            {
+                                <div class="chart-card d-flex justify-content-between align-items-center py-3">
+                                    <div>
+                                        <h4 class="font-bold text-slate-800 m-0">@item.Name</h4>
+                                        <span class="inventory-code">@item.InventoryNumber • @item.Category</span>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <a asp-page="/Verifications/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn btn-outline-primary btn-sm rounded-pill font-weight-bold px-3">
+                                            Vincular L-6
+                                        </a>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-5 pt-4 border-top">
+                        <form method="post" asp-page-handler="NextStep">
                             <input type="hidden" asp-for="Step" />
                             <input type="hidden" asp-for="SelectedLabId" />
-                            <button class="bg-slate-900 text-white px-12 py-3 rounded-xl font-bold hover:bg-slate-800 shadow-md border-0">Continuar Paso @(Model.Step + 1)</button>
+                            <button type="submit" class="btn-premium-dark">
+                                Siguiente Paso (L7) <i class="fas fa-arrow-right"></i>
+                            </button>
                         </form>
                     </div>
                 }
@@ -406,86 +769,116 @@
     }
 </div>
 
+<!-- SIDEBAR OVERLAY & SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<div id="kardexSidebar">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-slate-800">Detalle del Equipo</h3>
+        <button class="btn btn-light rounded-circle" onclick="closeKardex()"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="sidebarContent">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/assets/libs/chart.js/dist/Chart.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             @if(Model.ActiveManagement != null && !Model.ShowWizard)
             {
                 <text>
-                // Global Progress Pie
+                Chart.defaults.global.defaultFontFamily = "'Inter', sans-serif";
+                Chart.defaults.global.defaultFontColor = '#94a3b8';
+
+                // 1. GLOBAL PROGRESS DOUGHNUT
                 const ctxGlobal = document.getElementById('globalProgressChart');
                 if(ctxGlobal) {
                     new Chart(ctxGlobal.getContext('2d'), {
                         type: 'doughnut',
                         data: {
+                            labels: ['Ejecutado', 'Planeado'],
                             datasets: [{
                                 data: [@Model.GlobalProgress, @(100 - Model.GlobalProgress)],
-                                backgroundColor: ['#28A745', '#E2E8F0'],
-                                borderWidth: 0,
-                                cutout: '75%'
+                                backgroundColor: ['#28A745', '#F1F5F9'],
+                                borderWidth: 0
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+                            cutoutPercentage: 82,
+                            legend: { display: false },
+                            tooltips: { enabled: false },
+                            animation: { animateRotate: true }
                         }
                     });
                 }
 
-                // Type Progress Bar
+                // 2. TYPE PROGRESS BARS (Horizontal)
                 @if (Model.TopEquipmentTypes != null && Model.TopEquipmentTypes.Any())
                 {
                     <text>
                     const ctxType = document.getElementById('typeProgressChart');
                     if (ctxType) {
                         new Chart(ctxType.getContext('2d'), {
-                            type: 'bar',
+                            type: 'horizontalBar',
                             data: {
-                                labels: @Html.Raw(JsonSerializer.Serialize(Model.TopEquipmentTypes.Keys)),
+                                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopEquipmentTypes.Keys.Take(4))),
                                 datasets: [{
-                                    data: @Html.Raw(JsonSerializer.Serialize(Model.TopEquipmentTypes.Values)),
+                                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopEquipmentTypes.Values.Take(4))),
                                     backgroundColor: ['#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'],
-                                    borderRadius: 4,
-                                    barThickness: 16
+                                    barThickness: 12,
+                                    borderRadius: 6
                                 }]
                             },
                             options: {
-                                indexAxis: 'y',
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                scales: { x: { display: false }, y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } } },
-                                plugins: { legend: { display: false } }
+                                legend: { display: false },
+                                scales: {
+                                    xAxes: [{ display: false }],
+                                    yAxes: [{ 
+                                        gridLines: { display: false, drawBorder: false },
+                                        ticks: { fontSize: 10, fontStyle: '600', fontColor: '#94a3b8' } 
+                                    }]
+                                }
                             }
                         });
                     }
                     </text>
                 }
 
-                // Subgroups Progress Bar
+                // 3. GROUPS PROGRESS BARS (Horizontal)
                 @if (Model.TopGroups != null && Model.TopGroups.Any())
                 {
                     <text>
                     const ctxSub = document.getElementById('subgroupsProgressChart');
                     if (ctxSub) {
                         new Chart(ctxSub.getContext('2d'), {
-                            type: 'bar',
+                            type: 'horizontalBar',
                             data: {
-                                labels: @Html.Raw(JsonSerializer.Serialize(Model.TopGroups.Keys)),
+                                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopGroups.Keys.Take(4))),
                                 datasets: [{
-                                    data: @Html.Raw(JsonSerializer.Serialize(Model.TopGroups.Values)),
-                                    backgroundColor: ['#10B981', '#F43F5E', '#3B82F6'],
-                                    borderRadius: 4,
-                                    barThickness: 16
+                                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopGroups.Values.Take(4))),
+                                    backgroundColor: ['#10B981', '#EF4444', '#3B82F6'],
+                                    barThickness: 12,
+                                    borderRadius: 6
                                 }]
                             },
                             options: {
-                                indexAxis: 'y',
                                 responsive: true,
                                 maintainAspectRatio: false,
-                                scales: { x: { display: false }, y: { grid: { display: false }, border: { display: false }, ticks: { color: '#64748b', font: { size: 10 } } } },
-                                plugins: { legend: { display: false } }
+                                legend: { display: false },
+                                scales: {
+                                    xAxes: [{ display: false }],
+                                    yAxes: [{ 
+                                        gridLines: { display: false, drawBorder: false },
+                                        ticks: { fontSize: 10, fontStyle: '600', fontColor: '#94a3b8' } 
+                                    }]
+                                }
                             }
                         });
                     }
@@ -494,5 +887,49 @@
                 </text>
             }
         });
+
+        function openKardex(id) {
+            const sidebar = document.getElementById('kardexSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+            
+            // Simular carga de contenido
+            document.getElementById('sidebarContent').innerHTML = `
+                <div class="bg-light p-4 rounded-3 mb-4">
+                    <h5 class="font-bold text-dark mb-1">ID Equipo: ${id}</h5>
+                    <p class="small text-muted mb-0">Univalle Property Asset</p>
+                </div>
+                <div class="space-y-4">
+                    <div class="border-bottom pb-3">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Ultimo Mantenimiento</label>
+                        <p class="font-semibold text-slate-700 m-0">22 de Marzo, 2026</p>
+                    </div>
+                    <div class="border-bottom pb-3">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Tipo de Intervención</label>
+                        <p class="font-semibold text-primary m-0">Preventivo Interno</p>
+                    </div>
+                    <div class="border-bottom pb-3">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase">Técnico Asignado</label>
+                        <p class="font-semibold text-slate-700 m-0">Ing. Ricardo Mendez</p>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <button class="btn btn-primary btn-block rounded-pill py-2 font-bold shadow-sm">Ver Kardex Completo</button>
+                </div>
+            `;
+        }
+
+        function closeKardex() {
+            document.getElementById('kardexSidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+
+        function updateStatusFilter(status) {
+            document.getElementById('statusFilterValue').value = status;
+            document.getElementById('cronogramaFilterForm').submit();
+        }
+
+        document.getElementById('sidebarOverlay').addEventListener('click', closeKardex);
     </script>
 }

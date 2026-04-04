@@ -40,15 +40,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // CLASSIFICATION & LOCATION
         // ========================================
-        [StringLength(100)]
-        [Display(Name = "Tipo de Laboratorio")]
-        public string? Type { get; set; }
-
-        // ✅ Usaremos este campo "Building" como nuestro "Bloque"
-        [StringLength(100)]
-        [Display(Name = "Edificio / Bloque")]
-        public string? Building { get; set; }
-
         [StringLength(50)]
         [Display(Name = "Piso/Nivel")]
         public string? Floor { get; set; }

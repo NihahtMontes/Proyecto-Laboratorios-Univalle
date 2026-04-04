@@ -52,6 +52,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         public IList<ManagementPlan> OverduePlans { get; set; } = new List<ManagementPlan>();
         public IList<ManagementPlan> ManagementPlans { get; set; } = new List<ManagementPlan>();
 
+        // Propiedades de Filtrado para el Cronograma (L-48 / Dashboard)
+        [BindProperty(SupportsGet = true)]
+        public int? LabFilterId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? CategoryFilterId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? TechFilterId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public string? StatusFilter { get; set; }
+
+        public SelectList LabFList { get; set; } = default!;
+        public SelectList CategoryFList { get; set; } = default!;
+        public SelectList TechFList { get; set; } = default!;
+
         // Propiedades del Wizard Embebido
         [BindProperty(SupportsGet = true)]
         public bool ShowWizard { get; set; } = false;
@@ -69,16 +86,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         {
             try
             {
-                // Buscar si existe gestión Activa con todo su árbol de inclusiones para el Dashboard
+                // Cargar Listas para Filtros (Usar Id para ordenar ya que FullName no está mapeado)
+                var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();
+                LabFList = new SelectList(labs, "Id", "Name");
+
+                var techs = await _context.People
+                    .Where(p => p.Category == PersonCategory.Tecnico)
+                    .ToListAsync(); // Traer a memoria para poder usar FullName (que no está mapeado)
+                
+                TechFList = new SelectList(techs.OrderBy(t => t.FullName), "Id", "FullName");
+
+                CategoryFList = new SelectList(Enum.GetValues(typeof(EquipmentCategory))
+                    .Cast<EquipmentCategory>()
+                    .Select(e => new { Id = (int)e, Name = e.ToString() }), "Id", "Name");
+
+                // Buscar Gestión Activa
                 ActiveManagement = await _context.Managements
-                    .Include(mg => mg.ManagementPlans)
-                        .ThenInclude(p => p.EquipmentUnit)
-                            .ThenInclude(eu => eu.Equipment)
-                    .Include(mg => mg.ManagementPlans)
-                        .ThenInclude(p => p.EquipmentUnit)
-                            .ThenInclude(eu => eu.Laboratory)
-                    .Include(mg => mg.ManagementPlans)
-                        .ThenInclude(p => p.Maintenance)
                     .Where(m => m.Status == ManagementStatus.Active)
                     .OrderByDescending(m => m.Year)
                     .ThenByDescending(m => m.Semester)
@@ -86,39 +109,68 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
                 if (ActiveManagement != null)
                 {
-                    TotalPlans = ActiveManagement.ManagementPlans.Count;
-                    CompletedPlans = ActiveManagement.ManagementPlans.Count(p => p.PlanStatus == ManagementPlanStatus.Completed);
+                    // Query Base para el Dashboard y Cronograma
+                    var plansQuery = _context.ManagementPlans
+                        .Include(p => p.EquipmentUnit).ThenInclude(eu => eu.Equipment)
+                        .Include(p => p.EquipmentUnit).ThenInclude(eu => eu.Laboratory)
+                        .Include(p => p.Maintenance).ThenInclude(m => m.Technician)
+                        .Include(p => p.Verification)
+                        .Where(p => p.ManagementId == ActiveManagement.Id);
+
+                    // Estadísticas Globales (Sin Filtros del Cronograma)
+                    var allPlans = await plansQuery.ToListAsync();
+                    TotalPlans = allPlans.Count;
+                    CompletedPlans = allPlans.Count(p => p.PlanStatus == ManagementPlanStatus.Completed);
                     GlobalProgress = TotalPlans > 0 ? Math.Round((double)CompletedPlans / TotalPlans * 100, 1) : 0;
 
-                    TopEquipmentTypes = ActiveManagement.ManagementPlans
+                    TopEquipmentTypes = allPlans
                         .Where(p => p.EquipmentUnit?.Equipment != null)
                         .GroupBy(p => p.EquipmentUnit.Equipment.Category.ToString())
                         .OrderByDescending(g => g.Count())
                         .ToDictionary(g => g.Key, g => g.Count());
 
-                    TopGroups = ActiveManagement.ManagementPlans
+                    TopGroups = allPlans
                         .Where(p => p.EquipmentUnit?.Equipment != null)
                         .GroupBy(p => p.EquipmentUnit.Equipment.TypeClassification.ToString())
                         .OrderByDescending(g => g.Count())
                         .ToDictionary(g => g.Key, g => g.Count());
 
-                    TopLaboratories = ActiveManagement.ManagementPlans
+                    TopLaboratories = allPlans
                         .Where(p => p.EquipmentUnit?.Laboratory != null)
                         .GroupBy(p => p.EquipmentUnit.Laboratory.Name)
                         .OrderByDescending(g => g.Count())
                         .ToDictionary(g => g.Key, g => g.Count());
 
-                    OverduePlans = ActiveManagement.ManagementPlans
+                    OverduePlans = allPlans
                         .Where(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate.Value < DateTime.Now.AddDays(7))
                         .OrderBy(p => p.PlannedDate)
                         .ToList();
 
-                    ManagementPlans = ActiveManagement.ManagementPlans
+                    // APLICAR FILTROS AL CRONOGRAMA
+                    var cronogramaQuery = plansQuery.AsQueryable();
+
+                    if (LabFilterId.HasValue) cronogramaQuery = cronogramaQuery.Where(p => p.EquipmentUnit.LaboratoryId == LabFilterId);
+                    if (CategoryFilterId.HasValue) cronogramaQuery = cronogramaQuery.Where(p => p.EquipmentUnit.Equipment.Category == (EquipmentCategory)CategoryFilterId);
+                    if (TechFilterId.HasValue) cronogramaQuery = cronogramaQuery.Where(p => p.Maintenance.TechnicianId == TechFilterId);
+                    
+                    if (!string.IsNullOrEmpty(StatusFilter) && StatusFilter != "Todos")
+                    {
+                        if (StatusFilter == "Externo") 
+                            cronogramaQuery = cronogramaQuery.Where(p => p.Maintenance.ServiceType == ServiceType.External);
+                        else if (Enum.TryParse<ManagementPlanStatus>(StatusFilter, out var statusEnum))
+                            cronogramaQuery = cronogramaQuery.Where(p => p.PlanStatus == statusEnum);
+                    }
+
+                    ManagementPlans = await cronogramaQuery
                         .OrderBy(p => p.PlannedDate)
-                        .ToList();
+                        .Take(10)
+                        .ToListAsync();
                 }
             }
-            catch { }
+            catch (Exception ex) 
+            {
+                // Log error if needed
+            }
 
             // Simulamos datos globales para que si no hay ActiveManagement, el dashboard nunca se vea vacío
             if (ActiveManagement == null)
