@@ -25,13 +25,6 @@
             --blue-500: #3B82F6;
         }
 
-        .premium-dashboard {
-            background-color: var(--slate-50);
-            min-height: calc(100vh - 150px);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            color: var(--slate-800);
-        }
-
         /* Hero Header */
         .dashboard-header {
             display: flex;
@@ -345,7 +338,7 @@
     </style>
 }
 
-<div class="premium-dashboard p-6">
+<div>
 
     @if (!Model.ShowWizard)
     {
@@ -364,7 +357,11 @@
                 </div>
                 
                 <div class="flex gap-3 mt-md-0 mt-3">
-                    <button class="btn-premium-danger px-4">
+                    <a href="javascript:location.reload(true)" class="btn-premium-dark px-4" style="background-color: var(--slate-600);">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Actualizar Datos</span>
+                    </a>
+                    <button class="btn-premium-danger px-4 ml-2">
                         <i class="fas fa-exclamation-circle"></i>
                         <span>Falla Rápida</span>
                     </button>
@@ -376,157 +373,192 @@
             </div>
             <p class="text-slate-500 text-sm mb-5">Avance de Mantenimientos por Laboratorio y Equipos</p>
 
-            <!-- TOP WIDGETS (3 Cards) -->
-            <div class="row row-cols-1 row-cols-md-3 g-4 mb-5 animate-in fade-in zoom-in-95 duration-500">
-                <!-- Avance Global -->
-                <div class="col">
-                    <div class="chart-card flex flex-col items-center h-100">
-                        <h3 class="w-100">AVANCE GLOBAL</h3>
-                        <div class="chart-container mt-3">
-                            <canvas id="globalProgressChart"></canvas>
-                            <div class="chart-center-text">
-                                <span class="percent">@Model.GlobalProgress%</span>
-                                <span class="label">COMPLETADO</span>
+            <!-- A. TOP WIDGETS (Dashboard 3 Style) -->
+            <div class="row">
+                <!-- Tarjeta: Planes Totales -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-7">
+                                    <i class="mdi mdi-calendar-clock font-20 text-info"></i>
+                                    <p class="font-16 m-b-5">Planes Totales</p>
+                                </div>
+                                <div class="col-5">
+                                    <h1 class="font-light text-right mb-0">@Model.TotalPlans</h1>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </div>                        
                 </div>
 
-                <!-- Por Tipo de Equipo -->
-                <div class="col">
-                    <div class="chart-card h-100">
-                        <h3>POR TIPO DE EQUIPO</h3>
-                        <div class="chart-container mt-3">
-                            @if (Model.TopEquipmentTypes != null && Model.TopEquipmentTypes.Any()) {
-                                <canvas id="typeProgressChart"></canvas>
-                            } else {
-                                <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
-                            }
+                <!-- Tarjeta: Ejecutados -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-7">
+                                    <i class="mdi mdi-check-circle font-20 text-success"></i>
+                                    <p class="font-16 m-b-5">Ejecutados</p>
+                                </div>
+                                <div class="col-5">
+                                    <h1 class="font-light text-right mb-0">@Model.CompletedPlans</h1>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                        
+                </div>
+
+                <!-- Tarjeta: Progreso Global -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-7">
+                                    <i class="mdi mdi-trending-up font-20 text-purple"></i>
+                                    <p class="font-16 m-b-5">Progreso %</p>
+                                </div>
+                                <div class="col-5">
+                                    <h1 class="font-light text-right mb-0">@Model.GlobalProgress</h1>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                        
+                </div>
+                
+                <!-- Tarjeta: Equipos Vencidos -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-7">
+                                    <i class="mdi mdi-alert font-20 text-danger"></i>
+                                    <p class="font-16 m-b-5">Vencidos</p>
+                                </div>
+                                <div class="col-5">
+                                    <h1 class="font-light text-right mb-0">@Model.OverduePlans.Count</h1>
+                                </div>
+                            </div>
+                        </div>
+                    </div>                        
+                </div>
+            </div>
+
+            <!-- B. Sección Central de Gráficas: Sales Ratio & Usuarios -->
+            <div class="row">
+                <!-- Panel Principal: Gráfica de Avance (antes Sales Ratio) -->
+                <div class="col-lg-8 col-md-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div>
+                                    <h4 class="card-title">Avance Global (Histórico)</h4>
+                                </div>
+                                <div class="ml-auto">
+                                    <span class="badge badge-success px-3 py-1 text-white">Semestre Actual</span>
+                                </div>
+                            </div>
+                            <!-- Div donde Dashboard3.js inyecta la gráfica -->
+                            <div class="sales5 ct-charts m-t-30"></div>
+                            <ul class="list-inline m-t-30 text-center font-12">
+                                <li class="list-inline-item text-muted"><i class="fa fa-circle text-info m-r-5"></i> Semanas Anteriores</li>
+                                <li class="list-inline-item text-muted"><i class="fa fa-circle text-success m-r-5"></i> Semanas Actuales</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
 
-                <!-- Avance de Subgrupos -->
-                <div class="col">
-                    <div class="chart-card h-100">
-                        <h3>AVANCE DE SUBGRUPOS</h3>
-                        <div class="chart-container mt-3">
-                            @if (Model.TopGroups != null && Model.TopGroups.Any()) {
-                                <canvas id="subgroupsProgressChart"></canvas>
-                            } else {
-                                <div class="flex items-center justify-center h-full text-xs text-slate-400 italic">Sin datos</div>
-                            }
+                <!-- Panel Lateral: Usuarios -> Progreso General -->
+                <div class="col-lg-4 col-md-12">
+                    <!-- Tarjeta del Tiempo (Añadida para coincidir y pre-venir fallos de js) -->
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h4 class="card-title text-white">@DateTime.Now.ToString("dddd d MMMM, yyyy")</h4>
+                            <div class="d-flex align-items-center m-t-30">
+                                <i class="mdi mdi-weather-pouring font-40 text-white"></i>
+                                <div class="m-l-10">
+                                    <h1 class="font-light text-white mb-0">L-6</h1>
+                                </div>
+                            </div>
+                            <div class="weather-report m-t-20" style="height:70px; width:100%"></div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-success">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div>
+                                    <h4 class="card-title text-white">Activos en Gestión</h4>
+                                </div>
+                                <div class="ml-auto">
+                                    <h2 class="font-light text-white">@Model.TotalPlans</h2>
+                                </div>
+                            </div>
+                            <div class="m-t-20 m-b-10">
+                                <ul class="list-style-none m-t-10">
+                                    <li>
+                                        <h4 class="mb-0 font-medium text-white">@Model.GlobalProgress% <span class="font-normal font-14 text-white op-5 m-l-5">Progreso Completado</span></h4>
+                                        <div class="progress m-t-10 user-progress-bg">
+                                            <div class="progress-bar bg-white" role="progressbar" style="width: @Model.GlobalProgress%" aria-valuenow="@Model.GlobalProgress" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- BOTTOM ASYMMETRICAL ROW -->
-            <div class="row g-4 animate-in fade-in duration-700">
-                <!-- LEFT: AVANCE POR LABORATORIO (8/12) -->
-                <div class="col-lg-8">
-                    <div class="chart-card h-100 p-4">
-                        <h3 class="mb-4">AVANCE POR LABORATORIO</h3>
-                        <div class="space-y-6">
-                            @foreach (var lab in Model.TopLaboratories.Take(5))
-                            {
-                                <div class="row align-items-center mb-4">
-                                    <div class="col-2">
-                                        <span class="text-sm font-bold text-slate-700">@lab.Key</span>
-                                    </div>
-                                    <div class="col-8">
-                                        <div class="progress" style="height: 12px; border-radius: 6px; background-color: var(--slate-100);">
-                                            @{
-                                                var progress = new Random().Next(20, 85); // Simulated progress
-                                                var color = progress > 70 ? "#F9B115" : progress > 40 ? "#E55353" : "#D93737";
-                                            }
-                                            <div class="progress-bar" role="progressbar" style="width: @progress%; border-radius: 6px; background-color: @color;" aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100"></div>
-                                        </div>
-                                    </div>
-                                    <div class="col-1 text-right">
-                                        <span class="text-sm font-black text-slate-800">@progress%</span>
-                                    </div>
-                                    <div class="col-1 text-right">
-                                        <span class="text-[10px] font-bold text-slate-400">@(Math.Round(progress * 0.15)) / 15 eq.</span>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RIGHT: SIDEBAR ALERTAS (4/12) -->
-                <div class="col-lg-4">
-                    <div class="chart-card h-100 p-0 overflow-hidden" style="border: none; background: transparent; box-shadow: none;">
+            <!-- C. Sección Secundaría de Gráficas: Campaign Status y Yearly Comparison -->
+            <div class="row">
+                <!-- Indicador de Estado (Gráfica Circular) -->
+                <div class="col-sm-12 col-lg-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Status de Operaciones</h4>
+                            <!-- Dashboard3.js inyecta el Pie Chart aquí -->
+                            <div class="status m-t-30" style="height:280px; width:100%"></div>
                         
-                        <!-- VENCIDOS Section -->
-                        <div class="bg-white rounded-4 border mb-4">
-                            <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2" style="background-color: #FFF5F5;">
-                                <i class="fas fa-exclamation-circle text-danger"></i>
-                                <h3 class="m-0 text-danger" style="font-size: 0.75rem; letter-spacing: 0.05em;">VENCIDOS</h3>
-                            </div>
-                            <div class="p-3">
-                                @if (Model.OverduePlans != null && Model.OverduePlans.Any())
-                                {
-                                    @foreach (var plan in Model.OverduePlans.Take(2))
-                                    {
-                                        <div class="d-flex justify-content-between align-items-start mb-3 p-2 rounded-3 hover:bg-slate-50">
-                                            <div>
-                                                <h4 class="text-sm font-bold m-0 text-slate-800">@plan.EquipmentUnit?.Equipment?.Name</h4>
-                                                <span class="text-[10px] text-slate-400 font-bold uppercase">@plan.EquipmentUnit?.Laboratory?.Name</span>
-                                            </div>
-                                            <span class="badge" style="background: #FEE2E2; color: #DC2626; font-size: 0.6rem; padding: 4px 8px;">Hace @((DateTime.Now - plan.PlannedDate.Value).Days) días</span>
-                                        </div>
-                                    }
-                                }
-                                else
-                                {
-                                    <!-- Mock for UI matching image -->
-                                    <div class="d-flex justify-content-between align-items-start mb-3 p-2">
-                                        <div>
-                                            <h4 class="text-sm font-bold m-0 text-slate-800">Horno PINZUAR</h4>
-                                            <span class="text-[10px] text-slate-400 font-bold uppercase">Civil</span>
-                                        </div>
-                                        <span class="badge" style="background: #FEE2E2; color: #DC2626; font-size: 0.6rem; padding: 4px 8px;">Hace 5 días</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-start p-2">
-                                        <div>
-                                            <h4 class="text-sm font-bold m-0 text-slate-800">Balanza OHAUS</h4>
-                                            <span class="text-[10px] text-slate-400 font-bold uppercase">H-1</span>
-                                        </div>
-                                        <span class="badge" style="background: #FEE2E2; color: #DC2626; font-size: 0.6rem; padding: 4px 8px;">Hace 2 días</span>
-                                    </div>
-                                }
-                            </div>
-                        </div>
-
-                        <!-- PROXIMOS Section -->
-                        <div class="bg-white rounded-4 border">
-                            <div class="px-4 py-3 border-bottom d-flex align-items-center gap-2" style="background-color: #FFFBEB;">
-                                <i class="far fa-clock text-warning"></i>
-                                <h3 class="m-0 text-warning" style="font-size: 0.75rem; letter-spacing: 0.05em; color: #92400E !important;">PRÓXIMOS A VENCER</h3>
-                            </div>
-                            <div class="p-3">
-                                <div class="d-flex justify-content-between align-items-start mb-3 p-2">
-                                    <div>
-                                        <h4 class="text-sm font-bold m-0 text-slate-800">Fermentador INOX</h4>
-                                        <span class="text-[10px] text-slate-400 font-bold uppercase">H-1</span>
-                                    </div>
-                                    <span class="badge" style="background: #FEF3C7; color: #92400E; font-size: 0.6rem; padding: 4px 8px;">En 3 días</span>
+                            <div class="row mt-4">
+                                <div class="col-4 border-right text-center">
+                                    <i class="fa fa-circle text-primary"></i>
+                                    <h4 class="mb-0 font-medium">@Model.TotalPlans</h4>
+                                    <span>Plan</span>
                                 </div>
-                                <div class="d-flex justify-content-between align-items-start p-2">
-                                    <div>
-                                        <h4 class="text-sm font-bold m-0 text-slate-800">Campana WILDA</h4>
-                                        <span class="text-[10px] text-slate-400 font-bold uppercase">H-1</span>
-                                    </div>
-                                    <span class="badge" style="background: #FEF3C7; color: #92400E; font-size: 0.6rem; padding: 4px 8px;">En 6 días</span>
+                                <div class="col-4 border-right p-l-20 text-center">
+                                    <i class="fa fa-circle text-info"></i>
+                                    <h4 class="mb-0 font-medium">@(Model.TotalPlans - Model.CompletedPlans)</h4>
+                                    <span>Pend.</span>
+                                </div>
+                                <div class="col-4 p-l-20 text-center">
+                                    <i class="fa fa-circle text-success"></i>
+                                    <h4 class="mb-0 font-medium">@Model.CompletedPlans</h4>
+                                    <span>Éxito</span>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
+                <!-- Gráfica Comparativa (Barras) -->
+                <div class="col-sm-12 col-lg-8">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <h4 class="card-title">Comparación Equipos y Ejecución</h4>
+                            </div>
+                            <!-- Dashboard3.js inyecta el Bar Chart aquí -->
+                            <div class="chart1 m-t-40" style="position: relative; height:250px;"></div>
+                            <ul class="list-inline m-t-30 text-center font-12">
+                                <li class="list-inline-item text-muted"><i class="fa fa-circle text-info m-r-5"></i> Planificados</li>
+                                <li class="list-inline-item text-muted"><i class="fa fa-circle text-light m-r-5"></i> Ejecutados</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
+
+
 
             <!-- CRONOGRAMA DE INTERVENCIONES SECTION (BOTTOM) -->
             <div class="premium-table-card mt-5 animate-in fade-in duration-700">
@@ -647,37 +679,21 @@
         else
         {
             <!-- FALLBACK GLOBAL DASHBOARD -->
-            <div class="animate-in fade-in duration-500">
-                <div class="dashboard-header">
-                    <div class="header-title">
-                        <h1>Planificación Global Univalle</h1>
-                        <p class="text-sm text-slate-500">Estado general de los laboratorios y activos.</p>
-                    </div>
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" class="btn-premium-dark text-decoration-none">
-                        <i class="fas fa-play"></i> Iniciar Ronda Simulada
+            <div class="animate-in fade-in duration-500 d-flex flex-column justify-content-center align-items-center text-center p-5" style="min-height: 60vh; background: white; border-radius: 16px; border: 1px solid var(--slate-200); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <div class="mb-4">
+                    <i class="fas fa-folder-open text-primary opacity-25" style="font-size: 5rem; color: #3B82F6 !important;"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-2">No hay ninguna gestión activa</h2>
+                <p class="text-slate-500 mb-4 max-w-md">Debe aperturar e iniciar una Gestión Institucional O acceder al listado de Gestiones para registrar mantenimientos, analizar datos y utilizar el flujo de procesos.</p>
+                
+                <div class="d-flex gap-3 mt-2">
+                    <a asp-page="/Managements/Create" class="btn btn-primary rounded-pill px-4 shadow-sm" style="background: #3B82F6; border: none;">
+                        <i class="fas fa-plus mr-2"></i> Crear Gestión
+                    </a>
+                    <a asp-page="/Managements/Index" class="btn btn-light border-slate-200 rounded-pill px-4 shadow-sm">
+                        <i class="fas fa-table mr-2"></i> Ver Gestiones
                     </a>
                 </div>
-
-            <div class="row mt-4">
-                <div class="col-md-4 mb-3">
-                    <div class="chart-card text-center p-4 h-100">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Gestión Actual</p>
-                        <p class="text-xl font-black text-slate-800 m-0">INACTIVA</p>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <div class="chart-card text-center p-4 h-100">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Equipos Registrados</p>
-                        <p class="text-2xl font-black text-slate-800 m-0">@Model.TotalEquipment</p>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <div class="chart-card text-center p-4 h-100">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Estado Operativo</p>
-                        <p class="text-2xl font-black text-green-600 m-0">@Model.OperationalPercent%</p>
-                    </div>
-                </div>
-            </div>
             </div>
         }
     }
@@ -728,21 +744,21 @@
                     </div>
 
                     <div class="space-y-4">
-                        @if (!Model.EquipmentUnitsSimulated.Any())
+                        @if (!Model.EquipmentUnitsList.Any())
                         {
                             <div class="border-2 border-dashed rounded-3 p-5 text-center text-slate-400">
                                 <i class="fas fa-microscope text-3xl mb-3 opacity-25"></i><br>
-                                Sin equipos seleccionados
+                                Sin equipos registrados en el ambiente seleccionado.
                             </div>
                         }
                         else
                         {
-                            foreach (var item in Model.EquipmentUnitsSimulated)
+                            foreach (var item in Model.EquipmentUnitsList)
                             {
-                                <div class="chart-card d-flex justify-content-between align-items-center py-3">
+                                <div class="chart-card d-flex justify-content-between align-items-center py-3 mb-2">
                                     <div>
-                                        <h4 class="font-bold text-slate-800 m-0">@item.Name</h4>
-                                        <span class="inventory-code">@item.InventoryNumber • @item.Category</span>
+                                        <h4 class="font-bold text-slate-800 m-0">@item.Equipment?.Name</h4>
+                                        <span class="inventory-code">@item.InventoryNumber • @item.Equipment?.Category.ToString()</span>
                                     </div>
                                     <div class="d-flex gap-2">
                                         <a asp-page="/Verifications/Create" asp-route-equipmentUnitId="@item.Id" asp-route-isWizard="true" class="btn btn-outline-primary btn-sm rounded-pill font-weight-bold px-3">
@@ -784,110 +800,19 @@
 </div>
 
 @section Scripts {
-    <script src="~/assets/libs/chart.js/dist/Chart.min.js"></script>
+    <!-- Plugins de Gráficas (Chartist y C3) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chartist@0.11.4/dist/chartist.min.css">
+    <link rel="stylesheet" href="~/assets/extra-libs/c3/c3.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chartist@0.11.4/dist/chartist.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartist-plugin-tooltip/0.0.11/chartist-plugin-tooltip.min.js"></script>
+    <script src="~/assets/extra-libs/c3/d3.min.js"></script>
+    <script src="~/assets/extra-libs/c3/c3.min.js"></script>
+
+    <!-- EL ARCHIVO MÁGICO DEL DASHBOARD 3 -->
+    <script src="~/dist/js/pages/dashboards/dashboard3.js"></script>
+
+
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            @if(Model.ActiveManagement != null && !Model.ShowWizard)
-            {
-                <text>
-                Chart.defaults.global.defaultFontFamily = "'Inter', sans-serif";
-                Chart.defaults.global.defaultFontColor = '#94a3b8';
-
-                // 1. GLOBAL PROGRESS DOUGHNUT
-                const ctxGlobal = document.getElementById('globalProgressChart');
-                if(ctxGlobal) {
-                    new Chart(ctxGlobal.getContext('2d'), {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Ejecutado', 'Planeado'],
-                            datasets: [{
-                                data: [@Model.GlobalProgress, @(100 - Model.GlobalProgress)],
-                                backgroundColor: ['#28A745', '#F1F5F9'],
-                                borderWidth: 0
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            cutoutPercentage: 82,
-                            legend: { display: false },
-                            tooltips: { enabled: false },
-                            animation: { animateRotate: true }
-                        }
-                    });
-                }
-
-                // 2. TYPE PROGRESS BARS (Horizontal)
-                @if (Model.TopEquipmentTypes != null && Model.TopEquipmentTypes.Any())
-                {
-                    <text>
-                    const ctxType = document.getElementById('typeProgressChart');
-                    if (ctxType) {
-                        new Chart(ctxType.getContext('2d'), {
-                            type: 'horizontalBar',
-                            data: {
-                                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopEquipmentTypes.Keys.Take(4))),
-                                datasets: [{
-                                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopEquipmentTypes.Values.Take(4))),
-                                    backgroundColor: ['#3B82F6', '#F59E0B', '#8B5CF6', '#EC4899'],
-                                    barThickness: 12,
-                                    borderRadius: 6
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                legend: { display: false },
-                                scales: {
-                                    xAxes: [{ display: false }],
-                                    yAxes: [{ 
-                                        gridLines: { display: false, drawBorder: false },
-                                        ticks: { fontSize: 10, fontStyle: '600', fontColor: '#94a3b8' } 
-                                    }]
-                                }
-                            }
-                        });
-                    }
-                    </text>
-                }
-
-                // 3. GROUPS PROGRESS BARS (Horizontal)
-                @if (Model.TopGroups != null && Model.TopGroups.Any())
-                {
-                    <text>
-                    const ctxSub = document.getElementById('subgroupsProgressChart');
-                    if (ctxSub) {
-                        new Chart(ctxSub.getContext('2d'), {
-                            type: 'horizontalBar',
-                            data: {
-                                labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopGroups.Keys.Take(4))),
-                                datasets: [{
-                                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopGroups.Values.Take(4))),
-                                    backgroundColor: ['#10B981', '#EF4444', '#3B82F6'],
-                                    barThickness: 12,
-                                    borderRadius: 6
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                legend: { display: false },
-                                scales: {
-                                    xAxes: [{ display: false }],
-                                    yAxes: [{ 
-                                        gridLines: { display: false, drawBorder: false },
-                                        ticks: { fontSize: 10, fontStyle: '600', fontColor: '#94a3b8' } 
-                                    }]
-                                }
-                            }
-                        });
-                    }
-                    </text>
-                }
-                </text>
-            }
-        });
-
         function openKardex(id) {
             const sidebar = document.getElementById('kardexSidebar');
             const overlay = document.getElementById('sidebarOverlay');

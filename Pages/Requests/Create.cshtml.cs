@@ -119,7 +119,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 EquipmentUnitId = Input.EquipmentUnitId,
                 Description = Input.Description.Clean()!,
                 Priority = Input.Priority,
-                Observations = Input.Observations?.Clean(),
+                Observations = Input.Observations?.Clean()?.Length > 500 ? Input.Observations.Clean()?.Substring(0, 497) + "..." : Input.Observations?.Clean(),
                 EstimatedRepairTime = Input.EstimatedRepairTime?.Clean(),
                 Status = RequestStatus.Pending,
                 CreatedDate = DateTime.UtcNow

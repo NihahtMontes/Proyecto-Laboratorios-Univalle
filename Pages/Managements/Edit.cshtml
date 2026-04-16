@@ -1,92 +1,89 @@
-@page
+@page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Managements.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
-@{
-    ViewData["Title"] = "Editar Gestión L-48";
-}
-
-<div class="row page-titles">
-    <div class="col-md-5 align-self-center">
-        <h3 class="text-themecolor">Editar Gestión</h3>
-    </div>
-    <div class="col-md-7 align-self-center">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a asp-page="./Index">Gestiones L-48</a></li>
-            <li class="breadcrumb-item active">Editar Registro</li>
-        </ol>
-    </div>
-</div>
-
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <div class="card shadow-sm border-top-warning">
-                <div class="card-header bg-white">
-                    <h4 class="m-b-0 text-dark font-weight-bold"><i class="fas fa-edit text-warning"></i> Modificación de Gestión</h4>
-                    <p class="text-muted mb-0 font-12">Actualice los parámetros del periodo. Los cambios afectarán la visualización en el Dashboard.</p>
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Editar Gestión Administrativa L-48</h4>
+                        <h6 class="card-subtitle text-muted italic">Actualización de parámetros del período académico</h6>
+                    </div>
+                    <div class="ml-auto">
+                        <i class="fas fa-calendar-alt fa-2x text-warning"></i>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form method="post">
-                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3 font-weight-bold"></div>
-                        <input type="hidden" asp-for="Input.Id" />
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Input.Year" class="control-label font-weight-bold"></label>
-                                <input asp-for="Input.Year" class="form-control" type="number" />
-                                <span asp-validation-for="Input.Year" class="text-danger"></span>
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small font-weight-bold" role="alert"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+
+                    <div class="row">
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3 small uppercase"><i class="fas fa-clock mr-2"></i> Temporalidad del Ciclo</h5>
+                            
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Year" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Año de Gestión <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Year" class="form-control border-info" type="number" />
+                                <span asp-validation-for="Input.Year" class="text-danger small font-weight-bold"></span>
                             </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Input.Semester" class="control-label font-weight-bold"></label>
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Semester" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Semestre <span class="text-danger">*</span></label>
                                 <select asp-for="Input.Semester" class="form-control custom-select">
-                                    <option value="1">Semestre 1 (Junio - Julio)</option>
-                                    <option value="2">Semestre 2 (Diciembre - Enero)</option>
+                                    <option value="1">Semestre 1 (Enero - Junio)</option>
+                                    <option value="2">Semestre 2 (Julio - Diciembre)</option>
                                 </select>
-                                <span asp-validation-for="Input.Semester" class="text-danger"></span>
+                                <span asp-validation-for="Input.Semester" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.StartDate" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Apertura</label>
+                                        <input asp-for="Input.StartDate" class="form-control" type="date" />
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.PlannedEndDate" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Cierre Est.</label>
+                                        <input asp-for="Input.PlannedEndDate" class="form-control" type="date" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Input.StartDate" class="control-label font-weight-bold"></label>
-                                <input asp-for="Input.StartDate" class="form-control" type="date" />
-                                <span asp-validation-for="Input.StartDate" class="text-danger"></span>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Input.PlannedEndDate" class="control-label font-weight-bold"></label>
-                                <input asp-for="Input.PlannedEndDate" class="form-control" type="date" />
-                                <span asp-validation-for="Input.PlannedEndDate" class="text-danger"></span>
-                            </div>
-                        </div>
+                        <div class="col-md-6 pl-md-4">
+                            <h5 class="font-weight-bold text-info mb-3 small uppercase"><i class="fas fa-info-circle mr-2"></i> Estado y Notas</h5>
 
-                        <div class="row">
-                            <div class="col-md-12 mb-3">
-                                <label asp-for="Input.Description" class="control-label font-weight-bold"></label>
-                                <textarea asp-for="Input.Description" class="form-control" rows="3" placeholder="Observaciones de esta gestión..."></textarea>
-                                <span asp-validation-for="Input.Description" class="text-danger"></span>
-                            </div>
-                        </div>
-
-                        <div class="row border-top pt-3">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Input.Status" class="control-label font-weight-bold"></label>
-                                <select asp-for="Input.Status" class="form-control custom-select" 
-                                        asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.ManagementStatus>()">
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Status" class="control-label font-weight-bold small text-info text-uppercase mb-1">Estado Administrativo Actual</label>
+                                <select asp-for="Input.Status" class="form-control custom-select font-weight-bold border-info" 
+                                        asp-items="Html.GetEnumSelectList<ManagementStatus>()">
                                 </select>
-                                <span asp-validation-for="Input.Status" class="text-danger"></span>
+                                <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold"></span>
+                                <small class="form-text text-muted italic mt-1 font-12"><i class="fas fa-exclamation-triangle mr-1 text-warning"></i> Solo una gestión puede estar "Activa" a la vez.</small>
+                            </div>
+
+                            <div class="form-group mb-0 bg-light p-3 rounded">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Observaciones Generales</label>
+                                <textarea asp-for="Input.Description" class="form-control italic" rows="4" placeholder="Detalles sobre este periodo..."></textarea>
+                                <span asp-validation-for="Input.Description" class="text-danger small"></span>
                             </div>
                         </div>
+                    </div>
 
-                        <hr />
-                        <div class="d-flex justify-content-end mt-4">
-                            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded mr-2">Cancelar</a>
-                            <button type="submit" class="btn btn-warning btn-rounded shadow-sm px-4">
-                                <i class="fas fa-save mr-1 text-white"></i> <span class="text-white">Actualizar Gestión</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    <div class="form-actions text-right mt-5 pt-3 border-top">
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
+                            <i class="fas fa-times mr-1"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark border-0 py-2">
+                            <i class="fas fa-save mr-1"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

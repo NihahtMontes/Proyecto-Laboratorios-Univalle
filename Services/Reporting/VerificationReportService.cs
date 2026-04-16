@@ -104,7 +104,7 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                         });
 
                         // Observations
-                        col.Item().PaddingTop(20).Column(c => {
+                        col.Item().PaddingTop(20).Column(c => { 
                             c.Item().Text("OBSERVACIONES TÉCNICAS").FontSize(10).SemiBold();
                             c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Background(Colors.Grey.Lighten4)
                                 .Text(string.IsNullOrEmpty(verification.Observations) ? "Sin observaciones particulares." : verification.Observations).FontSize(9).Italic();

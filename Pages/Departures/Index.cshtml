@@ -8,12 +8,12 @@
 
 <div class="row">
     <div class="col-12">
-        <div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0 mt-3">
             <div class="card-body">
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Control de Salidas de Equipos</h3>
-                        <h6 class="card-subtitle text-muted ml-2">Préstamos y salidas por mantenimiento externo (L-3).</h6>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Control de Salidas de Equipos (L-3)</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Préstamos y salidas por mantenimiento externo.</h6>
                     </div>
                     <div class="ml-auto mt-3">
                         <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
@@ -24,21 +24,22 @@
 
                 <div class="table-responsive">
                     <table class="table table-hover v-middle">
-                        <thead class="bg-light">
-                            <tr>
-                                <th class="border-top-0">Equipo</th>
-                                <th class="border-top-0">Responsable</th>
-                                <th class="border-top-0 text-center">Tipo</th>
-                                <th class="border-top-0 text-center">Fecha Salida</th>
-                                <th class="border-top-0 text-center">Retorno Est.</th>
-                                <th class="border-top-0 text-center">Estado</th>
+                        <thead class="thead-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Equipo / Unidad</th>
+                                <th>Responsable</th>
+                                <th class="text-center">Tipo</th>
+                                <th class="text-center">Fecha Salida</th>
+                                <th class="text-center">Retorno Est.</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             @if (!Model.Departures.Any())
                             {
                                 <tr>
-                                    <td colspan="6" class="text-center py-5 text-muted">
+                                    <td colspan="7" class="text-center py-5 text-muted italic font-weight-bold">
                                         <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
                                         No hay salidas registradas.
                                     </td>
@@ -50,21 +51,51 @@
                                 {
                                     <tr>
                                         <td>
-                                            <div class="font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</div>
-                                            <small class="text-muted">Inv: @item.EquipmentUnit?.InventoryNumber</small>
+                                            <div class="d-flex align-items-center">
+                                                <div class="m-r-10">
+                                                    <span class="btn btn-circle btn-sm btn-light-warning text-warning shadow-sm"><i class="fas fa-truck-loading"></i></span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
+                                                    <small class="text-muted italic">Inv: @item.EquipmentUnit?.InventoryNumber</small>
+                                                </div>
+                                            </div>
                                         </td>
-                                        <td>@item.Borrower?.FullName</td>
-                                        <td class="text-center">
-                                            <span class="badge @(item.Type == DepartureType.ExternalMaintenance ? "badge-info" : "badge-secondary") px-3 py-1">
-                                                @item.Type.ToString()
+                                        <td class="v-middle">
+                                            <div class="text-dark font-weight-bold">@item.Borrower?.FullName</div>
+                                            <small class="text-muted italic">Solicitante</small>
+                                        </td>
+                                        <td class="text-center v-middle">
+                                            @{
+                                                var tBadge = item.Type == DepartureType.ExternalMaintenance ? "badge-light-info text-info" : "badge-light-primary text-primary";
+                                            }
+                                            <span class="badge badge-pill @tBadge px-3 py-1 font-weight-bold shadow-sm">
+                                                @item.Type
                                             </span>
                                         </td>
-                                        <td class="text-center">@item.DepartureDate.ToString("dd/MM/yyyy")</td>
-                                        <td class="text-center">@item.EstimatedReturnDate.ToString("dd/MM/yyyy")</td>
-                                        <td class="text-center">
-                                            <span class="badge @(item.Status == LoanStatus.Active ? "badge-warning" : "badge-success") px-3 py-1">
+                                        <td class="text-center v-middle">
+                                            <div class="text-dark">@item.DepartureDate.ToString("dd/MM/yyyy")</div>
+                                        </td>
+                                        <td class="text-center v-middle">
+                                            <div class="text-danger font-weight-bold">@item.EstimatedReturnDate.ToString("dd/MM/yyyy")</div>
+                                        </td>
+                                        <td class="text-center v-middle">
+                                            @{
+                                                var sBadge = item.Status == LoanStatus.Active ? "badge-light-warning text-warning" : "badge-light-success text-success";
+                                            }
+                                            <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold shadow-sm border">
                                                 @(item.Status == LoanStatus.Active ? "ACTIVO" : "DEVUELTO")
                                             </span>
+                                        </td>
+                                        <td class="text-center v-middle">
+                                            <div class="btn-group">
+                                                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1 shadow-sm" title="Ver Detalles">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </a>
+                                                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded shadow-sm" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 }
@@ -76,3 +107,19 @@
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .opacity-2 { opacity: 0.2; }
+        .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+        .italic { font-style: italic; }
+        
+        /* Soft Badges */
+        .badge-light-success { background-color: #e8fadf; color: #71dd37; }
+        .badge-light-danger { background-color: #ffe5e5; color: #ff3e1d; }
+        .badge-light-warning { background-color: #fff2d6; color: #ffab00; }
+        .badge-light-info { background-color: #e7e7ff; color: #696cff; }
+        .badge-light-primary { background-color: #e7e7ff; color: #696cff; }
+    </style>
+}

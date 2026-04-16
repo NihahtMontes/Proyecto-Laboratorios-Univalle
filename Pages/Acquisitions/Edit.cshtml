@@ -2,17 +2,17 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
-<div class="row justify-content-center">
-    <div class="col-lg-10 col-xl-9">
-        <div class="card shadow-sm border-0">
+<div class="row">
+    <div class="col-lg-8 border-right">
+        <div class="card shadow-sm border-0 mt-3">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark">Editar Solicitud de Adquisición</h4>
-                        <h6 class="card-subtitle text-muted font-italic">Modificando expediente #@Model.Input.Id</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Editar Solicitud de Adquisición</h4>
+                        <h6 class="card-subtitle text-muted italic">Modificando expediente técnico de compra #@Model.Input.Id</h6>
                     </div>
-                    <div class="ml-auto">
-                        <i class="fas fa-edit fa-2x text-warning opacity-5"></i>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-edit fa-2x text-warning"></i>
                     </div>
                 </div>
 
@@ -20,69 +20,103 @@
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
                     <input type="hidden" asp-for="Input.Id" />
 
-                    <div class="row">
+                    <div class="row mt-4">
                         <div class="col-md-5 border-right">
-                            <h5 class="font-weight-bold text-success mb-3">
-                                <i class="fas fa-file-signature mr-2"></i> Datos Identificadores
+                            <h5 class="font-weight-bold text-info mb-3 small uppercase">
+                                <i class="fas fa-file-signature mr-2"></i> Identificadores del Pedido
                             </h5>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.InvestmentCode" class="control-label font-weight-bold small text-success text-uppercase">Código de Inversión <span class="text-danger">*</span></label>
-                                <input asp-for="Input.InvestmentCode" class="form-control" />
+                                <label asp-for="Input.InvestmentCode" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Código de Inversión <span class="text-danger">*</span></label>
+                                <input asp-for="Input.InvestmentCode" class="form-control border-info" placeholder="Ej: INV-2024-001" />
                                 <span asp-validation-for="Input.InvestmentCode" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.CostCenter" class="control-label font-weight-bold small text-muted text-uppercase">Centro de Costos</label>
+                                <label asp-for="Input.CostCenter" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Centro de Costos Asignado</label>
                                 <input asp-for="Input.CostCenter" class="form-control" />
                                 <span asp-validation-for="Input.CostCenter" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Priority" class="control-label font-weight-bold small text-muted text-uppercase">Prioridad</label>
-                                <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
+                                <label asp-for="Input.Priority" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Nivel de Prioridad Académica</label>
+                                <select asp-for="Input.Priority" class="form-control custom-select border-warning" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
                                 <span asp-validation-for="Input.Priority" class="text-danger small"></span>
                             </div>
 
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.Status" class="control-label font-weight-bold small text-muted text-uppercase">Estado Administrativo</label>
-                                <select asp-for="Input.Status" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestStatus>()"></select>
+                            <div class="form-group mb-4 border-top pt-3">
+                                <label asp-for="Input.Status" class="control-label font-weight-bold small text-info text-uppercase mb-2">Estado Administrativo del Proceso</label>
+                                <select asp-for="Input.Status" class="form-control custom-select bg-light font-weight-bold text-dark border-info" asp-items="Html.GetEnumSelectList<RequestStatus>()"></select>
                                 <span asp-validation-for="Input.Status" class="text-danger small"></span>
+                                <small class="form-text text-muted italic small mt-1"><i class="fas fa-info-circle mr-1"></i> El cambio de estado notifica automáticamente al solicitante.</small>
                             </div>
                         </div>
 
-                        <div class="col-md-7 pl-lg-4">
-                            <h5 class="font-weight-bold text-success mb-3">
-                                <i class="fas fa-comment-dollar mr-2"></i> Justificación y Notas
+                        <div class="col-md-7 pl-lg-4 mt-4 mt-md-0">
+                            <h5 class="font-weight-bold text-info mb-3 small uppercase">
+                                <i class="fas fa-comment-dollar mr-2"></i> Justificación Detallada
                             </h5>
 
-                            <div class="form-group mb-4 bg-light p-3 rounded" style="border-left: 4px solid #28a745;">
-                                <label asp-for="Input.Description" class="control-label font-weight-bold small text-uppercase">Justificación Original <span class="text-danger">*</span></label>
-                                <textarea asp-for="Input.Description" class="form-control" rows="4"></textarea>
+                            <div class="form-group mb-4 bg-light p-3 rounded shadow-sm border-left border-3 border-success">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small text-dark text-uppercase mb-2">Motivo Original de la Solicitud <span class="text-danger">*</span></label>
+                                <textarea asp-for="Input.Description" class="form-control shadow-none border-0" rows="5" placeholder="Describa la necesidad técnica..."></textarea>
                                 <span asp-validation-for="Input.Description" class="text-danger small"></span>
                             </div>
 
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.Observations" class="control-label font-weight-bold small text-muted text-uppercase">Observaciones de Seguimiento</label>
-                                <textarea asp-for="Input.Observations" class="form-control" rows="3"></textarea>
+                            <div class="form-group mb-4 pt-2">
+                                <label asp-for="Input.Observations" class="control-label font-weight-bold small text-muted text-uppercase mb-2">Bitácora / Observaciones de Seguimiento</label>
+                                <textarea asp-for="Input.Observations" class="form-control italic" rows="4" placeholder="Notas sobre el proceso de validación o evaluación técnica..."></textarea>
                                 <span asp-validation-for="Input.Observations" class="text-danger small"></span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-actions text-right mt-5 border-top pt-4">
-                        <a asp-page="./Details" asp-route-id="@Model.Input.Id" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
-                            Cancelar
+                    <hr class="mt-5" />
+
+                    <div class="form-actions text-right mt-4 pb-2">
+                        <a asp-page="./Details" asp-route-id="@Model.Input.Id" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
+                            <i class="fas fa-times mr-1"></i> Cancelar Edición
                         </a>
-                        <button type="submit" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold">
-                            <i class="fas fa-save mr-2"></i> Guardar Cambios
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark border-0 py-2 animate__animated animate__pulse animate__infinite">
+                            <i class="fas fa-check-circle mr-1"></i> Aplicar Cambios Técnicos
                         </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <div class="col-lg-4 mt-3">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4 shadow-lg overflow-hidden">
+             <div class="card-body p-4 position-relative">
+                <i class="fas fa-shopping-cart position-absolute text-white" style="font-size: 8rem; opacity: 0.05; right:-20px; top:-20px;"></i>
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4 border-bottom border-secondary pb-2"><i class="fas fa-info-circle mr-2 text-info"></i> Resumen de Ficha</h5>
+                
+                <div class="mb-4">
+                    <label class="text-muted uppercase font-weight-bold d-block mb-1" style="font-size: 0.65rem;">Identificación Única</label>
+                    <span class="font-weight-bold text-info" style="font-size: 1.2rem;">#ACQ-@Model.Input.Id.ToString("D5")</span>
+                </div>
+                
+                <div class="mb-0">
+                    <label class="text-muted uppercase font-weight-bold d-block mb-2" style="font-size: 0.65rem;">Estado de Proceso</label>
+                    <span class="badge badge-pill badge-warning px-4 py-2 font-weight-bold shadow-sm text-dark" style="font-size: 0.75rem;">
+                         Edición en Curso
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-light border-0 shadow-sm p-4 small text-dark border-left border-3 border-info">
+             <h6 class="font-weight-bold text-info small uppercase mb-3"><i class="fas fa-shield-alt mr-2"></i> Reglas de Edición</h6>
+             <ul class="pl-3 mb-0 italic">
+                 <li class="mb-2">Solo puede editar solicitudes en estado <strong>Pendiente</strong>.</li>
+                 <li class="mb-2">El cambio de código de inversión afecta reportes contables.</li>
+                 <li>Las observaciones son visibles para administradores de área.</li>
+             </ul>
+        </div>
+    </div>
 </div>
+
 
 @section Styles {
     <style>.opacity-5 { opacity: 0.15; }</style>

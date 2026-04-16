@@ -85,39 +85,44 @@
                                                     </div>
                                                     <small class="font-weight-bold text-dark">@item.CompletionPercentage% (@item.CompletedMaintenances/@item.TotalEquipments)</small>
                                                 </td>
-                                                <td class="text-center">
+                                                <td class="text-center v-middle">
                                                     @{
                                                         var (statusClass, statusText) = item.Status switch
                                                         {
-                                                            ManagementStatus.Active => ("badge-success", "ACTIVO"),
-                                                            ManagementStatus.Inactive => ("badge-warning", "INACTIVO"),
-                                                            ManagementStatus.Completed => ("badge-danger", "TERMINADO"),
+                                                            ManagementStatus.Active => ("badge-light-success text-success", "ACTIVO"),
+                                                            ManagementStatus.Inactive => ("badge-light-warning text-warning", "INACTIVO"),
+                                                            ManagementStatus.Completed => ("badge-light-danger text-danger", "TERMINADO"),
                                                             _ => ("badge-secondary", "DESCONOCIDO")
                                                         };
                                                     }
-                                                    <span class="badge @statusClass px-3 py-1">@statusText</span>
+                                                    <span class="badge badge-pill @statusClass px-3 py-1 font-weight-bold shadow-sm border">@statusText</span>
                                                 </td>
-                                                <td class="text-center">
+                                                <td class="text-center v-middle">
                                                     <div class="btn-group">
                                                         @if (item.Status == ManagementStatus.Active)
                                                         {
-                                                            <a asp-page="/Index" class="btn btn-sm btn-outline-info btn-rounded" title="Ver Dashboard Principal L-48">
-                                                                <i class="fas fa-chart-pie"></i> Dashboard
+                                                            <a asp-page="/Index" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Ver Dashboard Principal L-48">
+                                                                <i class="fas fa-chart-pie"></i>
                                                             </a>
+                                                            <form method="post" asp-page-handler="SyncPlans" asp-route-id="@item.Id" class="d-inline ml-1">
+                                                                <button type="submit" class="btn btn-sm btn-outline-primary btn-rounded shadow-sm" title="Sincronizar Nuevos Equipos">
+                                                                    <i class="fas fa-sync"></i>
+                                                                </button>
+                                                            </form>
                                                         }
                                                         else
                                                         {
-                                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary btn-rounded" title="Ver Histórico L-48">
-                                                                <i class="fas fa-history"></i> Histórico
+                                                            <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary btn-rounded shadow-sm" title="Ver Histórico L-48">
+                                                                <i class="fas fa-history"></i>
                                                             </a>
                                                         }
-                                                        <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded mx-1" title="Editar">
+                                                        <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded mx-1 shadow-sm" title="Editar">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                         @if (item.Status != ManagementStatus.Active)
                                                         {
                                                             <form method="post" asp-page-handler="DeleteLogical" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('¿Estás seguro de eliminar esta gestión?');">
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar (Lógico)">
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded shadow-sm" title="Eliminar (Lógico)">
                                                                     <i class="fas fa-trash"></i>
                                                                 </button>
                                                             </form>
