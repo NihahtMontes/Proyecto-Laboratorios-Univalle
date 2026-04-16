@@ -27,7 +27,6 @@ namespace Proyecto_Laboratorios_Univalle.Data
             {
                 if (entry.State == EntityState.Added)
                 {
-                    // Solo asignar si el ID es un entero positivo válido (FK de SQL)
                     if (userId.HasValue && userId.Value > 0)
                     {
                         entry.Entity.CreatedById = userId;
@@ -74,6 +73,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<CostDetail> CostDetails { get; set; } = null!;
         public DbSet<MaintenancePlan> MaintenancePlans { get; set; } = null!;
         public DbSet<Verification> Verifications { get; set; } = null!;
+        public DbSet<VerificationCheckItem> VerificationCheckItems { get; set; } = null!;
+        public DbSet<VerificationCheckResult> VerificationCheckResults { get; set; } = null!;
         public DbSet<Departure> Departures { get; set; } = null!;
         public DbSet<Intern> Interns { get; set; } = null!;
         public DbSet<Extern> Externs { get; set; } = null!;
@@ -128,23 +129,30 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Maintenance>().HasQueryFilter(m => m.Status != MaintenanceStatus.Cancelled);
             modelBuilder.Entity<Request>().HasQueryFilter(s => s.Status != RequestStatus.Cancelled);
             modelBuilder.Entity<Verification>().HasQueryFilter(v => v.Status != VerificationStatus.Annulled);
+            modelBuilder.Entity<VerificationCheckResult>().HasQueryFilter(r => r.Verification.Status != VerificationStatus.Annulled);
+            modelBuilder.Entity<Management>().HasQueryFilter(m => m.Status != ManagementStatus.Deleted);
+
             modelBuilder.Entity<Departure>().HasQueryFilter(l => l.Status != LoanStatus.Cancelled);
             modelBuilder.Entity<Career>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => t.Maintenance.Status != MaintenanceStatus.Cancelled);
 
-            // Relationships
-            modelBuilder.Entity<City>().HasOne(c => c.Country).WithMany(p => p.Cities).OnDelete(DeleteBehavior.Restrict);
+            // Management Relationships
+            modelBuilder.Entity<Verification>().HasOne(v => v.Management).WithMany().HasForeignKey(v => v.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Request>().HasOne(r => r.Management).WithMany().HasForeignKey(r => r.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Maintenance>().HasOne(m => m.Management).WithMany().HasForeignKey(m => m.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EquipmentUnit>().HasOne(e => e.Management).WithMany().HasForeignKey(e => e.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Departure>().HasOne(d => d.Management).WithMany().HasForeignKey(d => d.ManagementId).OnDelete(DeleteBehavior.Restrict);
+
+            // Relationships
+            modelBuilder.Entity<City>().HasOne(c => c.Country).WithMany(p => p.Cities).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Laboratory>().HasOne(l => l.Faculty).WithMany(f => f.Laboratories).OnDelete(DeleteBehavior.Restrict);
 
-            // CORRECCIÓN: Se eliminó la relación Equipment -> EquipmentType porque ahora se usa Enum Category
             modelBuilder.Entity<Equipment>().HasOne(e => e.Country).WithMany(c => c.Equipments).HasForeignKey(e => e.CountryId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.City).WithMany(c => c.Equipments).HasForeignKey(e => e.CityId).OnDelete(DeleteBehavior.Restrict);
 
-            // EquipmentUnit Relationships
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Laboratory).WithMany(l => l.EquipmentUnits).HasForeignKey(u => u.LaboratoryId).OnDelete(DeleteBehavior.SetNull);
-
             modelBuilder.Entity<EquipmentStateHistory>().HasOne(ee => ee.EquipmentUnit).WithMany(e => e.StateHistory).HasForeignKey(ee => ee.EquipmentUnitId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<Maintenance>().HasOne(m => m.EquipmentUnit).WithMany(e => e.Maintenances).OnDelete(DeleteBehavior.Restrict);
-
             modelBuilder.Entity<Maintenance>().HasOne(m => m.Request).WithOne(s => s.Maintenance).HasForeignKey<Maintenance>(m => m.RequestId).OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<CostDetail>().HasOne(d => d.Maintenance).WithMany(m => m.CostDetails).HasForeignKey(d => d.MaintenanceId).OnDelete(DeleteBehavior.Cascade);
@@ -154,12 +162,10 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<MaintenancePlan>().HasOne(p => p.EquipmentUnit).WithMany(e => e.MaintenancePlans).HasForeignKey(p => p.EquipmentUnitId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<MaintenanceTask>().HasOne(t => t.Maintenance).WithMany(m => m.Tasks).HasForeignKey(t => t.MaintenanceId).OnDelete(DeleteBehavior.Cascade);
 
-            // Departure Relationships
-            modelBuilder.Entity<Departure>().HasOne(l => l.EquipmentUnit).WithMany(u => u.Departures).HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Departure>().HasOne(l => l.EquipmentUnit).WithMany(u => u.Departures).HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Departure>().HasOne(l => l.Borrower).WithMany(p => p.Departures).HasForeignKey(l => l.BorrowerId).OnDelete(DeleteBehavior.Restrict);
 
-            // Audit relationships
-            modelBuilder.Entity<Laboratory>().HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Laboratory>().HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.CreatedBy).WithMany().HasForeignKey(u => u.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Equipment).WithMany(e => e.Units).HasForeignKey(u => u.EquipmentId).OnDelete(DeleteBehavior.Restrict);
@@ -168,10 +174,33 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Career>().HasOne(c => c.Facultad).WithMany().HasForeignKey(c => c.FacultadId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Career>().HasOne(c => c.CreatedBy).WithMany().HasForeignKey(c => c.CreatedById).OnDelete(DeleteBehavior.Restrict);
 
-            // Inheritance TPT (Table Per Type)
-            modelBuilder.Entity<Person>().ToTable("People");
+            modelBuilder.Entity<Person>().ToTable("People");
             modelBuilder.Entity<Intern>().ToTable("Interns");
             modelBuilder.Entity<Extern>().ToTable("Externs");
+            
+            modelBuilder.Entity<VerificationCheckResult>()
+                .HasOne(r => r.Verification).WithMany(v => v.CheckResults)
+                .HasForeignKey(r => r.VerificationId).OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<VerificationCheckResult>()
+                .HasOne(r => r.CheckItem).WithMany(c => c.Results)
+                .HasForeignKey(r => r.CheckItemId).OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<VerificationCheckItem>().HasData(
+                new VerificationCheckItem { Id = 1,  Name = "Desconexión del cable de la alimentación eléctrica para mantenimiento preventivo/correctivo 12 horas antes.", Category = "Seguridad",      Order = 1,  IsActive = true },
+                new VerificationCheckItem { Id = 2,  Name = "Limpieza y desinfección interna con productos no abrasivos.",                                 Category = "Higiene",        Order = 2,  IsActive = true },
+                new VerificationCheckItem { Id = 3,  Name = "Limpieza externa de condensador, serpentín, evaporador y retiro de polvo y grasas adheridas.",          Category = "Higiene",        Order = 3,  IsActive = true },
+                new VerificationCheckItem { Id = 4,  Name = "Verificación de presión del refrigerante.",                                                   Category = "Refrigeración",  Order = 4,  IsActive = true },
+                new VerificationCheckItem { Id = 5,  Name = "Revisión de fugas y/o microfugas en serpentín.",                                             Category = "Refrigeración",  Order = 5,  IsActive = true },
+                new VerificationCheckItem { Id = 6,  Name = "Revisión de formaciones de hielo y condensaciones superficiales no esporádicas.",             Category = "Refrigeración",  Order = 6,  IsActive = true },
+                new VerificationCheckItem { Id = 7,  Name = "Control de temperatura y termostatos según norma.",                                          Category = "Control",        Order = 7,  IsActive = true },
+                new VerificationCheckItem { Id = 8,  Name = "Revisión de puertas y sellos de goma (empaques).",                                           Category = "Mecánica",       Order = 8,  IsActive = true },
+                new VerificationCheckItem { Id = 9,  Name = "Limpieza de drenajes de deshielo.",                                                          Category = "Higiene",        Order = 9,  IsActive = true },
+                new VerificationCheckItem { Id = 10, Name = "Verificación del funcionamiento de ventiladores.",                                            Category = "Mecánica",       Order = 10, IsActive = true },
+                new VerificationCheckItem { Id = 11, Name = "Mantenimiento eléctrico: inspección de cableado, terminales, protecciones eléctricas, etc.",       Category = "Eléctrico",      Order = 11, IsActive = true },
+                new VerificationCheckItem { Id = 12, Name = "Lubricación de partes móviles.",                                                              Category = "Mecánica",       Order = 12, IsActive = true },
+                new VerificationCheckItem { Id = 13, Name = "Mantenimiento con personal externo capacitado.",                                              Category = "Gestión",        Order = 13, IsActive = true }
+            );
         }
     }
 }

@@ -8,6 +8,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
@@ -16,11 +17,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IManagementContextService _managementContext;
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, 
+            UserManager<User> userManager,
+            IManagementContextService managementContext)
         {
             _context = context;
             _userManager = userManager;
+            _managementContext = managementContext;
         }
 
         public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false, int? managementPlanId = null)
@@ -214,9 +219,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             try
             {
+                var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+                if (currentMgmt == null)
+                {
+                    TempData["Warning"] = "No hay una gestión activa disponible o las columnas de base de datos faltan. Por favor active una gestión institucional para registrar el mantenimiento.";
+                    LoadLists();
+                    return Page();
+                }
+
                 var maintenance = new Maintenance
                 {
                     EquipmentUnitId = Input.EquipmentUnitId,
+                    ManagementId = currentMgmt.Id,
                     MaintenanceType = Input.MaintenanceType,
                     TechnicianId = Input.TechnicianId,
                     RequestId = Input.RequestId,
@@ -320,11 +334,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
             ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
 
-            var technicians = _context.People
+            // Fix: FullName is NotMapped and causes LINQ translation errors in TPT.
+            var people = _context.People
                 .Where(p => p.Status == GeneralStatus.Activo)
-                .Select(p => new { Id = p.Id, FullName = p.FullName })
                 .ToList();
-            ViewData["TechnicianId"] = new SelectList(technicians, "Id", "FullName");
+
+            var technicianList = people
+                .Select(p => new { 
+                    Id = p.Id, 
+                    Name = p is Intern i ? i.Name : (p is Extern e ? e.Name : "Técnico #" + p.Id) 
+                })
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            ViewData["TechnicianId"] = new SelectList(technicianList, "Id", "Name");
 
             ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
             ViewData["ServiceType"] = EnumHelper.GetStatusSelectList<ServiceType>();

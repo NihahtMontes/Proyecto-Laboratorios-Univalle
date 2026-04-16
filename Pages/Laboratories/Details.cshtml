@@ -31,10 +31,6 @@
                                     <td class="font-weight-bold text-dark h5 mb-0">@Model.Laboratory.Code</td>
                                 </tr>
                                 <tr>
-                                    <th class="text-muted small uppercase pl-3 font-weight-bold">Especialidad:</th>
-                                    <td class="text-dark font-weight-bold">@(Model.Laboratory.Type ?? "General / Multidisciplinar")</td>
-                                </tr>
-                                <tr>
                                     <th class="text-muted small uppercase pl-3 font-weight-bold">Adscripción:</th>
                                     <td class="text-dark font-weight-bold small uppercase">@(Model.Laboratory.Faculty?.Name ?? "Área General")</td>
                                 </tr>
@@ -48,10 +44,6 @@
                         </h5>
                         <table class="table table-sm table-borderless bg-light rounded p-2">
                             <tbody>
-                                <tr>
-                                    <th class="text-muted small uppercase pl-3 font-weight-bold" style="width: 40%;">Edificio/Bloque:</th>
-                                    <td class="font-weight-bold text-dark">@(Model.Laboratory.Building ?? "No especificado")</td>
-                                </tr>
                                 <tr>
                                     <th class="text-muted small uppercase pl-3 font-weight-bold">Nivel / Piso:</th>
                                     <td class="text-dark font-weight-bold">@(Model.Laboratory.Floor ?? "No especificado")</td>

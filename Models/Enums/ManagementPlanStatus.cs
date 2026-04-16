@@ -4,16 +4,16 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
 {
     public enum ManagementPlanStatus
     {
-        [Display(Name = "Pending")]
+        [Display(Name = "Pendiente")]
         Pending = 0,
 
-        [Display(Name = "In Progress")]
+        [Display(Name = "En Progreso")]
         InProgress = 1,
 
-        [Display(Name = "Completed")]
+        [Display(Name = "Completado")]
         Completed = 2,
 
-        [Display(Name = "Overdue")]
+        [Display(Name = "Retrasado")]
         Overdue = 3
     }
 }

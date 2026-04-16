@@ -27,29 +27,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         [BindProperty(SupportsGet = true)]
         public Models.Enums.MaintenanceStatus? StatusFilter { get; set; }
 
-        [BindProperty(SupportsGet = true)]
-        public string? SelectedBlock { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public int? SelectedLaboratoryId { get; set; }
 
-        public List<string> Blocks { get; set; } = new();
         public SelectList LaboratoryList { get; set; } = default!;
 
         public async Task OnGetAsync()
         {
-            Blocks = await _context.Laboratories
-                .Where(l => !string.IsNullOrEmpty(l.Building))
-                .Select(l => l.Building!)
-                .Distinct()
-                .OrderBy(b => b)
-                .ToListAsync();
 
             var labsQuery = _context.Laboratories.AsQueryable();
-            if (!string.IsNullOrEmpty(SelectedBlock))
-            {
-                labsQuery = labsQuery.Where(l => l.Building == SelectedBlock);
-            }
             var labs = await labsQuery.OrderBy(l => l.Name).ToListAsync();
             LaboratoryList = new SelectList(labs, "Id", "Name");
 
@@ -83,10 +70,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             if (SelectedLaboratoryId.HasValue)
             {
                 query = query.Where(m => m.EquipmentUnit!.LaboratoryId == SelectedLaboratoryId.Value);
-            }
-            else if (!string.IsNullOrEmpty(SelectedBlock))
-            {
-                query = query.Where(m => m.EquipmentUnit!.Laboratory!.Building == SelectedBlock);
             }
 
             Maintenances = await query

@@ -4,6 +4,8 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
 {
     public enum CostCategory
     {
+
+        // que pasa con los desamparados
         [Display(Name = "Ninguno / N/A")]
         None = 0,
 

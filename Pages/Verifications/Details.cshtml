@@ -10,10 +10,8 @@
     {
         var colorInfo = result switch
         {
-            VerificationResult.Good => ("text-success", "fa-check-circle", "bg-soft-success", "Bueno"),
-            VerificationResult.Bad => ("text-danger", "fa-times-circle", "bg-soft-danger", "Malo"),
-            VerificationResult.NotApplicable => ("text-muted", "fa-minus-circle", "", "N/A"),
-            _ => ("text-secondary", "fa-circle", "", "Sin Verificar")
+            VerificationResult.Completed => ("text-success", "fa-check-circle", "bg-soft-success", "Realizado"),
+            _ => ("text-muted", "fa-times-circle", "bg-light", "Pendiente")
         };
 
         var html = $@"
@@ -93,70 +91,28 @@
             <h5 class="text-dark font-weight-bold mb-3 pl-1"><i class="fas fa-tasks mr-2 text-info"></i>Detalle de Puntos de Control</h5>
             
             <div class="row">
-                <!-- Group 1: Combustion System -->
-                <div class="col-md-6 mb-4">
-                    <div class="card shadow-sm border-0 h-100">
-                        <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
-                            <i class="fas fa-burn mr-2"></i> Sistema de Combustión
-                        </div>
-                        <div class="card-body p-0 pb-2">
-                            @RenderCheck("Manguera Gas", v.GasHoseCheck)
-                            @RenderCheck("Manguera Agua", v.WaterHoseCheck)
-                            @RenderCheck("Válvula Solenoide", v.SolenoidValveCheck)
-                            @RenderCheck("Quemador", v.BurnerCheck)
-                            @RenderCheck("Sensor de Llama", v.FlameSensorCheck)
-                            @RenderCheck("Llama Piloto", v.CombustionFlameCheck)
-                            @RenderCheck("Ignitor", v.ElectrodeIgniterCheck)
-                        </div>
-                    </div>
-                </div>
+                @{
+                    var grouped = v.CheckResults
+                        .GroupBy(r => r.CheckItem?.Category ?? "General")
+                        .OrderBy(g => g.Min(r => r.CheckItem?.Order));
+                }
 
-                <!-- Group 2: Mechanical System -->
-                <div class="col-md-6 mb-4">
-                    <div class="card shadow-sm border-0 h-100">
-                        <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
-                            <i class="fas fa-cogs mr-2"></i> Mecánica y Térmica
-                        </div>
-                        <div class="card-body p-0 pb-2">
-                            @RenderCheck("Ventilador", v.FanCheck)
-                            @RenderCheck("Intercambiador Calor", v.HeatExchangerCheck)
-                            @RenderCheck("Lubricación", v.LubricationCheck)
-                            @RenderCheck("Salida Vapor", v.SteamOutletCheck)
-                            @RenderCheck("Vapor Alta Temp", v.HighTempSteamCheck)
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Group 3: Electrical System -->
-                <div class="col-md-6 mb-4">
-                    <div class="card shadow-sm border-0 h-100">
-                        <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
-                            <i class="fas fa-plug mr-2"></i> Eléctrico y Control
-                        </div>
-                        <div class="card-body p-0 pb-2">
-                            @RenderCheck("Cableado", v.CablingCheck)
-                            @RenderCheck("Control Temp", v.TemperatureControlCheck)
-                            @RenderCheck("Display LED", v.LedDisplayCheck)
-                            @RenderCheck("Luces", v.LightsCheck)
-                            @RenderCheck("Alarma Sonora", v.SoundAlarmCheck)
-                            @RenderCheck("Termocupla", v.ThermocoupleCheck)
-                             @RenderCheck("Encendido Horno", v.OvenIgnitionCheck)
+                @foreach (var group in grouped)
+                {
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
+                                <i class="fas fa-check-square mr-2"></i> @group.Key
+                            </div>
+                            <div class="card-body p-0 pb-2">
+                                @foreach (var result in group.OrderBy(r => r.CheckItem?.Order))
+                                {
+                                    @RenderCheck(result.CheckItem?.Name ?? "Check desconocido", result.Result)
+                                }
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                 <!-- Group 4: Hygiene System -->
-                <div class="col-md-6 mb-4">
-                    <div class="card shadow-sm border-0 h-100">
-                        <div class="card-header bg-white font-weight-bold text-info border-bottom-0 pt-3">
-                             <i class="fas fa-broom mr-2"></i> Estética e Higiene
-                        </div>
-                        <div class="card-body p-0 pb-2">
-                            @RenderCheck("Limpieza Interna", v.InternalCleaningCheck)
-                            @RenderCheck("Limpieza Externa", v.ExternalCleaningCheck)
-                        </div>
-                    </div>
-                </div>
+                }
             </div>
         </div>
 
@@ -164,30 +120,12 @@
         <div class="col-lg-4">
             <h5 class="text-dark font-weight-bold mb-3 pl-1"><i class="fas fa-clipboard-check mr-2 text-info"></i>Conclusiones</h5>
 
-            @if (!string.IsNullOrEmpty(v.CriticalFindings))
-            {
-                <div class="card shadow-sm border-0 mb-3 bg-white border-left-danger">
-                    <div class="card-body">
-                        <h6 class="text-danger font-weight-bold mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Hallazgos Críticos</h6>
-                        <p class="mb-0 text-dark small">@v.CriticalFindings</p>
-                    </div>
-                </div>
-            }
-
-            @if (!string.IsNullOrEmpty(v.Recommendations))
-            {
-                <div class="card shadow-sm border-0 mb-3 bg-white border-left-success">
-                    <div class="card-body">
-                        <h6 class="text-success font-weight-bold mb-2"><i class="fas fa-lightbulb mr-2"></i>Recomendaciones</h6>
-                        <p class="mb-0 text-dark small">@v.Recommendations</p>
-                    </div>
-                </div>
-            }
-
             <div class="card shadow-sm border-0 mb-4 bg-light">
-                <div class="card-body">
-                    <h6 class="text-muted font-weight-bold mb-2 small text-uppercase">Observaciones Formulario</h6>
-                    <p class="mb-0 text-secondary font-italic small">
+                <div class="card-body border-left-danger">
+                    <h6 class="text-danger font-weight-bold mb-2 small text-uppercase">
+                        <i class="fas fa-exclamation-triangle mr-1"></i> OBSERVACIONES (FALLAS O PROBLEMAS DEL EQUIPO)
+                    </h6>
+                    <p class="mb-0 text-dark font-weight-bold small">
                         @(string.IsNullOrEmpty(v.Observations) ? "Ninguna observación registrada." : v.Observations)
                     </p>
                 </div>

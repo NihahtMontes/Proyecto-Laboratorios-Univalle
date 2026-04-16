@@ -126,7 +126,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     CurrentPhase = WizardPhase.Verification,
                     CurrentState = WizardEquipmentState.PendingVerification,
                     PlanStatus = ManagementPlanStatus.Pending,
-                    PlannedDate = DateTime.Today.AddDays(7)
+                    PlannedDate = null
                 });
             }
             await _context.SaveChangesAsync();

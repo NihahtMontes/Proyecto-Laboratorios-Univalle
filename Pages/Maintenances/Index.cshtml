@@ -38,22 +38,8 @@
                         <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
                             <form method="get">
                                 <div class="row align-items-end">
-                                    <div class="col-md-2">
-                                        <label class="small font-weight-bold text-muted uppercase">Edificio</label>
-                                        <select asp-for="SelectedBlock" class="form-control custom-select drop-shadow" onchange="this.form.submit()">
-                                            <option value="">-- Todos --</option>
-                                            @if (Model.Blocks != null)
-                                            {
-                                                foreach (var block in Model.Blocks)
-                                                {
-                                                    <option value="@block">@block</option>
-                                                }
-                                            }
-                                        </select>
-                                    </div>
-
-                                    <div class="col-md-3">
-                                        <label class="small font-weight-bold text-muted uppercase">Laboratorio</label>
+                                    <div class="col-md-5">
+                                        <label class="small font-weight-bold text-muted uppercase">Laboratorio de Origen</label>
                                         <select asp-for="SelectedLaboratoryId" class="form-control custom-select drop-shadow" asp-items="Model.LaboratoryList">
                                             <option value="">-- Todos los Laboratorios --</option>
                                         </select>
