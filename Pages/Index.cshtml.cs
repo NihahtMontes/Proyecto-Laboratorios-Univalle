@@ -86,6 +86,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         public int CountSalida { get; set; }
         public int CountDesembolso { get; set; }
 
+        // --- MÉTRICAS FILA 1: Métricas Globales Sprint 3B ---
+        public int CountPendientes { get; set; }   // Equipos desde L-7 en adelante, sin completar
+        public int CountBuenos { get; set; }       // Equipos verificados en L-6 sin fallas (VerifiedGood)
+
         public SelectList LaboratoriesList { get; set; } = default!;
         public List<EquipmentUnit> EquipmentUnitsList { get; set; } = new();
         public List<ManagementPlan> ActivePlans { get; set; } = new();
@@ -104,11 +108,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();
                 LabFList = new SelectList(labs, "Id", "Name");
 
-                var techs = await _context.People
+                var techsList = await _context.People
                     .Where(p => p.Category == PersonCategory.Tecnico)
                     .ToListAsync();
                 
-                TechFList = new SelectList(techs.OrderBy(t => t.FullName), "Id", "FullName");
+                var techs = techsList.OrderBy(t => t.FullName).ToList();
+                TechFList = new SelectList(techs, "Id", "FullName");
 
                 CategoryFList = new SelectList(Enum.GetValues(typeof(EquipmentCategory))
                     .Cast<EquipmentCategory>()
@@ -140,9 +145,30 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     TotalVencidos = allPlans.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate.Value < DateTime.Now);
                     GlobalProgress = TotalActivos > 0 ? Math.Round((double)EquiposTerminados / TotalActivos * 100, 1) : 0;
 
+                    // B-2: Poblar métricas Fila 1 Sprint 3B
+                    CountPendientes = allPlans.Count(p =>
+                        p.PlanStatus != ManagementPlanStatus.Completed &&
+                        p.CurrentState >= WizardEquipmentState.AwaitingRequest);
+                    CountBuenos = allPlans.Count(p =>
+                        p.CurrentState == WizardEquipmentState.VerifiedGood);
+
+                    // B-3: Agrupación semántica de tipos de equipo
                     TopEquipmentTypes = allPlans
                         .Where(p => p.EquipmentUnit?.Equipment != null)
-                        .GroupBy(p => p.EquipmentUnit!.Equipment!.Category.ToString())
+                        .GroupBy(p =>
+                            p.EquipmentUnit!.Equipment!.Category == EquipmentCategory.Utensil
+                                ? "Utensilio"
+                                : p.EquipmentUnit!.Equipment!.TypeClassification switch
+                                {
+                                    EquipmentTypeClassification.Electronico => "Electrónico / Eléctrico",
+                                    EquipmentTypeClassification.Manual      => "Manual / Mecánico",
+                                    EquipmentTypeClassification.Mobiliario  => "Mobiliario",
+                                    EquipmentTypeClassification.Medicion    => "Instrumental de Medición",
+                                    EquipmentTypeClassification.Vidrio      => "Material de Vidrio",
+                                    EquipmentTypeClassification.Reactivo    => "Reactivo / Químico",
+                                    EquipmentTypeClassification.Informatico => "Informático",
+                                    _                                       => "Otro"
+                                })
                         .OrderByDescending(g => g.Count())
                         .ToDictionary(g => g.Key, g => g.Count());
 

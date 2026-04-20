@@ -389,6 +389,18 @@
                              </button>
                         </form>
 
+                        <a asp-page="/Managements/Details" asp-route-id="@Model.ActiveManagement.Id" asp-route-ActiveTab="dashboard" class="btn btn-info font-weight-bold shadow-sm rounded-pill px-3 ml-2" title="Dashboard Interno">
+                            <i class="fas fa-chart-pie"></i>
+                        </a>
+
+                        <a asp-page="/Managements/Details" asp-route-id="@Model.ActiveManagement.Id" asp-route-ActiveTab="l48" class="btn btn-success font-weight-bold shadow-sm rounded-pill px-3 ml-2">
+                            <i class="fas fa-table mr-2"></i>L-48
+                        </a>
+
+                        <a asp-page="/Managements/Details" asp-route-id="@Model.ActiveManagement.Id" asp-route-ActiveTab="calendario" class="btn btn-secondary font-weight-bold shadow-sm rounded-pill px-3 ml-2">
+                            <i class="fas fa-calendar-alt mr-2"></i>Calendario
+                        </a>
+
                         <a asp-page="/Index" asp-route-ShowWizard="true" class="btn btn-primary font-weight-bold shadow-sm rounded-pill px-3 ml-2">
                             <i class="fas fa-magic mr-2"></i>Ir al Wizard
                         </a>
@@ -398,63 +410,92 @@
 
             <p class="text-slate-500 text-sm mb-4">Métricas analíticas consolidadas de la operación institucional</p>
 
-            <!-- A. TARJETAS DE FASES (RESPONSIVE GRID) -->
-            <div class="row mb-4">
-                <!-- Activos (Total) -->
-                <div class="col-6 col-md-3 col-lg mb-3">
-                    <div class="phase-card shadow-sm" style="background: #f6f9ff;">
+            <!-- FILA 1: Métricas de Gestión Global (4 cards) -->
+            <div class="row mb-3">
+                <!-- Activos Totales -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="phase-card shadow-sm" style="background:#f6f9ff;">
                         <div class="phase-icon phase-icon--blue"><i class="fas fa-boxes"></i></div>
                         <h6 class="text-muted">Activos Totales</h6>
-                        <h2 style="color: #4154f1;">@Model.TotalActivos</h2>
+                        <h2 style="color:#4154f1;">@Model.TotalActivos</h2>
                     </div>
                 </div>
-                <!-- L-6 -->
-                <div class="col-6 col-md-3 col-lg mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" class="phase-card shadow-sm" style="background: var(--info-soft);">
+                <!-- Vencidos -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="phase-card shadow-sm bg-danger text-white">
+                        <div class="phase-icon" style="background:rgba(255,255,255,.2);color:#fff;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h6 class="text-white opacity-75">Vencidos</h6>
+                        <h2 class="text-white">@Model.TotalVencidos</h2>
+                    </div>
+                </div>
+                <!-- Pendientes (desde L-7) -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="phase-card shadow-sm" style="background:#fffbeb;">
+                        <div class="phase-icon phase-icon--amber"><i class="fas fa-hourglass-half"></i></div>
+                        <h6 style="color:#f59e0b;">Pendientes</h6>
+                        <h2 style="color:#f59e0b;">@Model.CountPendientes</h2>
+                    </div>
+                </div>
+                <!-- Activos Buenos (VerifiedGood) -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="phase-card shadow-sm" style="background:#d1fae5;">
+                        <div class="phase-icon phase-icon--green"><i class="fas fa-check-circle"></i></div>
+                        <h6 style="color:#10b981;">Activos Buenos</h6>
+                        <h2 style="color:#10b981;">@Model.CountBuenos</h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FILA 2: Flujo de Fases Operativas (5 cards) -->
+            <div class="row mb-4">
+                <!-- L-6 Verificación -->
+                <div class="col-6 col-md mb-3">
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1"
+                       class="phase-card shadow-sm" style="background:#eff6ff;">
                         <div class="phase-icon phase-icon--blue"><i class="fas fa-search"></i></div>
                         <h6 class="text-info">L-6 Verif.</h6>
                         <h2 class="text-info">@Model.CountL6</h2>
                     </a>
                 </div>
-                <!-- L-7 -->
-                <div class="col-6 col-md-3 col-lg mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2" class="phase-card shadow-sm" style="background: #f5f3ff;">
+                <!-- L-7 Solicitud -->
+                <div class="col-6 col-md mb-3">
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2"
+                       class="phase-card shadow-sm" style="background:#f5f3ff;">
                         <div class="phase-icon phase-icon--purple"><i class="fas fa-file-alt"></i></div>
-                        <h6 style="color: #8b5cf6;">L-7 Solic.</h6>
-                        <h2 style="color: #8b5cf6;">@Model.CountL7</h2>
+                        <h6 style="color:#8b5cf6;">L-7 Solic.</h6>
+                        <h2 style="color:#8b5cf6;">@Model.CountL7</h2>
                     </a>
                 </div>
-                <!-- L-8 -->
-                <div class="col-6 col-md-3 col-lg mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3" class="phase-card shadow-sm" style="background: #fffbeb;">
-                        <div class="phase-icon phase-icon--amber"><i class="fas fa-tools"></i></div>
-                        <h6 style="color: #f59e0b;">L-8 Mant.</h6>
-                        <h2 style="color: #f59e0b;">@Model.CountL8</h2>
+                <!-- L-8 Mantenimiento -->
+                <div class="col-6 col-md mb-3">
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3"
+                       class="phase-card shadow-sm" style="background:#fffbeb;">
+                        <div class="phase-icon phase-icon--amber">
+                            <i class="fas fa-wrench"></i>
+                        </div>
+                        <h6 style="color:#f59e0b;">L-8 Mant.</h6>
+                        <h2 style="color:#f59e0b;">@Model.CountL8</h2>
                     </a>
                 </div>
                 <!-- Salidas -->
-                <div class="col-6 col-md-3 col-lg mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="4" class="phase-card shadow-sm" style="background: #fef2f2;">
+                <div class="col-6 col-md mb-3">
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="4"
+                       class="phase-card shadow-sm" style="background:#fef2f2;">
                         <div class="phase-icon phase-icon--red"><i class="fas fa-sign-out-alt"></i></div>
-                        <h6 style="color: #ef4444;">Salidas</h6>
-                        <h2 style="color: #ef4444;">@Model.CountSalida</h2>
+                        <h6 style="color:#ef4444;">Salidas</h6>
+                        <h2 style="color:#ef4444;">@Model.CountSalida</h2>
                     </a>
                 </div>
                 <!-- Desembolso -->
-                <div class="col-6 col-md-3 col-lg mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="6" class="phase-card shadow-sm" style="background: #d1fae5;">
+                <div class="col-6 col-md mb-3">
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="6"
+                       class="phase-card shadow-sm" style="background:#d1fae5;">
                         <div class="phase-icon phase-icon--green"><i class="fas fa-shopping-cart"></i></div>
-                        <h6 style="color: #10b981;">Desembolso</h6>
-                        <h2 style="color: #10b981;">@Model.CountDesembolso</h2>
+                        <h6 style="color:#10b981;">Desembolso</h6>
+                        <h2 style="color:#10b981;">@Model.CountDesembolso</h2>
                     </a>
-                </div>
-                <!-- Vencidos -->
-                <div class="col-6 col-md-3 col-lg mb-3">
-                    <div class="phase-card bg-danger shadow-sm text-white">
-                        <div class="phase-icon" style="background: rgba(255,255,255,0.2); color:white;"><i class="fas fa-exclamation-triangle"></i></div>
-                        <h6 class="text-white opacity-75">Vencidos</h6>
-                        <h2 class="text-white">@Model.TotalVencidos</h2>
-                    </div>
                 </div>
             </div>
 
@@ -504,13 +545,6 @@
                 </div>
             </div>
 
-            <!-- BOTONAZO HACIA EL CRONOGRAMA CENTRAL -->
-            <div class="mb-5 animate-in fade-in duration-700 text-center mt-5">
-                <a href="/Schedules/Index" class="btn btn-primary btn-lg rounded-pill px-5 py-3 font-weight-bold shadow-lg" style="background-color: #3B82F6; border: none; font-size: 1.1rem; transition: transform 0.2s;">
-                    <i class="fas fa-calendar-alt mr-2"></i> Ver Detalle Global del Cronograma de Intervenciones
-                </a>
-                <p class="text-muted mt-3 small">Accede a la matriz L-48 completa, aplica filtros y exporta reportes.</p>
-            </div>
         }
         else
         {
