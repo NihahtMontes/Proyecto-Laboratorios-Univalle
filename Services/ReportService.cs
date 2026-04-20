@@ -50,7 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             {
                 var request = await _context.Requests
                     .Include(r => r.Laboratory)
-                        .ThenInclude(l => l.Faculty)
+                        .ThenInclude(l => l!.Faculty)
                     .Include(r => r.RequestedBy)
                     .Include(r => r.CostDetails)
                     .FirstOrDefaultAsync(r => r.Id == requestId);
@@ -414,13 +414,13 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 var request = await _context.Requests
                     .Include(r => r.Laboratory)
                     .Include(r => r.Equipment)
-                        .ThenInclude(e => e.City)
+                        .ThenInclude(e => e!.City)
                     .Include(r => r.Equipment)
-                        .ThenInclude(e => e.Country)
+                        .ThenInclude(e => e!.Country)
                     .Include(r => r.RequestedBy)
                     .Include(r => r.EquipmentUnit)
-                        .ThenInclude(u => u.Laboratory)
-                            .ThenInclude(l => l.Faculty)
+                        .ThenInclude(u => u!.Laboratory)
+                            .ThenInclude(l => l!.Faculty)
                     .FirstOrDefaultAsync(r => r.Id == requestId);
 
                 if (request == null)

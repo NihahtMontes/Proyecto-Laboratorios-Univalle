@@ -103,13 +103,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             bool emailExists = await _context.Users
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.Email.Trim().ToLower() == normalizedEmail && u.Status != GeneralStatus.Eliminado);
+                .AnyAsync(u => u.Email != null && u.Email.Trim().ToLower() == normalizedEmail && u.Status != GeneralStatus.Eliminado);
 
             if (emailExists) ModelState.AddModelError("Input.Email", "Este correo electrónico ya se encuentra registrado.");
 
             bool userNameExists = await _context.Users
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.UserName.Trim().ToLower() == normalizedUserName && u.Status != GeneralStatus.Eliminado);
+                .AnyAsync(u => u.UserName != null && u.UserName.Trim().ToLower() == normalizedUserName && u.Status != GeneralStatus.Eliminado);
 
             if (userNameExists) ModelState.AddModelError("Input.UserName", "El nombre de usuario ya está en uso.");
 

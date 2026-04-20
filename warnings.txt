@@ -1,0 +1,15 @@
+C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Pages\Departures\Create.cshtml.cs(153,37): warning CS8602: Desreferencia de una referencia posiblemente NULL. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
+C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Pages\Acquisitions\Edit.cshtml.cs(75,23): warning CS8601: Posible asignación de referencia nula. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
+C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Pages\EquipmentUnits\Edit.cshtml.cs(141,31): warning CS8602: Desreferencia de una referencia posiblemente NULL. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
+C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Pages\Equipment\Create.cshtml.cs(112,70): warning CS8602: Desreferencia de una referencia posiblemente NULL. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
+C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Pages\Persons\Index.cshtml.cs(45,42): warning CS8602: Desreferencia de una referencia posiblemente NULL. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
+C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Pages\Verifications\Create.cshtml.cs(107,54): warning CS8602: Desreferencia de una referencia posiblemente NULL. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
+C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Pages\Maintenances\Edit.cshtml.cs(110,31): warning CS8601: Posible asignación de referencia nula. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
+C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Pages\Wizard\Index.cshtml.cs(65,43): warning CS8602: Desreferencia de una referencia posiblemente NULL. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
+C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Pages\Maintenances\Index.cshtml.cs(50,40): warning CS8602: Desreferencia de una referencia posiblemente NULL. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
+
+Compilación correcta.
+    9 Advertencia(s)
+    0 Errores
+
+Tiempo transcurrido 00:00:28.07

@@ -34,7 +34,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             var verification = await _context.Verifications
                 .Include(v => v.CreatedBy)
                 .Include(v => v.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu!.Equipment)
                 .Include(v => v.ModifiedBy)
                 .Include(v => v.CheckResults)
                     .ThenInclude(r => r.CheckItem)
@@ -61,7 +61,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             var verification = await _context.Verifications
                 .Include(v => v.CreatedBy)
                 .Include(v => v.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu!.Equipment)
                 .Include(v => v.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 

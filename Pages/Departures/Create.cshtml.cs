@@ -181,7 +181,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
                         if (isWizard)
                         {
-                            return RedirectToPage("/Wizard/Index", new { Step = 5 });
+                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId });
                         }
                     }
                 }

@@ -29,7 +29,7 @@
 
                 <form method="post" id="createRequestForm">
                     <!-- Mantiene el estado del Wizard -->
-                    <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString().ToLower() ?? "false")" />
+                    <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString()?.ToLower() ?? "false")" />
                     <input type="hidden" asp-for="ManagementPlanId" />
 
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>

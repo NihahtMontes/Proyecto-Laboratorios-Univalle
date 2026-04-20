@@ -43,7 +43,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             // Fetch related data
             Maintenances = await _context.Maintenances
                 .Include(m => m.EquipmentUnit)
-                    .ThenInclude(u => u.Equipment)
+                    .ThenInclude(u => u!.Equipment)
                 .Include(m => m.MaintenanceType)
                 .Where(m => m.TechnicianId == id)
                 .OrderByDescending(m => m.StartDate ?? m.CreatedDate)
@@ -52,7 +52,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
 
             Departures = await _context.Departures
                 .Include(l => l.EquipmentUnit)
-                    .ThenInclude(u => u.Equipment)
+                    .ThenInclude(u => u!.Equipment)
                 .Where(l => l.BorrowerId == id)
                 .OrderByDescending(l => l.DepartureDate)
                 .Take(10)

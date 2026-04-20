@@ -310,7 +310,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         
                         if (isWizard)
                         {
-                            return RedirectToPage("/Wizard/Index", new { Step = 4, SelectedLabId = Input.LaboratoryId });
+                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId });
                         }
                     }
                 }

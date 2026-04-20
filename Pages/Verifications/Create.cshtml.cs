@@ -191,9 +191,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             if (isWizard)
             {
                 if (hasFailures)
-                    return RedirectToPage("/Wizard/Index", new { Step = 2, SelectedLabId = Input.LaboratoryId });
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, SelectedLabId = Input.LaboratoryId });
 
-                return RedirectToPage("/Wizard/Index", new { Step = 3, SelectedLabId = Input.LaboratoryId });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId });
             }
 
             return RedirectToPage("./Index");
@@ -228,7 +228,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 var units = _context.EquipmentUnits
                     .Include(u => u.Equipment)
                     .Where(u => u.LaboratoryId == Input.LaboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
-                    .Select(u => new { Id = u.Id, Name = u.Equipment.Name + " (" + u.InventoryNumber + ")" })
+                    .Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" })
                     .ToList();
                 ViewData["EquipmentUnitId"] = new SelectList(units, "Id", "Name", Input.EquipmentUnitId);
             }
