@@ -92,7 +92,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             var maintenance = await _context.Maintenances
                 .Include(m => m.CostDetails)
                 .Include(m => m.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu!.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (maintenance == null) return NotFound();
@@ -161,7 +161,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             var maintenanceDB = await _context.Maintenances
                 .Include(m => m.CostDetails)
                 .Include(m => m.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu!.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == Input.Id);
 
             if (maintenanceDB == null) return NotFound();

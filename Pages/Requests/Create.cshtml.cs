@@ -46,7 +46,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
                     // Forzar carga de listas para que el Select2 muestre los valores
                     ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == Input.FacultyId).ToListAsync(), "Id", "Name", Input.LaboratoryId);
-                    ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == Input.LaboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", Input.EquipmentUnitId);
+                    ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == Input.LaboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", Input.EquipmentUnitId);
                 }
             }
 
@@ -148,7 +148,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             if (isWizard)
             {
                 // Al ser Wizard, el sistema entiende que ya se cumplió el paso de Solicitud (Paso 2)
-                return RedirectToPage("/Wizard/Index", new { Step = 3, SelectedLabId = Input.LaboratoryId });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId });
             }
 
             return RedirectToPage("./Index");
@@ -170,7 +170,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         public async Task<JsonResult> OnGetUnitsByLab(int laboratoryId)
         {
-            var units = await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == laboratoryId).Select(u => new { id = u.Id, name = u.Equipment.Name + " (" + u.InventoryNumber + ")" }).ToListAsync();
+            var units = await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == laboratoryId).Select(u => new { id = u.Id, name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync();
             return new JsonResult(units);
         }
     }

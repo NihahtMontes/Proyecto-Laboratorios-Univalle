@@ -123,5 +123,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Wizard
 
             return RedirectToPage(new { Step = 5, SelectedLabId });
         }
+        public async Task<IActionResult> OnPostFastFailAsync(int planId)
+        {
+            var plan = await _context.ManagementPlans.FindAsync(planId);
+            if (plan != null && plan.CurrentPhase == WizardPhase.Verification)
+            {
+                plan.CurrentPhase = WizardPhase.TechnicalRequest;
+                plan.CurrentState = WizardEquipmentState.AwaitingRequest;
+                await _context.SaveChangesAsync();
+                
+                // Redirige directamente al formulario de creación L7 manteniendo el contexto del Wizard
+                return RedirectToPage("/Requests/Create", new { equipmentUnitId = plan.EquipmentUnitId, isWizard = true, managementPlanId = plan.Id });
+            }
+            
+            return RedirectToPage(new { Step = 2, SelectedLabId });
+        }
     }
 }

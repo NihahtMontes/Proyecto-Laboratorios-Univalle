@@ -45,7 +45,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 var query = _context.Maintenances
                 .Include(m => m.CreatedBy)
                 .Include(m => m.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu!.Equipment)
                 .Include(m => m.EquipmentUnit)
                     .ThenInclude(eu => eu.Laboratory)
                 .Include(m => m.ModifiedBy)

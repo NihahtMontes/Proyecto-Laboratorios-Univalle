@@ -8,8 +8,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
 {
     public interface IManagementContextService
     {
-        Task<Management> GetCurrentManagementAsync();
-        Management GetCurrentManagement();
+        Task<Management?> GetCurrentManagementAsync();
+        Management? GetCurrentManagement();
     }
 
     /// <summary>

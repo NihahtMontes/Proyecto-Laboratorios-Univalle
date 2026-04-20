@@ -129,12 +129,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Maintenance>().HasQueryFilter(m => m.Status != MaintenanceStatus.Cancelled);
             modelBuilder.Entity<Request>().HasQueryFilter(s => s.Status != RequestStatus.Cancelled);
             modelBuilder.Entity<Verification>().HasQueryFilter(v => v.Status != VerificationStatus.Annulled);
-            modelBuilder.Entity<VerificationCheckResult>().HasQueryFilter(r => r.Verification.Status != VerificationStatus.Annulled);
+            modelBuilder.Entity<VerificationCheckResult>().HasQueryFilter(r => r.Verification!.Status != VerificationStatus.Annulled);
             modelBuilder.Entity<Management>().HasQueryFilter(m => m.Status != ManagementStatus.Deleted);
 
             modelBuilder.Entity<Departure>().HasQueryFilter(l => l.Status != LoanStatus.Cancelled);
             modelBuilder.Entity<Career>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
-            modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => t.Maintenance.Status != MaintenanceStatus.Cancelled);
+            modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => t.Maintenance!.Status != MaintenanceStatus.Cancelled);
 
             // Management Relationships
             modelBuilder.Entity<Verification>().HasOne(v => v.Management).WithMany().HasForeignKey(v => v.ManagementId).OnDelete(DeleteBehavior.Restrict);

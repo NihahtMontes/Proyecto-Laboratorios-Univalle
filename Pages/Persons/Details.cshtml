@@ -152,8 +152,8 @@
                                                 <tr>
                                                     <td>@(m.StartDate?.ToString("dd/MM/yyyy") ?? m.CreatedDate.ToString("dd/MM/yyyy"))</td>
                                                     <td>
-                                                        <div class="font-weight-bold text-dark">@m.EquipmentUnit.Equipment.Name</div>
-                                                        <div class="text-muted" style="font-size: 0.7rem;">Inv: @m.EquipmentUnit.InventoryNumber</div>
+                                                        <div class="font-weight-bold text-dark">@m.EquipmentUnit?.Equipment?.Name</div>
+                                                        <div class="text-muted" style="font-size: 0.7rem;">Inv: @m.EquipmentUnit?.InventoryNumber</div>
                                                     </td>
                                                     <td>@Html.DisplayFor(modelItem => m.MaintenanceType)</td>
                                                     <td>
@@ -201,8 +201,8 @@
                                                 <tr>
                                                     <td>@l.DepartureDate.ToString("dd/MM/yyyy")</td>
                                                     <td>
-                                                        <div class="font-weight-bold text-dark">@l.EquipmentUnit.Equipment.Name</div>
-                                                        <div class="text-muted" style="font-size: 0.7rem;">Inv: @l.EquipmentUnit.InventoryNumber</div>
+                                                        <div class="font-weight-bold text-dark">@l.EquipmentUnit?.Equipment?.Name</div>
+                                                        <div class="text-muted" style="font-size: 0.7rem;">Inv: @l.EquipmentUnit?.InventoryNumber</div>
                                                     </td>
                                                     <td>@(l.ActualReturnDate?.ToString("dd/MM/yyyy") ?? l.EstimatedReturnDate.ToString("dd/MM/yyyy"))</td>
                                                     <td>

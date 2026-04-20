@@ -31,7 +31,7 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         Consumables = 7,
 
         [Display(Name = "Viáticos")]
-        TravelExpenses = 8,
+        TravelExpenses = 8, 
 
         [Display(Name = "Personal")]
         Staff = 9,
@@ -39,4 +39,4 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "Otros")]
         Others = 99
     }
-}
+}   

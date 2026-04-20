@@ -88,7 +88,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             if (id == null) return NotFound();
 
-            Request = await _context.Requests
+            var request = await _context.Requests
                 .Include(r => r.Equipment)
                 .Include(r => r.RequestedBy)
                 .Include(r => r.ModifiedBy)
@@ -96,7 +96,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 .Include(r => r.CostDetails)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (Request == null) return NotFound();
+            if (request == null) return NotFound();
+            
+            Request = request;
 
             Input = new InputModel
             {

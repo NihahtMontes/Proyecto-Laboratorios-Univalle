@@ -91,7 +91,7 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                             int index = 1;
                             foreach (var result in verification.CheckResults.OrderBy(r => r.CheckItem?.Order))
                             {
-                                table.Cell().Element(CellStyle).Text(index++).FontSize(9);
+                                table.Cell().Element(CellStyle).Text((index++).ToString()).FontSize(9);
                                 table.Cell().Element(CellStyle).Text(result.CheckItem?.Name ?? "Desconocido").FontSize(9);
                                 
                                 var resultText = result.Result == VerificationResult.Completed ? "REALIZADO" : "PENDIENTE";

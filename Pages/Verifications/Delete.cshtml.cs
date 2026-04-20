@@ -30,7 +30,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             var verification = await _context.Verifications
                 .Include(v => v.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu!.Equipment)
                 .Include(m => m.CreatedBy)
                 .Include(m => m.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);

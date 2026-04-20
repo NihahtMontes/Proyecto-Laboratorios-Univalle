@@ -52,10 +52,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             var m = await _context.Managements
                 .Include(mg => mg.ManagementPlans)
                     .ThenInclude(p => p.EquipmentUnit)
-                        .ThenInclude(eu => eu.Equipment)
+                        .ThenInclude(eu => eu!.Equipment)
                 .Include(mg => mg.ManagementPlans)
                     .ThenInclude(p => p.EquipmentUnit)
-                        .ThenInclude(eu => eu.Laboratory)
+                        .ThenInclude(eu => eu!.Laboratory)
                 .Include(mg => mg.ManagementPlans)
                     .ThenInclude(p => p.Maintenance)
                 .FirstOrDefaultAsync(m => m.Id == id);
@@ -74,21 +74,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             // 2. Metrics (Equipment Types - All to allow toggle)
             TopEquipmentTypes = Management.ManagementPlans
                 .Where(p => p.EquipmentUnit?.Equipment != null)
-                .GroupBy(p => p.EquipmentUnit.Equipment.Category.ToString())
+                .GroupBy(p => p.EquipmentUnit!.Equipment!.Category.ToString())
                 .OrderByDescending(g => g.Count())
                 .ToDictionary(g => g.Key, g => g.Count());
 
             // 3. Metrics (Groups / TypeClassifications - All)
             TopGroups = Management.ManagementPlans
                 .Where(p => p.EquipmentUnit?.Equipment != null)
-                .GroupBy(p => p.EquipmentUnit.Equipment.TypeClassification.ToString())
+                .GroupBy(p => p.EquipmentUnit!.Equipment!.TypeClassification.ToString())
                 .OrderByDescending(g => g.Count())
                 .ToDictionary(g => g.Key, g => g.Count());
 
             // 4. Metrics (Laboratories - All)
             TopLaboratories = Management.ManagementPlans
                 .Where(p => p.EquipmentUnit?.Laboratory != null)
-                .GroupBy(p => p.EquipmentUnit.Laboratory.Name)
+                .GroupBy(p => p.EquipmentUnit!.Laboratory!.Name)
                 .OrderByDescending(g => g.Count())
                 .ToDictionary(g => g.Key, g => g.Count());
 
@@ -101,14 +101,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             // 5. Build query for the details list with filters
             var query = _context.ManagementPlans
                 .Include(p => p.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu!.Equipment)
                 .Include(p => p.EquipmentUnit)
-                    .ThenInclude(eu => eu.Laboratory)
+                    .ThenInclude(eu => eu!.Laboratory)
                 .Where(p => p.ManagementId == id);
 
             if (!string.IsNullOrEmpty(SearchResponsible))
             {
-                query = query.Where(p => p.Responsible.Contains(SearchResponsible));
+                query = query.Where(p => p.Responsible != null && p.Responsible.Contains(SearchResponsible));
             }
 
             if (FilterStatus.HasValue)

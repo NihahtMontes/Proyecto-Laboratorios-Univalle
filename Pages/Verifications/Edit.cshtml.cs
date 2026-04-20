@@ -52,7 +52,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             var verification = await _context.Verifications
                 .Include(v => v.CheckResults)
                 .Include(v => v.EquipmentUnit)
-                    .ThenInclude(eu => eu.Equipment)
+                    .ThenInclude(eu => eu!.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (verification == null) return NotFound();
@@ -147,7 +147,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 .Include(u => u.Equipment)
                 .Select(u => new { 
                     Id = u.Id, 
-                    DisplayName = $"{u.Equipment.Name} (INV: {u.InventoryNumber})" 
+                    DisplayName = $"{u.Equipment!.Name} (INV: {u.InventoryNumber})" 
                 })
                 .ToList();
 

@@ -62,7 +62,7 @@ public class IndexModel : PageModel
                                            u.UserName!.ToLower().Contains(term) ||
                                            (u.IdentityCard != null && u.IdentityCard.Contains(term)));
 
-            personQuery = personQuery.Where(p => p.Email.Contains(term) || 
+            personQuery = personQuery.Where(p => (p.Email != null && p.Email.Contains(term)) || 
                                               p.Id.ToString() == term);
         }
 
