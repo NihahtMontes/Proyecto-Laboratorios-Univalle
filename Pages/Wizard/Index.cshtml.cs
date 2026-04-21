@@ -54,6 +54,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Wizard
                 .Include(mp => mp.EquipmentUnit)
                     .ThenInclude(u => u!.Laboratory)
                 .Include(mp => mp.Verification)
+                    .ThenInclude(v => v!.CheckResults)
                 .Include(mp => mp.TechnicalRequest)
                 .Include(mp => mp.Maintenance)
                 .Include(mp => mp.Departure)
@@ -69,39 +70,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Wizard
             return Page();
         }
 
-        // Helper para inyectar el globo rojo visualmente en la UI
         public int CountVerificationFails(Verification? v)
         {
-            if (v == null) return 0;
-            int fails = 0;
-            
-            // Asumiendo que el valor entero de Bad es algo específico, 
-            // contaremos todos los que no sean Good o NotChecked
-            // En el Enum, suele ser { NotChecked = 0, Good = 1, Bad = 2, NA = 3 }
-            
-            if (v.CablingCheck == VerificationResult.Bad) fails++;
-            if (v.GasHoseCheck == VerificationResult.Bad) fails++;
-            if (v.WaterHoseCheck == VerificationResult.Bad) fails++;
-            if (v.BurnerCheck == VerificationResult.Bad) fails++;
-            if (v.HeatExchangerCheck == VerificationResult.Bad) fails++;
-            if (v.FlameSensorCheck == VerificationResult.Bad) fails++;
-            if (v.ElectrodeIgniterCheck == VerificationResult.Bad) fails++;
-            if (v.FanCheck == VerificationResult.Bad) fails++;
-            if (v.CombustionFlameCheck == VerificationResult.Bad) fails++;
-            if (v.LubricationCheck == VerificationResult.Bad) fails++;
-            if (v.OvenIgnitionCheck == VerificationResult.Bad) fails++;
-            if (v.TemperatureControlCheck == VerificationResult.Bad) fails++;
-            if (v.InternalCleaningCheck == VerificationResult.Bad) fails++;
-            if (v.ExternalCleaningCheck == VerificationResult.Bad) fails++;
-            if (v.LightsCheck == VerificationResult.Bad) fails++;
-            if (v.HighTempSteamCheck == VerificationResult.Bad) fails++;
-            if (v.LedDisplayCheck == VerificationResult.Bad) fails++;
-            if (v.SolenoidValveCheck == VerificationResult.Bad) fails++;
-            if (v.SoundAlarmCheck == VerificationResult.Bad) fails++;
-            if (v.ThermocoupleCheck == VerificationResult.Bad) fails++;
-            if (v.SteamOutletCheck == VerificationResult.Bad) fails++;
-            
-            return fails;
+            return v?.FailuresCount ?? 0;
         }
 
         public IActionResult OnPostNextStep()

@@ -18,6 +18,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Tipo de Mantenimiento")]
         public MaintenanceType MaintenanceType { get; set; } = MaintenanceType.Otros;
 
+        [Required]
+        [Display(Name = "Gestión")]
+        public int ManagementId { get; set; }
+
         [Display(Name = "Tipo de Servicio")]
         public ServiceType ServiceType { get; set; } = ServiceType.Internal;
 
@@ -133,6 +137,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
+
+        [ForeignKey("ManagementId")]
+        public virtual Management? Management { get; set; }
 
         public virtual List<CostDetail> CostDetails { get; set; } = new List<CostDetail>();
 

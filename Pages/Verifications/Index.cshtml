@@ -51,14 +51,18 @@
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-calendar-alt text-muted"></i></span>
                                     </div>
-                                    <input asp-for="ReportInput.Term" class="form-control border-left-0" placeholder="Gestión" required />
+                                    <select asp-for="ReportInput.ManagementId" class="form-control border-left-0" asp-items="Model.ManagementList" required>
+                                        <option value="">-- Gestión --</option>
+                                    </select>
                                 </div>
 
                                 <div class="input-group input-group-sm mr-2 mb-2" style="width: 180px;">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-user text-muted"></i></span>
                                     </div>
-                                    <input asp-for="ReportInput.Responsible" class="form-control border-left-0" placeholder="Responsable" required />
+                                    <select asp-for="ReportInput.ResponsibleId" class="form-control border-left-0" asp-items="Model.PersonnelList" required>
+                                        <option value="">-- Responsable --</option>
+                                    </select>
                                 </div>
 
                                 <button type="submit" class="btn btn-success btn-sm btn-rounded shadow-sm font-weight-bold px-3 mb-2">

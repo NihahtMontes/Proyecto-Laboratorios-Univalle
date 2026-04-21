@@ -2,18 +2,15 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Models.Enums
 {
+    /// <summary>
+    /// Simplicación de resultados de verificación a un estado binario (Completado o Pendiente).
+    /// </summary>
     public enum VerificationResult
     {
-        [Display(Name = "Sin Verificar")]
+        [Display(Name = "Pendiente")]
         NotChecked = 0,
 
-        [Display(Name = "Bueno")]
-        Good = 1,
-
-        [Display(Name = "Malo")]
-        Bad = 2,
-
-        [Display(Name = "No Aplica")]
-        NotApplicable = 3
+        [Display(Name = "Realizado")]
+        Completed = 1
     }
 }

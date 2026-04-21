@@ -48,12 +48,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres")]
             public string Name { get; set; } = string.Empty;
 
-            [Display(Name = "Tipo/Especialidad")]
-            public string? Type { get; set; }
-
-            [Display(Name = "Edificio")]
-            public string? Building { get; set; }
-
             [Display(Name = "Piso")]
             public string? Floor { get; set; }
 
@@ -105,8 +99,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
                 FacultyId = Input.FacultyId,
                 Code = normalizedCode,
                 Name = Input.Name.Clean(),
-                Type = Input.Type?.Clean(),
-                Building = Input.Building?.Clean(),
                 Floor = Input.Floor?.Clean(),
                 Description = Input.Description?.Clean(),
                 Status = GeneralStatus.Activo,

@@ -7,12 +7,12 @@
 
 <div class="row">
     <div class="col-12">
-        <div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0 mt-3">
             <div class="card-body">
                 @if (TempData["Error"] != null)
                 {
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <strong>Error:</strong> @TempData["Error"]
+                    <div class="alert alert-danger alert-dismissible fade show mx-4 mt-3" role="alert">
+                        <i class="fas fa-exclamation-triangle mr-2"></i> @TempData["Error"]
                         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -21,54 +21,54 @@
 
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de AdquisiciÃ³n (L-12)</h3>
-                        <h6 class="card-subtitle text-muted ml-2">GestiÃ³n de compra de nuevos activos, repuestos e insumos.</h6>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de Adquisición (L-12)</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Gestión de compra de nuevos activos, repuestos e insumos.</h6>
                     </div>
                     <div class="ml-auto mt-3">
-                        <a asp-page="Create" class="btn btn-success btn-rounded shadow-sm text-white px-4 font-weight-bold">
-                            <i class="fas fa-cart-plus mr-1"></i> Nueva AdquisiciÃ³n
+                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                            <i class="fas fa-plus-circle mr-1 text-primary"></i> Nueva Adquisición
                         </a>
                     </div>
                 </div>
 
                 <!-- FILTROS -->
-                <div class="bg-light p-3 mb-4 rounded border-left border-success shadow-sm">
+                <div class="bg-light p-3 mb-4 rounded border-left border-primary shadow-sm" style="background-color: #f8f9fa !important;">
                     <form method="get">
                         <div class="row align-items-end">
                             <div class="col-md-3">
-                                <label class="small font-weight-bold text-muted uppercase">Laboratorio</label>
-                                <select asp-for="FilterLaboratoryId" class="form-control custom-select" asp-items="Model.LaboratoryList">
-                                    <option value="">-- Todos --</option>
+                                <label class="small font-weight-bold text-muted uppercase">Laboratorio / Ambiente</label>
+                                <select asp-for="FilterLaboratoryId" class="form-control custom-select drop-shadow" asp-items="Model.LaboratoryList">
+                                    <option value="">-- Todos los Ambientes --</option>
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="small font-weight-bold text-muted uppercase">BÃºsqueda RÃ¡pida</label>
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
                                 <div class="input-group drop-shadow">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                        <span class="input-group-text bg-white border-right-0" style="border-radius: 4px 0 0 4px;"><i class="fas fa-search text-muted"></i></span>
                                     </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Ã�tem, cÃ³digo o solicitante..." />
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" style="border-radius: 0 4px 4px 0;" placeholder="Ítem, código o solicitante..." />
                                 </div>
                             </div>
                             <div class="col-md-2">
                                 <label class="small font-weight-bold text-muted uppercase">Prioridad</label>
-                                <select asp-for="PriorityFilter" class="form-control custom-select"
+                                <select asp-for="PriorityFilter" class="form-control custom-select drop-shadow"
                                         asp-items="Html.GetEnumSelectList<RequestPriority>()">
                                     <option value="">-- Todas --</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
                                 <label class="small font-weight-bold text-muted uppercase">Estado</label>
-                                <select asp-for="StatusFilter" class="form-control custom-select"
+                                <select asp-for="StatusFilter" class="form-control custom-select drop-shadow"
                                         asp-items="Html.GetEnumSelectList<RequestStatus>()">
                                     <option value="">-- Todos --</option>
                                 </select>
                             </div>
-                            <div class="col-md-2 text-right mt-2 mt-md-0">
-                                <button type="submit" class="btn btn-dark btn-rounded px-3 shadow-sm" title="Filtrar">
+                            <div class="col-md-2 text-right mt-2 mt-md-0 d-flex align-items-center justify-content-end">
+                                <button type="submit" class="btn btn-dark btn-circle shadow-sm" title="Filtrar" style="width: 45px; height: 45px; border-radius: 50% !important; background-color: #343a40 !important;">
                                     <i class="fas fa-filter"></i>
                                 </button>
-                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar">
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-circle ml-2 shadow-sm d-flex align-items-center justify-content-center" title="Limpiar Filtros" style="width: 45px; height: 45px; border-radius: 50% !important;">
                                     <i class="fas fa-sync-alt"></i>
                                 </a>
                             </div>
@@ -78,31 +78,34 @@
 
                 <!-- TABLA -->
                 <div id="localNotificationsArea" class="mb-4" style="display: none;">
-                    <h5 class="font-weight-bold text-success mb-3 border-bottom pb-2">
-                        <i class="fas fa-shopping-basket mr-2"></i> Alertas de Adquisiciones
-                    </h5>
-                    <div id="localNotificationsList">
+                    <div class="bg-light p-3 rounded border-left border-primary shadow-sm mb-3">
+                        <h5 class="font-weight-bold text-primary mb-2">
+                            <i class="fas fa-shopping-basket mr-2"></i> Alertas de Adquisiciones
+                        </h5>
+                        <div id="localNotificationsList">
+                        </div>
                     </div>
                 </div>
+
                 <div class="table-responsive">
                     <table class="table table-hover v-middle">
-                        <thead class="thead-light">
-                            <tr class="small uppercase font-weight-bold">
-                                <th>Ã�tem / Concepto</th>
-                                <th>UbicaciÃ³n</th>
-                                <th class="text-center">Prioridad</th>
-                                <th class="text-center">Estado</th>
-                                <th>Solicitante</th>
-                                <th class="text-center">Acciones</th>
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold text-muted" style="background-color: #f1f3f5 !important; color: #495057 !important;">
+                                <th class="border-0 px-4">Ítem / Concepto</th>
+                                <th class="border-0">Ubicación</th>
+                                <th class="border-0 text-center">Prioridad</th>
+                                <th class="border-0 text-center">Estado</th>
+                                <th class="border-0">Solicitante</th>
+                                <th class="border-0 text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             @if (!Model.Requests.Any())
                             {
                                 <tr>
-                                    <td colspan="6" class="text-center py-5 text-muted font-weight-bold">
-                                        <i class="fas fa-shopping-basket fa-3x mb-3 d-block opacity-2"></i>
-                                        No se encontraron solicitudes de adquisiciÃ³n registradas.
+                                    <td colspan="6" class="text-center py-5 text-muted italic font-weight-bold">
+                                        <i class="fas fa-shopping-basket fa-3x mb-3 d-block opacity-2 text-primary"></i>
+                                        No se encontraron solicitudes de adquisición registradas.
                                     </td>
                                 </tr>
                             }
@@ -114,44 +117,48 @@
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div class="m-r-10">
-                                                    <span class="btn btn-circle btn-light-success text-success"><i class="fas fa-shopping-cart"></i></span>
+                                                    <span class="btn btn-circle btn-sm btn-light-success text-success shadow-sm"><i class="fas fa-shopping-cart"></i></span>
                                                 </div>
                                                 <div>
                                                     <h6 class="m-b-0 font-weight-bold text-dark">@(item.Equipment?.Name ?? "Item Especial")</h6>
                                                     <small class="text-muted text-truncate d-block" style="max-width: 200px;">@item.Description</small>
-                                                    <small class="text-muted d-block">Ref: #@item.Id</small>
+                                                    <small class="text-muted d-block italic">Ref: #@item.Id</small>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
-                                            <div class="text-dark font-weight-bold">@item.Laboratory?.Name</div>
-                                            <small class="text-muted">CÃ³d. Inv: @(item.InvestmentCode ?? "-")</small>
+                                        <td class="v-middle">
+                                            <div class="text-dark font-weight-bold"><i class="fas fa-map-marker-alt mr-1 text-danger"></i> @item.Laboratory?.Name</div>
+                                            <small class="text-muted italic">Cód. Inv: @(item.InvestmentCode ?? "-")</small>
                                         </td>
-                                        <td class="text-center">
+                                        <td class="text-center v-middle">
                                             @{
-                                                var pBadge = item.Priority == RequestPriority.High ? "badge-danger" : (item.Priority == RequestPriority.Medium ? "badge-warning" : "badge-info");
+                                                var pBadge = item.Priority == RequestPriority.High ? "badge-light-danger text-danger" : (item.Priority == RequestPriority.Medium ? "badge-light-warning text-warning" : "badge-light-info text-info");
                                             }
-                                            <span class="badge badge-pill @pBadge px-3 py-1">@item.Priority</span>
+                                            <span class="badge badge-pill @pBadge px-3 py-1 font-weight-bold shadow-sm">
+                                                <i class="fas fa-bolt mr-1"></i> @item.Priority
+                                            </span>
                                         </td>
-                                        <td class="text-center">
+                                        <td class="text-center v-middle">
                                             @{
-                                                var sBadge = item.Status == RequestStatus.Approved ? "badge-success" : (item.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
+                                                var sBadge = item.Status == RequestStatus.Approved ? "badge-light-success text-success" : (item.Status == RequestStatus.Rejected ? "badge-light-danger text-danger" : "badge-light-warning text-warning");
                                             }
-                                            <span class="badge badge-pill @sBadge px-3 py-1">@item.Status</span>
+                                            <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold shadow-sm border">
+                                                @item.Status
+                                            </span>
                                         </td>
-                                        <td>
+                                        <td class="v-middle">
                                             <div class="font-weight-bold text-dark">@(item.RequestedBy?.FullName ?? "N/A")</div>
-                                            <small class="text-muted">@item.CreatedDate.ToString("dd/MM/yyyy")</small>
+                                            <small class="text-muted italic">@item.CreatedDate.ToString("dd/MM/yyyy")</small>
                                         </td>
-                                        <td class="text-center">
+                                        <td class="text-center v-middle">
                                             <div class="btn-group">
-                                                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mr-1" title="Ver Detalles">
+                                                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Ver Detalles">
                                                     <i class="fas fa-search-plus"></i>
                                                 </a>
-                                                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded mr-1" title="Editar">
+                                                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded ml-1" title="Eliminar">
                                                     <i class="fas fa-trash"></i>
                                                 </a>
                                             </div>
@@ -172,6 +179,29 @@
         .v-middle td { vertical-align: middle !important; }
         .opacity-2 { opacity: 0.2; }
         .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+        .italic { font-style: italic; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+        
+        /* Soft Badges */
+        .badge-light-success { background-color: #e8fadf; color: #71dd37; }
+        .badge-light-danger { background-color: #ffe5e5; color: #ff3e1d; }
+        .badge-light-warning { background-color: #fff2d6; color: #ffab00; }
+        .badge-light-info { background-color: #e7e7ff; color: #696cff; }
+        
+        /* Buttons circle fix */
+        .btn-circle {
+            width: 45px;
+            height: 45px;
+            padding: 10px 0;
+            border-radius: 50% !important;
+            font-size: 15px;
+            line-height: normal;
+        }
+
+        /* Acquisition Specific Blue Theme */
+        .border-primary { border-color: #2962ff !important; }
+        .text-primary { color: #2962ff !important; }
+        .btn-primary { background-color: #2962ff; border-color: #2962ff; }
     </style>
 }
 
@@ -179,11 +209,11 @@
     <script>
         $(document).ready(function() {
             // ==============================================================
-            // AÃ‘ADIDO: LÃ“GICA DE NOTIFICACIONES LOCALES PARA ADQUISICIONES
+            // AÑADIDO: LÓGICA DE NOTIFICACIONES LOCALES PARA ADQUISICIONES
             // ==============================================================
             function loadLocalAcquisitionNotifications() {
-                // Le pasamos el filtro 'AdquisiciÃ³n' a la API
-                $.get('/Api/Notifications?handler=Unread&filter=AdquisiciÃ³n', function(data) {
+                // Le pasamos el filtro 'Adquisición' a la API
+                $.get('/Api/Notifications?handler=Unread&filter=Adquisición', function(data) {
                     const $area = $('#localNotificationsArea');
                     const $list = $('#localNotificationsList');
                     
@@ -219,7 +249,7 @@
             // Ejecutamos al cargar la vista
             loadLocalAcquisitionNotifications();
 
-            // FunciÃ³n para marcar como leÃ­da y desaparecer la alerta
+            // Función para marcar como leída y desaparecer la alerta
             window.markLocalAsRead = function(e, id, url) {
                 $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
                     if (url && url !== 'javascript:void(0)') {
@@ -228,7 +258,7 @@
                         // Ocultamos el cuadro suavemente
                         $(`#local-notif-${id}`).fadeOut(300, function() {
                             $(this).remove();
-                            // Si era la Ãºltima alerta, ocultamos todo el panel principal
+                            // Si era la última alerta, ocultamos todo el panel principal
                             if ($('#localNotificationsList').children().length === 0) {
                                 $('#localNotificationsArea').slideUp();
                             }

@@ -8,6 +8,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 {
@@ -16,11 +17,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IManagementContextService _managementContext;
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, 
+            UserManager<User> userManager,
+            IManagementContextService managementContext)
         {
             _context = context;
             _userManager = userManager;
+            _managementContext = managementContext;
         }
 
         [BindProperty]
@@ -29,41 +34,32 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         [BindProperty(SupportsGet = true)]
         public int? ManagementPlanId { get; set; }
 
+        /// <summary>Lista de puntos de control cargados desde la BD para renderizar la UI dinámica.</summary>
+        public List<VerificationCheckItem> CheckItems { get; set; } = [];
+
         public class InputModel
         {
             [Required(ErrorMessage = "La facultad es obligatoria")]
             public int FacultyId { get; set; }
+
             [Required(ErrorMessage = "El laboratorio es obligatorio")]
             public int LaboratoryId { get; set; }
+
             [Required(ErrorMessage = "La unidad física es obligatoria")]
             public int EquipmentUnitId { get; set; }
+
             [DataType(DataType.Date)]
             public DateTime Date { get; set; } = DateTime.Today;
 
-            public VerificationResult CablingCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult GasHoseCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult WaterHoseCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult BurnerCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult HeatExchangerCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult FlameSensorCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult ElectrodeIgniterCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult FanCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult CombustionFlameCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult LubricationCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult OvenIgnitionCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult TemperatureControlCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult InternalCleaningCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult ExternalCleaningCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult LightsCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult HighTempSteamCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult LedDisplayCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult SolenoidValveCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult SoundAlarmCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult ThermocoupleCheck { get; set; } = VerificationResult.NotChecked;
-            public VerificationResult SteamOutletCheck { get; set; } = VerificationResult.NotChecked;
+            /// <summary>
+            /// Resultados dinámicos: key = CheckItemId, value = VerificationResult.
+            /// Se bindea como Input.Results[id] desde el formulario.
+            /// </summary>
+            public Dictionary<int, VerificationResult> Results { get; set; } = [];
+
+            [Display(Name = "Observaciones (Fallas o problemas del equipo)")]
             public string? Observations { get; set; }
-            public string? CriticalFindings { get; set; }
-            public string? Recommendations { get; set; }
+
             public VerificationStatus Status { get; set; } = VerificationStatus.Draft;
         }
 
@@ -80,12 +76,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 {
                     Input.LaboratoryId = unit.LaboratoryId ?? 0;
                     if (unit.Laboratory != null)
-                    {
                         Input.FacultyId = unit.Laboratory.FacultyId;
-                    }
                 }
             }
 
+            LoadCheckItems();
             LoadLists();
 
             ViewData["ReturnFacultyId"] = returnFacultyId;
@@ -94,7 +89,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             return Page();
         }
 
-        // AJAX Handlers Corregidos para el Paso 4
+        // AJAX handlers
         public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
         {
             var labs = await _context.Laboratories
@@ -116,8 +111,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
+            // Recarga los checks para que la UI renderice bien si hay validación fallida
+            LoadCheckItems();
+
             if (!ModelState.IsValid)
             {
+                LoadLists();
+                return Page();
+            }
+
+            // Leer condición física actual del equipo
+            var equipmentUnit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
+            var physicalCondition = equipmentUnit?.PhysicalCondition ?? PhysicalCondition.Excellent;
+
+            // Obtener gestión activa
+            var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+
+            if (currentMgmt == null)
+            {
+                TempData["Warning"] = "No se ha detectado una gestión activa. Por favor, asegúrese de haber aplicado las migraciones de base de datos o de activar un periodo de gestión para poder registrar la verificación.";
                 LoadLists();
                 return Page();
             }
@@ -125,31 +137,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             var verification = new Verification
             {
                 EquipmentUnitId = Input.EquipmentUnitId,
+                ManagementId = currentMgmt.Id,
                 Date = Input.Date,
-                CablingCheck = Input.CablingCheck,
-                GasHoseCheck = Input.GasHoseCheck,
-                WaterHoseCheck = Input.WaterHoseCheck,
-                BurnerCheck = Input.BurnerCheck,
-                HeatExchangerCheck = Input.HeatExchangerCheck,
-                FlameSensorCheck = Input.FlameSensorCheck,
-                ElectrodeIgniterCheck = Input.ElectrodeIgniterCheck,
-                FanCheck = Input.FanCheck,
-                CombustionFlameCheck = Input.CombustionFlameCheck,
-                LubricationCheck = Input.LubricationCheck,
-                OvenIgnitionCheck = Input.OvenIgnitionCheck,
-                TemperatureControlCheck = Input.TemperatureControlCheck,
-                InternalCleaningCheck = Input.InternalCleaningCheck,
-                ExternalCleaningCheck = Input.ExternalCleaningCheck,
-                LightsCheck = Input.LightsCheck,
-                HighTempSteamCheck = Input.HighTempSteamCheck,
-                LedDisplayCheck = Input.LedDisplayCheck,
-                SolenoidValveCheck = Input.SolenoidValveCheck,
-                SoundAlarmCheck = Input.SoundAlarmCheck,
-                ThermocoupleCheck = Input.ThermocoupleCheck,
-                SteamOutletCheck = Input.SteamOutletCheck,
                 Observations = Input.Observations,
-                CriticalFindings = Input.CriticalFindings,
-                Recommendations = Input.Recommendations,
+                PhysicalCondition = physicalCondition,
                 Status = Input.Status,
                 CreatedDate = DateTime.UtcNow
             };
@@ -160,9 +151,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             _context.Verifications.Add(verification);
             await _context.SaveChangesAsync();
 
-            bool hasFailures = typeof(InputModel).GetProperties()
-                .Where(p => p.PropertyType == typeof(VerificationResult))
-                .Any(p => (VerificationResult)p.GetValue(Input)! == VerificationResult.Bad);
+            // Guardar resultados individuales de cada check
+            foreach (var (checkItemId, result) in Input.Results)
+            {
+                _context.VerificationCheckResults.Add(new VerificationCheckResult
+                {
+                    VerificationId = verification.Id,
+                    CheckItemId = checkItemId,
+                    Result = result
+                });
+            }
+            await _context.SaveChangesAsync();
+
+            // Determinar si hay fallas (si el usuario escribió observaciones de problemas)
+            bool hasFailures = !string.IsNullOrWhiteSpace(Input.Observations);
 
             if (ManagementPlanId.HasValue)
             {
@@ -170,7 +172,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 if (plan != null)
                 {
                     plan.VerificationId = verification.Id;
-                    
+
                     if (hasFailures)
                     {
                         plan.CurrentPhase = WizardPhase.TechnicalRequest;
@@ -178,11 +180,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     }
                     else
                     {
-                        // Si es perfecto (sin fallas), salta L-7 y va directo a Mantenimiento (L-8 preventivo)
-                        plan.CurrentPhase = WizardPhase.Maintenance; 
+                        plan.CurrentPhase = WizardPhase.Maintenance;
                         plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
                     }
-                    
+
                     await _context.SaveChangesAsync();
                 }
             }
@@ -192,11 +193,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 if (hasFailures)
                     return RedirectToPage("/Wizard/Index", new { Step = 2, SelectedLabId = Input.LaboratoryId });
 
-                // Al no tener fallos, lo mandamos al paso 3 (Mantenimiento preventivo)
                 return RedirectToPage("/Wizard/Index", new { Step = 3, SelectedLabId = Input.LaboratoryId });
             }
 
             return RedirectToPage("./Index");
+        }
+
+        private void LoadCheckItems()
+        {
+            CheckItems = _context.VerificationCheckItems
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Order)
+                .ToList();
         }
 
         private void LoadLists()
@@ -207,8 +215,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             {
                 var labs = _context.Laboratories
                     .Where(l => l.FacultyId == Input.FacultyId && l.Status == GeneralStatus.Activo)
-                    .OrderBy(l => l.Name)
-                    .ToList();
+                    .OrderBy(l => l.Name).ToList();
                 ViewData["LaboratoryId"] = new SelectList(labs, "Id", "Name", Input.LaboratoryId);
             }
             else

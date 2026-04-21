@@ -14,6 +14,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int Id { get; set; }
 
         [Required]
+        [Display(Name = "Gestión Institucional")]
+        public int ManagementId { get; set; }
+
+        [Required]
         public int EquipmentId { get; set; }
 
         // ========================================
@@ -66,7 +70,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public EquipmentStatus CurrentStatus { get; set; } = EquipmentStatus.Operational;
 
         [Display(Name = "Condición Física")]
-        public PhysicalCondition? PhysicalCondition { get; set; } = Enums.PhysicalCondition.New;
+        public PhysicalCondition? PhysicalCondition { get; set; } = Enums.PhysicalCondition.Excellent;
 
         [StringLength(2000)]
         [Display(Name = "Observaciones (Unidad)")]
@@ -97,6 +101,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
+
+        [ForeignKey("ManagementId")]
+        public virtual Management Management { get; set; } = null!;
 
         // INVERSE RELATIONSHIPS
         public virtual ICollection<EquipmentStateHistory>? StateHistory { get; set; }

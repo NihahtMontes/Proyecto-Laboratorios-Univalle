@@ -6,7 +6,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
-    /// Technical verification checklist for laboratory equipment
+    /// Technical verification checklist for laboratory equipment.
+    /// Los puntos de control se gestiona dinámicamente via VerificationCheckItem + VerificationCheckResult.
     /// </summary>
     public class Verification : IAuditable
     {
@@ -17,72 +18,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Unidad de Equipamiento")]
         public int EquipmentUnitId { get; set; }
 
-        // ========================================
-        // CHECKLIST ITEMS (VerificationResult: Good, Bad, NA)
-        // ========================================
-
-        [Display(Name = "Verificación del cableado y conexiones de cables")]
-        public VerificationResult CablingCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de estado de la manguera del gas (GN / GLP) y conexiones")]
-        public VerificationResult GasHoseCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de manguera de agua y conexiones")]
-        public VerificationResult WaterHoseCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación del quemador y compartimiento del quemador")]
-        public VerificationResult BurnerCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Inspección visual del intercambiador de calor")]
-        public VerificationResult HeatExchangerCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación del sensor de llama")]
-        public VerificationResult FlameSensorCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Revisión del encendedor electrodo de chispa piloto")]
-        public VerificationResult ElectrodeIgniterCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación del ventilador en ambos sentidos")]
-        public VerificationResult FanCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de llama de combustión en quemador")]
-        public VerificationResult CombustionFlameCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de lubricación de partes móviles")]
-        public VerificationResult LubricationCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Inspección del encendido del horno, control del encendido y llama")]
-        public VerificationResult OvenIgnitionCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Doble verificación del aumento de temperatura y control")]
-        public VerificationResult TemperatureControlCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de limpieza interna del horno")]
-        public VerificationResult InternalCleaningCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de limpieza externa del horno")]
-        public VerificationResult ExternalCleaningCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de luminarias")]
-        public VerificationResult LightsCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación del vapor en alta temperatura")]
-        public VerificationResult HighTempSteamCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de pantalla LED Controlador")]
-        public VerificationResult LedDisplayCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación del ajuste a Electroválvula")]
-        public VerificationResult SolenoidValveCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de alarmas sonoras, buzzer")]
-        public VerificationResult SoundAlarmCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de posicionamiento de Termocupla")]
-        public VerificationResult ThermocoupleCheck { get; set; } = VerificationResult.NotChecked;
-
-        [Display(Name = "Verificación de salida de vapor")]
-        public VerificationResult SteamOutletCheck { get; set; } = VerificationResult.NotChecked;
+        [Required]
+        [Display(Name = "Gestión")]
+        public int ManagementId { get; set; }
 
         // ========================================
         // METADATA
@@ -93,17 +31,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [DataType(DataType.Date)]
         public DateTime Date { get; set; } = DateTime.UtcNow;
 
-        [StringLength(2000)]
-        [Display(Name = "Observaciones Formulario")]
+        [Display(Name = "Observaciones (Fallas o problemas del equipo)")]
         public string? Observations { get; set; }
 
-        [StringLength(1000)]
-        [Display(Name = "Hallazgos Críticos")]
-        public string? CriticalFindings { get; set; }
-
-        [StringLength(1000)]
-        [Display(Name = "Recomendaciones")]
-        public string? Recommendations { get; set; }
+        [Required]
+        [Display(Name = "Condición Física Detectada")]
+        public PhysicalCondition PhysicalCondition { get; set; } = PhysicalCondition.Excellent;
 
         [Required]
         [Display(Name = "Estado de la Verificación")]
@@ -130,11 +63,17 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("EquipmentUnitId")]
         public virtual EquipmentUnit? EquipmentUnit { get; set; }
 
+        [ForeignKey("ManagementId")]
+        public virtual Management? Management { get; set; }
+
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }
 
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
+
+        /// <summary>Resultados individuales de cada punto de control.</summary>
+        public virtual ICollection<VerificationCheckResult> CheckResults { get; set; } = [];
 
         // ========================================
         // CALCULATED PROPERTIES
@@ -146,17 +85,17 @@ namespace Proyecto_Laboratorios_Univalle.Models
         {
             get
             {
-                var properties = this.GetType().GetProperties()
-                    .Where(p => p.PropertyType == typeof(VerificationResult) && p.Name.EndsWith("Check"))
-                    .ToList();
-
-                int totalItems = properties.Count;
-                if (totalItems == 0) return 0;
-
-                int completed = properties.Count(p => (VerificationResult)p.GetValue(this)! != VerificationResult.NotChecked);
-
-                return (int)((completed / (double)totalItems) * 100);
+                if (CheckResults == null || CheckResults.Count == 0) return 0;
+                int total = CheckResults.Count;
+                int completed = CheckResults.Count(r => r.Result != VerificationResult.NotChecked);
+                return (int)((completed / (double)total) * 100);
             }
         }
+
+        [NotMapped]
+        public bool HasFailures => !string.IsNullOrWhiteSpace(Observations);
+
+        [NotMapped]
+        public int FailuresCount => HasFailures ? 1 : 0;
     }
 }

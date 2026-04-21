@@ -26,6 +26,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Unidad Específica (Inventario)")]
         public int? EquipmentUnitId { get; set; }
 
+        [Required]
+        [Display(Name = "Gestión")]
+        public int ManagementId { get; set; }
+
         [Display(Name = "Solicitado Por")]
         public int? RequestedById { get; set; }
 
@@ -112,6 +116,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
+
+        [ForeignKey("ManagementId")]
+        public virtual Management? Management { get; set; }
 
         // RELATIONSHIPS
         public virtual Maintenance? Maintenance { get; set; }

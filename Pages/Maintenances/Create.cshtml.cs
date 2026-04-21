@@ -8,6 +8,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
@@ -16,11 +17,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IManagementContextService _managementContext;
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            UserManager<User> userManager,
+            IManagementContextService managementContext)
         {
             _context = context;
             _userManager = userManager;
+            _managementContext = managementContext;
         }
 
         public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false, int? managementPlanId = null)
@@ -68,8 +73,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             ViewData["IsWizard"] = isWizard;
             ManagementPlanId = managementPlanId;
-
-
 
             return Page();
         }
@@ -142,8 +145,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             public int CompletionPercentage { get; set; } = 0;
             public List<MaintenanceTask> Tasks { get; set; } = new();
-            
-            // Legacy steps (to be removed once fully migrated if needed)
+
             public bool Step1_Cleaning { get; set; } = false;
             public bool Step2_Calibration { get; set; } = false;
             public bool Step3_Testing { get; set; } = false;
@@ -214,9 +216,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             try
             {
+                var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+                if (currentMgmt == null)
+                {
+                    TempData["Warning"] = "No hay una gestión activa disponible. Por favor active una gestión institucional.";
+                    LoadLists();
+                    return Page();
+                }
+
                 var maintenance = new Maintenance
                 {
                     EquipmentUnitId = Input.EquipmentUnitId,
+                    ManagementId = currentMgmt.Id,
                     MaintenanceType = Input.MaintenanceType,
                     TechnicianId = Input.TechnicianId,
                     RequestId = Input.RequestId,
@@ -230,7 +241,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     Status = Input.Status,
                     CostDetails = Input.CostDetails ?? new(),
                     CreatedDate = DateTime.UtcNow,
-
                     CompletionPercentage = Input.CompletionPercentage,
                     Tasks = Input.Tasks ?? new()
                 };
@@ -282,7 +292,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
 
-                TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
+                TempData["Success"] = $"Mantenimiento guardado correctamente.";
 
                 if (ManagementPlanId.HasValue)
                 {
@@ -293,7 +303,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         plan.CurrentPhase = WizardPhase.Exit;
                         plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
                         await _context.SaveChangesAsync();
-                        
+
                         if (isWizard)
                         {
                             return RedirectToPage("/Wizard/Index", new { Step = 4, SelectedLabId = Input.LaboratoryId });
@@ -305,7 +315,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al guardar el registro: {ex.Message}");
+                TempData["Error"] = $"Error al guardar: {ex.Message}";
                 LoadLists();
                 return Page();
             }
@@ -320,23 +330,40 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
             ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
 
-            var technicians = _context.People
-                .Where(p => p.Status == GeneralStatus.Activo)
-                .Select(p => new { Id = p.Id, FullName = p.FullName })
+            // CORRECCIÓN: Obtenemos los datos de forma plana y los unimos en memoria para evitar el error de casting en el Include
+            var people = _context.People.Where(p => p.Status == GeneralStatus.Activo).ToList();
+            var interns = _context.Interns.ToList();
+            var externs = _context.Externs.ToList();
+
+            var technicianList = people
+                .Select(p => {
+                    var intern = interns.FirstOrDefault(i => i.Id == p.Id);
+                    var @extern = externs.FirstOrDefault(e => e.Id == p.Id);
+
+                    return new
+                    {
+                        Id = p.Id,
+                        Name = intern != null ? intern.Name : (@extern != null ? @extern.Name : p.Email ?? "Técnico #" + p.Id)
+                    };
+                })
+                .OrderBy(x => x.Name)
                 .ToList();
-            ViewData["TechnicianId"] = new SelectList(technicians, "Id", "FullName");
+
+            ViewData["TechnicianId"] = new SelectList(technicianList, "Id", "Name");
 
             ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
             ViewData["ServiceType"] = EnumHelper.GetStatusSelectList<ServiceType>();
+
             var requests = _context.Requests
                 .Include(r => r.Laboratory)
                 .OrderByDescending(r => r.CreatedDate)
                 .Take(20)
-                .ToList()
+                .ToList() // Traemos a memoria para procesar el DisplayText
                 .Select(r => new {
                     Id = r.Id,
                     DisplayText = $"#{r.Id} - {r.Laboratory?.Name} ({r.CreatedDate:dd/MM}): " + (r.Description.Length > 40 ? r.Description.Substring(0, 40) + "..." : r.Description)
                 });
+
             ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText");
         }
     }

@@ -4,7 +4,9 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Services;
 using Proyecto_Laboratorios_Univalle.Services.Reporting;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 {
@@ -12,13 +14,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
     public class IndexModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly IReportService _reportService;
         private readonly IVerificationReportService _reportingService;
 
         public IndexModel(
             Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            IReportService reportService,
             IVerificationReportService reportingService)
         {
             _context = context;
+            _reportService = reportService;
             _reportingService = reportingService;
         }
 
@@ -30,18 +35,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         [BindProperty(SupportsGet = true)]
         public int? FilterLaboratoryId { get; set; }
 
-        // Reporte L-6 Input
         [BindProperty]
         public ReportInputModel ReportInput { get; set; } = new();
 
         public class ReportInputModel
         {
             public int? LaboratoryId { get; set; }
-            public string Term { get; set; } = "II/2025";
+            public int? ManagementId { get; set; }
+            public int? ResponsibleId { get; set; }
+            public string Term { get; set; } = "2026";
             public string Responsible { get; set; } = string.Empty;
         }
 
-        public Microsoft.AspNetCore.Mvc.Rendering.SelectList LaboratoryList { get; set; } = default!;
+        public SelectList LaboratoryList { get; set; } = default!;
+        public SelectList ManagementList { get; set; } = default!;
+        public SelectList PersonnelList { get; set; } = default!;
 
         public async Task OnGetAsync()
         {
@@ -65,62 +73,54 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             Verifications = await verificationIQ.OrderByDescending(v => v.Date).ToListAsync();
 
-            // Cargar lista de laboratorios para el reporte
             var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();
-            LaboratoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(labs, "Id", "Name");
+            LaboratoryList = new SelectList(labs, "Id", "Name");
+
+            var man = await _context.Managements.OrderByDescending(m => m.StartDate).ToListAsync();
+            // CORRECCIÓN: Cambiamos "Name" por "Code" para la lista de Gestiones
+            ManagementList = new SelectList(man, "Id", "Code");
+
+            var people = await _context.People.ToListAsync();
+            var interns = await _context.Interns.ToListAsync();
+            var externs = await _context.Externs.ToListAsync();
+
+            var personnelData = people.Select(p => {
+                var intern = interns.FirstOrDefault(i => i.Id == p.Id);
+                var @extern = externs.FirstOrDefault(e => e.Id == p.Id);
+                return new
+                {
+                    Id = p.Id,
+                    Name = intern?.Name ?? @extern?.Name ?? p.Email ?? $"Personal #{p.Id}"
+                };
+            }).OrderBy(x => x.Name).ToList();
+
+            PersonnelList = new SelectList(personnelData, "Id", "Name");
         }
 
         public async Task<IActionResult> OnPostGenerateReportAsync()
         {
-            if (ReportInput.LaboratoryId == null)
+            if (ReportInput.LaboratoryId == null || ReportInput.ManagementId == null || ReportInput.ResponsibleId == null)
             {
+                TempData["Error"] = "Debe seleccionar Laboratorio, Gestión y Responsable.";
                 return RedirectToPage();
             }
 
             try
             {
-                var lab = await _context.Laboratories.FindAsync(ReportInput.LaboratoryId);
-                if (lab == null) return NotFound();
-
-                // 1. Get Equipment Units for the lab
-                var units = await _context.EquipmentUnits
-                    .Include(u => u.Equipment)
-                    .IgnoreQueryFilters()
-                    .Where(u => u.LaboratoryId == ReportInput.LaboratoryId && u.CurrentStatus != Models.Enums.EquipmentStatus.Deleted)
-                    .OrderBy(u => u.InventoryNumber)
-                    .ToListAsync();
-
-                // 2. Get LATEST Verification for each equipment unit
-                var latestVerifications = await _context.Verifications
-                    .Where(v => v.EquipmentUnit.LaboratoryId == ReportInput.LaboratoryId)
-                    .GroupBy(v => v.EquipmentUnitId)
-                    .Select(g => g.OrderByDescending(v => v.Date).First())
-                    .ToDictionaryAsync(v => v.EquipmentUnitId, v => v);
-
-                // 3. Map Verification Data to Equipment Unit
-                foreach (var unit in units)
-                {
-                    if (latestVerifications.TryGetValue(unit.Id, out var ver))
-                    {
-                        unit.Notes = ver.Observations; // Using Notes field for report observations
-                    }
-                }
-
-                var fileContent = _reportingService.GenerateLaboratoryReport(
-                    lab.Name,
-                    units,
-                    ReportInput.Term ?? "II/2025",
-                    ReportInput.Responsible ?? "N/A",
-                    DateTime.UtcNow
+                var fileContent = await _reportService.GenerateL6Report(
+                    ReportInput.LaboratoryId.Value,
+                    ReportInput.ManagementId.Value,
+                    ReportInput.ResponsibleId.Value
                 );
 
-                string fileName = $"Reporte_L6_{lab.Name}_{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                var lab = await _context.Laboratories.FindAsync(ReportInput.LaboratoryId);
+                string fileName = $"Formulario_L6_{lab?.Name ?? "Reporte"}_{DateTime.Now:yyyyMMdd}.xlsx";
+
                 return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
             }
             catch (Exception ex)
             {
-                _context.ChangeTracker.Clear();
-                TempData.Error($"Error al generar el reporte L-6: {ex.Message}");
+                TempData["Error"] = $"Error al generar el reporte L-6: {ex.Message}";
                 return RedirectToPage();
             }
         }
@@ -150,7 +150,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al exportar listado: {ex.Message}");
+                TempData["Error"] = $"Error al exportar listado: {ex.Message}";
                 return RedirectToPage();
             }
         }

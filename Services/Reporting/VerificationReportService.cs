@@ -9,71 +9,132 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
 {
     /// <summary>
     /// Implementation of the verification report service using QuestPDF and ClosedXML.
+    /// Adapted for dynamic database-driven checklist architecture.
     /// </summary>
     public class VerificationReportService : IVerificationReportService
     {
         /// <summary>
         /// Generates a formal PDF report for a verification record.
+        /// Iterates over dynamic CheckResults.
         /// </summary>
         public byte[] GenerateVerificationPdf(Verification verification)
         {
-            // Initial Basic Design (To be improved with user feedback)
             var document = Document.Create(container =>
             {
                 container.Page(page =>
                 {
                     page.Size(PageSizes.A4);
-                    page.Margin(2, Unit.Centimetre);
+                    page.Margin(1.5f, Unit.Centimetre);
                     page.PageColor(Colors.White);
-                    page.DefaultTextStyle(x => x.FontSize(11).FontFamily(Fonts.Arial));
+                    page.DefaultTextStyle(x => x.FontSize(10).FontFamily(Fonts.Arial));
 
-                    page.Header()
-                        .Text($"Reporte de Verificación #{verification.Id}")
-                        .SemiBold().FontSize(20).FontColor(Colors.Blue.Medium);
-
-                    page.Content()
-                        .PaddingVertical(1, Unit.Centimetre)
-                        .Column(x =>
+                    // Header
+                    page.Header().Row(row =>
+                    {
+                        row.RelativeItem().Column(col =>
                         {
-                            x.Spacing(20);
+                            col.Item().Text("UNIVERSIDAD DEL VALLE").FontSize(16).SemiBold().FontColor(Colors.Red.Medium);
+                            col.Item().Text("DIRECCIÓN DE LABORATORIOS").FontSize(10).SemiBold();
+                            col.Item().Text("RE-10-LAB-006 | Formulario L-6").FontSize(8).FontColor(Colors.Grey.Medium);
+                        });
 
-                            x.Item().Text($"Fecha: {verification.Date:dd/MM/yyyy}");
-                            x.Item().Text($"Estado: {verification.Status}");
-                            
-                            if (verification.EquipmentUnit?.Equipment != null)
+                        row.RelativeItem().AlignRight().Column(col =>
+                        {
+                            col.Item().Text($"ACTA DE VERIFICACIÓN #{verification.Id}").FontSize(14).Bold();
+                            col.Item().Text($"Fecha: {verification.Date:dd/MM/yyyy}").FontSize(10);
+                        });
+                    });
+
+                    page.Content().PaddingVertical(20).Column(col =>
+                    {
+                        // Equipment Info
+                        col.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Row(row =>
+                        {
+                            row.RelativeItem().Column(c =>
                             {
-                                x.Item().Text($"Equipo: {verification.EquipmentUnit.Equipment.Name}");
-                                x.Item().Text($"Serie/Inv: {verification.EquipmentUnit.SerialNumber} / {verification.EquipmentUnit.InventoryNumber}");
-                            }
+                                c.Item().Text("EQUIPO:").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
+                                c.Item().Text(verification.EquipmentUnit?.Equipment?.Name ?? "N/A").FontSize(11).Bold();
+                                c.Item().PaddingTop(5).Text("LABORATORIO:").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
+                                c.Item().Text(verification.EquipmentUnit?.Laboratory?.Name ?? "N/A").FontSize(10);
+                            });
 
-                            x.Item().Text("Detalles de Verificación:");
-                            // Additional details would be iterated here if present in the model
-                            x.Item().Text("... (Detalles completos en desarrollo) ...");
+                            row.RelativeItem().Column(c =>
+                            {
+                                c.Item().Text("NRO. INVENTARIO:").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
+                                c.Item().Text(verification.EquipmentUnit?.InventoryNumber ?? "N/A").FontSize(11).Bold();
+                                c.Item().PaddingTop(5).Text("RESPONSABLE:").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
+                                c.Item().Text(verification.CreatedBy?.FullName ?? "N/A").FontSize(10);
+                            });
                         });
 
-                    page.Footer()
-                        .AlignCenter()
-                        .Text(x =>
+                        // Dynamic Checklist
+                        col.Item().PaddingTop(20).Text("PUNTOS DE CONTROL Y VERIFICACIÓN").FontSize(12).Bold().FontColor(Colors.Blue.Medium);
+                        
+                        col.Item().PaddingTop(5).Table(table =>
                         {
-                            x.Span("Página ");
-                            x.CurrentPageNumber();
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(30);
+                                columns.RelativeColumn();
+                                columns.ConstantColumn(80);
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().Element(CellStyle).Text("#");
+                                header.Cell().Element(CellStyle).Text("Punto de Control");
+                                header.Cell().Element(CellStyle).AlignCenter().Text("Resultado");
+
+                                static IContainer CellStyle(IContainer container) => container.DefaultTextStyle(x => x.SemiBold()).PaddingVertical(5).BorderBottom(1).BorderColor(Colors.Black);
+                            });
+
+                            int index = 1;
+                            foreach (var result in verification.CheckResults.OrderBy(r => r.CheckItem?.Order))
+                            {
+                                table.Cell().Element(CellStyle).Text(index++).FontSize(9);
+                                table.Cell().Element(CellStyle).Text(result.CheckItem?.Name ?? "Desconocido").FontSize(9);
+                                
+                                var resultText = result.Result == VerificationResult.Completed ? "REALIZADO" : "PENDIENTE";
+                                var textColor = result.Result == VerificationResult.Completed ? Colors.Green.Medium : Colors.Grey.Medium;
+
+                                table.Cell().Element(CellStyle).AlignCenter().Text(resultText).FontSize(9).FontColor(textColor).Bold();
+
+                                static IContainer CellStyle(IContainer container) => container.PaddingVertical(5).BorderBottom(1).BorderColor(Colors.Grey.Lighten3);
+                            }
                         });
+
+                        // Observations
+                        col.Item().PaddingTop(20).Column(c => { 
+                            c.Item().Text("OBSERVACIONES TÉCNICAS").FontSize(10).SemiBold();
+                            c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Background(Colors.Grey.Lighten4)
+                                .Text(string.IsNullOrEmpty(verification.Observations) ? "Sin observaciones particulares." : verification.Observations).FontSize(9).Italic();
+                        });
+                        
+                        // Condition Snapshot
+                        col.Item().PaddingTop(10).Row(r => {
+                            r.RelativeItem().Text(t => {
+                                t.Span("Condición detectada: ").FontSize(10);
+                                t.Span(verification.PhysicalCondition.ToString().ToUpper()).FontSize(10).Bold();
+                            });
+                        });
+                    });
+
+                    page.Footer().AlignCenter().Text(x =>
+                    {
+                        x.Span("Página ");
+                        x.CurrentPageNumber();
+                    });
                 });
             });
 
             return document.GeneratePdf();
         }
 
-        /// <summary>
-        /// Generates an Excel spreadsheet containing multiple verification records.
-        /// </summary>
         public byte[] GenerateVerificationsExcel(IEnumerable<Verification> verifications)
         {
             using (var workbook = new XLWorkbook())
             {
                 var worksheet = workbook.Worksheets.Add("Verificaciones");
-                
-                // Headers in Spanish for the user
                 worksheet.Cell(1, 1).Value = "ID";
                 worksheet.Cell(1, 2).Value = "Fecha";
                 worksheet.Cell(1, 3).Value = "Equipo";
@@ -85,7 +146,6 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                 headerRange.Style.Fill.BackgroundColor = XLColor.AirForceBlue;
                 headerRange.Style.Font.FontColor = XLColor.White;
 
-                // Data Rows
                 int row = 2;
                 foreach (var v in verifications)
                 {
@@ -98,192 +158,65 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                 }
 
                 worksheet.Columns().AdjustToContents();
-
-                using (var stream = new MemoryStream())
-                {
-                    workbook.SaveAs(stream);
-                    return stream.ToArray();
-                }
+                using (var stream = new MemoryStream()) { workbook.SaveAs(stream); return stream.ToArray(); }
             }
         }
-        
 
         public byte[] GenerateLaboratoryReport(string laboratoryName, IEnumerable<EquipmentUnit> units, string term, string responsible, DateTime date)
         {
             using (var workbook = new XLWorkbook())
             {
                 var ws = workbook.Worksheets.Add("REPORTE L-6");
-
-                // --- 1. GLOBAL STYLE SETTINGS ---
                 ws.Style.Font.FontName = "Arial";
                 ws.Style.Font.FontSize = 10;
 
-                // --- 2. HEADER SECTION ---
-                
-                // Row 1: Main Title
-                var titleRange = ws.Range("A1:F1");
-                titleRange.Merge().Value = "VERIFICACIÓN ESTADO DE EQUIPOS POR LABORATORIO";
-                titleRange.Style.Font.Bold = true;
-                titleRange.Style.Font.FontSize = 14;
-                titleRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                titleRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                ws.Row(1).Height = 25;
+                // Header
+                ws.Range("A1:F1").Merge().Value = "VERIFICACIÓN ESTADO DE EQUIPOS POR LABORATORIO";
+                ws.Range("A1:F1").Style.Font.Bold = true;
+                ws.Range("A1:F1").Style.Font.FontSize = 14;
+                ws.Range("A1:F1").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-                // Row 2: Metadata Info
-                ws.Range("A2:D2").Merge().Value = "Código de registro: RE-10-LAB-006";
-                ws.Range("A2:D2").Style.Font.Bold = true;
-                ws.Cell("F2").Value = "Versión: 5.0";
-                ws.Cell("F2").Style.Font.Bold = true;
-                ws.Cell("F2").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
+                ws.Cell("D2").Value = "Gestión: " + term;
+                ws.Cell("A2").Value = "Lab: " + laboratoryName;
+                ws.Cell("A3").Value = "Responsable: " + responsible;
+                ws.Cell("D3").Value = "Fecha: " + date.ToString("dd/MM/yyyy");
 
-                // Row 3: Subtitle
-                ws.Range("A3:D3").Merge().Value = "Dirección de Laboratorios y Bibliotecas";
-                ws.Cell("F3").Value = "Formulario L-6";
-                ws.Cell("F3").Style.Font.Bold = true;
-                ws.Cell("F3").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
-
-                // Row 4-5: University and Term
-                var universityRange = ws.Range("A4:F4");
-                universityRange.Merge().Value = "UNIVERSIDAD DEL VALLE";
-                universityRange.Style.Font.Bold = true;
-                universityRange.Style.Font.FontSize = 16;
-                universityRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                ws.Row(4).Height = 22;
-
-                var termRange = ws.Range("A5:F5");
-                termRange.Merge().Value = $"GESTION {term.ToUpper()}";
-                termRange.Style.Font.Bold = true;
-                termRange.Style.Font.FontSize = 12;
-                termRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                ws.Row(5).Height = 18;
-
-                // Row 7-9: Lab Details (Labels and Values)
-                void FormatLabelValue(int row, string label, string value, string startCol, string endCol) {
-                    try 
-                    {
-                        ws.Range(row, 1, row, 2).Merge().Value = label;
-                        ws.Range(row, 1, row, 2).Style.Font.Bold = true;
-                        ws.Range(row, 1, row, 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
-                        
-                        var range = ws.Range($"{startCol}{row}:{endCol}{row}");
-                        range.Merge().Value = value;
-                        range.Style.Font.Bold = true;
-                        range.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log or handle internally if needed, but for now we ensure it doesn't crash the whole process 
-                        // if a specific cell merge fails, though here it's critical.
-                        throw new ArgumentException($"Error formateando celda en fila {row}: {ex.Message}", ex);
-                    }
-                }
-
-                FormatLabelValue(7, "LABORATORIO:", laboratoryName.ToUpper(), "C", "F");
-                FormatLabelValue(8, "RESPONSABLE:", responsible.ToUpper(), "C", "F");
-                
-                ws.Range("A9:B9").Merge().Value = "FECHA VERIFICACION:";
-                ws.Range("A9:B9").Style.Font.Bold = true;
-                ws.Range("A9:B9").Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Right;
-                ws.Cell("C9").Value = date;
-                ws.Cell("C9").Style.Font.Bold = true;
-                ws.Cell("C9").Style.DateFormat.Format = "MM-dd-yy";
-                ws.Cell("C9").Style.Border.BottomBorder = XLBorderStyleValues.Thin;
-
-                // --- 3. TABLE HEADERS (Row 12) ---
-                int headerRow = 12;
-                var headers = new[] { "ITEM", "DESCRIPCIÓN EQUIPO Y/O ACCESORIO", "# DE INV.", "MARCA", "ESTADO DEL EQUIPO", "OBSERVACIONES" };
-                ws.Row(headerRow).Height = 35;
-
-                for (int i = 0; i < headers.Length; i++)
-                {
+                // Table Headers
+                int headerRow = 5;
+                var headers = new[] { "ITEM", "DESCRIPCIÓN EQUIPO", "# DE INV.", "MARCA", "ESTADO DEL EQUIPO", "OBSERVACIONES" };
+                for (int i = 0; i < headers.Length; i++) {
                     var cell = ws.Cell(headerRow, i + 1);
                     cell.Value = headers[i];
                     cell.Style.Font.Bold = true;
-                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                    cell.Style.Alignment.WrapText = true;
-                    cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                    cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#F2F2F2");
+                    cell.Style.Fill.BackgroundColor = XLColor.LightGray;
                 }
 
-                // --- 4. DATA ROWS ---
-                int currentRow = 13;
+                // Data
+                int currentRow = 6;
                 int itemCounter = 1;
-
                 foreach (var unit in units)
                 {
                     ws.Cell(currentRow, 1).Value = itemCounter++;
-                    ws.Cell(currentRow, 1).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-                    ws.Cell(currentRow, 2).Value = (unit.Equipment?.Name ?? "N/A").ToUpper();
-                    ws.Cell(currentRow, 2).Style.Alignment.WrapText = true;
-
-                    // Improved Inventory Formatting (Wrap multiple numbers)
+                    ws.Cell(currentRow, 2).Value = unit.Equipment?.Name ?? "N/A";
                     ws.Cell(currentRow, 3).Value = unit.InventoryNumber;
-                    ws.Cell(currentRow, 3).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                    ws.Cell(currentRow, 3).Style.Alignment.WrapText = true;
+                    ws.Cell(currentRow, 4).Value = unit.Equipment?.Brand ?? "-";
 
-                    ws.Cell(currentRow, 4).Value = (unit.Equipment?.Brand ?? "-").ToUpper();
-                    ws.Cell(currentRow, 4).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-                    // Physical Condition Display Name Helper
-                    string statusText = unit.PhysicalCondition switch {
-                        PhysicalCondition.New => "NUEVO",
-                        PhysicalCondition.VeryGood => "MUY BUENO",
+                    // CORRECCIÓN: Usar los nombres actualizados del enum PhysicalCondition
+                    ws.Cell(currentRow, 5).Value = unit.PhysicalCondition switch {
+                        PhysicalCondition.Excellent => "EXCELENTE",
                         PhysicalCondition.Good => "BUENO",
+                        PhysicalCondition.Regular => "REGULAR",
                         PhysicalCondition.Bad => "MALO",
-                        PhysicalCondition.Broken => "ROTO",
+                        PhysicalCondition.Decommissioned => "BAJA",
                         _ => "SIN EVALUAR"
                     };
-                    
-                    ws.Cell(currentRow, 5).Value = statusText;
-                    ws.Cell(currentRow, 5).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
-                    // Observations from unit (Notes/Observations)
                     ws.Cell(currentRow, 6).Value = unit.Notes ?? "";
-                    ws.Cell(currentRow, 6).Style.Alignment.WrapText = true;
-
-                    // Borders for data row
-                    var rowRange = ws.Range(currentRow, 1, currentRow, 6);
-                    rowRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-                    rowRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                    rowRange.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-                    
-                    ws.Row(currentRow).Height = -1; // Auto height based on wrap text
                     currentRow++;
                 }
 
-                // --- 5. FOOTER / SIGNATURE SECTION ---
-                currentRow += 2; // Extra space
-                var sigLineRange = ws.Range(currentRow, 2, currentRow, 5);
-                sigLineRange.Merge().Style.Border.TopBorder = XLBorderStyleValues.Thin;
-                
-                var signatureRange = ws.Range(currentRow + 1, 1, currentRow + 1, 6);
-                signatureRange.Merge().Value = "FIRMA ENCARGADO DE LABORATORIO";
-                signatureRange.Style.Font.Bold = true;
-                signatureRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-                // --- 6. PAGE AND COLUMN SETTINGS ---
-                ws.Column(1).Width = 7;   // Item
-                ws.Column(2).Width = 45;  // Description
-                ws.Column(3).Width = 18;  // Inv
-                ws.Column(4).Width = 15;  // Brand
-                ws.Column(5).Width = 22;  // Status
-                ws.Column(6).Width = 40;  // Observations
-
-                // Printing Setup
-                ws.PageSetup.PageOrientation = XLPageOrientation.Landscape;
-                ws.PageSetup.Margins.Top = 0.5;
-                ws.PageSetup.Margins.Bottom = 0.5;
-                ws.PageSetup.Margins.Left = 0.3;
-                ws.PageSetup.Margins.Right = 0.3;
-                ws.PageSetup.FitToPages(1, 0); // Fit to 1 page wide, automatic height
-
-                using (var stream = new MemoryStream())
-                {
-                    workbook.SaveAs(stream);
-                    return stream.ToArray();
-                }
+                ws.Columns().AdjustToContents();
+                using (var stream = new MemoryStream()) { workbook.SaveAs(stream); return stream.ToArray(); }
             }
         }
     }

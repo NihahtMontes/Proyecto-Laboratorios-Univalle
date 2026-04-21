@@ -1,5 +1,6 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @if (TempData["Error"] != null)
 {
@@ -34,7 +35,49 @@
                     <div id="localNotificationsList">
                     </div>
                 </div>
-                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+
+                <div class="bg-light p-4 mb-4 rounded border shadow-sm">
+                    <form method="post" asp-page-handler="GenerateL7">
+                        <div class="d-lg-flex align-items-center mb-4 pb-3 border-bottom border-muted">
+                            <div class="mb-2 mb-lg-0 mr-auto">
+                                <h6 class="font-weight-bold text-dark mb-1"><i class="fas fa-file-excel mr-2 text-success"></i> Reporte Oficial L-7</h6>
+                                <small class="text-muted d-block">Seleccione los parámetros para descargar el registro de solicitudes.</small>
+                            </div>
+
+                            <div class="d-flex flex-wrap align-items-center justify-content-lg-end">
+                                <div class="input-group input-group-sm mr-2 mb-2" style="width: 200px;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-flask text-muted"></i></span>
+                                    </div>
+                                    <select asp-for="ReportInput.LaboratoryId" class="form-control border-left-0" asp-items="Model.LaboratoryList" required>
+                                        <option value="">-- Laboratorio --</option>
+                                    </select>
+                                </div>
+
+                                <div class="input-group input-group-sm mr-2 mb-2" style="width: 140px;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-calendar-alt text-muted"></i></span>
+                                    </div>
+                                    <select asp-for="ReportInput.ManagementId" class="form-control border-left-0" asp-items="Model.ManagementList" required>
+                                        <option value="">-- Gestión --</option>
+                                    </select>
+                                </div>
+
+                                <div class="input-group input-group-sm mr-2 mb-2" style="width: 180px;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-user text-muted"></i></span>
+                                    </div>
+                                    <select asp-for="ReportInput.ResponsibleId" class="form-control border-left-0" asp-items="Model.PersonnelList" required>
+                                        <option value="">-- Responsable --</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-success btn-sm btn-rounded shadow-sm font-weight-bold px-3 mb-2">
+                                    <i class="fas fa-download mr-1"></i> Excel L-7
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
                     <form method="get">
                         <div class="row align-items-end">
                             <div class="col-md-3">
@@ -55,14 +98,14 @@
                             <div class="col-md-2">
                                 <label class="small font-weight-bold text-muted uppercase">Prioridad</label>
                                 <select asp-for="PriorityFilter" class="form-control custom-select"
-                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority>()">
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<RequestPriority>()">
                                     <option value="">-- Todas --</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
                                 <label class="small font-weight-bold text-muted uppercase">Estado</label>
                                 <select asp-for="StatusFilter" class="form-control custom-select"
-                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus>()">
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<RequestStatus>()">
                                     <option value="">-- Todos --</option>
                                 </select>
                             </div>
@@ -92,7 +135,7 @@
                         </thead>
                         <tbody>
                             @{
-                                var technicalRequests = Model.Requests?.Where(r => r.Type == Proyecto_Laboratorios_Univalle.Models.Enums.RequestType.Technical) ?? Enumerable.Empty<Proyecto_Laboratorios_Univalle.Models.Request>();
+                                var technicalRequests = Model.Requests?.Where(r => r.Type == RequestType.Technical) ?? Enumerable.Empty<Proyecto_Laboratorios_Univalle.Models.Request>();
                             }
 
                             @if (!technicalRequests.Any())
@@ -128,8 +171,8 @@
                                             @{
                                                 var (priorityClass, priorityText) = item.Priority switch
                                                 {
-                                                    Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority.High => ("badge-danger", "ALTA"),
-                                                    Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority.Medium => ("badge-warning", "MEDIA"),
+                                                    RequestPriority.High => ("badge-danger", "ALTA"),
+                                                    RequestPriority.Medium => ("badge-warning", "MEDIA"),
                                                     _ => ("badge-info", "BAJA")
                                                 };
                                             }
@@ -139,9 +182,9 @@
                                             @{
                                                 var (statusClass, statusText) = item.Status switch
                                                 {
-                                                    Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Approved => ("badge-success", "APROBADA"),
-                                                    Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Pending => ("badge-warning", "PENDIENTE"),
-                                                    Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus.Rejected => ("badge-danger", "RECHAZADA"),
+                                                    RequestStatus.Approved => ("badge-success", "APROBADA"),
+                                                    RequestStatus.Pending => ("badge-warning", "PENDIENTE"),
+                                                    RequestStatus.Rejected => ("badge-danger", "RECHAZADA"),
                                                     _ => ("badge-light text-muted border", "DESCONOCIDO")
                                                 };
                                             }

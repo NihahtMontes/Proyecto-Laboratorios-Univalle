@@ -99,5 +99,40 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             return RedirectToPage("./Index");
         }
+
+        public async Task<IActionResult> OnPostSyncPlansAsync(int id)
+        {
+            var management = await _context.Managements.Include(m => m.ManagementPlans).FirstOrDefaultAsync(m => m.Id == id);
+            if (management == null) return NotFound();
+
+            var currentUnitIds = management.ManagementPlans.Select(p => p.EquipmentUnitId).ToList();
+                
+            var missingUnits = await _context.EquipmentUnits
+                .Where(u => u.CurrentStatus != EquipmentStatus.Deleted && !currentUnitIds.Contains(u.Id))
+                .ToListAsync();
+
+            if (!missingUnits.Any())
+            {
+                TempData["Success"] = "Todos los equipos activos ya se encuentran sincronizados con esta gestión.";
+                return RedirectToPage("./Index");
+            }
+
+            foreach (var unit in missingUnits)
+            {
+                _context.ManagementPlans.Add(new ManagementPlan
+                {
+                    ManagementId = management.Id,
+                    EquipmentUnitId = unit.Id,
+                    CurrentPhase = WizardPhase.Verification,
+                    CurrentState = WizardEquipmentState.PendingVerification,
+                    PlanStatus = ManagementPlanStatus.Pending,
+                    PlannedDate = null
+                });
+            }
+
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"Se han sincronizado {missingUnits.Count} nuevos equipos a la gestión {management.Code}.";
+            return RedirectToPage("./Index");
+        }
     }
 }
