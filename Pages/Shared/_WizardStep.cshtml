@@ -1,73 +1,73 @@
 @model Proyecto_Laboratorios_Univalle.Pages.WizardStepViewModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4" style="font-family: 'Inter', sans-serif;">
     <div>
-        <h3 class="wizard-title text-dark mb-1">@Model.Title</h3>
-        <p class="wizard-subtitle mb-0">@Model.Description</p>
+        <h3 class="wizard-title text-dark mb-1" style="font-weight: 900; color: #0f172a !important;">@Model.Title</h3>
+        <p class="wizard-subtitle mb-0" style="font-weight: 500; color: #64748b;">@Model.Description</p>
     </div>
     @if (Model.StepIndex == 0 || Model.StepIndex == 1) {
         <form method="get" class="d-flex align-items-center gap-3">
             <input type="hidden" name="ShowWizard" value="true" />
             <input type="hidden" name="Step" value="@Model.StepIndex" />
-            <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control shadow-sm" onchange="this.form.submit()">
+            <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control shadow-sm input-group-custom" style="border-radius: 12px; background-color: #f8fafc; border: 1.5px solid #e2e8f0; font-weight: 600; color: #334155; padding: 8px 12px; height: 44px; outline: none; transition: box-shadow 0.2s;" onchange="this.form.submit()">
                 <option value="">-- Selecciona Laboratorio --</option>
             </select>
         </form>
     }
 </div>
 
-<div class="step-stack">
+<div class="step-stack" style="font-family: 'Inter', sans-serif;">
     @if (!Model.Plans.Any())
     {
-        <div class="border-2 border-dashed rounded-3 p-5 text-center text-slate-400 bg-slate-50">
+        <div class="border-2 border-dashed rounded p-5 text-center text-slate-400 bg-slate-50" style="border-radius: 12px !important;">
             <i class="@Model.EmptyIcon text-3xl mb-3 opacity-25"></i><br>
-            @Model.EmptyMessage
+            <span style="font-weight: 500;">@Model.EmptyMessage</span>
         </div>
     }
     else
     {
         @foreach (var item in Model.Plans)
         {
-            <div class="chart-card d-flex justify-content-between align-items-center py-3 mb-2 border-start border-4 @Model.BorderClass">
+            <div class="chart-card d-flex justify-content-between align-items-center py-3 px-4 mb-3 premium-card border-start border-4 @Model.BorderClass" style="background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s;">
                 <div>
-                    <h4 class="font-bold text-slate-800 m-0">@item.EquipmentUnit?.Equipment?.Name</h4>
-                    <span class="inventory-code">@item.EquipmentUnit?.InventoryNumber • @Model.StatusLabel</span>
+                    <h4 class="font-bold text-slate-800 m-0" style="font-weight: 800; color: #1e293b;">@item.EquipmentUnit?.Equipment?.Name</h4>
+                    <span class="inventory-code text-muted small" style="font-weight: 600;">@item.EquipmentUnit?.InventoryNumber • @Model.StatusLabel</span>
                     @if (Model.ShowFailCount) {
                         <span class="text-danger small font-bold d-block mt-1">
                             <i class="fas fa-exclamation-triangle"></i> @(item.Verification?.FailuresCount ?? 0) Falla(s) detectada(s)
                         </span>
                     }
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 align-items-center">
                     @if (!string.IsNullOrEmpty(Model.ActionPage)) {
                         <a asp-page="@Model.ActionPage" 
                            asp-route-equipmentUnitId="@item.EquipmentUnitId" 
                            asp-route-managementPlanId="@item.Id" 
                            asp-route-isWizard="true" 
-                           class="btn @Model.ActionClass btn-sm rounded-pill font-weight-bold px-3">
+                           class="btn @Model.ActionClass btn-sm rounded-pill font-weight-bold px-4 shadow-sm" style="letter-spacing: 0.03em;">
                             @Model.ActionLabel
                         </a>
                     }
                     else if (Model.StepIndex == 5) {
-                        <form method="post" asp-page-handler="ConfirmKardex">
+                        <form method="post" asp-page-handler="ConfirmKardex" class="m-0">
                             <input type="hidden" name="planId" value="@item.Id" />
                             <input type="hidden" name="SelectedLabId" value="@(item.EquipmentUnit?.LaboratoryId)" />
-                            <button type="submit" class="btn btn-info btn-sm rounded-pill font-weight-bold px-3 text-white">
+                            <button type="submit" class="btn btn-login-glow btn-sm rounded-pill font-weight-bold px-4 text-white" style="background: linear-gradient(to right, #2563eb, #1e40af); border: none; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">
                                 Confirmar Kardex
                             </button>
                         </form>
                     }
                     
                     @if (Model.StepIndex == 1) {
-                        <form method="post" asp-page-handler="FastFail">
+                        <form method="post" asp-page-handler="FastFail" class="m-0">
                             <input type="hidden" name="planId" value="@item.Id" />
-                            <button type="submit" class="btn btn-link btn-sm text-danger font-weight-bold">Falla Rápida</button>
+                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill font-weight-bold px-3">Falla Rápida</button>
                         </form>
                     }
 
                     @if (Model.StepIndex == 0) {
-                        <a href="?ShowWizard=true&Step=@((int)item.CurrentPhase)&SelectedLabId=@(item.EquipmentUnit?.LaboratoryId)" class="btn btn-link btn-sm font-bold text-primary">
+                        <a href="?ShowWizard=true&Step=@((int)item.CurrentPhase)&SelectedLabId=@(item.EquipmentUnit?.LaboratoryId)" class="btn btn-light border btn-sm font-bold text-primary rounded-pill px-3 shadow-sm">
                             Atender <i class="fas fa-chevron-right ms-1"></i>
                         </a>
                     }

@@ -26,6 +26,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
     }
 
     [Authorize]
+    [ValidateAntiForgeryToken]
     public class IndexModel : PageModel
     {
         private readonly ApplicationDbContext _context;
@@ -246,27 +247,64 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             return Page();
         }
 
-        [ValidateAntiForgeryToken]
         public IActionResult OnPostNextStep()
         {
             return RedirectToPage(new { ShowWizard = true, Step = Step + 1, SelectedLabId = SelectedLabId });
         }
 
-        [ValidateAntiForgeryToken]
         public IActionResult OnPostPreviousStep()
         {
             int prevStep = Step > 1 ? Step - 1 : 0; 
             return RedirectToPage(new { ShowWizard = true, Step = prevStep, SelectedLabId = SelectedLabId });
         }
 
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> OnPostRefresh()
         {
-            TempData.Success("Los datos del dashboard se han sincronizado correctamente.");
+            var activeManagement = await _context.Managements
+                .Include(m => m.ManagementPlans)
+                .FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+
+            if (activeManagement == null)
+            {
+                TempData.Error("No hay gestión activa para sincronizar.");
+                return RedirectToPage();
+            }
+
+            var existingEquipmentIds = activeManagement.ManagementPlans
+                .Where(p => p.EquipmentUnitId.HasValue)
+                .Select(p => p.EquipmentUnitId!.Value)
+                .ToList();
+
+            var newEquipments = await _context.EquipmentUnits
+                .Where(eu => eu.CurrentStatus != EquipmentStatus.Deleted && !existingEquipmentIds.Contains(eu.Id))
+                .ToListAsync();
+
+            if (newEquipments.Any())
+            {
+                foreach (var eu in newEquipments)
+                {
+                    _context.ManagementPlans.Add(new ManagementPlan
+                    {
+                        ManagementId = activeManagement.Id,
+                        EquipmentUnitId = eu.Id,
+                        CurrentPhase = WizardPhase.Verification,
+                        CurrentState = WizardEquipmentState.PendingVerification,
+                        PlanStatus = ManagementPlanStatus.Pending,
+                        CreatedDate = DateTime.UtcNow,
+                        PlannedDate = DateTime.Today.AddDays(7)
+                    });
+                }
+                await _context.SaveChangesAsync();
+                TempData.Success($"Se han sincronizado {newEquipments.Count} nuevos equipos a la gestión {activeManagement.Year}-{activeManagement.Semester}.");
+            }
+            else
+            {
+                TempData.Success("El dashboard está actualizado. Todos los equipos activos ya están en la ronda.");
+            }
+
             return RedirectToPage();
         }
 
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> OnPostFastFail(int? planId)
         {
             if (planId.HasValue)
@@ -294,7 +332,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             return RedirectToPage("/Requests/Create");
         }
 
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> OnPostConfirmKardexAsync(int planId)
         {
             try

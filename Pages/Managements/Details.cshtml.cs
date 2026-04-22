@@ -11,6 +11,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 {
     [Authorize(Roles = AuthorizationHelper.AdminRoles)]
+    [ValidateAntiForgeryToken]
     public class DetailsModel : PageModel
     {
         private readonly ApplicationDbContext _context;
@@ -163,7 +164,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 .Select(p => new ManagementPlanCalendarDto
                 {
                     Title = p.EquipmentUnit?.Equipment?.Name ?? "Equipo",
-                    Start = p.PlannedDate!.Value.ToString("yyyy-MM-dd"),
+                    Start = p.Maintenance?.StartDate?.ToString("yyyy-MM-dd") ?? p.PlannedDate!.Value.ToString("yyyy-MM-dd"),
+                    End   = p.Maintenance?.EndDate?.ToString("yyyy-MM-dd") ?? p.PlannedDate!.Value.AddDays(5).ToString("yyyy-MM-dd"),
+                    Url   = p.Maintenance != null ? $"/Maintenances/Details?id={p.Maintenance.Id}" : $"/EquipmentUnits/Details?id={p.EquipmentUnitId}",
                     ClassName = p.PlanStatus switch
                     {
                         ManagementPlanStatus.Completed  => "bg-success",
@@ -196,6 +199,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             {
                 if (StatusFilter == "Externo")
                     query = query.Where(p => p.Maintenance!.ServiceType == ServiceType.External);
+                else if (StatusFilter == "Planeado")
+                    query = query.Where(p => p.CurrentPhase > WizardPhase.Maintenance || (p.CurrentPhase == WizardPhase.Maintenance && p.CurrentState == WizardEquipmentState.AwaitingDeparture));
+                else if (StatusFilter == "EnProgreso")
+                    query = query.Where(p => p.CurrentState >= WizardEquipmentState.AwaitingRequest && p.CurrentPhase <= WizardPhase.Maintenance);
                 else if (Enum.TryParse<ManagementPlanStatus>(StatusFilter, out var statusEnum))
                     query = query.Where(p => p.PlanStatus == statusEnum);
             }
@@ -265,6 +272,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         public string Title     { get; set; } = string.Empty;
         public string Start     { get; set; } = string.Empty; // formato: "yyyy-MM-dd"
         public string? End      { get; set; }
+        public string? Url      { get; set; }
         public string ClassName { get; set; } = "bg-primary"; // colores FullCalendar
     }
 }

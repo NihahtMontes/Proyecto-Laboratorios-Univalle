@@ -282,19 +282,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 await _context.SaveChangesAsync();
 
-                var notification = new Notification
+                // Solo notificar si la fecha programada está a 7 días o menos de vencer
+                if (maintenance.ScheduledDate.HasValue)
                 {
-                    UserId = Input.TechnicianId,
-                    Title = "Nuevo Mantenimiento Asignado",
-                    Message = $"Se le ha asignado el mantenimiento de la unidad {equipmentUnit?.InventoryNumber}.",
-                    ActionUrl = $"/Maintenances/Details?id={maintenance.Id}",
-                    IconClass = "fas fa-wrench text-info",
-                    IsRead = false,
-                    CreatedAt = DateTime.UtcNow
-                };
+                    var daysUntil = (maintenance.ScheduledDate.Value.Date - DateTime.UtcNow.Date).TotalDays;
+                    if (daysUntil >= 0 && daysUntil <= 7)
+                    {
+                        var notification = new Notification
+                        {
+                            UserId = Input.TechnicianId,
+                            Title = "Mantenimiento Próximo a Vencer",
+                            Message = $"El mantenimiento de la unidad {equipmentUnit?.InventoryNumber} debe realizarse el {maintenance.ScheduledDate.Value:dd/MM/yyyy}.",
+                            ActionUrl = $"/Maintenances/Details/{maintenance.Id}",
+                            IconClass = "fas fa-exclamation-triangle text-warning",
+                            IsRead = false,
+                            CreatedAt = DateTime.UtcNow
+                        };
 
-                _context.Notifications.Add(notification);
-                await _context.SaveChangesAsync();
+                        _context.Notifications.Add(notification);
+                        await _context.SaveChangesAsync();
+                    }
+                }
 
                 TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
 

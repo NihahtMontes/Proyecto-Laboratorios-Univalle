@@ -368,7 +368,7 @@
 
         // --- LÓGICA DE CHECKBOXES (PORCENTAJE L-48 DINÁMICO) ---
         function calculatePercentage() {
-            const checkboxes = $('.maintenance-check');
+            const checkboxes = $('#tasksContainer .maintenance-check');
             const totalTasks = checkboxes.length;
             const completedTasks = checkboxes.filter(':checked').length;
             const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
