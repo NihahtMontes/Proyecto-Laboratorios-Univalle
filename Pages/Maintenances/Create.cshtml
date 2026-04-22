@@ -13,15 +13,7 @@
 
         @if (isWizard)
         {
-            <div class="wizard-steps mb-4 d-flex justify-content-between position-relative mt-2 px-5">
-                <div class="step-line"></div>
-                <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L6 Verificación</span></div>
-                <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L7 Solicitud</span></div>
-                <div class="step-item active"><span class="step-number">3</span><span class="step-label">L8 Mantenimiento</span></div>
-                <div class="step-item"><span class="step-number">4</span><span class="step-label">L3 Salida</span></div>
-                <div class="step-item"><span class="step-number">5</span><span class="step-label">Kardex</span></div>
-                <div class="step-item"><span class="step-number">6</span><span class="step-label">Desembolso</span></div>
-            </div>
+            await Html.RenderPartialAsync("_WizardSteps", 3);
         }
 
         <div class="card shadow-sm border-0">
@@ -314,17 +306,7 @@
     </tbody>
 </table>
 
-@section Styles {
-    <style>
-        .wizard-steps { height: 70px; }
-        .step-line { border-bottom: 2px solid #e9ecef; position: absolute; top: 20px; left: 10%; right: 10%; z-index: 1; }
-        .step-item { position: relative; z-index: 2; text-align: center; width: 100px; }
-        .step-number { width: 40px; height: 40px; border-radius: 50%; background: white; border: 2px solid #e9ecef; display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; font-weight: bold; color: #adb5bd; }
-        .step-label { font-size: 0.75rem; font-weight: bold; color: #adb5bd; display: block; }
-        .step-item.active .step-number { border-color: #f59e0b; color: #f59e0b; background: #fffcf0; }
-        .step-item.active .step-label { color: #f59e0b; }
-    </style>
-}
+
 
 @section Scripts {
     <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
