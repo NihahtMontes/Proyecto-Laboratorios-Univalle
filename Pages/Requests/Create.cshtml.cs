@@ -67,6 +67,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 13. Mantenimiento con personal externo capacitado.";
             }
 
+            // Sprint 3B: Propagar Fallas del L6 al Description del L7
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans
+                    .Include(p => p.Verification).ThenInclude(v => v!.Faults)
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+
+                if (plan?.Verification?.Faults != null && plan.Verification.Faults.Any(f => !f.IsDeleted))
+                {
+                    var faults = plan.Verification.Faults.Where(f => !f.IsDeleted).Select(f => f.Description);
+                    Input.Description = "Fallas detectadas en la Verificación (L-6):\n- " + string.Join("\n- ", faults);
+                }
+            }
+
             ViewData["IsWizard"] = isWizard;
             return Page();
         }

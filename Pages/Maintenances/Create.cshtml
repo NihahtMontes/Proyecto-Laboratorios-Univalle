@@ -75,13 +75,7 @@
                                     <span asp-validation-for="Input.MaintenanceType" class="text-danger small"></span>
                                 </div>
                             </div>
-                             <div class="col-md-4">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.ServiceType" class="control-label font-weight-bold small text-uppercase text-muted">Ubicación del Servicio</label>
-                                    <select asp-for="Input.ServiceType" class="form-control custom-select" asp-items="ViewBag.ServiceType">
-                                    </select>
-                                </div>
-                            </div>
+
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
                                     <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small text-uppercase text-muted">Técnico Responsable</label>
@@ -91,13 +85,32 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="row">
+                        <div class="row mt-3">
                             <div class="col-md-12">
                                 <div class="form-group mb-0">
-                                    <label asp-for="Input.RequestId" class="control-label font-weight-bold small text-uppercase text-muted">Solicitud Técnica Relacionada</label>
-                                    <select asp-for="Input.RequestId" class="form-control custom-select" asp-items="ViewBag.RequestId">
-                                        <option value="">-- Sin Solicitud --</option>
-                                    </select>
+                                    <label class="control-label font-weight-bold small text-uppercase text-muted">Solicitud Técnica Relacionada (L-7)</label>
+                                    <input type="hidden" asp-for="Input.RequestId" />
+                                    @if (Model.Input.RequestId.HasValue)
+                                    {
+                                        <div class="p-2 rounded" style="background:#f5f3ff; border: 1px solid #ddd6fe;">
+                                            <div class="d-flex align-items-center">
+                                                <div class="mr-3" style="color: #7c3aed;"><i class="fas fa-file-invoice fa-lg"></i></div>
+                                                <div>
+                                                    <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Solicitud L-7 Vinculada</h6>
+                                                    <span class="small" style="color: #7c3aed;">Req ID: @Model.Input.RequestId.Value</span>
+                                                </div>
+                                                <a href="/Requests/Details?id=@Model.Input.RequestId.Value" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
+                                                    Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="p-2 rounded bg-light border">
+                                            <span class="text-muted small font-weight-bold"><i class="fas fa-info-circle mr-1"></i>Mantenimiento directo (Sin L-7)</span>
+                                        </div>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -194,14 +207,14 @@
 
                     <div class="form-group mb-4">
                         <label asp-for="Input.Description" class="control-label font-weight-bold text-dark">Descripción del Trabajo Realizado / Observaciones Técnicas</label>
-                        <textarea asp-for="Input.Description" class="form-control rounded" rows="3" required placeholder="Detalle las fallas encontradas y las soluciones aplicadas..."></textarea>
+                        <textarea asp-for="Input.Description" id="descriptionInput" class="form-control rounded" rows="3" placeholder="Detalle las fallas encontradas y las soluciones aplicadas..."></textarea>
                         <span asp-validation-for="Input.Description" class="text-danger small"></span>
                     </div>
 
                     <div class="card border shadow-none mb-4">
                         <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-4 px-4">
                             <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Control de Costos y Repuestos</h5>
-                            <button type="button" class="btn btn-sm btn-success btn-rounded shadow-sm ml-auto font-weight-bold px-3" onclick="addRow()">
+                            <button type="button" id="btnAddCost" class="btn btn-sm btn-success btn-rounded shadow-sm ml-auto font-weight-bold px-3" onclick="addRow()">
                                 <i class="fas fa-plus mr-1"></i> Agregar Ítem
                             </button>
                         </div>
@@ -234,7 +247,29 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
+                    <div class="row" id="completedOptionsBlock" style="display:none;">
+                        <div class="col-md-6">
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.SuggestedNextMaintenanceDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Sugerida Próximo Mantenimiento</label>
+                                <input asp-for="Input.SuggestedNextMaintenanceDate" class="form-control" type="date" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.SatisfactionLevel" class="control-label font-weight-bold small text-uppercase text-muted">Nivel de Satisfacción (1-5)</label>
+                                <div class="rating-stars text-warning h4 m-0" style="cursor: pointer;">
+                                    <i class="far fa-star" data-value="1"></i>
+                                    <i class="far fa-star" data-value="2"></i>
+                                    <i class="far fa-star" data-value="3"></i>
+                                    <i class="far fa-star" data-value="4"></i>
+                                    <i class="far fa-star" data-value="5"></i>
+                                    <input type="hidden" asp-for="Input.SatisfactionLevel" id="satisfactionInput" value="5" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4">
                         <label asp-for="Input.Recommendations" class="control-label font-weight-bold small text-uppercase text-muted">Recomendaciones Post-Servicio para el Usuario</label>
                         <textarea asp-for="Input.Recommendations" class="form-control" rows="2" placeholder="Ej: No forzar el mando, limpiar después de cada uso..."></textarea>
                     </div>
@@ -244,7 +279,7 @@
                     <div class="form-actions text-right pb-4">
                         @if (isWizard)
                         {
-                            <a asp-page="/Wizard/Index" asp-route-Step="3" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Volver al Wizard</a>
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Volver al Wizard</a>
                         }
                         else
                         {
@@ -346,6 +381,54 @@
             
             // Si ya hay datos (por redirección del wizard o recarga) inicializar porcentajes
             calculatePercentage();
+
+            function applyStatusLogic() {
+                var status = $('#statusSelector').val();
+                if (status === "Completed") {
+                    $('#descriptionInput').prop('required', true);
+                    $('#completedOptionsBlock').slideDown(300);
+                } else {
+                    $('#descriptionInput').prop('required', false);
+                    $('#completedOptionsBlock').slideUp(300);
+                }
+                $("input,select,textarea").not("[type=submit]").jqBootstrapValidation("destroy");
+                $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            }
+
+            $('#statusSelector').on('change', applyStatusLogic);
+            applyStatusLogic();
+
+            // Stars Rating Logic
+            $('.rating-stars i').on('click', function() {
+                var value = $(this).data('value');
+                $('#satisfactionInput').val(value);
+                $('.rating-stars i').each(function() {
+                    if ($(this).data('value') <= value) {
+                        $(this).removeClass('far').addClass('fas');
+                    } else {
+                        $(this).removeClass('fas').addClass('far');
+                    }
+                });
+            });
+            // Initial render for stars
+            var initialValue = $('#satisfactionInput').val() || 5;
+            $('.rating-stars i[data-value="'+initialValue+'"]').trigger('click');
+
+            $('#maintenanceForm').on('submit', function(e) {
+                var status = $('#statusSelector').val();
+                var percent = parseInt($('#hiddenPercentageInput').val()) || 0;
+                
+                if (status === "Completed" && percent !== 100) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: 'Mantenimiento Incompleto',
+                        text: 'Para marcar el mantenimiento como Completado, el avance debe estar al 100%.',
+                        icon: 'warning',
+                        confirmButtonText: 'Entendido'
+                    });
+                    return false;
+                }
+            });
         });
 
         // --- LÓGICA DE CHECKBOXES (PORCENTAJE L-48 DINÁMICO) ---

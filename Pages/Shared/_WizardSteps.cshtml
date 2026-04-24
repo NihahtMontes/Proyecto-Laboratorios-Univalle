@@ -1,8 +1,9 @@
-@* Pages/Shared/_WizardSteps.cshtml *@
-@model int  @* Recibe el número del paso activo (1-6) *@
+
+@model int
 
 @{
-    var steps = new[]
+
+    var steps = new[]   
     {
         "L6 Verificación",
         "L7 Solicitud",
@@ -26,7 +27,7 @@
             ? "background:#28a745; color:white; border-color:#28a745;"
             : "";
         string itemClass   = isActive ? "step-item active" : "step-item";
-
+            
         <div class="@itemClass">
             <span class="step-number" style="@numberStyle">
                 @if (isComplete)

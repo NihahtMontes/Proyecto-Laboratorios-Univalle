@@ -136,12 +136,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Recomendaciones")]
             public string? Recommendations { get; set; }
 
-            [Required]
             [Display(Name = "Estado Inicial")]
             public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Scheduled;
-
-            [Display(Name = "Tipo de Servicio")]
-            public ServiceType ServiceType { get; set; } = ServiceType.Internal;
 
             public List<CostDetail> CostDetails { get; set; } = new();
 
@@ -153,6 +149,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             public bool Step2_Calibration { get; set; } = false;
             public bool Step3_Testing { get; set; } = false;
             public bool Step4_FinalReview { get; set; } = false;
+
+            [DataType(DataType.Date)]
+            [Display(Name = "Fecha Sugerida de Próximo Mantenimiento")]
+            public DateTime? SuggestedNextMaintenanceDate { get; set; }
+
+            [Display(Name = "Nivel de Satisfacción")]
+            public int? SatisfactionLevel { get; set; }
         }
 
         public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
@@ -241,6 +244,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     ActualCost = Input.ActualCost,
                     Observations = Input.Observations?.Clean(),
                     Recommendations = Input.Recommendations?.Clean(),
+                    SuggestedNextMaintenanceDate = Input.SuggestedNextMaintenanceDate,
+                    SatisfactionLevel = (MaintenanceSatisfaction?)Input.SatisfactionLevel,
                     Status = Input.Status,
                     CostDetails = Input.CostDetails ?? new(),
                     CreatedDate = DateTime.UtcNow,

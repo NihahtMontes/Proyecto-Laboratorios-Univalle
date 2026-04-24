@@ -6,7 +6,7 @@
         <h3 class="wizard-title text-dark mb-1" style="font-weight: 900; color: #0f172a !important;">@Model.Title</h3>
         <p class="wizard-subtitle mb-0" style="font-weight: 500; color: #64748b;">@Model.Description</p>
     </div>
-    @if (Model.StepIndex == 0 || Model.StepIndex == 1) {
+    @if (Model.LaboratoriesList != null && Model.LaboratoriesList.Any()) {
         <form method="get" class="d-flex align-items-center gap-3">
             <input type="hidden" name="ShowWizard" value="true" />
             <input type="hidden" name="Step" value="@Model.StepIndex" />
@@ -23,6 +23,70 @@
         <div class="border-2 border-dashed rounded p-5 text-center text-slate-400 bg-slate-50" style="border-radius: 12px !important;">
             <i class="@Model.EmptyIcon text-3xl mb-3 opacity-25"></i><br>
             <span style="font-weight: 500;">@Model.EmptyMessage</span>
+        </div>
+    }
+    else if (Model.StepIndex == 5)
+    {
+        <div class="accordion" id="kardexAccordion">
+            @{ var groupedPlans = Model.Plans.GroupBy(p => p.EquipmentUnit?.Laboratory?.Name ?? "General"); }
+            @foreach (var group in groupedPlans)
+            {
+                var labNameId = group.Key.Replace(" ", "").Replace(".", "").Replace(",", "");
+                <div class="card border-0 mb-3 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header bg-white border-bottom-0 p-1" id="heading-@labNameId">
+                        <h2 class="mb-0">
+                            <button class="btn btn-link btn-block text-left font-weight-bold text-dark text-decoration-none px-4 py-3" type="button" data-toggle="collapse" data-target="#collapse-@labNameId" aria-expanded="true" aria-controls="collapse-@labNameId" style="font-size: 1.1rem;">
+                                <i class="fas fa-flask text-primary mr-2"></i> @group.Key <span class="badge badge-primary ml-2">@group.Count()</span>
+                            </button>
+                        </h2>
+                    </div>
+                    <div id="collapse-@labNameId" class="collapse show" aria-labelledby="heading-@labNameId" data-parent="#kardexAccordion">
+                        <div class="card-body bg-light p-4">
+                            @foreach (var item in group)
+                            {
+                                <div class="bg-white p-4 rounded mb-4 shadow-sm border border-light">
+                                    <h5 class="font-weight-bold text-primary mb-3">@item.EquipmentUnit?.Equipment?.Name <span class="text-muted small">(@item.EquipmentUnit?.InventoryNumber)</span></h5>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm m-0 pixel-perfect-table" style="font-size: 0.85rem;">
+                                            <thead class="bg-primary text-white text-center">
+                                                <tr>
+                                                    <th style="width: 10%;">Fecha</th>
+                                                    <th style="width: 25%;">Descripción</th>
+                                                    <th style="width: 15%;">Servicio Efectuado Por</th>
+                                                    <th style="width: 10%;">Próx. Mant.</th>
+                                                    <th style="width: 10%;">Importe (Bs)</th>
+                                                    <th style="width: 20%;">Observaciones</th>
+                                                    <th style="width: 10%;">Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="text-center align-middle font-weight-bold">@(item.Maintenance?.EndDate?.ToString("dd/MM/yyyy") ?? "N/A")</td>
+                                                    <td class="align-middle">@(item.Maintenance?.Description ?? "Sin descripción")</td>
+                                                    <td class="text-center align-middle">@(item.Maintenance?.Technician?.FullName ?? "Interno")</td>
+                                                    <td class="text-center align-middle">@(item.Maintenance?.SuggestedNextMaintenanceDate?.ToString("dd/MM/yyyy") ?? "N/A")</td>
+                                                    <td class="text-center align-middle font-weight-bold text-success h6 m-0">@((item.Maintenance?.ActualCost ?? 0m).ToString("N2"))</td>
+                                                    <td class="align-middle text-muted">@(item.Maintenance?.Recommendations ?? "N/A")</td>
+                                                    <td class="text-center align-middle">
+                                                        <form method="post" asp-page-handler="ConfirmKardex" class="m-0">
+                                                            <input type="hidden" name="planId" value="@item.Id" />
+                                                            <input type="hidden" name="SelectedLabId" value="@(item.EquipmentUnit?.LaboratoryId)" />
+                                                            <button type="submit" class="btn btn-login-glow btn-sm rounded-pill font-weight-bold w-100 text-white shadow-sm" style="background: linear-gradient(to right, #2563eb, #1e40af); border: none;">
+                                                                <i class="fas fa-check-circle mr-1"></i> Cerrar Kardex
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
         </div>
     }
     else
@@ -48,15 +112,6 @@
                            class="btn @Model.ActionClass btn-sm rounded-pill font-weight-bold px-4 shadow-sm" style="letter-spacing: 0.03em;">
                             @Model.ActionLabel
                         </a>
-                    }
-                    else if (Model.StepIndex == 5) {
-                        <form method="post" asp-page-handler="ConfirmKardex" class="m-0">
-                            <input type="hidden" name="planId" value="@item.Id" />
-                            <input type="hidden" name="SelectedLabId" value="@(item.EquipmentUnit?.LaboratoryId)" />
-                            <button type="submit" class="btn btn-login-glow btn-sm rounded-pill font-weight-bold px-4 text-white" style="background: linear-gradient(to right, #2563eb, #1e40af); border: none; box-shadow: 0 4px 10px rgba(37,99,235,0.3);">
-                                Confirmar Kardex
-                            </button>
-                        </form>
                     }
                     
                     @if (Model.StepIndex == 1) {

@@ -58,6 +58,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         }
 
         public new DbSet<User> Users { get; set; } = null!;
+        public DbSet<VerificationFault> VerificationFaults { get; set; } = null!;
         public DbSet<Person> People { get; set; } = null!;
         public DbSet<Faculty> Faculties { get; set; } = null!;
         public DbSet<Laboratory> Laboratories { get; set; } = null!;
@@ -165,6 +166,9 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             modelBuilder.Entity<Departure>().HasOne(l => l.EquipmentUnit).WithMany(u => u.Departures).HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Departure>().HasOne(l => l.Borrower).WithMany(p => p.Departures).HasForeignKey(l => l.BorrowerId).OnDelete(DeleteBehavior.Restrict);
+
+            // Sprint 3B: Soft Delete para fallas
+            modelBuilder.Entity<VerificationFault>().HasQueryFilter(e => !e.IsDeleted);
 
             modelBuilder.Entity<Laboratory>().HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);

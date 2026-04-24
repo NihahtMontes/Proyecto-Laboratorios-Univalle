@@ -483,7 +483,7 @@
                                     ActionClass = "btn-warning",
                                     StatusLabel = "Requiere Atención",
                                     ShowFailCount = true,
-                                    // TODO: Asegurar que el partial consuma item.FailuresCount en lugar de método
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-warning"
                                 })
                             }
@@ -499,6 +499,7 @@
                                     ActionLabel = "Registrar Acta L8",
                                     ActionClass = "btn-success",
                                     StatusLabel = "En Mantenimiento",
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-success"
                                 })
                             }
@@ -514,6 +515,7 @@
                                     ActionLabel = "Registrar Salida",
                                     ActionClass = "btn-primary",
                                     StatusLabel = "Pendiente Salida",
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-primary"
                                 })
                             }
@@ -526,6 +528,7 @@
                                     Plans = Model.Step5Plans,
                                     StepIndex = 5,
                                     StatusLabel = "Finalizando",
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-info"
                                 })
                             }
@@ -541,6 +544,7 @@
                                     ActionLabel = "Gestionar Adquisición",
                                     ActionClass = "btn-dark",
                                     StatusLabel = "Trámite Administrativo",
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-dark"
                                 })
                             }

@@ -94,7 +94,10 @@
                     </div>
 
                     <div class="form-actions text-right mt-4">
-                        <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" class="btn btn-outline-secondary btn-rounded mr-2 px-4">Volver al Wizard</a>
+                        @if (isWizard)
+                        {
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2" class="btn btn-outline-secondary btn-rounded mr-2 px-4">Volver al Wizard</a>
+                        }
                         <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
                             Guardar y continuar <i class="fas fa-arrow-right ml-2"></i>
                         </button>

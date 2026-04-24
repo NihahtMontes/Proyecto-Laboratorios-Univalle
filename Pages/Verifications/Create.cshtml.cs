@@ -57,20 +57,42 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             /// </summary>
             public Dictionary<int, VerificationResult> Results { get; set; } = [];
 
+            [Display(Name = "Fallas o problemas del equipo")]
+            public List<string> FaultDescriptions { get; set; } = new();
+
             [Display(Name = "Observaciones (Fallas o problemas del equipo)")]
             public string? Observations { get; set; }
 
             public VerificationStatus Status { get; set; } = VerificationStatus.Draft;
         }
 
-        public IActionResult OnGet(int? equipmentUnitId = null, int? returnFacultyId = null, int? returnLaboratoryId = null, bool isWizard = false)
+        public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, int? returnFacultyId = null, int? returnLaboratoryId = null, bool isWizard = false)
         {
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans
+                    .Include(p => p.Verification).ThenInclude(v => v!.CheckResults)
+                    .Include(p => p.Verification).ThenInclude(v => v!.Faults)
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+
+                if (plan?.Verification != null)
+                {
+                    Input.EquipmentUnitId = plan.Verification.EquipmentUnitId;
+                    Input.Date = plan.Verification.Date;
+                    Input.Observations = plan.Verification.Observations;
+                    Input.Status = plan.Verification.Status;
+                    Input.Results = plan.Verification.CheckResults.ToDictionary(r => r.CheckItemId, r => r.Result);
+                    Input.FaultDescriptions = plan.Verification.Faults?.Where(f => !f.IsDeleted).Select(f => f.Description).ToList() ?? new();
+                    equipmentUnitId = Input.EquipmentUnitId; // Para cargar combos
+                }
+            }
+
             if (equipmentUnitId.HasValue)
             {
                 Input.EquipmentUnitId = equipmentUnitId.Value;
-                var unit = _context.EquipmentUnits
+                var unit = await _context.EquipmentUnits
                     .Include(u => u.Laboratory)
-                    .FirstOrDefault(u => u.Id == equipmentUnitId.Value);
+                    .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
 
                 if (unit != null)
                 {
@@ -134,21 +156,90 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return Page();
             }
 
-            var verification = new Verification
-            {
-                EquipmentUnitId = Input.EquipmentUnitId,
-                ManagementId = currentMgmt.Id,
-                Date = Input.Date,
-                Observations = Input.Observations,
-                PhysicalCondition = physicalCondition,
-                Status = Input.Status,
-                CreatedDate = DateTime.UtcNow
-            };
+            // Determinar si hay fallas (si el usuario escribió observaciones de problemas en la lista dinámica)
+            bool hasFailures = Input.FaultDescriptions != null && Input.FaultDescriptions.Any(f => !string.IsNullOrWhiteSpace(f));
 
             var user = await _userManager.GetUserAsync(User);
-            if (user != null) verification.CreatedById = user.Id;
 
-            _context.Verifications.Add(verification);
+            var plan = ManagementPlanId.HasValue 
+                ? await _context.ManagementPlans
+                    .Include(p => p.Verification).ThenInclude(v => v!.Faults)
+                    .Include(p => p.Verification).ThenInclude(v => v!.CheckResults)
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value) 
+                : null;
+
+            Verification verification;
+            bool isNew = plan?.Verification == null;
+
+            if (isNew)
+            {
+                verification = new Verification
+                {
+                    EquipmentUnitId = Input.EquipmentUnitId,
+                    ManagementId = currentMgmt.Id,
+                    Date = Input.Date,
+                    Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions.Where(f => !string.IsNullOrWhiteSpace(f))) : null,
+                    PhysicalCondition = physicalCondition,
+                    Status = Input.Status,
+                    CreatedDate = DateTime.UtcNow,
+                    CreatedById = user?.Id,
+                    Faults = Input.FaultDescriptions?
+                        .Where(f => !string.IsNullOrWhiteSpace(f))
+                        .Select(f => new VerificationFault 
+                        { 
+                            Description = f, 
+                            CreatedDate = DateTime.UtcNow, 
+                            CreatedById = user?.Id 
+                        })
+                        .ToList() ?? new List<VerificationFault>()
+                };
+                _context.Verifications.Add(verification);
+            }
+            else
+            {
+                verification = plan!.Verification!;
+                verification.EquipmentUnitId = Input.EquipmentUnitId;
+                verification.Date = Input.Date;
+                verification.Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions.Where(f => !string.IsNullOrWhiteSpace(f))) : null;
+                verification.PhysicalCondition = physicalCondition;
+                verification.Status = Input.Status;
+                verification.LastModifiedDate = DateTime.UtcNow;
+                verification.ModifiedById = user?.Id;
+
+                // Soft delete existing faults
+                if (verification.Faults != null)
+                {
+                    foreach (var fault in verification.Faults)
+                        fault.IsDeleted = true;
+                }
+                else
+                {
+                    verification.Faults = new List<VerificationFault>();
+                }
+
+                var activeFaults = Input.FaultDescriptions?.Where(f => !string.IsNullOrWhiteSpace(f)).ToList() ?? new();
+                foreach (var desc in activeFaults)
+                {
+                    var existing = verification.Faults.FirstOrDefault(f => f.Description == desc);
+                    if (existing != null)
+                    {
+                        existing.IsDeleted = false;
+                        existing.LastModifiedDate = DateTime.UtcNow;
+                        existing.ModifiedById = user?.Id;
+                    }
+                    else
+                    {
+                        verification.Faults.Add(new VerificationFault { Description = desc, CreatedDate = DateTime.UtcNow, CreatedById = user?.Id });
+                    }
+                }
+                
+                // Limpiar resultados anteriores
+                if (verification.CheckResults != null && verification.CheckResults.Any())
+                {
+                    _context.VerificationCheckResults.RemoveRange(verification.CheckResults);
+                }
+            }
+
             await _context.SaveChangesAsync();
 
             // Guardar resultados individuales de cada check
@@ -163,29 +254,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             }
             await _context.SaveChangesAsync();
 
-            // Determinar si hay fallas (si el usuario escribió observaciones de problemas)
-            bool hasFailures = !string.IsNullOrWhiteSpace(Input.Observations);
-
-            if (ManagementPlanId.HasValue)
+            // Check if there were any failures to adjust the management plan state
+            if (plan != null)
             {
-                var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
-                if (plan != null)
+                plan.VerificationId = verification.Id;
+
+                if (hasFailures)
                 {
-                    plan.VerificationId = verification.Id;
-
-                    if (hasFailures)
-                    {
-                        plan.CurrentPhase = WizardPhase.TechnicalRequest;
-                        plan.CurrentState = WizardEquipmentState.AwaitingRequest;
-                    }
-                    else
-                    {
-                        plan.CurrentPhase = WizardPhase.Maintenance;
-                        plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
-                    }
-
-                    await _context.SaveChangesAsync();
+                    plan.CurrentPhase = WizardPhase.TechnicalRequest;
+                    plan.CurrentState = WizardEquipmentState.AwaitingRequest;
                 }
+                else
+                {
+                    plan.CurrentPhase = WizardPhase.Maintenance;
+                    plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+                }
+
+                await _context.SaveChangesAsync();
             }
 
             if (isWizard)
