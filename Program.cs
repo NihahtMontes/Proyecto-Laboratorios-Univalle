@@ -18,7 +18,10 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 // Configuración de la base de datos SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sqlOptions => 
+    {
+        sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+    }));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -82,6 +85,7 @@ builder.Services.AddScoped<DatabaseErrorHandler>();
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
 
+builder.Services.AddControllers();
 builder.Services.AddRazorPages(options =>
 {
     // Esto obliga a que CUALQUIER página pida Login por defecto
@@ -116,6 +120,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
+app.MapControllers();
 
 // INICIALIZACIÓN Y SEMILLA DE BASE DE DATOS
 using (var scope = app.Services.CreateScope())

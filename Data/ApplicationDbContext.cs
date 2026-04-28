@@ -130,13 +130,20 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Maintenance>().HasQueryFilter(m => m.Status != MaintenanceStatus.Cancelled);
             modelBuilder.Entity<Request>().HasQueryFilter(s => s.Status != RequestStatus.Cancelled);
             modelBuilder.Entity<Verification>().HasQueryFilter(v => v.Status != VerificationStatus.Annulled);
-            modelBuilder.Entity<VerificationCheckResult>().HasQueryFilter(r => r.Verification!.Status != VerificationStatus.Annulled);
+            // REMOVIDO: filtro por navegación causaba INNER JOIN extra en CADA query → crash 0xffffffff
+            // VerificationCheckResult ya queda filtrado automáticamente por el filtro de Verification (al hacer Include)
+            // modelBuilder.Entity<VerificationCheckResult>().HasQueryFilter(r => r.Verification!.Status != VerificationStatus.Annulled);
             modelBuilder.Entity<Management>().HasQueryFilter(m => m.Status != ManagementStatus.Deleted);
-            modelBuilder.Entity<ManagementPlan>().HasQueryFilter(p => p.Management!.Status != ManagementStatus.Deleted);
+            // REMOVIDO: ManagementPlan filtraba por p.Management!.Status (navegación) forzando INNER JOIN
+            // Management ya tiene su propio filtro. Al hacer .Where(p => p.ManagementId == X), 
+            // solo se obtienen planes de gestiones que ya pasaron el filtro de Management.
+            // modelBuilder.Entity<ManagementPlan>().HasQueryFilter(p => p.Management!.Status != ManagementStatus.Deleted);
 
             modelBuilder.Entity<Departure>().HasQueryFilter(l => l.Status != LoanStatus.Cancelled);
             modelBuilder.Entity<Career>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
-            modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => t.Maintenance!.Status != MaintenanceStatus.Cancelled);
+            // REMOVIDO: filtro por navegación t.Maintenance!.Status causaba JOIN extra
+            // MaintenanceTask ya queda filtrado por el filtro de Maintenance
+            // modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => t.Maintenance!.Status != MaintenanceStatus.Cancelled);
 
             // Management Relationships
             modelBuilder.Entity<Verification>().HasOne(v => v.Management).WithMany().HasForeignKey(v => v.ManagementId).OnDelete(DeleteBehavior.Restrict);

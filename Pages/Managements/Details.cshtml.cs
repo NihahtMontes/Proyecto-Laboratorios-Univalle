@@ -178,6 +178,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             // B-7: Filtros ampliados del cronograma L-48
             var query = _context.ManagementPlans
+                .AsNoTracking()
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                 .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)

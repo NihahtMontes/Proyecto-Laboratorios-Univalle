@@ -14,6 +14,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
         Task<byte[]> GenerateSolicitudMantenimientoExcel(int requestId);
         Task<byte[]> GenerateSolicitudAdquisicionExcel(int requestId);
         Task<byte[]> GenerateReport(int requestId);
+        Task<byte[]> GenerateL8KardexExcel(int unitId);
+        Task<byte[]> GenerateL48GanttExcel(int labId);
+        Task<byte[]> GenerateL6VerificacionExcel(int labId, string responsable);
+        Task<byte[]> GenerateL3SalidaExcel(int unitId);
     }
 
     public class ReportService : IReportService
@@ -77,17 +81,17 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 worksheet.Cells["H11"].Value = null; // Fecha - Año
                 worksheet.Cells["C14"].Value = null; // Justificación/Requerimiento
 
-                // Limpiar el cuerpo de la tabla (Filas 19 a 37, Columnas A a Z - CORREGIDO)
-                // Des-fusionamos primero para evitar errores con celdas combinadas largas como E35:U36
-                worksheet.Cells["A19:Z37"].Merge = false;
-                worksheet.Cells["A19:Z37"].Value = null;
-                worksheet.Cells["A19:Z37"].Style.WrapText = true;
+                // Limpiar el cuerpo de la tabla (Filas 19 a 37) - LIMPIEZA SEGURA
+                for (int r = 19; r <= 37; r++)
+                    for (int c = 1; c <= 26; c++)
+                        try { worksheet.Cells[r, c].Value = null; } catch { }
+                for (int r = 19; r <= 37; r++)
+                    try { worksheet.Row(r).Style.WrapText = true; } catch { }
 
-                // Limpiar fila de totales y área de firmas (Fila 38 a 55, Columnas A a Z - CORREGIDO)
-                // Des-fusionamos un rango mucho más amplio horizontalmente para evitar errores con celdas combinadas largas
-                // Esto soluciona errores como: "Can't delete/overwrite merged cells... P40:U40"
-                worksheet.Cells["A38:Z55"].Merge = false;
-                worksheet.Cells["A38:Z55"].Value = null;
+                // Limpiar fila de totales y área de firmas (Fila 38 a 55) - LIMPIEZA SEGURA
+                for (int r = 38; r <= 55; r++)
+                    for (int c = 1; c <= 26; c++)
+                        try { worksheet.Cells[r, c].Value = null; } catch { }
 
                 // ===============================================
                 // ENCABEZADO ADMINISTRATIVO
@@ -119,21 +123,21 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 // Día (D10:E11)
                 var rangeDia = worksheet.Cells["D10:E11"];
-                rangeDia.Merge = true;
+                try { rangeDia.Merge = true; } catch { }
                 rangeDia.Value = fechaActual.Day;
                 rangeDia.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 rangeDia.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
 
                 // Mes (F10:G11)
                 var rangeMes = worksheet.Cells["F10:G11"];
-                rangeMes.Merge = true;
+                try { rangeMes.Merge = true; } catch { }
                 rangeMes.Value = fechaActual.Month;
                 rangeMes.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 rangeMes.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
 
                 // Año (H10:I11)
                 var rangeAño = worksheet.Cells["H10:I11"];
-                rangeAño.Merge = true;
+                try { rangeAño.Merge = true; } catch { }
                 rangeAño.Value = fechaActual.Year;
                 rangeAño.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 rangeAño.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
@@ -149,14 +153,16 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 var items = request.CostDetails.ToList();
                 decimal granTotal = 0;
 
-                // Limpiar rango de items de forma segura
-                worksheet.Cells["A19:Z37"].Merge = false;
-                worksheet.Cells["A19:Z37"].Value = null;
-                worksheet.Cells["A19:Z37"].Style.WrapText = true;
+                // Limpiar rango de items de forma segura (sin Merge=false)
+                for (int r2 = 19; r2 <= 37; r2++)
+                    for (int c2 = 1; c2 <= 26; c2++)
+                        try { worksheet.Cells[r2, c2].Value = null; } catch { }
+                for (int r2 = 19; r2 <= 37; r2++)
+                    try { worksheet.Row(r2).Style.WrapText = true; } catch { }
 
                 // Etiqueta OBSERVACIONES (A35:D35) - Según imagen
                 var rangeObs = worksheet.Cells["A35:D35"];
-                rangeObs.Merge = true;
+                try { rangeObs.Merge = true; } catch { }
                 rangeObs.Value = "OBSERVACIONES";
                 rangeObs.Style.Font.Bold = true;
                 rangeObs.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
@@ -177,17 +183,17 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                     // ✅ AJUSTE DE COLUMNAS SEGÚN PLANTILLA
                     // Cantidad -> Fusionar A y B (Col 1-2)
-                    worksheet.Cells[currentRow, 1, currentRow, 2].Merge = true;
+                    try { worksheet.Cells[currentRow, 1, currentRow, 2].Merge = true; } catch { }
                     worksheet.Cells[currentRow, 1].Value = item.Quantity;
                     worksheet.Cells[currentRow, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                     // Unidad -> Fusionar C y D (Col 3-4)
-                    worksheet.Cells[currentRow, 3, currentRow, 4].Merge = true;
+                    try { worksheet.Cells[currentRow, 3, currentRow, 4].Merge = true; } catch { }
                     worksheet.Cells[currentRow, 3].Value = item.UnitOfMeasure ?? "Unidad";
                     worksheet.Cells[currentRow, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                     // Descripción -> Fusionar E hasta M (Col 5-13)
-                    worksheet.Cells[currentRow, 5, currentRow, 13].Merge = true;
+                    try { worksheet.Cells[currentRow, 5, currentRow, 13].Merge = true; } catch { }
                     worksheet.Cells[currentRow, 5].Value = item.Concept ?? "Sin descripción";
                     worksheet.Cells[currentRow, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left; // Alineado a la izquierda
                     worksheet.Cells[currentRow, 5].Style.Font.Italic = true; // Estilo cursiva como se ve en la imagen
@@ -195,7 +201,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                     // Precio Unitario -> Fusionar N, O, P (Col 14-16)
                     var rangePU = worksheet.Cells[currentRow, 14, currentRow, 16];
-                    rangePU.Merge = true;
+                    try { rangePU.Merge = true; } catch { }
                     rangePU.Value = item.UnitPrice;
                     rangePU.Style.Numberformat.Format = "#,##0.00";
                     rangePU.Style.Font.Italic = true; // Cursiva como en la imagen
@@ -203,7 +209,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                     // Valor Total -> Fusionar Q, R, S, T, U (Col 17-21)
                     var rangeSubtotal = worksheet.Cells[currentRow, 17, currentRow, 21];
-                    rangeSubtotal.Merge = true;
+                    try { rangeSubtotal.Merge = true; } catch { }
                     rangeSubtotal.Value = subtotal;
                     rangeSubtotal.Style.Numberformat.Format = "#,##0.00";
                     rangeSubtotal.Style.Font.Italic = true; // Cursiva como en la imagen
@@ -217,7 +223,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 if (rowObs < 37 && !string.IsNullOrEmpty(request.Observations))
                 {
                     worksheet.Cells[rowObs, 1].Value = $"OBSERVACIONES: {request.Observations}";
-                    worksheet.Cells[rowObs, 1, rowObs, 13].Merge = true; // Fusionar A-M
+                    try { worksheet.Cells[rowObs, 1, rowObs, 13].Merge = true; } catch { } // Fusionar A-M
                     worksheet.Cells[rowObs, 1].Style.WrapText = true;
                 }
 
@@ -235,8 +241,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 // Asegurar que no esté fusionado antes de fusionar
                 var rangeLetras = worksheet.Cells[38, 3, 39, 15]; // C38:O39
-                rangeLetras.Merge = false;
-                rangeLetras.Merge = true;
+                try { rangeLetras.Merge = true; } catch { }
 
                 rangeLetras.Value = montoLetras;
                 rangeLetras.Style.Font.Bold = true;
@@ -248,7 +253,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 // Monto Total Numérico -> Q38 a U38 (Col 17-21)
                 var rangeGranTotal = worksheet.Cells[38, 17, 38, 21];
-                rangeGranTotal.Merge = true;
+                try { rangeGranTotal.Merge = true; } catch { }
                 rangeGranTotal.Value = granTotal;
                 rangeGranTotal.Style.Font.Bold = true;
                 rangeGranTotal.Style.Font.Size = 14;
@@ -257,7 +262,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 // Etiqueta "Monto TOTAL" -> Q39 a U39 (Col 17-21)
                 var rangeEtiqTotal = worksheet.Cells[39, 17, 39, 21];
-                rangeEtiqTotal.Merge = true;
+                try { rangeEtiqTotal.Merge = true; } catch { }
                 rangeEtiqTotal.Value = "Monto TOTAL";
                 rangeEtiqTotal.Style.Font.Italic = true;
                 rangeEtiqTotal.Style.Font.Bold = false;
@@ -271,39 +276,39 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // Bloque 1 (A-D)
                 var box1 = worksheet.Cells["A41:D44"];
                 box1.Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                worksheet.Cells["A43:D43"].Merge = true;
+                try { worksheet.Cells["A43:D43"].Merge = true; } catch { }
                 worksheet.Cells["A43"].Value = "Sello y Firma";
-                worksheet.Cells["A44:D44"].Merge = true;
+                try { worksheet.Cells["A44:D44"].Merge = true; } catch { }
                 worksheet.Cells["A44"].Value = "Responsable Unidad Solicitante";
 
                 // Bloque 2 (E-H)
                 var box2 = worksheet.Cells["E41:H44"];
                 box2.Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                worksheet.Cells["E43:H43"].Merge = true;
+                try { worksheet.Cells["E43:H43"].Merge = true; } catch { }
                 worksheet.Cells["E43"].Value = "Director /Inmediato Superior";
-                worksheet.Cells["E44:H44"].Merge = true;
+                try { worksheet.Cells["E44:H44"].Merge = true; } catch { }
                 worksheet.Cells["E44"].Value = "(Solo si corresponde)";
 
                 // Bloque 3 (I-L)
                 var box3 = worksheet.Cells["I41:L44"];
                 box3.Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                worksheet.Cells["I43:L43"].Merge = true;
+                try { worksheet.Cells["I43:L43"].Merge = true; } catch { }
                 worksheet.Cells["I43"].Value = "Almacenes";
-                worksheet.Cells["I44:L44"].Merge = true;
+                try { worksheet.Cells["I44:L44"].Merge = true; } catch { }
                 worksheet.Cells["I44"].Value = "(NO existencias)";
 
                 // Bloque 4 (M-O)
                 var box4 = worksheet.Cells["M41:O44"];
                 box4.Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                worksheet.Cells["M43:O43"].Merge = true;
+                try { worksheet.Cells["M43:O43"].Merge = true; } catch { }
                 worksheet.Cells["M43"].Value = "Presupuestos";
 
                 // Bloque 5 (P-U)
                 var box5 = worksheet.Cells["P41:U44"];
                 box5.Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                worksheet.Cells["P43:U43"].Merge = true;
+                try { worksheet.Cells["P43:U43"].Merge = true; } catch { }
                 worksheet.Cells["P43"].Value = "Rector/Vicerrector";
-                worksheet.Cells["P44:U44"].Merge = true;
+                try { worksheet.Cells["P44:U44"].Merge = true; } catch { }
                 worksheet.Cells["P44"].Value = "DAF/ADM";
 
                 // Estilo General para Firmas
@@ -313,30 +318,31 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 rangeFirmas.Style.VerticalAlignment = ExcelVerticalAlignment.Bottom;
 
                 // 2. PAGINACIÓN (Fila 45) - Centrado bajo bloques 4 y 5
-                worksheet.Cells["M45:O45"].Merge = true;
+                try { worksheet.Cells["M45:O45"].Merge = true; } catch { }
                 worksheet.Cells["M45"].Value = "P A G I N A";
                 worksheet.Cells["M45"].Style.Font.Bold = true;
                 worksheet.Cells["M45"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
 
-                worksheet.Cells["S45:T45"].Merge = true;
+                try { worksheet.Cells["S45:T45"].Merge = true; } catch { }
                 worksheet.Cells["S45"].Value = "DE";
                 worksheet.Cells["S45"].Style.Font.Bold = true;
                 worksheet.Cells["S45"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                 // 3. NOTAS DEL PIE (Filas 46-47)
                 var note1 = worksheet.Cells["A46:U46"];
-                note1.Merge = true;
+                try { note1.Merge = true; } catch { }
                 note1.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
                 note1.Value = "1) El original debidamente firmado destinado para Adquisiciones  2) Una copia numerada por Adquisiciones al recibir para Unidad Solicitante";
                 note1.Style.Font.Size = 8;
 
                 var note2 = worksheet.Cells["A47:U47"];
-                note2.Merge = true;
+                try { note2.Merge = true; } catch { }
                 note2.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left;
                 note2.Value = "Requisitos Obligados: a) Sello de Almacenes verificando NO Existencias  b) Sello Presupuestos NO Sobregiros  c) Registro Adquisiciones";
                 note2.Style.Font.Size = 8;
                 note2.Style.Font.Bold = true;
 
+                EliminarHojasExtra(package);
                 return package.GetAsByteArray();
             }
             catch (Exception ex)
@@ -430,7 +436,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 }
 
                 // 2. CARGAR PLANTILLA
-                var templatePath = Path.Combine(_env.WebRootPath, "templates", "solicitud_mantenimiento_template.xlsx");
+                var templatePath = Path.Combine(_env.WebRootPath, "templates", "L7.xlsx");
 
                 if (!File.Exists(templatePath))
                 {
@@ -443,9 +449,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // ========================================
                 // LIMPIEZA DE SEGURIDAD
                 // ========================================
-                // Des-fusionamos el área de firmas/pie de página (rango amplio) para evitar errores
-                worksheet.Cells["A40:Z60"].Merge = false;
-                worksheet.Cells["A40:Z60"].Value = null;
+                // LIMPIEZA SEGURA: No usar .Merge=false en rangos amplios (crash 0xffffffff)
+                for (int r = 40; r <= 60; r++)
+                    for (int c = 1; c <= 26; c++)
+                        try { worksheet.Cells[r, c].Value = null; } catch { }
 
                 // ========================================
                 // 4. RELLENAR DATOS SEGÚN TU PLANTILLA
@@ -457,7 +464,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 // Configuración Fila 2 (Arial 16, Fusionando A-E)
                 var range1 = worksheet.Cells["A2:E2"];
-                range1.Merge = true;
+                try { range1.Merge = true; } catch { }
                 range1.Value = "SOLICITUD MANTENIMIENTO Y CALIBRACION DE";
                 range1.Style.Font.Bold = true;
                 range1.Style.Font.Name = "Arial";
@@ -467,7 +474,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 // Configuración Fila 3
                 var range2 = worksheet.Cells["A3:E3"];
-                range2.Merge = true;
+                try { range2.Merge = true; } catch { }
                 range2.Value = "EQUIPOS DE LABORATORIO";
                 range2.Style.Font.Bold = true;
                 range2.Style.Font.Name = "Arial";
@@ -557,12 +564,12 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // ===============================================
                 // Se coloca en la fila 50, centrado entre la columna B y D
                 var firmaRange = worksheet.Cells["B50:D50"];
-                firmaRange.Merge = true;
+                try { firmaRange.Merge = true; } catch { }
                 firmaRange.Value = "____________________________________";
                 firmaRange.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                 var labelFirmaRange = worksheet.Cells["B51:D51"];
-                labelFirmaRange.Merge = true;
+                try { labelFirmaRange.Merge = true; } catch { }
                 labelFirmaRange.Value = "Firma Encargado de Laboratorio";
                 labelFirmaRange.Style.Font.Bold = true;
                 labelFirmaRange.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
@@ -570,7 +577,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // 5. ASEGURAR FORMATO (bordes, fuentes, etc.)
                 AplicarEstilosACeldas(worksheet);
 
-                // 6. RETORNAR ARCHIVO COMO BYTE ARRAY
+                // 6. ELIMINAR HOJAS EXTRA
+                EliminarHojasExtra(package);
+
+                // 7. RETORNAR ARCHIVO COMO BYTE ARRAY
                 return package.GetAsByteArray();
             }
             catch (Exception ex)
@@ -612,6 +622,288 @@ namespace Proyecto_Laboratorios_Univalle.Services
             worksheet.Cells["B12"].Style.WrapText = true;
             worksheet.Cells["A23"].Style.WrapText = true;
             worksheet.Cells["A28"].Style.WrapText = true;
+        }
+
+        public async Task<byte[]> GenerateL8KardexExcel(int unitId)
+        {
+            var unit = await _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Include(u => u.Laboratory)
+                .FirstOrDefaultAsync(u => u.Id == unitId);
+
+            if (unit == null) throw new Exception("Equipment Unit not found");
+
+            var templatePath = Path.Combine(_env.WebRootPath, "templates", "L8.xlsx");
+            if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-8 no encontrada.");
+
+            using var package = new ExcelPackage(new FileInfo(templatePath));
+            var worksheet = package.Workbook.Worksheets[0];
+
+            // LIMPIEZA SEGURA (sin Merge=false - causa crash 0xffffffff)
+            for (int r = 15; r <= 50; r++)
+                for (int c = 1; c <= 6; c++)
+                    try { worksheet.Cells[r, c].Value = null; } catch { }
+
+            // HEADER
+            worksheet.Cells["B8"].Value = unit.Equipment?.Name?.ToUpper();
+            worksheet.Cells["B9"].Value = unit.Laboratory?.Name?.ToUpper();
+            worksheet.Cells["B10"].Value = unit.Equipment?.Brand?.ToUpper();
+            worksheet.Cells["B11"].Value = unit.Equipment?.Model?.ToUpper();
+            worksheet.Cells["B12"].Value = unit.SerialNumber?.ToUpper();
+            worksheet.Cells["B13"].Value = unit.InventoryNumber;
+
+            // CUERPO (Iterando mantenimientos completados)
+            int startRow = 15;
+
+            var plansWithMaintenance = await _context.ManagementPlans
+                .Include(p => p.Maintenance)
+                    .ThenInclude(m => m!.Technician)
+                .Where(p => p.EquipmentUnitId == unitId && p.Maintenance != null && p.Maintenance.Status == MaintenanceStatus.Completed)
+                .OrderBy(p => p.Maintenance!.EndDate)
+                .ToListAsync();
+
+            foreach (var plan in plansWithMaintenance)
+            {
+                var m = plan.Maintenance!;
+                worksheet.Cells[startRow, 1].Value = m.EndDate?.ToString("dd/MM/yyyy");
+                worksheet.Cells[startRow, 2].Value = m.Description ?? "Mantenimiento Preventivo";
+                worksheet.Cells[startRow, 3].Value = m.Technician?.FullName ?? "MANTENIMIENTO INTERNO";
+                worksheet.Cells[startRow, 4].Value = m.SuggestedNextMaintenanceDate?.ToString("dd/MM/yyyy");
+                worksheet.Cells[startRow, 5].Value = m.ActualCost;
+                worksheet.Cells[startRow, 5].Style.Numberformat.Format = "#,##0.00";
+                worksheet.Cells[startRow, 6].Value = m.Recommendations ?? "Sin observaciones";
+
+                var maxLength = Math.Max(m.Description?.Length ?? 0, m.Recommendations?.Length ?? 0);
+                if (maxLength > 30) worksheet.Row(startRow).Height = Math.Max(25, (maxLength / 30.0) * 15);
+
+                startRow++;
+            }
+
+            EliminarHojasExtra(package);
+            return package.GetAsByteArray();
+        }
+
+        public async Task<byte[]> GenerateL48GanttExcel(int labId)
+        {
+            var lab = await _context.Laboratories.FirstOrDefaultAsync(l => l.Id == labId);
+            if (lab == null) throw new Exception("Laboratory not found");
+
+            var plans = await _context.ManagementPlans
+                .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
+                .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
+                .Where(p => p.EquipmentUnit!.LaboratoryId == labId)
+                .OrderBy(p => p.EquipmentUnit!.InventoryNumber)
+                .ToListAsync();
+
+            var templatePath = Path.Combine(_env.WebRootPath, "templates", "L48.xlsx");
+            if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-48 no encontrada.");
+
+            using var package = new ExcelPackage(new FileInfo(templatePath));
+            var worksheet = package.Workbook.Worksheets[0];
+
+            worksheet.Cells["A5"].Value = $"PLAN DE MANTENIMIENTO PREVENTIVO Y CORRECTIVO EQUIPOS DE LABORATORIO GESTIÓN I/{DateTime.UtcNow.Year}";
+            for (int r = 13; r <= 60; r++)
+                for (int c = 1; c <= 16; c++)
+                    try { worksheet.Cells[r, c].Value = null; } catch { }
+
+            int currentRow = 13;
+            int itemIndex = 1;
+
+            foreach (var plan in plans)
+            {
+                var u = plan.EquipmentUnit;
+                var m = plan.Maintenance;
+
+                worksheet.Cells[currentRow, 1].Value = itemIndex;
+                worksheet.Cells[currentRow, 2].Value = u?.Equipment?.Name?.ToUpper();
+                worksheet.Cells[currentRow, 3].Value = u?.InventoryNumber;
+                worksheet.Cells[currentRow, 4].Value = m?.MaintenanceType.ToString() ?? "Preventivo";
+                worksheet.Cells[currentRow, 5].Value = m?.Technician?.FullName ?? "Interno";
+                worksheet.Cells[currentRow, 6].Value = m?.ScheduledDate?.ToString("dd/MM/yyyy");
+                worksheet.Cells[currentRow, 7].Value = m?.StartDate?.ToString("dd/MM/yyyy");
+                worksheet.Cells[currentRow, 8].Value = m?.EndDate?.ToString("dd/MM/yyyy");
+                worksheet.Cells[currentRow, 9].Value = m?.Status.ToString();
+                worksheet.Cells[currentRow, 10].Value = m?.Observations;
+
+                // Gantt coloring: months Jan-Dec → cols 11-22 (but template may only go to 16)
+                if (m?.ScheduledDate != null)
+                {
+                    int monthCol = 10 + m.ScheduledDate.Value.Month;
+                    if (monthCol <= 22)
+                        try { worksheet.Cells[currentRow, monthCol].Style.Fill.SetBackground(Color.LightBlue); } catch { }
+                }
+
+                currentRow++;
+                itemIndex++;
+            }
+
+            EliminarHojasExtra(package);
+            return package.GetAsByteArray();
+        }
+
+        public async Task<byte[]> GenerateL6VerificacionExcel(int labId, string responsable = "Sistema")
+        {
+            var lab = await _context.Laboratories.FirstOrDefaultAsync(l => l.Id == labId);
+            if (lab == null) throw new Exception("Laboratorio no encontrado.");
+
+            var units = await _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Include(u => u.Verifications)
+                    .ThenInclude(v => v.Faults)
+                .Where(u => u.LaboratoryId == labId)
+                .OrderBy(u => u.InventoryNumber)
+                .ToListAsync();
+
+            // Usar nueva plantilla L6V2, fallback a L6
+            var templatePath = Path.Combine(_env.WebRootPath, "templates", "L6V2.xlsx");
+            if (!File.Exists(templatePath))
+            {
+                templatePath = Path.Combine(_env.WebRootPath, "templates", "L6.xlsx");
+                if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-6 no encontrada.");
+            }
+
+            using var package = new ExcelPackage(new FileInfo(templatePath));
+            var worksheet = package.Workbook.Worksheets[0];
+
+            // HEADER
+            worksheet.Cells["B6"].Value = $"I/{DateTime.Now.Year}";
+            worksheet.Cells["B9"].Value = lab.Name?.ToUpper();
+            worksheet.Cells["B10"].Value = responsable.ToUpper();
+            worksheet.Cells["B11"].Value = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+
+            // Limpiar tabla de datos
+            for (int r = 14; r <= 60; r++)
+                for (int c = 1; c <= 6; c++)
+                    try { worksheet.Cells[r, c].Value = null; } catch { }
+
+            int row = 14;
+            int item = 1;
+
+            foreach (var unit in units)
+            {
+                var lastVerification = unit.Verifications?
+                    .OrderByDescending(v => v.Date)
+                    .FirstOrDefault();
+
+                var faults = lastVerification?.Faults?.Select(f => f.Description).ToList() ?? new List<string>();
+                var condicion = lastVerification?.PhysicalCondition.ToString() ?? "N/A";
+                var observaciones = faults.Count > 0
+                    ? string.Join("; ", faults)
+                    : lastVerification?.Observations ?? "Sin observaciones";
+
+                worksheet.Cells[row, 1].Value = item;
+                worksheet.Cells[row, 2].Value = unit.Equipment?.Name?.ToUpper();
+                worksheet.Cells[row, 2].Style.WrapText = true;
+                worksheet.Cells[row, 3].Value = 1;
+                worksheet.Cells[row, 4].Value = condicion;
+                worksheet.Cells[row, 5].Value = unit.Equipment?.Brand?.ToUpper();
+                worksheet.Cells[row, 6].Value = observaciones;
+                worksheet.Cells[row, 6].Style.WrapText = true;
+
+                var obsLength = observaciones.Length;
+                if (obsLength > 40) worksheet.Row(row).Height = Math.Max(20, (obsLength / 40.0) * 14);
+
+                row++;
+                item++;
+            }
+
+            EliminarHojasExtra(package);
+            return package.GetAsByteArray();
+        }
+
+        public async Task<byte[]> GenerateL3SalidaExcel(int unitId)
+        {
+            var unit = await _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Include(u => u.Laboratory)
+                .FirstOrDefaultAsync(u => u.Id == unitId);
+
+            if (unit == null) throw new Exception("Equipo no encontrado.");
+
+            var departure = await _context.Departures
+                .Include(d => d.Borrower)
+                .Include(d => d.CreatedBy)
+                .Where(d => d.EquipmentUnitId == unitId)
+                .OrderByDescending(d => d.DepartureDate)
+                .FirstOrDefaultAsync();
+
+            var templatePath = Path.Combine(_env.WebRootPath, "templates", "L3.xlsx");
+            if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-3 no encontrada.");
+
+            using var package = new ExcelPackage(new FileInfo(templatePath));
+            var worksheet = package.Workbook.Worksheets[0];
+
+            // LIMPIAR tabla de items
+            for (int r = 18; r <= 30; r++)
+                for (int c = 2; c <= 18; c++)
+                    try { worksheet.Cells[r, c].Value = null; } catch { }
+
+            // HEADER
+            worksheet.Cells["G11"].Value = departure?.DepartureDate ?? DateTime.UtcNow;
+            worksheet.Cells["G11"].Style.Numberformat.Format = "dd/MM/yyyy";
+            worksheet.Cells["G12"].Value = unit.Laboratory?.Name?.ToUpper();
+            worksheet.Cells["G13"].Value = departure?.CreatedBy?.FullName?.ToUpper() ?? "SISTEMA";
+
+            // Item row
+            worksheet.Cells[19, 2].Value = 1;
+            worksheet.Cells[19, 3].Value = unit.Equipment?.Name?.ToUpper();
+            worksheet.Cells[19, 5].Value = unit.Equipment?.Brand?.ToUpper();
+            worksheet.Cells[19, 7].Value = unit.Equipment?.Model?.ToUpper();
+            worksheet.Cells[19, 9].Value = unit.SerialNumber;
+            worksheet.Cells[19, 10].Value = unit.InventoryNumber;
+            worksheet.Cells[19, 12].Value = "UNIDAD";
+            worksheet.Cells[19, 18].Value = "LND";
+
+            EliminarHojasExtra(package);
+            return package.GetAsByteArray();
+        }
+
+        /// <summary>
+        /// Elimina todas las hojas del workbook excepto la primera.
+        /// Las plantillas oficiales traen decenas de pestañas innecesarias
+        /// que hacen el archivo excesivamente pesado.
+        /// </summary>
+        private void EliminarHojasExtra(ExcelPackage package)
+        {
+            try
+            {
+                var worksheets = package.Workbook.Worksheets;
+                // Solo eliminar si hay más de 1 hoja
+                if (worksheets.Count <= 1) return;
+                
+                for (int i = worksheets.Count - 1; i >= 1; i--)
+                {
+                    try 
+                    { 
+                        worksheets.Delete(i); 
+                    } 
+                    catch 
+                    { 
+                        // Si falla un Delete, dejar de intentar para no corromper el package
+                        _logger.LogWarning("No se pudo eliminar hoja {Index}, abortando limpieza", i);
+                        break; 
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error en EliminarHojasExtra");
+            }
+        }
+
+        // Versión mejorada para textos largos con saltos de línea
+        private void AjustarAlturaFilaTextoLargo(ExcelWorksheet worksheet, int rowNumber, string texto, int charsPorLinea = 80)
+        {
+            if (string.IsNullOrEmpty(texto))
+            {
+                worksheet.Row(rowNumber).Height = 30;
+                return;
+            }
+
+            var lineasExplicitas = texto.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            var lineasPorLongitud = Math.Ceiling((double)texto.Length / charsPorLinea);
+            var totalLineas = Math.Max(lineasExplicitas, lineasPorLongitud);
+            worksheet.Row(rowNumber).Height = Math.Max(60, totalLineas * 14.0);
         }
     }
 }

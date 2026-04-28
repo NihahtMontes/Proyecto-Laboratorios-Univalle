@@ -130,7 +130,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 if (ActiveManagement != null)
                 {
                     // Query Base para el Dashboard y Cronograma con todos los includes necesarios para el Wizard
+                    // AsNoTracking() es CRÍTICO: sin él, EF Core trackea cada entidad en memoria
+                    // y con 7+ Includes + Global Query Filters, el proceso se queda sin memoria (crash 0xffffffff)
                     var plansQuery = _context.ManagementPlans
+                        .AsNoTracking()
                         .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                         .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                         .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
