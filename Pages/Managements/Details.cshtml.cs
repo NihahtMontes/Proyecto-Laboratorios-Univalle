@@ -49,6 +49,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         public int CountDesembolso    { get; set; }
         // L-48: Planes para el calendario (formato para JSON)
         public List<ManagementPlanCalendarDto> CalendarEvents { get; set; } = new();
+        // Sombreado de 8 semanas (calculado por Semester)
+        public string ShadingStart { get; set; } = "";
+        public string ShadingEnd   { get; set; } = "";
         // Filtros del cronograma L-48
         [BindProperty(SupportsGet = true)]
         public int?    LabFilterId       { get; set; }
@@ -158,23 +161,60 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             var techs = techsList.OrderBy(t => t.FullName).ToList();
             TechFList = new SelectList(techs, "Id", "FullName", TechFilterId);
 
-            // Eventos para FullCalendar
+            // Eventos para FullCalendar — SOLO planes que tienen un mantenimiento registrado
+            // (fase L8 Maintenance o posterior: L3 Salida, Kardex, Desembolso)
             CalendarEvents = allPlans
-                .Where(p => p.PlannedDate.HasValue)
-                .Select(p => new ManagementPlanCalendarDto
-                {
-                    Title = p.EquipmentUnit?.Equipment?.Name ?? "Equipo",
-                    Start = p.Maintenance?.StartDate?.ToString("yyyy-MM-dd") ?? p.PlannedDate!.Value.ToString("yyyy-MM-dd"),
-                    End   = p.Maintenance?.EndDate?.ToString("yyyy-MM-dd") ?? p.PlannedDate!.Value.AddDays(5).ToString("yyyy-MM-dd"),
-                    Url   = p.Maintenance != null ? $"/Maintenances/Details?id={p.Maintenance.Id}" : $"/EquipmentUnits/Details?id={p.EquipmentUnitId}",
-                    ClassName = p.PlanStatus switch
+                .Where(p => p.MaintenanceId != null 
+                         && p.CurrentPhase >= WizardPhase.Maintenance
+                         && p.Maintenance != null)
+                .Select(p => {
+                    // Fecha que se muestra: prioridad ScheduledDate > EndDate > PlannedDate
+                    var displayDate = p.Maintenance!.ScheduledDate
+                                   ?? p.Maintenance.EndDate
+                                   ?? p.PlannedDate
+                                   ?? p.Maintenance.CreatedDate;
+                    // Título: "INV - NombreEquipo"
+                    var inv  = p.EquipmentUnit?.InventoryNumber ?? "—";
+                    var name = p.EquipmentUnit?.Equipment?.Name ?? "Equipo";
+                    return new ManagementPlanCalendarDto
                     {
-                        ManagementPlanStatus.Completed  => "bg-success",
-                        ManagementPlanStatus.InProgress => "bg-warning",
-                        _                               => "bg-primary"
-                    }
+                        Title           = $"{inv} - {name}",
+                        Start           = displayDate.ToString("yyyy-MM-dd"),
+                        End             = null, // evento puntual
+                        ClassName       = p.Maintenance!.Status switch
+                        {
+                            MaintenanceStatus.Completed => "ev-completed",
+                            MaintenanceStatus.InProgress => "ev-progress",
+                            _                            => "ev-planned"
+                        },
+                        InventoryNumber = inv,
+                        LabName         = p.EquipmentUnit?.Laboratory?.Name ?? "—",
+                        TechnicianName  = p.Maintenance.Technician?.FullName ?? "Sin asignar",
+                        MaintenanceId   = p.MaintenanceId,
+                        PlanId          = p.Id,
+                        StatusLabel     = p.Maintenance!.Status switch
+                        {
+                            MaintenanceStatus.Completed  => "Completado",
+                            MaintenanceStatus.InProgress => "En Progreso",
+                            _                            => "Pendiente"
+                        }
+                    };
                 })
                 .ToList();
+
+            // Cálculo del sombreado de 8 semanas según Semester:
+            // Gestión I (sem=1): Junio + Julio del mismo año
+            // Gestión II (sem=2): Diciembre del mismo año + Enero del año siguiente
+            if (Management.Semester == 1)
+            {
+                ShadingStart = new DateTime(Management.Year, 6, 1).ToString("yyyy-MM-dd");
+                ShadingEnd   = new DateTime(Management.Year, 8, 1).ToString("yyyy-MM-dd"); // 1 Ago exclusive
+            }
+            else
+            {
+                ShadingStart = new DateTime(Management.Year, 12, 1).ToString("yyyy-MM-dd");
+                ShadingEnd   = new DateTime(Management.Year + 1, 2, 1).ToString("yyyy-MM-dd"); // 1 Feb exclusive
+            }
 
             // B-7: Filtros ampliados del cronograma L-48
             var query = _context.ManagementPlans
@@ -270,10 +310,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
     // B-4: DTO para el calendario de FullCalendar
     public class ManagementPlanCalendarDto
     {
-        public string Title     { get; set; } = string.Empty;
-        public string Start     { get; set; } = string.Empty; // formato: "yyyy-MM-dd"
-        public string? End      { get; set; }
-        public string? Url      { get; set; }
-        public string ClassName { get; set; } = "bg-primary"; // colores FullCalendar
+        public string Title           { get; set; } = string.Empty;
+        public string Start           { get; set; } = string.Empty; // formato: "yyyy-MM-dd"
+        public string? End            { get; set; }
+        public string ClassName       { get; set; } = "ev-planned";
+        // Campos extra para el panel de día
+        public string InventoryNumber { get; set; } = "—";
+        public string LabName         { get; set; } = "—";
+        public string TechnicianName  { get; set; } = "Sin asignar";
+        public int?   MaintenanceId   { get; set; }
+        public int    PlanId          { get; set; }
+        public string StatusLabel     { get; set; } = "Pendiente";
     }
 }

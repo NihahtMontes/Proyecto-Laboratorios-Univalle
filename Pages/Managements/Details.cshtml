@@ -448,19 +448,41 @@
     <!-- ===== TAB: CALENDARIO ===== -->
     @if (Model.ActiveTab == "calendario")
     {
-        <div class="card shadow-sm border-0 p-4">
-            <div id="calendar"></div>
+        <!-- Controles de zoom -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <span class="badge badge-soft-success px-3 py-2 mr-2"><i class="fa fa-circle mr-1"></i>Completado</span>
+                <span class="badge px-3 py-2 mr-2" style="background:#fff3cd;color:#856404;"><i class="fa fa-circle mr-1"></i>En Progreso</span>
+                <span class="badge px-3 py-2" style="background:#cfe2ff;color:#084298;"><i class="fa fa-circle mr-1"></i>Pendiente</span>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
+                <button type="button" class="btn btn-outline-secondary" id="calZoomOut" title="Reducir"><i class="fas fa-search-minus"></i></button>
+                <button type="button" class="btn btn-outline-secondary" id="calZoomReset" title="Normal">100%</button>
+                <button type="button" class="btn btn-outline-secondary" id="calZoomIn" title="Ampliar"><i class="fas fa-search-plus"></i></button>
+            </div>
         </div>
 
-        <div id="calendar-events" class="d-none">
-            <div class="calendar-events" data-class="bg-primary">
-                <i class="fa fa-circle text-primary mr-2"></i>Planeado
+        <div class="card shadow-sm border-0 p-3" style="overflow:auto;">
+            <div id="calendarZoomWrapper" style="transform-origin:top left; transition:transform 0.3s ease;">
+                <div id="calendar"></div>
             </div>
-            <div class="calendar-events" data-class="bg-warning">
-                <i class="fa fa-circle text-warning mr-2"></i>En Progreso
-            </div>
-            <div class="calendar-events" data-class="bg-success">
-                <i class="fa fa-circle text-success mr-2"></i>Ejecutado
+        </div>
+
+        <!-- PANEL LATERAL: Detalle del día seleccionado -->
+        <div class="modal fade" id="dayDetailModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+                <div class="modal-content border-0 shadow-lg" style="border-radius:1rem;">
+                    <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:1rem 1rem 0 0;">
+                        <div>
+                            <h5 class="modal-title font-weight-bold" id="dayDetailTitle">Mantenimientos del día</h5>
+                            <small id="dayDetailSubtitle" class="opacity-75"></small>
+                        </div>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-0" id="dayDetailBody">
+                        <!-- Rellenado por JS -->
+                    </div>
+                </div>
             </div>
         </div>
     }
@@ -572,51 +594,155 @@
     @if (Model.ActiveTab == "calendario")
     {
         <link href="~/assets/libs/fullcalendar/dist/fullcalendar.min.css" rel="stylesheet" />
-        <link href="~/assets/extra-libs/calendar/calendar.css" rel="stylesheet" />
+        <style>
+            /* Estilos custom para eventos del calendario */
+            .fc-event.ev-completed { background:#2eca6a !important; border-color:#25a85c !important; color:#fff !important; }
+            .fc-event.ev-progress  { background:#f59e0b !important; border-color:#d97706 !important; color:#fff !important; }
+            .fc-event.ev-planned   { background:#6366f1 !important; border-color:#4f46e5 !important; color:#fff !important; }
+            /* Sombreado de 8 semanas */
+            .fc-bgevent { opacity: 0.15 !important; }
+            /* Hover en día para indicar que es clickeable */
+            .fc-day:hover { background: rgba(99,102,241,0.04); cursor: pointer; }
+            /* Evento más compacto */
+            .fc-event { font-size: 0.72rem; padding: 2px 5px; border-radius: 4px; margin-bottom: 1px; }
+            /* More link */
+            .fc-more { font-size: 0.7rem; font-weight: 700; color: #6366f1; }
+            /* Day detail item */
+            .day-detail-item { display:flex; align-items:center; padding:12px 20px; border-bottom:1px solid #f1f5f9; transition:background 0.15s; }
+            .day-detail-item:hover { background:#f8fafc; }
+            .day-detail-item:last-child { border-bottom:none; }
+            .day-detail-status { width:8px; height:8px; border-radius:50%; margin-right:12px; flex-shrink:0; }
+            .day-detail-status.st-completed { background:#2eca6a; }
+            .day-detail-status.st-progress  { background:#f59e0b; }
+            .day-detail-status.st-planned   { background:#6366f1; }
+            .day-detail-actions .btn { font-size:0.72rem; padding:3px 10px; }
+            .day-detail-empty { padding:40px 20px; text-align:center; color:#94a3b8; }
+        </style>
         <script src="~/assets/libs/moment/min/moment.min.js"></script>
         <script src="~/assets/libs/fullcalendar/dist/fullcalendar.min.js"></script>
         <script>
+            // Configurar moment.js en español
+            moment.locale('es', {
+                months: 'Enero_Febrero_Marzo_Abril_Mayo_Junio_Julio_Agosto_Septiembre_Octubre_Noviembre_Diciembre'.split('_'),
+                monthsShort: 'Ene_Feb_Mar_Abr_May_Jun_Jul_Ago_Sep_Oct_Nov_Dic'.split('_'),
+                weekdays: 'Domingo_Lunes_Martes_Miércoles_Jueves_Viernes_Sábado'.split('_'),
+                weekdaysShort: 'Dom_Lun_Mar_Mié_Jue_Vie_Sáb'.split('_'),
+                weekdaysMin: 'Do_Lu_Ma_Mi_Ju_Vi_Sá'.split('_')
+            });
+
             $(document).ready(function () {
-                var events = @Html.Raw(JsonSerializer.Serialize(Model.CalendarEvents));
-                
-                // Add management duration background block
-                var mgmtStart = '@(Model.Management.StartDate?.ToString("yyyy-MM-dd") ?? "")';
-                var mgmtEnd = '@(Model.Management.PlannedEndDate?.AddDays(1).ToString("yyyy-MM-dd") ?? "")';
-                if (mgmtStart && mgmtEnd) {
-                    events.push({
-                        start: mgmtStart,
-                        end: mgmtEnd,
+                var allEvents = @Html.Raw(JsonSerializer.Serialize(Model.CalendarEvents));
+                var shadingStart = '@Model.ShadingStart';
+                var shadingEnd   = '@Model.ShadingEnd';
+                var mgmtId       = @Model.Management.Id;
+
+                // Preparar eventos para FullCalendar
+                var calEvents = allEvents.map(function (e) {
+                    return {
+                        title:     e.Title,
+                        start:     e.Start,
+                        end:       e.End,
+                        className: e.ClassName,
+                        // Datos extra para el panel
+                        _raw: e
+                    };
+                });
+
+                // Bloque de sombreado de 8 semanas
+                if (shadingStart && shadingEnd) {
+                    calEvents.push({
+                        start:     shadingStart,
+                        end:       shadingEnd,
                         rendering: 'background',
-                        color: '#e0e7ff' // Softer blue shade for background
+                        color:     '#6366f1',
+                        _isBg:     true
                     });
                 }
 
+                // FullCalendar init
                 $('#calendar').fullCalendar({
                     header: {
                         left:   'prev,next today',
                         center: 'title',
-                        right:  'month,agendaWeek,agendaDay'
+                        right:  'month,agendaWeek'
                     },
-                    locale:    'es',
-                    editable:  false,
-                    droppable: false,
+                    locale:           'es',
+                    editable:         false,
+                    droppable:        false,
                     displayEventTime: false,
-                    events: events.map(function (e) {
-                        return {
-                            title:     e.Title,
-                            start:     e.Start,
-                            end:       e.End,
-                            url:       e.Url,
-                            className: e.ClassName
-                        };
-                    }),
-                    eventClick: function(event) {
-                        if(event.url) {
-                            window.location.href = event.url;
-                            return false;
-                        }
+                    eventLimit:       3, // +X more cuando hay muchos
+                    events:           calEvents,
+                    dayClick: function (date, jsEvent, view) {
+                        openDayPanel(date.format('YYYY-MM-DD'), allEvents);
+                    },
+                    eventClick: function (event, jsEvent, view) {
+                        if (event._isBg) return false;
+                        // Click en evento individual → abrir panel del día
+                        openDayPanel(event.start.format('YYYY-MM-DD'), allEvents);
+                        return false;
+                    },
+                    eventRender: function (event, element) {
+                        if (event._isBg) return;
+                        element.attr('title', event._raw ? event._raw.Title + ' — ' + event._raw.LabName : event.title);
                     }
                 });
+
+                // ============ ZOOM ============
+                var zoomLevel = 1.0;
+                var $wrapper = $('#calendarZoomWrapper');
+                var $label   = $('#calZoomReset');
+
+                function applyZoom() {
+                    $wrapper.css('transform', 'scale(' + zoomLevel + ')');
+                    $label.text(Math.round(zoomLevel * 100) + '%');
+                }
+                $('#calZoomIn').click(function () {
+                    if (zoomLevel < 1.5) { zoomLevel += 0.1; applyZoom(); }
+                });
+                $('#calZoomOut').click(function () {
+                    if (zoomLevel > 0.5) { zoomLevel -= 0.1; applyZoom(); }
+                });
+                $label.click(function () {
+                    zoomLevel = 1.0; applyZoom();
+                });
+
+                // ============ PANEL DE DÍA ============
+                function openDayPanel(dateStr, events) {
+                    var dayEvents = events.filter(function (e) { return e.Start === dateStr; });
+                    var dateLabel = moment(dateStr).format('dddd D [de] MMMM, YYYY');
+
+                    $('#dayDetailTitle').text('Mantenimientos programados');
+                    $('#dayDetailSubtitle').text(dateLabel + ' — ' + dayEvents.length + ' equipo(s)');
+
+                    var $body = $('#dayDetailBody');
+                    $body.empty();
+
+                    if (dayEvents.length === 0) {
+                        $body.html('<div class="day-detail-empty"><i class="fas fa-calendar-check fa-2x mb-3 d-block" style="color:#cbd5e1;"></i>No hay mantenimientos para este día</div>');
+                    } else {
+                        dayEvents.forEach(function (ev) {
+                            var statusClass = ev.ClassName === 'ev-completed' ? 'st-completed' : ev.ClassName === 'ev-progress' ? 'st-progress' : 'st-planned';
+                            var detailUrl = ev.MaintenanceId ? '/Maintenances/Details?id=' + ev.MaintenanceId : '/Managements/Details?id=' + mgmtId + '&ActiveTab=l48';
+                            var editUrl   = ev.MaintenanceId ? '/Maintenances/Edit?id=' + ev.MaintenanceId : null;
+
+                            var html = '<div class="day-detail-item">';
+                            html += '<span class="day-detail-status ' + statusClass + '"></span>';
+                            html += '<div style="flex:1;min-width:0;">';
+                            html += '<div class="font-weight-bold text-truncate" style="font-size:0.88rem;">' + ev.Title + '</div>';
+                            html += '<div class="text-muted" style="font-size:0.75rem;">Inv: ' + ev.InventoryNumber + ' · ' + ev.LabName + ' · ' + ev.TechnicianName + '</div>';
+                            html += '</div>';
+                            html += '<div class="day-detail-actions ml-2 d-flex">';
+                            html += '<a href="' + detailUrl + '" class="btn btn-outline-primary btn-sm mr-1" title="Ver detalle"><i class="fas fa-eye"></i></a>';
+                            if (editUrl) {
+                                html += '<a href="' + editUrl + '" class="btn btn-outline-warning btn-sm" title="Editar"><i class="fas fa-edit"></i></a>';
+                            }
+                            html += '</div></div>';
+                            $body.append(html);
+                        });
+                    }
+
+                    $('#dayDetailModal').modal('show');
+                }
             });
         </script>
     }
