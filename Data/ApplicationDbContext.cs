@@ -110,6 +110,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("[CurrentStatus] != 99");
             modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("[Status] != 2");
 
+            // Bloque 5A: Índices de Performance
+            modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.CurrentStatus);
+            modelBuilder.Entity<Maintenance>().HasIndex(m => m.Status);
+            modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.PlanStatus, p.ManagementId });
+            modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.CurrentPhase, p.ManagementId });
+
             modelBuilder.Entity<User>().Property(u => u.Status).HasDefaultValue(GeneralStatus.Activo);
             modelBuilder.Entity<Faculty>().Property(f => f.Status).HasDefaultValue(GeneralStatus.Activo);
             modelBuilder.Entity<Laboratory>().Property(l => l.Status).HasDefaultValue(GeneralStatus.Activo);

@@ -11,8 +11,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
 {
     public interface IReportService
     {
-        Task<byte[]> GenerateSolicitudMantenimientoExcel(int requestId);
-        Task<byte[]> GenerateSolicitudAdquisicionExcel(int requestId);
+        Task<byte[]> GenerateSolicitudMantenimientoExcel(Request request);
+        Task<byte[]> GenerateSolicitudAdquisicionExcel(Request request);
         Task<byte[]> GenerateReport(int requestId);
         Task<byte[]> GenerateL8KardexExcel(int unitId);
         Task<byte[]> GenerateL48GanttExcel(int labId);
@@ -38,28 +38,28 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
         public async Task<byte[]> GenerateReport(int requestId)
         {
-            var type = await _context.Requests
-                .Where(r => r.Id == requestId)
-                .Select(r => r.Type)
-                .FirstOrDefaultAsync();
+            var request = await _context.Requests
+                .AsNoTracking()
+                .Include(r => r.Laboratory).ThenInclude(l => l!.Faculty)
+                .Include(r => r.Equipment).ThenInclude(e => e!.City)
+                .Include(r => r.Equipment).ThenInclude(e => e!.Country)
+                .Include(r => r.RequestedBy)
+                .Include(r => r.EquipmentUnit).ThenInclude(u => u!.Laboratory).ThenInclude(l => l!.Faculty)
+                .Include(r => r.CostDetails)
+                .FirstOrDefaultAsync(r => r.Id == requestId);
 
-            return type == RequestType.Purchasing
-                ? await GenerateSolicitudAdquisicionExcel(requestId)
-                : await GenerateSolicitudMantenimientoExcel(requestId);
+            if (request == null) throw new Exception("Solicitud no encontrada.");
+
+            return request.Type == RequestType.Purchasing
+                ? await GenerateSolicitudAdquisicionExcel(request)
+                : await GenerateSolicitudMantenimientoExcel(request);
         }
 
-        public async Task<byte[]> GenerateSolicitudAdquisicionExcel(int requestId)
+        public async Task<byte[]> GenerateSolicitudAdquisicionExcel(Request request)
         {
             try
             {
-                var request = await _context.Requests
-                    .Include(r => r.Laboratory)
-                        .ThenInclude(l => l!.Faculty)
-                    .Include(r => r.RequestedBy)
-                    .Include(r => r.CostDetails)
-                    .FirstOrDefaultAsync(r => r.Id == requestId);
-
-                if (request == null) throw new Exception($"Solicitud #{requestId} no encontrada.");
+                if (request == null) throw new Exception($"Solicitud no válida.");
 
                 var templatePath = Path.Combine(_env.WebRootPath, "templates", "solicitud_mantenimiento_template2.xlsx");
                 if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla no encontrada.");
@@ -347,7 +347,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error generando Excel Adquisición #{RequestId}", requestId);
+                _logger.LogError(ex, "Error generando Excel Adquisición #{RequestId}", request?.Id ?? 0);
                 throw;
             }
         }
@@ -412,27 +412,15 @@ namespace Proyecto_Laboratorios_Univalle.Services
             return "";
         }
 
-        public async Task<byte[]> GenerateSolicitudMantenimientoExcel(int requestId)
+        public async Task<byte[]> GenerateSolicitudMantenimientoExcel(Request request)
         {
             try
             {
-                // 1. OBTENER DATOS COMPLETOS DE LA SOLICITUD
-                var request = await _context.Requests
-                    .Include(r => r.Laboratory)
-                    .Include(r => r.Equipment)
-                        .ThenInclude(e => e!.City)
-                    .Include(r => r.Equipment)
-                        .ThenInclude(e => e!.Country)
-                    .Include(r => r.RequestedBy)
-                    .Include(r => r.EquipmentUnit)
-                        .ThenInclude(u => u!.Laboratory)
-                            .ThenInclude(l => l!.Faculty)
-                    .FirstOrDefaultAsync(r => r.Id == requestId);
-
+                // 1. EL CONTROLADOR YA OBTUVO LOS DATOS COMPLETOS DE LA SOLICITUD
                 if (request == null)
                 {
-                    _logger.LogWarning("No se encontró la solicitud {RequestId}", requestId);
-                    throw new Exception($"La solicitud #{requestId} no existe.");
+                    _logger.LogWarning("No se proporcionó una solicitud válida.");
+                    throw new Exception("La solicitud no existe.");
                 }
 
                 // 2. CARGAR PLANTILLA
@@ -585,7 +573,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error generando reporte Excel para solicitud #{RequestId}", requestId);
+                _logger.LogError(ex, "Error generando reporte Excel para solicitud #{RequestId}", request?.Id ?? 0);
                 throw new Exception($"Error al generar reporte: {ex.Message}", ex);
             }
         }
@@ -627,9 +615,16 @@ namespace Proyecto_Laboratorios_Univalle.Services
         public async Task<byte[]> GenerateL8KardexExcel(int unitId)
         {
             var unit = await _context.EquipmentUnits
-                .Include(u => u.Equipment)
-                .Include(u => u.Laboratory)
-                .FirstOrDefaultAsync(u => u.Id == unitId);
+                .Where(u => u.Id == unitId)
+                .Select(u => new {
+                    EquipmentName = u.Equipment != null ? u.Equipment.Name : "",
+                    LabName = u.Laboratory != null ? u.Laboratory.Name : "",
+                    EquipmentBrand = u.Equipment != null ? u.Equipment.Brand : "",
+                    EquipmentModel = u.Equipment != null ? u.Equipment.Model : "",
+                    u.SerialNumber,
+                    u.InventoryNumber
+                })
+                .FirstOrDefaultAsync();
 
             if (unit == null) throw new Exception("Equipment Unit not found");
 
@@ -645,10 +640,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     try { worksheet.Cells[r, c].Value = null; } catch { }
 
             // HEADER
-            worksheet.Cells["B8"].Value = unit.Equipment?.Name?.ToUpper();
-            worksheet.Cells["B9"].Value = unit.Laboratory?.Name?.ToUpper();
-            worksheet.Cells["B10"].Value = unit.Equipment?.Brand?.ToUpper();
-            worksheet.Cells["B11"].Value = unit.Equipment?.Model?.ToUpper();
+            worksheet.Cells["B8"].Value = unit.EquipmentName?.ToUpper();
+            worksheet.Cells["B9"].Value = unit.LabName?.ToUpper();
+            worksheet.Cells["B10"].Value = unit.EquipmentBrand?.ToUpper();
+            worksheet.Cells["B11"].Value = unit.EquipmentModel?.ToUpper();
             worksheet.Cells["B12"].Value = unit.SerialNumber?.ToUpper();
             worksheet.Cells["B13"].Value = unit.InventoryNumber;
 
@@ -656,6 +651,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             int startRow = 15;
 
             var plansWithMaintenance = await _context.ManagementPlans
+                .AsNoTracking()
                 .Include(p => p.Maintenance)
                     .ThenInclude(m => m!.Technician)
                 .Where(p => p.EquipmentUnitId == unitId && p.Maintenance != null && p.Maintenance.Status == MaintenanceStatus.Completed)
@@ -685,10 +681,14 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
         public async Task<byte[]> GenerateL48GanttExcel(int labId)
         {
-            var lab = await _context.Laboratories.FirstOrDefaultAsync(l => l.Id == labId);
-            if (lab == null) throw new Exception("Laboratory not found");
+            var labName = await _context.Laboratories
+                .Where(l => l.Id == labId)
+                .Select(l => l.Name)
+                .FirstOrDefaultAsync();
+            if (string.IsNullOrEmpty(labName)) throw new Exception("Laboratory not found");
 
             var plans = await _context.ManagementPlans
+                .AsNoTracking()
                 .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
                 .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
                 .Where(p => p.EquipmentUnit!.LaboratoryId == labId)
@@ -743,18 +743,15 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
         public async Task<byte[]> GenerateL6VerificacionExcel(int labId, string responsable = "Sistema")
         {
-            var lab = await _context.Laboratories.FirstOrDefaultAsync(l => l.Id == labId);
-            if (lab == null) throw new Exception("Laboratorio no encontrado.");
+            var connection = _context.Database.GetDbConnection();
+            
+            var labName = await _context.Laboratories
+                .Where(l => l.Id == labId)
+                .Select(l => l.Name)
+                .FirstOrDefaultAsync();
+                
+            if (string.IsNullOrEmpty(labName)) throw new Exception("Laboratorio no encontrado.");
 
-            var units = await _context.EquipmentUnits
-                .Include(u => u.Equipment)
-                .Include(u => u.Verifications)
-                    .ThenInclude(v => v.Faults)
-                .Where(u => u.LaboratoryId == labId)
-                .OrderBy(u => u.InventoryNumber)
-                .ToListAsync();
-
-            // Usar nueva plantilla L6V2, fallback a L6
             var templatePath = Path.Combine(_env.WebRootPath, "templates", "L6V2.xlsx");
             if (!File.Exists(templatePath))
             {
@@ -762,16 +759,19 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-6 no encontrada.");
             }
 
-            using var package = new ExcelPackage(new FileInfo(templatePath));
-            var worksheet = package.Workbook.Worksheets[0];
-
-            // HEADER
+            // Cargar template original (puede tener 24+ hojas) y copiar SOLO
+            // la primera hoja a un paquete nuevo. Así evitamos:
+            // 1) EliminarHojasExtra que corrompe el XML y crashea GetAsByteArray
+            // 2) Que el Excel descargado tenga pestañas viejas con datos de otros labs
+            using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
+            using var package = new ExcelPackage();
+            var sourceSheet = templatePkg.Workbook.Worksheets[0];
+            var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
             worksheet.Cells["B6"].Value = $"I/{DateTime.Now.Year}";
-            worksheet.Cells["B9"].Value = lab.Name?.ToUpper();
+            worksheet.Cells["B9"].Value = labName.ToUpper();
             worksheet.Cells["B10"].Value = responsable.ToUpper();
             worksheet.Cells["B11"].Value = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
 
-            // Limpiar tabla de datos
             for (int r = 14; r <= 60; r++)
                 for (int c = 1; c <= 6; c++)
                     try { worksheet.Cells[r, c].Value = null; } catch { }
@@ -779,41 +779,97 @@ namespace Proyecto_Laboratorios_Univalle.Services
             int row = 14;
             int item = 1;
 
-            foreach (var unit in units)
+            // SQL directo — sin EF Core query compiler, sin parámetros colapsados
+            const string sql = @"
+                SELECT 
+                    eq.Name AS EquipmentName,
+                    eq.Brand AS EquipmentBrand,
+                    (SELECT TOP 1 v.PhysicalCondition 
+                     FROM Verifications v 
+                     WHERE v.EquipmentUnitId = eu.Id AND v.Status <> 99 
+                     ORDER BY v.Date DESC) AS Condition,
+                    (SELECT TOP 1 v.Observations 
+                     FROM Verifications v 
+                     WHERE v.EquipmentUnitId = eu.Id AND v.Status <> 99 
+                     ORDER BY v.Date DESC) AS Observations,
+                    (SELECT STRING_AGG(vf.Description, '; ')
+                     FROM VerificationFaults vf
+                     INNER JOIN Verifications v ON vf.VerificationId = v.Id
+                     WHERE v.EquipmentUnitId = eu.Id 
+                       AND v.Status <> 99 
+                       AND vf.IsDeleted = 0
+                       AND v.Id = (SELECT TOP 1 Id FROM Verifications 
+                                   WHERE EquipmentUnitId = eu.Id AND Status <> 99 
+                                   ORDER BY Date DESC)
+                    ) AS Faults
+                FROM EquipmentUnits eu
+                INNER JOIN Equipments eq ON eu.EquipmentId = eq.Id
+                WHERE eu.CurrentStatus <> 99 AND eu.LaboratoryId = @labId
+                ORDER BY eu.InventoryNumber
+                OFFSET @offset ROWS FETCH NEXT @batchSize ROWS ONLY";
+
+            if (connection.State != System.Data.ConnectionState.Open)
+                await connection.OpenAsync();
+
+            int offset = 0;
+            const int batchSize = 50;
+
+            while (true)
             {
-                var lastVerification = unit.Verifications?
-                    .OrderByDescending(v => v.Date)
-                    .FirstOrDefault();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = sql;
+                cmd.CommandTimeout = 120;
+                
+                var pLab = cmd.CreateParameter(); pLab.ParameterName = "@labId"; pLab.Value = labId; cmd.Parameters.Add(pLab);
+                var pOff = cmd.CreateParameter(); pOff.ParameterName = "@offset"; pOff.Value = offset; cmd.Parameters.Add(pOff);
+                var pBatch = cmd.CreateParameter(); pBatch.ParameterName = "@batchSize"; pBatch.Value = batchSize; cmd.Parameters.Add(pBatch);
 
-                var faults = lastVerification?.Faults?.Select(f => f.Description).ToList() ?? new List<string>();
-                var condicion = lastVerification?.PhysicalCondition.ToString() ?? "N/A";
-                var observaciones = faults.Count > 0
-                    ? string.Join("; ", faults)
-                    : lastVerification?.Observations ?? "Sin observaciones";
+                using var reader = await cmd.ExecuteReaderAsync();
+                int count = 0;
 
-                worksheet.Cells[row, 1].Value = item;
-                worksheet.Cells[row, 2].Value = unit.Equipment?.Name?.ToUpper();
-                worksheet.Cells[row, 2].Style.WrapText = true;
-                worksheet.Cells[row, 3].Value = 1;
-                worksheet.Cells[row, 4].Value = condicion;
-                worksheet.Cells[row, 5].Value = unit.Equipment?.Brand?.ToUpper();
-                worksheet.Cells[row, 6].Value = observaciones;
-                worksheet.Cells[row, 6].Style.WrapText = true;
+                while (await reader.ReadAsync())
+                {
+                    if (row > 1000) break;
+                    
+                    var equipName = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                    var brand = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                    var condition = reader.IsDBNull(2) ? "N/A" : reader.GetInt32(2).ToString();
+                    var observations = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                    var faults = reader.IsDBNull(4) ? "" : reader.GetString(4);
 
-                var obsLength = observaciones.Length;
-                if (obsLength > 40) worksheet.Row(row).Height = Math.Max(20, (obsLength / 40.0) * 14);
+                    var observaciones = !string.IsNullOrEmpty(faults) ? faults : observations;
+                    if (string.IsNullOrEmpty(observaciones)) observaciones = "Sin observaciones";
 
-                row++;
-                item++;
+                    worksheet.Cells[row, 1].Value = item;
+                    worksheet.Cells[row, 2].Value = equipName.ToUpper();
+                    worksheet.Cells[row, 2].Style.WrapText = true;
+                    worksheet.Cells[row, 3].Value = 1;
+                    worksheet.Cells[row, 4].Value = condition;
+                    worksheet.Cells[row, 5].Value = brand.ToUpper();
+                    worksheet.Cells[row, 6].Value = observaciones;
+                    worksheet.Cells[row, 6].Style.WrapText = true;
+                    
+                    var obsLength = observaciones.Length;
+                    if (obsLength > 40) worksheet.Row(row).Height = Math.Max(20, (obsLength / 40.0) * 14);
+
+                    row++; item++; count++;
+                }
+
+                if (count == 0 || row > 1000) break;
+                offset += batchSize;
             }
 
-            EliminarHojasExtra(package);
+            // NO llamar EliminarHojasExtra: borrar 23 hojas corrompe el XML interno
+            // de OpenXML y GetAsByteArray() crashea a nivel nativo (0xffffffff).
+            // La plantilla debe limpiarse UNA VEZ con el script de abajo.
+            
             return package.GetAsByteArray();
         }
 
         public async Task<byte[]> GenerateL3SalidaExcel(int unitId)
         {
             var unit = await _context.EquipmentUnits
+                .AsNoTracking()
                 .Include(u => u.Equipment)
                 .Include(u => u.Laboratory)
                 .FirstOrDefaultAsync(u => u.Id == unitId);
@@ -821,6 +877,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             if (unit == null) throw new Exception("Equipo no encontrado.");
 
             var departure = await _context.Departures
+                .AsNoTracking()
                 .Include(d => d.Borrower)
                 .Include(d => d.CreatedBy)
                 .Where(d => d.EquipmentUnitId == unitId)

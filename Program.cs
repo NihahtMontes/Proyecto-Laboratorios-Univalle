@@ -10,17 +10,25 @@ using OfficeOpenXml;
 QuestPDF.Settings.License = LicenseType.Community;
 var builder = WebApplication.CreateBuilder(args);
 
+// DIAGNÓSTICO: Capturador de crash global a nivel OS
+AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+{
+    var ex = e.ExceptionObject as Exception;
+    File.AppendAllText("crash.log", 
+        $"{DateTime.Now}: {ex?.GetType().Name} - {ex?.Message}\n{ex?.StackTrace}\n\n");
+};
+
 // DEBUG: SameSite=None Fix
 Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIBLE) <<<");
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-// Configuración de la base de datos SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sqlOptions => 
     {
         sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+        sqlOptions.CommandTimeout(120);
     }));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();

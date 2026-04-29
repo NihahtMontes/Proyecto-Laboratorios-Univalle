@@ -95,7 +95,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             try
             {
-                var excelBytes = await _reportService.GenerateSolicitudMantenimientoExcel(id);
+                var request = await _context.Requests
+                    .AsNoTracking()
+                    .Include(r => r.Laboratory)
+                    .Include(r => r.Equipment)
+                        .ThenInclude(e => e!.City)
+                    .Include(r => r.Equipment)
+                        .ThenInclude(e => e!.Country)
+                    .Include(r => r.RequestedBy)
+                    .Include(r => r.EquipmentUnit)
+                        .ThenInclude(u => u!.Laboratory)
+                            .ThenInclude(l => l!.Faculty)
+                    .FirstOrDefaultAsync(r => r.Id == id);
+
+                if (request == null)
+                {
+                    TempData.Error("La solicitud no existe.");
+                    return RedirectToPage();
+                }
+
+                var excelBytes = await _reportService.GenerateSolicitudMantenimientoExcel(request);
                 var fileName = $"Solicitud_Mantenimiento_{id}_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
 
                 return File(

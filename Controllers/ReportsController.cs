@@ -12,15 +12,18 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         private readonly IReportService _reportService;
         private readonly ApplicationDbContext _context;
         private readonly ICurrentUserService _currentUser;
+        private readonly ILogger<ReportsController> _logger;
 
         public ReportsController(
             IReportService reportService,
             ApplicationDbContext context,
-            ICurrentUserService currentUser)
+            ICurrentUserService currentUser,
+            ILogger<ReportsController> logger)
         {
             _reportService = reportService;
             _context = context;
             _currentUser = currentUser;
+            _logger = logger;
         }
 
         /// <summary>
@@ -29,7 +32,11 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         private async Task<string> GetCurrentUserFullName()
         {
             if (!_currentUser.UserId.HasValue) return "Sistema";
-            var user = await _context.Users.FindAsync(_currentUser.UserId.Value);
+            var user = await _context.Users
+                .Where(u => u.Id == _currentUser.UserId.Value)
+                .Select(u => new { u.FirstName, u.LastName })
+                .FirstOrDefaultAsync();
+
             return user != null
                 ? $"{user.FirstName} {user.LastName}".Trim()
                 : "Sistema";
@@ -47,7 +54,8 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error generando L6: {ex.Message}");
+                _logger.LogError(ex, "CRASH en GenerateL6. LabId={LabId}", labId);
+                return StatusCode(500, $"Error: {ex.GetType().Name} - {ex.Message}\n{ex.StackTrace}");
             }
         }
 
@@ -99,8 +107,16 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         [HttpGet("download/l7")]
         public async Task<IActionResult> DownloadL7(int unitId)
         {
-            // Buscamos la última solicitud técnica para este equipo
+            // Buscamos la última solicitud técnica para este equipo CON sus includes
             var lastRequest = await _context.Requests
+                .AsNoTracking()
+                .Include(r => r.Laboratory)
+                .Include(r => r.Equipment)
+                    .ThenInclude(e => e!.City)
+                .Include(r => r.Equipment)
+                    .ThenInclude(e => e!.Country)
+                .Include(r => r.RequestedBy)
+                .Include(r => r.EquipmentUnit)
                 .Where(r => r.EquipmentUnitId == unitId)
                 .OrderByDescending(r => r.CreatedDate)
                 .FirstOrDefaultAsync();
@@ -110,7 +126,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
 
             try
             {
-                var bytes = await _reportService.GenerateSolicitudMantenimientoExcel(lastRequest.Id);
+                var bytes = await _reportService.GenerateSolicitudMantenimientoExcel(lastRequest);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     $"Solicitud_L7_{lastRequest.Id}.xlsx");
             }
@@ -124,6 +140,11 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         public async Task<IActionResult> DownloadAdquisicion(int unitId)
         {
             var lastRequest = await _context.Requests
+                .AsNoTracking()
+                .Include(r => r.Laboratory)
+                    .ThenInclude(l => l!.Faculty)
+                .Include(r => r.RequestedBy)
+                .Include(r => r.CostDetails)
                 .Where(r => r.EquipmentUnitId == unitId
                          && r.Type == Models.Enums.RequestType.Purchasing)
                 .OrderByDescending(r => r.CreatedDate)
@@ -134,7 +155,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
 
             try
             {
-                var bytes = await _reportService.GenerateSolicitudAdquisicionExcel(lastRequest.Id);
+                var bytes = await _reportService.GenerateSolicitudAdquisicionExcel(lastRequest);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     $"Adquisicion_{lastRequest.Id}.xlsx");
             }
