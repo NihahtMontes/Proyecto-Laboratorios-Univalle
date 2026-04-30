@@ -40,28 +40,55 @@
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
                                     <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad</label>
-                                    <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="ViewBag.FacultyId" id="facultySelector" required>
-                                        <option value="">-- Seleccione Facultad --</option>
-                                    </select>
-                                    <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="ViewBag.FacultyId" id="facultySelector" disabled>
+                                            <option value="">-- Seleccione Facultad --</option>
+                                        </select>
+                                        <input type="hidden" asp-for="Input.FacultyId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="ViewBag.FacultyId" id="facultySelector" required>
+                                            <option value="">-- Seleccione Facultad --</option>
+                                        </select>
+                                    }
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
                                     <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio</label>
-                                    <select asp-for="Input.LaboratoryId" class="form-control custom-select" asp-items="ViewBag.LaboratoryId" id="labSelector" required>
-                                        <option value="">-- Seleccione Laboratorio --</option>
-                                    </select>
-                                    <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select" asp-items="ViewBag.LaboratoryId" id="labSelector" disabled>
+                                            <option value="">-- Seleccione Laboratorio --</option>
+                                        </select>
+                                        <input type="hidden" asp-for="Input.LaboratoryId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select" asp-items="ViewBag.LaboratoryId" id="labSelector" required>
+                                            <option value="">-- Seleccione Laboratorio --</option>
+                                        </select>
+                                    }
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
                                     <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Unidad Física</label>
-                                    <select asp-for="Input.EquipmentUnitId" class="form-control custom-select" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" required>
-                                        <option value="">-- Seleccione Equipo --</option>
-                                    </select>
-                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" disabled>
+                                            <option value="">-- Seleccione Equipo --</option>
+                                        </select>
+                                        <input type="hidden" asp-for="Input.EquipmentUnitId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" required>
+                                            <option value="">-- Seleccione Equipo --</option>
+                                        </select>
+                                    }
                                 </div>
                             </div>
                         </div>

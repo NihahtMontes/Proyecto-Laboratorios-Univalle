@@ -79,6 +79,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     var faults = plan.Verification.Faults.Where(f => !f.IsDeleted).Select(f => f.Description);
                     Input.Description = "Fallas detectadas en la Verificación (L-6):\n- " + string.Join("\n- ", faults);
                 }
+
+                // Exponer IDs de fases previas para la sección de referencia vinculada
+                if (plan?.VerificationId != null)
+                {
+                    ViewData["LinkedVerificationId"] = plan.VerificationId;
+                }
             }
 
             ViewData["IsWizard"] = isWizard;

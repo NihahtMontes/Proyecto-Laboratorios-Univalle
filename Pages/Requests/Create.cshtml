@@ -43,24 +43,76 @@
 
                             <div class="form-group mb-4">
                                 <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">Facultad <span class="text-danger">*</span></label>
-                                <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId">
-                                    <option value="">-- Seleccionar Facultad --</option>
-                                </select>
+                                @if (isWizard)
+                                {
+                                    <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId" disabled>
+                                        <option value="">-- Seleccionar Facultad --</option>
+                                    </select>
+                                    <input type="hidden" asp-for="Input.FacultyId" />
+                                }
+                                else
+                                {
+                                    <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId">
+                                        <option value="">-- Seleccionar Facultad --</option>
+                                    </select>
+                                }
                             </div>
 
                             <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2 rounded">
                                 <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-info text-uppercase">Laboratorio <span class="text-danger">*</span></label>
-                                <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" asp-items="ViewBag.LaboratoryId">
-                                    <option value="">-- Seleccione Facultad --</option>
-                                </select>
+                                @if (isWizard)
+                                {
+                                    <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" asp-items="ViewBag.LaboratoryId" disabled>
+                                        <option value="">-- Seleccione Facultad --</option>
+                                    </select>
+                                    <input type="hidden" asp-for="Input.LaboratoryId" />
+                                }
+                                else
+                                {
+                                    <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" asp-items="ViewBag.LaboratoryId">
+                                        <option value="">-- Seleccione Facultad --</option>
+                                    </select>
+                                }
                             </div>
 
                             <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2 rounded">
                                 <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-warning text-uppercase">Unidad Física Afectada <span class="text-danger">*</span></label>
-                                <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" asp-items="ViewBag.EquipmentUnitId">
-                                    <option value="">-- Seleccione Laboratorio --</option>
-                                </select>
+                                @if (isWizard)
+                                {
+                                    <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" asp-items="ViewBag.EquipmentUnitId" disabled>
+                                        <option value="">-- Seleccione Laboratorio --</option>
+                                    </select>
+                                    <input type="hidden" asp-for="Input.EquipmentUnitId" />
+                                }
+                                else
+                                {
+                                    <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" asp-items="ViewBag.EquipmentUnitId">
+                                        <option value="">-- Seleccione Laboratorio --</option>
+                                    </select>
+                                }
                             </div>
+
+                            @if (isWizard && ViewData["LinkedVerificationId"] != null)
+                            {
+                                <div class="form-group mt-3 mb-4">
+                                    <label class="control-label font-weight-bold small text-uppercase text-muted">Verificación Técnica Relacionada (L-6)</label>
+                                    <div class="p-2 rounded" style="background:#f0fdf4; border: 1px solid #bbf7d0;">
+                                        <div class="d-flex align-items-center">
+                                            <div class="mr-3" style="color: #16a34a;"><i class="fas fa-clipboard-check fa-lg"></i></div>
+                                            <div>
+                                                <h6 class="m-0 font-weight-bold" style="color: #15803d;">Verificación L-6 Vinculada</h6>
+                                                <span class="small" style="color: #16a34a;">ID: @ViewData["LinkedVerificationId"]</span>
+                                            </div>
+                                            <a href="/Verifications/Details?id=@ViewData["LinkedVerificationId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #16a34a; border: 1px solid #bbf7d0;">
+                                                Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 1, 'L-6 Verificación')">
+                                                <i class="fas fa-undo"></i> Rehacer L-6
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
 
                             <hr class="my-4" />
                             <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-sliders-h mr-2"></i> Parámetros Técnicos</h6>

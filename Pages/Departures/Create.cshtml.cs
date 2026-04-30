@@ -100,6 +100,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     Input.BorrowerId = plan.Maintenance.TechnicianId.Value;
                     ViewData["IsLockedBorrower"] = true;
                 }
+
+                // Exponer IDs de fases previas para la sección de referencia vinculada
+                if (plan?.MaintenanceId != null)
+                {
+                    ViewData["LinkedMaintenanceId"] = plan.MaintenanceId;
+                }
             }
 
             await LoadLists();
