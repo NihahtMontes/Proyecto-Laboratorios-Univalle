@@ -192,6 +192,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                         TechnicianName  = p.Maintenance.Technician?.FullName ?? "Sin asignar",
                         MaintenanceId   = p.MaintenanceId,
                         PlanId          = p.Id,
+                        CurrentPhaseInt = (int)p.CurrentPhase,
                         StatusLabel     = p.Maintenance!.Status switch
                         {
                             MaintenanceStatus.Completed  => "Completado",
@@ -320,6 +321,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         public string TechnicianName  { get; set; } = "Sin asignar";
         public int?   MaintenanceId   { get; set; }
         public int    PlanId          { get; set; }
+        public int    CurrentPhaseInt { get; set; }
         public string StatusLabel     { get; set; } = "Pendiente";
     }
 }

@@ -170,7 +170,11 @@
                     </div>
                     <div>
                         <label class="text-muted d-block small uppercase mb-1">Estatus Actual</label>
-                        <span class="badge badge-pill badge-@(Model.Request.Status == RequestStatus.Approved ? "success" : (Model.Request.Status == RequestStatus.Pending ? "warning" : "danger")) px-3">
+                        @{
+                            bool isSuccessBadge = Model.Request.Status == RequestStatus.Approved || Model.Request.Status == RequestStatus.Completed;
+                            var sBadgeName = isSuccessBadge ? "success" : (Model.Request.Status == RequestStatus.Pending ? "warning" : "danger");
+                        }
+                        <span class="badge badge-pill badge-@sBadgeName px-3">
                             @Model.Request.Status
                         </span>
                     </div>

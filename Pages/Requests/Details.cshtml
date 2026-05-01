@@ -150,8 +150,9 @@
                             <i class="fas fa-check-double mr-2 text-info"></i> Resolución Administrativa
                         </h5>
                         @{
-                            var resClass = Model.Request.Status == RequestStatus.Approved ? "bg-light-success text-success border-success" : "bg-light-danger text-danger border-danger";
-                            var resIcon = Model.Request.Status == RequestStatus.Approved ? "fa-check-circle" : "fa-times-circle";
+                            bool isSuccess = Model.Request.Status == RequestStatus.Approved || Model.Request.Status == RequestStatus.Completed;
+                            var resClass = isSuccess ? "bg-light-success text-success border-success" : "bg-light-danger text-danger border-danger";
+                            var resIcon = isSuccess ? "fa-check-circle" : "fa-times-circle";
                         }
                         <div class="p-4 @resClass rounded border-left border-3 shadow-none">
                             <div class="d-flex align-items-center">
@@ -201,7 +202,7 @@
                 <div class="mb-0">
                     <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estatus Actual</label>
                     @{
-                        var sBadge = Model.Request.Status == RequestStatus.Approved ? "badge-success" : (Model.Request.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
+                        var sBadge = Model.Request.Status == RequestStatus.Approved || Model.Request.Status == RequestStatus.Completed ? "badge-success" : (Model.Request.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
                     }
                     <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold">@Html.DisplayFor(m => m.Request.Status)</span>
                 </div>

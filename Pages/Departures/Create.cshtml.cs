@@ -75,20 +75,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             ManagementPlanId = managementPlanId;
             ViewData["IsWizard"] = isWizard;
 
-            if (equipmentUnitId.HasValue)
-            {
-                var unit = await _context.EquipmentUnits
-                    .Include(u => u.Laboratory)
-                    .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
-
-                if (unit != null)
-                {
-                    Input.EquipmentUnitId = unit.Id;
-                    Input.LaboratoryId = unit.LaboratoryId ?? 0;
-                    Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
-                }
-            }
-
             if (ManagementPlanId.HasValue)
             {
                 var plan = await _context.ManagementPlans
@@ -105,6 +91,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 if (plan?.MaintenanceId != null)
                 {
                     ViewData["LinkedMaintenanceId"] = plan.MaintenanceId;
+                }
+                
+                if (!equipmentUnitId.HasValue && plan?.EquipmentUnitId != null)
+                {
+                    equipmentUnitId = plan.EquipmentUnitId;
+                }
+            }
+
+            if (equipmentUnitId.HasValue)
+            {
+                var unit = await _context.EquipmentUnits
+                    .Include(u => u.Laboratory)
+                    .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
+
+                if (unit != null)
+                {
+                    Input.EquipmentUnitId = unit.Id;
+                    Input.LaboratoryId = unit.LaboratoryId ?? 0;
+                    Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
                 }
             }
 

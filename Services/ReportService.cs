@@ -730,7 +730,29 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 {
                     int monthCol = 10 + m.ScheduledDate.Value.Month;
                     if (monthCol <= 22)
-                        try { worksheet.Cells[currentRow, monthCol].Style.Fill.SetBackground(Color.LightBlue); } catch { }
+                    {
+                        try 
+                        {
+                            var bgColor = System.Drawing.Color.LightBlue; // Planificado (Default)
+                            
+                            if (m.Status == MaintenanceStatus.Completed)
+                            {
+                                bgColor = System.Drawing.Color.LightGreen; // Completado
+                                // Usar el mes de finalización real si existe
+                                if (m.EndDate.HasValue) monthCol = 10 + m.EndDate.Value.Month;
+                            }
+                            else if (m.Status == MaintenanceStatus.InProgress)
+                            {
+                                bgColor = System.Drawing.Color.LightYellow; // En Proceso
+                            }
+
+                            if (monthCol <= 22)
+                            {
+                                worksheet.Cells[currentRow, monthCol].Style.Fill.SetBackground(bgColor);
+                            }
+                        } 
+                        catch { }
+                    }
                 }
 
                 currentRow++;
@@ -922,30 +944,12 @@ namespace Proyecto_Laboratorios_Univalle.Services
         /// </summary>
         private void EliminarHojasExtra(ExcelPackage package)
         {
-            try
-            {
-                var worksheets = package.Workbook.Worksheets;
-                // Solo eliminar si hay más de 1 hoja
-                if (worksheets.Count <= 1) return;
-                
-                for (int i = worksheets.Count - 1; i >= 1; i--)
-                {
-                    try 
-                    { 
-                        worksheets.Delete(i); 
-                    } 
-                    catch 
-                    { 
-                        // Si falla un Delete, dejar de intentar para no corromper el package
-                        _logger.LogWarning("No se pudo eliminar hoja {Index}, abortando limpieza", i);
-                        break; 
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error en EliminarHojasExtra");
-            }
+            // DESACTIVADO POR SEGURIDAD (CRASH 0xffffffff):
+            // Borrar hojas (worksheet.Delete) corrompe el XML interno de EPPlus/OpenXML 
+            // cuando la plantilla tiene configuraciones complejas, causando un crash a nivel 
+            // nativo (StackOverflow o AccessViolation) al llamar a package.GetAsByteArray().
+            // La limpieza de las plantillas debe hacerse manualmente abriendo el archivo
+            // en Excel y eliminando las hojas extra, no por código.
         }
 
         // Versión mejorada para textos largos con saltos de línea

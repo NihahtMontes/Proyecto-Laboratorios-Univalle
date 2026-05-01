@@ -85,6 +85,9 @@
                     <i class="fas fa-lock mr-2"></i>Histórico Inmutable
                 </button>
             }
+            <a asp-page="/Reports/Index" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white" style="background-color: #0ea5e9;">
+                <i class="fas fa-file-pdf mr-2"></i>Reportes Oficiales
+            </a>
             <a asp-page="./Index" class="btn btn-light border rounded-pill px-4">
                 <i class="fas fa-arrow-left mr-2"></i>Volver
             </a>
@@ -431,8 +434,23 @@
                                     <td class="text-center p-1" style="border-top:1px dashed #e2e8f0;">
                                         @if (realWeek == s4)
                                         {
-                                            <span class="badge bg-success text-white px-2 py-1 rounded"
-                                                  style="font-size:0.6rem;">OK</span>
+                                            var mStatus = plan.Maintenance?.Status;
+                                            var pct = plan.Maintenance?.CompletionPercentage ?? 0;
+                                            if (mStatus == MaintenanceStatus.Completed || pct == 100)
+                                            {
+                                                <span class="badge bg-success text-white px-2 py-1 rounded"
+                                                      style="font-size:0.6rem;">OK</span>
+                                            }
+                                            else if (pct > 0 || mStatus == MaintenanceStatus.InProgress)
+                                            {
+                                                <span class="badge bg-warning text-dark px-2 py-1 rounded"
+                                                      style="font-size:0.6rem;">@(pct)%</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary text-white px-2 py-1 rounded"
+                                                      style="font-size:0.6rem;">Pend.</span>
+                                            }
                                         }
                                     </td>
                                 }
@@ -503,6 +521,40 @@
 </div>
 
 @section Scripts {
+
+    <script src="~/assets/extra-libs/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+        function confirmRedoPhase(planId, targetPhase, targetPhaseName, currentPhase) {
+            Swal.fire({
+                title: '¿Rehacer Fase?',
+                html: 'Está intentando retroceder el equipo a la fase <b>' + targetPhaseName + '</b>.<br>Se borrarán los registros posteriores al paso ' + targetPhase + '.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, rehacer y limpiar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/Index?handler=RedoPhase';
+                    
+                    const p1 = document.createElement('input'); p1.type = 'hidden'; p1.name = 'planId'; p1.value = planId;
+                    const p2 = document.createElement('input'); p2.type = 'hidden'; p2.name = 'targetPhase'; p2.value = targetPhase;
+                    
+                    // Necesitamos el RequestVerificationToken
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]');
+                    if(token) form.appendChild(token.cloneNode(true));
+
+                    form.appendChild(p1);
+                    form.appendChild(p2);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+    </script>
 
     <!-- Dashboard Charts (Chart.js 3.x) -->
     @if (Model.ActiveTab == "dashboard" || Model.ActiveTab == "")
@@ -734,7 +786,10 @@
                             html += '<div class="day-detail-actions ml-2 d-flex">';
                             html += '<a href="' + detailUrl + '" class="btn btn-outline-primary btn-sm mr-1" title="Ver detalle"><i class="fas fa-eye"></i></a>';
                             if (editUrl) {
-                                html += '<a href="' + editUrl + '" class="btn btn-outline-warning btn-sm" title="Editar"><i class="fas fa-edit"></i></a>';
+                                html += '<a href="' + editUrl + '" class="btn btn-outline-warning btn-sm mr-1" title="Editar"><i class="fas fa-edit"></i></a>';
+                                if (ev._raw && ev._raw.CurrentPhaseInt > 3) {
+                                    html += '<button type="button" class="btn btn-outline-danger btn-sm" title="Rehacer Mantenimiento" onclick="confirmRedoPhase(' + ev._raw.PlanId + ', 3, \'L-8 Mantenimiento\', ' + ev._raw.CurrentPhaseInt + ')"><i class="fas fa-undo"></i></button>';
+                                }
                             }
                             html += '</div></div>';
                             $body.append(html);

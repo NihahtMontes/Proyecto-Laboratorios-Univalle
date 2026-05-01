@@ -31,6 +31,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         {
             public int Id { get; set; }
 
+            [Display(Name = "Facultad")]
+            public int FacultyId { get; set; }
+
+            [Display(Name = "Laboratorio")]
+            public int LaboratoryId { get; set; }
+
             [Required(ErrorMessage = "La unidad física es obligatoria")]
             [Display(Name = "Unidad Física")]
             public int EquipmentUnitId { get; set; }
@@ -84,9 +90,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
             if (departure == null) return NotFound();
 
+            int facultyId = departure.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
+            int labId = departure.EquipmentUnit?.LaboratoryId ?? 0;
+
             Input = new InputModel
             {
                 Id = departure.Id,
+                FacultyId = facultyId,
+                LaboratoryId = labId,
                 EquipmentUnitId = departure.EquipmentUnitId,
                 BorrowerId = departure.BorrowerId,
                 Type = departure.Type,
@@ -98,7 +109,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 ReturnObservations = departure.ReturnObservations
             };
 
-            CargarListas();
+            // Detect Wizard Plan
+            var plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.DepartureId == id);
+            if (plan != null)
+            {
+                ViewData["IsWizard"] = true;
+                ViewData["ManagementPlanId"] = plan.Id;
+                ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+                if (plan.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = plan.MaintenanceId.Value;
+            }
+
+            CargarListas(facultyId, labId, departure.EquipmentUnitId);
             return Page();
         }
 
@@ -106,7 +127,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         {
             if (!ModelState.IsValid)
             {
-                CargarListas();
+                var departure = await _context.Departures.Include(m => m.EquipmentUnit).ThenInclude(eu => eu.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
+                int facultyId = departure?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
+                int labId = departure?.EquipmentUnit?.LaboratoryId ?? 0;
+                CargarListas(facultyId, labId, Input.EquipmentUnitId);
+
+                // Detect Wizard Plan again on error
+                var plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.DepartureId == Input.Id);
+                if (plan != null)
+                {
+                    ViewData["IsWizard"] = true;
+                    ViewData["ManagementPlanId"] = plan.Id;
+                    ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+                    if (plan.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = plan.MaintenanceId.Value;
+                }
+
                 return Page();
             }
 
@@ -146,16 +181,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             catch (Exception ex)
             {
                 TempData["Error"] = $"Error al guardar: {ex.Message}";
-                CargarListas();
+                var departure = await _context.Departures.Include(m => m.EquipmentUnit).ThenInclude(eu => eu.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
+                int facultyId = departure?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
+                int labId = departure?.EquipmentUnit?.LaboratoryId ?? 0;
+                CargarListas(facultyId, labId, Input.EquipmentUnitId);
                 return Page();
             }
         }
 
-        private void CargarListas()
+        private void CargarListas(int facultyId = 0, int laboratoryId = 0, int equipmentUnitId = 0)
         {
+            ViewData["FacultyId"] = new SelectList(_context.Faculties.Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name), "Id", "Name", facultyId);
+            
+            if (facultyId > 0)
+                ViewData["LaboratoryId"] = new SelectList(_context.Laboratories.Where(l => l.FacultyId == facultyId).OrderBy(l => l.Name), "Id", "Name", laboratoryId);
+            else
+                ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+
             var equipos = _context.EquipmentUnits
                 .Include(u => u.Equipment)
-                .Where(u => u.CurrentStatus != EquipmentStatus.Deleted)
+                .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
                 .OrderBy(u => u.Equipment!.Name)
                 .AsEnumerable()
                 .Select(u => new

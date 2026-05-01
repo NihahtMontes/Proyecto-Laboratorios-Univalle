@@ -45,6 +45,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 }
             };
 
+            if (managementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans.FindAsync(managementPlanId.Value);
+                if (plan != null)
+                {
+                    if (plan.RequestId.HasValue)
+                    {
+                        Input.RequestId = plan.RequestId;
+                    }
+                    if (!equipmentUnitId.HasValue && plan.EquipmentUnitId.HasValue)
+                    {
+                        equipmentUnitId = plan.EquipmentUnitId;
+                    }
+                }
+            }
+
             if (equipmentUnitId.HasValue)
             {
                 var unit = await _context.EquipmentUnits
@@ -59,15 +75,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                     ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == Input.FacultyId).ToListAsync(), "Id", "Name", Input.LaboratoryId);
                     ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == Input.LaboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", Input.EquipmentUnitId);
-                }
-            }
-
-            if (managementPlanId.HasValue)
-            {
-                var plan = await _context.ManagementPlans.FindAsync(managementPlanId.Value);
-                if (plan != null && plan.RequestId.HasValue)
-                {
-                    Input.RequestId = plan.RequestId;
                 }
             }
 

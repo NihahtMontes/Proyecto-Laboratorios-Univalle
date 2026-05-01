@@ -4,11 +4,25 @@
 // ==========================================
 // REDO WIZARD PHASE (GLOBAL SWEETALERT2)
 // ==========================================
-window.confirmRedoPhase = function(planId, targetPhaseInt, targetPhaseName) {
+window.confirmRedoPhase = function(planId, targetPhaseInt, targetPhaseName, currentPhaseInt = null) {
+    let alertText = 'Se anulará el progreso actual y los registros generados después de esta fase para que puedas empezar de nuevo. ¡Esta acción no se puede deshacer!';
+    let isHighImpact = false;
+
+    if (currentPhaseInt != null) {
+        let diff = parseInt(currentPhaseInt) - parseInt(targetPhaseInt);
+        if (diff >= 2) {
+            alertText = `Atención: Para editar esta fase, se resetearán las ${diff - 1} fase(s) intermedia(s) y perderás su progreso actual. ¿Deseas continuar?`;
+            isHighImpact = true;
+        } else if (diff === 1) {
+            // If diff is 1, it's usually just an edit, but if called here, it's a rollback.
+            alertText = `Volverás a la fase de ${targetPhaseName}. El progreso de la fase actual se descartará.`;
+        }
+    }
+
     Swal.fire({
-        title: '¿Rehacer Fase ' + targetPhaseName + '?',
-        text: 'Se anulará el progreso actual y los registros generados después de esta fase para que puedas empezar de nuevo. ¡Esta acción no se puede deshacer!',
-        icon: 'warning',
+        title: isHighImpact ? '¿Retroceder múltiples fases?' : '¿Rehacer Fase ' + targetPhaseName + '?',
+        text: alertText,
+        icon: isHighImpact ? 'error' : 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',

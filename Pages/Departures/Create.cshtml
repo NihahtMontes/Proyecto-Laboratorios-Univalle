@@ -133,9 +133,23 @@
                                     <a href="/Maintenances/Details?id=@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
                                         Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 3, 'L-8 Mantenimiento')">
-                                        <i class="fas fa-undo"></i> Rehacer L-8
-                                    </button>
+                                    @{
+                                        int prevPhaseEnumInt = 3; // Maintenance = 3
+                                        int currentPhaseInt = 4;  // Departure Create = 4
+                                        int diff = currentPhaseInt - prevPhaseEnumInt;
+                                    }
+                                    @if (diff == 1)
+                                    {
+                                        <a href="/Maintenances/Edit?id=@ViewData["LinkedMaintenanceId"]" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold shadow-sm ml-2">
+                                            <i class="fas fa-edit"></i> Editar L-8
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, @prevPhaseEnumInt, 'L-8 Mantenimiento', @currentPhaseInt)">
+                                            <i class="fas fa-undo"></i> Rehacer L-8
+                                        </button>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -200,7 +214,7 @@
                                  <i class="fas fa-times mr-1"></i> Cancelar
                             </a>
                         }
-                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark py-2">
+                        <button type="button" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark py-2" onclick="confirmDeparture()">
                             <i class="fas fa-save mr-1"></i> Registrar Salida L-3
                         </button>
                     </div>
@@ -277,6 +291,23 @@
                 });
             });
         });
+
+        function confirmDeparture() {
+            Swal.fire({
+                title: '¿Confirmar Salida?',
+                text: 'Se registrará la salida temporal de este equipo para mantenimiento o préstamo.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, registrar salida',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#f59e0b',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#departureForm').submit();
+                }
+            });
+        }
     </script>
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
