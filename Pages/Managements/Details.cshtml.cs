@@ -164,15 +164,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             // Eventos para FullCalendar — SOLO planes que tienen un mantenimiento registrado
             // (fase L8 Maintenance o posterior: L3 Salida, Kardex, Desembolso)
             CalendarEvents = allPlans
-                .Where(p => p.MaintenanceId != null 
-                         && p.CurrentPhase >= WizardPhase.Maintenance
-                         && p.Maintenance != null)
+                .Where(p => p.CurrentPhase >= WizardPhase.Maintenance)
                 .Select(p => {
                     // Fecha que se muestra: prioridad ScheduledDate > EndDate > PlannedDate
-                    var displayDate = p.Maintenance!.ScheduledDate
-                                   ?? p.Maintenance.EndDate
+                    // Si Maintenance fue cancelado (soft delete), Maintenance será null por QueryFilter
+                    // Usamos PlannedDate como fallback para no perder el plan del calendario
+                    var displayDate = p.Maintenance?.ScheduledDate
+                                   ?? p.Maintenance?.EndDate
                                    ?? p.PlannedDate
-                                   ?? p.Maintenance.CreatedDate;
+                                   ?? p.Maintenance?.CreatedDate
+                                   ?? DateTime.Now;
                     // Título: "INV - NombreEquipo"
                     var inv  = p.EquipmentUnit?.InventoryNumber ?? "—";
                     var name = p.EquipmentUnit?.Equipment?.Name ?? "Equipo";
@@ -181,11 +182,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                         Title           = $"{inv} - {name}",
                         Start           = displayDate.ToString("yyyy-MM-dd"),
                         End             = null, // evento puntual
-                        ClassName       = p.Maintenance!.Status switch
+                        ClassName       = p.Maintenance?.Status switch
                         {
                             MaintenanceStatus.Completed => "ev-completed",
                             MaintenanceStatus.InProgress => "ev-progress",
-                            _                            => "ev-planned"
+                            _                            => "ev-planned" // Incluye null (mantenimiento cancelado o no iniciado)
                         },
                         InventoryNumber = inv,
                         LabName         = p.EquipmentUnit?.Laboratory?.Name ?? "—",
@@ -193,10 +194,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                         MaintenanceId   = p.MaintenanceId,
                         PlanId          = p.Id,
                         CurrentPhaseInt = (int)p.CurrentPhase,
-                        StatusLabel     = p.Maintenance!.Status switch
+                        StatusLabel     = p.Maintenance?.Status switch
                         {
                             MaintenanceStatus.Completed  => "Completado",
                             MaintenanceStatus.InProgress => "En Progreso",
+                            null                         => "Sin mantenimiento activo",
                             _                            => "Pendiente"
                         }
                     };

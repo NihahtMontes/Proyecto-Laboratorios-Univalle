@@ -353,6 +353,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     await _context.SaveChangesAsync();
                     return RedirectToPage("/Requests/Create", new { equipmentUnitId = plan.EquipmentUnitId, isWizard = true, managementPlanId = plan.Id });
                 }
+                else if (plan != null)
+                {
+                    TempData.Error($"Este equipo no está en fase de Verificación (fase actual: {plan.CurrentPhase}). No se puede registrar falla rápida.");
+                    return RedirectToPage(new { ShowWizard = true, Step = (int)plan.CurrentPhase, SelectedLabId = SelectedLabId });
+                }
             }
 
             var activeManagement = await _context.Managements
@@ -365,7 +370,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 return RedirectToPage();
             }
 
-            return RedirectToPage("/Requests/Create");
+            TempData.Error("No se encontró el plan de gestión para este equipo.");
+            return RedirectToPage(new { ShowWizard = true, Step = 1 });
         }
 
         public async Task<IActionResult> OnPostConfirmKardexAsync(int planId)
@@ -395,8 +401,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     }
 
                     plan.CurrentPhase = WizardPhase.Disbursement;
-                    plan.CurrentState = WizardEquipmentState.Completed;
-                    plan.PlanStatus = ManagementPlanStatus.Completed;
+                    plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
+                    plan.PlanStatus = ManagementPlanStatus.InProgress;
 
                     await _context.SaveChangesAsync();
                     TempData.Success("Kardex actualizado. El equipo está marcado como Operativo.");

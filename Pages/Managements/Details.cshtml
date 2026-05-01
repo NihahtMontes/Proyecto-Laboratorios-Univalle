@@ -374,20 +374,22 @@
                             if (plan.PlannedDate.HasValue)
                             {
                                 var day = plan.PlannedDate.Value.Day;
-                                plannedWeek = (day - 1) / 7 + 1;
+                                // Semana real del mes (1-4), capando a 4 para evitar S9
+                                plannedWeek = Math.Min((day - 1) / 7 + 1, 4);
                                 var pm = plan.PlannedDate.Value.Month;
                                 bool isM2 = l48Sem == 1 ? (pm == 1 || pm == 2) : (pm == 7 || pm == 8);
-                                if (isM2) plannedWeek += 4;
+                                if (isM2) plannedWeek += 4; // Offset a S5-S8
                             }
 
                             int? realWeek = null;
                             if (plan.Maintenance?.ScheduledDate.HasValue == true)
                             {
                                 var day = plan.Maintenance.ScheduledDate.Value.Day;
-                                realWeek = (day - 1) / 7 + 1;
+                                // Semana real del mes (1-4), capando a 4 para evitar S9
+                                realWeek = Math.Min((day - 1) / 7 + 1, 4);
                                 var rm = plan.Maintenance.ScheduledDate.Value.Month;
                                 bool isM2 = l48Sem == 1 ? (rm == 1 || rm == 2) : (rm == 7 || rm == 8);
-                                if (isM2) realWeek += 4;
+                                if (isM2) realWeek += 4; // Offset a S5-S8
                             }
 
                             <!-- FILA 1: Planeado -->

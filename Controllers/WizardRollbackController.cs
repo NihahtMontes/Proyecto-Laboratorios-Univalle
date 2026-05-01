@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Controllers
@@ -96,6 +97,27 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             }
 
             plan.PlanStatus = ManagementPlanStatus.Pending;
+
+            // 3. RESTAURAR ESTADO DEL EQUIPO
+            // Si el plan tiene un EquipmentUnit asociado, revertir su CurrentStatus
+            // al estado que corresponde a la fase target
+            if (plan.EquipmentUnitId.HasValue)
+            {
+                var unit = await _context.EquipmentUnits.FindAsync(plan.EquipmentUnitId.Value);
+                if (unit != null)
+                {
+                    unit.CurrentStatus = request.TargetPhase switch
+                    {
+                        WizardPhase.Verification => EquipmentStatus.Operational,
+                        WizardPhase.TechnicalRequest => EquipmentStatus.OutOfService,
+                        WizardPhase.Maintenance => EquipmentStatus.UnderMaintenance,
+                        WizardPhase.Exit => EquipmentStatus.Operational,
+                        WizardPhase.Kardex => EquipmentStatus.Operational,
+                        WizardPhase.Disbursement => EquipmentStatus.Operational,
+                        _ => EquipmentStatus.Operational
+                    };
+                }
+            }
 
             try
             {
