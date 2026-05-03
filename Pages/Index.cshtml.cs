@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,12 +33,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly ILogger<IndexModel> _logger;
+        private readonly IManagementContextService _managementContext;
 
-        public IndexModel(ApplicationDbContext context, UserManager<User> userManager, ILogger<IndexModel> logger)
+        public IndexModel(ApplicationDbContext context, UserManager<User> userManager, ILogger<IndexModel> logger, IManagementContextService managementContext)
         {
             _context = context;
             _userManager = userManager;
             _logger = logger;
+            _managementContext = managementContext;
         }
 
         public Management? ActiveManagement { get; set; }
@@ -131,12 +134,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     .Cast<EquipmentCategory>()
                     .Select(e => new { Id = (int)e, Name = e.ToString() }), "Id", "Name");
 
-                // Buscar Gestión Activa
-                ActiveManagement = await _context.Managements
-                    .Where(m => m.Status == ManagementStatus.Active)
-                    .OrderByDescending(m => m.Year)
-                    .ThenByDescending(m => m.Semester)
-                    .FirstOrDefaultAsync();
+                // Buscar Gestión Activa (cached)
+                ActiveManagement = await _managementContext.GetCurrentManagementAsync();
 
                 if (ActiveManagement != null)
                 {
@@ -145,34 +144,50 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         .AsNoTracking()
                         .Where(p => p.ManagementId == ActiveManagement.Id);
 
+                    // Single database roundtrip: materialize all plans once
+                    var allStats = await statsQuery.Select(p => new
+                    {
+                        p.PlanStatus,
+                        p.CurrentPhase,
+                        p.CurrentState,
+                        p.PlannedDate
+                    }).ToListAsync();
+
+                    TotalActivos = allStats.Count;
+                    EquiposTerminados = allStats.Count(p => p.PlanStatus == ManagementPlanStatus.Completed);
+                    
+                    var now = DateTime.Now;
+                    TotalVencidos = allStats.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate < now);
+                    GlobalProgress = TotalActivos > 0 ? Math.Round((double)EquiposTerminados / TotalActivos * 100, 1) : 0;
+
+                    CountPendientes = allStats.Count(p =>
+                        p.PlanStatus != ManagementPlanStatus.Completed &&
+                        p.CurrentState >= WizardEquipmentState.AwaitingRequest);
+                    
+                    CountBuenos = allStats.Count(p =>
+                        p.CurrentState == WizardEquipmentState.VerifiedGood);
+
+                    CountL6 = allStats.Count(p => p.CurrentPhase == WizardPhase.Verification);
+                    CountL7 = allStats.Count(p => p.CurrentPhase == WizardPhase.TechnicalRequest);
+                    CountL8 = allStats.Count(p => p.CurrentPhase == WizardPhase.Maintenance);
+                    CountSalida = allStats.Count(p => p.CurrentPhase == WizardPhase.Exit);
+                    CountDesembolso = allStats.Count(p => p.CurrentPhase == WizardPhase.Disbursement);
+
                     // 2. DATA QUERY: Base pesada con Includes solo para el Cronograma y el Wizard
-                    var dataQuery = statsQuery
+                    var dataQuery = _context.ManagementPlans
+                        .AsNoTracking()
                         .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                         .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                         .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
                         .Include(p => p.Verification).ThenInclude(v => v!.CheckResults)
                         .Include(p => p.TechnicalRequest)
-                        .Include(p => p.Departure);
-
-                    // Estadísticas Globales - Ejecutadas nativamente en SQL con la query ligera
-                    TotalActivos = await statsQuery.CountAsync();
-                    EquiposTerminados = await statsQuery.CountAsync(p => p.PlanStatus == ManagementPlanStatus.Completed);
-                    
-                    var now = DateTime.Now;
-                    TotalVencidos = await statsQuery.CountAsync(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate < now);
-                    GlobalProgress = TotalActivos > 0 ? Math.Round((double)EquiposTerminados / TotalActivos * 100, 1) : 0;
-
-                    // B-2: Poblar métricas Fila 1 Sprint 3B
-                    CountPendientes = await statsQuery.CountAsync(p =>
-                        p.PlanStatus != ManagementPlanStatus.Completed &&
-                        p.CurrentState >= WizardEquipmentState.AwaitingRequest);
-                    
-                    CountBuenos = await statsQuery.CountAsync(p =>
-                        p.CurrentState == WizardEquipmentState.VerifiedGood);
+                        .Include(p => p.Departure)
+                        .Where(p => p.ManagementId == ActiveManagement.Id);
 
                     // B-3: Agrupación semántica de tipos de equipo
-                    var equipmentStats = await statsQuery
-                        .Where(p => p.EquipmentUnit != null && p.EquipmentUnit.Equipment != null)
+                    var equipmentStats = await _context.ManagementPlans
+                        .AsNoTracking()
+                        .Where(p => p.ManagementId == ActiveManagement.Id && p.EquipmentUnit != null && p.EquipmentUnit.Equipment != null)
                         .Select(p => new {
                             Category = p.EquipmentUnit!.Equipment!.Category,
                             TypeClass = p.EquipmentUnit!.Equipment!.TypeClassification,
@@ -243,13 +258,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         .OrderBy(p => p.PlannedDate)
                         .Take(10)
                         .ToListAsync();
-
-                    // Contadores por fase para el Dashboard Premium usando la query ligera
-                    CountL6 = await statsQuery.CountAsync(p => p.CurrentPhase == WizardPhase.Verification);
-                    CountL7 = await statsQuery.CountAsync(p => p.CurrentPhase == WizardPhase.TechnicalRequest);
-                    CountL8 = await statsQuery.CountAsync(p => p.CurrentPhase == WizardPhase.Maintenance);
-                    CountSalida = await statsQuery.CountAsync(p => p.CurrentPhase == WizardPhase.Exit);
-                    CountDesembolso = await statsQuery.CountAsync(p => p.CurrentPhase == WizardPhase.Disbursement);
 
                     // LÓGICA DEL WIZARD FUNCIONAL
                     if (ShowWizard)
@@ -381,6 +389,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 var plan = await _context.ManagementPlans
                     .Include(p => p.EquipmentUnit)
                     .Include(p => p.Maintenance)
+                    .AsTracking()
                     .FirstOrDefaultAsync(p => p.Id == planId);
 
                 if (plan != null)

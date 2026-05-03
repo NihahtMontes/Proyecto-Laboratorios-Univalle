@@ -148,6 +148,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             var departureDB = await _context.Departures
                 .Include(d => d.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
+                .AsTracking()
                 .FirstOrDefaultAsync(d => d.Id == Input.Id);
 
             if (departureDB == null) return NotFound();

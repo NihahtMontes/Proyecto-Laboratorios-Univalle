@@ -165,6 +165,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 ? await _context.ManagementPlans
                     .Include(p => p.Verification).ThenInclude(v => v!.Faults)
                     .Include(p => p.Verification).ThenInclude(v => v!.CheckResults)
+                    .AsTracking()
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value) 
                 : null;
 

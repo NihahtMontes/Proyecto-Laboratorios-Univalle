@@ -128,6 +128,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             var equipment = await _context.Equipments
                 .IgnoreQueryFilters()
+                .AsTracking()
                 .FirstOrDefaultAsync(e => e.Id == Input.Id);
 
             if (equipment == null) return NotFound();

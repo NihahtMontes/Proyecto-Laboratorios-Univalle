@@ -6,6 +6,7 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,30 +18,36 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
     public class IndexModel : PageModel
     {
         private readonly ApplicationDbContext _context;
+        private readonly IManagementContextService _managementContext;
 
-        public IndexModel(ApplicationDbContext context)
+        public IndexModel(ApplicationDbContext context, IManagementContextService managementContext)
         {
             _context = context;
+            _managementContext = managementContext;
         }
 
         // Inicializamos la lista para evitar errores de referencia nula en la vista
-        public IList<Management> ManagementList { get; set; } = new List<Management>();
+        public PaginatedList<Management> ManagementList { get; set; } = new PaginatedList<Management>(new List<Management>(), 0, 1, 20);
 
-        public async Task<IActionResult> OnGetAsync()
+        [BindProperty(SupportsGet = true)]
+        public int? PageIndex { get; set; }
+
+        public async Task<IActionResult> OnGetAsync(int? pageIndex)
         {
             try
             {
                 if (_context.Managements != null)
                 {
-                    ManagementList = await _context.Managements
-                        .Include(m => m.ManagementPlans)
-                        .OrderByDescending(m => m.CreatedDate)
-                        .ToListAsync();
+                    ManagementList = await PaginatedList<Management>.CreateAsync(
+                        _context.Managements
+                            .Include(m => m.ManagementPlans)
+                            .OrderByDescending(m => m.CreatedDate),
+                        pageIndex ?? 1, 20);
                 }
             }
             catch (Exception)
             {
-                ManagementList = new List<Management>();
+                ManagementList = new PaginatedList<Management>(new List<Management>(), 0, 1, 20);
             }
 
             return Page();
@@ -60,6 +67,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 management.ActualClosedDate = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
+                _managementContext.InvalidateCache();
 
                 TempData["Success"] = "La gestión administrativa ha sido cerrada (Terminada) exitosamente.";
             }
@@ -89,6 +97,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
                 management.Status = ManagementStatus.Deleted;
                 await _context.SaveChangesAsync();
+                _managementContext.InvalidateCache();
 
                 TempData["Success"] = "La gestión ha sido eliminada lógicamente del sistema.";
             }
@@ -102,7 +111,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
         public async Task<IActionResult> OnPostSyncPlansAsync(int id)
         {
-            var management = await _context.Managements.Include(m => m.ManagementPlans).FirstOrDefaultAsync(m => m.Id == id);
+            var management = await _context.Managements.Include(m => m.ManagementPlans).AsTracking().FirstOrDefaultAsync(m => m.Id == id);
             if (management == null) return NotFound();
 
             var currentUnitIds = management.ManagementPlans.Select(p => p.EquipmentUnitId).ToList();
@@ -131,6 +140,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             }
 
             await _context.SaveChangesAsync();
+            _managementContext.InvalidateCache();
             TempData["Success"] = $"Se han sincronizado {missingUnits.Count} nuevos equipos a la gestión {management.Code}.";
             return RedirectToPage("./Index");
         }

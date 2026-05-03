@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
@@ -17,16 +18,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             _context = context;
         }
 
-        public IList<Departure> Departures { get; set; } = new List<Departure>();
+        public PaginatedList<Departure> Departures { get; set; } = new PaginatedList<Departure>(new List<Departure>(), 0, 1, 20);
 
-        public async Task OnGetAsync()
+        [BindProperty(SupportsGet = true)]
+        public int? PageIndex { get; set; }
+
+        public async Task OnGetAsync(int? pageIndex)
         {
-            Departures = await _context.Departures
-                .Include(d => d.EquipmentUnit)
-                    .ThenInclude(u => u!.Equipment)
-                .Include(d => d.Borrower)
-                .OrderByDescending(d => d.DepartureDate)
-                .ToListAsync();
+            Departures = await PaginatedList<Departure>.CreateAsync(
+                _context.Departures
+                    .Include(d => d.EquipmentUnit)
+                        .ThenInclude(u => u!.Equipment)
+                    .Include(d => d.Borrower)
+                    .OrderByDescending(d => d.DepartureDate),
+                pageIndex ?? 1, 20);
         }
     }
 }

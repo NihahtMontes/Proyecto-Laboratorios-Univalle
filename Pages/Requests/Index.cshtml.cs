@@ -21,7 +21,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             _reportService = reportService;
         }
 
-        public IList<Request> Requests { get; set; } = default!;
+        public PaginatedList<Request> Requests { get; set; } = default!;
+
+        public int PageSize { get; set; } = 20;
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -37,7 +39,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         public Microsoft.AspNetCore.Mvc.Rendering.SelectList LaboratoryList { get; set; } = default!;
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             var query = _context.Requests
                 .Include(r => r.Equipment)
@@ -76,9 +78,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 query = query.Where(r => r.EquipmentUnit != null && r.EquipmentUnit.LaboratoryId == FilterLaboratoryId.Value);
             }
 
-            Requests = await query
-                .OrderByDescending(r => r.CreatedDate)
-                .ToListAsync();
+            Requests = await PaginatedList<Request>.CreateAsync(
+                query.OrderByDescending(r => r.CreatedDate),
+                pageIndex ?? 1, PageSize);
 
             // Load labs for the dropdown
             var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();

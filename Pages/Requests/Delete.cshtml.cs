@@ -43,6 +43,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             var request = await _context.Requests
                 .Include(r => r.Maintenance)
+                .AsTracking()
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (request == null) return NotFound();

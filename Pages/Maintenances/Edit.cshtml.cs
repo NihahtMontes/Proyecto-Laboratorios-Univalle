@@ -204,6 +204,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .Include(m => m.CostDetails)
                 .Include(m => m.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
+                .AsTracking()
                 .FirstOrDefaultAsync(m => m.Id == Input.Id);
 
             if (maintenanceDB == null) return NotFound();
@@ -268,7 +269,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 await _context.SaveChangesAsync();
                 TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.EquipmentUnit?.Equipment?.Name));
                 
-                var plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == maintenanceDB.Id);
+                var plan = await _context.ManagementPlans.AsTracking().FirstOrDefaultAsync(p => p.MaintenanceId == maintenanceDB.Id);
                 if (plan != null)
                 {
                     if (maintenanceDB.Status == MaintenanceStatus.Completed && plan.CurrentPhase == WizardPhase.Maintenance)

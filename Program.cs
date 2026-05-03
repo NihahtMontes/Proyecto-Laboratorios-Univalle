@@ -29,7 +29,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     {
         sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
         sqlOptions.CommandTimeout(120);
-    }));
+    })
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -73,6 +74,7 @@ builder.Services.AddAntiforgery(options =>
 
 // AÑADIDO: Configuración de Sesiones para el Wizard (Módulo TX-1)
 builder.Services.AddDistributedMemoryCache();
+builder.Services.AddMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromHours(4);

@@ -181,6 +181,32 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if (Model.Verifications.HasPreviousPage || Model.Verifications.HasNextPage)
+                {
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.Verifications.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Verifications.PageIndex - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.Verifications.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Verifications.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
+                                </li>
+                            }
+                            @if (Model.Verifications.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Verifications.PageIndex + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
             </div>
         </div>
     </div>

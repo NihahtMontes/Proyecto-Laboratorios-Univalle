@@ -23,7 +23,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             _context = context;
         }
 
-        public IList<Person> Person { get;set; } = default!;
+        public PaginatedList<Person> Person { get; set; } = new PaginatedList<Person>(new List<Person>(), 0, 1, 20);
+
+        [BindProperty(SupportsGet = true)]
+        public int? PageIndex { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -31,7 +34,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
         [BindProperty(SupportsGet = true)]
         public GeneralStatus? StatusFilter { get; set; }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             var query = _context.People
                 .Include(p => p.CreatedBy)
@@ -51,9 +54,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
                 query = query.Where(p => p.Status == StatusFilter.Value);
             }
 
-            Person = await query
-                .OrderByDescending(p => p.Id)
-                .ToListAsync();
+            Person = await PaginatedList<Person>.CreateAsync(query.OrderByDescending(p => p.Id), pageIndex ?? 1, 20);
         }
     }
 }

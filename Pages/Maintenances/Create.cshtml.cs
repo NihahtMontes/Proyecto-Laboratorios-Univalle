@@ -205,7 +205,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     ModelState.AddModelError("Input.EndDate", "La fecha de finalización no puede ser anterior al inicio.");
             }
 
-            var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
+            var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).AsTracking().FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
             if (equipmentUnit == null)
             {
                 ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física no existe.");
@@ -271,6 +271,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     var lastHistory = await _context.EquipmentStateHistories
                         .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
                         .OrderByDescending(h => h.StartDate)
+                        .AsTracking()
                         .FirstOrDefaultAsync();
 
                     if (lastHistory != null)

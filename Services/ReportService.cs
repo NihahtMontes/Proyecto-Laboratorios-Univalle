@@ -64,8 +64,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 var templatePath = Path.Combine(_env.WebRootPath, "templates", "solicitud_mantenimiento_template2.xlsx");
                 if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla no encontrada.");
 
-                using var package = new ExcelPackage(new FileInfo(templatePath));
-                var worksheet = package.Workbook.Worksheets[0];
+                using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
+                using var package = new ExcelPackage();
+                var sourceSheet = templatePkg.Workbook.Worksheets[0];
+                var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
 
                 // ===============================================
                 // LIMPIEZA SELECTIVA (sin borrar formatos)
@@ -342,13 +344,12 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 note2.Style.Font.Size = 8;
                 note2.Style.Font.Bold = true;
 
-                EliminarHojasExtra(package);
-                return package.GetAsByteArray();
+return package.GetAsByteArray();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generando Excel Adquisición #{RequestId}", request?.Id ?? 0);
-                throw;
+                throw new Exception($"Error al generar reporte: {ex.Message}", ex);
             }
         }
 
@@ -431,8 +432,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     throw new FileNotFoundException("Plantilla de Excel no encontrada.");
                 }
 
-                using var package = new ExcelPackage(new FileInfo(templatePath));
-                var worksheet = package.Workbook.Worksheets[0];
+                using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
+                using var package = new ExcelPackage();
+                var sourceSheet = templatePkg.Workbook.Worksheets[0];
+                var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
 
                 // ========================================
                 // LIMPIEZA DE SEGURIDAD
@@ -565,9 +568,6 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // 5. ASEGURAR FORMATO (bordes, fuentes, etc.)
                 AplicarEstilosACeldas(worksheet);
 
-                // 6. ELIMINAR HOJAS EXTRA
-                EliminarHojasExtra(package);
-
                 // 7. RETORNAR ARCHIVO COMO BYTE ARRAY
                 return package.GetAsByteArray();
             }
@@ -631,8 +631,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
             var templatePath = Path.Combine(_env.WebRootPath, "templates", "L8.xlsx");
             if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-8 no encontrada.");
 
-            using var package = new ExcelPackage(new FileInfo(templatePath));
-            var worksheet = package.Workbook.Worksheets[0];
+            using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
+            using var package = new ExcelPackage();
+            var sourceSheet = templatePkg.Workbook.Worksheets[0];
+            var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
 
             // LIMPIEZA SEGURA (sin Merge=false - causa crash 0xffffffff)
             for (int r = 15; r <= 50; r++)
@@ -675,7 +677,6 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 startRow++;
             }
 
-            EliminarHojasExtra(package);
             return package.GetAsByteArray();
         }
 
@@ -698,8 +699,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
             var templatePath = Path.Combine(_env.WebRootPath, "templates", "L48.xlsx");
             if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-48 no encontrada.");
 
-            using var package = new ExcelPackage(new FileInfo(templatePath));
-            var worksheet = package.Workbook.Worksheets[0];
+            using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
+            using var package = new ExcelPackage();
+            var sourceSheet = templatePkg.Workbook.Worksheets[0];
+            var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
 
             worksheet.Cells["A5"].Value = $"PLAN DE MANTENIMIENTO PREVENTIVO Y CORRECTIVO EQUIPOS DE LABORATORIO GESTIÓN I/{DateTime.UtcNow.Year}";
             for (int r = 13; r <= 60; r++)
@@ -759,134 +762,220 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 itemIndex++;
             }
 
-            EliminarHojasExtra(package);
             return package.GetAsByteArray();
         }
 
         public async Task<byte[]> GenerateL6VerificacionExcel(int labId, string responsable = "Sistema")
         {
-            var connection = _context.Database.GetDbConnection();
-            
+            // L-6 GENERADO DESDE CERO (SIN TEMPLATE)
+            // Worksheets.Add(sourceSheet.Name, sourceSheet) copia estilos XML del template
+            // L6V2.xlsx que corrompen el paquete. GetAsByteArray() crashea (0xffffffff).
+
             var labName = await _context.Laboratories
+                .AsNoTracking()
                 .Where(l => l.Id == labId)
                 .Select(l => l.Name)
                 .FirstOrDefaultAsync();
-                
+
             if (string.IsNullOrEmpty(labName)) throw new Exception("Laboratorio no encontrado.");
 
-            var templatePath = Path.Combine(_env.WebRootPath, "templates", "L6V2.xlsx");
-            if (!File.Exists(templatePath))
-            {
-                templatePath = Path.Combine(_env.WebRootPath, "templates", "L6.xlsx");
-                if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-6 no encontrada.");
-            }
+            // BATCH QUERIES (3 totales, sin N+1)
+            var equipmentData = await _context.EquipmentUnits
+                .AsNoTracking()
+                .Include(eu => eu.Equipment)
+                .Where(eu => eu.LaboratoryId == labId && eu.CurrentStatus != EquipmentStatus.Deleted)
+                .OrderBy(eu => eu.InventoryNumber)
+                .Select(eu => new { eu.Id, EquipmentName = eu.Equipment != null ? eu.Equipment.Name : "", Brand = eu.Equipment != null ? eu.Equipment.Brand : "", eu.InventoryNumber })
+                .ToListAsync();
 
-            // Cargar template original (puede tener 24+ hojas) y copiar SOLO
-            // la primera hoja a un paquete nuevo. Así evitamos:
-            // 1) EliminarHojasExtra que corrompe el XML y crashea GetAsByteArray
-            // 2) Que el Excel descargado tenga pestañas viejas con datos de otros labs
-            using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
+            var unitIds = equipmentData.Select(e => e.Id).ToList();
+
+            var allVerifications = await _context.Verifications
+                .AsNoTracking()
+                .Where(v => unitIds.Contains(v.EquipmentUnitId) && v.Status != VerificationStatus.Annulled)
+                .OrderByDescending(v => v.Date)
+                .ToListAsync();
+
+            var lastVerifications = allVerifications
+                .GroupBy(v => v.EquipmentUnitId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var lastVIds = lastVerifications.Values.Select(v => v.Id).ToList();
+            var allFaults = await _context.VerificationFaults
+                .AsNoTracking()
+                .Where(vf => !vf.IsDeleted && lastVIds.Contains(vf.VerificationId))
+                .Select(vf => new { vf.VerificationId, vf.Description })
+                .ToListAsync();
+
+            var faultsByVerification = allFaults
+                .GroupBy(f => f.VerificationId)
+                .ToDictionary(g => g.Key, g => g.Select(f => f.Description).ToList());
+
+            // GENERAR EXCEL DESDE CERO
             using var package = new ExcelPackage();
-            var sourceSheet = templatePkg.Workbook.Worksheets[0];
-            var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
-            worksheet.Cells["B6"].Value = $"I/{DateTime.Now.Year}";
-            worksheet.Cells["B9"].Value = labName.ToUpper();
-            worksheet.Cells["B10"].Value = responsable.ToUpper();
-            worksheet.Cells["B11"].Value = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+            var ws = package.Workbook.Worksheets.Add("Verificacion L-6");
 
-            for (int r = 14; r <= 60; r++)
-                for (int c = 1; c <= 6; c++)
-                    try { worksheet.Cells[r, c].Value = null; } catch { }
+            ws.Column(1).Width = 6;
+            ws.Column(2).Width = 35;
+            ws.Column(3).Width = 8;
+            ws.Column(4).Width = 14;
+            ws.Column(5).Width = 18;
+            ws.Column(6).Width = 45;
 
-            int row = 14;
-            int item = 1;
+            // Header institucional
+            ws.Cells["A1:F1"].Merge = true;
+            ws.Cells["A1"].Value = "UNIVERSIDAD PRIVADA DEL VALLE";
+            ws.Cells["A1"].Style.Font.Bold = true;
+            ws.Cells["A1"].Style.Font.Size = 14;
+            ws.Cells["A1"].Style.Font.Name = "Arial";
+            ws.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Row(1).Height = 22;
 
-            // SQL directo — sin EF Core query compiler, sin parámetros colapsados
-            const string sql = @"
-                SELECT 
-                    eq.Name AS EquipmentName,
-                    eq.Brand AS EquipmentBrand,
-                    (SELECT TOP 1 v.PhysicalCondition 
-                     FROM Verifications v 
-                     WHERE v.EquipmentUnitId = eu.Id AND v.Status <> 99 
-                     ORDER BY v.Date DESC) AS Condition,
-                    (SELECT TOP 1 v.Observations 
-                     FROM Verifications v 
-                     WHERE v.EquipmentUnitId = eu.Id AND v.Status <> 99 
-                     ORDER BY v.Date DESC) AS Observations,
-                    (SELECT STRING_AGG(vf.Description, '; ')
-                     FROM VerificationFaults vf
-                     INNER JOIN Verifications v ON vf.VerificationId = v.Id
-                     WHERE v.EquipmentUnitId = eu.Id 
-                       AND v.Status <> 99 
-                       AND vf.IsDeleted = 0
-                       AND v.Id = (SELECT TOP 1 Id FROM Verifications 
-                                   WHERE EquipmentUnitId = eu.Id AND Status <> 99 
-                                   ORDER BY Date DESC)
-                    ) AS Faults
-                FROM EquipmentUnits eu
-                INNER JOIN Equipments eq ON eu.EquipmentId = eq.Id
-                WHERE eu.CurrentStatus <> 99 AND eu.LaboratoryId = @labId
-                ORDER BY eu.InventoryNumber
-                OFFSET @offset ROWS FETCH NEXT @batchSize ROWS ONLY";
+            ws.Cells["A2:F2"].Merge = true;
+            ws.Cells["A2"].Value = "DIRECCION DE LABORATORIOS";
+            ws.Cells["A2"].Style.Font.Bold = true;
+            ws.Cells["A2"].Style.Font.Size = 12;
+            ws.Cells["A2"].Style.Font.Name = "Arial";
+            ws.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Row(2).Height = 20;
 
-            if (connection.State != System.Data.ConnectionState.Open)
-                await connection.OpenAsync();
+            ws.Cells["A3:F3"].Merge = true;
+            ws.Cells["A3"].Value = "VERIFICACION DE EQUIPOS DE LABORATORIO (L-6)";
+            ws.Cells["A3"].Style.Font.Bold = true;
+            ws.Cells["A3"].Style.Font.Size = 11;
+            ws.Cells["A3"].Style.Font.Name = "Arial";
+            ws.Cells["A3"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Row(3).Height = 20;
 
-            int offset = 0;
-            const int batchSize = 50;
+            ws.Cells["A5"].Value = "Gestion:";
+            ws.Cells["A5"].Style.Font.Bold = true;
+            ws.Cells["B5"].Value = $"I/{DateTime.Now.Year}";
+            ws.Cells["D5"].Value = "Fecha:";
+            ws.Cells["D5"].Style.Font.Bold = true;
+            ws.Cells["E5"].Value = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
 
-            while (true)
+            ws.Cells["A6"].Value = "Laboratorio:";
+            ws.Cells["A6"].Style.Font.Bold = true;
+            ws.Cells["B6"].Value = labName.ToUpper();
+            ws.Cells["B6"].Style.Font.Bold = true;
+
+            ws.Cells["A7"].Value = "Responsable:";
+            ws.Cells["A7"].Style.Font.Bold = true;
+            ws.Cells["B7"].Value = responsable.ToUpper();
+
+            // Tabla header
+            int headerRow = 9;
+            string[] headers = { "ITEM", "DESCRIPCION DEL EQUIPO", "CANT.", "ESTADO", "MARCA", "OBSERVACIONES / FALLAS" };
+            for (int i = 0; i < headers.Length; i++)
             {
-                using var cmd = connection.CreateCommand();
-                cmd.CommandText = sql;
-                cmd.CommandTimeout = 120;
-                
-                var pLab = cmd.CreateParameter(); pLab.ParameterName = "@labId"; pLab.Value = labId; cmd.Parameters.Add(pLab);
-                var pOff = cmd.CreateParameter(); pOff.ParameterName = "@offset"; pOff.Value = offset; cmd.Parameters.Add(pOff);
-                var pBatch = cmd.CreateParameter(); pBatch.ParameterName = "@batchSize"; pBatch.Value = batchSize; cmd.Parameters.Add(pBatch);
+                var cell = ws.Cells[headerRow, i + 1];
+                cell.Value = headers[i];
+                cell.Style.Font.Bold = true;
+                cell.Style.Font.Size = 10;
+                cell.Style.Font.Name = "Arial";
+                cell.Style.Fill.SetBackground(System.Drawing.Color.FromArgb(68, 114, 196));
+                cell.Style.Font.Color.SetColor(System.Drawing.Color.White);
+                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+            }
+            ws.Row(headerRow).Height = 28;
 
-                using var reader = await cmd.ExecuteReaderAsync();
-                int count = 0;
+            // Datos
+            int row = headerRow + 1;
+            int item = 1;
+            bool alternate = false;
 
-                while (await reader.ReadAsync())
+            foreach (var eq in equipmentData)
+            {
+                var condition = "N/A";
+                var observationsText = "";
+
+                if (lastVerifications.TryGetValue(eq.Id, out var lastV))
                 {
-                    if (row > 1000) break;
-                    
-                    var equipName = reader.IsDBNull(0) ? "" : reader.GetString(0);
-                    var brand = reader.IsDBNull(1) ? "" : reader.GetString(1);
-                    var condition = reader.IsDBNull(2) ? "N/A" : reader.GetInt32(2).ToString();
-                    var observations = reader.IsDBNull(3) ? "" : reader.GetString(3);
-                    var faults = reader.IsDBNull(4) ? "" : reader.GetString(4);
+                    condition = lastV.PhysicalCondition switch
+                    {
+                        PhysicalCondition.Excellent => "Excelente",
+                        PhysicalCondition.Good => "Bueno",
+                        PhysicalCondition.Regular => "Regular",
+                        PhysicalCondition.Bad => "Malo",
+                        PhysicalCondition.Decommissioned => "Baja",
+                        _ => lastV.PhysicalCondition.ToString()
+                    };
+                    observationsText = lastV.Observations ?? "";
 
-                    var observaciones = !string.IsNullOrEmpty(faults) ? faults : observations;
-                    if (string.IsNullOrEmpty(observaciones)) observaciones = "Sin observaciones";
+                    if (faultsByVerification.TryGetValue(lastV.Id, out var faultList) && faultList.Count > 0)
+                        observationsText = string.Join("; ", faultList);
+                }
+                if (string.IsNullOrEmpty(observationsText)) observationsText = "Sin observaciones";
 
-                    worksheet.Cells[row, 1].Value = item;
-                    worksheet.Cells[row, 2].Value = equipName.ToUpper();
-                    worksheet.Cells[row, 2].Style.WrapText = true;
-                    worksheet.Cells[row, 3].Value = 1;
-                    worksheet.Cells[row, 4].Value = condition;
-                    worksheet.Cells[row, 5].Value = brand.ToUpper();
-                    worksheet.Cells[row, 6].Value = observaciones;
-                    worksheet.Cells[row, 6].Style.WrapText = true;
-                    
-                    var obsLength = observaciones.Length;
-                    if (obsLength > 40) worksheet.Row(row).Height = Math.Max(20, (obsLength / 40.0) * 14);
+                var rowBg = alternate ? System.Drawing.Color.FromArgb(242, 246, 252) : System.Drawing.Color.White;
 
-                    row++; item++; count++;
+                ws.Cells[row, 1].Value = item;
+                ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[row, 2].Value = eq.EquipmentName?.ToUpper();
+                ws.Cells[row, 2].Style.WrapText = true;
+                ws.Cells[row, 3].Value = 1;
+                ws.Cells[row, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[row, 4].Value = condition;
+                ws.Cells[row, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[row, 4].Style.Font.Color.SetColor(condition switch
+                {
+                    "Excelente" or "Bueno" => System.Drawing.Color.FromArgb(39, 124, 52),
+                    "Regular" => System.Drawing.Color.FromArgb(196, 152, 24),
+                    "Malo" or "Baja" => System.Drawing.Color.FromArgb(192, 0, 0),
+                    _ => System.Drawing.Color.Gray
+                });
+                ws.Cells[row, 4].Style.Font.Bold = true;
+                ws.Cells[row, 5].Value = eq.Brand?.ToUpper();
+                ws.Cells[row, 6].Value = observationsText;
+                ws.Cells[row, 6].Style.WrapText = true;
+
+                for (int c = 1; c <= 6; c++)
+                {
+                    ws.Cells[row, c].Style.Fill.SetBackground(rowBg);
+                    ws.Cells[row, c].Style.Border.BorderAround(ExcelBorderStyle.Thin, System.Drawing.Color.FromArgb(180, 180, 180));
+                    ws.Cells[row, c].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
                 }
 
-                if (count == 0 || row > 1000) break;
-                offset += batchSize;
+                if (observationsText.Length > 50)
+                    ws.Row(row).Height = Math.Max(20, (observationsText.Length / 50.0) * 15);
+
+                row++; item++; alternate = !alternate;
             }
 
-            // NO llamar EliminarHojasExtra: borrar 23 hojas corrompe el XML interno
-            // de OpenXML y GetAsByteArray() crashea a nivel nativo (0xffffffff).
-            // La plantilla debe limpiarse UNA VEZ con el script de abajo.
-            
+            // Pie
+            row += 1;
+            ws.Cells[row, 1].Value = $"Total de equipos verificados: {equipmentData.Count}";
+            ws.Cells[row, 1].Style.Font.Bold = true;
+            ws.Cells[row, 1].Style.Font.Italic = true;
+            ws.Cells[row, 1, row, 3].Merge = true;
+
+            row += 2;
+            ws.Cells[row, 1].Value = "____________________________________";
+            ws.Cells[row, 1, row, 2].Merge = true;
+            ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[row + 1, 1].Value = "Firma del Responsable";
+            ws.Cells[row + 1, 1, row + 1, 2].Merge = true;
+            ws.Cells[row + 1, 1].Style.Font.Bold = true;
+            ws.Cells[row + 1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+            ws.Cells[row, 4].Value = "____________________________________";
+            ws.Cells[row, 4, row, 6].Merge = true;
+            ws.Cells[row, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+            ws.Cells[row + 1, 4].Value = "Director de Laboratorios";
+            ws.Cells[row + 1, 4, row + 1, 6].Merge = true;
+            ws.Cells[row + 1, 4].Style.Font.Bold = true;
+            ws.Cells[row + 1, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+            ws.PrinterSettings.Orientation = eOrientation.Landscape;
+            ws.PrinterSettings.FitToPage = true;
+            ws.PrinterSettings.FitToWidth = 1;
+            ws.PrinterSettings.FitToHeight = 0;
+
             return package.GetAsByteArray();
         }
+
 
         public async Task<byte[]> GenerateL3SalidaExcel(int unitId)
         {
@@ -909,8 +998,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
             var templatePath = Path.Combine(_env.WebRootPath, "templates", "L3.xlsx");
             if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-3 no encontrada.");
 
-            using var package = new ExcelPackage(new FileInfo(templatePath));
-            var worksheet = package.Workbook.Worksheets[0];
+            using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
+            using var package = new ExcelPackage();
+            var sourceSheet = templatePkg.Workbook.Worksheets[0];
+            var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
 
             // LIMPIAR tabla de items
             for (int r = 18; r <= 30; r++)
@@ -933,26 +1024,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
             worksheet.Cells[19, 12].Value = "UNIDAD";
             worksheet.Cells[19, 18].Value = "LND";
 
-            EliminarHojasExtra(package);
             return package.GetAsByteArray();
         }
 
-        /// <summary>
-        /// Elimina todas las hojas del workbook excepto la primera.
-        /// Las plantillas oficiales traen decenas de pestañas innecesarias
-        /// que hacen el archivo excesivamente pesado.
-        /// </summary>
-        private void EliminarHojasExtra(ExcelPackage package)
-        {
-            // DESACTIVADO POR SEGURIDAD (CRASH 0xffffffff):
-            // Borrar hojas (worksheet.Delete) corrompe el XML interno de EPPlus/OpenXML 
-            // cuando la plantilla tiene configuraciones complejas, causando un crash a nivel 
-            // nativo (StackOverflow o AccessViolation) al llamar a package.GetAsByteArray().
-            // La limpieza de las plantillas debe hacerse manualmente abriendo el archivo
-            // en Excel y eliminando las hojas extra, no por código.
-        }
-
-        // Versión mejorada para textos largos con saltos de línea
         private void AjustarAlturaFilaTextoLargo(ExcelWorksheet worksheet, int rowNumber, string texto, int charsPorLinea = 80)
         {
             if (string.IsNullOrEmpty(texto))

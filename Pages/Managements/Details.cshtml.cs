@@ -190,7 +190,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                         },
                         InventoryNumber = inv,
                         LabName         = p.EquipmentUnit?.Laboratory?.Name ?? "—",
-                        TechnicianName  = p.Maintenance.Technician?.FullName ?? "Sin asignar",
+                        TechnicianName  = p.Maintenance?.Technician?.FullName ?? "Sin asignar",
                         MaintenanceId   = p.MaintenanceId,
                         PlanId          = p.Id,
                         CurrentPhaseInt = (int)p.CurrentPhase,

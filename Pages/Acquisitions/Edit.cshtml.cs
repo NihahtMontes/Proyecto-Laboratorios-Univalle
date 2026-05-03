@@ -157,7 +157,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
             var requestToUpdate = await _context.Requests
                 .Include(r => r.CostDetails)
-                .FirstOrDefaultAsync(m => m.Id == Input.Id); // Equality check Corrected!
+                .AsTracking()
+                .FirstOrDefaultAsync(m => m.Id == Input.Id);
 
             if (requestToUpdate == null) return NotFound();
 

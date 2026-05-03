@@ -160,6 +160,32 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if (Model.Equipment.TotalPages > 1)
+                {
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.Equipment.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Equipment.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.Equipment.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Equipment.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory">@i</a>
+                                </li>
+                            }
+                            @if (Model.Equipment.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Equipment.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
             </div>
         </div>
     </div>

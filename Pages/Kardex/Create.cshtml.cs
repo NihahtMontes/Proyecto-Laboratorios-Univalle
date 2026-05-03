@@ -104,6 +104,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 var lastHistory = await _context.EquipmentStateHistories
                     .Where(h => h.EquipmentUnitId == unit.Id && h.EndDate == null)
                     .OrderByDescending(h => h.StartDate)
+                    .AsTracking()
                     .FirstOrDefaultAsync();
 
                 if (lastHistory != null)

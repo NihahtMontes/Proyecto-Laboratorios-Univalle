@@ -85,6 +85,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             var verification = await _context.Verifications
                 .Include(v => v.CheckResults)
+                .AsTracking()
                 .FirstOrDefaultAsync(v => v.Id == Input.Id);
 
             if (verification == null) return NotFound();

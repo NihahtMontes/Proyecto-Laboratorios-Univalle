@@ -101,7 +101,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
                 return Page();
             }
 
-            var personToUpdate = await _context.People.FirstOrDefaultAsync(p => p.Id == Input.Id);
+            var personToUpdate = await _context.People.AsTracking().FirstOrDefaultAsync(p => p.Id == Input.Id);
             if (personToUpdate == null) return NotFound();
 
             // Update common fields

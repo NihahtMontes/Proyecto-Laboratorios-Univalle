@@ -59,7 +59,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
-            var notif = await _context.Notifications.FirstOrDefaultAsync(n => n.Id == id && n.UserId == user.Id);
+            var notif = await _context.Notifications.AsTracking().FirstOrDefaultAsync(n => n.Id == id && n.UserId == user.Id);
             if (notif != null)
             {
                 notif.IsRead = true;

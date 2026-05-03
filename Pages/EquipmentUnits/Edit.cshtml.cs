@@ -62,7 +62,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 return Page();
             }
 
-            var dbUnit = await _context.EquipmentUnits.FirstOrDefaultAsync(u => u.Id == EquipmentUnit.Id);
+            var dbUnit = await _context.EquipmentUnits.AsTracking().FirstOrDefaultAsync(u => u.Id == EquipmentUnit.Id);
             if (dbUnit == null) return NotFound();
 
             bool stateChanged = false;
@@ -77,6 +77,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 var lastHistory = await _context.EquipmentStateHistories
                     .Where(h => h.EquipmentUnitId == dbUnit.Id && h.EndDate == null)
                     .OrderByDescending(h => h.StartDate)
+                    .AsTracking()
                     .FirstOrDefaultAsync();
                 
                 if (lastHistory != null)

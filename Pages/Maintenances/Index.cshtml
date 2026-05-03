@@ -161,12 +161,38 @@
                                 </tbody>
                             </table>
                         </div>
+
+                                        @if (Model.Maintenances.HasPreviousPage || Model.Maintenances.HasNextPage)
+                                        {
+                                            <nav aria-label="Page navigation" class="mt-4">
+                                                <ul class="pagination justify-content-center">
+                                                    @if (Model.Maintenances.HasPreviousPage)
+                                                    {
+                                                        <li class="page-item">
+                                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Maintenances.PageIndex - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-selectedLaboratoryId="@Model.SelectedLaboratoryId">Anterior</a>
+                                                        </li>
+                                                    }
+                                                    @for (var i = 1; i <= Model.Maintenances.TotalPages; i++)
+                                                    {
+                                                        <li class="page-item @(i == Model.Maintenances.PageIndex ? "active" : "")">
+                                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-selectedLaboratoryId="@Model.SelectedLaboratoryId">@i</a>
+                                                        </li>
+                                                    }
+                                                    @if (Model.Maintenances.HasNextPage)
+                                                    {
+                                                        <li class="page-item">
+                                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Maintenances.PageIndex + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-selectedLaboratoryId="@Model.SelectedLaboratoryId">Siguiente</a>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </nav>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 @section Styles {
     <style>

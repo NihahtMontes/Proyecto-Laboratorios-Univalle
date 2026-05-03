@@ -56,6 +56,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             var maintenance = await _context.Maintenances
                 .Include(m => m.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
+                .AsTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
                 
             if (maintenance != null)
