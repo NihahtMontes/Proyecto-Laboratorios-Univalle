@@ -81,12 +81,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
         {
             if (id == null) return NotFound();
 
-            Request = await _context.Requests
+            Request = (await _context.Requests
                 .Include(r => r.Equipment)
                 .Include(r => r.EquipmentUnit)
                     .ThenInclude(eu => eu.Laboratory)
                 .Include(r => r.CostDetails)
-                .FirstOrDefaultAsync(m => m.Id == id); // Equality check
+                .FirstOrDefaultAsync(m => m.Id == id))!;
 
             if (Request == null || Request.Type != RequestType.Purchasing) return NotFound();
 

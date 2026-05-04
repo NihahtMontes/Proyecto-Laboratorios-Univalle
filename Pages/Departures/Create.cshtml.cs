@@ -81,6 +81,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     .Include(p => p.Maintenance)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
+                ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.Exit);
+
                 if (plan?.Maintenance?.TechnicianId != null)
                 {
                     Input.BorrowerId = plan.Maintenance.TechnicianId.Value;
@@ -175,7 +177,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     DepartureObservations = Input.DepartureObservations?.Trim(),
                     Status = LoanStatus.Active,
                     CreatedDate = DateTime.UtcNow,
-                    ManagementId = (await _managementService.GetCurrentManagementAsync()).Id
+                    ManagementId = (await _managementService.GetCurrentManagementAsync())?.Id ?? 0
                 };
 
                 var currentUser = await _userManager.GetUserAsync(User);

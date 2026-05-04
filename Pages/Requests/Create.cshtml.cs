@@ -39,6 +39,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     .Include(p => p.Verification).ThenInclude(v => v!.Faults)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
+                ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
+
                 if (plan?.Verification?.Faults != null && plan.Verification.Faults.Any(f => !f.IsDeleted))
                 {
                     var faults = plan.Verification.Faults.Where(f => !f.IsDeleted).Select(f => f.Description);

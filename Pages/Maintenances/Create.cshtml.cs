@@ -50,6 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 var plan = await _context.ManagementPlans.FindAsync(managementPlanId.Value);
                 if (plan != null)
                 {
+                    ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
                     if (plan.RequestId.HasValue)
                     {
                         Input.RequestId = plan.RequestId;

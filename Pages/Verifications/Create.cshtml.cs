@@ -75,6 +75,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     .Include(p => p.Verification).ThenInclude(v => v!.Faults)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
+                ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.Verification);
+
                 if (plan?.Verification != null)
                 {
                     Input.EquipmentUnitId = plan.Verification.EquipmentUnitId;
@@ -179,7 +181,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     EquipmentUnitId = Input.EquipmentUnitId,
                     ManagementId = currentMgmt.Id,
                     Date = Input.Date,
-                    Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions.Where(f => !string.IsNullOrWhiteSpace(f))) : null,
+                    Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions?.Where(f => !string.IsNullOrWhiteSpace(f)) ?? Enumerable.Empty<string>()) : null,
                     PhysicalCondition = physicalCondition,
                     Status = Input.Status,
                     CreatedDate = DateTime.UtcNow,
@@ -201,7 +203,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 verification = plan!.Verification!;
                 verification.EquipmentUnitId = Input.EquipmentUnitId;
                 verification.Date = Input.Date;
-                verification.Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions.Where(f => !string.IsNullOrWhiteSpace(f))) : null;
+                verification.Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions?.Where(f => !string.IsNullOrWhiteSpace(f)) ?? Enumerable.Empty<string>()) : null;
                 verification.PhysicalCondition = physicalCondition;
                 verification.Status = Input.Status;
                 verification.LastModifiedDate = DateTime.UtcNow;

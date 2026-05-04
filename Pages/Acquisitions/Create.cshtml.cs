@@ -94,6 +94,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
                 if (plan != null)
                 {
+                    ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
                     if (plan.DepartureId.HasValue) ViewData["LinkedDepartureId"] = plan.DepartureId.Value;
                     if (plan.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = plan.MaintenanceId.Value;
                 }

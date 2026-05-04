@@ -17,7 +17,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.Migrations
                 nullable: false,
                 defaultValue: 0);
         }
-
+            
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {

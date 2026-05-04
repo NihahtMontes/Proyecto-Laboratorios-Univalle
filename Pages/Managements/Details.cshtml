@@ -776,7 +776,7 @@
                     } else {
                         dayEvents.forEach(function (ev) {
                             var statusClass = ev.ClassName === 'ev-completed' ? 'st-completed' : ev.ClassName === 'ev-progress' ? 'st-progress' : 'st-planned';
-                            var detailUrl = ev.MaintenanceId ? '/Maintenances/Details?id=' + ev.MaintenanceId : '/Managements/Details?id=' + mgmtId + '&ActiveTab=l48';
+                            var detailUrl = ev.MaintenanceId ? '/Maintenances/Details/' + ev.MaintenanceId : '/Managements/Details?id=' + mgmtId + '&ActiveTab=l48';
                             var editUrl   = ev.MaintenanceId ? '/Maintenances/Edit?id=' + ev.MaintenanceId : null;
 
                             var html = '<div class="day-detail-item">';

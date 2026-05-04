@@ -4,6 +4,7 @@
 @{
     ViewData["Title"] = "Solicitud de Adquisición (L-12)";
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+    int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 6);
 }
 
 <div class="row justify-content-center">
@@ -11,7 +12,7 @@
 
         @if (isWizard)
         {
-            await Html.RenderPartialAsync("_WizardSteps", 6);
+            await Html.RenderPartialAsync("_WizardSteps", currentPhaseInt);
         }
 
         <div class="card shadow-sm border-0 mt-3">
@@ -99,7 +100,7 @@
                                         <h6 class="m-0 font-weight-bold" style="color: #0369a1;">Kardex / Historial Previos (Fase 5)</h6>
                                         <span class="small" style="color: #0284c7;">Ref L-8 Mantenimiento: @ViewData["LinkedMaintenanceId"]</span>
                                     </div>
-                                    <a href="/Maintenances/Details?id=@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #0284c7; border: 1px solid #bae6fd;">
+                                    <a href="/Maintenances/Details/@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #0284c7; border: 1px solid #bae6fd;">
                                         Ver Mantenimiento L-8 <i class="fas fa-external-link-alt ml-1"></i>
                                     </a>
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 5, 'Kardex e Historial', 6)">

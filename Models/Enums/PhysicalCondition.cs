@@ -7,13 +7,13 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "EXCELENTE (NUEVO)")]
         Excellent = 5,
 
-        [Display(Name = "BUENO (no necesita mantenimiento)")]
+        [Display(Name = "BUENO")]
         Good = 4,
 
-        [Display(Name = "REGULAR (mantenimiento preventivo, aún operativo)")]
+        [Display(Name = "REGULAR")]
         Regular = 3,
 
-        [Display(Name = "MALO (no funciona, requiere mantenimiento)")]
+        [Display(Name = "MALO")]
         Bad = 2,
 
         [Display(Name = "BAJA DEL EQUIPO")]

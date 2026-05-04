@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = "Registrar Mantenimiento (L-8)";
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+    int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 3);
     var categoryList = Html.GetEnumSelectList<CostCategory>();
 }
 
@@ -13,7 +14,7 @@
 
         @if (isWizard)
         {
-            await Html.RenderPartialAsync("_WizardSteps", 3);
+            await Html.RenderPartialAsync("_WizardSteps", currentPhaseInt);
         }
 
         <div class="card shadow-sm border-0">

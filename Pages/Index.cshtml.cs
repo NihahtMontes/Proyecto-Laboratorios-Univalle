@@ -154,7 +154,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     }).ToListAsync();
 
                     TotalActivos = allStats.Count;
-                    EquiposTerminados = allStats.Count(p => p.PlanStatus == ManagementPlanStatus.Completed);
+                    EquiposTerminados = allStats.Count(p => p.CurrentState == WizardEquipmentState.Completed);
                     
                     var now = DateTime.Now;
                     TotalVencidos = allStats.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate < now);
