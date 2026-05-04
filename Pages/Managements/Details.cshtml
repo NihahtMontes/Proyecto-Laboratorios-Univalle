@@ -8,8 +8,8 @@
     // Variables L-48 (usadas solo cuando ActiveTab == l48, declaradas aqui para evitar RZ1010)
     var l48Sem      = Model.Management.Semester;
     var l48Year     = Model.Management.Year;
-    var l48Col1Name = l48Sem == 1 ? $"Dic {l48Year - 1}" : $"Jun {l48Year}";
-    var l48Col2Name = l48Sem == 1 ? $"Ene {l48Year}"     : $"Jul {l48Year}";
+    var l48Col1Name = l48Sem == 1 ? $"Jun {l48Year}" : $"Dic {l48Year}";
+    var l48Col2Name = l48Sem == 1 ? $"Jul {l48Year}" : $"Ene {l48Year + 1}";
 }
 
 @section Styles {
@@ -109,6 +109,12 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link @(Model.ActiveTab == "sanos" ? "active" : "")"
+               href="?id=@Model.Management.Id&ActiveTab=sanos">
+                <i class="fas fa-heartbeat mr-1"></i> Activos Sanos
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link @(Model.ActiveTab == "calendario" ? "active" : "")"
                href="?id=@Model.Management.Id&ActiveTab=calendario">
                 <i class="fas fa-calendar-alt mr-1"></i> Calendario
@@ -128,15 +134,23 @@
         <!-- FILA 1: KPIs globales -->
         <div class="row mb-3">
             <!-- Activos Totales -->
-            <div class="col-6 col-md-3 mb-3">
+            <div class="col-6 col-md mb-3">
                 <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Todos" class="phase-card shadow-sm" style="background:#f6f9ff;">
                     <div class="phase-icon phase-icon--blue"><i class="fas fa-boxes"></i></div>
                     <h6 class="text-muted">Activos Totales</h6>
                     <h2 style="color:#4154f1;">@Model.TotalPlans</h2>
                 </a>
             </div>
+            <!-- Activos Sanos -->
+            <div class="col-6 col-md mb-3">
+                <a href="?id=@Model.Management.Id&ActiveTab=sanos" class="phase-card shadow-sm" style="background:#eafaf1; border:1px solid #a7f3d0;">
+                    <div class="phase-icon phase-icon--green"><i class="fas fa-heartbeat"></i></div>
+                    <h6 style="color:#059669;">Activos Sanos</h6>
+                    <h2 style="color:#059669;">@Model.CountBuenos</h2>
+                </a>
+            </div>
             <!-- Vencidos -->
-            <div class="col-6 col-md-3 mb-3">
+            <div class="col-6 col-md mb-3">
                 <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Delay" class="phase-card shadow-sm bg-danger text-white">
                     <div class="phase-icon" style="background:rgba(255,255,255,.2);color:#fff;">
                         <i class="fas fa-exclamation-triangle"></i>
@@ -146,7 +160,7 @@
                 </a>
             </div>
             <!-- Completados -->
-            <div class="col-6 col-md-3 mb-3">
+            <div class="col-6 col-md mb-3">
                 <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Completed" class="phase-card shadow-sm" style="background:#d1fae5;">
                     <div class="phase-icon phase-icon--green"><i class="fas fa-check-circle"></i></div>
                     <h6 style="color:#10b981;">Completados</h6>
@@ -154,7 +168,7 @@
                 </a>
             </div>
             <!-- Avance -->
-            <div class="col-6 col-md-3 mb-3">
+            <div class="col-6 col-md mb-3">
                 <div class="phase-card shadow-sm" style="background:#fffbeb;">
                     <div class="phase-icon phase-icon--amber"><i class="fas fa-percentage"></i></div>
                     <h6 style="color:#f59e0b;">% Avance</h6>
@@ -281,6 +295,69 @@
         }
     }
 
+    <!-- ===== TAB: ACTIVOS SANOS ===== -->
+    @if (Model.ActiveTab == "sanos")
+    {
+        <!-- Filtro de Laboratorio para Activos Sanos -->
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-4 p-3 bg-light rounded border">
+            <form method="get" class="d-flex flex-wrap gap-2 w-100 align-items-center">
+                <input type="hidden" name="id" value="@Model.Management.Id" />
+                <input type="hidden" name="ActiveTab" value="sanos" />
+
+                <select name="LabFilterId" asp-items="Model.LabFList"
+                        class="form-control form-control-sm shadow-sm" style="width:150px;"
+                        onchange="this.form.submit()">
+                    <option value="">Laboratorio</option>
+                </select>
+            </form>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-muted small">Laboratorio</th>
+                            <th class="text-muted small">Equipo / Inv.</th>
+                            <th class="text-muted small">Fecha Verificación</th>
+                            <th class="text-muted small">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.ManagementPlans.Any())
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center text-muted p-4">No hay activos sanos para mostrar con los filtros actuales.</td>
+                            </tr>
+                        }
+                        @foreach (var plan in Model.ManagementPlans)
+                        {
+                            <tr>
+                                <td class="font-weight-bold align-middle small">
+                                    @plan.EquipmentUnit?.Laboratory?.Name
+                                </td>
+                                <td class="align-middle">
+                                    <div class="font-weight-bold text-primary" style="font-size:0.82rem;">
+                                        @plan.EquipmentUnit?.Equipment?.Name
+                                    </div>
+                                    <div class="text-muted" style="font-size:0.72rem;">
+                                        INV-@plan.EquipmentUnit?.InventoryNumber
+                                    </div>
+                                </td>
+                                <td class="small align-middle text-muted">
+                                    @(plan.Verification?.CreatedDate.ToString("dd/MM/yyyy") ?? "—")
+                                </td>
+                                <td class="align-middle">
+                                    <span class="badge badge-soft-success px-2 py-1 rounded-pill small">Bueno / Operativo</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
     <!-- ===== TAB: L-48 / CRONOGRAMA ===== -->
     @if (Model.ActiveTab == "l48" || Model.ActiveTab == "")
     {
@@ -360,37 +437,16 @@
                         @{ int rowNum = 1; }
                         @foreach (var plan in Model.ManagementPlans)
                         {
-                            var failText = plan.Verification != null
-                                ? (plan.Verification.FailuresCount > 0
-                                    ? plan.Verification.Observations ?? "Con fallas"
-                                    : "Ninguna")
-                                : "—";
+                            var failText = plan.TechnicalRequest?.Description ?? "Sin falla reportada";
 
-                            var isExternal = plan.Maintenance?.ServiceType == ServiceType.External;
-                            var svcLabel   = isExternal ? "Externo" : "Interno";
-                            var svcClass   = isExternal ? "badge-soft-danger" : "badge-soft-success";
+                            var svcLabel = plan.Maintenance?.Technician != null 
+                                ? (plan.Maintenance.Technician.Category == PersonCategory.Tecnico ? "I" : "E") 
+                                : (plan.Maintenance?.ServiceType == ServiceType.External ? "E" : "I");
+                            
+                            var svcClass = svcLabel == "I" ? "badge-soft-success" : "badge-soft-danger";
 
-                            int? plannedWeek = null;
-                            if (plan.PlannedDate.HasValue)
-                            {
-                                var day = plan.PlannedDate.Value.Day;
-                                // Semana real del mes (1-4), capando a 4 para evitar S9
-                                plannedWeek = Math.Min((day - 1) / 7 + 1, 4);
-                                var pm = plan.PlannedDate.Value.Month;
-                                bool isM2 = l48Sem == 1 ? (pm == 1 || pm == 2) : (pm == 7 || pm == 8);
-                                if (isM2) plannedWeek += 4; // Offset a S5-S8
-                            }
-
-                            int? realWeek = null;
-                            if (plan.Maintenance?.ScheduledDate.HasValue == true)
-                            {
-                                var day = plan.Maintenance.ScheduledDate.Value.Day;
-                                // Semana real del mes (1-4), capando a 4 para evitar S9
-                                realWeek = Math.Min((day - 1) / 7 + 1, 4);
-                                var rm = plan.Maintenance.ScheduledDate.Value.Month;
-                                bool isM2 = l48Sem == 1 ? (rm == 1 || rm == 2) : (rm == 7 || rm == 8);
-                                if (isM2) realWeek += 4; // Offset a S5-S8
-                            }
+                            int? plannedWeek = plan.PlannedWeek;
+                            int? executedWeek = plan.ExecutedWeek;
 
                             <!-- FILA 1: Planeado -->
                             <tr class="border-bottom-0">
@@ -407,22 +463,26 @@
                                     </div>
                                 </td>
                                 <td rowspan="2" class="small align-middle">@failText</td>
-                                <td rowspan="2" class="align-middle">
+                                <td rowspan="2" class="align-middle text-center">
                                     <span class="badge @svcClass px-2 py-1 rounded-pill small">@svcLabel</span>
                                 </td>
                                 @for (int s3 = 1; s3 <= 8; s3++)
                                 {
-                                    <td class="text-center p-1">
+                                    <td class="text-center p-1" style="cursor:pointer;" onclick="toggleWeek(@plan.Id, @s3, 'planned')">
                                         @if (plannedWeek == s3)
                                         {
-                                            <span class="badge bg-primary text-white px-2 py-1 rounded"
+                                            <span id="badge-planned-@(plan.Id)" class="badge bg-primary text-white px-2 py-1 rounded"
                                                   style="font-size:0.6rem;">Prev.</span>
+                                        }
+                                        else
+                                        {
+                                            <span id="placeholder-planned-@(plan.Id)-@s3" style="display:inline-block; width:100%; height:100%;"></span>
                                         }
                                     </td>
                                 }
                                 <td rowspan="2" class="align-middle text-center">
-                                    <span class="font-weight-bold" style="font-size:0.82rem;">
-                                        @(plan.Maintenance?.CompletionPercentage)%
+                                    <span class="badge badge-light border font-weight-bold text-dark" style="font-size:0.82rem;">
+                                        @(plan.Maintenance?.CompletionPercentage ?? 0)%
                                     </span>
                                 </td>
                                 <td rowspan="2" class="small align-middle text-muted">
@@ -433,26 +493,15 @@
                             <tr>
                                 @for (int s4 = 1; s4 <= 8; s4++)
                                 {
-                                    <td class="text-center p-1" style="border-top:1px dashed #e2e8f0;">
-                                        @if (realWeek == s4)
+                                    <td class="text-center p-1" style="border-top:1px dashed #e2e8f0; cursor:pointer;" onclick="toggleWeek(@plan.Id, @s4, 'executed')">
+                                        @if (executedWeek == s4)
                                         {
-                                            var mStatus = plan.Maintenance?.Status;
-                                            var pct = plan.Maintenance?.CompletionPercentage ?? 0;
-                                            if (mStatus == MaintenanceStatus.Completed || pct == 100)
-                                            {
-                                                <span class="badge bg-success text-white px-2 py-1 rounded"
-                                                      style="font-size:0.6rem;">OK</span>
-                                            }
-                                            else if (pct > 0 || mStatus == MaintenanceStatus.InProgress)
-                                            {
-                                                <span class="badge bg-warning text-dark px-2 py-1 rounded"
-                                                      style="font-size:0.6rem;">@(pct)%</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge bg-secondary text-white px-2 py-1 rounded"
-                                                      style="font-size:0.6rem;">Pend.</span>
-                                            }
+                                            <span id="badge-executed-@(plan.Id)" class="badge bg-success text-white px-2 py-1 rounded"
+                                                  style="font-size:0.6rem;">Ejec.</span>
+                                        }
+                                        else
+                                        {
+                                            <span id="placeholder-executed-@(plan.Id)-@s4" style="display:inline-block; width:100%; height:100%;"></span>
                                         }
                                     </td>
                                 }
@@ -555,6 +604,63 @@
                     form.submit();
                 }
             });
+        }
+
+        async function toggleWeek(planId, weekNumber, type) {
+            const formData = new FormData();
+            formData.append('planId', planId);
+            formData.append('weekNumber', weekNumber);
+            formData.append('type', type);
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (token) {
+                formData.append('__RequestVerificationToken', token.value);
+            }
+
+            try {
+                const response = await fetch('?handler=ToggleWeek', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (!result.success) {
+                        Swal.fire({ icon: 'warning', title: 'Regla de negocio', text: result.error, confirmButtonColor: '#f59e0b' });
+                        return;
+                    }
+
+                    // Update UI immediately without reload
+                    // Clear all in this row
+                    for (let i = 1; i <= 8; i++) {
+                        const cell = document.getElementById(`badge-${type}-${planId}`);
+                        if (cell) cell.remove();
+                        const placeholder = document.getElementById(`placeholder-${type}-${planId}-${i}`);
+                        if (!placeholder && i !== weekNumber) {
+                            // Needs placeholder back
+                            const td = document.querySelector(`td[onclick="toggleWeek(${planId}, ${i}, '${type}')"]`);
+                            if(td) td.innerHTML = `<span id="placeholder-${type}-${planId}-${i}" style="display:inline-block; width:100%; height:100%;"></span>`;
+                        }
+                    }
+
+                    // Toggle logic
+                    const td = document.querySelector(`td[onclick="toggleWeek(${planId}, ${weekNumber}, '${type}')"]`);
+                    const isCurrentlyActive = td.innerHTML.includes(`badge-${type}-${planId}`);
+                    
+                    if (isCurrentlyActive) {
+                        td.innerHTML = `<span id="placeholder-${type}-${planId}-${weekNumber}" style="display:inline-block; width:100%; height:100%;"></span>`;
+                    } else {
+                        const badgeClass = type === 'planned' ? 'bg-primary' : 'bg-success';
+                        const badgeText = type === 'planned' ? 'Prev.' : 'Ejec.';
+                        td.innerHTML = `<span id="badge-${type}-${planId}" class="badge ${badgeClass} text-white px-2 py-1 rounded" style="font-size:0.6rem;">${badgeText}</span>`;
+                    }
+                } else {
+                    Swal.fire('Error', 'No se pudo actualizar el cronograma.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'Hubo un error de conexión.', 'error');
+            }
         }
     </script>
 

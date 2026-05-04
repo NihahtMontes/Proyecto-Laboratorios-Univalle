@@ -68,6 +68,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             [Display(Name = "Descripción / Especificaciones")]
             public string? Description { get; set; }
+
+            [Display(Name = "Notas del Fabricante")]
+            public List<string> Notes { get; set; } = new();
         }
 
         public Models.Equipment ExistingEquipmentDisplay { get; set; } = default!;
@@ -91,7 +94,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             {
                 Id = equipment.Id,
                 Category = equipment.Category,
-                UtensilType = equipment.UtensilType, // Carga el valor actual del Enum
+                UtensilType = equipment.UtensilType,
 
                 ExistingImageUrl = equipment.ImageUrl,
                 CountryId = equipment.CountryId,
@@ -100,7 +103,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 Brand = equipment.Brand,
                 Model = equipment.Model,
                 UsefulLifeYears = equipment.UsefulLifeYears,
-                Description = equipment.Description
+                Description = equipment.Description,
+                Notes = await _context.EquipmentNotes
+                    .Where(n => n.EquipmentId == equipment.Id)
+                    .Select(n => n.Note)
+                    .ToListAsync()
             };
 
             LoadLists();
@@ -169,6 +176,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             }
 
             await _context.SaveChangesAsync();
+
+            var oldNotes = await _context.EquipmentNotes.Where(n => n.EquipmentId == equipment.Id).ToListAsync();
+            _context.EquipmentNotes.RemoveRange(oldNotes);
+            if (Input.Notes != null)
+            {
+                foreach (var note in Input.Notes.Where(n => !string.IsNullOrWhiteSpace(n)))
+                    _context.EquipmentNotes.Add(new EquipmentNote { EquipmentId = equipment.Id, Note = note.Trim() });
+                await _context.SaveChangesAsync();
+            }
 
             TempData.Success($"Datos del equipo '{equipment.Name}' actualizados correctamente.");
             return RedirectToPage("./Index");

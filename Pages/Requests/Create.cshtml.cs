@@ -41,10 +41,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
 
-                if (plan?.Verification?.Faults != null && plan.Verification.Faults.Any(f => !f.IsDeleted))
+                if (plan?.Verification != null && !string.IsNullOrWhiteSpace(plan.Verification.Observations))
                 {
-                    var faults = plan.Verification.Faults.Where(f => !f.IsDeleted).Select(f => f.Description);
-                    Input.Description = "Fallas detectadas en la Verificación (L-6):\n- " + string.Join("\n- ", faults);
+                    Input.Description = plan.Verification.Observations;
                 }
 
                 // Exponer IDs de fases previas para la sección de referencia vinculada

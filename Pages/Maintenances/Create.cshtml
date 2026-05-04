@@ -97,10 +97,20 @@
                              <div class="col-md-4">
                                 <div class="form-group mb-3">
                                     <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small text-uppercase text-muted">Tipo de Mantenimiento</label>
-                                    <select asp-for="Input.MaintenanceType" class="form-control custom-select" asp-items="ViewBag.MaintenanceType" required>
-                                        <option value="">-- Categoría --</option>
-                                    </select>
-                                    <span asp-validation-for="Input.MaintenanceType" class="text-danger small"></span>
+                                    @if (isWizard)
+                                    {
+                                        <select class="form-control custom-select bg-light font-weight-bold" disabled>
+                                            <option selected>Preventivo</option>
+                                        </select>
+                                        <input type="hidden" asp-for="Input.MaintenanceType" value="1" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.MaintenanceType" class="form-control custom-select" asp-items="ViewBag.MaintenanceType" required>
+                                            <option value="">-- Categoría --</option>
+                                        </select>
+                                        <span asp-validation-for="Input.MaintenanceType" class="text-danger small"></span>
+                                    }
                                 </div>
                             </div>
 

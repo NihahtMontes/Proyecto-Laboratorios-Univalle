@@ -219,14 +219,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 ShadingEnd   = new DateTime(Management.Year + 1, 2, 1).ToString("yyyy-MM-dd"); // 1 Feb exclusive
             }
 
-            // B-7: Filtros ampliados del cronograma L-48
+            // B-7: Filtros ampliados del cronograma L-48 y Sanos
             var query = _context.ManagementPlans
                 .AsNoTracking()
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                 .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
+                .Include(p => p.TechnicalRequest)
                 .Include(p => p.Verification)
                 .Where(p => p.ManagementId == id);
+
+            if (ActiveTab == "sanos")
+            {
+                query = query.Where(p => p.CurrentState == WizardEquipmentState.VerifiedGood);
+            }
+            else if (ActiveTab == "l48")
+            {
+                query = query.Where(p => p.CurrentState >= WizardEquipmentState.AwaitingRequest);
+            }
 
             if (LabFilterId.HasValue)
                 query = query.Where(p => p.EquipmentUnit!.LaboratoryId == LabFilterId);
@@ -241,14 +251,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 query = query.Where(p => p.Maintenance!.TechnicianId == TechFilterId);
             if (!string.IsNullOrEmpty(StatusFilter) && StatusFilter != "Todos")
             {
-                if (StatusFilter == "Externo")
-                    query = query.Where(p => p.Maintenance!.ServiceType == ServiceType.External);
-                else if (StatusFilter == "Planeado")
-                    query = query.Where(p => p.CurrentPhase > WizardPhase.Maintenance || (p.CurrentPhase == WizardPhase.Maintenance && p.CurrentState == WizardEquipmentState.AwaitingDeparture));
-                else if (StatusFilter == "EnProgreso")
-                    query = query.Where(p => p.CurrentState >= WizardEquipmentState.AwaitingRequest && p.CurrentPhase <= WizardPhase.Maintenance);
-                else if (Enum.TryParse<ManagementPlanStatus>(StatusFilter, out var statusEnum))
-                    query = query.Where(p => p.PlanStatus == statusEnum);
+                switch (StatusFilter)
+                {
+                    case "Planeado":
+                        query = query.Where(p => p.PlannedWeek != null);
+                        break;
+                    case "InProgress":
+                        query = query.Where(p => p.Maintenance != null && p.Maintenance.Status == MaintenanceStatus.InProgress);
+                        break;
+                    case "Completed":
+                        query = query.Where(p => p.ExecutedWeek != null);
+                        break;
+                    case "Externo":
+                        query = query.Where(p => p.Maintenance != null && p.Maintenance.ServiceType == ServiceType.External);
+                        break;
+                }
             }
             ManagementPlans = await query
                 .OrderBy(p => p.EquipmentUnit!.Laboratory!.Name)
@@ -307,6 +324,70 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             TempData.Success($"Se han sincronizado {newEquipments.Count} equipos nuevos a esta ronda.");
 
             return RedirectToPage(new { id });
+        }
+
+        public async Task<IActionResult> OnPostToggleWeekAsync(int planId, int weekNumber, string type)
+        {
+            if (weekNumber < 1 || weekNumber > 8)
+                return BadRequest();
+
+            var plan = await _context.ManagementPlans
+                .AsTracking()
+                .Include(p => p.Management)
+                .Include(p => p.Maintenance)
+                .FirstOrDefaultAsync(p => p.Id == planId);
+
+            if (plan == null || plan.Management == null)
+                return NotFound();
+
+            if (type == "planned")
+            {
+                if (plan.PlannedWeek == weekNumber)
+                    plan.PlannedWeek = null;
+                else
+                {
+                    plan.PlannedWeek = weekNumber;
+                    plan.PlannedDate = CalculateDateFromWeek(plan.Management.Year, plan.Management.Semester, weekNumber);
+                }
+            }
+            else if (type == "executed")
+            {
+                if (plan.ExecutedWeek == weekNumber)
+                {
+                    plan.ExecutedWeek = null;
+                }
+                else
+                {
+                    if (plan.PlannedWeek == null)
+                        return new JsonResult(new { success = false, error = "Debe planificar primero (Prev.) antes de marcar como ejecutado." });
+                    if (weekNumber < plan.PlannedWeek.Value)
+                        return new JsonResult(new { success = false, error = "La semana ejecutada no puede ser menor que la semana planeada." });
+
+                    plan.ExecutedWeek = weekNumber;
+                    if (plan.Maintenance != null)
+                        plan.Maintenance.ScheduledDate = CalculateDateFromWeek(plan.Management.Year, plan.Management.Semester, weekNumber);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return new JsonResult(new { success = true });
+        }
+
+        private DateTime CalculateDateFromWeek(int year, int semester, int weekNumber)
+        {
+            // Semester 1: June, July. Semester 2: December, January.
+            int month = semester == 1 ? (weekNumber <= 4 ? 6 : 7) : (weekNumber <= 4 ? 12 : 1);
+            int yearToUse = (semester == 2 && month == 1) ? year + 1 : year;
+            
+            // week 1-4 for the month.
+            int weekInMonth = weekNumber <= 4 ? weekNumber : weekNumber - 4;
+
+            // Find the Nth Monday of the month
+            DateTime firstDayOfMonth = new DateTime(yearToUse, month, 1);
+            int daysUntilMonday = ((int)DayOfWeek.Monday - (int)firstDayOfMonth.DayOfWeek + 7) % 7;
+            DateTime firstMonday = firstDayOfMonth.AddDays(daysUntilMonday);
+            
+            return firstMonday.AddDays((weekInMonth - 1) * 7);
         }
     }
 

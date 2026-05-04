@@ -68,6 +68,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<Equipment> Equipments { get; set; } = null!;
         public DbSet<EquipmentUnit> EquipmentUnits { get; set; } = null!;
         public DbSet<EquipmentStateHistory> EquipmentStateHistories { get; set; } = null!;
+        public DbSet<EquipmentNote> EquipmentNotes { get; set; } = null!;
         public DbSet<Request> Requests { get; set; } = null!;
         public DbSet<Maintenance> Maintenances { get; set; } = null!;
         public DbSet<Notification> Notifications { get; set; }
@@ -160,6 +161,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<EquipmentUnit>().HasOne(e => e.Management).WithMany().HasForeignKey(e => e.ManagementId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Departure>().HasOne(d => d.Management).WithMany().HasForeignKey(d => d.ManagementId).OnDelete(DeleteBehavior.Restrict);
 
+            // Cascade fixes
+            modelBuilder.Entity<ManagementPlan>().HasOne(p => p.Management).WithMany(m => m.ManagementPlans).HasForeignKey(p => p.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Request>().HasOne(r => r.Laboratory).WithMany().HasForeignKey(r => r.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Laboratory>().HasOne(l => l.City).WithMany().HasForeignKey(l => l.CityId).OnDelete(DeleteBehavior.SetNull);
+
             // Relationships
             modelBuilder.Entity<City>().HasOne(c => c.Country).WithMany(p => p.Cities).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Laboratory>().HasOne(l => l.Faculty).WithMany(f => f.Laboratories).OnDelete(DeleteBehavior.Restrict);
@@ -187,6 +193,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             modelBuilder.Entity<Laboratory>().HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Equipment>().HasMany(e => e.Notes).WithOne(n => n.Equipment).HasForeignKey(n => n.EquipmentId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.CreatedBy).WithMany().HasForeignKey(u => u.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Equipment).WithMany(e => e.Units).HasForeignKey(u => u.EquipmentId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Career).WithMany(c => c.EquipmentUnits).HasForeignKey(u => u.CareerId).OnDelete(DeleteBehavior.Restrict);

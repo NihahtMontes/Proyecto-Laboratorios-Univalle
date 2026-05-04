@@ -456,19 +456,58 @@
                             }
                             else if (Model.Step == 1)
                             {
-                                @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
-                                    Title = "Paso 1: L6 Verificación",
-                                    Description = "Equipos pendientes de inspección técnica inicial.",
-                                    EmptyMessage = "No hay equipos pendientes de verificación L-6.",
-                                    Plans = Model.Step1Plans,
-                                    StepIndex = 1,
-                                    ActionPage = "/Verifications/Create",
-                                    ActionLabel = "Vincular L6",
-                                    ActionClass = "btn-outline-primary",
-                                    StatusLabel = "Pendiente L-6",
-                                    LaboratoriesList = Model.LaboratoriesList,
-                                    BorderClass = "border-primary"
-                                })
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <div>
+                                        <h3 class="wizard-title text-dark mb-1" style="font-weight: 900; color: #0f172a !important;">Paso 1: L6 Verificación</h3>
+                                        <p class="wizard-subtitle mb-0" style="font-weight: 500; color: #64748b;">Equipos pendientes de inspección técnica inicial.</p>
+                                    </div>
+                                    <form method="get" class="d-flex align-items-center gap-3">
+                                        <input type="hidden" name="ShowWizard" value="true" />
+                                        <input type="hidden" name="Step" value="1" />
+                                        <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control shadow-sm" style="border-radius: 12px; background-color: #f8fafc; border: 1.5px solid #e2e8f0; font-weight: 600; color: #334155; padding: 8px 12px; height: 44px;" onchange="this.form.submit()">
+                                            <option value="">-- Selecciona Laboratorio --</option>
+                                        </select>
+                                    </form>
+                                </div>
+
+                                @if (!Model.Step1Plans.Any())
+                                {
+                                    <div class="text-center py-5 text-muted">
+                                        <i class="fas fa-clipboard-check fa-3x mb-3 d-block opacity-2"></i>
+                                        <span class="font-weight-bold">No hay equipos pendientes de verificación L-6.</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mb-4">
+                                        <span class="badge badge-primary px-3 py-2">@Model.Step1Plans.Count equipo(s) pendiente(s)</span>
+                                    </div>
+                                    <div class="step-stack">
+                                        @foreach (var item in Model.Step1Plans.Take(5))
+                                        {
+                                            <div class="chart-card d-flex justify-content-between align-items-center py-3 px-4 mb-3 premium-card border-start border-4 border-primary" style="background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                                                <div>
+                                                    <h4 class="font-bold text-slate-800 m-0" style="font-weight: 800; color: #1e293b;">@item.EquipmentUnit?.Equipment?.Name</h4>
+                                                    <span class="inventory-code text-muted small" style="font-weight: 600;">@item.EquipmentUnit?.InventoryNumber &middot; Pendiente L-6</span>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (Model.Step1Plans.Count > 5)
+                                        {
+                                            <div class="text-center text-muted small py-2">
+                                                ...y @(Model.Step1Plans.Count - 5) equipo(s) más
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="text-center mt-4">
+                                        <a asp-page="/Verifications/MassCreate"
+                                           asp-route-isWizard="true"
+                                           asp-route-labId="@(Model.SelectedLabId)"
+                                           class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-3">
+                                            <i class="fas fa-layer-group mr-2"></i> Verificación Masiva por Laboratorio
+                                        </a>
+                                    </div>
+                                }
                             }
                             else if (Model.Step == 2)
                             {

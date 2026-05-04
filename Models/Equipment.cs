@@ -101,5 +101,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual User? ModifiedBy { get; set; }
 
         public virtual ICollection<EquipmentUnit>? Units { get; set; }
+
+        public virtual ICollection<EquipmentNote>? Notes { get; set; }
     }
 }

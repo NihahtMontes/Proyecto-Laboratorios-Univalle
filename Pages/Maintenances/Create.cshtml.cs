@@ -35,6 +35,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             Input = new InputModel
             {
                 ScheduledDate = DateTime.UtcNow,
+                MaintenanceType = isWizard ? MaintenanceType.Preventivo : MaintenanceType.Otros,
                 CostDetails = new List<CostDetail>(),
                 Tasks = new List<MaintenanceTask>
                 {

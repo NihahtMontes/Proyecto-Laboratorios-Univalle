@@ -184,6 +184,25 @@
                         <div class="text-muted">@Model.Equipment.Description</div>
                     </div>
                 }
+
+                @if (Model.Equipment.Notes != null && Model.Equipment.Notes.Any())
+                {
+                    <div class="card border shadow-sm mt-4">
+                        <div class="card-header bg-white border-bottom-0 pt-3 px-4">
+                            <h6 class="font-weight-bold mb-0 text-dark">
+                                <i class="fas fa-sticky-note mr-2 text-info"></i>Notas del Fabricante / Prevención (@Model.Equipment.Notes.Count)
+                            </h6>
+                        </div>
+                        <div class="card-body pt-2 px-4">
+                            <ul class="mb-0 pl-3">
+                                @foreach (var note in Model.Equipment.Notes)
+                                {
+                                    <li class="mb-2 small text-dark">@note.Note</li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                }
             </div>
         </div>
     </div>
