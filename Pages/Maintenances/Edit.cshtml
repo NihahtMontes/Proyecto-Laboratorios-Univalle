@@ -4,10 +4,18 @@
 
 @{
     var categoryList = Html.GetEnumSelectList<CostCategory>();
+    bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+    int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 3);
+    int? prevPhaseId = (int?)ViewData["PreviousPhaseId"];
+    int? planId = (int?)ViewData["ManagementPlanId"];
 }
 
 <div class="row justify-content-center">
     <div class="col-lg-12">
+        @if (isWizard)
+        {
+            await Html.RenderPartialAsync("_WizardSteps", 3);
+        }
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
 
@@ -28,19 +36,58 @@
                     <input type="hidden" asp-for="Input.Id" />
 
                     <div class="bg-light p-4 rounded mb-4 border-left border-warning border-3">
-                        <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-microchip mr-2 text-warning"></i>Contexto del Servicio</h5>
-                        <div class="row">
-                            <div class="col-md-5">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small uppercase text-muted">Equipo Objetivo</label>
-                                    <select asp-for="Input.EquipmentUnitId" class="form-control custom-select" asp-items="ViewBag.EquipmentUnitId" required>
-                                        <option value="">-- Seleccione Equipo --</option>
-                                    </select>
-                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                        <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-university mr-2 text-warning"></i>Contexto de Ubicación y Servicio</h5>
+                        
+                        <!-- FILA 1: UBICACION (Locked if Wizard) -->
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">Facultad</label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control select2" asp-items="ViewBag.FacultyId" disabled></select>
+                                        <input type="hidden" asp-for="Input.FacultyId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId"></select>
+                                    }
                                 </div>
                             </div>
-                            <div class="col-md-3">
-                                <div class="form-group mb-3">
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-info text-uppercase">Laboratorio</label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control select2" asp-items="ViewBag.LaboratoryId" disabled></select>
+                                        <input type="hidden" asp-for="Input.LaboratoryId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" asp-items="ViewBag.LaboratoryId"></select>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-warning text-uppercase">Unidad Física</label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control select2" asp-items="ViewBag.EquipmentUnitId" disabled></select>
+                                        <input type="hidden" asp-for="Input.EquipmentUnitId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" asp-items="ViewBag.EquipmentUnitId"></select>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- FILA 2: EJECUCION -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-0">
                                     <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small uppercase text-muted">Tipo de Servicio</label>
                                     <select asp-for="Input.MaintenanceType" class="form-control custom-select" asp-items="ViewBag.MaintenanceType" required>
                                         <option value="">-- Categoría --</option>
@@ -48,8 +95,8 @@
                                     <span asp-validation-for="Input.MaintenanceType" class="text-danger small"></span>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="form-group mb-3">
+                            <div class="col-md-6">
+                                <div class="form-group mb-0">
                                     <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small uppercase text-muted">Técnico Responsable</label>
                                     <select asp-for="Input.TechnicianId" class="form-control custom-select" asp-items="ViewBag.TechnicianId">
                                         <option value="">-- Asignar Técnico --</option>
@@ -57,6 +104,42 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- TARJETA DE REFERENCIA L-7 -->
+                        @if (isWizard && prevPhaseId != null && planId != null)
+                        {
+                            <div class="form-group mt-4 mb-0">
+                                <label class="control-label font-weight-bold small text-uppercase text-muted">Requerimiento Técnico Relacionado (L-7)</label>
+                                <div class="p-2 rounded" style="background:#fffbeb; border: 1px solid #fef08a;">
+                                    <div class="d-flex align-items-center">
+                                        <div class="mr-3" style="color: #ca8a04;"><i class="fas fa-file-signature fa-lg"></i></div>
+                                        <div>
+                                            <h6 class="m-0 font-weight-bold" style="color: #a16207;">Solicitud L-7 Vinculada</h6>
+                                            <span class="small" style="color: #ca8a04;">ID: @prevPhaseId</span>
+                                        </div>
+                                        <a href="/Requests/Details?id=@prevPhaseId" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #ca8a04; border: 1px solid #fef08a;">
+                                            Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
+                                        </a>
+                                        @{
+                                            int prevPhaseEnumInt = 2; // TechnicalRequest = 2
+                                            int diff = currentPhaseInt - prevPhaseEnumInt;
+                                        }
+                                        @if (diff == 1)
+                                        {
+                                            <a href="/Requests/Edit?id=@prevPhaseId" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold shadow-sm ml-2">
+                                                <i class="fas fa-edit"></i> Editar L-7
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, @prevPhaseEnumInt, 'L-7 Solicitud Técnica', @currentPhaseInt)">
+                                                <i class="fas fa-undo"></i> Rehacer L-7
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
                     </div>
 
                     <div class="row">
@@ -244,7 +327,7 @@
 
                     <div class="form-actions text-right pb-4">
                         <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Cancelar</a>
-                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow font-weight-bold text-white">
+                        <button type="button" class="btn btn-info btn-rounded px-5 shadow font-weight-bold text-white" onclick="confirmUpdate()">
                             <i class="fas fa-sync-alt mr-1"></i> Actualizar Servicio
                         </button>
                     </div>
@@ -398,6 +481,38 @@
                 var $field = $(this);
                 if (!pattern.test($field.val())) $field.val($field.val().slice(0, -1));
             });
+        }
+
+        function confirmUpdate() {
+            Swal.fire({
+                title: '¿Confirmar actualización?',
+                text: 'Se actualizarán los datos técnicos y de costos del mantenimiento. Confirme para proceder.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, actualizar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#17a2b8',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#maintenanceForm').submit();
+                }
+            });
+        }
+        
+        @if (Model.Input.Status == MaintenanceStatus.Completed)
+        {
+            <text>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    title: 'Mantenimiento Finalizado',
+                    text: 'Este registro ya está completado. Editarlo sin permiso podría afectar el flujo (L-3 de Salida).',
+                    icon: 'warning',
+                    confirmButtonText: 'Entendido',
+                    confirmButtonColor: '#f59e0b'
+                });
+            });
+            </text>
         }
     </script>
     @{

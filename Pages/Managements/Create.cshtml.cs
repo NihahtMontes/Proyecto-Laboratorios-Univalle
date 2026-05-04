@@ -7,6 +7,7 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Services;
 using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Managements
@@ -16,11 +17,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IManagementContextService _managementContext;
 
-        public CreateModel(ApplicationDbContext context, UserManager<User> userManager)
+        public CreateModel(ApplicationDbContext context, UserManager<User> userManager, IManagementContextService managementContext)
         {
             _context = context;
             _userManager = userManager;
+            _managementContext = managementContext;
         }
 
         public IActionResult OnGet()
@@ -111,6 +114,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             _context.Managements.Add(management);
             await _context.SaveChangesAsync();
+            _managementContext.InvalidateCache();
 
             // Sincronización Automática: Cargar todos los equipos activos a la nueva ronda
             var activeUnits = await _context.EquipmentUnits
@@ -130,6 +134,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 });
             }
             await _context.SaveChangesAsync();
+            _managementContext.InvalidateCache();
 
             TempData.Success($"La Gestión {code} ha sido creada correctamente con todos los equipos activos.");
             return RedirectToPage("./Index");

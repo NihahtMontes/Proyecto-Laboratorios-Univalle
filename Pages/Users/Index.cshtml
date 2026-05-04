@@ -149,6 +149,32 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if (Model.UserList.TotalPages > 1)
+                        {
+                            <nav aria-label="Paginación Usuarios">
+                                <ul class="pagination justify-content-center">
+                                    @if (Model.UserList.HasPreviousPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.UserList.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
+                                        </li>
+                                    }
+                                    @for (var i = 1; i <= Model.UserList.TotalPages; i++)
+                                    {
+                                        <li class="page-item @(i == Model.UserList.PageIndex ? "active" : "")">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
+                                        </li>
+                                    }
+                                    @if (Model.UserList.HasNextPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.UserList.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
+                                        </li>
+                                    }
+                                </ul>
+                            </nav>
+                        }
                     </div>
                 </div>
 
@@ -183,6 +209,32 @@
                                 <h5 class="text-muted font-weight-bold">No se han registrado identidades en la base de datos base.</h5>
                                 <a asp-page="/Persons/Create" class="btn btn-link font-weight-bold">Registrar la primera persona</a>
                             </div>
+                        }
+
+                        @if (Model.PersonsList.TotalPages > 1)
+                        {
+                            <nav aria-label="Paginación Personas">
+                                <ul class="pagination justify-content-center">
+                                    @if (Model.PersonsList.HasPreviousPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.PersonsList.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
+                                        </li>
+                                    }
+                                    @for (var i = 1; i <= Model.PersonsList.TotalPages; i++)
+                                    {
+                                        <li class="page-item @(i == Model.PersonsList.PageIndex ? "active" : "")">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
+                                        </li>
+                                    }
+                                    @if (Model.PersonsList.HasNextPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.PersonsList.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
+                                        </li>
+                                    }
+                                </ul>
+                            </nav>
                         }
                     </div>
                 </div>

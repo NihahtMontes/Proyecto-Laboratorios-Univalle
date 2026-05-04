@@ -19,7 +19,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             _context = context;
         }
 
-        public IList<Proyecto_Laboratorios_Univalle.Models.Equipment> Equipment { get; set; } = default!;
+        public PaginatedList<Proyecto_Laboratorios_Univalle.Models.Equipment> Equipment { get; set; } = new PaginatedList<Proyecto_Laboratorios_Univalle.Models.Equipment>(new List<Proyecto_Laboratorios_Univalle.Models.Equipment>(), 0, 1, 20);
+
+        [BindProperty(SupportsGet = true)]
+        public int? PageIndex { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -32,7 +35,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         [BindProperty(SupportsGet = true)]
         public EquipmentCategory? SelectedCategory { get; set; }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             var equipmentQuery = _context.Equipments
                 .Include(e => e.City)
@@ -71,7 +74,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             }
 
             // C) ORDENAR ALFABÉTICAMENTE POR NOMBRE
-            Equipment = await equipmentQuery.OrderBy(e => e.Name).ToListAsync();
+            Equipment = await PaginatedList<Proyecto_Laboratorios_Univalle.Models.Equipment>.CreateAsync(equipmentQuery.OrderBy(e => e.Name), pageIndex ?? 1, 20);
         }
     }
 }

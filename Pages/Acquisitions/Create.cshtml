@@ -1,8 +1,19 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.CreateModel
 
+@{
+    ViewData["Title"] = "Solicitud de Adquisición (L-12)";
+    bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+}
+
 <div class="row justify-content-center">
     <div class="col-lg-11 col-xl-10">
+
+        @if (isWizard)
+        {
+            await Html.RenderPartialAsync("_WizardSteps", 6);
+        }
+
         <div class="card shadow-sm border-0 mt-3">
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
@@ -18,41 +29,89 @@
                 <form method="post" novalidate id="createAcquisitionForm">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
+                    <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
+                    <input type="hidden" asp-for="ManagementPlanId" />
+
+                    <!-- FILA 1: UBICACION (Layout 3 Columnas) -->
+                    <div class="bg-light p-4 rounded mb-4 border-left border-dark shadow-sm" style="border-left-width: 4px;">
+                        <h5 class="text-dark font-weight-bold mb-3 uppercase small"><i class="fas fa-map-marker-alt mr-2 text-dark"></i>Localización y Activo</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad <span class="text-danger">*</span></label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-dark" asp-items="ViewBag.FacultyId" id="facultySelect" disabled></select>
+                                        <input type="hidden" asp-for="Input.FacultyId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-dark" asp-items="ViewBag.FacultyId" id="facultySelect" required>
+                                            <option value="">-- Seleccione Facultad --</option>
+                                        </select>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio <span class="text-danger">*</span></label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-dark" asp-items="ViewBag.LaboratoryId" id="laboratorySelect" disabled></select>
+                                        <input type="hidden" asp-for="Input.LaboratoryId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-dark" asp-items="ViewBag.LaboratoryId" id="laboratorySelect" required disabled>
+                                            <option value="">-- Primero seleccione facultad --</option>
+                                        </select>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Unidad Física <span class="text-danger">*</span></label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-dark" asp-items="ViewBag.EquipmentUnitId" id="equipmentUnitSelect" disabled></select>
+                                        <input type="hidden" asp-for="Input.EquipmentUnitId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-dark" asp-items="ViewBag.EquipmentUnitId" id="equipmentUnitSelect" required disabled>
+                                            <option value="">-- Seleccione laboratorio --</option>
+                                        </select>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TARJETA DE REFERENCIA KARDEX / MANTENIMIENTO -->
+                    @if (isWizard && ViewData["LinkedMaintenanceId"] != null)
+                    {
+                        <div class="bg-light p-3 rounded mb-4 border-left border-info" style="border-left-width: 4px !important;">
+                            <label class="control-label font-weight-bold small text-uppercase text-muted">Antecedentes Históricos</label>
+                            <div class="p-2 rounded mt-2" style="background:#e8f4fd; border: 1px solid #bae6fd;">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3" style="color: #0284c7;"><i class="fas fa-clipboard-list fa-lg"></i></div>
+                                    <div>
+                                        <h6 class="m-0 font-weight-bold" style="color: #0369a1;">Kardex / Historial Previos (Fase 5)</h6>
+                                        <span class="small" style="color: #0284c7;">Ref L-8 Mantenimiento: @ViewData["LinkedMaintenanceId"]</span>
+                                    </div>
+                                    <a href="/Maintenances/Details?id=@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #0284c7; border: 1px solid #bae6fd;">
+                                        Ver Mantenimiento L-8 <i class="fas fa-external-link-alt ml-1"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 5, 'Kardex e Historial', 6)">
+                                        <i class="fas fa-undo"></i> Rehacer Kardex
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
                     <div class="row mt-4">
                         <div class="col-md-5 border-right">
-                            <h5 class="font-weight-bold text-info mb-3">
-                                <i class="fas fa-university mr-2"></i> Ubicación y Activo
-                            </h5>
-
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-muted text-uppercase">
-                                    Facultad <span class="text-danger">*</span>
-                                </label>
-                                <select asp-for="Input.FacultyId" class="form-control select2 custom-select border-info" id="facultySelect" asp-items="ViewBag.FacultiesList">
-                                    <option value="">-- Seleccionar Facultad --</option>
-                                </select>
-                                <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
-                            </div>
-
-                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-3 rounded shadow-sm">
-                                <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-info text-uppercase">
-                                    Laboratorio / Ambiente <span class="text-danger">*</span>
-                                </label>
-                                <select asp-for="Input.LaboratoryId" class="form-control select2 custom-select" id="laboratorySelect" disabled>
-                                    <option value="">-- Primero seleccione facultad --</option>
-                                </select>
-                                <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
-                            </div>
-
-                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-3 rounded shadow-sm">
-                                <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-warning text-uppercase">Unidad Física Afectada <span class="text-danger">*</span></label>
-                                <select asp-for="Input.EquipmentUnitId" class="form-control select2 custom-select" id="equipmentUnitSelect" disabled>
-                                    <option value="">-- Seleccione laboratorio --</option>
-                                </select>
-                                <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
-                            </div>
-
-                            <hr class="my-4" />
                             <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i> Datos Financieros</h6>
 
                             <div class="form-group mb-3">
@@ -70,9 +129,18 @@
 
                             <div class="form-group mb-3">
                                 <label asp-for="Input.MaintenanceId" class="control-label font-weight-bold small uppercase text-muted">Importar de Mantenimiento</label>
-                                <select asp-for="Input.MaintenanceId" class="form-control select2" id="maintenanceSelect" disabled>
-                                    <option value="">-- No referenciar mantenimiento --</option>
-                                </select>
+                                @if (isWizard && ViewData["LinkedMaintenanceId"] != null)
+                                {
+                                    <select asp-for="Input.MaintenanceId" class="form-control custom-select bg-light text-dark font-weight-bold" id="maintenanceSelect">
+                                        <option value="@ViewData["LinkedMaintenanceId"]" selected>Mnt #@ViewData["LinkedMaintenanceId"] (Seleccionado por Wizard)</option>
+                                    </select>
+                                }
+                                else
+                                {
+                                    <select asp-for="Input.MaintenanceId" class="form-control custom-select" id="maintenanceSelect" disabled>
+                                        <option value="">-- No referenciar mantenimiento --</option>
+                                    </select>
+                                }
                                 <small class="form-text text-muted italic">Mantenimientos vinculados a esta unidad.</small>
                             </div>
                         </div>
@@ -130,10 +198,20 @@
                     <hr class="mt-5" />
 
                     <div class="form-actions text-right mt-4">
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded mr-2 px-4 font-weight-bold">
-                            <i class="fas fa-times mr-1"></i> Cancelar
-                        </a>
-                        <button type="submit" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold py-2">
+                        @if (isWizard)
+                        {
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="6"
+                               class="btn btn-outline-secondary btn-rounded mr-2 px-4 font-weight-bold">
+                                <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded mr-2 px-4 font-weight-bold">
+                                <i class="fas fa-times mr-1"></i> Cancelar
+                            </a>
+                        }
+                        <button type="button" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold py-2" onclick="confirmAcquisition()">
                             <i class="fas fa-check-circle mr-1"></i> Crear Solicitud L-12
                         </button>
                     </div>
@@ -244,6 +322,28 @@
                         }
                     });
                 });
+                // Manejo de carga inicial en caso de edición o pre-selección del Wizard
+                let preMntId = $('#maintenanceSelect').val();
+                if (preMntId) {
+                    $('#maintenanceSelect').trigger('change');
+                }
             });
+
+            function confirmAcquisition() {
+                Swal.fire({
+                    title: '¿Confirmar Solicitud?',
+                    text: 'Se enviará la solicitud de adquisición (L-12) para aprobación financiera.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, crear solicitud',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $('#createAcquisitionForm').submit();
+                    }
+                });
+            }
         </script>
     }

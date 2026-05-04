@@ -471,6 +471,11 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("TypeClassification")
                         .HasColumnType("int");
 
@@ -611,6 +616,8 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("CareerId");
 
                     b.HasIndex("CreatedById");
+
+                    b.HasIndex("CurrentStatus");
 
                     b.HasIndex("EquipmentId");
 
@@ -846,6 +853,8 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("RequestId")
                         .IsUnique()
                         .HasFilter("[RequestId] IS NOT NULL");
+
+                    b.HasIndex("Status");
 
                     b.HasIndex("TechnicianId");
 
@@ -1094,6 +1103,10 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("RequestId");
 
                     b.HasIndex("VerificationId");
+
+                    b.HasIndex("CurrentPhase", "ManagementId");
+
+                    b.HasIndex("PlanStatus", "ManagementId");
 
                     b.ToTable("ManagementPlans");
                 });
@@ -1623,6 +1636,48 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.HasIndex("VerificationId");
 
                     b.ToTable("VerificationCheckResults");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.VerificationFault", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ModifiedById")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VerificationId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("ModifiedById");
+
+                    b.HasIndex("VerificationId");
+
+                    b.ToTable("VerificationFaults");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Extern", b =>
@@ -2287,6 +2342,29 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
                     b.Navigation("Verification");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.VerificationFault", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById");
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
+                        .WithMany()
+                        .HasForeignKey("ModifiedById");
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Verification", "Verification")
+                        .WithMany("Faults")
+                        .HasForeignKey("VerificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("ModifiedBy");
+
+                    b.Navigation("Verification");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Extern", b =>
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Person", null)
@@ -2379,6 +2457,8 @@ namespace Proyecto_Laboratorios_Univalle.Migrations
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Verification", b =>
                 {
                     b.Navigation("CheckResults");
+
+                    b.Navigation("Faults");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.VerificationCheckItem", b =>

@@ -18,8 +18,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
             _context = context;
         }
 
-        public IList<City> Cities { get; set; } = default!;
+        public PaginatedList<City> Cities { get; set; } = new PaginatedList<City>(new List<City>(), 0, 1, 20);
         public IList<Country> Countries { get; set; } = default!;
+
+        [BindProperty(SupportsGet = true)]
+        public int? PageIndex { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -27,7 +30,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
         [BindProperty(SupportsGet = true)]
         public GeneralStatus? StatusFilter { get; set; }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             // Loading Cities with filters
             var citiesQuery = _context.Cities
@@ -50,7 +53,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
                 citiesQuery = citiesQuery.Where(c => c.Status == StatusFilter.Value);
             }
 
-            Cities = await citiesQuery.OrderBy(c => c.Name).ToListAsync();
+            Cities = await PaginatedList<City>.CreateAsync(citiesQuery.OrderBy(c => c.Name), pageIndex ?? 1, 20);
 
             // Loading Countries for the Countries tab
             Countries = await _context.Countries

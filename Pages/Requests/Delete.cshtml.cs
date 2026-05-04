@@ -43,6 +43,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             var request = await _context.Requests
                 .Include(r => r.Maintenance)
+                .AsTracking()
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (request == null) return NotFound();
@@ -54,11 +55,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 return RedirectToPage("./Index");
             }
 
-            MaintenanceRequest = request;
-            _context.Requests.Remove(MaintenanceRequest);
+            // Soft delete: cancelar la solicitud en lugar de eliminar físicamente
+            request.Status = Models.Enums.RequestStatus.Cancelled;
             await _context.SaveChangesAsync();
             
-            TempData.Success($"La solicitud #{request.Id} ha sido eliminada correctamente.");
+            TempData.Success($"La solicitud #{request.Id} ha sido anulada correctamente.");
             return RedirectToPage("./Index");
         }
     }

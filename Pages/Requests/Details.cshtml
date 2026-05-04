@@ -15,22 +15,14 @@
 <div class="row">
     <div class="col-lg-8">
         
-        <div class="wizard-steps mb-4 d-flex justify-content-between position-relative d-print-none">
-            <div class="step-line"></div>
-            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L6 Verificación</span></div>
-            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L7 Solicitud</span></div>
-            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L8 Mantenimiento</span></div>
-            <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L3 Salida</span></div>
-            <div class="step-item active"><span class="step-number">5</span><span class="step-label">Kardex</span></div>
-            <div class="step-item"><span class="step-number">6</span><span class="step-label">Desembolso</span></div>
-        </div>
+        @{ await Html.RenderPartialAsync("_WizardSteps", 2); }
 
         <div class="card shadow-sm border-0 mb-4 printable-card">
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Paso 5: Actualización de Kardex</h4>
-                        <h6 class="card-subtitle text-muted small">Registro de intervenciones realizadas en esta gestión. (Expediente: #@Model.Request.Id)</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Paso 2: Solicitud Técnica (L-7)</h4>
+                        <h6 class="card-subtitle text-muted small">Detalle del requerimiento técnico registrado. (Expediente: #@Model.Request.Id)</h6>
                     </div>
                     <div class="ml-auto d-print-none">
                         <i class="fas fa-clipboard-check fa-2x text-info opacity-5"></i>
@@ -94,7 +86,7 @@
                                     @{
                                         var pIcon = Model.Request.Priority == RequestPriority.High ? "fa-bolt text-danger" : (Model.Request.Priority == RequestPriority.Medium ? "fa-info-circle text-warning" : "fa-check-circle text-info");
                                     }
-                                    <i class="fas @pIcon mr-2"></i> @Model.Request.Priority
+                                    <i class="fas @pIcon mr-2"></i> @Html.DisplayFor(m => m.Request.Priority)
                                 </div>
                             </div>
                         </div>
@@ -158,14 +150,15 @@
                             <i class="fas fa-check-double mr-2 text-info"></i> Resolución Administrativa
                         </h5>
                         @{
-                            var resClass = Model.Request.Status == RequestStatus.Approved ? "bg-light-success text-success border-success" : "bg-light-danger text-danger border-danger";
-                            var resIcon = Model.Request.Status == RequestStatus.Approved ? "fa-check-circle" : "fa-times-circle";
+                            bool isSuccess = Model.Request.Status == RequestStatus.Approved || Model.Request.Status == RequestStatus.Completed;
+                            var resClass = isSuccess ? "bg-light-success text-success border-success" : "bg-light-danger text-danger border-danger";
+                            var resIcon = isSuccess ? "fa-check-circle" : "fa-times-circle";
                         }
                         <div class="p-4 @resClass rounded border-left border-3 shadow-none">
                             <div class="d-flex align-items-center">
                                 <i class="fas @resIcon fa-2x mr-3"></i>
                                 <div>
-                                    <h6 class="mb-0 font-weight-bold uppercase">Estado: @Model.Request.Status</h6>
+                                    <h6 class="mb-0 font-weight-bold uppercase">Estado: @Html.DisplayFor(m => m.Request.Status)</h6>
                                     <small class="opacity-7">Evaluado el @Model.Request.ApprovalDate?.ToString("dd/MM/yyyy HH:mm")</small>
                                 </div>
                             </div>
@@ -209,9 +202,9 @@
                 <div class="mb-0">
                     <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estatus Actual</label>
                     @{
-                        var sBadge = Model.Request.Status == RequestStatus.Approved ? "badge-success" : (Model.Request.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
+                        var sBadge = Model.Request.Status == RequestStatus.Approved || Model.Request.Status == RequestStatus.Completed ? "badge-success" : (Model.Request.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
                     }
-                    <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold">@Model.Request.Status</span>
+                    <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold">@Html.DisplayFor(m => m.Request.Status)</span>
                 </div>
             </div>
         </div>
@@ -239,9 +232,9 @@
         </div>
 
         <div class="form-actions mt-4">
-            <button type="button" class="btn btn-primary btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3" onclick="advanceToStep6()">
-                Avanzar a Desembolso <i class="fas fa-arrow-right ml-2"></i>
-            </button>
+            <a asp-page="./Edit" asp-route-id="@Model.Request.Id" class="btn btn-primary btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3">
+                <i class="fas fa-edit mr-2"></i> Editar Registro
+            </a>
 
             <a asp-page="./Details" asp-page-handler="DescargarReporte" asp-route-id="@Model.Request.Id" 
                class="btn btn-outline-success btn-block btn-rounded font-weight-bold py-2 mb-3 btn-download-report" 
@@ -249,9 +242,13 @@
                 <i class="fas fa-file-excel mr-2"></i> <span class="download-text">Exportar Excel</span>
             </a>
 
-            <button type="button" class="btn btn-outline-info btn-block btn-rounded font-weight-bold py-2 mb-4" onclick="window.print()">
-                <i class="fas fa-print mr-2"></i> Imprimir Kardex
+            <button type="button" class="btn btn-outline-info btn-block btn-rounded font-weight-bold py-2 mb-3" onclick="window.print()">
+                <i class="fas fa-print mr-2"></i> Imprimir Vista
             </button>
+
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
+                <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+            </a>
         </div>
     </div>
 </div>

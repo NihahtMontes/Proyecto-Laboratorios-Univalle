@@ -56,13 +56,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             var maintenance = await _context.Maintenances
                 .Include(m => m.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
+                .AsTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
                 
             if (maintenance != null)
             {
                 var equipmentName = maintenance.EquipmentUnit?.Equipment?.Name;
                 
-                _context.Maintenances.Remove(maintenance);
+                // Soft delete: cancelar el mantenimiento en lugar de eliminar físicamente
+                maintenance.Status = Models.Enums.MaintenanceStatus.Cancelled;
                 await _context.SaveChangesAsync();
                 
                 TempData.Success(NotificationHelper.Maintenances.Deleted(equipmentName));

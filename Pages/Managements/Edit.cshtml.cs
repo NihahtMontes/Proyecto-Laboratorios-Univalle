@@ -7,6 +7,7 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Services;
 using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Managements
@@ -16,11 +17,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IManagementContextService _managementContext;
 
-        public EditModel(ApplicationDbContext context, UserManager<User> userManager)
+        public EditModel(ApplicationDbContext context, UserManager<User> userManager, IManagementContextService managementContext)
         {
             _context = context;
             _userManager = userManager;
+            _managementContext = managementContext;
         }
 
         [BindProperty]
@@ -116,6 +119,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             try
             {
                 await _context.SaveChangesAsync();
+                _managementContext.InvalidateCache();
             }
             catch (DbUpdateConcurrencyException)
             {

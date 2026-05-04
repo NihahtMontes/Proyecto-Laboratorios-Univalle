@@ -103,6 +103,32 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if (Model.Departures.TotalPages > 1)
+                {
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.Departures.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Departures.PageIndex - 1)">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.Departures.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Departures.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i">@i</a>
+                                </li>
+                            }
+                            @if (Model.Departures.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Departures.PageIndex + 1)">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
             </div>
         </div>
     </div>

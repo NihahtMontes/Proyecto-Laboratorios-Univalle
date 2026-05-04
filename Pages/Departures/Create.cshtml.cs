@@ -75,6 +75,30 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             ManagementPlanId = managementPlanId;
             ViewData["IsWizard"] = isWizard;
 
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans
+                    .Include(p => p.Maintenance)
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+
+                if (plan?.Maintenance?.TechnicianId != null)
+                {
+                    Input.BorrowerId = plan.Maintenance.TechnicianId.Value;
+                    ViewData["IsLockedBorrower"] = true;
+                }
+
+                // Exponer IDs de fases previas para la sección de referencia vinculada
+                if (plan?.MaintenanceId != null)
+                {
+                    ViewData["LinkedMaintenanceId"] = plan.MaintenanceId;
+                }
+                
+                if (!equipmentUnitId.HasValue && plan?.EquipmentUnitId != null)
+                {
+                    equipmentUnitId = plan.EquipmentUnitId;
+                }
+            }
+
             if (equipmentUnitId.HasValue)
             {
                 var unit = await _context.EquipmentUnits
@@ -86,11 +110,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     Input.EquipmentUnitId = unit.Id;
                     Input.LaboratoryId = unit.LaboratoryId ?? 0;
                     Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
-
-                    if (isWizard)
-                    {
-                        Input.Type = DepartureType.ExternalMaintenance;
-                    }
                 }
             }
 
@@ -140,11 +159,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
             try
             {
+                // Inferir DepartureType desde Person
+                var borrower = await _context.People.FindAsync(Input.BorrowerId);
+                var inferredType = (borrower is Extern || borrower?.Category == PersonCategory.Externo) 
+                    ? DepartureType.ExternalMaintenance 
+                    : DepartureType.InternalLoan;
+
                 var departure = new Departure
                 {
                     EquipmentUnitId = Input.EquipmentUnitId,
                     BorrowerId = Input.BorrowerId,
-                    Type = Input.Type,
+                    Type = inferredType,
                     DepartureDate = Input.DepartureDate,
                     EstimatedReturnDate = Input.EstimatedReturnDate,
                     DepartureObservations = Input.DepartureObservations?.Trim(),

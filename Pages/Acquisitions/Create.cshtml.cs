@@ -4,33 +4,34 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 {
-    [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
+    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
     public class CreateModel : PageModel
     {
-        private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IManagementContextService _managementService;
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public CreateModel(ApplicationDbContext context, UserManager<User> userManager, IManagementContextService managementService)
         {
             _context = context;
             _userManager = userManager;
-        }
-
-        public async Task<IActionResult> OnGetAsync()
-        {
-            await LoadLists();
-            return Page();
+            _managementService = managementService;
         }
 
         [BindProperty]
         public InputModel Input { get; set; } = new();
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementPlanId { get; set; }
 
         public class InputModel
         {
@@ -42,21 +43,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             [Display(Name = "Laboratorio")]
             public int LaboratoryId { get; set; }
 
-            [Required(ErrorMessage = "La unidad física es obligatoria")]
-            [Display(Name = "Unidad Física (Activo)")]
+            [Required(ErrorMessage = "La unidad fÃ­sica es obligatoria")]
+            [Display(Name = "Unidad FÃ­sica")]
             public int EquipmentUnitId { get; set; }
 
-            [Required(ErrorMessage = "La justificación es obligatoria")]
-            [Display(Name = "Justificación del Pedido")]
-            [StringLength(1000, ErrorMessage = "La justificación no puede superar los 1000 caracteres")]
+            [Required(ErrorMessage = "La justificaciÃ³n es obligatoria")]
+            [Display(Name = "JustificaciÃ³n del Requerimiento")]
+            [StringLength(1000, ErrorMessage = "La justificaciÃ³n no puede superar los 1000 caracteres")]
             public string Description { get; set; } = string.Empty;
 
-            [Display(Name = "Observaciones Adicionales")]
+            [Display(Name = "Especificaciones / Observaciones (Opcional)")]
             [StringLength(500, ErrorMessage = "Las observaciones no pueden superar los 500 caracteres")]
             public string? Observations { get; set; }
 
-            [Required(ErrorMessage = "El código de inversión es obligatorio")]
-            [Display(Name = "Código de Inversión")]
+            [Required(ErrorMessage = "El cÃ³digo de inversiÃ³n es obligatorio")]
+            [Display(Name = "CÃ³digo de InversiÃ³n")]
             [StringLength(50)]
             public string InvestmentCode { get; set; } = string.Empty;
 
@@ -69,7 +70,39 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             public int? MaintenanceId { get; set; }
         }
 
-        // AJAX Handler: Get laboratories by faculty
+        public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false, int? managementPlanId = null)
+        {
+            ManagementPlanId = managementPlanId;
+            ViewData["IsWizard"] = isWizard;
+
+            if (equipmentUnitId.HasValue)
+            {
+                var unit = await _context.EquipmentUnits
+                    .Include(u => u.Laboratory)
+                    .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
+
+                if (unit != null)
+                {
+                    Input.EquipmentUnitId = unit.Id;
+                    Input.LaboratoryId = unit.LaboratoryId ?? 0;
+                    Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
+                }
+            }
+
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                if (plan != null)
+                {
+                    if (plan.DepartureId.HasValue) ViewData["LinkedDepartureId"] = plan.DepartureId.Value;
+                    if (plan.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = plan.MaintenanceId.Value;
+                }
+            }
+
+            await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+            return Page();
+        }
+
         public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
         {
             var labs = await _context.Laboratories
@@ -80,7 +113,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             return new JsonResult(labs);
         }
 
-        // AJAX Handler: Get units by laboratory
         public async Task<JsonResult> OnGetUnitsByLabAsync(int laboratoryId)
         {
             var units = await _context.EquipmentUnits
@@ -103,7 +135,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             return new JsonResult(result);
         }
 
-        // AJAX Handler: Get pending maintenances for a specific unit
         public async Task<JsonResult> OnGetMaintenancesByUnitAsync(int unitId)
         {
             var maintenances = await _context.Maintenances
@@ -149,25 +180,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             return new JsonResult(new { code = suggestedCode });
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
             if (!ModelState.IsValid)
             {
-                await LoadLists();
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
 
             var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
             if (unit == null)
             {
-                ModelState.AddModelError("Input.EquipmentUnitId", "La unidad seleccionada no es válida.");
-                await LoadLists();
+                ModelState.AddModelError("Input.EquipmentUnitId", "La unidad seleccionada no es vÃ¡lida.");
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
 
             var request = new Request
             {
-                Type = RequestType.Purchasing, // FIJAMOS EL TIPO AQUÍ
+                Type = RequestType.Purchasing,
                 LaboratoryId = Input.LaboratoryId,
                 EquipmentId = unit.EquipmentId,
                 EquipmentUnitId = unit.Id,
@@ -175,12 +206,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 Observations = Input.Observations?.Clean(),
                 InvestmentCode = Input.InvestmentCode.Clean(),
                 CostCenter = Input.CostCenter.Clean(),
-                Priority = RequestPriority.Medium, // Por defecto para compras
+                Priority = RequestPriority.Medium,
                 Status = RequestStatus.Pending,
                 CreatedDate = DateTime.UtcNow
             };
 
-            // Vincular ítems importados del mantenimiento si se seleccionó uno
             if (Input.MaintenanceId.HasValue)
             {
                 var maintenanceCosts = await _context.CostDetails
@@ -204,16 +234,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             _context.Requests.Add(request);
             await _context.SaveChangesAsync();
 
-            // ====================================================================
-            // AÑADIDO: DISPARADOR DE NOTIFICACIONES PARA ADQUISICIÓN
-            // ====================================================================
             if (currentUser != null)
             {
                 var notification = new Notification
                 {
                     UserId = currentUser.Id,
-                    Title = "Adquisición Solicitada",
-                    Message = $"Se registró correctamente tu solicitud de compra para la unidad {unit.InventoryNumber}.",
+                    Title = "AdquisiciÃ³n Solicitada",
+                    Message = $"Se registrÃ³ correctamente tu solicitud de compra para la unidad {unit.InventoryNumber}.",
                     ActionUrl = $"/Requests/Details?id={request.Id}",
                     IconClass = "fas fa-shopping-cart text-success",
                     IsRead = false,
@@ -223,22 +250,43 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
             }
-            // ====================================================================
 
-            TempData.Success($"Solicitud de Adquisición para '{unit.InventoryNumber}' registrada exitosamente.");
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                if (plan != null)
+                {
+                    plan.AcquisitionRequestId = request.Id;
+                    plan.CurrentPhase = WizardPhase.Disbursement; 
+                    plan.CurrentState = WizardEquipmentState.Completed;
+                    await _context.SaveChangesAsync();
+
+                    if (isWizard)
+                    {
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 7, SelectedLabId = Input.LaboratoryId });
+                    }
+                }
+            }
+
+            TempData.Success($"Solicitud de AdquisiciÃ³n para '{unit.InventoryNumber}' registrada exitosamente.");
             return RedirectToPage("./Index");
         }
 
-        private async Task LoadLists()
+        private async Task LoadLists(int facultyId = 0, int laboratoryId = 0, int equipmentUnitId = 0)
         {
-            // CAMBIO: Renombramos ViewData para evitar colisión con Input.FacultyId
-            ViewData["FacultiesList"] = new SelectList(await _context.Faculties
+            ViewData["FacultyId"] = new SelectList(await _context.Faculties
                 .Where(f => f.Status == GeneralStatus.Activo)
-                .OrderBy(f => f.Name)
-                .ToListAsync(), "Id", "Name");
+                .OrderBy(f => f.Name).ToListAsync(), "Id", "Name", facultyId);
 
-            ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
-            ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            if (facultyId > 0)
+                ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == facultyId).ToListAsync(), "Id", "Name", laboratoryId);
+            else
+                ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+
+            if (laboratoryId > 0)
+                ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == laboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", equipmentUnitId);
+            else
+                ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
         }
     }
 }

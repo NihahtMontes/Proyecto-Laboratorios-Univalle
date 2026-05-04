@@ -24,7 +24,7 @@
                             };
                         }
                         <span class="badge badge-pill @statusClass px-3 py-2">
-                            @Model.Maintenance.Status
+                            @Html.DisplayFor(m => m.Maintenance.Status)
                         </span>
                     </div>
                 </div>
@@ -42,7 +42,7 @@
 
                         <div class="mb-3">
                             <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Tipo de Mantenimiento</label>
-                                <p class="text-dark">@Model.Maintenance.MaintenanceType</p>
+                                <p class="text-dark">@Html.DisplayFor(m => m.Maintenance.MaintenanceType)</p>
                         </div>
 
                         <div class="mb-3">
@@ -87,7 +87,7 @@
                         <p class="text-dark font-weight-bold">
                             @if (Model.Maintenance.SatisfactionLevel.HasValue)
                             {
-                                <i class="fas fa-star text-warning mr-1"></i> @Model.Maintenance.SatisfactionLevel
+                                <i class="fas fa-star text-warning mr-1"></i> @Html.DisplayFor(m => m.Maintenance.SatisfactionLevel)
                             }
                             else
                             {

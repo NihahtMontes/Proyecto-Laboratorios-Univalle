@@ -18,8 +18,8 @@ public class IndexModel : PageModel
         _context = context;
     }
 
-    public IList<Person> PersonsList { get; set; } = default!;
-    public IList<User> UserList { get; set; } = default!;
+    public PaginatedList<Person> PersonsList { get; set; } = default!;
+    public PaginatedList<User> UserList { get; set; } = default!;
 
     [BindProperty(SupportsGet = true)]
     public string? SearchTerm { get; set; }
@@ -27,21 +27,18 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public GeneralStatus? StatusFilter { get; set; }
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(int? pageIndex)
     {
-        // 1. Load users for "Cuentas de Acceso" tab
+        // 1. Query base de Usuarios (Funciona porque User tiene FirstName y IdentityCard)
         var userQuery = _context.Users
             .Include(u => u.CreatedBy)
-            .Include(u => u.ModifiedBy)
             .AsNoTracking();
 
-        // 2. Load persons for "Directorio de Personal" tab
+        // 2. Query base de Directorio (Personas base)
         var personQuery = _context.People
             .Include(p => p.CreatedBy)
-            .Include(p => p.ModifiedBy)
             .AsNoTracking();
 
-        // Apply filters
         if (StatusFilter.HasValue)
         {
             userQuery = userQuery.Where(u => u.Status == StatusFilter.Value);
@@ -49,7 +46,6 @@ public class IndexModel : PageModel
         }
         else
         {
-            // By default exclude deleted
             userQuery = userQuery.Where(u => u.Status != GeneralStatus.Eliminado);
             personQuery = personQuery.Where(p => p.Status != GeneralStatus.Eliminado);
         }
@@ -57,16 +53,26 @@ public class IndexModel : PageModel
         if (!string.IsNullOrEmpty(SearchTerm))
         {
             var term = SearchTerm.Trim().ToLower();
-            userQuery = userQuery.Where(u => u.FirstName.ToLower().Contains(term) || 
-                                           u.LastName.ToLower().Contains(term) || 
-                                           u.UserName!.ToLower().Contains(term) ||
-                                           (u.IdentityCard != null && u.IdentityCard.Contains(term)));
 
-            personQuery = personQuery.Where(p => (p.Email != null && p.Email.Contains(term)) || 
-                                              p.Id.ToString() == term);
+            // Búsqueda en Usuarios (OK)
+            userQuery = userQuery.Where(u =>
+                u.FirstName.ToLower().Contains(term) ||
+                u.LastName.ToLower().Contains(term) ||
+                u.UserName.ToLower().Contains(term) ||
+                u.IdentityCard.Contains(term));
+
+            // CORRECCIÓN: Búsqueda en Personas (Solo por campos existentes en Person.cs)
+            personQuery = personQuery.Where(p =>
+                (p.Email != null && p.Email.ToLower().Contains(term)) ||
+                p.Id.ToString() == term);
         }
 
-        UserList = await userQuery.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ToListAsync();
-        PersonsList = await personQuery.OrderByDescending(p => p.Id).ToListAsync();
+        UserList = await PaginatedList<User>.CreateAsync(
+            userQuery.OrderBy(u => u.LastName).ThenBy(u => u.FirstName),
+            pageIndex ?? 1, 10);
+
+        PersonsList = await PaginatedList<Person>.CreateAsync(
+            personQuery.OrderByDescending(p => p.Id),
+            pageIndex ?? 1, 10);
     }
 }

@@ -46,20 +46,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             var equipment = await _context.Equipments
                 .Include(e => e.Units)
+                .AsTracking()
                 .FirstOrDefaultAsync(e => e.Id == id);
 
             if (equipment == null) return NotFound();
 
-            if (equipment.Units != null && equipment.Units.Any(u => u.CurrentStatus != EquipmentStatus.Deleted))
+            // Soft-delete: marcar como eliminado (no borrar físicamente)
+            equipment.Status = GeneralStatus.Eliminado;
+
+            // Cascada: soft-delete de unidades asociadas activas
+            if (equipment.Units != null)
             {
-                TempData.Error($"No se puede eliminar '{equipment.Name}' porque tiene unidades activas asociadas. Elimine o dé de baja las unidades primero.");
-                return RedirectToPage("./Details", new { id = equipment.Id });
+                foreach (var unit in equipment.Units.Where(u => u.CurrentStatus != EquipmentStatus.Deleted))
+                {
+                    unit.CurrentStatus = EquipmentStatus.Deleted;
+                }
             }
 
-            _context.Equipments.Remove(equipment);
             await _context.SaveChangesAsync();
 
-            TempData.Success($"La definición de equipo '{equipment.Name}' ha sido eliminada correctamente.");
+            TempData.Success($"La definición de equipo '{equipment.Name}' ha sido marcada como eliminada.");
             return RedirectToPage("./Index");
         }
     }

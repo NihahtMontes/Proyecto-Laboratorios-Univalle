@@ -22,7 +22,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             _reportingService = reportingService;
         }
 
-        public IList<Verification> Verifications { get; set; } = default!;
+        public PaginatedList<Verification> Verifications { get; set; } = default!;
+
+        public int PageSize { get; set; } = 20;
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -43,7 +45,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public Microsoft.AspNetCore.Mvc.Rendering.SelectList LaboratoryList { get; set; } = default!;
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             IQueryable<Verification> verificationIQ = _context.Verifications
                 .Include(v => v.CreatedBy)
@@ -63,7 +65,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 verificationIQ = verificationIQ.Where(v => v.EquipmentUnit!.LaboratoryId == FilterLaboratoryId.Value);
             }
 
-            Verifications = await verificationIQ.OrderByDescending(v => v.Date).ToListAsync();
+            Verifications = await PaginatedList<Verification>.CreateAsync(
+                verificationIQ.OrderByDescending(v => v.Date), pageIndex ?? 1, PageSize);
 
             // Cargar lista de laboratorios para el reporte
             var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();
@@ -125,34 +128,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             }
         }
 
-        public async Task<IActionResult> OnGetExportExcelAsync()
-        {
-            try
-            {
-                IQueryable<Verification> verificationIQ = _context.Verifications
-                    .Include(v => v.CreatedBy)
-                    .Include(v => v.EquipmentUnit)
-                        .ThenInclude(eu => eu != null ? eu.Equipment : null)
-                    .Include(v => v.ModifiedBy);
 
-                if (!string.IsNullOrEmpty(SearchTerm))
-                {
-                    var term = SearchTerm.Trim().ToLower();
-                    verificationIQ = verificationIQ.Where(s => s.EquipmentUnit!.Equipment!.Name.ToLower().Contains(term)
-                                           || s.EquipmentUnit!.InventoryNumber.ToLower().Contains(term));
-                }
 
-                var list = await verificationIQ.OrderByDescending(v => v.Date).ToListAsync();
-                var excelBytes = _reportingService.GenerateVerificationsExcel(list);
-
-                return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Verificaciones_{DateTime.UtcNow:yyyyMMdd}.xlsx");
-            }
-            catch (Exception ex)
-            {
-                TempData.Error($"Error al exportar listado: {ex.Message}");
-                return RedirectToPage();
-            }
-        }
     }
 }

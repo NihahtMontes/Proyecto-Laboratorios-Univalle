@@ -25,9 +25,15 @@
     <link href="~/dist/css/style.min.css" rel="stylesheet">
 
     <style>
-      /* 1. Fondo de pantalla - Cocina Industrial / Laboratorio de Gastronomía */
+        /* EVITAR SCROLL GLOBAL */
+        body { 
+            overflow: hidden !important; 
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 1. Fondo de pantalla - Cocina Industrial / Laboratorio de Gastronomía */
         .auth-wrapper {
-            /* Imagen sugerente de laboratorio de gastronomía moderno */
             background-image: url('https://images.unsplash.com/photo-1600565193348-f74bd3c7ccdf?q=80&w=2070&auto=format&fit=crop');
             background-repeat: no-repeat;
             background-position: center center;
@@ -40,8 +46,10 @@
             align-items: center;
             margin: 0;
             padding: 0;
+            overflow: hidden !important; /* Asegura que el contenedor no genere scroll */
         }
-        /* Overlay oscuro para enfocar la tarjeta y que las letras se lean bien */
+
+        /* Overlay oscuro para enfocar la tarjeta */
         .auth-wrapper::before {
             content: '';
             position: absolute;
@@ -49,7 +57,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(15, 23, 42, 0.65); /* Tono Navy oscuro translúcido */
+            background: rgba(15, 23, 42, 0.65);
             z-index: 1;
         }
 
@@ -59,7 +67,7 @@
             z-index: 2;
             background: #ffffff;
             width: 950px !important; 
-            max-width: 100% !important;
+            max-width: 95% !important;
             min-height: 550px;
             display: flex !important;
             flex-direction: row !important;
@@ -92,7 +100,6 @@
             width: 70px;
             margin-bottom: 25px;
             filter: brightness(0) invert(1);
-            drop-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
         .brand-title {
@@ -195,7 +202,6 @@
             border: none;
             color: #94a3b8;
             padding: 1.2rem 1.2rem;
-            transition: color 0.3s;
         }
 
         .input-group-custom:focus-within .input-group-text i {
@@ -223,7 +229,6 @@
         .btn-login-glow:hover {
             transform: translateY(-3px);
             box-shadow: 0 15px 25px -5px rgba(37, 99, 235, 0.7);
-            background: linear-gradient(to right, #1d4ed8, #1e3a8a);
         }
 
         /* Checkbox */
@@ -251,7 +256,6 @@
             user-select: none;
         }
 
-        /* Responsivo (Celulares) */
         @@media (max-width: 768px) {
             .auth-box {
                 flex-direction: column !important;
@@ -259,103 +263,79 @@
                 max-width: 450px !important;
                 min-height: auto;
             }
-            .auth-left {
-                width: 100% !important;
-                padding: 40px 30px;
-                border-right: none;
-            }
-            .auth-right {
-                width: 100% !important;
-                padding: 50px 30px;
-            }
+            .auth-left { width: 100% !important; }
+            .auth-right { width: 100% !important; }
         }
     </style>
 </head>
 <body>
     <div class="main-wrapper">
-        <!-- Preloader -->
         <div class="preloader">
             <div class="lds-ripple"><div class="lds-pos"></div><div class="lds-pos"></div></div>
         </div>
 
-        <!-- Main Container -->
         <div class="auth-wrapper">
-            <!-- Tarjeta Split -->
             <div class="auth-box">
-                
-                <!-- LADO IZQUIERDO: Branding Azul Profundo -->
+                <!-- Branding -->
                 <div class="auth-left">
                     <img src="~/assets/images/logo-icon.png" alt="logo Univalle" />
                     <h3 class="brand-title">Univalle</h3>
                     <p class="brand-subtitle">Gestión de<br>Gastronomía</p>
                 </div>
 
-                <!-- LADO DERECHO: Formulario -->
+                <!-- Form -->
                 <div class="auth-right">
                     <div id="loginform">
-                        
                         <div class="mb-4">
                             <h3 class="form-title">Ingreso<br>al Sistema</h3>
                             <p class="form-subtitle">Portal de Gestión Administrativa de Laboratorios</p>
                         </div>
 
-                        <!-- FORMULARIO: Lógica 100% intacta -->
                         <form id="login-form" method="post">
+                            <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded text-sm mb-3" role="alert"></div>
 
-                            <!-- Validation Summary -->
-                            <div asp-validation-summary="ModelOnly" class="alert alert-danger rounded text-sm mb-3" style="padding: 12px; font-size: 0.85rem; font-weight:600;" role="alert"></div>
-
-                            <!-- Username Input -->
                             <div>
                                 <label asp-for="Input.UserName" class="form-label-custom">Usuario o Correo</label>
                                 <div class="input-group-custom">
                                     <div class="input-group-text"><i class="ti-user"></i></div>
                                     <input asp-for="Input.UserName" class="form-control" placeholder="Ej: admin" required autofocus>
                                 </div>
-                                <span asp-validation-for="Input.UserName" class="text-danger small mt-1 d-block" style="font-size: 0.8rem; font-weight:600;"></span>
+                                <span asp-validation-for="Input.UserName" class="text-danger small mt-1 d-block"></span>
                             </div>
 
-                            <!-- Password Input -->
                             <div>
                                 <label asp-for="Input.Password" class="form-label-custom">Contraseña</label>
                                 <div class="input-group-custom">
                                     <div class="input-group-text"><i class="ti-lock"></i></div>
                                     <input asp-for="Input.Password" type="password" class="form-control" placeholder="••••••••" required>
                                 </div>
-                                <span asp-validation-for="Input.Password" class="text-danger small mt-1 d-block" style="font-size: 0.8rem; font-weight:600;"></span>
+                                <span asp-validation-for="Input.Password" class="text-danger small mt-1 d-block"></span>
                             </div>
 
-                            <!-- Remember Me Checkbox -->
+                            <!-- "Recordarme" vinculado correctamente -->
                             <div class="custom-checkbox-container">
                                 <input asp-for="Input.RememberMe" type="checkbox" id="customCheck1">
                                 <label for="customCheck1">Recordarme en este equipo</label>
                             </div>
 
-                            <!-- Login Button -->
                             <div>
-                                <button class="btn-login-glow" type="submit">
-                                    INICIAR SESIÓN
-                                </button>
+                                <button class="btn-login-glow" type="submit">INICIAR SESIÓN</button>
                             </div>
 
-                            <!-- Footer Text -->
                             <div class="mt-5 text-center">
-                                <small class="text-muted" style="font-size: 0.8rem; font-weight: 500;">
+                                <small class="text-muted">
                                     © @DateTime.UtcNow.Year Universidad del Valle <br> Sistema de Gestión de Laboratorios
                                 </small>
                             </div>
                         </form>
-
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="~/assets/libs/jquery/dist/jquery.min.js"></script>
     <script src="~/assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
-
     <script>
         $(function() {
             "use strict";

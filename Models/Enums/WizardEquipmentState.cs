@@ -13,6 +13,7 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         InMaintenance = 5,          // L8 en curso
         AwaitingDeparture = 6,      // Terminado L8, requiere Salida L3
         AwaitingKardex = 7,         // Terminado L3, falta actualizar Kardex
-        Completed = 8               // Llegó a Desembolso y cerró
+        AwaitingDisbursement = 8,   // Requiere Adquisición/Desembolso
+        Completed = 9               // Llegó a Desembolso y cerró
     }
 }
