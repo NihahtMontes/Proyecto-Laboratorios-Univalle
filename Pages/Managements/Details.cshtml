@@ -3,7 +3,7 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using System.Text.Json
 @{
-    ViewData["Title"] = $"Gestión {Model.Management.Code}";
+    ViewData["Title"] = $"Mantenimiento Preventivo {Model.Management.Code}";
     var isManagementActive = Model.Management.Status == ManagementStatus.Active;
     // Variables L-48 (usadas solo cuando ActiveTab == l48, declaradas aqui para evitar RZ1010)
     var l48Sem      = Model.Management.Semester;
@@ -60,7 +60,7 @@
     <!-- CABECERA DE LA GESTIÓN -->
     <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
         <div>
-            <h1 class="wizard-title mb-1">Gestión @Model.Management.Code</h1>
+            <h1 class="wizard-title mb-1">Mantenimiento Preventivo @Model.Management.Code</h1>
             <p class="wizard-subtitle">
                 @(string.IsNullOrEmpty(Model.Management.Description)
                     ? "Resumen de indicadores para este período administrativo."

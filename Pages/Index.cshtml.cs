@@ -150,7 +150,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         p.PlanStatus,
                         p.CurrentPhase,
                         p.CurrentState,
-                        p.PlannedDate
+                        p.PlannedDate,
+                        p.VerificationId
                     }).ToListAsync();
 
                     TotalActivos = allStats.Count;
@@ -167,7 +168,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     CountBuenos = allStats.Count(p =>
                         p.CurrentState == WizardEquipmentState.VerifiedGood);
 
-                    CountL6 = allStats.Count(p => p.CurrentPhase == WizardPhase.Verification);
+                    CountL6 = allStats.Count(p => p.CurrentPhase == WizardPhase.Verification && p.VerificationId == null);
                     CountL7 = allStats.Count(p => p.CurrentPhase == WizardPhase.TechnicalRequest);
                     CountL8 = allStats.Count(p => p.CurrentPhase == WizardPhase.Maintenance);
                     CountSalida = allStats.Count(p => p.CurrentPhase == WizardPhase.Exit);
@@ -273,7 +274,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         ActivePlans = await wizardQuery.Take(100).ToListAsync();
 
                         // B-1: Poblado de listas por paso (evitando expresión => para no recalcular)
-                        Step1Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Verification).ToList();
+                        Step1Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Verification && p.VerificationId == null).ToList();
                         Step2Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.TechnicalRequest).ToList();
                         Step3Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Maintenance).ToList();
                         Step4Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Exit).ToList();

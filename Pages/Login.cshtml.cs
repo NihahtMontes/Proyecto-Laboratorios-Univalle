@@ -46,7 +46,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
             returnUrl ??= Url.Content("~/");
 
-            // Clear the existing external cookie to ensure a clean login process
+            // Limpieza de cookies externas para asegurar un inicio de sesión limpio
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
             ReturnUrl = returnUrl;
@@ -58,8 +58,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
             if (ModelState.IsValid)
             {
-                // This doesn't count login failures towards account lockout
-                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+                // No cuenta intentos fallidos hacia el bloqueo de cuenta.
+                // Para habilitar bloqueo por intentos fallidos, usar lockoutOnFailure: true
                 var result = await _signInManager.PasswordSignInAsync(Input.UserName, Input.Password, Input.RememberMe, lockoutOnFailure: false);
 
                 if (result.Succeeded)
@@ -81,7 +81,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 }
             }
 
-            // If we got this far, something failed, redisplay form
+            // Si llegamos hasta aquí, algo falló. Volver a mostrar el formulario.
             return Page();
         }
     }
