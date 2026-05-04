@@ -62,7 +62,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.LoginPath = "/Login"; // Ruta a la que redirige si no hay sesión
     options.SlidingExpiration = true;
-    options.ExpireTimeSpan = TimeSpan.FromHours(1);
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
 });
 
 builder.Services.AddAntiforgery(options =>
