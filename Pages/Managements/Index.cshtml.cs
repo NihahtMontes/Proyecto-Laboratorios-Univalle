@@ -45,6 +45,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                         .Include(m => m.ManagementPlans)
                         .Where(m => m.Status != ManagementStatus.Deleted);
 
+                    if (string.IsNullOrEmpty(Type))
+                        Type = "Preventive";
+
                     if (!string.IsNullOrEmpty(Type) && Enum.TryParse<ManagementType>(Type, out var typeEnum))
                     {
                         query = query.Where(m => m.Type == typeEnum);
