@@ -26,10 +26,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             _managementContext = managementContext;
         }
 
-        public IActionResult OnGet()
+        public IActionResult OnGet(string? type = null)
         {
             Input.Year = DateTime.Now.Year;
             Input.Semester = DateTime.Now.Month <= 6 ? 1 : 2;
+            if (!string.IsNullOrEmpty(type) && Enum.TryParse<ManagementType>(type, out var typeEnum))
+            {
+                Input.Type = typeEnum;
+            }
             return Page();
         }
 
@@ -62,6 +66,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             [Required]
             [Display(Name = "Estado Inicial")]
             public ManagementStatus Status { get; set; } = ManagementStatus.Active;
+
+            [Required]
+            [Display(Name = "Tipo de Gestión")]
+            public ManagementType Type { get; set; } = ManagementType.Preventive;
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -80,7 +88,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             // Validar que no exista ya esta gestión (Año-Semestre)
             var code = $"{Input.Year}-{Input.Semester}";
-            var exists = await _context.Managements.AnyAsync(m => m.Year == Input.Year && m.Semester == Input.Semester && m.Status != ManagementStatus.Deleted);
+            var exists = await _context.Managements.AnyAsync(m => m.Year == Input.Year && m.Semester == Input.Semester && m.Type == Input.Type && m.Status != ManagementStatus.Deleted);
             if (exists)
             {
                 ModelState.AddModelError(string.Empty, $"Ya existe una gestión registrada para {code}.");
@@ -109,6 +117,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 StartDate = Input.StartDate,
                 PlannedEndDate = Input.PlannedEndDate,
                 Status = Input.Status,
+                Type = Input.Type,
                 Responsible = currentUser?.FullName ?? User.Identity?.Name ?? "Sistema"
             };
 
@@ -116,28 +125,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             await _context.SaveChangesAsync();
             _managementContext.InvalidateCache();
 
-            // Sincronización Automática: Cargar todos los equipos activos a la nueva ronda
-            var activeUnits = await _context.EquipmentUnits
-                .Where(u => u.CurrentStatus != EquipmentStatus.Deleted)
-                .ToListAsync();
-
-            foreach (var unit in activeUnits)
+            if (Input.Type == ManagementType.Preventive)
             {
-                _context.ManagementPlans.Add(new ManagementPlan
-                {
-                    ManagementId = management.Id,
-                    EquipmentUnitId = unit.Id,
-                    CurrentPhase = WizardPhase.Verification,
-                    CurrentState = WizardEquipmentState.PendingVerification,
-                    PlanStatus = ManagementPlanStatus.Pending,
-                    PlannedDate = null
-                });
-            }
-            await _context.SaveChangesAsync();
-            _managementContext.InvalidateCache();
+                // Sincronización Automática: Cargar todos los equipos activos a la nueva ronda preventiva
+                var activeUnits = await _context.EquipmentUnits
+                    .Where(u => u.CurrentStatus != EquipmentStatus.Deleted)
+                    .ToListAsync();
 
-            TempData.Success($"La Gestión {code} ha sido creada correctamente con todos los equipos activos.");
-            return RedirectToPage("./Index");
+                foreach (var unit in activeUnits)
+                {
+                    _context.ManagementPlans.Add(new ManagementPlan
+                    {
+                        ManagementId = management.Id,
+                        EquipmentUnitId = unit.Id,
+                        CurrentPhase = WizardPhase.Verification,
+                        CurrentState = WizardEquipmentState.PendingVerification,
+                        PlanStatus = ManagementPlanStatus.Pending,
+                        PlannedDate = null
+                    });
+                }
+                await _context.SaveChangesAsync();
+                _managementContext.InvalidateCache();
+                TempData.Success($"La Gestión {code} ha sido creada correctamente con todos los equipos activos.");
+            }
+            else
+            {
+                TempData.Success($"La Gestión Correctiva {code} ha sido creada correctamente. Lista para recibir fallas críticas.");
+            }
+
+            return RedirectToPage("./Index", new { type = Input.Type.ToString() });
         }
     }
 }

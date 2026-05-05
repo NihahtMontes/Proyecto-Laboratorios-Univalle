@@ -72,12 +72,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         [BindProperty(SupportsGet = true)]
         public string ActiveTab { get; set; } = "l48";
 
+        [BindProperty(SupportsGet = true)]
+        public string? Type { get; set; }
+
         public async Task<IActionResult> OnGetAsync(int? id)
         {
+            if (Type == "Corrective" && id == null)
+                id = await EnsureCorrectiveContainerExists();
+
             if (id == null || _context.Managements == null)
-            {
                 return NotFound();
-            }
 
             var m = await _context.Managements
                 .Include(mg => mg.ManagementPlans)
@@ -388,6 +392,33 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             DateTime firstMonday = firstDayOfMonth.AddDays(daysUntilMonday);
             
             return firstMonday.AddDays((weekInMonth - 1) * 7);
+        }
+
+        private async Task<int> EnsureCorrectiveContainerExists()
+        {
+            var currentYear = DateTime.Now.Year;
+            var corrective = await _context.Managements
+                .AsTracking()
+                .FirstOrDefaultAsync(m => m.Type == ManagementType.Corrective && m.Year == currentYear);
+
+            if (corrective != null)
+                return corrective.Id;
+
+            corrective = new Management
+            {
+                Year = currentYear,
+                Semester = 0,
+                Code = $"CORR-{currentYear}",
+                Description = "Contenedor automático de fallas correctivas.",
+                Status = ManagementStatus.Active,
+                Type = ManagementType.Corrective,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            _context.Managements.Add(corrective);
+            await _context.SaveChangesAsync();
+
+            return corrective.Id;
         }
     }
 

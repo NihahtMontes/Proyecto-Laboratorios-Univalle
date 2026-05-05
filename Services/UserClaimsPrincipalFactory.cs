@@ -33,6 +33,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
             if (identity != null)
             {
                 identity.AddClaim(new Claim(ClaimTypes.Role, user.Role.ToString()));
+                identity.AddClaim(new Claim("FullName", user.FullName));
+                identity.AddClaim(new Claim("ProfilePicturePath", user.ProfilePicturePath ?? ""));
             }
 
             return principal;

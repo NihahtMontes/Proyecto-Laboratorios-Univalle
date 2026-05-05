@@ -65,6 +65,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Estado")]
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
 
+        [StringLength(255)]
+        [Display(Name = "Foto de Perfil")]
+        public string? ProfilePicturePath { get; set; }
+
         // ========================================
         // WORK INFORMATION
         // ========================================

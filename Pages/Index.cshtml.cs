@@ -139,6 +139,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
                 if (ActiveManagement != null)
                 {
+                    if (ShowWizard && ActiveManagement.Type == ManagementType.Corrective && Request.Query["Step"].Count == 0)
+                    {
+                        Step = 2; // Iniciar en L-7 para correctivos por defecto
+                    }
                     // 1. STATS QUERY: Base ultra ligera sin Includes para conteos masivos
                     var statsQuery = _context.ManagementPlans
                         .AsNoTracking()
@@ -168,7 +172,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     CountBuenos = allStats.Count(p =>
                         p.CurrentState == WizardEquipmentState.VerifiedGood);
 
-                    CountL6 = allStats.Count(p => p.CurrentPhase == WizardPhase.Verification && p.VerificationId == null);
+                    CountL6 = ActiveManagement.Type == ManagementType.Corrective ? 0 : allStats.Count(p => p.CurrentPhase == WizardPhase.Verification && p.VerificationId == null);
                     CountL7 = allStats.Count(p => p.CurrentPhase == WizardPhase.TechnicalRequest);
                     CountL8 = allStats.Count(p => p.CurrentPhase == WizardPhase.Maintenance);
                     CountSalida = allStats.Count(p => p.CurrentPhase == WizardPhase.Exit);
@@ -299,7 +303,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
         public IActionResult OnPostPreviousStep()
         {
-            int prevStep = Step > 1 ? Step - 1 : 0; 
+            var isCorrective = ActiveManagement?.Type == ManagementType.Corrective;
+            var minStep = isCorrective ? 2 : 1;
+            int prevStep = Step > minStep ? Step - 1 : 0; 
             return RedirectToPage(new { ShowWizard = true, Step = prevStep, SelectedLabId = SelectedLabId });
         }
 

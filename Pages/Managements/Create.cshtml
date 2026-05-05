@@ -29,6 +29,21 @@
                     <form method="post">
                         <div asp-validation-summary="ModelOnly" class="text-danger mb-3 font-weight-bold"></div>
 
+                        <input type="hidden" asp-for="Input.Type" />
+                                
+                        @if (Model.Input.Type == ManagementType.Corrective)
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                <i class="fas fa-exclamation-triangle"></i> Está creando una <strong>Gestión Correctiva</strong>. Esta actuará como contenedor anual para fallas críticas. No sincronizará equipos automáticamente.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info" role="alert">
+                                <i class="fas fa-info-circle"></i> Al guardar, se sincronizarán todos los equipos operativos para su Verificación Preventiva L-6.
+                            </div>
+                        }
+
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label asp-for="Input.Year" class="control-label font-weight-bold"></label>

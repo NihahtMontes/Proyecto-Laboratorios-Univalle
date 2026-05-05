@@ -6,6 +6,7 @@
     ViewData["Title"] = "Registrar Requerimiento Técnico (L-7)";
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 2);
+    bool isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
 }
 
 <div class="row justify-content-center">
@@ -93,7 +94,7 @@
                                 }
                             </div>
 
-                            @if (isWizard && ViewData["LinkedVerificationId"] != null)
+                            @if (isWizard && ViewData["LinkedVerificationId"] != null && !isCorrective)
                             {
                                 <div class="form-group mt-3 mb-4">
                                     <label class="control-label font-weight-bold small text-uppercase text-muted">Verificación Técnica Relacionada (L-6)</label>
@@ -134,9 +135,9 @@
                                 <i class="fas fa-align-left mr-2"></i> Naturaleza del Problema
                             </h5>
 
-                            <div class="form-group mb-4 pl-3 bg-light p-2 rounded" style="border-left: 4px solid #ffc107;">
+                            <div class="form-group mb-4 pl-3 @(isCorrective ? "" : "bg-light") p-2 rounded" style="border-left: 4px solid #ffc107;">
                                 <label asp-for="Input.Description" class="control-label font-weight-bold small text-uppercase text-dark">FALLAS O PROBLEMAS DEL EQUIPO <span class="text-danger">*</span></label>
-                                <textarea asp-for="Input.Description" class="form-control shadow-none border-0 bg-transparent" rows="4" placeholder="Describa detalladamente los fallos detectados..."></textarea>
+                                <textarea asp-for="Input.Description" class="form-control @(isCorrective ? "shadow-sm border" : "shadow-none border-0 bg-transparent")" rows="4" placeholder="Describa detalladamente los fallos detectados..." readonly="@(!isCorrective && isWizard)"></textarea>
                             </div>
 
                             <div class="form-group mb-4">

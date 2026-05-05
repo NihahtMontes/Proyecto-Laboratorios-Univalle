@@ -32,16 +32,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         [BindProperty(SupportsGet = true)]
         public int? PageIndex { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public string? Type { get; set; }
+
         public async Task<IActionResult> OnGetAsync(int? pageIndex)
         {
             try
             {
                 if (_context.Managements != null)
                 {
+                    var query = _context.Managements
+                        .Include(m => m.ManagementPlans)
+                        .Where(m => m.Status != ManagementStatus.Deleted);
+
+                    if (!string.IsNullOrEmpty(Type) && Enum.TryParse<ManagementType>(Type, out var typeEnum))
+                    {
+                        query = query.Where(m => m.Type == typeEnum);
+                    }
+
                     ManagementList = await PaginatedList<Management>.CreateAsync(
-                        _context.Managements
-                            .Include(m => m.ManagementPlans)
-                            .OrderByDescending(m => m.CreatedDate),
+                        query.OrderByDescending(m => m.CreatedDate),
                         pageIndex ?? 1, 20);
                 }
             }

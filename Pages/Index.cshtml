@@ -424,6 +424,7 @@
                             <div class="d-flex justify-content-between text-center px-lg-5">
                                 @for (int i = 0; i < steps.Length; i++)
                                 {
+                                    if (Model.ActiveManagement?.Type == ManagementType.Corrective && i == 1) continue;
                                     var isActive = Model.Step >= i;
                                     var isCurrent = Model.Step == i;
                                     <div class="d-flex flex-column align-items-center" style="flex: 1; position: relative;">
@@ -525,6 +526,16 @@
                                     LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-warning"
                                 })
+                                @if (Model.ActiveManagement?.Type == ManagementType.Corrective)
+                                {
+                                    <div class="text-center mt-4">
+                                        <a asp-page="/Requests/Create"
+                                           asp-route-isWizard="true"
+                                           class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold py-3 text-dark">
+                                            <i class="fas fa-exclamation-triangle mr-2"></i> Reportar Nueva Falla Crítica
+                                        </a>
+                                    </div>
+                                }
                             }
                             else if (Model.Step == 3)
                             {

@@ -32,7 +32,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             await LoadLists();
 
-            // Sprint 3B: Propagar Fallas del L6 al Description del L7
+            var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+            var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
+            ViewData["IsCorrective"] = isCorrective;
+
             if (ManagementPlanId.HasValue)
             {
                 var plan = await _context.ManagementPlans
@@ -168,6 +171,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
                     await _context.SaveChangesAsync();
                 }
+            }
+            else if (currentMgmt.Type == ManagementType.Corrective)
+            {
+                // Si es correctivo y no tiene ManagementPlan, se crea uno nuevo al momento de reportar la falla
+                var plan = new ManagementPlan
+                {
+                    ManagementId = currentMgmt.Id,
+                    EquipmentUnitId = Input.EquipmentUnitId,
+                    CurrentPhase = WizardPhase.Maintenance,
+                    CurrentState = WizardEquipmentState.AwaitingMaintenance,
+                    PlanStatus = ManagementPlanStatus.Pending,
+                    RequestId = request.Id
+                };
+                _context.ManagementPlans.Add(plan);
+                await _context.SaveChangesAsync();
             }
 
             TempData.Success($"Solicitud técnica L-7 registrada exitosamente.");

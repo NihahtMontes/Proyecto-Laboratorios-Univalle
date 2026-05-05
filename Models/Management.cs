@@ -63,6 +63,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Responsable")]
         public string? Responsible { get; set; }
 
+        [Required]
+        [Display(Name = "Tipo de Gestión")]
+        public ManagementType Type { get; set; } = ManagementType.Preventive;
+
         // ========================================
         // AUDITORÍA (IAuditable)
         // ========================================
