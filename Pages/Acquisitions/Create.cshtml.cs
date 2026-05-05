@@ -95,6 +95,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 if (plan != null)
                 {
                     ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+                    ViewData["ManagementId"] = plan.ManagementId;
                     if (plan.DepartureId.HasValue) ViewData["LinkedDepartureId"] = plan.DepartureId.Value;
                     if (plan.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = plan.MaintenanceId.Value;
                 }
@@ -264,7 +265,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
                     if (isWizard)
                     {
-                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 7, SelectedLabId = Input.LaboratoryId });
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 7, SelectedLabId = Input.LaboratoryId, ManagementId = ManagementPlanId });
                     }
                 }
             }

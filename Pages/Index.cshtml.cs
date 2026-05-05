@@ -94,6 +94,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         [BindProperty(SupportsGet = true)]
         public int? SelectedLabId { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
+
         // Contadores de fases para el Dashboard Premium
         public int CountL6 { get; set; }
         public int CountL7 { get; set; }
@@ -134,12 +137,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     .Cast<EquipmentCategory>()
                     .Select(e => new { Id = (int)e, Name = e.ToString() }), "Id", "Name");
 
-                // Buscar Gestión Activa (cached)
-                ActiveManagement = await _managementContext.GetCurrentManagementAsync();
+                // Buscar Gestión Activa (cached), o usar ManagementId directo
+                if (ManagementId.HasValue)
+                {
+                    ActiveManagement = await _context.Managements
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(m => m.Id == ManagementId.Value);
+                }
+                else
+                {
+                    ActiveManagement = await _managementContext.GetCurrentManagementAsync();
+                }
 
                 if (ActiveManagement != null)
                 {
-                    if (ShowWizard && ActiveManagement.Type == ManagementType.Corrective && Request.Query["Step"].Count == 0)
+                    var isCorrective = ActiveManagement.Type == ManagementType.Corrective;
+                    ViewData["IsCorrective"] = isCorrective;
+                    ViewData["ManagementId"] = ActiveManagement.Id;
+
+                    if (ShowWizard && isCorrective && Request.Query["Step"].Count == 0)
                     {
                         Step = 2; // Iniciar en L-7 para correctivos por defecto
                     }
@@ -298,7 +314,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
         public IActionResult OnPostNextStep()
         {
-            return RedirectToPage(new { ShowWizard = true, Step = Step + 1, SelectedLabId = SelectedLabId });
+            return RedirectToPage(new { ShowWizard = true, Step = Step + 1, SelectedLabId = SelectedLabId, ManagementId = ManagementId ?? ActiveManagement?.Id });
         }
 
         public IActionResult OnPostPreviousStep()
@@ -306,7 +322,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             var isCorrective = ActiveManagement?.Type == ManagementType.Corrective;
             var minStep = isCorrective ? 2 : 1;
             int prevStep = Step > minStep ? Step - 1 : 0; 
-            return RedirectToPage(new { ShowWizard = true, Step = prevStep, SelectedLabId = SelectedLabId });
+            return RedirectToPage(new { ShowWizard = true, Step = prevStep, SelectedLabId = SelectedLabId, ManagementId = ManagementId ?? ActiveManagement?.Id });
         }
 
         public async Task<IActionResult> OnPostRefresh()

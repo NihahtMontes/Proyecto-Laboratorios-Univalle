@@ -82,6 +82,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.Exit);
+                ViewData["ManagementId"] = plan?.ManagementId;
 
                 if (plan?.Maintenance?.TechnicianId != null)
                 {
@@ -208,7 +209,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
                         if (isWizard)
                         {
-                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId });
+                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId, ManagementId = ManagementPlanId });
                         }
                     }
                 }

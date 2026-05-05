@@ -35,6 +35,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             var currentMgmt = await _managementContext.GetCurrentManagementAsync();
             var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
             ViewData["IsCorrective"] = isCorrective;
+            ViewData["ManagementId"] = currentMgmt?.Id;
 
             if (ManagementPlanId.HasValue)
             {
@@ -193,7 +194,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             if (isWizard)
             {
                 // Al ser Wizard, el sistema entiende que ya se cumplió el paso de Solicitud (Paso 2)
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
             }
 
             return RedirectToPage("./Index");

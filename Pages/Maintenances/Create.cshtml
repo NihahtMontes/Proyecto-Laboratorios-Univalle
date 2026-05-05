@@ -320,7 +320,7 @@
                     <div class="form-actions text-right pb-4">
                         @if (isWizard)
                         {
-                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Volver al Wizard</a>
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Volver al Wizard</a>
                         }
                         else
                         {

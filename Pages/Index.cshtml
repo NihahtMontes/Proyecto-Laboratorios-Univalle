@@ -4,7 +4,10 @@
 @using System.Text.Json
 @{
     ViewData["Title"] = "Dashboard de Gestión";
-    var steps = new[] { "Progreso", "L6 Verif.", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" };
+    var isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
+    var steps = isCorrective
+        ? new[] { "Progreso", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" }
+        : new[] { "Progreso", "L6 Verif.", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" };
 }
 
 @section Styles {
@@ -414,8 +417,8 @@
             <div class="col-8 col-md-10">
                 <div class="card shadow-lg border-0 w-100" style="border-radius: 16px;">
                     <div class="card-header d-flex justify-content-between align-items-center py-3" style="background-color: #0f172a; border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                        <h5 class="m-0 font-weight-bold text-white" style="font-family: 'Inter', sans-serif; font-weight: 800;"><i class="fas fa-magic mr-2 text-primary"></i>Ronda de Mantenimiento Progresivo</h5>
-                        <a asp-page="/Index" asp-route-ShowWizard="false" class="btn btn-outline-light btn-sm font-weight-bold rounded-pill px-3">Finalizar Wizard</a>
+                        <h5 class="m-0 font-weight-bold text-white" style="font-family: 'Inter', sans-serif; font-weight: 800;"><i class="fas fa-magic mr-2 text-primary"></i>@(isCorrective ? "Mantenimiento Correctivo" : "Ronda de Mantenimiento Progresivo")</h5>
+                        <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-light btn-sm font-weight-bold rounded-pill px-3">Finalizar Wizard</a>
                     </div>
 
                     <div class="card-body p-0">
@@ -424,15 +427,15 @@
                             <div class="d-flex justify-content-between text-center px-lg-5">
                                 @for (int i = 0; i < steps.Length; i++)
                                 {
-                                    if (Model.ActiveManagement?.Type == ManagementType.Corrective && i == 1) continue;
-                                    var isActive = Model.Step >= i;
-                                    var isCurrent = Model.Step == i;
+                                    var stepNum = isCorrective && i > 0 ? i + 1 : i;
+                                    var isActive = Model.Step >= stepNum;
+                                    var isCurrent = Model.Step == stepNum;
                                     <div class="d-flex flex-column align-items-center" style="flex: 1; position: relative;">
                                         @if (i > 0) {
                                             <div style="position: absolute; width: 100%; height: 2px; background: @(isActive ? "#2563eb" : "#e2e8f0"); top: 17px; left: -50%; z-index: 1;"></div>
                                         }
                                         <div class="rounded-circle border @(isActive ? "text-white" : "bg-white text-muted") d-flex align-items-center justify-content-center shadow-sm" style="width: 35px; height: 35px; font-weight: bold; z-index: 2; position: relative; @(isActive ? "background: #2563eb; border-color: #2563eb;" : "border-color: #e2e8f0;") @(isCurrent ? "box-shadow: 0 0 0 4px rgba(37,99,235,0.25) !important;" : "")">
-                                            @if (Model.Step > i) { <i class="fas fa-check"></i> } else { @i }
+                                            @if (Model.Step > stepNum) { <i class="fas fa-check"></i> } else { @stepNum }
                                         </div>
                                         <span class="mt-2 @(isCurrent ? "text-dark font-weight-bold" : "text-muted")" style="font-size: 0.70rem; letter-spacing: 0.05em; text-transform: uppercase;">@steps[i]</span>
                                     </div>
@@ -455,7 +458,7 @@
                                     BorderClass = "border-slate"
                                 })
                             }
-                            else if (Model.Step == 1)
+                            else if (Model.Step == 1 && !isCorrective)
                             {
                                 <div class="d-flex justify-content-between align-items-center mb-4">
                                     <div>

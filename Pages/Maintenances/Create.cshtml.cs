@@ -52,6 +52,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 if (plan != null)
                 {
                     ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+                    ViewData["ManagementId"] = plan.ManagementId;
                     if (plan.RequestId.HasValue)
                     {
                         Input.RequestId = plan.RequestId;
@@ -333,7 +334,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         
                         if (isWizard)
                         {
-                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId });
+                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                         }
                     }
                 }

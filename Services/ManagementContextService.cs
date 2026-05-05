@@ -9,7 +9,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 {
     public interface IManagementContextService
     {
-        Task<Management?> GetCurrentManagementAsync();
+        Task<Management?> GetCurrentManagementAsync(ManagementType? type = null);
         void InvalidateCache();
     }
 
@@ -17,7 +17,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IMemoryCache _cache;
-        private const string CacheKey = "ActiveManagement";
+        private const string CacheKeyPrefix = "ActiveManagement";
         private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
         public ManagementContextService(ApplicationDbContext context, IMemoryCache cache)
@@ -26,16 +26,23 @@ namespace Proyecto_Laboratorios_Univalle.Services
             _cache = cache;
         }
 
-        public async Task<Management?> GetCurrentManagementAsync()
+        public async Task<Management?> GetCurrentManagementAsync(ManagementType? type = null)
         {
-            if (_cache.TryGetValue(CacheKey, out Management? cached) && cached != null)
+            var cacheKey = type.HasValue ? $"{CacheKeyPrefix}_{type.Value}" : CacheKeyPrefix;
+
+            if (_cache.TryGetValue(cacheKey, out Management? cached) && cached != null)
                 return cached;
 
             try
             {
-                var management = await _context.Managements
+                var query = _context.Managements
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+                    .Where(m => m.Status == ManagementStatus.Active);
+
+                if (type.HasValue)
+                    query = query.Where(m => m.Type == type.Value);
+
+                var management = await query.FirstOrDefaultAsync();
 
                 if (management == null)
                 {
@@ -48,7 +55,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 if (management != null)
                 {
-                    _cache.Set(CacheKey, management, CacheDuration);
+                    _cache.Set(cacheKey, management, CacheDuration);
                 }
 
                 return management;
@@ -61,7 +68,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
         public void InvalidateCache()
         {
-            _cache.Remove(CacheKey);
+            _cache.Remove(CacheKeyPrefix);
+            _cache.Remove($"{CacheKeyPrefix}_{ManagementType.Preventive}");
+            _cache.Remove($"{CacheKeyPrefix}_{ManagementType.Corrective}");
         }
     }
 }

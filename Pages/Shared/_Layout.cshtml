@@ -117,7 +117,7 @@
                                             <div class="dropdown-menu dropdown-menu-right user-dd animated">
                                                 <a class="dropdown-item" href="javascript:void(0)"><i class="ti-user m-r-5 m-l-5"></i> Mi Perfil</a>
                                                 <div class="dropdown-divider"></div>
-                                                <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })">
+                                                <form class="form-inline" method="post" asp-page="/Logout">
                                                     <button type="submit" class="dropdown-item"><i class="fa fa-power-off m-r-5 m-l-5"></i> Cerrar Sesión</button>
                                                 </form>
                                             </div>
