@@ -32,7 +32,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             await LoadLists();
 
-            var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+            var currentMgmt = await ResolveManagementAsync();
             var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
             ViewData["IsCorrective"] = isCorrective;
             ViewData["ManagementId"] = currentMgmt?.Id;
@@ -107,6 +107,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         [BindProperty(SupportsGet = true)]
         public int? ManagementPlanId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
 
         public class InputModel
         {
@@ -218,6 +221,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             var units = await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == laboratoryId).Select(u => new { id = u.Id, name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync();
             return new JsonResult(units);
+        }
+
+        private async Task<Management?> ResolveManagementAsync()
+        {
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+                if (plan != null)
+                    return await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
+            }
+            if (ManagementId.HasValue)
+                return await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value);
+            return await _managementContext.GetCurrentManagementAsync();
         }
     }
 }

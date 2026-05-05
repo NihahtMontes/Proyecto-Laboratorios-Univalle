@@ -83,6 +83,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.Exit);
                 ViewData["ManagementId"] = plan?.ManagementId;
+                if (plan?.ManagementId != null)
+                {
+                    var mgmt = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
+                    ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
+                }
 
                 if (plan?.Maintenance?.TechnicianId != null)
                 {

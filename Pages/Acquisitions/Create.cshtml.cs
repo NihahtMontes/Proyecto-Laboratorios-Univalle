@@ -96,6 +96,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 {
                     ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
                     ViewData["ManagementId"] = plan.ManagementId;
+                    var mgmt = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
+                    ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
                     if (plan.DepartureId.HasValue) ViewData["LinkedDepartureId"] = plan.DepartureId.Value;
                     if (plan.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = plan.MaintenanceId.Value;
                 }
