@@ -138,12 +138,15 @@
                                                     <span class="badge @statusClass px-3 py-1">@statusText</span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <div class="btn-group">
+                                                    <div class="btn-group shadow-sm">
                                                         <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                         <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
                                                             <i class="fas fa-search-plus"></i>
+                                                        </a>
+                                                        <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@item.EquipmentUnitId" class="btn btn-sm btn-outline-primary btn-rounded mr-1" title="Kardex (Histórico)">
+                                                            <i class="fas fa-history"></i>
                                                         </a>
                                                         <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
                                                             <i class="fas fa-trash"></i>

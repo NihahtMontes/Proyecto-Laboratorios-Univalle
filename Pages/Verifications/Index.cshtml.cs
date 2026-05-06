@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services.Reporting;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
@@ -22,17 +23,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             _reportingService = reportingService;
         }
 
-        public PaginatedList<Verification> Verifications { get; set; } = default!;
+        public PaginatedList<SessionGroup> Sessions { get; set; } = default!;
 
-        public int PageSize { get; set; } = 20;
-
-        [BindProperty(SupportsGet = true)]
-        public string? SearchTerm { get; set; }
+        public int PageSize { get; set; } = 15;
 
         [BindProperty(SupportsGet = true)]
         public int? FilterLaboratoryId { get; set; }
 
-        // Reporte L-6 Input
         [BindProperty]
         public ReportInputModel ReportInput { get; set; } = new();
 
@@ -43,79 +40,85 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             public string Responsible { get; set; } = string.Empty;
         }
 
+        public class SessionGroup
+        {
+            public DateTime Date { get; set; }
+            public int LaboratoryId { get; set; }
+            public string LaboratoryName { get; set; } = string.Empty;
+            public int TotalEquipments { get; set; }
+            public int BadCount { get; set; }
+            public string InspectorName { get; set; } = string.Empty;
+        }
+
         public Microsoft.AspNetCore.Mvc.Rendering.SelectList LaboratoryList { get; set; } = default!;
 
         public async Task OnGetAsync(int? pageIndex)
         {
-            IQueryable<Verification> verificationIQ = _context.Verifications
-                .Include(v => v.CreatedBy)
-                .Include(v => v.EquipmentUnit)
-                    .ThenInclude(eu => eu != null ? eu.Equipment : null)
-                .Include(v => v.ModifiedBy);
-
-            if (!string.IsNullOrEmpty(SearchTerm))
-            {
-                var term = SearchTerm.Trim().ToLower();
-                verificationIQ = verificationIQ.Where(s => s.EquipmentUnit!.Equipment!.Name.ToLower().Contains(term)
-                                       || s.EquipmentUnit!.InventoryNumber.ToLower().Contains(term));
-            }
-
-            if (FilterLaboratoryId.HasValue)
-            {
-                verificationIQ = verificationIQ.Where(v => v.EquipmentUnit!.LaboratoryId == FilterLaboratoryId.Value);
-            }
-
-            Verifications = await PaginatedList<Verification>.CreateAsync(
-                verificationIQ.OrderByDescending(v => v.Date), pageIndex ?? 1, PageSize);
-
-            // Cargar lista de laboratorios para el reporte
-            var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();
+            var labs = await _context.Laboratories
+                .Where(l => l.Status == GeneralStatus.Activo)
+                .OrderBy(l => l.Name)
+                .ToListAsync();
             LaboratoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(labs, "Id", "Name");
+
+            if (!FilterLaboratoryId.HasValue)
+            {
+                Sessions = new PaginatedList<SessionGroup>(new List<SessionGroup>(), 0, 1, PageSize);
+                return;
+            }
+
+            var query = _context.Verifications
+                .Include(v => v.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
+                .Include(v => v.CreatedBy)
+                .Where(v => v.EquipmentUnit!.LaboratoryId == FilterLaboratoryId.Value)
+                .GroupBy(v => v.Date.Date)
+                .Select(g => new SessionGroup
+                {
+                    Date = g.Key,
+                    LaboratoryId = FilterLaboratoryId.Value,
+                    LaboratoryName = labs.FirstOrDefault(l => l.Id == FilterLaboratoryId.Value)!.Name,
+                    TotalEquipments = g.Count(),
+                    BadCount = g.Count(v => v.PhysicalCondition == PhysicalCondition.Bad),
+                    InspectorName = g.First().CreatedBy != null
+                        ? g.First().CreatedBy!.FirstName + " " + g.First().CreatedBy!.LastName
+                        : "Sistema"
+                })
+                .OrderByDescending(s => s.Date);
+
+            Sessions = await PaginatedList<SessionGroup>.CreateAsync(query, pageIndex ?? 1, PageSize);
         }
 
         public async Task<IActionResult> OnPostGenerateReportAsync()
         {
             if (ReportInput.LaboratoryId == null)
-            {
                 return RedirectToPage();
-            }
 
             try
             {
                 var lab = await _context.Laboratories.FindAsync(ReportInput.LaboratoryId);
                 if (lab == null) return NotFound();
 
-                // 1. Get Equipment Units for the lab
                 var units = await _context.EquipmentUnits
                     .Include(u => u.Equipment)
                     .IgnoreQueryFilters()
-                    .Where(u => u.LaboratoryId == ReportInput.LaboratoryId && u.CurrentStatus != Models.Enums.EquipmentStatus.Deleted)
+                    .Where(u => u.LaboratoryId == ReportInput.LaboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
                     .OrderBy(u => u.InventoryNumber)
                     .ToListAsync();
 
-                // 2. Get LATEST Verification for each equipment unit
                 var latestVerifications = await _context.Verifications
                     .Where(v => v.EquipmentUnit!.LaboratoryId == ReportInput.LaboratoryId)
                     .GroupBy(v => v.EquipmentUnitId)
                     .Select(g => g.OrderByDescending(v => v.Date).First())
                     .ToDictionaryAsync(v => v.EquipmentUnitId, v => v);
 
-                // 3. Map Verification Data to Equipment Unit
                 foreach (var unit in units)
                 {
                     if (latestVerifications.TryGetValue(unit.Id, out var ver))
-                    {
-                        unit.Notes = ver.Observations; // Using Notes field for report observations
-                    }
+                        unit.Notes = ver.Observations;
                 }
 
                 var fileContent = _reportingService.GenerateLaboratoryReport(
-                    lab.Name,
-                    units,
-                    ReportInput.Term ?? "II/2025",
-                    ReportInput.Responsible ?? "N/A",
-                    DateTime.UtcNow
-                );
+                    lab.Name, units, ReportInput.Term ?? "II/2025",
+                    ReportInput.Responsible ?? "N/A", DateTime.UtcNow);
 
                 string fileName = $"Reporte_L6_{lab.Name}_{DateTime.UtcNow:yyyyMMdd}.xlsx";
                 return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
@@ -127,8 +130,5 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return RedirectToPage();
             }
         }
-
-
-
     }
 }

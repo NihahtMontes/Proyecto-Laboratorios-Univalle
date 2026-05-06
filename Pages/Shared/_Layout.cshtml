@@ -173,7 +173,7 @@
                                         <text>
                                             Toast.fire({
                                                 icon: 'success',
-                                                title: '@TempData["Success"]'
+                                                title: '@Html.Raw(TempData["Success"]?.ToString() ?? "")'
                                             });
                                         </text>
                                 }
@@ -184,7 +184,7 @@
                                             Swal.fire({
                                                 icon: 'error',
                                                 title: '¡Ups!',
-                                                text: '@TempData["Error"]',
+                                                text: '@Html.Raw(TempData["Error"]?.ToString() ?? "")',
                                                 confirmButtonColor: '#2962ff'
                                             });
                                         </text>
@@ -196,7 +196,7 @@
                                             Swal.fire({
                                                 icon: 'warning',
                                                 title: 'Atención',
-                                                text: '@TempData["Warning"]',
+                                                text: '@Html.Raw(TempData["Warning"]?.ToString() ?? "")',
                                                 confirmButtonColor: '#ffc107'
                                             });
                                         </text>

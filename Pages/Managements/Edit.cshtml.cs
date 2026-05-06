@@ -39,7 +39,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             public int Year { get; set; }
 
             [Required(ErrorMessage = "El semestre es obligatorio")]
-            [Range(1, 2, ErrorMessage = "Semestre inválido (1 o 2)")]
+            [Range(0, 2, ErrorMessage = "Semestre inválido (0, 1 o 2)")]
             [Display(Name = "Semestre")]
             public int Semester { get; set; }
 

@@ -16,320 +16,296 @@
         {
             await Html.RenderPartialAsync("_WizardSteps", currentPhaseInt);
         }
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-4">
-
-                <div class="d-flex no-block align-items-center mb-4">
+        <div class="card shadow-sm border-0 overflow-hidden">
+            <div class="card-header bg-dark p-4">
+                <div class="d-flex no-block align-items-center">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Actualizar Servicio #@Model.Input.Id</h4>
-                        <h6 class="card-subtitle text-muted">Edite los parámetros técnicos y costos del mantenimiento.</h6>
+                        <h4 class="card-title text-white font-weight-bold mb-0">Actualizar Servicio Técnico #@Model.Input.Id</h4>
+                        <h6 class="card-subtitle text-white-50 mb-0">Gestión de parámetros técnicos, checklists L-48 y control de costos.</h6>
                     </div>
-                    <div class="ml-auto text-right">
-                        <span class="badge badge-light shadow-sm py-2 px-3 border">
-                            <i class="far fa-clock mr-1"></i> Programado: @(Model.Input.ScheduledDate?.ToShortDateString() ?? "-")
-                        </span>
+                    <div class="ml-auto">
+                        <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@Model.Input.EquipmentUnitId" class="btn btn-sm btn-outline-light btn-rounded">
+                            <i class="fas fa-history mr-1"></i> Ver Kardex del Equipo
+                        </a>
                     </div>
                 </div>
+            </div>
+            
+            <div class="card-body p-0">
+                <!-- TABS NAVIGATION -->
+                <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active font-weight-bold small uppercase" data-toggle="tab" href="#tab-general" role="tab">
+                            <i class="fas fa-info-circle mr-2"></i> 1. Diagnóstico e Info
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-tecnico" role="tab">
+                            <i class="fas fa-tools mr-2"></i> 2. Ejecución L-48
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-costos" role="tab">
+                            <i class="fas fa-file-invoice-dollar mr-2"></i> 3. Costos y Repuestos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-cierre" role="tab">
+                            <i class="fas fa-check-double mr-2"></i> 4. Cierre y Evaluación
+                        </a>
+                    </li>
+                </ul>
 
-                <form method="post" id="maintenanceForm" novalidate>
+                <form method="post" id="maintenanceForm" class="tab-content p-4" novalidate>
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4"></div>
                     <input type="hidden" asp-for="Input.Id" />
+                    <input type="hidden" asp-for="Input.ActualCost" id="hiddenActualCost" />
+                    <input type="hidden" asp-for="Input.CompletionPercentage" id="hiddenPercentageInput" />
 
-                    <div class="bg-light p-4 rounded mb-4 border-left border-warning border-3">
-                        <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-university mr-2 text-warning"></i>Contexto de Ubicación y Servicio</h5>
-                        
-                        <!-- FILA 1: UBICACION (Locked if Wizard) -->
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <div class="form-group mb-0">
-                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">Facultad</label>
-                                    @if (isWizard)
-                                    {
-                                        <select asp-for="Input.FacultyId" class="form-control select2" asp-items="ViewBag.FacultyId" disabled></select>
-                                        <input type="hidden" asp-for="Input.FacultyId" />
-                                    }
-                                    else
-                                    {
-                                        <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId"></select>
-                                    }
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group mb-0">
-                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-info text-uppercase">Laboratorio</label>
-                                    @if (isWizard)
-                                    {
-                                        <select asp-for="Input.LaboratoryId" class="form-control select2" asp-items="ViewBag.LaboratoryId" disabled></select>
-                                        <input type="hidden" asp-for="Input.LaboratoryId" />
-                                    }
-                                    else
-                                    {
-                                        <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" asp-items="ViewBag.LaboratoryId"></select>
-                                    }
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group mb-0">
-                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-warning text-uppercase">Unidad Física</label>
-                                    @if (isWizard)
-                                    {
-                                        <select asp-for="Input.EquipmentUnitId" class="form-control select2" asp-items="ViewBag.EquipmentUnitId" disabled></select>
-                                        <input type="hidden" asp-for="Input.EquipmentUnitId" />
-                                    }
-                                    else
-                                    {
-                                        <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" asp-items="ViewBag.EquipmentUnitId"></select>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- FILA 2: EJECUCION -->
+                    <!-- TAB 1: GENERAL -->
+                    <div class="tab-pane active" id="tab-general" role="tabpanel">
                         <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group mb-0">
-                                    <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small uppercase text-muted">Tipo de Servicio</label>
-                                    <select asp-for="Input.MaintenanceType" class="form-control custom-select" asp-items="ViewBag.MaintenanceType" required>
-                                        <option value="">-- Categoría --</option>
-                                    </select>
-                                    <span asp-validation-for="Input.MaintenanceType" class="text-danger small"></span>
+                            <div class="col-md-8 border-right">
+                                <h5 class="text-dark font-weight-bold mb-3 small uppercase text-info">Datos de Ubicación y Equipo</h5>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="control-label font-weight-bold small text-muted uppercase">Facultad / Laboratorio</label>
+                                            <div class="p-2 bg-light rounded border text-dark font-weight-bold">
+                                                <i class="fas fa-university mr-2 text-muted"></i> @(ViewBag.LaboratoryId?.SelectedValue != null ? "Laboratorio Seleccionado" : "Datos Cargados")
+                                            </div>
+                                            <input type="hidden" asp-for="Input.FacultyId" />
+                                            <input type="hidden" asp-for="Input.LaboratoryId" />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label class="control-label font-weight-bold small text-muted uppercase">Equipo Objetivo</label>
+                                            <div class="p-2 bg-light rounded border text-dark font-weight-bold">
+                                                <i class="fas fa-box mr-2 text-muted"></i> Unidad #@Model.Input.EquipmentUnitId
+                                            </div>
+                                            <input type="hidden" asp-for="Input.EquipmentUnitId" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small uppercase text-muted">Categoría de Servicio</label>
+                                            <select asp-for="Input.MaintenanceType" class="form-control custom-select" asp-items="ViewBag.MaintenanceType" required></select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small uppercase text-muted">Técnico Responsable</label>
+                                            <select asp-for="Input.TechnicianId" class="form-control custom-select" asp-items="ViewBag.TechnicianId">
+                                                <option value="">-- Asignar Técnico --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label asp-for="Input.Description" class="control-label font-weight-bold text-dark uppercase small">Descripción del Trabajo</label>
+                                    <textarea asp-for="Input.Description" class="form-control" rows="3" required></textarea>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-group mb-0">
-                                    <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small uppercase text-muted">Técnico Responsable</label>
-                                    <select asp-for="Input.TechnicianId" class="form-control custom-select" asp-items="ViewBag.TechnicianId">
-                                        <option value="">-- Asignar Técnico --</option>
+                            
+                            <div class="col-md-4">
+                                <h5 class="text-dark font-weight-bold mb-3 small uppercase text-info">Estado y Tiempos</h5>
+                                <div class="form-group mb-4">
+                                    <label asp-for="Input.Status" class="control-label font-weight-bold small uppercase text-muted">Situación del Proceso</label>
+                                    <select asp-for="Input.Status" class="form-control custom-select border-warning font-weight-bold" id="statusSelector"
+                                            asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<MaintenanceStatus>()">
                                     </select>
+                                </div>
+
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.ScheduledDate" class="control-label font-weight-bold small uppercase text-muted">Fecha Programada</label>
+                                    <input asp-for="Input.ScheduledDate" class="form-control" type="date" />
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.StartDate" class="control-label font-weight-bold small uppercase text-muted">Inicio Real</label>
+                                    <input asp-for="Input.StartDate" class="form-control" type="datetime-local" />
+                                </div>
+                                <div class="form-group">
+                                    <label asp-for="Input.EndDate" class="control-label font-weight-bold small uppercase text-muted">Finalización</label>
+                                    <input asp-for="Input.EndDate" class="form-control" type="datetime-local" />
                                 </div>
                             </div>
                         </div>
-
-                        <!-- TARJETA DE REFERENCIA L-7 -->
-                        @if (isWizard && prevPhaseId != null && planId != null)
-                        {
-                            <div class="form-group mt-4 mb-0">
-                                <label class="control-label font-weight-bold small text-uppercase text-muted">Requerimiento Técnico Relacionado (L-7)</label>
-                                <div class="p-2 rounded" style="background:#fffbeb; border: 1px solid #fef08a;">
-                                    <div class="d-flex align-items-center">
-                                        <div class="mr-3" style="color: #ca8a04;"><i class="fas fa-file-signature fa-lg"></i></div>
-                                        <div>
-                                            <h6 class="m-0 font-weight-bold" style="color: #a16207;">Solicitud L-7 Vinculada</h6>
-                                            <span class="small" style="color: #ca8a04;">ID: @prevPhaseId</span>
-                                        </div>
-                                        <a href="/Requests/Details?id=@prevPhaseId" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #ca8a04; border: 1px solid #fef08a;">
-                                            Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
-                                        </a>
-                                        @{
-                                            int prevPhaseEnumInt = 2; // TechnicalRequest = 2
-                                            int diff = currentPhaseInt - prevPhaseEnumInt;
-                                        }
-                                        @if (diff == 1)
-                                        {
-                                            <a href="/Requests/Edit?id=@prevPhaseId" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold shadow-sm ml-2">
-                                                <i class="fas fa-edit"></i> Editar L-7
-                                            </a>
-                                        }
-                                        else
-                                        {
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, @prevPhaseEnumInt, 'L-7 Solicitud Técnica', @currentPhaseInt)">
-                                                <i class="fas fa-undo"></i> Rehacer L-7
-                                            </button>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    <div class="row">
-                        <div class="col-lg-7">
-                            <h5 class="text-dark font-weight-bold mb-3"><i class="far fa-calendar-alt mr-2 text-info"></i>Planificación Temporal</h5>
-                            <div class="card border mb-4">
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 border-right">
-                                            <div class="form-group">
-                                                <label asp-for="Input.ScheduledDate" class="control-label font-weight-bold small uppercase text-muted">Fecha Programada</label>
-                                                <input asp-for="Input.ScheduledDate" class="form-control" type="date" />
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group mb-3">
-                                                <label asp-for="Input.StartDate" class="control-label font-weight-bold small uppercase text-muted">Inicio Real</label>
-                                                <input asp-for="Input.StartDate" class="form-control" type="datetime-local" />
-                                            </div>
-                                            <div class="form-group mb-0">
-                                                <label asp-for="Input.EndDate" class="control-label font-weight-bold small uppercase text-muted">Finalización</label>
-                                                <input asp-for="Input.EndDate" class="form-control" type="datetime-local" />
-                                                <span asp-validation-for="Input.EndDate" class="text-danger small"></span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-5">
-                            <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-thermometer-half mr-2 text-danger"></i>Situación Actual</h5>
-                            <div class="card bg-light border-0 mb-4">
-                                <div class="card-body">
-                                    <div class="form-group mb-3">
-                                        <label asp-for="Input.Status" class="control-label font-weight-bold small uppercase text-muted">Estado del Proceso</label>
-                                        <select asp-for="Input.Status" class="form-control custom-select border-warning font-weight-bold text-dark"
-                                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<MaintenanceStatus>()"
-                                                id="statusSelector">
-                                        </select>
-                                    </div>
-
-                                    <div id="costWarning" class="alert alert-warning border-0 rounded shadow-sm d-flex align-items-center" style="display:none">
-                                        <i class="fas fa-exclamation-triangle fa-2x mr-3"></i>
-                                        <div class="line-height-normal small">
-                                            <strong>Requerido:</strong><br />
-                                            Para estado <u>Completado</u> debe registrar costos.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        
+                        <div class="mt-4 text-right">
+                            <button type="button" class="btn btn-info btn-rounded px-4" onclick="$('a[href=\'#tab-tecnico\']').tab('show')">
+                                Siguiente: Ejecución <i class="fas fa-arrow-right ml-1"></i>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="card border border-light shadow-none mb-4">
-                        <div class="card-header bg-white border-bottom-0 pt-4 px-4">
-                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Lista de Verificación Técnica (L-48)</h5>
-                        </div>
-                        <div class="card-body px-4 pt-2">
-                            <div class="row align-items-center">
-                                <div class="col-md-7 border-right">
-                                    <div class="custom-control custom-checkbox mb-3">
+                    <!-- TAB 2: TECNICO (L-48) -->
+                    <div class="tab-pane" id="tab-tecnico" role="tabpanel">
+                        <div class="row align-items-center">
+                            <div class="col-md-7 border-right">
+                                <h5 class="text-dark font-weight-bold mb-4"><i class="fas fa-tasks mr-2 text-primary"></i>Pasos de Verificación Técnica L-48</h5>
+                                <div class="bg-light p-4 rounded mb-4">
+                                    <div class="custom-control custom-checkbox custom-control-lg mb-4">
                                         <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep1Edit" asp-for="Input.Step1_Cleaning" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep1Edit">Limpieza y Desinfección de Componentes</label>
+                                        <label class="custom-control-label font-weight-bold text-dark" for="chkStep1Edit">
+                                            1. Limpieza y Desinfección Profunda
+                                            <small class="d-block text-muted">Limpieza de componentes internos y superficies externas.</small>
+                                        </label>
                                     </div>
-                                    <div class="custom-control custom-checkbox mb-3">
+                                    <div class="custom-control custom-checkbox custom-control-lg mb-4">
                                         <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep2Edit" asp-for="Input.Step2_Calibration" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep2Edit">Calibración y Ajuste de Sistema</label>
+                                        <label class="custom-control-label font-weight-bold text-dark" for="chkStep2Edit">
+                                            2. Calibración y Ajustes Críticos
+                                            <small class="d-block text-muted">Verificación de parámetros contra estándares de fábrica.</small>
+                                        </label>
                                     </div>
-                                    <div class="custom-control custom-checkbox mb-3">
+                                    <div class="custom-control custom-checkbox custom-control-lg mb-4">
                                         <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep3Edit" asp-for="Input.Step3_Testing" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep3Edit">Pruebas de Esfuerzo y Carga Operativa</label>
+                                        <label class="custom-control-label font-weight-bold text-dark" for="chkStep3Edit">
+                                            3. Pruebas de Funcionamiento y Carga
+                                            <small class="d-block text-muted">Ejecución de ciclos de prueba para validar estabilidad.</small>
+                                        </label>
                                     </div>
-                                    <div class="custom-control custom-checkbox mb-2">
+                                    <div class="custom-control custom-checkbox custom-control-lg mb-0">
                                         <input type="checkbox" class="custom-control-input maintenance-check" id="chkStep4Edit" asp-for="Input.Step4_FinalReview" onchange="calculatePercentage()">
-                                        <label class="custom-control-label font-weight-bold" for="chkStep4Edit">Revisión Final de Seguridad y Cierre</label>
+                                        <label class="custom-control-label font-weight-bold text-dark" for="chkStep4Edit">
+                                            4. Inspección Final de Seguridad
+                                            <small class="d-block text-muted">Validación de seguros, cables y sellos de integridad.</small>
+                                        </label>
                                     </div>
-                                </div>
-                                <div class="col-md-5 text-center">
-                                    <h6 class="text-muted text-uppercase font-weight-bold mb-3">Avance del Mantenimiento</h6>
-                                    <h2 id="displayProgressText" class="display-4 font-weight-bold text-primary mb-2">0%</h2>
-                                    <div class="progress rounded-pill shadow-sm" style="height: 12px;">
-                                        <div id="visualProgressBar" class="progress-bar bg-primary progress-bar-striped" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                    <input type="hidden" asp-for="Input.CompletionPercentage" id="hiddenPercentageInput" />
                                 </div>
                             </div>
+                            <div class="col-md-5 text-center p-5">
+                                <div class="progress-circle mx-auto mb-4" style="width: 200px; height: 200px;">
+                                    <h2 id="displayProgressText" class="display-4 font-weight-bold text-primary" style="line-height: 200px;">0%</h2>
+                                </div>
+                                <h6 class="text-muted text-uppercase font-weight-bold mb-0">Progreso de Tareas L-48</h6>
+                            </div>
+                        </div>
+                        <div class="mt-4 d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary btn-rounded px-4" onclick="$('a[href=\'#tab-general\']').tab('show')">
+                                <i class="fas fa-arrow-left mr-1"></i> Anterior
+                            </button>
+                            <button type="button" class="btn btn-info btn-rounded px-4" onclick="$('a[href=\'#tab-costos\']').tab('show')">
+                                Siguiente: Costos <i class="fas fa-arrow-right ml-1"></i>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="form-group mb-4">
-                        <label asp-for="Input.Description" class="control-label font-weight-bold text-dark">Descripción del Trabajo / Requerimiento</label>
-                        <textarea asp-for="Input.Description" class="form-control rounded" rows="3" required data-validation-required-message="La descripción es obligatoria"></textarea>
-                        <span asp-validation-for="Input.Description" class="text-danger small"></span>
-                    </div>
-
-                    <div class="card border border-light shadow-none mb-4">
-                        <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-4 px-4">
-                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Control de Costos y Repuestos</h5>
+                    <!-- TAB 3: COSTOS -->
+                    <div class="tab-pane" id="tab-costos" role="tabpanel">
+                        <div class="d-flex align-items-center mb-4">
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Detalle de Gastos y Repuestos</h5>
                             <button type="button" class="btn btn-sm btn-success btn-rounded shadow-sm ml-auto font-weight-bold px-3" onclick="addRow()">
                                 <i class="fas fa-plus mr-1"></i> Agregar Ítem
                             </button>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-hover v-middle mb-0" id="costsTable">
-                                    <thead class="bg-light text-uppercase small font-weight-bold text-muted">
-                                        <tr>
-                                            <th class="pl-4" style="width: 30%">Concepto</th>
-                                            <th style="width: 20%">Categoría</th>
-                                            <th style="width: 10%" class="text-center">Cant.</th>
-                                            <th style="width: 15%" class="text-center">Unitario (Bs)</th>
-                                            <th style="width: 15%" class="text-center">Subtotal</th>
-                                            <th style="width: 10%"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="costsContainer">
-                                        @if (Model.Input.CostDetails != null)
+                        
+                        <div class="table-responsive border rounded mb-4">
+                            <table class="table table-hover v-middle mb-0" id="costsTable">
+                                <thead class="bg-light text-uppercase small font-weight-bold text-muted">
+                                    <tr>
+                                        <th class="pl-4" style="width: 35%">Concepto / Repuesto</th>
+                                        <th style="width: 20%">Categoría</th>
+                                        <th style="width: 10%" class="text-center">Cant.</th>
+                                        <th style="width: 15%" class="text-center">P. Unit (Bs)</th>
+                                        <th style="width: 15%" class="text-center">Subtotal</th>
+                                        <th style="width: 5%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="costsContainer">
+                                    @if (Model.Input.CostDetails != null)
+                                    {
+                                        for (int i = 0; i < Model.Input.CostDetails.Count; i++)
                                         {
-                                            for (int i = 0; i < Model.Input.CostDetails.Count; i++)
-                                            {
-                                                <tr class="cost-row">
-                                                    <input type="hidden" name="Input.CostDetails[@i].Id" value="@Model.Input.CostDetails[i].Id" />
-                                                    <td class="pl-4">
-                                                        <input name="Input.CostDetails[@i].Concept" class="form-control" value="@Model.Input.CostDetails[i].Concept" required />
-                                                    </td>
-                                                    <td>
-                                                        <select name="Input.CostDetails[@i].Category" class="form-control custom-select" asp-items="@categoryList" asp-for="@Model.Input.CostDetails[i].Category">
-                                                        </select>
-                                                    </td>
-                                                    <td>
-                                                        <input name="Input.CostDetails[@i].Quantity" class="form-control text-center txt-qty" type="number" step="0.01" value="@Model.Input.CostDetails[i].Quantity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" min="0" onchange="calculateTotals()" required />
-                                                    </td>
-                                                    <td>
-                                                        <input name="Input.CostDetails[@i].UnitPrice" class="form-control text-center txt-price" type="number" step="0.01" value="@Model.Input.CostDetails[i].UnitPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" min="0" onchange="calculateTotals()" required />
-                                                    </td>
-                                                    <td class="text-center font-weight-bold txt-subtotal py-3 text-dark">Bs @Model.Input.CostDetails[i].Subtotal.ToString("N2")</td>
-                                                    <td class="text-center">
-                                                        <button type="button" class="btn btn-circle btn-sm btn-outline-danger" onclick="removeRow(this)" data-toggle="tooltip" title="Quitar">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            }
+                                            <tr class="cost-row">
+                                                <input type="hidden" name="Input.CostDetails[@i].Id" value="@Model.Input.CostDetails[i].Id" />
+                                                <td class="pl-4">
+                                                    <input name="Input.CostDetails[@i].Concept" class="form-control" value="@Model.Input.CostDetails[i].Concept" required />
+                                                </td>
+                                                <td>
+                                                    <select name="Input.CostDetails[@i].Category" class="form-control custom-select" asp-items="@categoryList" asp-for="@Model.Input.CostDetails[i].Category"></select>
+                                                </td>
+                                                <td>
+                                                    <input name="Input.CostDetails[@i].Quantity" class="form-control text-center txt-qty" type="number" step="0.01" value="@Model.Input.CostDetails[i].Quantity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" min="0" onchange="calculateTotals()" required />
+                                                </td>
+                                                <td>
+                                                    <input name="Input.CostDetails[@i].UnitPrice" class="form-control text-center txt-price" type="number" step="0.01" value="@Model.Input.CostDetails[i].UnitPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" min="0" onchange="calculateTotals()" required />
+                                                </td>
+                                                <td class="text-center font-weight-bold txt-subtotal py-3 text-dark">Bs @Model.Input.CostDetails[i].Subtotal.ToString("N2")</td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-link text-danger p-0" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button>
+                                                </td>
+                                            </tr>
                                         }
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="bg-light">
-                                            <td colspan="4" class="text-right font-weight-bold text-dark py-3">COSTO TOTAL ACTUALIZADO:</td>
-                                            <td class="text-center font-weight-bold text-success h5 py-3 mb-0" id="totalDisplay">Bs 0.00</td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                            <input type="hidden" asp-for="Input.ActualCost" id="hiddenActualCost" />
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr class="bg-light">
+                                        <td colspan="4" class="text-right font-weight-bold text-dark py-3 uppercase small">Inversión Total Realizada:</td>
+                                        <td class="text-center font-weight-bold text-success h5 py-3 mb-0" id="totalDisplay">Bs 0.00</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary btn-rounded px-4" onclick="$('a[href=\'#tab-tecnico\']').tab('show')">
+                                <i class="fas fa-arrow-left mr-1"></i> Anterior
+                            </button>
+                            <button type="button" class="btn btn-info btn-rounded px-4" onclick="$('a[href=\'#tab-cierre\']').tab('show')">
+                                Siguiente: Cierre <i class="fas fa-arrow-right ml-1"></i>
+                            </button>
                         </div>
                     </div>
 
-                    <div class="row mb-5">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label asp-for="Input.SatisfactionLevel" class="control-label font-weight-bold small uppercase text-muted">Nivel de Satisfacción</label>
-                                <select asp-for="Input.SatisfactionLevel" class="form-control custom-select"
-                                        asp-items="Html.GetEnumSelectList<MaintenanceSatisfaction>()">
-                                    <option value="">-- No evaluado --</option>
-                                </select>
+                    <!-- TAB 4: CIERRE -->
+                    <div class="tab-pane" id="tab-cierre" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6 border-right">
+                                <h5 class="text-dark font-weight-bold mb-4"><i class="fas fa-comment-medical mr-2 text-warning"></i>Evaluación y Sugerencias</h5>
+                                <div class="form-group mb-4">
+                                    <label asp-for="Input.SatisfactionLevel" class="control-label font-weight-bold small uppercase text-muted">Nivel de Satisfacción Final</label>
+                                    <div class="d-flex align-items-center bg-light p-3 rounded">
+                                        <i class="fas fa-star fa-2x text-warning mr-3"></i>
+                                        <select asp-for="Input.SatisfactionLevel" class="form-control custom-select font-weight-bold"
+                                                asp-items="Html.GetEnumSelectList<MaintenanceSatisfaction>()">
+                                            <option value="">-- Sin evaluar --</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label asp-for="Input.Recommendations" class="control-label font-weight-bold small uppercase text-muted">Recomendaciones Técnicas</label>
+                                    <textarea asp-for="Input.Recommendations" class="form-control" rows="4" placeholder="Ej: Realizar limpieza de filtros cada 3 meses..."></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="text-dark font-weight-bold mb-4"><i class="fas fa-clipboard-list mr-2 text-info"></i>Notas Internas de Auditoría</h5>
+                                <div class="form-group">
+                                    <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones Finales</label>
+                                    <textarea asp-for="Input.Observations" class="form-control" rows="4" placeholder="Detalles técnicos adicionales para el departamento..."></textarea>
+                                </div>
+                                
+                                <div id="finalReviewCard" class="alert alert-info border-0 shadow-sm mt-4">
+                                    <h6 class="font-weight-bold mb-2 uppercase small"><i class="fas fa-info-circle mr-1"></i> Revisión Final</h6>
+                                    <p class="small mb-0">Al marcar como <strong>Completado</strong>, se generará la alerta para la fase de salida del equipo.</p>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label asp-for="Input.Recommendations" class="control-label font-weight-bold small uppercase text-muted">Recomendaciones Post-Servicio</label>
-                                <textarea asp-for="Input.Recommendations" class="form-control" rows="2"></textarea>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones Internas</label>
-                                <textarea asp-for="Input.Observations" class="form-control" rows="2"></textarea>
-                            </div>
-                        </div>
-                    </div>
 
-                    <hr />
-
-                    <div class="form-actions text-right pb-4">
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Cancelar</a>
-                        <button type="button" class="btn btn-info btn-rounded px-5 shadow font-weight-bold text-white" onclick="confirmUpdate()">
-                            <i class="fas fa-sync-alt mr-1"></i> Actualizar Servicio
-                        </button>
+                        <div class="mt-5 d-flex justify-content-between border-top pt-4">
+                            <button type="button" class="btn btn-outline-secondary btn-rounded px-4" onclick="$('a[href=\'#tab-costos\']').tab('show')">
+                                <i class="fas fa-arrow-left mr-1"></i> Anterior
+                            </button>
+                            <button type="button" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-white" onclick="confirmUpdate()">
+                                <i class="fas fa-save mr-2"></i> Actualizar Registro Final
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -337,12 +313,13 @@
     </div>
 </div>
 
+<!-- TEMPLATE PARA COSTOS -->
 <table style="display:none">
     <tbody id="costTemplate">
         <tr class="cost-row">
             <input type="hidden" name="Input.CostDetails[INDEX].Id" value="0" />
             <td class="pl-4">
-                <input name="Input.CostDetails[INDEX].Concept" class="form-control" required placeholder="Nuevo ítem" />
+                <input name="Input.CostDetails[INDEX].Concept" class="form-control" required placeholder="Nuevo concepto..." />
             </td>
             <td>
                 <select name="Input.CostDetails[INDEX].Category" class="form-control custom-select" asp-items="categoryList"></select>
@@ -355,9 +332,7 @@
             </td>
             <td class="text-center font-weight-bold txt-subtotal py-3 text-dark">Bs 0.00</td>
             <td class="text-center">
-                <button type="button" class="btn btn-circle btn-sm btn-outline-danger" onclick="removeRow(this)" data-toggle="tooltip" title="Quitar">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <button type="button" class="btn btn-link text-danger p-0" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button>
             </td>
         </tr>
     </tbody>
@@ -365,157 +340,90 @@
 
 @section Styles {
     <style>
-        .border-3 {
-            border-left-width: 4px !important;
-        }
-
-        .line-height-normal {
-            line-height: 1.4;
-        }
-
-        .v-middle td {
-            vertical-align: middle !important;
-        }
-
-        .cost-row input:focus, .cost-row select:focus {
-            background-color: #fff;
-            box-shadow: 0 0 0 0.2rem rgba(41,98,255,.1);
-        }
+        .customtab .nav-link { border: none; color: #747d8c; padding: 15px 25px; transition: all 0.3s ease; border-bottom: 2px solid transparent; }
+        .customtab .nav-link.active { color: #2962ff; background: transparent; border-bottom: 2px solid #2962ff; }
+        .progress-circle { border: 15px solid #f8f9fa; border-top: 15px solid #2962ff; border-radius: 50%; }
+        .uppercase { text-transform: uppercase; letter-spacing: 0.8px; }
+        .custom-control-lg .custom-control-label::before, .custom-control-lg .custom-control-label::after { top: 0.1rem; left: -2rem; width: 1.5rem; height: 1.5rem; }
+        .custom-control-lg { padding-left: 2.5rem; }
     </style>
 }
 
 @section Scripts {
     <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
     <script>
         $(function () {
             "use strict";
-            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
-
-            // Calcular porcentajes al cargar la página (para mostrar valores guardados)
             calculatePercentage();
-
             calculateTotals();
-
-            $('#statusSelector').on('change', function() { toggleCostWarning($(this).val()); });
-            toggleCostWarning($('#statusSelector').val());
-
-            setupBlocking('#Input_Concept', /^[a-zA-Z0-9\s\-\.\(\)]*$/, "Caracteres no permitidos");
-
+            
+            // Link Start/End Dates
             $('#Input_StartDate').on('change', function() {
                 $('#Input_EndDate').attr('min', $(this).val());
             });
-            if($('#Input_StartDate').val()) {
-                 $('#Input_EndDate').attr('min', $('#Input_StartDate').val());
-            }
         });
 
-        // --- LÓGICA DE CHECKBOXES (PORCENTAJE L-48) ---
         function calculatePercentage() {
             const checkboxes = $('.maintenance-check');
-            if (checkboxes.length === 0) return;
-
-            const completedTasks = checkboxes.filter(':checked').length;
-            const percentage = Math.round((completedTasks / checkboxes.length) * 100);
+            const completed = checkboxes.filter(':checked').length;
+            const percentage = Math.round((completed / checkboxes.length) * 100);
 
             $('#displayProgressText').text(percentage + '%');
-            $('#visualProgressBar').css('width', percentage + '%').attr('aria-valuenow', percentage);
             $('#hiddenPercentageInput').val(percentage);
+            
+            // Actualizar color del circulo si es 100
+            if(percentage === 100) $('.progress-circle').css('border-color', '#28a745');
+            else $('.progress-circle').css('border-top-color', '#2962ff');
         }
 
-        // --- LÓGICA DE COSTOS ---
         function addRow() {
             const container = $('#costsContainer');
             const template = $('#costTemplate').html();
             const index = container.children().length;
-
             const newRow = template.replace(/\[INDEX\]/g, `[${index}]`);
             container.append(newRow);
-
-            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
         }
 
         function removeRow(btn) {
-            $(btn).closest('tr').fadeOut(200, function() {
-                $(this).remove();
-                reindexRows();
-                calculateTotals();
-            });
-        }
-
-        function reindexRows() {
-            $('#costsContainer tr').each(function(i) {
-                $(this).find('input, select').each(function() {
-                    const name = $(this).attr('name');
-                    if (name) {
-                        $(this).attr('name', name.replace(/\[\d+\]/, `[${i}]`));
-                    }
-                });
-            });
+            $(btn).closest('tr').remove();
+            calculateTotals();
         }
 
         function calculateTotals() {
-            let totalGeneral = 0;
-            $('#costsContainer tr').each(function() {
+            let total = 0;
+            $('.cost-row').each(function() {
                 const qty = parseFloat($(this).find('.txt-qty').val()) || 0;
                 const price = parseFloat($(this).find('.txt-price').val()) || 0;
-                const subtotal = qty * price;
-
-                $(this).find('.txt-subtotal').text('Bs ' + subtotal.toLocaleString('es-BO', { minimumFractionDigits: 2 }));
-                totalGeneral += subtotal;
+                const sub = qty * price;
+                $(this).find('.txt-subtotal').text('Bs ' + sub.toLocaleString('es-BO', { minimumFractionDigits: 2 }));
+                total += sub;
             });
-
-            $('#totalDisplay').text('Bs ' + totalGeneral.toLocaleString('es-BO', { minimumFractionDigits: 2 }));
-            $('#hiddenActualCost').val(totalGeneral.toFixed(2));
-            toggleCostWarning($('#statusSelector').val());
-        }
-
-        function toggleCostWarning(statusVal) {
-            const isCompleted = statusVal == "2";
-            const total = parseFloat($('#hiddenActualCost').val()) || 0;
-            if (isCompleted && total <= 0) $('#costWarning').fadeIn();
-            else $('#costWarning').fadeOut();
-        }
-
-        function setupBlocking($selector, pattern, errorMessage) {
-            $('body').on('input', $selector, function() {
-                var $field = $(this);
-                if (!pattern.test($field.val())) $field.val($field.val().slice(0, -1));
-            });
+            $('#totalDisplay').text('Bs ' + total.toLocaleString('es-BO', { minimumFractionDigits: 2 }));
+            $('#hiddenActualCost').val(total.toFixed(2));
         }
 
         function confirmUpdate() {
+            const status = $('#statusSelector').val();
+            const progress = $('#hiddenPercentageInput').val();
+            
+            if (status == "2" && progress < 100) {
+                Swal.fire('Atención', 'No se puede completar el mantenimiento si el progreso técnico (L-48) no es del 100%.', 'warning');
+                return;
+            }
+
             Swal.fire({
-                title: '¿Confirmar actualización?',
-                text: 'Se actualizarán los datos técnicos y de costos del mantenimiento. Confirme para proceder.',
+                title: '¿Confirmar cambios?',
+                text: 'Se actualizarán los datos técnicos y económicos del servicio.',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, actualizar',
+                confirmButtonText: 'Sí, guardar',
                 cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#17a2b8',
-                cancelButtonColor: '#6c757d'
+                confirmButtonColor: '#2962ff'
             }).then((result) => {
-                if (result.isConfirmed) {
-                    $('#maintenanceForm').submit();
-                }
+                if (result.isConfirmed) $('#maintenanceForm').submit();
             });
-        }
-        
-        @if (Model.Input.Status == MaintenanceStatus.Completed)
-        {
-            <text>
-            document.addEventListener('DOMContentLoaded', function() {
-                Swal.fire({
-                    title: 'Mantenimiento Finalizado',
-                    text: 'Este registro ya está completado. Editarlo sin permiso podría afectar el flujo (L-3 de Salida).',
-                    icon: 'warning',
-                    confirmButtonText: 'Entendido',
-                    confirmButtonColor: '#f59e0b'
-                });
-            });
-            </text>
         }
     </script>
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
 }

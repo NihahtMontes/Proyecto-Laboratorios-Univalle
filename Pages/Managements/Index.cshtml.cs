@@ -94,6 +94,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
         public async Task<IActionResult> OnPostDeleteLogicalAsync(int id)
         {
+            var type = "Preventive";
             try
             {
                 var management = await _context.Managements.FindAsync(id);
@@ -102,24 +103,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     return NotFound();
                 }
 
-                if (management.Status == ManagementStatus.Active)
+                type = management.Type.ToString();
+
+                if (management.Status == ManagementStatus.Active && management.Type != ManagementType.Corrective)
                 {
-                    TempData["Error"] = "No se puede eliminar una gestión que se encuentra ACTIVA actualmente.";
-                    return RedirectToPage("./Index");
+                    TempData.Error("No se puede eliminar una gestión que se encuentra ACTIVA actualmente.");
+                    return RedirectToPage("./Index", new { Type = type });
                 }
 
                 management.Status = ManagementStatus.Deleted;
                 await _context.SaveChangesAsync();
                 _managementContext.InvalidateCache();
 
-                TempData["Success"] = "La gestión ha sido eliminada lógicamente del sistema.";
+                TempData.Success("La gestión ha sido eliminada lógicamente del sistema.");
+                return RedirectToPage("./Index", new { Type = type });
             }
             catch (Exception)
             {
-                TempData["Error"] = "Error de conexión: No se pudo eliminar la gestión.";
+                TempData.Error("Error de conexión: No se pudo eliminar la gestión.");
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("./Index", new { Type = type });
         }
 
         public async Task<IActionResult> OnPostSyncPlansAsync(int id)

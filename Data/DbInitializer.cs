@@ -119,6 +119,23 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 await context.SaveChangesAsync();
             }
 
+            // 6b. Gestión Correctiva 2026 (contenedor de fallas)
+            var correctiveMgmt = await context.Managements.FirstOrDefaultAsync(m => m.Type == ManagementType.Corrective && m.Year == 2026);
+            if (correctiveMgmt == null)
+            {
+                correctiveMgmt = new Management
+                {
+                    Year = 2026,
+                    Semester = 0,
+                    Code = "CORR-2026",
+                    Description = "Contenedor automático de fallas correctivas.",
+                    Status = ManagementStatus.Active,
+                    Type = ManagementType.Corrective
+                };
+                context.Managements.Add(correctiveMgmt);
+                await context.SaveChangesAsync();
+            }
+
             // 7. EquipmentUnits y Escenarios del Wizard
             if (!context.EquipmentUnits.Any())
             {
