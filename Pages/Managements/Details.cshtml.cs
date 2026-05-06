@@ -11,6 +11,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 {
     [Authorize(Roles = AuthorizationHelper.AdminRoles)]
+    [ValidateAntiForgeryToken]
     public class DetailsModel : PageModel
     {
         private readonly ApplicationDbContext _context;
@@ -48,6 +49,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         public int CountDesembolso    { get; set; }
         // L-48: Planes para el calendario (formato para JSON)
         public List<ManagementPlanCalendarDto> CalendarEvents { get; set; } = new();
+        // Sombreado de 8 semanas (calculado por Semester)
+        public string ShadingStart { get; set; } = "";
+        public string ShadingEnd   { get; set; } = "";
         // Filtros del cronograma L-48
         [BindProperty(SupportsGet = true)]
         public int?    LabFilterId       { get; set; }
@@ -68,12 +72,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         [BindProperty(SupportsGet = true)]
         public string ActiveTab { get; set; } = "l48";
 
+        [BindProperty(SupportsGet = true)]
+        public string? Type { get; set; }
+
         public async Task<IActionResult> OnGetAsync(int? id)
         {
+            if (Type == "Corrective" && id == null)
+                id = await EnsureCorrectiveContainerExists();
+
             if (id == null || _context.Managements == null)
-            {
                 return NotFound();
-            }
 
             var m = await _context.Managements
                 .Include(mg => mg.ManagementPlans)
@@ -157,29 +165,82 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             var techs = techsList.OrderBy(t => t.FullName).ToList();
             TechFList = new SelectList(techs, "Id", "FullName", TechFilterId);
 
-            // Eventos para FullCalendar
+            // Eventos para FullCalendar — SOLO planes que tienen un mantenimiento registrado
+            // (fase L8 Maintenance o posterior: L3 Salida, Kardex, Desembolso)
             CalendarEvents = allPlans
-                .Where(p => p.PlannedDate.HasValue)
-                .Select(p => new ManagementPlanCalendarDto
-                {
-                    Title = p.EquipmentUnit?.Equipment?.Name ?? "Equipo",
-                    Start = p.PlannedDate!.Value.ToString("yyyy-MM-dd"),
-                    ClassName = p.PlanStatus switch
+                .Where(p => p.CurrentPhase >= WizardPhase.Maintenance)
+                .Select(p => {
+                    // Fecha que se muestra: prioridad ScheduledDate > EndDate > PlannedDate
+                    // Si Maintenance fue cancelado (soft delete), Maintenance será null por QueryFilter
+                    // Usamos PlannedDate como fallback para no perder el plan del calendario
+                    var displayDate = p.Maintenance?.ScheduledDate
+                                   ?? p.Maintenance?.EndDate
+                                   ?? p.PlannedDate
+                                   ?? p.Maintenance?.CreatedDate
+                                   ?? DateTime.Now;
+                    // Título: "INV - NombreEquipo"
+                    var inv  = p.EquipmentUnit?.InventoryNumber ?? "—";
+                    var name = p.EquipmentUnit?.Equipment?.Name ?? "Equipo";
+                    return new ManagementPlanCalendarDto
                     {
-                        ManagementPlanStatus.Completed  => "bg-success",
-                        ManagementPlanStatus.InProgress => "bg-warning",
-                        _                               => "bg-primary"
-                    }
+                        Title           = $"{inv} - {name}",
+                        Start           = displayDate.ToString("yyyy-MM-dd"),
+                        End             = null, // evento puntual
+                        ClassName       = p.Maintenance?.Status switch
+                        {
+                            MaintenanceStatus.Completed => "ev-completed",
+                            MaintenanceStatus.InProgress => "ev-progress",
+                            _                            => "ev-planned" // Incluye null (mantenimiento cancelado o no iniciado)
+                        },
+                        InventoryNumber = inv,
+                        LabName         = p.EquipmentUnit?.Laboratory?.Name ?? "—",
+                        TechnicianName  = p.Maintenance?.Technician?.FullName ?? "Sin asignar",
+                        MaintenanceId   = p.MaintenanceId,
+                        PlanId          = p.Id,
+                        CurrentPhaseInt = (int)p.CurrentPhase,
+                        StatusLabel     = p.Maintenance?.Status switch
+                        {
+                            MaintenanceStatus.Completed  => "Completado",
+                            MaintenanceStatus.InProgress => "En Progreso",
+                            null                         => "Sin mantenimiento activo",
+                            _                            => "Pendiente"
+                        }
+                    };
                 })
                 .ToList();
 
-            // B-7: Filtros ampliados del cronograma L-48
+            // Cálculo del sombreado de 8 semanas según Semester:
+            // Gestión I (sem=1): Junio + Julio del mismo año
+            // Gestión II (sem=2): Diciembre del mismo año + Enero del año siguiente
+            if (Management.Semester == 1)
+            {
+                ShadingStart = new DateTime(Management.Year, 6, 1).ToString("yyyy-MM-dd");
+                ShadingEnd   = new DateTime(Management.Year, 8, 1).ToString("yyyy-MM-dd"); // 1 Ago exclusive
+            }
+            else
+            {
+                ShadingStart = new DateTime(Management.Year, 12, 1).ToString("yyyy-MM-dd");
+                ShadingEnd   = new DateTime(Management.Year + 1, 2, 1).ToString("yyyy-MM-dd"); // 1 Feb exclusive
+            }
+
+            // B-7: Filtros ampliados del cronograma L-48 y Sanos
             var query = _context.ManagementPlans
+                .AsNoTracking()
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                 .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
+                .Include(p => p.TechnicalRequest)
                 .Include(p => p.Verification)
                 .Where(p => p.ManagementId == id);
+
+            if (ActiveTab == "sanos")
+            {
+                query = query.Where(p => p.CurrentState == WizardEquipmentState.VerifiedGood);
+            }
+            else if (ActiveTab == "l48")
+            {
+                query = query.Where(p => p.CurrentState >= WizardEquipmentState.AwaitingRequest);
+            }
 
             if (LabFilterId.HasValue)
                 query = query.Where(p => p.EquipmentUnit!.LaboratoryId == LabFilterId);
@@ -194,10 +255,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 query = query.Where(p => p.Maintenance!.TechnicianId == TechFilterId);
             if (!string.IsNullOrEmpty(StatusFilter) && StatusFilter != "Todos")
             {
-                if (StatusFilter == "Externo")
-                    query = query.Where(p => p.Maintenance!.ServiceType == ServiceType.External);
-                else if (Enum.TryParse<ManagementPlanStatus>(StatusFilter, out var statusEnum))
-                    query = query.Where(p => p.PlanStatus == statusEnum);
+                switch (StatusFilter)
+                {
+                    case "Planeado":
+                        query = query.Where(p => p.PlannedWeek != null);
+                        break;
+                    case "InProgress":
+                        query = query.Where(p => p.Maintenance != null && p.Maintenance.Status == MaintenanceStatus.InProgress);
+                        break;
+                    case "Completed":
+                        query = query.Where(p => p.ExecutedWeek != null);
+                        break;
+                    case "Externo":
+                        query = query.Where(p => p.Maintenance != null && p.Maintenance.ServiceType == ServiceType.External);
+                        break;
+                }
             }
             ManagementPlans = await query
                 .OrderBy(p => p.EquipmentUnit!.Laboratory!.Name)
@@ -257,14 +329,113 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             return RedirectToPage(new { id });
         }
+
+        public async Task<IActionResult> OnPostToggleWeekAsync(int planId, int weekNumber, string type)
+        {
+            if (weekNumber < 1 || weekNumber > 8)
+                return BadRequest();
+
+            var plan = await _context.ManagementPlans
+                .AsTracking()
+                .Include(p => p.Management)
+                .Include(p => p.Maintenance)
+                .FirstOrDefaultAsync(p => p.Id == planId);
+
+            if (plan == null || plan.Management == null)
+                return NotFound();
+
+            if (type == "planned")
+            {
+                if (plan.PlannedWeek == weekNumber)
+                    plan.PlannedWeek = null;
+                else
+                {
+                    plan.PlannedWeek = weekNumber;
+                    plan.PlannedDate = CalculateDateFromWeek(plan.Management.Year, plan.Management.Semester, weekNumber);
+                }
+            }
+            else if (type == "executed")
+            {
+                if (plan.ExecutedWeek == weekNumber)
+                {
+                    plan.ExecutedWeek = null;
+                }
+                else
+                {
+                    if (plan.PlannedWeek == null)
+                        return new JsonResult(new { success = false, error = "Debe planificar primero (Prev.) antes de marcar como ejecutado." });
+                    if (weekNumber < plan.PlannedWeek.Value)
+                        return new JsonResult(new { success = false, error = "La semana ejecutada no puede ser menor que la semana planeada." });
+
+                    plan.ExecutedWeek = weekNumber;
+                    if (plan.Maintenance != null)
+                        plan.Maintenance.ScheduledDate = CalculateDateFromWeek(plan.Management.Year, plan.Management.Semester, weekNumber);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return new JsonResult(new { success = true });
+        }
+
+        private DateTime CalculateDateFromWeek(int year, int semester, int weekNumber)
+        {
+            // Semester 1: June, July. Semester 2: December, January.
+            int month = semester == 1 ? (weekNumber <= 4 ? 6 : 7) : (weekNumber <= 4 ? 12 : 1);
+            int yearToUse = (semester == 2 && month == 1) ? year + 1 : year;
+            
+            // week 1-4 for the month.
+            int weekInMonth = weekNumber <= 4 ? weekNumber : weekNumber - 4;
+
+            // Find the Nth Monday of the month
+            DateTime firstDayOfMonth = new DateTime(yearToUse, month, 1);
+            int daysUntilMonday = ((int)DayOfWeek.Monday - (int)firstDayOfMonth.DayOfWeek + 7) % 7;
+            DateTime firstMonday = firstDayOfMonth.AddDays(daysUntilMonday);
+            
+            return firstMonday.AddDays((weekInMonth - 1) * 7);
+        }
+
+        private async Task<int> EnsureCorrectiveContainerExists()
+        {
+            var currentYear = DateTime.Now.Year;
+            var corrective = await _context.Managements
+                .AsTracking()
+                .FirstOrDefaultAsync(m => m.Type == ManagementType.Corrective && m.Year == currentYear);
+
+            if (corrective != null)
+                return corrective.Id;
+
+            corrective = new Management
+            {
+                Year = currentYear,
+                Semester = 0,
+                Code = $"CORR-{currentYear}",
+                Description = "Contenedor automático de fallas correctivas.",
+                Status = ManagementStatus.Active,
+                Type = ManagementType.Corrective,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            _context.Managements.Add(corrective);
+            await _context.SaveChangesAsync();
+
+            return corrective.Id;
+        }
     }
 
     // B-4: DTO para el calendario de FullCalendar
     public class ManagementPlanCalendarDto
     {
-        public string Title     { get; set; } = string.Empty;
-        public string Start     { get; set; } = string.Empty; // formato: "yyyy-MM-dd"
-        public string? End      { get; set; }
-        public string ClassName { get; set; } = "bg-primary"; // colores FullCalendar
+        public string Title           { get; set; } = string.Empty;
+        public string Start           { get; set; } = string.Empty; // formato: "yyyy-MM-dd"
+        public string? End            { get; set; }
+        public string ClassName       { get; set; } = "ev-planned";
+        // Campos extra para el panel de día
+        public string InventoryNumber { get; set; } = "—";
+        public string LabName         { get; set; } = "—";
+        public string TechnicianName  { get; set; } = "Sin asignar";
+        public int?   MaintenanceId   { get; set; }
+        public int    PlanId          { get; set; }
+        public int    CurrentPhaseInt { get; set; }
+        public string StatusLabel     { get; set; } = "Pendiente";
     }
 }

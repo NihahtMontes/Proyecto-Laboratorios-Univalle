@@ -150,6 +150,32 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if (Model.Laboratories.TotalPages > 1)
+                        {
+                            <nav aria-label="Paginación Laboratorios">
+                                <ul class="pagination justify-content-center">
+                                    @if (Model.Laboratories.HasPreviousPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Laboratories.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
+                                        </li>
+                                    }
+                                    @for (var i = 1; i <= Model.Laboratories.TotalPages; i++)
+                                    {
+                                        <li class="page-item @(i == Model.Laboratories.PageIndex ? "active" : "")">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
+                                        </li>
+                                    }
+                                    @if (Model.Laboratories.HasNextPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Laboratories.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
+                                        </li>
+                                    }
+                                </ul>
+                            </nav>
+                        }
                     </div>
                 </div>
 
@@ -234,6 +260,32 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if (Model.Faculties.TotalPages > 1)
+                        {
+                            <nav aria-label="Paginación Facultades">
+                                <ul class="pagination justify-content-center">
+                                    @if (Model.Faculties.HasPreviousPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Faculties.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
+                                        </li>
+                                    }
+                                    @for (var i = 1; i <= Model.Faculties.TotalPages; i++)
+                                    {
+                                        <li class="page-item @(i == Model.Faculties.PageIndex ? "active" : "")">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
+                                        </li>
+                                    }
+                                    @if (Model.Faculties.HasNextPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Faculties.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
+                                        </li>
+                                    }
+                                </ul>
+                            </nav>
+                        }
                     </div>
                 </div>
 
@@ -323,6 +375,32 @@
                             </table>
                         </div>
                     </div>
+
+                    @if (Model.Careers.TotalPages > 1)
+                    {
+                        <nav aria-label="Paginación Carreras">
+                            <ul class="pagination justify-content-center">
+                                @if (Model.Careers.HasPreviousPage)
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Careers.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
+                                    </li>
+                                }
+                                @for (var i = 1; i <= Model.Careers.TotalPages; i++)
+                                {
+                                    <li class="page-item @(i == Model.Careers.PageIndex ? "active" : "")">
+                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
+                                    </li>
+                                }
+                                @if (Model.Careers.HasNextPage)
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Careers.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
+                                    </li>
+                                }
+                            </ul>
+                        </nav>
+                    }
                 </div>
             </div>
         </div>

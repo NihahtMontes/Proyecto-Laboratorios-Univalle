@@ -3,81 +3,74 @@ using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Proyecto_Laboratorios_Univalle.Services
 {
     public interface IManagementContextService
     {
-        Task<Management?> GetCurrentManagementAsync();
-        Management? GetCurrentManagement();
+        Task<Management?> GetCurrentManagementAsync(ManagementType? type = null);
+        void InvalidateCache();
     }
 
-    /// <summary>
-    /// Servicio que provee el contexto de la gestión vigente para toda la aplicación.
-    /// Asegura que cada nueva actividad (L2 a L8) se asocie automáticamente 
-    /// a la gestión activa en el sistema.
-    /// </summary>
     public class ManagementContextService : IManagementContextService
     {
         private readonly ApplicationDbContext _context;
-        private Management? _currentActive;
+        private readonly IMemoryCache _cache;
+        private const string CacheKeyPrefix = "ActiveManagement";
+        private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
-        public ManagementContextService(ApplicationDbContext context)
+        public ManagementContextService(ApplicationDbContext context, IMemoryCache cache)
         {
             _context = context;
+            _cache = cache;
         }
 
-        public async Task<Management?> GetCurrentManagementAsync()
+        public async Task<Management?> GetCurrentManagementAsync(ManagementType? type = null)
         {
-            try 
-            {
-                if (_currentActive == null)
-                {
-                    _currentActive = await _context.Managements
-                        .FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+            var cacheKey = type.HasValue ? $"{CacheKeyPrefix}_{type.Value}" : CacheKeyPrefix;
 
-                    if (_currentActive == null)
-                    {
-                        // Fallback a la más reciente por año/semestre si nada está marcado como Active
-                        _currentActive = await _context.Managements
-                            .OrderByDescending(m => m.Year)
-                            .ThenByDescending(m => m.Semester)
-                            .FirstOrDefaultAsync();
-                    }
-                }
-                return _currentActive;
-            }
-            catch (Exception ex) when (ex is SqlException || ex is InvalidOperationException)
-            {
-                // Si la tabla no existe o la columna ManagementId falta en la DB, 
-                // retornamos null para manejarlo en el PageModel con un SweetAlert.
-                return null;
-            }
-        }
+            if (_cache.TryGetValue(cacheKey, out Management? cached) && cached != null)
+                return cached;
 
-        public Management? GetCurrentManagement()
-        {
             try
             {
-                if (_currentActive == null)
-                {
-                    _currentActive = _context.Managements
-                        .FirstOrDefault(m => m.Status == ManagementStatus.Active);
+                var query = _context.Managements
+                    .AsNoTracking()
+                    .Where(m => m.Status == ManagementStatus.Active);
 
-                    if (_currentActive == null)
-                    {
-                        _currentActive = _context.Managements
-                            .OrderByDescending(m => m.Year)
-                            .ThenByDescending(m => m.Semester)
-                            .FirstOrDefault();
-                    }
+                if (type.HasValue)
+                    query = query.Where(m => m.Type == type.Value);
+
+                var management = await query.FirstOrDefaultAsync();
+
+                if (management == null)
+                {
+                    management = await _context.Managements
+                        .AsNoTracking()
+                        .OrderByDescending(m => m.Year)
+                        .ThenByDescending(m => m.Semester)
+                        .FirstOrDefaultAsync();
                 }
-                return _currentActive;
+
+                if (management != null)
+                {
+                    _cache.Set(cacheKey, management, CacheDuration);
+                }
+
+                return management;
             }
             catch (Exception ex) when (ex is SqlException || ex is InvalidOperationException)
             {
                 return null;
             }
+        }
+
+        public void InvalidateCache()
+        {
+            _cache.Remove(CacheKeyPrefix);
+            _cache.Remove($"{CacheKeyPrefix}_{ManagementType.Preventive}");
+            _cache.Remove($"{CacheKeyPrefix}_{ManagementType.Corrective}");
         }
     }
 }

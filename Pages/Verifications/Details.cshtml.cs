@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using Proyecto_Laboratorios_Univalle.Services.Reporting;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 {
@@ -12,24 +12,34 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
     public class DetailsModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
-        private readonly IVerificationReportService _reportingService;
 
-        public DetailsModel(
-            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
-            IVerificationReportService reportingService)
+        public DetailsModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context)
         {
             _context = context;
-            _reportingService = reportingService;
         }
 
-        public Verification Verification { get; set; } = default!;
+        public Verification? Verification { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? LabId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public DateTime? Date { get; set; }
+
+        public List<Verification> SessionEquipments { get; set; } = new();
+        public string SessionLabName { get; set; } = string.Empty;
+        public string SessionInspector { get; set; } = string.Empty;
+        public DateTime SessionDate { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null)
+            if (LabId.HasValue && Date.HasValue)
             {
-                return NotFound();
+                return await LoadSessionView();
             }
+
+            if (id == null)
+                return NotFound();
 
             var verification = await _context.Verifications
                 .Include(v => v.CreatedBy)
@@ -41,37 +51,34 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (verification == null)
-            {
                 return NotFound();
-            }
-            else
-            {
-                Verification = verification;
-            }
+
+            Verification = verification;
             return Page();
         }
 
-        public async Task<IActionResult> OnGetDownloadPdfAsync(int? id)
+        private async Task<IActionResult> LoadSessionView()
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var verification = await _context.Verifications
+            var query = _context.Verifications
+                .Include(v => v.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
+                .Include(v => v.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                 .Include(v => v.CreatedBy)
-                .Include(v => v.EquipmentUnit)
-                    .ThenInclude(eu => eu!.Equipment)
-                .Include(v => v.ModifiedBy)
-                .FirstOrDefaultAsync(m => m.Id == id);
+                .Where(v => v.EquipmentUnit!.LaboratoryId == LabId.Value
+                         && v.Date.Date == Date.Value.Date);
 
-            if (verification == null)
-            {
+            SessionEquipments = await query.OrderBy(v => v.EquipmentUnit!.InventoryNumber).ToListAsync();
+
+            if (SessionEquipments.Count == 0)
                 return NotFound();
-            }
 
-            var pdfBytes = _reportingService.GenerateVerificationPdf(verification);
-            return File(pdfBytes, "application/pdf", $"Verificacion_{verification.Id}.pdf");
+            var first = SessionEquipments.First();
+            SessionDate = Date.Value;
+            SessionLabName = first.EquipmentUnit?.Laboratory?.Name ?? "Laboratorio";
+            SessionInspector = first.CreatedBy != null
+                ? first.CreatedBy.FirstName + " " + first.CreatedBy.LastName
+                : "Sistema";
+
+            return Page();
         }
     }
 }

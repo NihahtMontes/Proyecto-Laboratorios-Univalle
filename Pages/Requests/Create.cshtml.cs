@@ -32,6 +32,36 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             await LoadLists();
 
+            var currentMgmt = await ResolveManagementAsync();
+            var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
+            ViewData["IsCorrective"] = isCorrective;
+            ViewData["ManagementId"] = currentMgmt?.Id;
+
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans
+                    .Include(p => p.Verification).ThenInclude(v => v!.Faults)
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+
+                ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
+
+                if (plan?.Verification != null && !string.IsNullOrWhiteSpace(plan.Verification.Observations))
+                {
+                    Input.Description = plan.Verification.Observations;
+                }
+
+                // Exponer IDs de fases previas para la sección de referencia vinculada
+                if (plan?.VerificationId != null)
+                {
+                    ViewData["LinkedVerificationId"] = plan.VerificationId;
+                }
+                
+                if (!equipmentUnitId.HasValue && plan?.EquipmentUnitId != null)
+                {
+                    equipmentUnitId = plan.EquipmentUnitId;
+                }
+            }
+
             if (equipmentUnitId.HasValue)
             {
                 var unit = await _context.EquipmentUnits
@@ -67,6 +97,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 13. Mantenimiento con personal externo capacitado.";
             }
 
+
             ViewData["IsWizard"] = isWizard;
             return Page();
         }
@@ -76,6 +107,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         [BindProperty(SupportsGet = true)]
         public int? ManagementPlanId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
 
         public class InputModel
         {
@@ -102,7 +136,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             }
 
             var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
-            var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+            var currentMgmt = await ResolveManagementAsync();
             if (currentMgmt == null)
             {
                 TempData["Warning"] = "No se ha detectado una gestión activa. Debe activar un periodo de gestión o aplicar las migraciones de base de datos para poder registrar solicitudes.";
@@ -142,13 +176,28 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     await _context.SaveChangesAsync();
                 }
             }
+            else if (currentMgmt.Type == ManagementType.Corrective)
+            {
+                // Si es correctivo y no tiene ManagementPlan, se crea uno nuevo al momento de reportar la falla
+                var plan = new ManagementPlan
+                {
+                    ManagementId = currentMgmt.Id,
+                    EquipmentUnitId = Input.EquipmentUnitId,
+                    CurrentPhase = WizardPhase.Maintenance,
+                    CurrentState = WizardEquipmentState.AwaitingMaintenance,
+                    PlanStatus = ManagementPlanStatus.Pending,
+                    RequestId = request.Id
+                };
+                _context.ManagementPlans.Add(plan);
+                await _context.SaveChangesAsync();
+            }
 
             TempData.Success($"Solicitud técnica L-7 registrada exitosamente.");
 
             if (isWizard)
             {
                 // Al ser Wizard, el sistema entiende que ya se cumplió el paso de Solicitud (Paso 2)
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
             }
 
             return RedirectToPage("./Index");
@@ -172,6 +221,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             var units = await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == laboratoryId).Select(u => new { id = u.Id, name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync();
             return new JsonResult(units);
+        }
+
+        private async Task<Management?> ResolveManagementAsync()
+        {
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+                if (plan != null)
+                    return await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
+            }
+            if (ManagementId.HasValue)
+                return await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value);
+            return await _managementContext.GetCurrentManagementAsync();
         }
     }
 }

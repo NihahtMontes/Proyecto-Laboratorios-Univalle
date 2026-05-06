@@ -24,7 +24,7 @@
                             };
                         }
                         <span class="badge badge-pill @statusClass px-3 py-2">
-                            @Model.Maintenance.Status
+                            @Html.DisplayFor(m => m.Maintenance.Status)
                         </span>
                     </div>
                 </div>
@@ -42,7 +42,7 @@
 
                         <div class="mb-3">
                             <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Tipo de Mantenimiento</label>
-                                <p class="text-dark">@Model.Maintenance.MaintenanceType</p>
+                                <p class="text-dark">@Html.DisplayFor(m => m.Maintenance.MaintenanceType)</p>
                         </div>
 
                         <div class="mb-3">
@@ -87,7 +87,7 @@
                         <p class="text-dark font-weight-bold">
                             @if (Model.Maintenance.SatisfactionLevel.HasValue)
                             {
-                                <i class="fas fa-star text-warning mr-1"></i> @Model.Maintenance.SatisfactionLevel
+                                <i class="fas fa-star text-warning mr-1"></i> @Html.DisplayFor(m => m.Maintenance.SatisfactionLevel)
                             }
                             else
                             {
@@ -173,6 +173,9 @@
                 <div class="form-actions text-right mt-4 pt-3 border-top">
                     <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">
                          Volver
+                    </a>
+                    <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@Model.Maintenance.EquipmentUnitId" class="btn btn-outline-primary btn-rounded px-4 mr-2">
+                        <i class="fas fa-history mr-1"></i> Ver Kardex
                     </a>
                     <a asp-page="./Edit" asp-route-id="@Model.Maintenance.Id" class="btn btn-warning btn-rounded text-white px-4 shadow-sm font-weight-bold">
                         <i class="fas fa-edit mr-1"></i> Editar Registro

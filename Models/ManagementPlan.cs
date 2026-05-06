@@ -59,6 +59,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Responsable del Mantenimiento")]
         public string? Responsible { get; set; }
 
+        [Display(Name = "Semana Planeada (S1-S8)")]
+        public int? PlannedWeek { get; set; }
+
+        [Display(Name = "Semana Ejecutada (S1-S8)")]
+        public int? ExecutedWeek { get; set; }
+
         [StringLength(500)]
         [Display(Name = "Referencia Documental / Adjunto")]
         public string? DocumentReference { get; set; }

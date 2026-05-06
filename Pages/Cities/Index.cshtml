@@ -139,6 +139,32 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @if (Model.Cities.TotalPages > 1)
+                        {
+                            <nav aria-label="Paginación Ciudades">
+                                <ul class="pagination justify-content-center">
+                                    @if (Model.Cities.HasPreviousPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Cities.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
+                                        </li>
+                                    }
+                                    @for (var i = 1; i <= Model.Cities.TotalPages; i++)
+                                    {
+                                        <li class="page-item @(i == Model.Cities.PageIndex ? "active" : "")">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">@i</a>
+                                        </li>
+                                    }
+                                    @if (Model.Cities.HasNextPage)
+                                    {
+                                        <li class="page-item">
+                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Cities.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
+                                        </li>
+                                    }
+                                </ul>
+                            </nav>
+                        }
                     </div>
                 </div>
 

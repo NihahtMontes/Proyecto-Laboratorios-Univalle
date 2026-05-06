@@ -18,7 +18,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             _context = context;
         }
 
-        public IList<Country> Countries { get; set; } = default!;
+        public PaginatedList<Country> Countries { get; set; } = new PaginatedList<Country>(new List<Country>(), 0, 1, 20);
+
+        [BindProperty(SupportsGet = true)]
+        public int? PageIndex { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -26,7 +29,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
         [BindProperty(SupportsGet = true)]
         public GeneralStatus? StatusFilter { get; set; }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             var query = _context.Countries
                 .Include(c => c.CreatedBy)
@@ -46,7 +49,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
                 query = query.Where(c => c.Status == StatusFilter.Value);
             }
 
-            Countries = await query.OrderBy(c => c.Name).ToListAsync();
+            Countries = await PaginatedList<Country>.CreateAsync(query.OrderBy(c => c.Name), pageIndex ?? 1, 20);
         }
     }
 }

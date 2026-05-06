@@ -18,7 +18,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             _context = context;
         }
 
-        public IList<Faculty> Faculties { get; set; } = default!;
+        public PaginatedList<Faculty> Faculties { get; set; } = new PaginatedList<Faculty>(new List<Faculty>(), 0, 1, 20);
+
+        [BindProperty(SupportsGet = true)]
+        public int? PageIndex { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -31,7 +34,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             return RedirectToPage("/Laboratories/Index", null, "faculties");
         }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             var query = _context.Faculties
                 .Include(f => f.CreatedBy)
@@ -51,7 +54,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
                 query = query.Where(f => f.Status == StatusFilter.Value);
             }
 
-            Faculties = await query.OrderBy(f => f.Name).ToListAsync();
+            Faculties = await PaginatedList<Faculty>.CreateAsync(query.OrderBy(f => f.Name), pageIndex ?? 1, 20);
         }
     }
 }

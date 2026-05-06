@@ -21,11 +21,6 @@
                                 <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Registro Técnico de Mantenimiento</h3>
                                 <h6 class="card-subtitle text-muted ml-2">Control centralizado de servicios preventivos y correctivos.</h6>
                             </div>
-                            <div class="ml-auto mt-3">
-                                <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
-                                    <i class="fas fa-plus-circle mr-1 text-info"></i> Nuevo Mantenimiento
-                                </a>
-                            </div>
                         </div>
 
                         <div id="localNotificationsArea" class="mb-4" style="display: none;">
@@ -143,12 +138,15 @@
                                                     <span class="badge @statusClass px-3 py-1">@statusText</span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <div class="btn-group">
+                                                    <div class="btn-group shadow-sm">
                                                         <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                         <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
                                                             <i class="fas fa-search-plus"></i>
+                                                        </a>
+                                                        <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@item.EquipmentUnitId" class="btn btn-sm btn-outline-primary btn-rounded mr-1" title="Kardex (Histórico)">
+                                                            <i class="fas fa-history"></i>
                                                         </a>
                                                         <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
                                                             <i class="fas fa-trash"></i>
@@ -161,12 +159,38 @@
                                 </tbody>
                             </table>
                         </div>
+
+                                        @if (Model.Maintenances.HasPreviousPage || Model.Maintenances.HasNextPage)
+                                        {
+                                            <nav aria-label="Page navigation" class="mt-4">
+                                                <ul class="pagination justify-content-center">
+                                                    @if (Model.Maintenances.HasPreviousPage)
+                                                    {
+                                                        <li class="page-item">
+                                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Maintenances.PageIndex - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-selectedLaboratoryId="@Model.SelectedLaboratoryId">Anterior</a>
+                                                        </li>
+                                                    }
+                                                    @for (var i = 1; i <= Model.Maintenances.TotalPages; i++)
+                                                    {
+                                                        <li class="page-item @(i == Model.Maintenances.PageIndex ? "active" : "")">
+                                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-selectedLaboratoryId="@Model.SelectedLaboratoryId">@i</a>
+                                                        </li>
+                                                    }
+                                                    @if (Model.Maintenances.HasNextPage)
+                                                    {
+                                                        <li class="page-item">
+                                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Maintenances.PageIndex + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-selectedLaboratoryId="@Model.SelectedLaboratoryId">Siguiente</a>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </nav>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 @section Styles {
     <style>

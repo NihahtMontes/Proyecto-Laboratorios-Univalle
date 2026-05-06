@@ -75,6 +75,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         /// <summary>Resultados individuales de cada punto de control.</summary>
         public virtual ICollection<VerificationCheckResult> CheckResults { get; set; } = [];
 
+        /// <summary>Lista de fallas dinámicas detectadas en L6.</summary>
+        public virtual ICollection<VerificationFault>? Faults { get; set; }
+
         // ========================================
         // CALCULATED PROPERTIES
         // ========================================
@@ -93,9 +96,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         }
 
         [NotMapped]
-        public bool HasFailures => !string.IsNullOrWhiteSpace(Observations);
+        public bool HasFailures => (Faults != null && Faults.Any(f => !f.IsDeleted)) || !string.IsNullOrWhiteSpace(Observations);
 
         [NotMapped]
-        public int FailuresCount => HasFailures ? 1 : 0;
+        public int FailuresCount => (Faults?.Count(f => !f.IsDeleted) ?? 0) + (!string.IsNullOrWhiteSpace(Observations) ? 1 : 0);
     }
 }

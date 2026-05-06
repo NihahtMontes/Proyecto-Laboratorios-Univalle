@@ -27,6 +27,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public EquipmentTypeClassification TypeClassification { get; set; } = EquipmentTypeClassification.Otro;
 
         // ========================================
+        // ESTADO
+        // ========================================
+
+        [Display(Name = "Estado")]
+        public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
+
+        // ========================================
         // IDENTIFICACIÓN Y ORIGEN
         // ========================================
 
@@ -94,5 +101,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual User? ModifiedBy { get; set; }
 
         public virtual ICollection<EquipmentUnit>? Units { get; set; }
+
+        public virtual ICollection<EquipmentNote>? Notes { get; set; }
     }
 }

@@ -33,6 +33,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 .Include(e => e.Country)
                 .Include(e => e.CreatedBy)
                 .Include(e => e.ModifiedBy)
+                .Include(e => e.Notes)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (equipment == null) return NotFound();

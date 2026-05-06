@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = "Registrar Salida de Equipo (L-3)";
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+    int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 4);
 }
 
 <div class="row justify-content-center">
@@ -12,15 +13,7 @@
 
         @if (isWizard)
         {
-            <div class="wizard-steps mb-5 d-flex justify-content-between position-relative mt-2 px-5 animate__animated animate__fadeIn">
-                <div class="step-line"></div>
-                <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L6 Verificación</span></div>
-                <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L7 Solicitud</span></div>
-                <div class="step-item"><span class="step-number" style="background:#28a745; color:white; border-color:#28a745;"><i class="fas fa-check"></i></span><span class="step-label" style="color:#28a745;">L8 Mantenimiento</span></div>
-                <div class="step-item active"><span class="step-number shadow-sm">4</span><span class="step-label">L3 Salida</span></div>
-                <div class="step-item"><span class="step-number">5</span><span class="step-label">Kardex</span></div>
-                <div class="step-item"><span class="step-number">6</span><span class="step-label">Desembolso</span></div>
-            </div>
+            await Html.RenderPartialAsync("_WizardSteps", currentPhaseInt);
         }
 
         <div class="card shadow-sm border-0 mt-3">
@@ -70,32 +63,98 @@
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
                                     <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad <span class="text-danger">*</span></label>
-                                    <select asp-for="Input.FacultyId" class="form-control custom-select border-warning" asp-items="ViewBag.FacultyId" id="facultySelector" required>
-                                        <option value="">-- Seleccione Facultad --</option>
-                                    </select>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-warning" asp-items="ViewBag.FacultyId" id="facultySelector" disabled>
+                                            <option value="">-- Seleccione Facultad --</option>
+                                        </select>
+                                        <input type="hidden" asp-for="Input.FacultyId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-warning" asp-items="ViewBag.FacultyId" id="facultySelector" required>
+                                            <option value="">-- Seleccione Facultad --</option>
+                                        </select>
+                                    }
                                     <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
                                     <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Ambiente / Lab <span class="text-danger">*</span></label>
-                                    <select asp-for="Input.LaboratoryId" class="form-control custom-select border-warning" asp-items="ViewBag.LaboratoryId" id="labSelector" required>
-                                        <option value="">-- Seleccione Laboratorio --</option>
-                                    </select>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-warning" asp-items="ViewBag.LaboratoryId" id="labSelector" disabled>
+                                            <option value="">-- Seleccione Laboratorio --</option>
+                                        </select>
+                                        <input type="hidden" asp-for="Input.LaboratoryId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-warning" asp-items="ViewBag.LaboratoryId" id="labSelector" required>
+                                            <option value="">-- Seleccione Laboratorio --</option>
+                                        </select>
+                                    }
                                     <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
                                     <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Equipo Específico <span class="text-danger">*</span></label>
-                                    <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-warning" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" required>
-                                        <option value="">-- Seleccione Equipo --</option>
-                                    </select>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-warning" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" disabled>
+                                            <option value="">-- Seleccione Equipo --</option>
+                                        </select>
+                                        <input type="hidden" asp-for="Input.EquipmentUnitId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-warning" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" required>
+                                            <option value="">-- Seleccione Equipo --</option>
+                                        </select>
+                                    }
                                     <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    @if (isWizard && ViewData["LinkedMaintenanceId"] != null)
+                    {
+                        <div class="bg-light p-3 rounded mb-4 border-left border-info" style="border-left-width: 4px !important;">
+                            <label class="control-label font-weight-bold small text-uppercase text-muted">Mantenimiento Relacionado (L-8)</label>
+                            <div class="p-2 rounded mt-2" style="background:#f5f3ff; border: 1px solid #ddd6fe;">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3" style="color: #7c3aed;"><i class="fas fa-wrench fa-lg"></i></div>
+                                    <div>
+                                        <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Mantenimiento L-8 Vinculado</h6>
+                                        <span class="small" style="color: #7c3aed;">ID: @ViewData["LinkedMaintenanceId"]</span>
+                                    </div>
+                                    <a href="/Maintenances/Details/@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
+                                        Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
+                                    </a>
+                                    @{
+                                        int prevPhaseEnumInt = 3; // Maintenance = 3
+                                        int currentPhaseInt = 4;  // Departure Create = 4
+                                        int diff = currentPhaseInt - prevPhaseEnumInt;
+                                    }
+                                    @if (diff == 1)
+                                    {
+                                        <a href="/Maintenances/Edit?id=@ViewData["LinkedMaintenanceId"]" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold shadow-sm ml-2">
+                                            <i class="fas fa-edit"></i> Editar L-8
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, @prevPhaseEnumInt, 'L-8 Mantenimiento', @currentPhaseInt)">
+                                            <i class="fas fa-undo"></i> Rehacer L-8
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
 
                     <div class="row">
                         <div class="col-lg-7">
@@ -146,7 +205,7 @@
                     <div class="form-actions text-right pb-4 mt-4">
                         @if (isWizard)
                         {
-                            <a asp-page="/Wizard/Index" asp-route-Step="4" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="4" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
                                 <i class="fas fa-undo mr-1"></i> Volver al Wizard
                             </a>
                         }
@@ -156,7 +215,7 @@
                                  <i class="fas fa-times mr-1"></i> Cancelar
                             </a>
                         }
-                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark py-2">
+                        <button type="button" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark py-2" onclick="confirmDeparture()">
                             <i class="fas fa-save mr-1"></i> Registrar Salida L-3
                         </button>
                     </div>
@@ -169,14 +228,6 @@
 
 @section Styles {
     <style>
-        .wizard-steps { height: 70px; }
-        .step-line { border-bottom: 2px solid #e9ecef; position: absolute; top: 20px; left: 10%; right: 10%; z-index: 1; }
-        .step-item { position: relative; z-index: 2; text-align: center; width: 100px; }
-        .step-number { width: 40px; height: 40px; border-radius: 50%; background: white; border: 2px solid #e9ecef; display: flex; align-items: center; justify-content: center; margin: 0 auto 5px; font-weight: bold; color: #adb5bd; }
-        .step-label { font-size: 0.75rem; font-weight: bold; color: #adb5bd; display: block; }
-        .step-item.active .step-number { border-color: #f59e0b; color: #f59e0b; background: #fffcf0; }
-        .step-item.active .step-label { color: #f59e0b; }
-
         .btn-group-toggle .btn { border: 1px solid #e9ecef !important; color: #6c757d; background: #f8f9fa; }
         .btn-group-toggle .btn.active { background: #2962ff !important; color: white !important; border-color: #2962ff !important; box-shadow: 0 4px 10px rgba(41, 98, 255, 0.2) !important; }
         #label-maintenance-btn.active { background: #4fc3f7 !important; border-color: #4fc3f7 !important; }
@@ -241,6 +292,23 @@
                 });
             });
         });
+
+        function confirmDeparture() {
+            Swal.fire({
+                title: '¿Confirmar Salida?',
+                text: 'Se registrará la salida temporal de este equipo para mantenimiento o préstamo.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, registrar salida',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#f59e0b',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#departureForm').submit();
+                }
+            });
+        }
     </script>
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");

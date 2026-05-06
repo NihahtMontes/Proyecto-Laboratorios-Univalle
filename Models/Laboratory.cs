@@ -103,6 +103,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
             EquipmentUnits?.Where(u => u.AcquisitionValue.HasValue)
                            .Sum(u => u.AcquisitionValue ?? 0) ?? 0;
 
+        [Display(Name = "Ciudad")]
         public int? CityId { get; set; }
+
+        [ForeignKey("CityId")]
+        public virtual City? City { get; set; }
     }
 }

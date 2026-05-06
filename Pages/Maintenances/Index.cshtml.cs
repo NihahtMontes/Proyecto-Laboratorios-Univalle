@@ -19,7 +19,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             _context = context;
         }
 
-        public IList<Maintenance> Maintenances { get; set; } = default!;
+        public PaginatedList<Maintenance> Maintenances { get; set; } = default!;
+
+        public int PageSize { get; set; } = 20;
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -33,7 +35,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public SelectList LaboratoryList { get; set; } = default!;
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
 
             var labsQuery = _context.Laboratories.AsQueryable();
@@ -72,9 +74,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 query = query.Where(m => m.EquipmentUnit!.LaboratoryId == SelectedLaboratoryId.Value);
             }
 
-            Maintenances = await query
-                .OrderBy(m => m.EquipmentUnit!.Equipment!.Name)
-                .ToListAsync();
+            Maintenances = await PaginatedList<Maintenance>.CreateAsync(
+                query.OrderBy(m => m.EquipmentUnit!.Equipment!.Name),
+                pageIndex ?? 1, PageSize);
         }
     }
 }

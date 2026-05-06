@@ -55,7 +55,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             if (verification != null)
             {
                 Verification = verification;
-                _context.Verifications.Remove(Verification);
+                // Soft delete: anular la verificación en lugar de eliminar físicamente
+                verification.Status = Models.Enums.VerificationStatus.Annulled;
                 await _context.SaveChangesAsync();
                 
                 TempData.Success(NotificationHelper.Verifications.Deleted(Verification.Id));

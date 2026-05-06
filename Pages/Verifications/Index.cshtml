@@ -18,168 +18,139 @@
                 }
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Control Pre-Mantenimiento (Formulario L-6)</h3>
-                        <h6 class="card-subtitle text-muted ml-2">Evaluación previa y generación de solicitudes de mantenimiento.</h6>
-                    </div>
-
-                    <div class="ml-auto mt-3">
-                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
-                            <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Solicitud
-                        </a>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Historial de Verificaciones (L-6)</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Sesiones de inspección agrupadas por laboratorio y fecha.</h6>
                     </div>
                 </div>
 
                 <div class="bg-light p-4 mb-4 rounded border shadow-sm">
-                    <form method="post" asp-page-handler="GenerateReport">
-                        <div class="d-lg-flex align-items-center mb-4 pb-3 border-bottom border-muted">
-                            <div class="mb-2 mb-lg-0 mr-auto">
-                                <h6 class="font-weight-bold text-dark mb-1"><i class="fas fa-file-excel mr-2 text-success"></i> Reporte Oficial L-6</h6>
-                                <small class="text-muted d-block">Seleccione los parámetros para descargar el inventario.</small>
-                            </div>
-
-                            <div class="d-flex flex-wrap align-items-center justify-content-lg-end">
-                                <div class="input-group input-group-sm mr-2 mb-2" style="width: 220px;">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-flask text-muted"></i></span>
-                                    </div>
-                                    <select asp-for="ReportInput.LaboratoryId" class="form-control border-left-0" asp-items="Model.LaboratoryList" required>
-                                        <option value="">-- Laboratorio --</option>
-                                    </select>
-                                </div>
-
-                                <div class="input-group input-group-sm mr-2 mb-2" style="width: 140px;">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-calendar-alt text-muted"></i></span>
-                                    </div>
-                                    <input asp-for="ReportInput.Term" class="form-control border-left-0" placeholder="Gestión" required />
-                                </div>
-
-                                <div class="input-group input-group-sm mr-2 mb-2" style="width: 180px;">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-user text-muted"></i></span>
-                                    </div>
-                                    <input asp-for="ReportInput.Responsible" class="form-control border-left-0" placeholder="Responsable" required />
-                                </div>
-
-                                <button type="submit" class="btn btn-success btn-sm btn-rounded shadow-sm font-weight-bold px-3 mb-2">
-                                    <i class="fas fa-download mr-1"></i> Excel
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-
-                    <form method="get">
+                    <form method="get" class="mb-0">
                         <div class="row align-items-end">
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="small font-weight-bold text-muted uppercase">Laboratorio / Ambiente</label>
-                                <select asp-for="FilterLaboratoryId" class="form-control custom-select" asp-items="Model.LaboratoryList">
-                                    <option value="">-- Todos --</option>
+                                <select asp-for="FilterLaboratoryId" class="form-control custom-select" asp-items="Model.LaboratoryList" onchange="this.form.submit()">
+                                    <option value="">-- Seleccione un laboratorio --</option>
                                 </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
-                                <div class="input-group drop-shadow">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
-                                    </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo o código de inventario..." />
-                                </div>
-                            </div>
-                            <div class="col-md-5 text-right mt-3 mt-md-0">
-                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm font-weight-bold btn-sm">
-                                    <i class="fas fa-filter mr-1"></i> Buscar
-                                </button>
-                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1 btn-sm">
-                                    <i class="fas fa-sync-alt"></i>
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded font-weight-bold">
+                                    <i class="fas fa-sync-alt mr-1"></i> Limpiar filtro
                                 </a>
                             </div>
                         </div>
                     </form>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-hover v-middle">
-                        <thead class="bg-light">
-                            <tr class="small uppercase font-weight-bold">
-                                <th class="border-top-0">Equipo Inspeccionado</th>
-                                <th class="border-top-0 text-center">Fecha</th>
-                                <th class="border-top-0">Inspector</th>
-                                <th class="border-top-0 text-center">Progreso</th>
-                                <th class="border-top-0 text-center">Estado</th>
-                                <th class="border-top-0 text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (Model.Verifications == null || !Model.Verifications.Any())
-                            {
-                                <tr>
-                                    <td colspan="6" class="text-center py-5 text-muted italic font-weight-bold">
-                                        <i class="fas fa-clipboard-check fa-3x mb-3 d-block opacity-2"></i>
-                                        No se encontraron verificaciones registradas.
-                                    </td>
+                @if (!Model.FilterLaboratoryId.HasValue)
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-clipboard-check fa-4x mb-4 d-block opacity-2"></i>
+                        <h5 class="font-weight-bold">Seleccione un laboratorio</h5>
+                        <p>Elija un laboratorio para ver el historial de sesiones de verificación L-6.</p>
+                    </div>
+                }
+                else if (Model.Sessions == null || !Model.Sessions.Any())
+                {
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-clipboard-check fa-4x mb-4 d-block opacity-2"></i>
+                        <h5 class="font-weight-bold">Sin sesiones registradas</h5>
+                        <p>No se encontraron verificaciones para este laboratorio.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover v-middle">
+                            <thead class="bg-light">
+                                <tr class="small uppercase font-weight-bold">
+                                    <th class="border-top-0 text-center" style="width: 15%;">Fecha</th>
+                                    <th class="border-top-0" style="width: 25%;">Laboratorio</th>
+                                    <th class="border-top-0 text-center" style="width: 20%;">Equipos</th>
+                                    <th class="border-top-0" style="width: 25%;">Inspector</th>
+                                    <th class="border-top-0 text-center" style="width: 15%;">Acción</th>
                                 </tr>
-                            }
-                            else
-                            {
-                                foreach (var item in Model.Verifications)
+                            </thead>
+                            <tbody>
+                                @foreach (var session in Model.Sessions)
                                 {
                                     <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="m-r-10">
-                                                    <span class="btn btn-circle btn-sm btn-light-success text-success"><i class="fas fa-check-double"></i></span>
-                                                </div>
-                                                <div>
-                                                    <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
-                                                    <span class="text-muted small">Inv: @item.EquipmentUnit?.InventoryNumber</span>
-                                                </div>
-                                            </div>
-                                        </td>
                                         <td class="text-center">
-                                            <span class="text-dark font-weight-bold small">@item.Date.ToString("dd/MM/yyyy")</span>
+                                            <span class="text-dark font-weight-bold">@session.Date.ToString("dd/MM/yyyy")</span>
                                         </td>
                                         <td>
-                                            <div class="small text-dark font-weight-bold">@(item.CreatedBy?.FullName ?? "Sistema")</div>
-                                            <small class="text-muted">Inspector</small>
-                                        </td>
-                                        <td class="text-center" style="width: 15%;">
-                                            <div class="d-flex align-items-center justify-content-center">
-                                                <span class="small font-weight-bold mr-2">@item.CompletionPercentage%</span>
-                                                <div class="progress flex-grow-1" style="height: 6px;">
-                                                    <div class="progress-bar bg-info" role="progressbar" style="width: @item.CompletionPercentage%;" aria-valuenow="@item.CompletionPercentage" aria-valuemin="0" aria-valuemax="100"></div>
-                                                </div>
-                                            </div>
+                                            <span class="font-weight-bold text-dark">@session.LaboratoryName</span>
                                         </td>
                                         <td class="text-center">
-                                            @{
-                                                var (statusClass, statusText) = item.Status switch
-                                                {
-                                                    VerificationStatus.Completed => ("badge-success", "COMPLETADA"),
-                                                    VerificationStatus.Draft => ("badge-warning", "BORRADOR"),
-                                                    VerificationStatus.Reviewed => ("badge-info", "REVISADA"),
-                                                    _ => ("badge-secondary", "DESCONOCIDO")
-                                                };
+                                            <span class="badge badge-primary px-3 py-1 mr-1">@session.TotalEquipments equipos</span>
+                                            @if (session.BadCount > 0)
+                                            {
+                                                <span class="badge badge-danger px-3 py-1">@session.BadCount malos</span>
                                             }
-                                            <span class="badge @statusClass px-3 py-1">@statusText</span>
+                                        </td>
+                                        <td>
+                                            <div class="small text-dark font-weight-bold">@session.InspectorName</div>
                                         </td>
                                         <td class="text-center">
-                                            <div class="btn-group">
-                                                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Continuar / Editar">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Ver Detalles">
-                                                    <i class="fas fa-search-plus"></i>
-                                                </a>
-                                                <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
-                                            </div>
+                                            <a asp-page="./Details"
+                                               asp-route-labId="@session.LaboratoryId"
+                                               asp-route-date="@session.Date.ToString("yyyy-MM-dd")"
+                                               class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Ver Sesión">
+                                                <i class="fas fa-search-plus mr-1"></i> Ver Sesión
+                                            </a>
                                         </td>
                                     </tr>
                                 }
-                            }
-                        </tbody>
-                    </table>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (Model.Sessions.HasPreviousPage || Model.Sessions.HasNextPage)
+                    {
+                        <nav aria-label="Page navigation" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                @if (Model.Sessions.HasPreviousPage)
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Sessions.PageIndex - 1)" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
+                                    </li>
+                                }
+                                @for (var i = 1; i <= Model.Sessions.TotalPages; i++)
+                                {
+                                    <li class="page-item @(i == Model.Sessions.PageIndex ? "active" : "")">
+                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
+                                    </li>
+                                }
+                                @if (Model.Sessions.HasNextPage)
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Sessions.PageIndex + 1)" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
+                                    </li>
+                                }
+                            </ul>
+                        </nav>
+                    }
+                }
+
+                <hr class="mt-5 mb-4" />
+                <div class="bg-light p-4 rounded border shadow-sm">
+                    <form method="post" asp-page-handler="GenerateReport">
+                        <div class="d-lg-flex align-items-center">
+                            <div class="mb-2 mb-lg-0 mr-auto">
+                                <h6 class="font-weight-bold text-dark mb-1"><i class="fas fa-file-excel mr-2 text-success"></i> Reporte Oficial L-6</h6>
+                                <small class="text-muted d-block">Seleccione los parámetros para descargar el inventario.</small>
+                            </div>
+                            <div class="d-flex flex-wrap align-items-center">
+                                <select asp-for="ReportInput.LaboratoryId" class="form-control form-control-sm mr-2" asp-items="Model.LaboratoryList" required style="width: 200px;">
+                                    <option value="">-- Laboratorio --</option>
+                                </select>
+                                <input asp-for="ReportInput.Term" class="form-control form-control-sm mr-2" placeholder="Gestión" required style="width: 120px;" />
+                                <input asp-for="ReportInput.Responsible" class="form-control form-control-sm mr-2" placeholder="Responsable" required style="width: 160px;" />
+                                <button type="submit" class="btn btn-success btn-sm btn-rounded shadow-sm font-weight-bold px-3">
+                                    <i class="fas fa-download mr-1"></i> Excel
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

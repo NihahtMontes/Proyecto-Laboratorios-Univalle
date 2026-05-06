@@ -3,17 +3,18 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using System.Text.Json
 @{
-    ViewData["Title"] = $"Gestión {Model.Management.Code}";
+    ViewData["Title"] = $"Mantenimiento Preventivo {Model.Management.Code}";
     var isManagementActive = Model.Management.Status == ManagementStatus.Active;
     // Variables L-48 (usadas solo cuando ActiveTab == l48, declaradas aqui para evitar RZ1010)
     var l48Sem      = Model.Management.Semester;
     var l48Year     = Model.Management.Year;
-    var l48Col1Name = l48Sem == 1 ? $"Dic {l48Year - 1}" : $"Jun {l48Year}";
-    var l48Col2Name = l48Sem == 1 ? $"Ene {l48Year}"     : $"Jul {l48Year}";
+    var l48Col1Name = l48Sem == 1 ? $"Jun {l48Year}" : $"Dic {l48Year}";
+    var l48Col2Name = l48Sem == 1 ? $"Jul {l48Year}" : $"Ene {l48Year + 1}";
+    var isCorrective = Model.Management.Type == ManagementType.Corrective;
 }
 
 @section Styles {
-    <style>
+    <style> 
         /* Badge soft colors */
         .badge-soft-success { background: #d1fae5; color: #065f46; }
         .badge-soft-danger  { background: #fef2f2; color: #991b1b; }
@@ -60,24 +61,33 @@
     <!-- CABECERA DE LA GESTIÓN -->
     <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
         <div>
-            <h1 class="wizard-title mb-1">Gestión @Model.Management.Code</h1>
+            <h1 class="wizard-title mb-1">@(isCorrective ? "Mantenimiento Correctivo" : "Mantenimiento Preventivo") @Model.Management.Code</h1>
             <p class="wizard-subtitle">
                 @(string.IsNullOrEmpty(Model.Management.Description)
-                    ? "Resumen de indicadores para este período administrativo."
+                    ? (isCorrective ? "Contenedor anual de fallas críticas." : "Resumen de indicadores para este período administrativo.")
                     : Model.Management.Description)
             </p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             @if (isManagementActive)
             {
-                <form method="post" asp-page-handler="SyncEquipments" asp-route-id="@Model.Management.Id" class="m-0">
-                    <button type="submit" class="btn btn-outline-primary rounded-pill px-3 font-weight-bold shadow-sm">
-                        <i class="fas fa-sync-alt mr-2"></i>Sincronizar Equipos
-                    </button>
-                </form>
-                <a asp-page="/Index" asp-route-ShowWizard="true" class="btn btn-dark rounded-pill px-3 font-weight-bold shadow-sm">
-                    <i class="fas fa-play mr-2"></i>Iniciar Ronda (Wizard)
-                </a>
+                if (!isCorrective)
+                {
+                    <form method="post" asp-page-handler="SyncEquipments" asp-route-id="@Model.Management.Id" class="m-0">
+                        <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm" style="color: #7c3aed; border-color: #7c3aed; background: #f5f3ff;">
+                            <i class="fas fa-sync-alt mr-2"></i>Sincronizar Equipos
+                        </button>
+                    </form>
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm" style="background-color: #334155; color: white;">
+                        <i class="fas fa-play mr-2"></i>Iniciar Ronda (Wizard)
+                    </a>
+                }
+                else
+                {
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn btn-danger rounded-pill px-3 font-weight-bold shadow-sm">
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Reportar Falla Crítica
+                    </a>
+                }
             }
             else
             {
@@ -85,6 +95,9 @@
                     <i class="fas fa-lock mr-2"></i>Histórico Inmutable
                 </button>
             }
+            <a asp-page="/Reports/Index" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white" style="background-color: #0ea5e9;">
+                <i class="fas fa-file-pdf mr-2"></i>Reportes Oficiales
+            </a>
             <a asp-page="./Index" class="btn btn-light border rounded-pill px-4">
                 <i class="fas fa-arrow-left mr-2"></i>Volver
             </a>
@@ -102,9 +115,18 @@
         <li class="nav-item">
             <a class="nav-link @(Model.ActiveTab == "l48" || Model.ActiveTab == "" ? "active" : "")"
                href="?id=@Model.Management.Id&ActiveTab=l48">
-                <i class="fas fa-table mr-1"></i> L-48 / Cronograma
+                <i class="fas fa-table mr-1"></i> @(isCorrective ? "Fallas Registradas" : "L-48 / Cronograma")
             </a>
         </li>
+        @if (!isCorrective)
+        {
+            <li class="nav-item">
+                <a class="nav-link @(Model.ActiveTab == "sanos" ? "active" : "")"
+                   href="?id=@Model.Management.Id&ActiveTab=sanos">
+                    <i class="fas fa-heartbeat mr-1"></i> Activos Sanos
+                </a>
+            </li>
+        }
         <li class="nav-item">
             <a class="nav-link @(Model.ActiveTab == "calendario" ? "active" : "")"
                href="?id=@Model.Management.Id&ActiveTab=calendario">
@@ -125,38 +147,96 @@
         <!-- FILA 1: KPIs globales -->
         <div class="row mb-3">
             <!-- Activos Totales -->
-            <div class="col-6 col-md-3 mb-3">
-                <div class="phase-card shadow-sm" style="background:#f6f9ff;">
+            <div class="col-6 col-md mb-3">
+                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Todos" class="phase-card shadow-sm" style="background:#f6f9ff;">
                     <div class="phase-icon phase-icon--blue"><i class="fas fa-boxes"></i></div>
                     <h6 class="text-muted">Activos Totales</h6>
                     <h2 style="color:#4154f1;">@Model.TotalPlans</h2>
-                </div>
+                </a>
             </div>
+            @if (!isCorrective)
+            {
+                <!-- Activos Sanos -->
+                <div class="col-6 col-md mb-3">
+                    <a href="?id=@Model.Management.Id&ActiveTab=sanos" class="phase-card shadow-sm" style="background:#eafaf1; border:1px solid #a7f3d0;">
+                        <div class="phase-icon phase-icon--green"><i class="fas fa-heartbeat"></i></div>
+                        <h6 style="color:#059669;">Activos Sanos</h6>
+                        <h2 style="color:#059669;">@Model.CountBuenos</h2>
+                    </a>
+                </div>
+            }
             <!-- Vencidos -->
-            <div class="col-6 col-md-3 mb-3">
-                <div class="phase-card shadow-sm bg-danger text-white">
+            <div class="col-6 col-md mb-3">
+                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Delay" class="phase-card shadow-sm bg-danger text-white">
                     <div class="phase-icon" style="background:rgba(255,255,255,.2);color:#fff;">
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
                     <h6 class="text-white opacity-75">Vencidos</h6>
                     <h2 class="text-white">@Model.OverduePlans.Count</h2>
-                </div>
+                </a>
             </div>
             <!-- Completados -->
-            <div class="col-6 col-md-3 mb-3">
-                <div class="phase-card shadow-sm" style="background:#d1fae5;">
+            <div class="col-6 col-md mb-3">
+                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Completed" class="phase-card shadow-sm" style="background:#d1fae5;">
                     <div class="phase-icon phase-icon--green"><i class="fas fa-check-circle"></i></div>
                     <h6 style="color:#10b981;">Completados</h6>
                     <h2 style="color:#10b981;">@Model.CompletedPlans</h2>
-                </div>
+                </a>
             </div>
             <!-- Avance -->
-            <div class="col-6 col-md-3 mb-3">
+            <div class="col-6 col-md mb-3">
                 <div class="phase-card shadow-sm" style="background:#fffbeb;">
                     <div class="phase-icon phase-icon--amber"><i class="fas fa-percentage"></i></div>
                     <h6 style="color:#f59e0b;">% Avance</h6>
                     <h2 style="color:#f59e0b;">@Model.Management.CompletionPercentage%</h2>
                 </div>
+            </div>
+        </div>
+
+        <!-- FILA 2 DE KPIS -->
+        <div class="row mb-4">
+            @if (!isCorrective)
+            {
+                <!-- L6 -->
+                <div class="col-6 col-md-2 mb-3">
+                    <a href="/Index?ShowWizard=true&Step=1&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#e0f2fe; border:1px solid #bae6fd;">
+                        <div class="phase-icon phase-icon--blue"><i class="fas fa-clipboard-check"></i></div>
+                        <h6 style="color:#0284c7; font-size:0.75rem;">L-6 Verificación</h6>
+                        <h2 style="color:#0284c7; font-size:1.5rem;">@Model.CountL6</h2>
+                    </a>
+                </div>
+            }
+            <!-- L7 -->
+            <div class="col-6 col-md-2 mb-3">
+                <a href="/Index?ShowWizard=true&Step=2&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#fef3c7; border:1px solid #fde68a;">
+                    <div class="phase-icon phase-icon--amber"><i class="fas fa-tools"></i></div>
+                    <h6 style="color:#d97706; font-size:0.75rem;">L-7 Solicitud</h6>
+                    <h2 style="color:#d97706; font-size:1.5rem;">@Model.CountL7</h2>
+                </a>
+            </div>
+            <!-- L8 -->
+            <div class="col-6 col-md-2 mb-3">
+                <a href="/Index?ShowWizard=true&Step=3&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#fee2e2; border:1px solid #fecaca;">
+                    <div class="phase-icon phase-icon--red"><i class="fas fa-wrench"></i></div>
+                    <h6 style="color:#dc2626; font-size:0.75rem;">L-8 Mantenimiento</h6>
+                    <h2 style="color:#dc2626; font-size:1.5rem;">@Model.CountL8</h2>
+                </a>
+            </div>
+            <!-- L3 / Salida -->
+            <div class="col-6 col-md-3 mb-3">
+                <a href="/Index?ShowWizard=true&Step=4&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#f3e8ff; border:1px solid #e9d5ff;">
+                    <div class="phase-icon" style="background:rgba(147, 51, 234, 0.1); color:#9333ea;"><i class="fas fa-truck-loading"></i></div>
+                    <h6 style="color:#9333ea; font-size:0.75rem;">L-3 Salida</h6>
+                    <h2 style="color:#9333ea; font-size:1.5rem;">@Model.CountSalida</h2>
+                </a>
+            </div>
+            <!-- Desembolso -->
+            <div class="col-12 col-md-3 mb-3">
+                <a href="/Index?ShowWizard=true&Step=6&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#f1f5f9; border:1px solid #e2e8f0;">
+                    <div class="phase-icon" style="background:rgba(71, 85, 105, 0.1); color:#475569;"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <h6 style="color:#475569; font-size:0.75rem;">Desembolso</h6>
+                    <h2 style="color:#475569; font-size:1.5rem;">@Model.CountDesembolso</h2>
+                </a>
             </div>
         </div>
 
@@ -234,6 +314,69 @@
         }
     }
 
+    <!-- ===== TAB: ACTIVOS SANOS ===== -->
+    @if (Model.ActiveTab == "sanos")
+    {
+        <!-- Filtro de Laboratorio para Activos Sanos -->
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-4 p-3 bg-light rounded border">
+            <form method="get" class="d-flex flex-wrap gap-2 w-100 align-items-center">
+                <input type="hidden" name="id" value="@Model.Management.Id" />
+                <input type="hidden" name="ActiveTab" value="sanos" />
+
+                <select name="LabFilterId" asp-items="Model.LabFList"
+                        class="form-control form-control-sm shadow-sm" style="width:150px;"
+                        onchange="this.form.submit()">
+                    <option value="">Laboratorio</option>
+                </select>
+            </form>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-muted small">Laboratorio</th>
+                            <th class="text-muted small">Equipo / Inv.</th>
+                            <th class="text-muted small">Fecha Verificación</th>
+                            <th class="text-muted small">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.ManagementPlans.Any())
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center text-muted p-4">No hay activos sanos para mostrar con los filtros actuales.</td>
+                            </tr>
+                        }
+                        @foreach (var plan in Model.ManagementPlans)
+                        {
+                            <tr>
+                                <td class="font-weight-bold align-middle small">
+                                    @plan.EquipmentUnit?.Laboratory?.Name
+                                </td>
+                                <td class="align-middle">
+                                    <div class="font-weight-bold text-primary" style="font-size:0.82rem;">
+                                        @plan.EquipmentUnit?.Equipment?.Name
+                                    </div>
+                                    <div class="text-muted" style="font-size:0.72rem;">
+                                        INV-@plan.EquipmentUnit?.InventoryNumber
+                                    </div>
+                                </td>
+                                <td class="small align-middle text-muted">
+                                    @(plan.Verification?.CreatedDate.ToString("dd/MM/yyyy") ?? "—")
+                                </td>
+                                <td class="align-middle">
+                                    <span class="badge badge-soft-success px-2 py-1 rounded-pill small">Bueno / Operativo</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
     <!-- ===== TAB: L-48 / CRONOGRAMA ===== -->
     @if (Model.ActiveTab == "l48" || Model.ActiveTab == "")
     {
@@ -304,7 +447,7 @@
                         <tr class="bg-light">
                             <th colspan="5"></th>
                             @for (int s2 = 1; s2 <= 8; s2++) {
-                                <th class="text-center small text-muted" style="min-width:42px;">S@s2</th>
+                                <th class="text-center small text-muted" style="min-width:42px;">S@(s2)</th>
                             }
                             <th colspan="2"></th>
                         </tr>
@@ -313,35 +456,16 @@
                         @{ int rowNum = 1; }
                         @foreach (var plan in Model.ManagementPlans)
                         {
-                            var failText = plan.Verification != null
-                                ? (plan.Verification.FailuresCount > 0
-                                    ? plan.Verification.Observations ?? "Con fallas"
-                                    : "Ninguna")
-                                : "—";
+                            var failText = plan.TechnicalRequest?.Description ?? "Sin falla reportada";
 
-                            var isExternal = plan.Maintenance?.ServiceType == ServiceType.External;
-                            var svcLabel   = isExternal ? "Externo" : "Interno";
-                            var svcClass   = isExternal ? "badge-soft-danger" : "badge-soft-success";
+                            var svcLabel = plan.Maintenance?.Technician != null 
+                                ? (plan.Maintenance.Technician.Category == PersonCategory.Tecnico ? "I" : "E") 
+                                : (plan.Maintenance?.ServiceType == ServiceType.External ? "E" : "I");
+                            
+                            var svcClass = svcLabel == "I" ? "badge-soft-success" : "badge-soft-danger";
 
-                            int? plannedWeek = null;
-                            if (plan.PlannedDate.HasValue)
-                            {
-                                var day = plan.PlannedDate.Value.Day;
-                                plannedWeek = (day - 1) / 7 + 1;
-                                var pm = plan.PlannedDate.Value.Month;
-                                bool isM2 = l48Sem == 1 ? (pm == 1 || pm == 2) : (pm == 7 || pm == 8);
-                                if (isM2) plannedWeek += 4;
-                            }
-
-                            int? realWeek = null;
-                            if (plan.Maintenance?.ScheduledDate.HasValue == true)
-                            {
-                                var day = plan.Maintenance.ScheduledDate.Value.Day;
-                                realWeek = (day - 1) / 7 + 1;
-                                var rm = plan.Maintenance.ScheduledDate.Value.Month;
-                                bool isM2 = l48Sem == 1 ? (rm == 1 || rm == 2) : (rm == 7 || rm == 8);
-                                if (isM2) realWeek += 4;
-                            }
+                            int? plannedWeek = plan.PlannedWeek;
+                            int? executedWeek = plan.ExecutedWeek;
 
                             <!-- FILA 1: Planeado -->
                             <tr class="border-bottom-0">
@@ -358,22 +482,26 @@
                                     </div>
                                 </td>
                                 <td rowspan="2" class="small align-middle">@failText</td>
-                                <td rowspan="2" class="align-middle">
+                                <td rowspan="2" class="align-middle text-center">
                                     <span class="badge @svcClass px-2 py-1 rounded-pill small">@svcLabel</span>
                                 </td>
                                 @for (int s3 = 1; s3 <= 8; s3++)
                                 {
-                                    <td class="text-center p-1">
+                                    <td class="text-center p-1" style="cursor:pointer;" onclick="toggleWeek(@plan.Id, @s3, 'planned')">
                                         @if (plannedWeek == s3)
                                         {
-                                            <span class="badge bg-primary text-white px-2 py-1 rounded"
+                                            <span id="badge-planned-@(plan.Id)" class="badge bg-primary text-white px-2 py-1 rounded"
                                                   style="font-size:0.6rem;">Prev.</span>
+                                        }
+                                        else
+                                        {
+                                            <span id="placeholder-planned-@(plan.Id)-@s3" style="display:inline-block; width:100%; height:100%;"></span>
                                         }
                                     </td>
                                 }
                                 <td rowspan="2" class="align-middle text-center">
-                                    <span class="font-weight-bold" style="font-size:0.82rem;">
-                                        @(plan.Maintenance?.CompletionPercentage)%
+                                    <span class="badge badge-light border font-weight-bold text-dark" style="font-size:0.82rem;">
+                                        @(plan.Maintenance?.CompletionPercentage ?? 0)%
                                     </span>
                                 </td>
                                 <td rowspan="2" class="small align-middle text-muted">
@@ -384,11 +512,15 @@
                             <tr>
                                 @for (int s4 = 1; s4 <= 8; s4++)
                                 {
-                                    <td class="text-center p-1" style="border-top:1px dashed #e2e8f0;">
-                                        @if (realWeek == s4)
+                                    <td class="text-center p-1" style="border-top:1px dashed #e2e8f0; cursor:pointer;" onclick="toggleWeek(@plan.Id, @s4, 'executed')">
+                                        @if (executedWeek == s4)
                                         {
-                                            <span class="badge bg-success text-white px-2 py-1 rounded"
-                                                  style="font-size:0.6rem;">OK</span>
+                                            <span id="badge-executed-@(plan.Id)" class="badge bg-success text-white px-2 py-1 rounded"
+                                                  style="font-size:0.6rem;">Ejec.</span>
+                                        }
+                                        else
+                                        {
+                                            <span id="placeholder-executed-@(plan.Id)-@s4" style="display:inline-block; width:100%; height:100%;"></span>
                                         }
                                     </td>
                                 }
@@ -404,19 +536,41 @@
     <!-- ===== TAB: CALENDARIO ===== -->
     @if (Model.ActiveTab == "calendario")
     {
-        <div class="card shadow-sm border-0 p-4">
-            <div id="calendar"></div>
+        <!-- Controles de zoom -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <span class="badge badge-soft-success px-3 py-2 mr-2"><i class="fa fa-circle mr-1"></i>Completado</span>
+                <span class="badge px-3 py-2 mr-2" style="background:#fff3cd;color:#856404;"><i class="fa fa-circle mr-1"></i>En Progreso</span>
+                <span class="badge px-3 py-2" style="background:#cfe2ff;color:#084298;"><i class="fa fa-circle mr-1"></i>Pendiente</span>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
+                <button type="button" class="btn btn-outline-secondary" id="calZoomOut" title="Reducir"><i class="fas fa-search-minus"></i></button>
+                <button type="button" class="btn btn-outline-secondary" id="calZoomReset" title="Normal">100%</button>
+                <button type="button" class="btn btn-outline-secondary" id="calZoomIn" title="Ampliar"><i class="fas fa-search-plus"></i></button>
+            </div>
         </div>
 
-        <div id="calendar-events" class="d-none">
-            <div class="calendar-events" data-class="bg-primary">
-                <i class="fa fa-circle text-primary mr-2"></i>Planeado
+        <div class="card shadow-sm border-0 p-3" style="overflow:auto;">
+            <div id="calendarZoomWrapper" style="transform-origin:top left; transition:transform 0.3s ease;">
+                <div id="calendar"></div>
             </div>
-            <div class="calendar-events" data-class="bg-warning">
-                <i class="fa fa-circle text-warning mr-2"></i>En Progreso
-            </div>
-            <div class="calendar-events" data-class="bg-success">
-                <i class="fa fa-circle text-success mr-2"></i>Ejecutado
+        </div>
+
+        <!-- PANEL LATERAL: Detalle del día seleccionado -->
+        <div class="modal fade" id="dayDetailModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+                <div class="modal-content border-0 shadow-lg" style="border-radius:1rem;">
+                    <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:1rem 1rem 0 0;">
+                        <div>
+                            <h5 class="modal-title font-weight-bold" id="dayDetailTitle">Mantenimientos del día</h5>
+                            <small id="dayDetailSubtitle" class="opacity-75"></small>
+                        </div>
+                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <div class="modal-body p-0" id="dayDetailBody">
+                        <!-- Rellenado por JS -->
+                    </div>
+                </div>
             </div>
         </div>
     }
@@ -437,6 +591,97 @@
 </div>
 
 @section Scripts {
+
+    <script src="~/assets/extra-libs/sweetalert2/sweetalert2.all.min.js"></script>
+    <script>
+        function confirmRedoPhase(planId, targetPhase, targetPhaseName, currentPhase) {
+            Swal.fire({
+                title: '¿Rehacer Fase?',
+                html: 'Está intentando retroceder el equipo a la fase <b>' + targetPhaseName + '</b>.<br>Se borrarán los registros posteriores al paso ' + targetPhase + '.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, rehacer y limpiar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/Index?handler=RedoPhase';
+                    
+                    const p1 = document.createElement('input'); p1.type = 'hidden'; p1.name = 'planId'; p1.value = planId;
+                    const p2 = document.createElement('input'); p2.type = 'hidden'; p2.name = 'targetPhase'; p2.value = targetPhase;
+                    
+                    // Necesitamos el RequestVerificationToken
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]');
+                    if(token) form.appendChild(token.cloneNode(true));
+
+                    form.appendChild(p1);
+                    form.appendChild(p2);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+
+        async function toggleWeek(planId, weekNumber, type) {
+            const formData = new FormData();
+            formData.append('planId', planId);
+            formData.append('weekNumber', weekNumber);
+            formData.append('type', type);
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]');
+            if (token) {
+                formData.append('__RequestVerificationToken', token.value);
+            }
+
+            try {
+                const response = await fetch('?handler=ToggleWeek', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (!result.success) {
+                        Swal.fire({ icon: 'warning', title: 'Regla de negocio', text: result.error, confirmButtonColor: '#f59e0b' });
+                        return;
+                    }
+
+                    // Update UI immediately without reload
+                    // Clear all in this row
+                    for (let i = 1; i <= 8; i++) {
+                        const cell = document.getElementById(`badge-${type}-${planId}`);
+                        if (cell) cell.remove();
+                        const placeholder = document.getElementById(`placeholder-${type}-${planId}-${i}`);
+                        if (!placeholder && i !== weekNumber) {
+                            // Needs placeholder back
+                            const td = document.querySelector(`td[onclick="toggleWeek(${planId}, ${i}, '${type}')"]`);
+                            if(td) td.innerHTML = `<span id="placeholder-${type}-${planId}-${i}" style="display:inline-block; width:100%; height:100%;"></span>`;
+                        }
+                    }
+
+                    // Toggle logic
+                    const td = document.querySelector(`td[onclick="toggleWeek(${planId}, ${weekNumber}, '${type}')"]`);
+                    const isCurrentlyActive = td.innerHTML.includes(`badge-${type}-${planId}`);
+                    
+                    if (isCurrentlyActive) {
+                        td.innerHTML = `<span id="placeholder-${type}-${planId}-${weekNumber}" style="display:inline-block; width:100%; height:100%;"></span>`;
+                    } else {
+                        const badgeClass = type === 'planned' ? 'bg-primary' : 'bg-success';
+                        const badgeText = type === 'planned' ? 'Prev.' : 'Ejec.';
+                        td.innerHTML = `<span id="badge-${type}-${planId}" class="badge ${badgeClass} text-white px-2 py-1 rounded" style="font-size:0.6rem;">${badgeText}</span>`;
+                    }
+                } else {
+                    Swal.fire('Error', 'No se pudo actualizar el cronograma.', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'Hubo un error de conexión.', 'error');
+            }
+        }
+    </script>
 
     <!-- Dashboard Charts (Chart.js 3.x) -->
     @if (Model.ActiveTab == "dashboard" || Model.ActiveTab == "")
@@ -528,31 +773,158 @@
     @if (Model.ActiveTab == "calendario")
     {
         <link href="~/assets/libs/fullcalendar/dist/fullcalendar.min.css" rel="stylesheet" />
-        <link href="~/assets/extra-libs/calendar/calendar.css" rel="stylesheet" />
+        <style>
+            /* Estilos custom para eventos del calendario */
+            .fc-event.ev-completed { background:#2eca6a !important; border-color:#25a85c !important; color:#fff !important; }
+            .fc-event.ev-progress  { background:#f59e0b !important; border-color:#d97706 !important; color:#fff !important; }
+            .fc-event.ev-planned   { background:#6366f1 !important; border-color:#4f46e5 !important; color:#fff !important; }
+            /* Sombreado de 8 semanas */
+            .fc-bgevent { opacity: 0.15 !important; }
+            /* Hover en día para indicar que es clickeable */
+            .fc-day:hover { background: rgba(99,102,241,0.04); cursor: pointer; }
+            /* Evento más compacto */
+            .fc-event { font-size: 0.72rem; padding: 2px 5px; border-radius: 4px; margin-bottom: 1px; }
+            /* More link */
+            .fc-more { font-size: 0.7rem; font-weight: 700; color: #6366f1; }
+            /* Day detail item */
+            .day-detail-item { display:flex; align-items:center; padding:12px 20px; border-bottom:1px solid #f1f5f9; transition:background 0.15s; }
+            .day-detail-item:hover { background:#f8fafc; }
+            .day-detail-item:last-child { border-bottom:none; }
+            .day-detail-status { width:8px; height:8px; border-radius:50%; margin-right:12px; flex-shrink:0; }
+            .day-detail-status.st-completed { background:#2eca6a; }
+            .day-detail-status.st-progress  { background:#f59e0b; }
+            .day-detail-status.st-planned   { background:#6366f1; }
+            .day-detail-actions .btn { font-size:0.72rem; padding:3px 10px; }
+            .day-detail-empty { padding:40px 20px; text-align:center; color:#94a3b8; }
+        </style>
         <script src="~/assets/libs/moment/min/moment.min.js"></script>
         <script src="~/assets/libs/fullcalendar/dist/fullcalendar.min.js"></script>
         <script>
-            $(document).ready(function () {
-                var events = @Html.Raw(JsonSerializer.Serialize(Model.CalendarEvents));
+            // Configurar moment.js en español
+            moment.locale('es', {
+                months: 'Enero_Febrero_Marzo_Abril_Mayo_Junio_Julio_Agosto_Septiembre_Octubre_Noviembre_Diciembre'.split('_'),
+                monthsShort: 'Ene_Feb_Mar_Abr_May_Jun_Jul_Ago_Sep_Oct_Nov_Dic'.split('_'),
+                weekdays: 'Domingo_Lunes_Martes_Miércoles_Jueves_Viernes_Sábado'.split('_'),
+                weekdaysShort: 'Dom_Lun_Mar_Mié_Jue_Vie_Sáb'.split('_'),
+                weekdaysMin: 'Do_Lu_Ma_Mi_Ju_Vi_Sá'.split('_')
+            });
 
+            $(document).ready(function () {
+                var allEvents = @Html.Raw(JsonSerializer.Serialize(Model.CalendarEvents));
+                var shadingStart = '@Model.ShadingStart';
+                var shadingEnd   = '@Model.ShadingEnd';
+                var mgmtId       = @Model.Management.Id;
+
+                // Preparar eventos para FullCalendar
+                var calEvents = allEvents.map(function (e) {
+                    return {
+                        title:     e.Title,
+                        start:     e.Start,
+                        end:       e.End,
+                        className: e.ClassName,
+                        // Datos extra para el panel
+                        _raw: e
+                    };
+                });
+
+                // Bloque de sombreado de 8 semanas
+                if (shadingStart && shadingEnd) {
+                    calEvents.push({
+                        start:     shadingStart,
+                        end:       shadingEnd,
+                        rendering: 'background',
+                        color:     '#6366f1',
+                        _isBg:     true
+                    });
+                }
+
+                // FullCalendar init
                 $('#calendar').fullCalendar({
                     header: {
                         left:   'prev,next today',
                         center: 'title',
-                        right:  'month,agendaWeek,agendaDay'
+                        right:  'month,agendaWeek'
                     },
-                    locale:    'es',
-                    editable:  false,
-                    droppable: false,
-                    events: events.map(function (e) {
-                        return {
-                            title:     e.Title,
-                            start:     e.Start,
-                            end:       e.End,
-                            className: e.ClassName
-                        };
-                    })
+                    locale:           'es',
+                    editable:         false,
+                    droppable:        false,
+                    displayEventTime: false,
+                    eventLimit:       3, // +X more cuando hay muchos
+                    events:           calEvents,
+                    dayClick: function (date, jsEvent, view) {
+                        openDayPanel(date.format('YYYY-MM-DD'), allEvents);
+                    },
+                    eventClick: function (event, jsEvent, view) {
+                        if (event._isBg) return false;
+                        // Click en evento individual → abrir panel del día
+                        openDayPanel(event.start.format('YYYY-MM-DD'), allEvents);
+                        return false;
+                    },
+                    eventRender: function (event, element) {
+                        if (event._isBg) return;
+                        element.attr('title', event._raw ? event._raw.Title + ' — ' + event._raw.LabName : event.title);
+                    }
                 });
+
+                // ============ ZOOM ============
+                var zoomLevel = 1.0;
+                var $wrapper = $('#calendarZoomWrapper');
+                var $label   = $('#calZoomReset');
+
+                function applyZoom() {
+                    $wrapper.css('transform', 'scale(' + zoomLevel + ')');
+                    $label.text(Math.round(zoomLevel * 100) + '%');
+                }
+                $('#calZoomIn').click(function () {
+                    if (zoomLevel < 1.5) { zoomLevel += 0.1; applyZoom(); }
+                });
+                $('#calZoomOut').click(function () {
+                    if (zoomLevel > 0.5) { zoomLevel -= 0.1; applyZoom(); }
+                });
+                $label.click(function () {
+                    zoomLevel = 1.0; applyZoom();
+                });
+
+                // ============ PANEL DE DÍA ============
+                function openDayPanel(dateStr, events) {
+                    var dayEvents = events.filter(function (e) { return e.Start === dateStr; });
+                    var dateLabel = moment(dateStr).format('dddd D [de] MMMM, YYYY');
+
+                    $('#dayDetailTitle').text('Mantenimientos programados');
+                    $('#dayDetailSubtitle').text(dateLabel + ' — ' + dayEvents.length + ' equipo(s)');
+
+                    var $body = $('#dayDetailBody');
+                    $body.empty();
+
+                    if (dayEvents.length === 0) {
+                        $body.html('<div class="day-detail-empty"><i class="fas fa-calendar-check fa-2x mb-3 d-block" style="color:#cbd5e1;"></i>No hay mantenimientos para este día</div>');
+                    } else {
+                        dayEvents.forEach(function (ev) {
+                            var statusClass = ev.ClassName === 'ev-completed' ? 'st-completed' : ev.ClassName === 'ev-progress' ? 'st-progress' : 'st-planned';
+                            var detailUrl = ev.MaintenanceId ? '/Maintenances/Details/' + ev.MaintenanceId : '/Managements/Details?id=' + mgmtId + '&ActiveTab=l48';
+                            var editUrl   = ev.MaintenanceId ? '/Maintenances/Edit?id=' + ev.MaintenanceId : null;
+
+                            var html = '<div class="day-detail-item">';
+                            html += '<span class="day-detail-status ' + statusClass + '"></span>';
+                            html += '<div style="flex:1;min-width:0;">';
+                            html += '<div class="font-weight-bold text-truncate" style="font-size:0.88rem;">' + ev.Title + '</div>';
+                            html += '<div class="text-muted" style="font-size:0.75rem;">Inv: ' + ev.InventoryNumber + ' · ' + ev.LabName + ' · ' + ev.TechnicianName + '</div>';
+                            html += '</div>';
+                            html += '<div class="day-detail-actions ml-2 d-flex">';
+                            html += '<a href="' + detailUrl + '" class="btn btn-outline-primary btn-sm mr-1" title="Ver detalle"><i class="fas fa-eye"></i></a>';
+                            if (editUrl) {
+                                html += '<a href="' + editUrl + '" class="btn btn-outline-warning btn-sm mr-1" title="Editar"><i class="fas fa-edit"></i></a>';
+                                if (ev._raw && ev._raw.CurrentPhaseInt > 3) {
+                                    html += '<button type="button" class="btn btn-outline-danger btn-sm" title="Rehacer Mantenimiento" onclick="confirmRedoPhase(' + ev._raw.PlanId + ', 3, \'L-8 Mantenimiento\', ' + ev._raw.CurrentPhaseInt + ')"><i class="fas fa-undo"></i></button>';
+                                }
+                            }
+                            html += '</div></div>';
+                            $body.append(html);
+                        });
+                    }
+
+                    $('#dayDetailModal').modal('show');
+                }
             });
         </script>
     }

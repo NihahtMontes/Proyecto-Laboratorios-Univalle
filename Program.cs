@@ -10,15 +10,27 @@ using OfficeOpenXml;
 QuestPDF.Settings.License = LicenseType.Community;
 var builder = WebApplication.CreateBuilder(args);
 
+// DIAGNÓSTICO: Capturador de crash global a nivel OS
+AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+{
+    var ex = e.ExceptionObject as Exception;
+    File.AppendAllText("crash.log", 
+        $"{DateTime.Now}: {ex?.GetType().Name} - {ex?.Message}\n{ex?.StackTrace}\n\n");
+};
+
 // DEBUG: SameSite=None Fix
 Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIBLE) <<<");
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-// Configuración de la base de datos SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sqlOptions => 
+    {
+        sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+        sqlOptions.CommandTimeout(120);
+    })
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -50,7 +62,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     options.LoginPath = "/Login"; // Ruta a la que redirige si no hay sesión
     options.SlidingExpiration = true;
-    options.ExpireTimeSpan = TimeSpan.FromHours(1);
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
 });
 
 builder.Services.AddAntiforgery(options =>
@@ -62,6 +74,7 @@ builder.Services.AddAntiforgery(options =>
 
 // AÑADIDO: Configuración de Sesiones para el Wizard (Módulo TX-1)
 builder.Services.AddDistributedMemoryCache();
+builder.Services.AddMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromHours(4);
@@ -82,6 +95,7 @@ builder.Services.AddScoped<DatabaseErrorHandler>();
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
 
+builder.Services.AddControllers();
 builder.Services.AddRazorPages(options =>
 {
     // Esto obliga a que CUALQUIER página pida Login por defecto
@@ -116,6 +130,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
+app.MapControllers();
 
 // INICIALIZACIÓN Y SEMILLA DE BASE DE DATOS
 using (var scope = app.Services.CreateScope())

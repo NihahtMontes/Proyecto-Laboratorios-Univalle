@@ -4,7 +4,10 @@
 @using System.Text.Json
 @{
     ViewData["Title"] = "Dashboard de Gestión";
-    var steps = new[] { "Progreso", "L6 Verif.", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" };
+    var isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
+    var steps = isCorrective
+        ? new[] { "Progreso", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" }
+        : new[] { "Progreso", "L6 Verif.", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" };
 }
 
 @section Styles {
@@ -368,183 +371,9 @@
     {
         @if (Model.ActiveManagement != null)
         {
-            <!-- TOP HEADER AREA -->
-            <div class="row align-items-center mb-4">
-                <div class="col-md-6">
-                    <h1 class="m-0 wizard-title">Panel de Control Institucional</h1>
-                    <p class="wizard-subtitle mb-0">Gestión de activos y planificación de laboratorios</p>
-                </div>
-                
-                <div class="col-md-6 text-md-right mt-3 mt-md-0">
-                    <div class="d-flex justify-content-md-end gap-2">
-                        <form method="post" asp-page-handler="Refresh" class="m-0">
-                            <button type="submit" class="btn btn-light border font-weight-bold rounded-pill shadow-sm px-3">
-                                <i class="fas fa-sync-alt mr-2 text-primary"></i>Actualizar Datos
-                            </button>
-                        </form>
-                        
-                        <form method="post" asp-page-handler="FastFail" class="m-0">
-                             <button type="submit" class="btn btn-danger font-weight-bold shadow-sm rounded-pill px-3">
-                                 <i class="fas fa-bolt mr-2"></i>Falla Rápida
-                             </button>
-                        </form>
-
-                        <a asp-page="/Managements/Details" asp-route-id="@Model.ActiveManagement.Id" asp-route-ActiveTab="dashboard" class="btn btn-info font-weight-bold shadow-sm rounded-pill px-3 ml-2" title="Dashboard Interno">
-                            <i class="fas fa-chart-pie"></i>
-                        </a>
-
-                        <a asp-page="/Managements/Details" asp-route-id="@Model.ActiveManagement.Id" asp-route-ActiveTab="l48" class="btn btn-success font-weight-bold shadow-sm rounded-pill px-3 ml-2">
-                            <i class="fas fa-table mr-2"></i>L-48
-                        </a>
-
-                        <a asp-page="/Managements/Details" asp-route-id="@Model.ActiveManagement.Id" asp-route-ActiveTab="calendario" class="btn btn-secondary font-weight-bold shadow-sm rounded-pill px-3 ml-2">
-                            <i class="fas fa-calendar-alt mr-2"></i>Calendario
-                        </a>
-
-                        <a asp-page="/Index" asp-route-ShowWizard="true" class="btn btn-primary font-weight-bold shadow-sm rounded-pill px-3 ml-2">
-                            <i class="fas fa-magic mr-2"></i>Ir al Wizard
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <p class="text-slate-500 text-sm mb-4">Métricas analíticas consolidadas de la operación institucional</p>
-
-            <!-- FILA 1: Métricas de Gestión Global (4 cards) -->
-            <div class="row mb-3">
-                <!-- Activos Totales -->
-                <div class="col-6 col-md-3 mb-3">
-                    <div class="phase-card shadow-sm" style="background:#f6f9ff;">
-                        <div class="phase-icon phase-icon--blue"><i class="fas fa-boxes"></i></div>
-                        <h6 class="text-muted">Activos Totales</h6>
-                        <h2 style="color:#4154f1;">@Model.TotalActivos</h2>
-                    </div>
-                </div>
-                <!-- Vencidos -->
-                <div class="col-6 col-md-3 mb-3">
-                    <div class="phase-card shadow-sm bg-danger text-white">
-                        <div class="phase-icon" style="background:rgba(255,255,255,.2);color:#fff;">
-                            <i class="fas fa-exclamation-triangle"></i>
-                        </div>
-                        <h6 class="text-white opacity-75">Vencidos</h6>
-                        <h2 class="text-white">@Model.TotalVencidos</h2>
-                    </div>
-                </div>
-                <!-- Pendientes (desde L-7) -->
-                <div class="col-6 col-md-3 mb-3">
-                    <div class="phase-card shadow-sm" style="background:#fffbeb;">
-                        <div class="phase-icon phase-icon--amber"><i class="fas fa-hourglass-half"></i></div>
-                        <h6 style="color:#f59e0b;">Pendientes</h6>
-                        <h2 style="color:#f59e0b;">@Model.CountPendientes</h2>
-                    </div>
-                </div>
-                <!-- Activos Buenos (VerifiedGood) -->
-                <div class="col-6 col-md-3 mb-3">
-                    <div class="phase-card shadow-sm" style="background:#d1fae5;">
-                        <div class="phase-icon phase-icon--green"><i class="fas fa-check-circle"></i></div>
-                        <h6 style="color:#10b981;">Activos Buenos</h6>
-                        <h2 style="color:#10b981;">@Model.CountBuenos</h2>
-                    </div>
-                </div>
-            </div>
-
-            <!-- FILA 2: Flujo de Fases Operativas (5 cards) -->
-            <div class="row mb-4">
-                <!-- L-6 Verificación -->
-                <div class="col-6 col-md mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1"
-                       class="phase-card shadow-sm" style="background:#eff6ff;">
-                        <div class="phase-icon phase-icon--blue"><i class="fas fa-search"></i></div>
-                        <h6 class="text-info">L-6 Verif.</h6>
-                        <h2 class="text-info">@Model.CountL6</h2>
-                    </a>
-                </div>
-                <!-- L-7 Solicitud -->
-                <div class="col-6 col-md mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2"
-                       class="phase-card shadow-sm" style="background:#f5f3ff;">
-                        <div class="phase-icon phase-icon--purple"><i class="fas fa-file-alt"></i></div>
-                        <h6 style="color:#8b5cf6;">L-7 Solic.</h6>
-                        <h2 style="color:#8b5cf6;">@Model.CountL7</h2>
-                    </a>
-                </div>
-                <!-- L-8 Mantenimiento -->
-                <div class="col-6 col-md mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3"
-                       class="phase-card shadow-sm" style="background:#fffbeb;">
-                        <div class="phase-icon phase-icon--amber">
-                            <i class="fas fa-wrench"></i>
-                        </div>
-                        <h6 style="color:#f59e0b;">L-8 Mant.</h6>
-                        <h2 style="color:#f59e0b;">@Model.CountL8</h2>
-                    </a>
-                </div>
-                <!-- Salidas -->
-                <div class="col-6 col-md mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="4"
-                       class="phase-card shadow-sm" style="background:#fef2f2;">
-                        <div class="phase-icon phase-icon--red"><i class="fas fa-sign-out-alt"></i></div>
-                        <h6 style="color:#ef4444;">Salidas</h6>
-                        <h2 style="color:#ef4444;">@Model.CountSalida</h2>
-                    </a>
-                </div>
-                <!-- Desembolso -->
-                <div class="col-6 col-md mb-3">
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="6"
-                       class="phase-card shadow-sm" style="background:#d1fae5;">
-                        <div class="phase-icon phase-icon--green"><i class="fas fa-shopping-cart"></i></div>
-                        <h6 style="color:#10b981;">Desembolso</h6>
-                        <h2 style="color:#10b981;">@Model.CountDesembolso</h2>
-                    </a>
-                </div>
-            </div>
-
-            <!-- B. GRÁFICAS DE AVANCE (NICEADMIN STYLE) -->
-            <div class="row mb-4 animate-in fade-in duration-700">
-                <!-- Avance Global (Donut) -->
-                <div class="col-lg-5 col-md-12 mb-4 mb-lg-0">
-                    <div class="card shadow-sm border-0 rounded-2xl h-100 p-4">
-                        <h6 class="text-xs-premium text-slate-500 mb-4 uppercase tracking-widest border-bottom pb-2">Avance Global</h6>
-                        <div class="chart-container d-flex justify-content-center align-items-center" style="height: 250px; position:relative;">
-                            <canvas id="globalDonutChart"></canvas>
-                            <!-- Texto Central -->
-                            <div class="chart-center-text d-flex flex-column align-items-center justify-content-center" style="position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none;">
-                                <span class="percent" style="font-size: 2.2rem; font-weight: 800; color: #1E293B;">
-                                    @(Model.TotalActivos > 0 ? ((Model.EquiposTerminados * 100) / Model.TotalActivos) : 0)%
-                                </span>
-                                <span class="label text-muted" style="font-size: 0.70rem; letter-spacing: 0.05em;">COMPLETADO</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- Por Tipo de Equipo (Bar Chart) -->
-                <div class="col-lg-7 col-md-12">
-                    <div class="card shadow-sm border-0 rounded-2xl h-100 p-4">
-                        <h6 class="text-xs-premium text-slate-500 mb-4 uppercase tracking-widest border-bottom pb-2">Por Tipo de Equipo</h6>
-                        <div class="chart-container" style="height: 250px;">
-                            <canvas id="typeBarChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- C. AVANCE POR LABORATORIO -->
-            <div class="row mb-5 animate-in fade-in duration-700">
-                <div class="col-12">
-                    <div class="card shadow-sm border-0 rounded-2xl p-4">
-                        <h6 class="text-xs-premium text-slate-500 mb-4 uppercase tracking-widest border-bottom pb-2">Avance por Laboratorio</h6>
-                        <div class="chart-container" style="height: 350px;">
-                            <canvas id="labBarChart"></canvas>
-                        </div>
-                        <div class="mt-4 text-right">
-                            <a href="#" class="text-sm font-bold text-decoration-none" style="color: #3B82F6;">
-                                Terminados por gestionar por laboratorio (Ver Detalles) <i class="fas fa-arrow-right ml-1"></i>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+            <script>
+                window.location.href = '/Managements/Details?id=@Model.ActiveManagement.Id&ActiveTab=dashboard';
+            </script>
         }
         else
         {
@@ -571,12 +400,25 @@
     else
     {
         <!-- [KEEP WIZARD LOGIC AS IS] -->
-        <div class="row min-h-500">
-            <div class="col-12">
-                <div class="card shadow-lg border-0 wiz-rounded-top wiz-rounded-bot">
-                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center wiz-rounded-top py-3">
-                        <h5 class="m-0 font-weight-bold text-white"><i class="fas fa-magic mr-2 text-primary"></i>Ronda de Mantenimiento Progresivo</h5>
-                        <a asp-page="/Index" asp-route-ShowWizard="false" class="btn btn-outline-light btn-sm font-weight-bold rounded-pill px-3">Finalizar Wizard</a>
+        <div class="row min-h-500 align-items-center" style="font-family: 'Inter', sans-serif;">
+            <!-- Flecha Anterior (Left Sidebar Style) -->
+            <div class="col-2 col-md-1 d-flex justify-content-center">
+                @if (Model.Step <= 6) {
+                    <form method="post" asp-page-handler="PreviousStep" class="w-100 text-center">
+                        <input type="hidden" asp-for="Step" />
+                        <input type="hidden" asp-for="SelectedLabId" />
+                        <button type="submit" class="btn btn-light rounded-circle shadow-sm hover-float @(Model.Step == 0 ? "invisible" : "")" style="width: 50px; height: 50px; border: 1.5px solid #e2e8f0; padding:0; display:inline-flex; align-items:center; justify-content:center; transition: all 0.2s ease;">
+                            <i class="fas fa-chevron-left text-primary" style="font-size: 1.2rem;"></i>
+                        </button>
+                    </form>
+                }
+            </div>
+
+            <div class="col-8 col-md-10">
+                <div class="card shadow-lg border-0 w-100" style="border-radius: 16px;">
+                    <div class="card-header d-flex justify-content-between align-items-center py-3" style="background-color: #0f172a; border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                        <h5 class="m-0 font-weight-bold text-white" style="font-family: 'Inter', sans-serif; font-weight: 800;"><i class="fas fa-magic mr-2 text-primary"></i>@(isCorrective ? "Mantenimiento Correctivo" : "Ronda de Mantenimiento Progresivo")</h5>
+                        <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-light btn-sm font-weight-bold rounded-pill px-3">Finalizar Wizard</a>
                     </div>
 
                     <div class="card-body p-0">
@@ -585,15 +427,17 @@
                             <div class="d-flex justify-content-between text-center px-lg-5">
                                 @for (int i = 0; i < steps.Length; i++)
                                 {
-                                    var isActive = Model.Step >= i;
+                                    var stepNum = isCorrective && i > 0 ? i + 1 : i;
+                                    var isActive = Model.Step >= stepNum;
+                                    var isCurrent = Model.Step == stepNum;
                                     <div class="d-flex flex-column align-items-center" style="flex: 1; position: relative;">
                                         @if (i > 0) {
-                                            <div style="position: absolute; width: 100%; height: 2px; background: @(isActive ? "var(--primary-univalle)" : "#e2e8f0"); top: 17px; left: -50%; z-index: 1;"></div>
+                                            <div style="position: absolute; width: 100%; height: 2px; background: @(isActive ? "#2563eb" : "#e2e8f0"); top: 17px; left: -50%; z-index: 1;"></div>
                                         }
-                                        <div class="rounded-circle border @(isActive ? "bg-primary border-primary text-white" : "bg-white text-muted") d-flex align-items-center justify-content-center shadow-sm" style="width: 35px; height: 35px; font-weight: bold; z-index: 2; position: relative;">
-                                            @if (Model.Step > i) { <i class="fas fa-check"></i> } else { @i }
+                                        <div class="rounded-circle border @(isActive ? "text-white" : "bg-white text-muted") d-flex align-items-center justify-content-center shadow-sm" style="width: 35px; height: 35px; font-weight: bold; z-index: 2; position: relative; @(isActive ? "background: #2563eb; border-color: #2563eb;" : "border-color: #e2e8f0;") @(isCurrent ? "box-shadow: 0 0 0 4px rgba(37,99,235,0.25) !important;" : "")">
+                                            @if (Model.Step > stepNum) { <i class="fas fa-check"></i> } else { @stepNum }
                                         </div>
-                                        <span class="text-xs-premium mt-2 @(Model.Step == i ? "text-dark" : "text-muted")">@steps[i]</span>
+                                        <span class="mt-2 @(isCurrent ? "text-dark font-weight-bold" : "text-muted")" style="font-size: 0.70rem; letter-spacing: 0.05em; text-transform: uppercase;">@steps[i]</span>
                                     </div>
                                 }
                             </div>
@@ -614,21 +458,60 @@
                                     BorderClass = "border-slate"
                                 })
                             }
-                            else if (Model.Step == 1)
+                            else if (Model.Step == 1 && !isCorrective)
                             {
-                                @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
-                                    Title = "Paso 1: L6 Verificación",
-                                    Description = "Equipos pendientes de inspección técnica inicial.",
-                                    EmptyMessage = "No hay equipos pendientes de verificación L-6.",
-                                    Plans = Model.Step1Plans,
-                                    StepIndex = 1,
-                                    ActionPage = "/Verifications/Create",
-                                    ActionLabel = "Vincular L6",
-                                    ActionClass = "btn-outline-primary",
-                                    StatusLabel = "Pendiente L-6",
-                                    LaboratoriesList = Model.LaboratoriesList,
-                                    BorderClass = "border-primary"
-                                })
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <div>
+                                        <h3 class="wizard-title text-dark mb-1" style="font-weight: 900; color: #0f172a !important;">Paso 1: L6 Verificación</h3>
+                                        <p class="wizard-subtitle mb-0" style="font-weight: 500; color: #64748b;">Equipos pendientes de inspección técnica inicial.</p>
+                                    </div>
+                                    <form method="get" class="d-flex align-items-center gap-3">
+                                        <input type="hidden" name="ShowWizard" value="true" />
+                                        <input type="hidden" name="Step" value="1" />
+                                        <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control shadow-sm" style="border-radius: 12px; background-color: #f8fafc; border: 1.5px solid #e2e8f0; font-weight: 600; color: #334155; padding: 8px 12px; height: 44px;" onchange="this.form.submit()">
+                                            <option value="">-- Selecciona Laboratorio --</option>
+                                        </select>
+                                    </form>
+                                </div>
+
+                                @if (!Model.Step1Plans.Any())
+                                {
+                                    <div class="text-center py-5 text-muted">
+                                        <i class="fas fa-clipboard-check fa-3x mb-3 d-block opacity-2"></i>
+                                        <span class="font-weight-bold">No hay equipos pendientes de verificación L-6.</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mb-4">
+                                        <span class="badge badge-primary px-3 py-2">@Model.Step1Plans.Count equipo(s) pendiente(s)</span>
+                                    </div>
+                                    <div class="step-stack">
+                                        @foreach (var item in Model.Step1Plans.Take(5))
+                                        {
+                                            <div class="chart-card d-flex justify-content-between align-items-center py-3 px-4 mb-3 premium-card border-start border-4 border-primary" style="background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                                                <div>
+                                                    <h4 class="font-bold text-slate-800 m-0" style="font-weight: 800; color: #1e293b;">@item.EquipmentUnit?.Equipment?.Name</h4>
+                                                    <span class="inventory-code text-muted small" style="font-weight: 600;">@item.EquipmentUnit?.InventoryNumber &middot; Pendiente L-6</span>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (Model.Step1Plans.Count > 5)
+                                        {
+                                            <div class="text-center text-muted small py-2">
+                                                ...y @(Model.Step1Plans.Count - 5) equipo(s) más
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="text-center mt-4">
+                                        <a asp-page="/Verifications/MassCreate"
+                                           asp-route-isWizard="true"
+                                           asp-route-labId="@(Model.SelectedLabId)"
+                                           class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-3">
+                                            <i class="fas fa-layer-group mr-2"></i> Verificación Masiva por Laboratorio
+                                        </a>
+                                    </div>
+                                }
                             }
                             else if (Model.Step == 2)
                             {
@@ -643,9 +526,20 @@
                                     ActionClass = "btn-warning",
                                     StatusLabel = "Requiere Atención",
                                     ShowFailCount = true,
-                                    // TODO: Asegurar que el partial consuma item.FailuresCount en lugar de método
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-warning"
                                 })
+                                @if (Model.ActiveManagement?.Type == ManagementType.Corrective)
+                                {
+                                    <div class="text-center mt-4">
+                                        <a asp-page="/Requests/Create"
+                                           asp-route-isWizard="true"
+                                           asp-route-managementId="@(Model.ActiveManagement?.Id)"
+                                           class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold py-3 text-dark">
+                                            <i class="fas fa-exclamation-triangle mr-2"></i> Reportar Nueva Falla Crítica
+                                        </a>
+                                    </div>
+                                }
                             }
                             else if (Model.Step == 3)
                             {
@@ -659,6 +553,7 @@
                                     ActionLabel = "Registrar Acta L8",
                                     ActionClass = "btn-success",
                                     StatusLabel = "En Mantenimiento",
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-success"
                                 })
                             }
@@ -674,6 +569,7 @@
                                     ActionLabel = "Registrar Salida",
                                     ActionClass = "btn-primary",
                                     StatusLabel = "Pendiente Salida",
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-primary"
                                 })
                             }
@@ -685,7 +581,11 @@
                                     EmptyMessage = "Todos los Kardex están al día en este ambiente.",
                                     Plans = Model.Step5Plans,
                                     StepIndex = 5,
+                                    ActionPage = "/Kardex/Create",
+                                    ActionLabel = "Actualizar Kardex",
+                                    ActionClass = "btn-info",
                                     StatusLabel = "Finalizando",
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-info"
                                 })
                             }
@@ -701,6 +601,7 @@
                                     ActionLabel = "Gestionar Adquisición",
                                     ActionClass = "btn-dark",
                                     StatusLabel = "Trámite Administrativo",
+                                    LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-dark"
                                 })
                             }
@@ -710,33 +611,26 @@
                                     <i class="fas fa-flag-checkered fa-4x text-slate-200 mb-4"></i>
                                     <h3 class="wizard-title">¡Ronda Finalizada!</h3>
                                     <p class="wizard-subtitle mb-4">Se han procesado todos los equipos de este ciclo.</p>
-                                    <a asp-page="/Index" asp-route-ShowWizard="false" class="btn btn-primary rounded-pill px-5 shadow-sm">Volver al Dashboard</a>
+                                    <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-primary rounded-pill px-5 shadow-sm">Volver al Dashboard</a>
                                 </div>
                             }
 
-                            <!-- Navigation Buttons -->
-                            @if (Model.Step <= 6) {
-                                <div class="d-flex justify-content-between mt-5 pt-4 border-top">
-                                    <form method="post" asp-page-handler="PreviousStep">
-                                        <input type="hidden" asp-for="Step" />
-                                        <input type="hidden" asp-for="SelectedLabId" />
-                                        <button type="submit" class="btn btn-light border rounded-pill px-4 font-weight-bold @(Model.Step == 0 ? "invisible" : "")">
-                                            <i class="fas fa-arrow-left mr-2"></i> Anterior
-                                        </button>
-                                    </form>
-                                    
-                                    <form method="post" asp-page-handler="NextStep">
-                                        <input type="hidden" asp-for="Step" />
-                                        <input type="hidden" asp-for="SelectedLabId" />
-                                        <button type="submit" class="btn btn-premium-dark rounded-pill px-5 font-weight-bold">
-                                            @(Model.Step == 6 ? "Finalizar" : "Siguiente") <i class="fas fa-arrow-right ml-2"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            }
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Flecha Siguiente (Right Sidebar Style) -->
+            <div class="col-2 col-md-1 d-flex justify-content-center">
+                @if (Model.Step <= 6) {
+                    <form method="post" asp-page-handler="NextStep" class="w-100 text-center">
+                        <input type="hidden" asp-for="Step" />
+                        <input type="hidden" asp-for="SelectedLabId" />
+                        <button type="submit" class="btn rounded-circle shadow-lg hover-float" style="width: 56px; height: 56px; padding: 0; display:inline-flex; align-items:center; justify-content:center; background: linear-gradient(to right, #2563eb, #1e40af); color: white; border: none; box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39); transition: all 0.2s ease;">
+                            @if (Model.Step == 6) { <i class="fas fa-flag-checkered" style="font-size: 1.5rem;"></i> } else { <i class="fas fa-chevron-right" style="font-size: 1.5rem;"></i> }
+                        </button>
+                    </form>
+                }
             </div>
         </div>
     }
@@ -759,105 +653,142 @@
 </div>
 
 @section Scripts {
-    <!-- U-4: Chart.js 3.x with _charts registry and destroy() -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
     <script>
-        /* === U-4: Chart registry con destroy() antes de re-inicializar === */
+        // ─── 1. DATOS SERIALIZADOS DESDE RAZOR (sin bloques if dentro de JS) ───
+        // Se asignan como variables JS simples. Si el modelo no tiene datos, se usan defaults seguros.
+        const _dashboardData = {
+            isActive:         @Json.Serialize(Model.ActiveManagement != null && !Model.ShowWizard),
+            totalActivos:     @Json.Serialize(Model.TotalActivos),
+            equiposTerminados:@Json.Serialize(Model.EquiposTerminados),
+            totalVencidos:    @Json.Serialize(Model.TotalVencidos),
+            typesLabels:      @Html.Raw(Json.Serialize(Model.TopEquipmentTypes != null ? (IEnumerable<string>)Model.TopEquipmentTypes.Keys : new List<string>())),
+            typesData:        @Html.Raw(Json.Serialize(Model.TopEquipmentTypes != null ? (IEnumerable<int>)Model.TopEquipmentTypes.Values : new List<int>())),
+            labsLabels:       @Html.Raw(Json.Serialize(Model.TopLaboratories != null ? (IEnumerable<string>)Model.TopLaboratories.Keys : new List<string>())),
+            labsData:         @Html.Raw(Json.Serialize(Model.TopLaboratories != null ? (IEnumerable<int>)Model.TopLaboratories.Values : new List<int>()))
+        };
+
+        // ─── 2. REGISTRO ÚNICO DE CHARTS (evita memory leaks al re-renderizar) ───
         const _charts = {};
 
+        function destroyAllCharts() {
+            Object.keys(_charts).forEach(k => {
+                if (_charts[k]) { _charts[k].destroy(); delete _charts[k]; }
+            });
+        }
+
+        // ─── 3. FUNCIÓN ÚNICA DE INICIALIZACIÓN ───
         function initDashboardCharts() {
             const donutEl   = document.getElementById('globalDonutChart');
             const barTypeEl = document.getElementById('typeBarChart');
             const barLabEl  = document.getElementById('labBarChart');
-            if (!donutEl) return;
 
-            if (_charts.donut)   { _charts.donut.destroy();   delete _charts.donut;   }
-            if (_charts.barType) { _charts.barType.destroy(); delete _charts.barType; }
-            if (_charts.barLab)  { _charts.barLab.destroy();  delete _charts.barLab;  }
+            // Salir si no estamos en la vista del dashboard
+            if (!donutEl || !_dashboardData.isActive) return;
 
-            @if (Model.ActiveManagement != null && !Model.ShowWizard) {
-                <text>
+            destroyAllCharts();
+
+            const pendientes = Math.max(0,
+                _dashboardData.totalActivos
+                - _dashboardData.equiposTerminados
+                - _dashboardData.totalVencidos
+            );
+
+            // ── Donut: Avance Global ──
             _charts.donut = new Chart(donutEl.getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: ['Completados', 'Pendientes', 'Vencidos'],
                     datasets: [{
                         data: [
-                            @Model.EquiposTerminados,
-                            @(Math.Max(0, Model.TotalActivos - Model.EquiposTerminados - Model.TotalVencidos)),
-                            @Model.TotalVencidos
+                            _dashboardData.equiposTerminados,
+                            pendientes,
+                            _dashboardData.totalVencidos
                         ],
                         backgroundColor: ['#2eca6a', '#e2e8f0', '#dc3545'],
-                        borderWidth: 0, hoverOffset: 4
+                        borderWidth: 0,
+                        hoverOffset: 4
                     }]
                 },
                 options: {
-                    responsive: true, maintainAspectRatio: false, cutout: '72%',
-                    plugins: { legend: { display: false } }
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',               // API Chart.js v3
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1E293B',
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.label}: ${ctx.parsed}`
+                            }
+                        }
+                    }
                 }
             });
 
-            if (barTypeEl) {
-                @if (Model.TopEquipmentTypes != null && Model.TopEquipmentTypes.Any()) {
-                    <text>
+            // ── Bar: Por Tipo de Equipo ──
+            if (barTypeEl && _dashboardData.typesLabels.length > 0) {
                 _charts.barType = new Chart(barTypeEl.getContext('2d'), {
                     type: 'bar',
                     data: {
-                        labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopEquipmentTypes.Keys)),
+                        labels: _dashboardData.typesLabels,
                         datasets: [{
-                            data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopEquipmentTypes.Values)),
+                            data: _dashboardData.typesData,
                             backgroundColor: ['#4154f1','#f59e0b','#8b5cf6','#ec4899','#10b981'],
-                            borderRadius: 5, barThickness: 14
+                            borderRadius: 5,
+                            barThickness: 14
                         }]
                     },
                     options: {
-                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                        indexAxis: 'y',           // horizontal bar en Chart.js v3
+                        responsive: true,
+                        maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
                             x: { display: false, beginAtZero: true },
-                            y: { grid: { display: false }, border: { display: false },
-                                 ticks: { color: '#64748b', font: { size: 10, weight: '600' } } }
+                            y: {
+                                grid: { display: false },
+                                border: { display: false },
+                                ticks: { color: '#64748b', font: { size: 10, weight: '600' } }
+                            }
                         }
                     }
                 });
-                    </text>
-                }
             }
 
-            if (barLabEl) {
-                @if (Model.TopLaboratories != null && Model.TopLaboratories.Any()) {
-                    <text>
+            // ── Bar: Por Laboratorio ──
+            if (barLabEl && _dashboardData.labsLabels.length > 0) {
                 _charts.barLab = new Chart(barLabEl.getContext('2d'), {
                     type: 'bar',
                     data: {
-                        labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopLaboratories.Keys)),
+                        labels: _dashboardData.labsLabels,
                         datasets: [{
-                            data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.TopLaboratories.Values)),
+                            data: _dashboardData.labsData,
                             backgroundColor: ['#2eca6a','#f43f5e','#3b82f6','#f59e0b','#8b5cf6'],
-                            borderRadius: 5, barThickness: 14
+                            borderRadius: 5,
+                            barThickness: 14
                         }]
                     },
                     options: {
-                        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
                             x: { display: false, beginAtZero: true },
-                            y: { grid: { display: false }, border: { display: false },
-                                 ticks: { color: '#64748b', font: { size: 10, weight: '600' } } }
+                            y: {
+                                grid: { display: false },
+                                border: { display: false },
+                                ticks: { color: '#64748b', font: { size: 10, weight: '600' } }
+                            }
                         }
                     }
                 });
-                    </text>
-                }
-            }
-                </text>
             }
         }
 
-        document.addEventListener('DOMContentLoaded', initDashboardCharts);
-
-        // Helper para escape de HTML simple (U-5)
+        // ─── 4. UTILIDADES ───
         function escHtml(str) {
             if (!str) return '—';
             const div = document.createElement('div');
@@ -865,7 +796,6 @@
             return div.innerHTML;
         }
 
-        // U-5: Refactorización de openKardex para usar datos reales del servidor
         async function openKardex(id) {
             const sidebar = document.getElementById('kardexSidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -873,13 +803,13 @@
 
             sidebar.classList.add('open');
             overlay.classList.add('active');
-            
+
             const content = document.getElementById('sidebarContent');
             content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted small">Cargando historial...</p></div>';
 
             try {
                 const response = await fetch(`?handler=KardexDetail&equipmentId=${id}`);
-                if (!response.ok) throw new Error("Error en red");
+                if (!response.ok) throw new Error('Error en red');
                 const data = await response.json();
 
                 content.innerHTML = `
@@ -913,101 +843,11 @@
             document.getElementById('sidebarOverlay').classList.remove('active');
         }
 
-        $(document).ready(function() {
-            document.getElementById('sidebarOverlay').addEventListener('click', closeKardex);
-
-            function initCharts() {
-                /* === DATA FROM BACKEND === */
-                const donutEl = document.getElementById('globalDonutChart');
-                if (!donutEl) return; // No estamos en el Dashboard view
-
-                const totalActivos = @Model.TotalActivos;
-                const terminados = @Model.EquiposTerminados;
-                const pendientes = totalActivos - terminados;
-
-                const typesLabels = @Html.Raw(Json.Serialize(Model.TopEquipmentTypes.Keys));
-                const typesData = @Html.Raw(Json.Serialize(Model.TopEquipmentTypes.Values));
-
-                const labsLabels = @Html.Raw(Json.Serialize(Model.TopLaboratories.Keys));
-                const labsData = @Html.Raw(Json.Serialize(Model.TopLaboratories.Values));
-
-                // Cleanup previo (U-4)
-                if (_charts.donut) _charts.donut.destroy();
-                if (_charts.type)  _charts.type.destroy();
-                if (_charts.lab)   _charts.lab.destroy();
-
-                /* === GLOBAL DONUT CHART === */
-                _charts.donut = new Chart(donutEl.getContext('2d'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Completados', 'Pendientes', 'Vencidos'],
-                        datasets: [{
-                            data: [terminados, pendientes, @Model.TotalVencidos],
-                            backgroundColor: ['#28A745', '#E2E8F0', '#DC3545'],
-                            borderWidth: 0,
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false, cutoutPercentage: 75,
-                        legend: { display: false },
-                        tooltips: {
-                            backgroundColor: '#1E293B', bodyFontFamily: 'Inter, sans-serif',
-                            callbacks: {
-                                label: function(t, d) { return ' ' + d.labels[t.index] + ': ' + d.datasets[0].data[t.index]; }
-                            }
-                        }
-                    }
-                });
-
-                /* === EQUIPMENT TYPES BAR CHART === */
-                const typeEl = document.getElementById('typeBarChart');
-                if (typeEl) {
-                    _charts.type = new Chart(typeEl.getContext('2d'), {
-                        type: 'horizontalBar',
-                        data: {
-                            labels: typesLabels,
-                            datasets: [{
-                                label: 'Activos',
-                                data: typesData,
-                                backgroundColor: '#4154f1', borderWidth: 0, barThickness: 12
-                            }]
-                        },
-                        options: {
-                            responsive: true, maintainAspectRatio: false, legend: { display: false },
-                            scales: {
-                                xAxes: [{ gridLines: { color: '#f2f2f2' }, ticks: { fontColor: '#899bbd', beginAtZero: true } }],
-                                yAxes: [{ gridLines: { display: false }, ticks: { fontColor: '#012970', fontStyle: 'bold' } }]
-                            }
-                        }
-                    });
-                }
-
-                /* === LABORATORIES BAR CHART === */
-                const labEl = document.getElementById('labBarChart');
-                if (labEl) {
-                    _charts.lab = new Chart(labEl.getContext('2d'), {
-                        type: 'horizontalBar',
-                        data: {
-                            labels: labsLabels,
-                            datasets: [{
-                                label: 'Equipos en Gestión',
-                                data: labsData,
-                                backgroundColor: '#2eca6a', borderWidth: 0, barThickness: 15
-                            }]
-                        },
-                        options: {
-                            responsive: true, maintainAspectRatio: false, legend: { display: false },
-                            scales: {
-                                xAxes: [{ gridLines: { color: '#f2f2f2' }, ticks: { fontColor: '#899bbd', beginAtZero: true } }],
-                                yAxes: [{ gridLines: { display: false }, ticks: { fontColor: '#012970', fontStyle: 'bold' } }]
-                            }
-                        }
-                    });
-                }
-            }
-
-            initCharts();
+        // ─── 5. PUNTO DE ENTRADA ÚNICO ───
+        document.addEventListener('DOMContentLoaded', () => {
+            initDashboardCharts();
+            const overlay = document.getElementById('sidebarOverlay');
+            if(overlay) overlay.addEventListener('click', closeKardex);
         });
     </script>
 }

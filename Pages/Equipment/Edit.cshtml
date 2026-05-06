@@ -108,6 +108,34 @@
                         </div>
                     </div>
 
+                    <div class="card border shadow-sm mb-4">
+                        <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-3 px-4">
+                            <h5 class="font-weight-bold mb-0 text-dark">
+                                <i class="fas fa-sticky-note mr-2 text-info"></i>Notas del Fabricante / Prevención
+                            </h5>
+                            <button type="button" class="btn btn-sm btn-outline-info btn-rounded ml-auto font-weight-bold" onclick="addNoteRow()">
+                                <i class="fas fa-plus mr-1"></i> Agregar Nota
+                            </button>
+                        </div>
+                        <div class="card-body pt-2 px-4">
+                            <div id="notesContainer">
+                                @if (Model.Input.Notes != null)
+                                {
+                                    for (int i = 0; i < Model.Input.Notes.Count; i++)
+                                    {
+                                        <div class="input-group mb-2 note-row">
+                                            <input type="text" name="Input.Notes[@i]" class="form-control border-info" value="@Model.Input.Notes[i]" required />
+                                            <div class="input-group-append">
+                                                <button type="button" class="btn btn-outline-danger" onclick="$(this).closest('.note-row').remove()"><i class="fas fa-trash"></i></button>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                            <small class="text-muted">Agregue notas importantes del fabricante, recomendaciones de uso o pautas de mantenimiento preventivo.</small>
+                        </div>
+                    </div>
+
                     <hr />
 
                     <div class="form-actions text-right mt-4">
@@ -169,13 +197,23 @@
 </div>
 
 @section Scripts {
-    <script>B
+    <script>
         $(function () {
              // Custom file input label update
             $(".custom-file-input").on("change", function () {
                 var fileName = $(this).val().split("\\").pop();
                 $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
             });
+
+            window.addNoteRow = function() {
+                var idx = $('#notesContainer .note-row').length;
+                var row = '<div class="input-group mb-2 note-row">';
+                row += '<input type="text" name="Input.Notes[' + idx + ']" class="form-control border-info" placeholder="Ej: Revisar conexiones cada 3 meses..." required />';
+                row += '<div class="input-group-append">';
+                row += '<button type="button" class="btn btn-outline-danger" onclick="$(this).closest(\'.note-row\').remove()"><i class="fas fa-trash"></i></button>';
+                row += '</div></div>';
+                $('#notesContainer').append(row);
+            };
 
             // LÓGICA CORREGIDA PARA ENUMS
             function toggleType() {

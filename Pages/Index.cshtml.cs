@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,15 +27,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages
     }
 
     [Authorize]
+    [ValidateAntiForgeryToken]
     public class IndexModel : PageModel
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly ILogger<IndexModel> _logger;
+        private readonly IManagementContextService _managementContext;
 
-        public IndexModel(ApplicationDbContext context, UserManager<User> userManager)
+        public IndexModel(ApplicationDbContext context, UserManager<User> userManager, ILogger<IndexModel> logger, IManagementContextService managementContext)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger;
+            _managementContext = managementContext;
         }
 
         public Management? ActiveManagement { get; set; }
@@ -49,8 +55,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         public Dictionary<string, int> TopGroups { get; set; } = new();
         public Dictionary<string, int> TopLaboratories { get; set; } = new();
         
+        public class OverduePlanDto 
+        {
+            public int Id { get; set; }
+            public DateTime? PlannedDate { get; set; }
+            public ManagementPlanStatus PlanStatus { get; set; }
+            public string EquipmentName { get; set; } = string.Empty;
+            public string LaboratoryName { get; set; } = string.Empty;
+        }
+
         public IList<ManagementPlan> ManagementPlans { get; set; } = new List<ManagementPlan>();
-        public IList<ManagementPlan> OverduePlans { get; set; } = new List<ManagementPlan>();
+        public IList<OverduePlanDto> OverduePlans { get; set; } = new List<OverduePlanDto>();
 
         // Propiedades de Filtrado para el Cronograma (L-48 / Dashboard)
         [BindProperty(SupportsGet = true)]
@@ -78,6 +93,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
         [BindProperty(SupportsGet = true)]
         public int? SelectedLabId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
 
         // Contadores de fases para el Dashboard Premium
         public int CountL6 { get; set; }
@@ -119,17 +137,66 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     .Cast<EquipmentCategory>()
                     .Select(e => new { Id = (int)e, Name = e.ToString() }), "Id", "Name");
 
-                // Buscar Gestión Activa
-                ActiveManagement = await _context.Managements
-                    .Where(m => m.Status == ManagementStatus.Active)
-                    .OrderByDescending(m => m.Year)
-                    .ThenByDescending(m => m.Semester)
-                    .FirstOrDefaultAsync();
+                // Buscar Gestión Activa (cached), o usar ManagementId directo
+                if (ManagementId.HasValue)
+                {
+                    ActiveManagement = await _context.Managements
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(m => m.Id == ManagementId.Value);
+                }
+                else
+                {
+                    ActiveManagement = await _managementContext.GetCurrentManagementAsync();
+                }
 
                 if (ActiveManagement != null)
                 {
-                    // Query Base para el Dashboard y Cronograma con todos los includes necesarios para el Wizard
-                    var plansQuery = _context.ManagementPlans
+                    var isCorrective = ActiveManagement.Type == ManagementType.Corrective;
+                    ViewData["IsCorrective"] = isCorrective;
+                    ViewData["ManagementId"] = ActiveManagement.Id;
+
+                    if (ShowWizard && isCorrective && Request.Query["Step"].Count == 0)
+                    {
+                        Step = 2; // Iniciar en L-7 para correctivos por defecto
+                    }
+                    // 1. STATS QUERY: Base ultra ligera sin Includes para conteos masivos
+                    var statsQuery = _context.ManagementPlans
+                        .AsNoTracking()
+                        .Where(p => p.ManagementId == ActiveManagement.Id);
+
+                    // Single database roundtrip: materialize all plans once
+                    var allStats = await statsQuery.Select(p => new
+                    {
+                        p.PlanStatus,
+                        p.CurrentPhase,
+                        p.CurrentState,
+                        p.PlannedDate,
+                        p.VerificationId
+                    }).ToListAsync();
+
+                    TotalActivos = allStats.Count;
+                    EquiposTerminados = allStats.Count(p => p.CurrentState == WizardEquipmentState.Completed);
+                    
+                    var now = DateTime.Now;
+                    TotalVencidos = allStats.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate < now);
+                    GlobalProgress = TotalActivos > 0 ? Math.Round((double)EquiposTerminados / TotalActivos * 100, 1) : 0;
+
+                    CountPendientes = allStats.Count(p =>
+                        p.PlanStatus != ManagementPlanStatus.Completed &&
+                        p.CurrentState >= WizardEquipmentState.AwaitingRequest);
+                    
+                    CountBuenos = allStats.Count(p =>
+                        p.CurrentState == WizardEquipmentState.VerifiedGood);
+
+                    CountL6 = ActiveManagement.Type == ManagementType.Corrective ? 0 : allStats.Count(p => p.CurrentPhase == WizardPhase.Verification && p.VerificationId == null);
+                    CountL7 = allStats.Count(p => p.CurrentPhase == WizardPhase.TechnicalRequest);
+                    CountL8 = allStats.Count(p => p.CurrentPhase == WizardPhase.Maintenance);
+                    CountSalida = allStats.Count(p => p.CurrentPhase == WizardPhase.Exit);
+                    CountDesembolso = allStats.Count(p => p.CurrentPhase == WizardPhase.Disbursement);
+
+                    // 2. DATA QUERY: Base pesada con Includes solo para el Cronograma y el Wizard
+                    var dataQuery = _context.ManagementPlans
+                        .AsNoTracking()
                         .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                         .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                         .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
@@ -138,27 +205,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         .Include(p => p.Departure)
                         .Where(p => p.ManagementId == ActiveManagement.Id);
 
-                    // Estadísticas Globales
-                    var allPlans = await plansQuery.ToListAsync();
-                    TotalActivos = allPlans.Count;
-                    EquiposTerminados = allPlans.Count(p => p.PlanStatus == ManagementPlanStatus.Completed);
-                    TotalVencidos = allPlans.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate.Value < DateTime.Now);
-                    GlobalProgress = TotalActivos > 0 ? Math.Round((double)EquiposTerminados / TotalActivos * 100, 1) : 0;
-
-                    // B-2: Poblar métricas Fila 1 Sprint 3B
-                    CountPendientes = allPlans.Count(p =>
-                        p.PlanStatus != ManagementPlanStatus.Completed &&
-                        p.CurrentState >= WizardEquipmentState.AwaitingRequest);
-                    CountBuenos = allPlans.Count(p =>
-                        p.CurrentState == WizardEquipmentState.VerifiedGood);
-
                     // B-3: Agrupación semántica de tipos de equipo
-                    TopEquipmentTypes = allPlans
-                        .Where(p => p.EquipmentUnit?.Equipment != null)
+                    var equipmentStats = await _context.ManagementPlans
+                        .AsNoTracking()
+                        .Where(p => p.ManagementId == ActiveManagement.Id && p.EquipmentUnit != null && p.EquipmentUnit.Equipment != null)
+                        .Select(p => new {
+                            Category = p.EquipmentUnit!.Equipment!.Category,
+                            TypeClass = p.EquipmentUnit!.Equipment!.TypeClassification,
+                            LabName = p.EquipmentUnit!.Laboratory != null ? p.EquipmentUnit.Laboratory.Name : "N/A"
+                        })
+                        .ToListAsync();
+
+                    TopEquipmentTypes = equipmentStats
                         .GroupBy(p =>
-                            p.EquipmentUnit!.Equipment!.Category == EquipmentCategory.Utensil
+                            p.Category == EquipmentCategory.Utensil
                                 ? "Utensilio"
-                                : p.EquipmentUnit!.Equipment!.TypeClassification switch
+                                : p.TypeClass switch
                                 {
                                     EquipmentTypeClassification.Electronico => "Electrónico / Eléctrico",
                                     EquipmentTypeClassification.Manual      => "Manual / Mecánico",
@@ -172,25 +234,33 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         .OrderByDescending(g => g.Count())
                         .ToDictionary(g => g.Key, g => g.Count());
 
-                    TopGroups = allPlans
-                        .Where(p => p.EquipmentUnit?.Equipment != null)
-                        .GroupBy(p => p.EquipmentUnit!.Equipment!.TypeClassification.ToString())
+                    TopGroups = equipmentStats
+                        .GroupBy(p => p.TypeClass.ToString())
                         .OrderByDescending(g => g.Count())
                         .ToDictionary(g => g.Key, g => g.Count());
 
-                    TopLaboratories = allPlans
-                        .Where(p => p.EquipmentUnit?.Laboratory != null)
-                        .GroupBy(p => p.EquipmentUnit!.Laboratory!.Name)
+                    TopLaboratories = equipmentStats
+                        .Where(p => p.LabName != "N/A")
+                        .GroupBy(p => p.LabName)
                         .OrderByDescending(g => g.Count())
                         .ToDictionary(g => g.Key, g => g.Count());
 
-                    OverduePlans = allPlans
-                        .Where(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate.Value < DateTime.Now.AddDays(7))
+                    var futureLimit = now.AddDays(7);
+                    // Proyección ligera (.Select) explícita para OverduePlans
+                    OverduePlans = await dataQuery
+                        .Where(p => p.PlanStatus != ManagementPlanStatus.Completed && p.PlannedDate.HasValue && p.PlannedDate < futureLimit)
                         .OrderBy(p => p.PlannedDate)
-                        .ToList();
+                        .Select(p => new OverduePlanDto {
+                            Id = p.Id,
+                            PlannedDate = p.PlannedDate,
+                            PlanStatus = p.PlanStatus,
+                            EquipmentName = p.EquipmentUnit!.Equipment!.Name,
+                            LaboratoryName = p.EquipmentUnit.Laboratory != null ? p.EquipmentUnit.Laboratory.Name : "N/A"
+                        })
+                        .ToListAsync();
 
                     // APLICAR FILTROS AL CRONOGRAMA
-                    var cronogramaQuery = plansQuery.AsQueryable();
+                    var cronogramaQuery = dataQuery.AsQueryable();
 
                     if (LabFilterId.HasValue) cronogramaQuery = cronogramaQuery.Where(p => p.EquipmentUnit!.LaboratoryId == LabFilterId);
                     if (CategoryFilterId.HasValue) cronogramaQuery = cronogramaQuery.Where(p => p.EquipmentUnit!.Equipment!.Category == (EquipmentCategory)CategoryFilterId);
@@ -210,26 +280,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         .Take(10)
                         .ToListAsync();
 
-                    // Contadores por fase para el Dashboard Premium
-                    CountL6 = allPlans.Count(p => p.CurrentPhase == WizardPhase.Verification);
-                    CountL7 = allPlans.Count(p => p.CurrentPhase == WizardPhase.TechnicalRequest);
-                    CountL8 = allPlans.Count(p => p.CurrentPhase == WizardPhase.Maintenance);
-                    CountSalida = allPlans.Count(p => p.CurrentPhase == WizardPhase.Exit);
-                    CountDesembolso = allPlans.Count(p => p.CurrentPhase == WizardPhase.Disbursement);
-
                     // LÓGICA DEL WIZARD FUNCIONAL
                     if (ShowWizard)
                     {
                         LaboratoriesList = new SelectList(labs, "Id", "Name", SelectedLabId);
-                        var wizardQuery = plansQuery.AsQueryable();
+                        var wizardQuery = dataQuery.AsQueryable();
                         if (SelectedLabId.HasValue)
                         {
-                            wizardQuery = wizardQuery.Where(p => p.EquipmentUnit.LaboratoryId == SelectedLabId.Value);
+                            wizardQuery = wizardQuery.Where(p => p.EquipmentUnit!.LaboratoryId == SelectedLabId.Value);
                         }
-                        ActivePlans = await wizardQuery.ToListAsync();
+                        
+                        // Límite de seguridad Take(100) para evitar colapso de RAM si no hay filtros
+                        ActivePlans = await wizardQuery.Take(100).ToListAsync();
 
                         // B-1: Poblado de listas por paso (evitando expresión => para no recalcular)
-                        Step1Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Verification).ToList();
+                        Step1Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Verification && p.VerificationId == null).ToList();
                         Step2Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.TechnicalRequest).ToList();
                         Step3Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Maintenance).ToList();
                         Step4Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Exit).ToList();
@@ -238,35 +303,75 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Log error
+                _logger.LogError(ex, "Dashboard OnGetAsync falló");
+                TempData["ErrorMessage"] = "Ocurrió un error inesperado al cargar el panel de control.";
             }
 
             return Page();
         }
 
-        [ValidateAntiForgeryToken]
         public IActionResult OnPostNextStep()
         {
-            return RedirectToPage(new { ShowWizard = true, Step = Step + 1, SelectedLabId = SelectedLabId });
+            return RedirectToPage(new { ShowWizard = true, Step = Step + 1, SelectedLabId = SelectedLabId, ManagementId = ManagementId ?? ActiveManagement?.Id });
         }
 
-        [ValidateAntiForgeryToken]
         public IActionResult OnPostPreviousStep()
         {
-            int prevStep = Step > 1 ? Step - 1 : 0; 
-            return RedirectToPage(new { ShowWizard = true, Step = prevStep, SelectedLabId = SelectedLabId });
+            var isCorrective = ActiveManagement?.Type == ManagementType.Corrective;
+            var minStep = isCorrective ? 2 : 1;
+            int prevStep = Step > minStep ? Step - 1 : 0; 
+            return RedirectToPage(new { ShowWizard = true, Step = prevStep, SelectedLabId = SelectedLabId, ManagementId = ManagementId ?? ActiveManagement?.Id });
         }
 
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> OnPostRefresh()
         {
-            TempData.Success("Los datos del dashboard se han sincronizado correctamente.");
+            var activeManagement = await _context.Managements
+                .Include(m => m.ManagementPlans)
+                .FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+
+            if (activeManagement == null)
+            {
+                TempData.Error("No hay gestión activa para sincronizar.");
+                return RedirectToPage();
+            }
+
+            var existingEquipmentIds = activeManagement.ManagementPlans
+                .Where(p => p.EquipmentUnitId.HasValue)
+                .Select(p => p.EquipmentUnitId!.Value)
+                .ToList();
+
+            var newEquipments = await _context.EquipmentUnits
+                .Where(eu => eu.CurrentStatus != EquipmentStatus.Deleted && !existingEquipmentIds.Contains(eu.Id))
+                .ToListAsync();
+
+            if (newEquipments.Any())
+            {
+                foreach (var eu in newEquipments)
+                {
+                    _context.ManagementPlans.Add(new ManagementPlan
+                    {
+                        ManagementId = activeManagement.Id,
+                        EquipmentUnitId = eu.Id,
+                        CurrentPhase = WizardPhase.Verification,
+                        CurrentState = WizardEquipmentState.PendingVerification,
+                        PlanStatus = ManagementPlanStatus.Pending,
+                        CreatedDate = DateTime.UtcNow,
+                        PlannedDate = DateTime.Today.AddDays(7)
+                    });
+                }
+                await _context.SaveChangesAsync();
+                TempData.Success($"Se han sincronizado {newEquipments.Count} nuevos equipos a la gestión {activeManagement.Year}-{activeManagement.Semester}.");
+            }
+            else
+            {
+                TempData.Success("El dashboard está actualizado. Todos los equipos activos ya están en la ronda.");
+            }
+
             return RedirectToPage();
         }
 
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> OnPostFastFail(int? planId)
         {
             if (planId.HasValue)
@@ -278,6 +383,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     plan.CurrentState = WizardEquipmentState.AwaitingRequest;
                     await _context.SaveChangesAsync();
                     return RedirectToPage("/Requests/Create", new { equipmentUnitId = plan.EquipmentUnitId, isWizard = true, managementPlanId = plan.Id });
+                }
+                else if (plan != null)
+                {
+                    TempData.Error($"Este equipo no está en fase de Verificación (fase actual: {plan.CurrentPhase}). No se puede registrar falla rápida.");
+                    return RedirectToPage(new { ShowWizard = true, Step = (int)plan.CurrentPhase, SelectedLabId = SelectedLabId });
                 }
             }
 
@@ -291,10 +401,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 return RedirectToPage();
             }
 
-            return RedirectToPage("/Requests/Create");
+            TempData.Error("No se encontró el plan de gestión para este equipo.");
+            return RedirectToPage(new { ShowWizard = true, Step = 1 });
         }
 
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> OnPostConfirmKardexAsync(int planId)
         {
             try
@@ -302,6 +412,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 var plan = await _context.ManagementPlans
                     .Include(p => p.EquipmentUnit)
                     .Include(p => p.Maintenance)
+                    .AsTracking()
                     .FirstOrDefaultAsync(p => p.Id == planId);
 
                 if (plan != null)
@@ -322,8 +433,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     }
 
                     plan.CurrentPhase = WizardPhase.Disbursement;
-                    plan.CurrentState = WizardEquipmentState.Completed;
-                    plan.PlanStatus = ManagementPlanStatus.Completed;
+                    plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
+                    plan.PlanStatus = ManagementPlanStatus.InProgress;
 
                     await _context.SaveChangesAsync();
                     TempData.Success("Kardex actualizado. El equipo está marcado como Operativo.");

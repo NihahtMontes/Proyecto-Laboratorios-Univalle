@@ -35,6 +35,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             Input = new InputModel
             {
                 ScheduledDate = DateTime.UtcNow,
+                MaintenanceType = isWizard ? MaintenanceType.Preventivo : MaintenanceType.Otros,
                 CostDetails = new List<CostDetail>(),
                 Tasks = new List<MaintenanceTask>
                 {
@@ -44,6 +45,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     new MaintenanceTask { Description = "Revisión Final de Seguridad y Cierre" }
                 }
             };
+
+            if (managementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans.FindAsync(managementPlanId.Value);
+                if (plan != null)
+                {
+                    ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+                    ViewData["ManagementId"] = plan.ManagementId;
+                    var mgmt = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
+                    ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
+                    if (plan.RequestId.HasValue)
+                    {
+                        Input.RequestId = plan.RequestId;
+                    }
+                    if (!equipmentUnitId.HasValue && plan.EquipmentUnitId.HasValue)
+                    {
+                        equipmentUnitId = plan.EquipmentUnitId;
+                    }
+                }
+            }
 
             if (equipmentUnitId.HasValue)
             {
@@ -59,15 +80,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                     ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == Input.FacultyId).ToListAsync(), "Id", "Name", Input.LaboratoryId);
                     ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits.Include(u => u.Equipment).Where(u => u.LaboratoryId == Input.LaboratoryId).Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" }).ToListAsync(), "Id", "Name", Input.EquipmentUnitId);
-                }
-            }
-
-            if (managementPlanId.HasValue)
-            {
-                var plan = await _context.ManagementPlans.FindAsync(managementPlanId.Value);
-                if (plan != null && plan.RequestId.HasValue)
-                {
-                    Input.RequestId = plan.RequestId;
                 }
             }
 
@@ -136,12 +148,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Recomendaciones")]
             public string? Recommendations { get; set; }
 
-            [Required]
             [Display(Name = "Estado Inicial")]
             public MaintenanceStatus Status { get; set; } = MaintenanceStatus.Scheduled;
-
-            [Display(Name = "Tipo de Servicio")]
-            public ServiceType ServiceType { get; set; } = ServiceType.Internal;
 
             public List<CostDetail> CostDetails { get; set; } = new();
 
@@ -153,6 +161,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             public bool Step2_Calibration { get; set; } = false;
             public bool Step3_Testing { get; set; } = false;
             public bool Step4_FinalReview { get; set; } = false;
+
+            [DataType(DataType.Date)]
+            [Display(Name = "Fecha Sugerida de Próximo Mantenimiento")]
+            public DateTime? SuggestedNextMaintenanceDate { get; set; }
+
+            [Display(Name = "Nivel de Satisfacción")]
+            public int? SatisfactionLevel { get; set; }
         }
 
         public async Task<JsonResult> OnGetLaboratoriesByFacultyAsync(int facultyId)
@@ -195,7 +210,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     ModelState.AddModelError("Input.EndDate", "La fecha de finalización no puede ser anterior al inicio.");
             }
 
-            var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
+            var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).AsTracking().FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
             if (equipmentUnit == null)
             {
                 ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física no existe.");
@@ -241,6 +256,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     ActualCost = Input.ActualCost,
                     Observations = Input.Observations?.Clean(),
                     Recommendations = Input.Recommendations?.Clean(),
+                    SuggestedNextMaintenanceDate = Input.SuggestedNextMaintenanceDate,
+                    SatisfactionLevel = (MaintenanceSatisfaction?)Input.SatisfactionLevel,
                     Status = Input.Status,
                     CostDetails = Input.CostDetails ?? new(),
                     CreatedDate = DateTime.UtcNow,
@@ -259,6 +276,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     var lastHistory = await _context.EquipmentStateHistories
                         .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
                         .OrderByDescending(h => h.StartDate)
+                        .AsTracking()
                         .FirstOrDefaultAsync();
 
                     if (lastHistory != null)
@@ -282,19 +300,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 await _context.SaveChangesAsync();
 
-                var notification = new Notification
+                // Solo notificar si la fecha programada está a 7 días o menos de vencer
+                if (maintenance.ScheduledDate.HasValue)
                 {
-                    UserId = Input.TechnicianId,
-                    Title = "Nuevo Mantenimiento Asignado",
-                    Message = $"Se le ha asignado el mantenimiento de la unidad {equipmentUnit?.InventoryNumber}.",
-                    ActionUrl = $"/Maintenances/Details?id={maintenance.Id}",
-                    IconClass = "fas fa-wrench text-info",
-                    IsRead = false,
-                    CreatedAt = DateTime.UtcNow
-                };
+                    var daysUntil = (maintenance.ScheduledDate.Value.Date - DateTime.UtcNow.Date).TotalDays;
+                    if (daysUntil >= 0 && daysUntil <= 7)
+                    {
+                        var notification = new Notification
+                        {
+                            UserId = Input.TechnicianId,
+                            Title = "Mantenimiento Próximo a Vencer",
+                            Message = $"El mantenimiento de la unidad {equipmentUnit?.InventoryNumber} debe realizarse el {maintenance.ScheduledDate.Value:dd/MM/yyyy}.",
+                            ActionUrl = $"/Maintenances/Details/{maintenance.Id}",
+                            IconClass = "fas fa-exclamation-triangle text-warning",
+                            IsRead = false,
+                            CreatedAt = DateTime.UtcNow
+                        };
 
-                _context.Notifications.Add(notification);
-                await _context.SaveChangesAsync();
+                        _context.Notifications.Add(notification);
+                        await _context.SaveChangesAsync();
+                    }
+                }
 
                 TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
 
@@ -310,7 +336,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         
                         if (isWizard)
                         {
-                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId });
+                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                         }
                     }
                 }

@@ -2,8 +2,20 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
-<div class="row">
-    <div class="col-lg-8 border-right">
+@{
+    ViewData["Title"] = "Editar Solicitud de Adquisición (L-12)";
+    bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+    int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 6);
+    int? planId = (int?)ViewData["ManagementPlanId"];
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-12">
+        @if (isWizard)
+        {
+            await Html.RenderPartialAsync("_WizardSteps", currentPhaseInt);
+        }
+
         <div class="card shadow-sm border-0 mt-3">
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
@@ -11,14 +23,92 @@
                         <h4 class="card-title text-dark font-weight-bold">Editar Solicitud de Adquisición</h4>
                         <h6 class="card-subtitle text-muted italic">Modificando expediente técnico de compra #@Model.Input.Id</h6>
                     </div>
-                    <div class="ml-auto mt-2 mt-md-0">
-                        <i class="fas fa-edit fa-2x text-warning"></i>
+                    <div class="ml-auto mt-2 mt-md-0 text-right">
+                         <i class="fas fa-edit fa-2x text-warning"></i>
                     </div>
                 </div>
 
-                <form method="post" novalidate id="editAcquisitionForm">
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                <form method="post" id="editAcquisitionForm" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4 small"></div>
+                    
                     <input type="hidden" asp-for="Input.Id" />
+                    <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
+                    <input type="hidden" name="ManagementPlanId" value="@planId" />
+
+                    <!-- FILA 1: UBICACION (Layout 3 Columnas) -->
+                    <div class="bg-light p-4 rounded mb-4 border-left border-dark shadow-sm" style="border-left-width: 4px;">
+                        <h5 class="text-dark font-weight-bold mb-3 uppercase small"><i class="fas fa-map-marker-alt mr-2 text-dark"></i>Localización y Activo</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad</label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-dark" asp-items="ViewBag.FacultyId" disabled></select>
+                                        <input type="hidden" asp-for="Input.FacultyId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-dark" asp-items="ViewBag.FacultyId" required disabled>
+                                        </select>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio</label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-dark" asp-items="ViewBag.LaboratoryId" disabled></select>
+                                        <input type="hidden" asp-for="Input.LaboratoryId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-dark" asp-items="ViewBag.LaboratoryId" required disabled>
+                                        </select>
+                                    }
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Unidad Física</label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-dark" asp-items="ViewBag.EquipmentUnitId" disabled></select>
+                                        <input type="hidden" asp-for="Input.EquipmentUnitId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-dark" asp-items="ViewBag.EquipmentUnitId" required disabled>
+                                        </select>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TARJETA DE REFERENCIA KARDEX / MANTENIMIENTO -->
+                    @if (isWizard && ViewData["LinkedMaintenanceId"] != null)
+                    {
+                        <div class="bg-light p-3 rounded mb-4 border-left border-info" style="border-left-width: 4px !important;">
+                            <label class="control-label font-weight-bold small text-uppercase text-muted">Antecedentes Históricos</label>
+                            <div class="p-2 rounded mt-2" style="background:#e8f4fd; border: 1px solid #bae6fd;">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3" style="color: #0284c7;"><i class="fas fa-clipboard-list fa-lg"></i></div>
+                                    <div>
+                                        <h6 class="m-0 font-weight-bold" style="color: #0369a1;">Kardex / Historial Previos (Fase 5)</h6>
+                                        <span class="small" style="color: #0284c7;">Ref L-8 Mantenimiento: @ViewData["LinkedMaintenanceId"]</span>
+                                    </div>
+                                    <a href="/Maintenances/Details/@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #0284c7; border: 1px solid #bae6fd;">
+                                        Ver Mantenimiento L-8 <i class="fas fa-external-link-alt ml-1"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, 5, 'Kardex e Historial', 6)">
+                                        <i class="fas fa-undo"></i> Rehacer Kardex
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
 
                     <div class="row mt-4">
                         <div class="col-md-5 border-right">
@@ -74,9 +164,18 @@
                     <hr class="mt-5" />
 
                     <div class="form-actions text-right mt-4 pb-2">
-                        <a asp-page="./Details" asp-route-id="@Model.Input.Id" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
-                            <i class="fas fa-times mr-1"></i> Cancelar Edición
-                        </a>
+                        @if (isWizard)
+                        {
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="6" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
+                                <i class="fas fa-undo mr-1"></i> Volver al Wizard
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-page="./Details" asp-route-id="@Model.Input.Id" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
+                                <i class="fas fa-times mr-1"></i> Cancelar Edición
+                            </a>
+                        }
                         <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark border-0 py-2 animate__animated animate__pulse animate__infinite">
                             <i class="fas fa-check-circle mr-1"></i> Aplicar Cambios Técnicos
                         </button>
@@ -85,39 +184,10 @@
             </div>
         </div>
     </div>
-
-    <div class="col-lg-4 mt-3">
-        <div class="card shadow-sm border-0 bg-dark text-white mb-4 shadow-lg overflow-hidden">
-             <div class="card-body p-4 position-relative">
-                <i class="fas fa-shopping-cart position-absolute text-white" style="font-size: 8rem; opacity: 0.05; right:-20px; top:-20px;"></i>
-                <h5 class="card-title text-white font-weight-bold small uppercase mb-4 border-bottom border-secondary pb-2"><i class="fas fa-info-circle mr-2 text-info"></i> Resumen de Ficha</h5>
-                
-                <div class="mb-4">
-                    <label class="text-muted uppercase font-weight-bold d-block mb-1" style="font-size: 0.65rem;">Identificación Única</label>
-                    <span class="font-weight-bold text-info" style="font-size: 1.2rem;">#ACQ-@Model.Input.Id.ToString("D5")</span>
-                </div>
-                
-                <div class="mb-0">
-                    <label class="text-muted uppercase font-weight-bold d-block mb-2" style="font-size: 0.65rem;">Estado de Proceso</label>
-                    <span class="badge badge-pill badge-warning px-4 py-2 font-weight-bold shadow-sm text-dark" style="font-size: 0.75rem;">
-                         Edición en Curso
-                    </span>
-                </div>
-            </div>
-        </div>
-
-        <div class="alert alert-light border-0 shadow-sm p-4 small text-dark border-left border-3 border-info">
-             <h6 class="font-weight-bold text-info small uppercase mb-3"><i class="fas fa-shield-alt mr-2"></i> Reglas de Edición</h6>
-             <ul class="pl-3 mb-0 italic">
-                 <li class="mb-2">Solo puede editar solicitudes en estado <strong>Pendiente</strong>.</li>
-                 <li class="mb-2">El cambio de código de inversión afecta reportes contables.</li>
-                 <li>Las observaciones son visibles para administradores de área.</li>
-             </ul>
-        </div>
-    </div>
 </div>
 
-
-@section Styles {
-    <style>.opacity-5 { opacity: 0.15; }</style>
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

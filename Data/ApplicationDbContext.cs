@@ -58,6 +58,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         }
 
         public new DbSet<User> Users { get; set; } = null!;
+        public DbSet<VerificationFault> VerificationFaults { get; set; } = null!;
         public DbSet<Person> People { get; set; } = null!;
         public DbSet<Faculty> Faculties { get; set; } = null!;
         public DbSet<Laboratory> Laboratories { get; set; } = null!;
@@ -67,6 +68,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<Equipment> Equipments { get; set; } = null!;
         public DbSet<EquipmentUnit> EquipmentUnits { get; set; } = null!;
         public DbSet<EquipmentStateHistory> EquipmentStateHistories { get; set; } = null!;
+        public DbSet<EquipmentNote> EquipmentNotes { get; set; } = null!;
         public DbSet<Request> Requests { get; set; } = null!;
         public DbSet<Maintenance> Maintenances { get; set; } = null!;
         public DbSet<Notification> Notifications { get; set; }
@@ -109,6 +111,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("[CurrentStatus] != 99");
             modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("[Status] != 2");
 
+            // Bloque 5A: Índices de Performance
+            modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.CurrentStatus);
+            modelBuilder.Entity<Maintenance>().HasIndex(m => m.Status);
+            modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.PlanStatus, p.ManagementId });
+            modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.CurrentPhase, p.ManagementId });
+
             modelBuilder.Entity<User>().Property(u => u.Status).HasDefaultValue(GeneralStatus.Activo);
             modelBuilder.Entity<Faculty>().Property(f => f.Status).HasDefaultValue(GeneralStatus.Activo);
             modelBuilder.Entity<Laboratory>().Property(l => l.Status).HasDefaultValue(GeneralStatus.Activo);
@@ -119,22 +127,32 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Request>().Property(s => s.Status).HasDefaultValue(RequestStatus.Pending);
             modelBuilder.Entity<Verification>().Property(v => v.Status).HasDefaultValue(VerificationStatus.Draft);
             modelBuilder.Entity<Career>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Activo);
+            modelBuilder.Entity<Equipment>().Property(e => e.Status).HasDefaultValue(GeneralStatus.Activo);
 
             modelBuilder.Entity<User>().HasQueryFilter(u => u.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<Faculty>().HasQueryFilter(f => f.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<Laboratory>().HasQueryFilter(l => l.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<Country>().HasQueryFilter(p => p.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<City>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<Equipment>().HasQueryFilter(e => e.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<EquipmentUnit>().HasQueryFilter(e => e.CurrentStatus != EquipmentStatus.Deleted);
             modelBuilder.Entity<Maintenance>().HasQueryFilter(m => m.Status != MaintenanceStatus.Cancelled);
             modelBuilder.Entity<Request>().HasQueryFilter(s => s.Status != RequestStatus.Cancelled);
             modelBuilder.Entity<Verification>().HasQueryFilter(v => v.Status != VerificationStatus.Annulled);
-            modelBuilder.Entity<VerificationCheckResult>().HasQueryFilter(r => r.Verification!.Status != VerificationStatus.Annulled);
+            // REMOVIDO: filtro por navegación causaba INNER JOIN extra en CADA query → crash 0xffffffff
+            // VerificationCheckResult ya queda filtrado automáticamente por el filtro de Verification (al hacer Include)
+            // modelBuilder.Entity<VerificationCheckResult>().HasQueryFilter(r => r.Verification!.Status != VerificationStatus.Annulled);
             modelBuilder.Entity<Management>().HasQueryFilter(m => m.Status != ManagementStatus.Deleted);
+            // REMOVIDO: ManagementPlan filtraba por p.Management!.Status (navegación) forzando INNER JOIN
+            // Management ya tiene su propio filtro. Al hacer .Where(p => p.ManagementId == X), 
+            // solo se obtienen planes de gestiones que ya pasaron el filtro de Management.
+            // modelBuilder.Entity<ManagementPlan>().HasQueryFilter(p => p.Management!.Status != ManagementStatus.Deleted);
 
             modelBuilder.Entity<Departure>().HasQueryFilter(l => l.Status != LoanStatus.Cancelled);
             modelBuilder.Entity<Career>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
-            modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => t.Maintenance!.Status != MaintenanceStatus.Cancelled);
+            // REMOVIDO: filtro por navegación t.Maintenance!.Status causaba JOIN extra
+            // MaintenanceTask ya queda filtrado por el filtro de Maintenance
+            // modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => t.Maintenance!.Status != MaintenanceStatus.Cancelled);
 
             // Management Relationships
             modelBuilder.Entity<Verification>().HasOne(v => v.Management).WithMany().HasForeignKey(v => v.ManagementId).OnDelete(DeleteBehavior.Restrict);
@@ -142,6 +160,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Maintenance>().HasOne(m => m.Management).WithMany().HasForeignKey(m => m.ManagementId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(e => e.Management).WithMany().HasForeignKey(e => e.ManagementId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Departure>().HasOne(d => d.Management).WithMany().HasForeignKey(d => d.ManagementId).OnDelete(DeleteBehavior.Restrict);
+
+            // Cascade fixes
+            modelBuilder.Entity<ManagementPlan>().HasOne(p => p.Management).WithMany(m => m.ManagementPlans).HasForeignKey(p => p.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Request>().HasOne(r => r.Laboratory).WithMany().HasForeignKey(r => r.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Laboratory>().HasOne(l => l.City).WithMany().HasForeignKey(l => l.CityId).OnDelete(DeleteBehavior.SetNull);
 
             // Relationships
             modelBuilder.Entity<City>().HasOne(c => c.Country).WithMany(p => p.Cities).OnDelete(DeleteBehavior.Restrict);
@@ -165,8 +188,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Departure>().HasOne(l => l.EquipmentUnit).WithMany(u => u.Departures).HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Departure>().HasOne(l => l.Borrower).WithMany(p => p.Departures).HasForeignKey(l => l.BorrowerId).OnDelete(DeleteBehavior.Restrict);
 
+            // Sprint 3B: Soft Delete para fallas
+            modelBuilder.Entity<VerificationFault>().HasQueryFilter(e => !e.IsDeleted);
+
             modelBuilder.Entity<Laboratory>().HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Equipment>().HasMany(e => e.Notes).WithOne(n => n.Equipment).HasForeignKey(n => n.EquipmentId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.CreatedBy).WithMany().HasForeignKey(u => u.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Equipment).WithMany(e => e.Units).HasForeignKey(u => u.EquipmentId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Career).WithMany(c => c.EquipmentUnits).HasForeignKey(u => u.CareerId).OnDelete(DeleteBehavior.Restrict);

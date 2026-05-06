@@ -18,9 +18,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             _context = context;
         }
 
-        public IList<Laboratory> Laboratories { get; set; } = default!;
-        public IList<Faculty> Faculties { get; set; } = default!;
-        public IList<Proyecto_Laboratorios_Univalle.Models.Career> Careers { get; set; } = default!;
+        public PaginatedList<Laboratory> Laboratories { get; set; } = new PaginatedList<Laboratory>(new List<Laboratory>(), 0, 1, 20);
+        public PaginatedList<Faculty> Faculties { get; set; } = new PaginatedList<Faculty>(new List<Faculty>(), 0, 1, 20);
+        public PaginatedList<Proyecto_Laboratorios_Univalle.Models.Career> Careers { get; set; } = new PaginatedList<Proyecto_Laboratorios_Univalle.Models.Career>(new List<Proyecto_Laboratorios_Univalle.Models.Career>(), 0, 1, 20);
+
+        [BindProperty(SupportsGet = true)]
+        public int? PageIndex { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -28,7 +31,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
         [BindProperty(SupportsGet = true)]
         public GeneralStatus? StatusFilter { get; set; }
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             // Base Queries for Laboratories and Faculties (Excluding deleted)
             var labQuery = _context.Laboratories
@@ -76,9 +79,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             }
 
             // Ordering for both collections
-            Laboratories = await labQuery.OrderBy(l => l.Name).ToListAsync();
-            Faculties = await facQuery.OrderBy(f => f.Name).ToListAsync();
-            Careers = await carQuery.OrderBy(c => c.Name).ToListAsync();
+            Laboratories = await PaginatedList<Laboratory>.CreateAsync(labQuery.OrderBy(l => l.Name), pageIndex ?? 1, 20);
+            Faculties = await PaginatedList<Faculty>.CreateAsync(facQuery.OrderBy(f => f.Name), pageIndex ?? 1, 20);
+            Careers = await PaginatedList<Proyecto_Laboratorios_Univalle.Models.Career>.CreateAsync(carQuery.OrderBy(c => c.Name), pageIndex ?? 1, 20);
         }
     }
 }

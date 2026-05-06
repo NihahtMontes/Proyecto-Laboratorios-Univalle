@@ -2,17 +2,21 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.CreateModel
 
+@{
+    ViewData["Title"] = "Registrar Verificación (L-6)";
+    bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+    int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 1);
+    var categoryList = Html.GetEnumSelectList<CostCategory>();
+}
+
+
+
 <div class="row justify-content-center">
     <div class="col-lg-12">
-        <div class="wizard-steps mb-4 d-flex justify-content-between position-relative">
-            <div class="step-line"></div>
-            <div class="step-item active"><span class="step-number">1</span><span class="step-label">L6 Verificación</span></div>
-            <div class="step-item"><span class="step-number">2</span><span class="step-label">L7 Solicitud</span></div>
-            <div class="step-item"><span class="step-number">3</span><span class="step-label">L8 Mantenimiento</span></div>
-            <div class="step-item"><span class="step-number">4</span><span class="step-label">L3 Salida</span></div>
-            <div class="step-item"><span class="step-number">5</span><span class="step-label">Kardex</span></div>
-            <div class="step-item"><span class="step-number">6</span><span class="step-label">Desembolso</span></div>
-        </div>
+        @if (isWizard)
+        {
+            await Html.RenderPartialAsync("_WizardSteps", currentPhaseInt);
+        }
 
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
@@ -104,24 +108,38 @@
                         }
                     </div>
 
-                    @* OBSERVACIONES *@
+                    @* LISTA DE FALLAS (To-Do Style) *@
                     <div class="row mb-3">
                         <div class="col-12">
-                            <label asp-for="Input.Observations" class="font-weight-bold small uppercase text-danger">
-                                <i class="fas fa-exclamation-triangle mr-1"></i>OBSERVACIONES (FALLAS O PROBLEMAS DEL EQUIPO)
-                            </label>
-                            <textarea asp-for="Input.Observations" class="form-control border-danger" rows="3"
-                                      placeholder="Describa aquí las fallas o problemas encontrados durante la inspección..."></textarea>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="font-weight-bold small uppercase text-danger m-0">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>REPORTE DE FALLAS (VERIFICATION FAULTS)
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm" onclick="addFaultRow()">
+                                    <i class="fas fa-plus mr-1"></i> Agregar Falla
+                                </button>
+                            </div>
+                            <div id="faultsContainer" class="d-flex flex-column gap-2 bg-white p-3 rounded border border-danger shadow-sm" style="min-height: 80px;">
+                                <!-- JS insertará los inputs aquí -->
+                                <p id="emptyFaultsMsg" class="text-muted small m-0 text-center font-italic py-2">No hay fallas registradas. El equipo se considerará en perfectas condiciones.</p>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="d-flex align-items-center bg-light p-4 rounded mt-2">
-                        <div class="w-50 mr-4">
-                            <label asp-for="Input.Status" class="font-weight-bold small uppercase">Estado del Reporte</label>
-                            <select asp-for="Input.Status" class="form-control custom-select font-weight-bold" asp-items="Html.GetEnumSelectList<VerificationStatus>()"></select>
+                    <div class="d-flex align-items-center justify-content-between bg-light p-4 rounded mt-2">
+                        <div>
+                            @if (isWizard)
+                            {
+                                <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1"
+                                   class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
+                                    <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
+                                </a>
+                            }
                         </div>
-                        <div class="ml-auto">
-                            <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                        <div class="d-flex align-items-center gap-2">
+                            <label asp-for="Input.Status" class="font-weight-bold small uppercase mr-2 mb-0">Estado del Reporte</label>
+                            <select asp-for="Input.Status" class="form-control custom-select font-weight-bold" asp-items="Html.GetEnumSelectList<VerificationStatus>()" style="width:auto;"></select>
+                            <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold ml-2">
                                 Guardar y Avanzar <i class="fas fa-arrow-right ml-2"></i>
                             </button>
                         </div>
@@ -183,5 +201,55 @@
                 $("#checkProgress").addClass("bg-info").removeClass("bg-success");
             }
         }
+
+        // JS List Logic
+        window.addFaultRow = function() {
+            $('#emptyFaultsMsg').hide();
+            let row = `
+                <div class="input-group mb-2 fault-row animate-in fade-in duration-300">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text bg-danger text-white border-danger"><i class="fas fa-wrench"></i></span>
+                    </div>
+                    <input type="text" name="Input.FaultDescriptions" class="form-control border-danger fault-input" placeholder="Describa la falla técnica detalladamente..." required />
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-danger" onclick="removeFaultRow(this)"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `;
+            $('#faultsContainer').append(row);
+        };
+
+        window.removeFaultRow = function(btn) {
+            $(btn).closest('.fault-row').remove();
+            if ($('.fault-row').length === 0) {
+                $('#emptyFaultsMsg').show();
+            }
+        };
+
+        // Validación SweetAlert2
+        let isConfirmedSubmit = false;
+        $('#verificationForm').on('submit', function(e) {
+            if (isConfirmedSubmit) return true;
+            
+            let faultsCount = $('.fault-row').length;
+            if (faultsCount === 0) {
+                e.preventDefault();
+                Swal.fire({
+                    title: '¿Equipo marcado en perfectas condiciones?',
+                    text: 'Se guardará sin registrar fallas.',
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10b981',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, confirmar',
+                    cancelButtonText: 'Revisar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        isConfirmedSubmit = true;
+                        $('#verificationForm').submit();
+                    }
+                });
+            }
+        });
     </script>
 }

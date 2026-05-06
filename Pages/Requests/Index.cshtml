@@ -172,6 +172,32 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if (Model.Requests.HasPreviousPage || Model.Requests.HasNextPage)
+                {
+                    <nav aria-label="Page navigation" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.Requests.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-priorityFilter="@Model.PriorityFilter" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.Requests.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Requests.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-priorityFilter="@Model.PriorityFilter" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
+                                </li>
+                            }
+                            @if (Model.Requests.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-priorityFilter="@Model.PriorityFilter" asp-route-filterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
             </div>
         </div>
     </div>

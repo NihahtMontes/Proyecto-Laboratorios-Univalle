@@ -9,7 +9,24 @@
     
         <link href="~/dist/css/style.min.css" rel="stylesheet">
             <link href="~/assets/libs/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
-    
+
+    <style>
+        /* ===== WIZARD STEPPER GLOBAL ===== */
+        .wizard-steps   { height: 70px; }
+        .step-line      { border-bottom: 2px solid #e9ecef; position: absolute;
+                          top: 20px; left: 10%; right: 10%; z-index: 1; }
+        .step-item      { position: relative; z-index: 2;
+                          text-align: center; width: 100px; }
+        .step-number    { width: 40px; height: 40px; border-radius: 50%;
+                          background: white; border: 2px solid #e9ecef;
+                          display: flex; align-items: center; justify-content: center;
+                          margin: 0 auto 5px; font-weight: bold; color: #adb5bd; }
+        .step-label     { font-size: 0.75rem; font-weight: bold;
+                          color: #adb5bd; display: block; }
+        .step-item.active .step-number  { border-color: #f59e0b; color: #f59e0b; background: #fffcf0; }
+        .step-item.active .step-label   { color: #f59e0b; }
+    </style>
+
                 @await RenderSectionAsync("Styles", required: false)
             </head>
             <body>
@@ -100,7 +117,7 @@
                                             <div class="dropdown-menu dropdown-menu-right user-dd animated">
                                                 <a class="dropdown-item" href="javascript:void(0)"><i class="ti-user m-r-5 m-l-5"></i> Mi Perfil</a>
                                                 <div class="dropdown-divider"></div>
-                                                <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/", new { area = "" })">
+                                                <form class="form-inline" method="post" asp-page="/Logout">
                                                     <button type="submit" class="dropdown-item"><i class="fa fa-power-off m-r-5 m-l-5"></i> Cerrar Sesión</button>
                                                 </form>
                                             </div>
@@ -156,7 +173,7 @@
                                         <text>
                                             Toast.fire({
                                                 icon: 'success',
-                                                title: '@TempData["Success"]'
+                                                title: '@Html.Raw(TempData["Success"]?.ToString() ?? "")'
                                             });
                                         </text>
                                 }
@@ -167,7 +184,7 @@
                                             Swal.fire({
                                                 icon: 'error',
                                                 title: '¡Ups!',
-                                                text: '@TempData["Error"]',
+                                                text: '@Html.Raw(TempData["Error"]?.ToString() ?? "")',
                                                 confirmButtonColor: '#2962ff'
                                             });
                                         </text>
@@ -179,7 +196,7 @@
                                             Swal.fire({
                                                 icon: 'warning',
                                                 title: 'Atención',
-                                                text: '@TempData["Warning"]',
+                                                text: '@Html.Raw(TempData["Warning"]?.ToString() ?? "")',
                                                 confirmButtonColor: '#ffc107'
                                             });
                                         </text>

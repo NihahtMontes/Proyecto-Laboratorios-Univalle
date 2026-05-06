@@ -18,8 +18,11 @@ public class IndexModel : PageModel
         _context = context;
     }
 
-    public IList<Person> PersonsList { get; set; } = default!;
-    public IList<User> UserList { get; set; } = default!;
+    public PaginatedList<Person> PersonsList { get; set; } = new PaginatedList<Person>(new List<Person>(), 0, 1, 20);
+    public PaginatedList<User> UserList { get; set; } = new PaginatedList<User>(new List<User>(), 0, 1, 20);
+
+    [BindProperty(SupportsGet = true)]
+    public int? PageIndex { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public string? SearchTerm { get; set; }
@@ -27,7 +30,7 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)]
     public GeneralStatus? StatusFilter { get; set; }
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(int? pageIndex)
     {
         // 1. Load users for "Cuentas de Acceso" tab
         var userQuery = _context.Users
@@ -66,7 +69,7 @@ public class IndexModel : PageModel
                                               p.Id.ToString() == term);
         }
 
-        UserList = await userQuery.OrderBy(u => u.LastName).ThenBy(u => u.FirstName).ToListAsync();
-        PersonsList = await personQuery.OrderByDescending(p => p.Id).ToListAsync();
+        UserList = await PaginatedList<User>.CreateAsync(userQuery.OrderBy(u => u.LastName).ThenBy(u => u.FirstName), pageIndex ?? 1, 20);
+        PersonsList = await PaginatedList<Person>.CreateAsync(personQuery.OrderByDescending(p => p.Id), pageIndex ?? 1, 20);
     }
 }

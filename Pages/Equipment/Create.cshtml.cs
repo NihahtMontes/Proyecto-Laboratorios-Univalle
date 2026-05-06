@@ -74,6 +74,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             [Display(Name = "Descripción / Especificaciones")]
             public string? Description { get; set; }
 
+            [Display(Name = "Notas del Fabricante")]
+            public List<string> Notes { get; set; } = new();
+
             [Required(ErrorMessage = "La clasificación técnica es obligatoria")]
             [Display(Name = "Clasificación de Tipo")]
             public EquipmentTypeClassification TypeClassification { get; set; } = EquipmentTypeClassification.Otro;
@@ -162,6 +165,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             _context.Equipments.Add(equipment);
             await _context.SaveChangesAsync();
+
+            if (Input.Notes != null)
+            {
+                foreach (var note in Input.Notes.Where(n => !string.IsNullOrWhiteSpace(n)))
+                    _context.EquipmentNotes.Add(new EquipmentNote { EquipmentId = equipment.Id, Note = note.Trim() });
+                await _context.SaveChangesAsync();
+            }
 
             TempData.Success($"Definición de '{equipment.Name}' registrada correctamente.");
             return RedirectToPage("./Details", new { id = equipment.Id });

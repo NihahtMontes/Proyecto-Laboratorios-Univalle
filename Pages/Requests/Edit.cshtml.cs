@@ -131,7 +131,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             // Re-load request for validation context (and type check)
             var requestToUpdate = await _context.Requests
                 .Include(r => r.CostDetails)
-                .Include(r => r.Equipment) // Needed for TempData message potentially
+                .Include(r => r.Equipment)
+                .AsTracking()
                 .FirstOrDefaultAsync(m => m.Id == Input.Id);
 
             if (requestToUpdate == null) return NotFound();
