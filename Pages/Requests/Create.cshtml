@@ -45,7 +45,7 @@
 
                             <div class="form-group mb-4">
                                 <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">Facultad <span class="text-danger">*</span></label>
-                                @if (isWizard)
+                                @if (isWizard && !isCorrective)
                                 {
                                     <select asp-for="Input.FacultyId" class="form-control select2" id="facultySelect" asp-items="ViewBag.FacultyId" disabled>
                                         <option value="">-- Seleccionar Facultad --</option>
@@ -62,7 +62,7 @@
 
                             <div class="form-group mb-4 border-left border-info pl-3 bg-light p-2 rounded">
                                 <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-info text-uppercase">Laboratorio <span class="text-danger">*</span></label>
-                                @if (isWizard)
+                                @if (isWizard && !isCorrective)
                                 {
                                     <select asp-for="Input.LaboratoryId" class="form-control select2" id="laboratorySelect" asp-items="ViewBag.LaboratoryId" disabled>
                                         <option value="">-- Seleccione Facultad --</option>
@@ -79,7 +79,7 @@
 
                             <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-2 rounded">
                                 <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-warning text-uppercase">Unidad Física Afectada <span class="text-danger">*</span></label>
-                                @if (isWizard)
+                                @if (isWizard && !isCorrective)
                                 {
                                     <select asp-for="Input.EquipmentUnitId" class="form-control select2" id="equipmentUnitSelect" asp-items="ViewBag.EquipmentUnitId" disabled>
                                         <option value="">-- Seleccione Laboratorio --</option>

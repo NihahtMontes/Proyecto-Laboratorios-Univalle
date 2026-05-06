@@ -136,7 +136,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             }
 
             var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
-            var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+            var currentMgmt = await ResolveManagementAsync();
             if (currentMgmt == null)
             {
                 TempData["Warning"] = "No se ha detectado una gestión activa. Debe activar un periodo de gestión o aplicar las migraciones de base de datos para poder registrar solicitudes.";
