@@ -4,7 +4,6 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Drawing;
-
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Services
@@ -64,20 +63,21 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 var templatePath = Path.Combine(_env.WebRootPath, "templates", "solicitud_mantenimiento_template2.xlsx");
                 if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla no encontrada.");
 
-                using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
-                using var package = new ExcelPackage();
-                var sourceSheet = templatePkg.Workbook.Worksheets[0];
-                var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
+                // CORRECCIÓN: Carga directa en memoria para evitar el NullReferenceException al copiar hojas
+                var templateBytes = await File.ReadAllBytesAsync(templatePath);
+                using var stream = new MemoryStream(templateBytes);
+                using var package = new ExcelPackage(stream);
+                var worksheet = package.Workbook.Worksheets[0];
 
                 // ===============================================
                 // LIMPIEZA SELECTIVA (sin borrar formatos)
                 // ===============================================
                 // Limpiamos celdas específicas de datos
-                worksheet.Cells["D6"].Value = null;  // Unidad Solicitante
-                worksheet.Cells["D7"].Value = null;  // Centro de Costo
-                worksheet.Cells["D8"].Value = null;  // Responsable
-                worksheet.Cells["D9"].Value = null;  // Código Inversión
-                worksheet.Cells["Q8"].Value = null;  // Nro. Solicitud (CORREGIDO)
+                worksheet.Cells["D6"].Value = null; // Unidad Solicitante
+                worksheet.Cells["D7"].Value = null; // Centro de Costo
+                worksheet.Cells["D8"].Value = null; // Responsable
+                worksheet.Cells["D9"].Value = null; // Código Inversión
+                worksheet.Cells["Q8"].Value = null; // Nro. Solicitud (CORREGIDO)
                 worksheet.Cells["D11"].Value = null; // Fecha - Día
                 worksheet.Cells["F11"].Value = null; // Fecha - Mes
                 worksheet.Cells["H11"].Value = null; // Fecha - Año
@@ -87,6 +87,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 for (int r = 19; r <= 37; r++)
                     for (int c = 1; c <= 26; c++)
                         try { worksheet.Cells[r, c].Value = null; } catch { }
+
                 for (int r = 19; r <= 37; r++)
                     try { worksheet.Row(r).Style.WrapText = true; } catch { }
 
@@ -159,6 +160,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 for (int r2 = 19; r2 <= 37; r2++)
                     for (int c2 = 1; c2 <= 26; c2++)
                         try { worksheet.Cells[r2, c2].Value = null; } catch { }
+
                 for (int r2 = 19; r2 <= 37; r2++)
                     try { worksheet.Row(r2).Style.WrapText = true; } catch { }
 
@@ -199,7 +201,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     worksheet.Cells[currentRow, 5].Value = item.Concept ?? "Sin descripción";
                     worksheet.Cells[currentRow, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Left; // Alineado a la izquierda
                     worksheet.Cells[currentRow, 5].Style.Font.Italic = true; // Estilo cursiva como se ve en la imagen
-                    worksheet.Cells[currentRow, 5].Style.Font.Bold = true;   // Negrita como se ve en la imagen
+                    worksheet.Cells[currentRow, 5].Style.Font.Bold = true; // Negrita como se ve en la imagen
 
                     // Precio Unitario -> Fusionar N, O, P (Col 14-16)
                     var rangePU = worksheet.Cells[currentRow, 14, currentRow, 16];
@@ -233,14 +235,12 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 // TOTALES (Fila 38 y 39)
                 // ===============================================
                 int rowTotal = 38;
-
                 // Etiqueta "Son:" (En A38)
                 worksheet.Cells[rowTotal, 1].Value = "Son:";
                 worksheet.Cells[rowTotal, 1].Style.Font.Bold = true;
 
                 // Monto en Letras -> Fusionar C38:O39 (DOS FILAS)
                 var montoLetras = ConvertirNumeroALetras(granTotal);
-
                 // Asegurar que no esté fusionado antes de fusionar
                 var rangeLetras = worksheet.Cells[38, 3, 39, 15]; // C38:O39
                 try { rangeLetras.Merge = true; } catch { }
@@ -248,7 +248,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 rangeLetras.Value = montoLetras;
                 rangeLetras.Style.Font.Bold = true;
                 rangeLetras.Style.Font.Italic = true; // Cursiva como en la imagen
-                rangeLetras.Style.Font.Size = 14;   // Tamaño más grande
+                rangeLetras.Style.Font.Size = 14; // Tamaño más grande
                 rangeLetras.Style.WrapText = true;
                 rangeLetras.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
                 rangeLetras.Style.HorizontalAlignment = ExcelHorizontalAlignment.Left; // Alineado a la izquierda
@@ -344,7 +344,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 note2.Style.Font.Size = 8;
                 note2.Style.Font.Bold = true;
 
-return package.GetAsByteArray();
+                return package.GetAsByteArray();
             }
             catch (Exception ex)
             {
@@ -356,7 +356,6 @@ return package.GetAsByteArray();
         private string ConvertirNumeroALetras(decimal numero)
         {
             if (numero == 0) return "CERO ( 00/100 bolivianos )";
-
             long entero = (long)numero;
             int centavos = (int)Math.Round((numero - entero) * 100);
 
@@ -367,12 +366,10 @@ return package.GetAsByteArray();
         private string ConvertirEnteroATexto(long numero)
         {
             if (numero == 0) return "";
-
             string[] unidades = { "", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE" };
             string[] decenas = { "", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA" };
             string[] especiales = { "DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE" };
             string[] centenas = { "", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS" };
-
             if (numero >= 1000000)
             {
                 long millones = numero / 1000000;
@@ -426,16 +423,16 @@ return package.GetAsByteArray();
 
                 // 2. CARGAR PLANTILLA
                 var templatePath = Path.Combine(_env.WebRootPath, "templates", "L7.xlsx");
-
                 if (!File.Exists(templatePath))
                 {
                     throw new FileNotFoundException("Plantilla de Excel no encontrada.");
                 }
 
-                using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
-                using var package = new ExcelPackage();
-                var sourceSheet = templatePkg.Workbook.Worksheets[0];
-                var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
+                // CORRECCIÓN PRINCIPAL PARA EL L7: Carga en memoria vía Stream 
+                var templateBytes = await File.ReadAllBytesAsync(templatePath);
+                using var stream = new MemoryStream(templateBytes);
+                using var package = new ExcelPackage(stream);
+                var worksheet = package.Workbook.Worksheets[0];
 
                 // ========================================
                 // LIMPIEZA DE SEGURIDAD
@@ -513,7 +510,6 @@ return package.GetAsByteArray();
                 var procedencia = string.IsNullOrEmpty(ciudad) && string.IsNullOrEmpty(pais)
                                   ? ""
                                   : $"{ciudad} - {pais}".Trim(new char[] { ' ', '-' });
-
                 worksheet.Cells["D18"].Value = procedencia;
 
                 // # de Inventario (celda B19)
@@ -526,7 +522,8 @@ return package.GetAsByteArray();
                 problemasCell.Value = fallasData;
                 problemasCell.Style.WrapText = true;
                 AjustarAlturaFila(worksheet, 23, fallasData);
-                worksheet.Cells["A24"].Value = ""; // Limpiamos la fila 24 que antes tenía el dato
+                worksheet.Cells["A24"].Value = "";
+                // Limpiamos la fila 24 que antes tenía el dato
 
                 // SUGERENCIAS U OBSERVACIONES (Fila 28)
                 // Sobreescribimos el texto de la plantilla en la fila 28
@@ -535,12 +532,12 @@ return package.GetAsByteArray();
                 observacionesCell.Value = observacionesData;
                 observacionesCell.Style.WrapText = true;
                 AjustarAlturaFila(worksheet, 28, observacionesData);
-                worksheet.Cells["A29"].Value = ""; // Limpiamos la fila 29 que antes tenía el dato
+                worksheet.Cells["A29"].Value = "";
+                // Limpiamos la fila 29 que antes tenía el dato
 
                 // PERIODO EN QUE FUE UTILIZADO (Fila 32 y 33)
                 // Ponemos en negrita el título de la sección
                 worksheet.Cells["A32"].Style.Font.Bold = true;
-
                 var yearsUsed = request.EquipmentUnit?.YearsInOperation ?? 0;
                 worksheet.Cells["A33"].Value = $"AÑOS: {yearsUsed}";
                 worksheet.Cells["A33"].Style.Font.Bold = true;
@@ -596,7 +593,6 @@ return package.GetAsByteArray();
         {
             // Aplicar bordes a celdas de datos
             var celdasDatos = new[] { "B11", "B12", "D12", "B13", "B17", "D17", "B18", "D18", "B19" };
-
             foreach (var celda in celdasDatos)
             {
                 var cell = worksheet.Cells[celda];
@@ -625,16 +621,16 @@ return package.GetAsByteArray();
                     u.InventoryNumber
                 })
                 .FirstOrDefaultAsync();
-
             if (unit == null) throw new Exception("Equipment Unit not found");
 
             var templatePath = Path.Combine(_env.WebRootPath, "templates", "L8.xlsx");
             if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-8 no encontrada.");
 
-            using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
-            using var package = new ExcelPackage();
-            var sourceSheet = templatePkg.Workbook.Worksheets[0];
-            var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
+            // CORRECCIÓN
+            var templateBytes = await File.ReadAllBytesAsync(templatePath);
+            using var stream = new MemoryStream(templateBytes);
+            using var package = new ExcelPackage(stream);
+            var worksheet = package.Workbook.Worksheets[0];
 
             // LIMPIEZA SEGURA (sin Merge=false - causa crash 0xffffffff)
             for (int r = 15; r <= 50; r++)
@@ -651,7 +647,6 @@ return package.GetAsByteArray();
 
             // CUERPO (Iterando mantenimientos completados)
             int startRow = 15;
-
             var plansWithMaintenance = await _context.ManagementPlans
                 .AsNoTracking()
                 .Include(p => p.Maintenance)
@@ -670,10 +665,8 @@ return package.GetAsByteArray();
                 worksheet.Cells[startRow, 5].Value = m.ActualCost;
                 worksheet.Cells[startRow, 5].Style.Numberformat.Format = "#,##0.00";
                 worksheet.Cells[startRow, 6].Value = m.Recommendations ?? "Sin observaciones";
-
                 var maxLength = Math.Max(m.Description?.Length ?? 0, m.Recommendations?.Length ?? 0);
                 if (maxLength > 30) worksheet.Row(startRow).Height = Math.Max(25, (maxLength / 30.0) * 15);
-
                 startRow++;
             }
 
@@ -699,12 +692,14 @@ return package.GetAsByteArray();
             var templatePath = Path.Combine(_env.WebRootPath, "templates", "L48.xlsx");
             if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-48 no encontrada.");
 
-            using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
-            using var package = new ExcelPackage();
-            var sourceSheet = templatePkg.Workbook.Worksheets[0];
-            var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
+            // CORRECCIÓN
+            var templateBytes = await File.ReadAllBytesAsync(templatePath);
+            using var stream = new MemoryStream(templateBytes);
+            using var package = new ExcelPackage(stream);
+            var worksheet = package.Workbook.Worksheets[0];
 
             worksheet.Cells["A5"].Value = $"PLAN DE MANTENIMIENTO PREVENTIVO Y CORRECTIVO EQUIPOS DE LABORATORIO GESTIÓN I/{DateTime.UtcNow.Year}";
+
             for (int r = 13; r <= 60; r++)
                 for (int c = 1; c <= 16; c++)
                     try { worksheet.Cells[r, c].Value = null; } catch { }
@@ -734,10 +729,10 @@ return package.GetAsByteArray();
                     int monthCol = 10 + m.ScheduledDate.Value.Month;
                     if (monthCol <= 22)
                     {
-                        try 
+                        try
                         {
                             var bgColor = System.Drawing.Color.LightBlue; // Planificado (Default)
-                            
+
                             if (m.Status == MaintenanceStatus.Completed)
                             {
                                 bgColor = System.Drawing.Color.LightGreen; // Completado
@@ -753,7 +748,7 @@ return package.GetAsByteArray();
                             {
                                 worksheet.Cells[currentRow, monthCol].Style.Fill.SetBackground(bgColor);
                             }
-                        } 
+                        }
                         catch { }
                     }
                 }
@@ -902,6 +897,7 @@ return package.GetAsByteArray();
                         PhysicalCondition.Decommissioned => "Baja",
                         _ => lastV.PhysicalCondition.ToString()
                     };
+
                     observationsText = lastV.Observations ?? "";
 
                     if (faultsByVerification.TryGetValue(lastV.Id, out var faultList) && faultList.Count > 0)
@@ -926,6 +922,7 @@ return package.GetAsByteArray();
                     "Malo" or "Baja" => System.Drawing.Color.FromArgb(192, 0, 0),
                     _ => System.Drawing.Color.Gray
                 });
+
                 ws.Cells[row, 4].Style.Font.Bold = true;
                 ws.Cells[row, 5].Value = eq.Brand?.ToUpper();
                 ws.Cells[row, 6].Value = observationsText;
@@ -998,10 +995,11 @@ return package.GetAsByteArray();
             var templatePath = Path.Combine(_env.WebRootPath, "templates", "L3.xlsx");
             if (!File.Exists(templatePath)) throw new FileNotFoundException("Plantilla L-3 no encontrada.");
 
-            using var templatePkg = new ExcelPackage(new FileInfo(templatePath));
-            using var package = new ExcelPackage();
-            var sourceSheet = templatePkg.Workbook.Worksheets[0];
-            var worksheet = package.Workbook.Worksheets.Add(sourceSheet.Name, sourceSheet);
+            // CORRECCIÓN
+            var templateBytes = await File.ReadAllBytesAsync(templatePath);
+            using var stream = new MemoryStream(templateBytes);
+            using var package = new ExcelPackage(stream);
+            var worksheet = package.Workbook.Worksheets[0];
 
             // LIMPIAR tabla de items
             for (int r = 18; r <= 30; r++)
