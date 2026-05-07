@@ -8,6 +8,7 @@ using QuestPDF.Infrastructure;
 using OfficeOpenXml;
 
 QuestPDF.Settings.License = LicenseType.Community;
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
 
 // DIAGNÓSTICO: Capturador de crash global a nivel OS
@@ -25,10 +26,10 @@ Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIB
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sqlOptions => 
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), npgsqlOptions => 
     {
-        sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-        sqlOptions.CommandTimeout(120);
+        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+        npgsqlOptions.CommandTimeout(120);
     })
     .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 

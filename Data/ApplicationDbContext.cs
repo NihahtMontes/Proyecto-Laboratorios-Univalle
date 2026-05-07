@@ -78,6 +78,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<VerificationCheckItem> VerificationCheckItems { get; set; } = null!;
         public DbSet<VerificationCheckResult> VerificationCheckResults { get; set; } = null!;
         public DbSet<Departure> Departures { get; set; } = null!;
+        public DbSet<DepartureItem> DepartureItems { get; set; } = null!;
         public DbSet<Intern> Interns { get; set; } = null!;
         public DbSet<Extern> Externs { get; set; } = null!;
         public DbSet<Career> Careers { get; set; } = null!;
@@ -99,17 +100,17 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<IdentityRoleClaim<int>>().ToTable("RoleClaims");
             modelBuilder.Entity<IdentityUserToken<int>>().ToTable("UserTokens");
 
-            modelBuilder.Entity<EquipmentUnit>().Property(e => e.AcquisitionValue).HasColumnType("decimal(18,2)");
-            modelBuilder.Entity<Maintenance>().Property(m => m.EstimatedCost).HasColumnType("decimal(18,2)");
-            modelBuilder.Entity<Maintenance>().Property(m => m.ActualCost).HasColumnType("decimal(18,2)");
-            modelBuilder.Entity<CostDetail>().Property(d => d.UnitPrice).HasColumnType("decimal(18,2)");
-            modelBuilder.Entity<CostDetail>().Property(d => d.Quantity).HasColumnType("decimal(10,2)");
-            modelBuilder.Entity<MaintenancePlan>().Property(p => p.EstimatedTime).HasColumnType("decimal(10,2)");
-            modelBuilder.Entity<MaintenancePlan>().Property(p => p.ActualTime).HasColumnType("decimal(10,2)");
+            modelBuilder.Entity<EquipmentUnit>().Property(e => e.AcquisitionValue).HasPrecision(18, 2);
+            modelBuilder.Entity<Maintenance>().Property(m => m.EstimatedCost).HasPrecision(18, 2);
+            modelBuilder.Entity<Maintenance>().Property(m => m.ActualCost).HasPrecision(18, 2);
+            modelBuilder.Entity<CostDetail>().Property(d => d.UnitPrice).HasPrecision(18, 2);
+            modelBuilder.Entity<CostDetail>().Property(d => d.Quantity).HasPrecision(10, 2);
+            modelBuilder.Entity<MaintenancePlan>().Property(p => p.EstimatedTime).HasPrecision(10, 2);
+            modelBuilder.Entity<MaintenancePlan>().Property(p => p.ActualTime).HasPrecision(10, 2);
 
-            modelBuilder.Entity<User>().HasIndex(u => u.IdentityCard).IsUnique().HasFilter("[Status] != 2");
-            modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("[CurrentStatus] != 99");
-            modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("[Status] != 2");
+            modelBuilder.Entity<User>().HasIndex(u => u.IdentityCard).IsUnique().HasFilter("\"Status\" <> 2");
+            modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("\"CurrentStatus\" <> 99");
+            modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("\"Status\" <> 2");
 
             // Bloque 5A: Índices de Performance
             modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.CurrentStatus);
@@ -149,6 +150,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             // modelBuilder.Entity<ManagementPlan>().HasQueryFilter(p => p.Management!.Status != ManagementStatus.Deleted);
 
             modelBuilder.Entity<Departure>().HasQueryFilter(l => l.Status != LoanStatus.Cancelled);
+            modelBuilder.Entity<DepartureItem>().HasQueryFilter(i => !i.IsRemoved);
             modelBuilder.Entity<Career>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
             // REMOVIDO: filtro por navegación t.Maintenance!.Status causaba JOIN extra
             // MaintenanceTask ya queda filtrado por el filtro de Maintenance
@@ -190,6 +192,20 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             // Sprint 3B: Soft Delete para fallas
             modelBuilder.Entity<VerificationFault>().HasQueryFilter(e => !e.IsDeleted);
+
+            // ManagementPlan KardexHistory relationship
+            modelBuilder.Entity<ManagementPlan>()
+                .HasOne(p => p.KardexHistory)
+                .WithMany()
+                .HasForeignKey(p => p.KardexHistoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Departure Items relationship
+            modelBuilder.Entity<Departure>()
+                .HasMany(d => d.Items)
+                .WithOne(i => i.Departure)
+                .HasForeignKey(i => i.DepartureId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Laboratory>().HasOne(l => l.CreatedBy).WithMany().HasForeignKey(l => l.CreatedById).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.CreatedBy).WithMany().HasForeignKey(e => e.CreatedById).OnDelete(DeleteBehavior.Restrict);

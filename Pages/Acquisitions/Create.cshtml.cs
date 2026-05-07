@@ -200,9 +200,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 return Page();
             }
 
+            ManagementPlan? wizardPlan = null;
+            var managementId = (await _managementService.GetCurrentManagementAsync())?.Id ?? 0;
+            if (ManagementPlanId.HasValue)
+            {
+                wizardPlan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                if (wizardPlan == null) return NotFound();
+                managementId = wizardPlan.ManagementId;
+            }
+
             var request = new Request
             {
                 Type = RequestType.Purchasing,
+                ManagementId = managementId,
                 LaboratoryId = Input.LaboratoryId,
                 EquipmentId = unit.EquipmentId,
                 EquipmentUnitId = unit.Id,
@@ -223,8 +233,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
                 foreach (var cost in maintenanceCosts)
                 {
-                    cost.RequestId = request.Id;
-                    request.CostDetails.Add(cost);
+                    request.CostDetails.Add(new CostDetail
+                    {
+                        Concept = cost.Concept,
+                        Description = cost.Description,
+                        Quantity = cost.Quantity,
+                        UnitOfMeasure = cost.UnitOfMeasure,
+                        UnitPrice = cost.UnitPrice,
+                        Category = cost.Category,
+                        Provider = cost.Provider,
+                        InvoiceNumber = cost.InvoiceNumber,
+                        CreatedDate = DateTime.UtcNow
+                    });
                 }
             }
 
@@ -257,7 +277,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
             if (ManagementPlanId.HasValue)
             {
-                var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                var plan = wizardPlan ?? await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
                 if (plan != null)
                 {
                     plan.AcquisitionRequestId = request.Id;
@@ -267,7 +287,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
                     if (isWizard)
                     {
-                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 7, SelectedLabId = Input.LaboratoryId, ManagementId = ManagementPlanId });
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 7, SelectedLabId = Input.LaboratoryId, ManagementId = plan.ManagementId });
                     }
                 }
             }

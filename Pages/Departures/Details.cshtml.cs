@@ -31,6 +31,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 .Include(d => d.Borrower)
                 .Include(d => d.CreatedBy)
                 .Include(d => d.ModifiedBy)
+                .Include(d => d.Items)
                 .FirstOrDefaultAsync(d => d.Id == id);
 
             if (departure == null) return NotFound();

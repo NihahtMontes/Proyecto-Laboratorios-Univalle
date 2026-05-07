@@ -145,6 +145,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
                     if (plan != null)
                     {
+                        plan.KardexHistory = newHistory;
                         plan.CurrentPhase = WizardPhase.Disbursement;
                         plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
                         _context.ManagementPlans.Update(plan);
@@ -153,7 +154,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
 
                         if (isWizard)
                         {
-                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 6, SelectedLabId = Input.LaboratoryId, ManagementId = ManagementPlanId });
+                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 6, SelectedLabId = Input.LaboratoryId, ManagementId = plan.ManagementId });
                         }
                     }
                 }
@@ -162,12 +163,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     await _context.SaveChangesAsync();
                 }
 
-                TempData["Success"] = "Kardex actualizado correctamente.";
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 5 });
+                TempData.Success("Kardex actualizado correctamente.");
+                return RedirectToPage("/Index");
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Error al actualizar Kardex: {ex.Message}";
+                TempData.Error($"Error al actualizar Kardex: {ex.Message}");
                 await LoadLists();
                 return Page();
             }

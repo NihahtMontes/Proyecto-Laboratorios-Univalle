@@ -68,6 +68,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             [StringLength(500)]
             [Display(Name = "Observaciones")]
             public string? DepartureObservations { get; set; }
+
+            public List<ItemInput> Items { get; set; } = new();
+
+            public class ItemInput
+            {
+                public int? Id { get; set; }
+                public int? EquipmentUnitId { get; set; }
+                public string ProductName { get; set; } = string.Empty;
+                public int Quantity { get; set; } = 1;
+                public string UnitOfMeasure { get; set; } = "UNIDAD";
+                public string? Observations { get; set; }
+            }
         }
 
         public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false, int? managementPlanId = null)
@@ -118,6 +130,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     Input.EquipmentUnitId = unit.Id;
                     Input.LaboratoryId = unit.LaboratoryId ?? 0;
                     Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
+
+                    if (isWizard)
+                    {
+                        Input.Items.Add(new InputModel.ItemInput
+                        {
+                            EquipmentUnitId = unit.Id,
+                            ProductName = $"{unit.Equipment?.Name ?? "Equipo"} ({unit.InventoryNumber ?? "—"})",
+                            Quantity = 1,
+                            UnitOfMeasure = "UNIDAD"
+                        });
+                    }
                 }
             }
 
@@ -167,7 +190,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
             try
             {
-                // Inferir DepartureType desde Person
+                ManagementPlan? wizardPlan = null;
+                var managementId = (await _managementService.GetCurrentManagementAsync())?.Id ?? 0;
+                if (ManagementPlanId.HasValue)
+                {
+                    wizardPlan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                    if (wizardPlan != null)
+                        managementId = wizardPlan.ManagementId;
+                }
+
                 var borrower = await _context.People.FindAsync(Input.BorrowerId);
                 var inferredType = (borrower is Extern || borrower?.Category == PersonCategory.Externo) 
                     ? DepartureType.ExternalMaintenance 
@@ -183,7 +214,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     DepartureObservations = Input.DepartureObservations?.Trim(),
                     Status = LoanStatus.Active,
                     CreatedDate = DateTime.UtcNow,
-                    ManagementId = (await _managementService.GetCurrentManagementAsync())?.Id ?? 0
+                    ManagementId = managementId
                 };
 
                 var currentUser = await _userManager.GetUserAsync(User);
@@ -192,7 +223,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 _context.Departures.Add(departure);
                 await _context.SaveChangesAsync();
 
-                // Update equipment status
+                if (Input.Items != null && Input.Items.Count > 0)
+                {
+                    foreach (var itemInput in Input.Items.Where(i => !string.IsNullOrWhiteSpace(i.ProductName)))
+                    {
+                        var departureItem = new DepartureItem
+                        {
+                            DepartureId = departure.Id,
+                            EquipmentUnitId = itemInput.EquipmentUnitId ?? Input.EquipmentUnitId,
+                            ProductName = itemInput.ProductName.Trim(),
+                            Quantity = itemInput.Quantity,
+                            UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD",
+                            Observations = itemInput.Observations?.Trim()
+                        };
+                        _context.DepartureItems.Add(departureItem);
+                    }
+                    await _context.SaveChangesAsync();
+                }
+
                 var equipmentUnit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
                 if (equipmentUnit != null)
                 {
@@ -201,10 +249,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     await _context.SaveChangesAsync();
                 }
 
-                // Wizard trigger: advance to Kardex
                 if (ManagementPlanId.HasValue)
                 {
-                    var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                    var plan = wizardPlan ?? await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
                     if (plan != null)
                     {
                         plan.DepartureId = departure.Id;
@@ -214,17 +261,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
                         if (isWizard)
                         {
-                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId, ManagementId = ManagementPlanId });
+                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId, ManagementId = plan.ManagementId });
                         }
                     }
                 }
 
-                TempData["Success"] = "Salida de equipo registrada exitosamente.";
+                TempData.Success("Salida de equipo registrada exitosamente.");
                 return RedirectToPage("./Index");
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Error al guardar: {ex.Message}";
+                TempData.Error($"Error al guardar: {ex.Message}");
                 await LoadLists();
                 return Page();
             }

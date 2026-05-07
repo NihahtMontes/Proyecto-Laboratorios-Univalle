@@ -26,7 +26,7 @@ Reportar Falla Crítica → L-7 Solicitud → L-8 Mantenimiento → L-3 Salida �
 | Capa | Tecnología |
 |---|---|
 | Backend | ASP.NET Core 9.0 — **Razor Pages** (NO MVC Controllers salvo ReportsController y WizardRollbackController) |
-| ORM | Entity Framework Core 9.0 + SQL Server |
+| ORM | Entity Framework Core 9.0 + **PostgreSQL** (Npgsql) |
 | Frontend | Razor Pages (.cshtml) + Bootstrap 4 + NiceAdmin template |
 | JS | jQuery 3.x, Select2, jqBootstrapValidation, SweetAlert2 |
 | Excel | **EPPlus (OfficeOpenXml)** — NO ClosedXML, NO System.Drawing |
@@ -104,7 +104,7 @@ Controllers/
 ### EPPlus / Excel (CRÍTICO)
 - **NUNCA** `Worksheets.Add(sourceSheet.Name, sourceSheet)` → crash nativo 0xffffffff por corrupción XML
 - Reportes nuevos: generar desde cero (sin template), como hace L-6
-- Reportes con template: `new ExcelPackage(templateFile)` → `.Copy()` → rellenar por posición exacta
+- Reportes con template: `new ExcelPackage(templateFile)` → usar `Workbook.Worksheets[0]` directamente → guardar con `SaveAs(MemoryStream)`
 - `EliminarHojasExtra` es un método vacío (no-op). **NO eliminarlo, NO reactivarlo.** Existe como documentación.
 
 ### EF Core
@@ -311,9 +311,21 @@ text: '@TempData["Error"]'
 
 ---
 
-## 14. BASE DE DATOS
+## 14. BASE DE DATOS — PostgreSQL (desde 7 Mayo 2026)
 
-### Migraciones aplicadas (orden cronológico)
+### Proveedor
+- **PostgreSQL** (Npgsql 9.0.0) vía `UseNpgsql()`
+- `AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true)` en Program.cs
+- Connection string: `Host=localhost;Port=5432;Database=DB_Laboratorios_Univalle_DEV;Username=postgres;Password=...;Include Error Detail=true`
+- `appsettings.json` usa placeholder; credenciales reales solo en `appsettings.Development.json` ignorado por Git o user-secrets
+- `SplitQuery`, `CommandTimeout(120)`, `NoTracking` intactos
+
+### Migración baseline
+- `Data/PostgresMigrations/Initial_PostgreSQL` — baseline limpio para PostgreSQL
+- Migraciones SQL Server antiguas excluidas del build (`<Compile Remove>` en csproj)
+- Archivos históricos (SQL Server): `Migrations/` y `Data/Migrations/` (excluidos)
+
+### Migraciones SQL Server históricas (excluidas del build)
 1. `FixVerificationDynamicArchitecture` — checklist dinámico
 2. `ManangmentIdFix` — FK ManagementId en todas las entidades
 3. `RemoveSpecialtyAndBuildingTypeFromLaboratory` — limpieza Lab
@@ -325,6 +337,17 @@ text: '@TempData["Error"]'
 9. `FixCascadeDeleteAndLaboratoryCityFK` — Restrict en FK críticos
 10. `AddManagementType` — Type en Managements
 11. `AddUserProfilePicture` — placeholder (vacío, sin implementar)
+12. `Add_KardexHistoryId_And_DepartureItems` — Kardex FK + DepartureItems (SQL Server, ahora en baseline PG)
+
+### Cambios de tipos para PostgreSQL
+- `HasColumnType("decimal(18,2)")` → `HasPrecision(18, 2)` en ApplicationDbContext
+- `HasColumnType("decimal(10,2)")` → `HasPrecision(10, 2)` en ApplicationDbContext
+- `[Column(TypeName = "decimal(18,2)")]` → `[Precision(18, 2)]` en modelos
+- `[Column(TypeName = "decimal(10,2)")]` → `[Precision(10, 2)]` en modelos
+- `HasFilter("[Status] != 2")` → `HasFilter("\"Status\" <> 2")`
+- `HasFilter("[CurrentStatus] != 99")` → `HasFilter("\"CurrentStatus\" <> 99")`
+- `Microsoft.Data.SqlClient` → eliminado (sin dependencia SQL Server)
+- Paquete `Microsoft.EntityFrameworkCore.SqlServer` removido del csproj
 
 ### SeedData
 `DbInitializer.cs` crea:
@@ -389,7 +412,6 @@ text: '@TempData["Error"]'
 ### Pendientes
 | Item | Prioridad |
 |------|-----------|
-| `Maintenances/Delete.cshtml.cs:31` — `.Include(m => m.MaintenanceType)` (bug activo) | 🔴 Alta |
 | `OnPostToggleWeekAsync` — verificar `.AsTracking()` | 🟡 Media |
 | Implementar `AddUserProfilePicture` (modelo + migración) | 🟡 Media |
 | Flujo correctivo no probado end-to-end | 🟡 Media |
@@ -429,4 +451,4 @@ text: '@TempData["Error"]'
 
 ---
 
-*Última actualización: 6 de Mayo de 2026 — Post-implementación Correctivo + L-6 MassCreate*
+*Última actualización: 7 de Mayo de 2026 — Migración a PostgreSQL (Initial_PostgreSQL baseline) + Wizard L-3 multi-ítem + DepartureItems + KardexHistoryId*

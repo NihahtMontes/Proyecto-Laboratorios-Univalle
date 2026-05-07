@@ -1,5 +1,6 @@
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -59,7 +60,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         // Each unit might have a slightly different cost or depreciation status
         [Display(Name = "Valor de Adquisición")]
-        [Column(TypeName = "decimal(18,2)")]
+        [Precision(18, 2)]
         [Range(0, 999999999, ErrorMessage = "El valor debe ser positivo")]
         public decimal? AcquisitionValue { get; set; }
 

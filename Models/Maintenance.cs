@@ -1,5 +1,6 @@
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -79,11 +80,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // COSTS
         // ========================================
-        [Column(TypeName = "decimal(18,2)")]
+        [Precision(18, 2)]
         [Display(Name = "Costo Estimado")]
         public decimal? EstimatedCost { get; set; }
 
-        [Column(TypeName = "decimal(18,2)")]
+        [Precision(18, 2)]
         [Display(Name = "Costo Real")]
         public decimal? ActualCost { get; set; }
 

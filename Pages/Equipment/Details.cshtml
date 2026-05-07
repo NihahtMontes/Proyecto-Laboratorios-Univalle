@@ -29,21 +29,29 @@
                         <table class="table table-sm table-borderless bg-light rounded p-3">
                             <tbody>
                                 <tr>
-                                    <th class="text-muted small uppercase pl-3 pt-3" style="width: 40%;">Marca</th>
-                                    <td class="font-weight-bold pt-3 text-dark">@(Model.Equipment.Brand ?? "N/A")</td>
+                                    <th class="text-muted small uppercase pl-3 pt-3" style="width: 40%;">Marca / Modelo</th>
+                                    <td class="font-weight-bold pt-3 text-dark">
+                                        @(Model.Equipment.Brand ?? "N/A") / @(Model.Equipment.Model ?? "N/A")
+                                    </td>
                                 </tr>
                                 <tr>
-                                    <th class="text-muted small uppercase pl-3">Modelo</th>
-                                    <td class="font-weight-bold text-dark">@(Model.Equipment.Model ?? "N/A")</td>
-                                </tr>
-                                <tr>
-                                    <th class="text-muted small uppercase pl-3 pb-3">Categoría</th>
-                                    <td class="font-weight-bold pb-3 text-dark">
-                                        @Model.Equipment.Category
-                                        @if (Model.Equipment.Category == EquipmentCategory.Utensil && Model.Equipment.UtensilType != UtensilType.NoAplica)
+                                    <th class="text-muted small uppercase pl-3">Clasificación</th>
+                                    <td class="font-weight-bold text-dark">
+                                        @if (Model.Equipment.Category == EquipmentCategory.Utensil)
                                         {
-                                            <span>(@Model.Equipment.UtensilType)</span>
+                                            @Model.Equipment.UtensilType
                                         }
+                                        else
+                                        {
+                                            @Model.Equipment.TypeClassification
+                                        }
+                                        <small class="text-muted d-block">(@Model.Equipment.Category)</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="text-muted small uppercase pl-3 pb-3">Vida Útil Est.</th>
+                                    <td class="font-weight-bold pb-3 text-dark">
+                                        @(Model.Equipment.UsefulLifeYears?.ToString() ?? "No definida") años
                                     </td>
                                 </tr>
                             </tbody>
@@ -185,38 +193,52 @@
                     </div>
                 }
 
-                @if (Model.Equipment.Notes != null && Model.Equipment.Notes.Any())
-                {
-                    <div class="card border shadow-sm mt-4">
-                        <div class="card-header bg-white border-bottom-0 pt-3 px-4">
-                            <h6 class="font-weight-bold mb-0 text-dark">
-                                <i class="fas fa-sticky-note mr-2 text-info"></i>Notas del Fabricante / Prevención (@Model.Equipment.Notes.Count)
-                            </h6>
-                        </div>
-                        <div class="card-body pt-2 px-4">
+                <div class="card border shadow-sm mt-4">
+                    <div class="card-header bg-white border-bottom-0 pt-3 px-4">
+                        <h6 class="font-weight-bold mb-0 text-dark">
+                            <i class="fas fa-sticky-note mr-2 text-info"></i>Notas del Fabricante / Prevención
+                        </h6>
+                    </div>
+                    <div class="card-body pt-2 px-4 pb-4">
+                        @if (Model.Equipment.Notes != null && Model.Equipment.Notes.Any())
+                        {
                             <ul class="mb-0 pl-3">
                                 @foreach (var note in Model.Equipment.Notes)
                                 {
-                                    <li class="mb-2 small text-dark">@note.Note</li>
+                                    <li class="mb-2 small text-dark font-weight-bold">@note.Note</li>
                                 }
                             </ul>
-                        </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-3">
+                                <i class="fas fa-comment-slash fa-2x text-light mb-2 d-block"></i>
+                                <span class="text-muted small italic">No se han registrado pautas de mantenimiento preventivo para este modelo.</span>
+                            </div>
+                        }
                     </div>
-                }
+                </div>
             </div>
         </div>
     </div>
 
     <div class="col-lg-4">
-
-        @if (!string.IsNullOrEmpty(Model.Equipment.ImageUrl))
-        {
-            <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-                <div class="card-body p-3 text-center">
+        <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+            <div class="card-body p-3 text-center">
+                @if (!string.IsNullOrEmpty(Model.Equipment.ImageUrl))
+                {
                     <img src="~/uploads/equipment/@Model.Equipment.ImageUrl" alt="@Model.Equipment.Name" class="img-fluid rounded shadow-sm" style="max-height: 250px; object-fit: contain;" />
-                </div>
+                }
+                else
+                {
+                    <div class="py-5 bg-light rounded border border-dashed text-muted">
+                        <i class="fas fa-camera fa-3x mb-2 opacity-5"></i>
+                        <p class="small font-weight-bold mb-0 uppercase">Sin imagen de referencia</p>
+                        <small class="opacity-7">Puede subir una foto editando la ficha técnica.</small>
+                    </div>
+                }
             </div>
-        }
+        </div>
 
 
         <div class="card shadow-sm border-0 mb-4">
