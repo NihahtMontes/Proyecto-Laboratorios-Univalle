@@ -1,0 +1,345 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
+using System.ComponentModel.DataAnnotations;
+
+namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
+{
+    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
+    public class EditModel : PageModel
+    {
+        private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
+
+        public EditModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        {
+            _context = context;
+            _userManager = userManager;
+        }
+
+        [BindProperty]
+        public InputModel Input { get; set; } = default!;
+
+        public class InputModel
+        {
+            public int Id { get; set; }
+
+            [Display(Name = "Facultad")]
+            public int FacultyId { get; set; }
+
+            [Display(Name = "Laboratorio")]
+            public int LaboratoryId { get; set; }
+
+            [Required(ErrorMessage = "El equipo es obligatorio")]
+            [Display(Name = "Equipo Objetivo")]
+            public int EquipmentUnitId { get; set; }
+
+            [Required(ErrorMessage = "El tipo de mantenimiento es obligatorio")]
+            [Display(Name = "Tipo de Servicio")]
+            public MaintenanceType MaintenanceType { get; set; }
+
+            [Display(Name = "Técnico Responsable")]
+            public int? TechnicianId { get; set; }
+
+            [Required]
+            [Display(Name = "Fecha Programada")]
+            [DataType(DataType.Date)]
+            public DateTime? ScheduledDate { get; set; }
+
+            [Display(Name = "Inicio Real")]
+            [DataType(DataType.DateTime)]
+            public DateTime? StartDate { get; set; }
+
+            [Display(Name = "Finalización")]
+            [DataType(DataType.DateTime)]
+            public DateTime? EndDate { get; set; }
+
+            [Required]
+            [Display(Name = "Estado del Proceso")]
+            public MaintenanceStatus Status { get; set; }
+
+            [Required(ErrorMessage = "La descripción es obligatoria")]
+            [Display(Name = "Descripción del Trabajo / Requerimiento")]
+            public string Description { get; set; } = string.Empty;
+
+            [Display(Name = "Nivel de Satisfacción")]
+            public MaintenanceSatisfaction? SatisfactionLevel { get; set; }
+
+            [Display(Name = "Recomendaciones Post-Servicio")]
+            public string? Recommendations { get; set; }
+
+            [Display(Name = "Observaciones Internas")]
+            public string? Observations { get; set; }
+
+            [Display(Name = "Costo Real Total")]
+            public decimal ActualCost { get; set; }
+
+            public List<CostDetail> CostDetails { get; set; } = new();
+
+            // --- PROPIEDADES AGREGADAS PARA LOS CHECKBOXES (L-48) ---
+            public int CompletionPercentage { get; set; } = 0;
+            public bool Step1_Cleaning { get; set; } = false;
+            public bool Step2_Calibration { get; set; } = false;
+            public bool Step3_Testing { get; set; } = false;
+            public bool Step4_FinalReview { get; set; } = false;
+            // --------------------------------------------------------
+        }
+
+        public async Task<IActionResult> OnGetAsync(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var maintenance = await _context.Maintenances
+                .Include(m => m.CostDetails)
+                .Include(m => m.EquipmentUnit)
+                    .ThenInclude(eu => eu!.Equipment)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (maintenance == null) return NotFound();
+
+            int facultyId = maintenance.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
+            int labId = maintenance.EquipmentUnit?.LaboratoryId ?? 0;
+
+            Input = new InputModel
+            {
+                Id = maintenance.Id,
+                FacultyId = facultyId,
+                LaboratoryId = labId,
+                EquipmentUnitId = maintenance.EquipmentUnitId,
+                MaintenanceType = maintenance.MaintenanceType,
+                TechnicianId = maintenance.TechnicianId,
+                ScheduledDate = maintenance.ScheduledDate,
+                StartDate = maintenance.StartDate,
+                EndDate = maintenance.EndDate,
+                Status = maintenance.Status,
+                Description = maintenance.Description,
+                SatisfactionLevel = maintenance.SatisfactionLevel,
+                Recommendations = maintenance.Recommendations,
+                Observations = maintenance.Observations,
+                ActualCost = maintenance.ActualCost ?? 0m,
+                CostDetails = maintenance.CostDetails.ToList(),
+
+                // --- RECUPERAR DATOS DE CHECKBOXES DESDE LA BD ---
+                CompletionPercentage = maintenance.CompletionPercentage,
+                Step1_Cleaning = maintenance.Step1_Cleaning,
+                Step2_Calibration = maintenance.Step2_Calibration,
+                Step3_Testing = maintenance.Step3_Testing,
+                Step4_FinalReview = maintenance.Step4_FinalReview
+                // -------------------------------------------------
+            };
+
+            // Detect Wizard Plan
+            var plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == id);
+            if (plan != null)
+            {
+                ViewData["IsWizard"] = true;
+                ViewData["ManagementPlanId"] = plan.Id;
+                ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+                if (plan.RequestId.HasValue) ViewData["PreviousPhaseId"] = plan.RequestId.Value;
+            }
+
+            CargarListas(facultyId, labId, maintenance.EquipmentUnitId);
+
+            return Page();
+        }
+
+        public async Task<IActionResult> OnPostAsync()
+        {
+            // Limpieza y Normalización
+            Input.Description = Input.Description.Clean();
+            Input.Observations = Input.Observations.Clean();
+            Input.Recommendations = Input.Recommendations.Clean();
+
+            // Validaciones Lógicas
+            if (Input.StartDate.HasValue && Input.EndDate.HasValue)
+            {
+                if (Input.EndDate < Input.StartDate)
+                {
+                    ModelState.AddModelError("Input.EndDate", NotificationHelper.Maintenances.EndDateBeforeStart);
+                }
+            }
+
+            decimal totalCosts = Input.CostDetails?.Sum(d => d.Quantity * d.UnitPrice) ?? 0;
+            Input.ActualCost = totalCosts;
+
+            if (Input.Status == MaintenanceStatus.Completed)
+            {
+                if (totalCosts <= 0)
+                    ModelState.AddModelError("Input.Status", "Para estado Completado, debe registrar costos reales.");
+                if (Input.SatisfactionLevel == null)
+                    ModelState.AddModelError("Input.SatisfactionLevel", "Para estado Completado, la Evaluación de Satisfacción es obligatoria.");
+                if (string.IsNullOrWhiteSpace(Input.Recommendations))
+                    ModelState.AddModelError("Input.Recommendations", "Para estado Completado, las Recomendaciones Técnicas son obligatorias.");
+                if (string.IsNullOrWhiteSpace(Input.Observations))
+                    ModelState.AddModelError("Input.Observations", "Para estado Completado, las Observaciones Internas son obligatorias.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var maintenance = await _context.Maintenances.Include(m => m.EquipmentUnit).ThenInclude(eu => eu.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
+                int facultyId = maintenance?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
+                int labId = maintenance?.EquipmentUnit?.LaboratoryId ?? 0;
+                CargarListas(facultyId, labId, Input.EquipmentUnitId);
+
+                // Detect Wizard Plan again on error
+                var plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == Input.Id);
+                if (plan != null)
+                {
+                    ViewData["IsWizard"] = true;
+                    ViewData["ManagementPlanId"] = plan.Id;
+                    ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+                    if (plan.RequestId.HasValue) ViewData["PreviousPhaseId"] = plan.RequestId.Value;
+                }
+
+                return Page();
+            }
+
+            var maintenanceDB = await _context.Maintenances
+                .Include(m => m.CostDetails)
+                .Include(m => m.EquipmentUnit)
+                    .ThenInclude(eu => eu!.Equipment)
+                .AsTracking()
+                .FirstOrDefaultAsync(m => m.Id == Input.Id);
+
+            if (maintenanceDB == null) return NotFound();
+
+            maintenanceDB.EquipmentUnitId = Input.EquipmentUnitId;
+            maintenanceDB.MaintenanceType = Input.MaintenanceType;
+            maintenanceDB.TechnicianId = Input.TechnicianId;
+            maintenanceDB.ScheduledDate = Input.ScheduledDate;
+            maintenanceDB.StartDate = Input.StartDate;
+            maintenanceDB.EndDate = Input.EndDate;
+            maintenanceDB.Status = Input.Status;
+            maintenanceDB.Description = Input.Description;
+            maintenanceDB.SatisfactionLevel = Input.SatisfactionLevel;
+            maintenanceDB.Recommendations = Input.Recommendations;
+            maintenanceDB.Observations = Input.Observations;
+            maintenanceDB.ActualCost = Input.ActualCost;
+
+            // --- GUARDAR LOS DATOS DE CHECKBOXES EN LA BD ---
+            maintenanceDB.CompletionPercentage = Input.CompletionPercentage;
+            maintenanceDB.Step1_Cleaning = Input.Step1_Cleaning;
+            maintenanceDB.Step2_Calibration = Input.Step2_Calibration;
+            maintenanceDB.Step3_Testing = Input.Step3_Testing;
+            maintenanceDB.Step4_FinalReview = Input.Step4_FinalReview;
+            // ------------------------------------------------
+
+            if (Input.CostDetails != null)
+            {
+                Input.CostDetails = Input.CostDetails.Where(d => !string.IsNullOrWhiteSpace(d.Concept)).ToList();
+            }
+            else
+            {
+                Input.CostDetails = new List<CostDetail>();
+            }
+
+            // Eliminar detalles que ya no están
+            var inputDetailIds = Input.CostDetails.Select(d => d.Id).ToList();
+            var detailsToRemove = maintenanceDB.CostDetails.Where(d => !inputDetailIds.Contains(d.Id)).ToList();
+
+            foreach (var detail in detailsToRemove)
+            {
+                maintenanceDB.CostDetails.Remove(detail);
+                _context.Remove(detail);
+            }
+
+            // Actualizar o agregar detalles
+            foreach (var detailForm in Input.CostDetails)
+            {
+                detailForm.MaintenanceId = maintenanceDB.Id;
+                var existingDetail = maintenanceDB.CostDetails.FirstOrDefault(d => d.Id == detailForm.Id && d.Id != 0);
+                if (existingDetail != null)
+                {
+                    _context.Entry(existingDetail).CurrentValues.SetValues(detailForm);
+                }
+                else
+                {
+                    maintenanceDB.CostDetails.Add(detailForm);
+                }
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.EquipmentUnit?.Equipment?.Name));
+                
+                var plan = await _context.ManagementPlans.AsTracking().FirstOrDefaultAsync(p => p.MaintenanceId == maintenanceDB.Id);
+                if (plan != null)
+                {
+                    if (maintenanceDB.Status == MaintenanceStatus.Completed && plan.CurrentPhase == WizardPhase.Maintenance)
+                    {
+                        plan.CurrentPhase = WizardPhase.Exit;
+                        plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                        plan.PlanStatus = ManagementPlanStatus.InProgress;
+                        await _context.SaveChangesAsync();
+                    }
+                    
+                    return RedirectToPage("/Managements/Details", new { id = plan.ManagementId, ActiveTab = "l48" });
+                }
+
+                return RedirectToPage("./Index");
+            }
+            catch (Exception ex)
+            {
+                TempData.Error(NotificationHelper.Maintenances.SaveError(ex.Message));
+                var maintenance = await _context.Maintenances.Include(m => m.EquipmentUnit).ThenInclude(eu => eu.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
+                int facultyId = maintenance?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
+                int labId = maintenance?.EquipmentUnit?.LaboratoryId ?? 0;
+                CargarListas(facultyId, labId, Input.EquipmentUnitId);
+                return Page();
+            }
+        }
+
+        private void CargarListas(int facultyId = 0, int laboratoryId = 0, int equipmentUnitId = 0)
+        {
+            ViewData["FacultyId"] = new SelectList(_context.Faculties.Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name), "Id", "Name", facultyId);
+            
+            if (facultyId > 0)
+                ViewData["LaboratoryId"] = new SelectList(_context.Laboratories.Where(l => l.FacultyId == facultyId).OrderBy(l => l.Name), "Id", "Name", laboratoryId);
+            else
+                ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+
+            var equipos = _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
+                .OrderBy(u => u.Equipment!.Name)
+                .AsEnumerable()
+                .Select(u => new
+                {
+                    Id = u.Id,
+                    DisplayName = $"{u.Equipment!.Name} (Inv: {u.InventoryNumber}) - {(u.Equipment.Brand ?? "S/M")} [S/N: {u.SerialNumber ?? "N/A"}] - [{u.Equipment.Category}]"
+                })
+                .ToList();
+
+            ViewData["EquipmentUnitId"] = new SelectList(equipos, "Id", "DisplayName");
+
+            var tecnicos = _context.People
+                .Where(p => p.Status == GeneralStatus.Activo)
+                .OrderBy(p => p.Id)
+                .AsEnumerable()
+                .Select(p => new { Id = p.Id, FullName = p.FullName })
+                .ToList();
+
+            ViewData["TechnicianId"] = new SelectList(tecnicos, "Id", "FullName");
+
+            ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
+
+            var requests = _context.Requests
+                .Include(r => r.Laboratory)
+                .OrderByDescending(r => r.CreatedDate)
+                .Take(20)
+                .ToList()
+                .Select(r => new {
+                    Id = r.Id,
+                    DisplayText = $"#{r.Id} - {r.Laboratory?.Name} ({r.CreatedDate:dd/MM}): " + (r.Description.Length > 40 ? r.Description.Substring(0, 40) + "..." : r.Description)
+                });
+            ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText");
+        }
+    }
+}

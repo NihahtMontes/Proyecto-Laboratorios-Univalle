@@ -69,7 +69,7 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
 
                         // Dynamic Checklist
                         col.Item().PaddingTop(20).Text("PUNTOS DE CONTROL Y VERIFICACIÓN").FontSize(12).Bold().FontColor(Colors.Blue.Medium);
-                        
+
                         col.Item().PaddingTop(5).Table(table =>
                         {
                             table.ColumnsDefinition(columns =>
@@ -93,7 +93,7 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                             {
                                 table.Cell().Element(CellStyle).Text((index++).ToString()).FontSize(9);
                                 table.Cell().Element(CellStyle).Text(result.CheckItem?.Name ?? "Desconocido").FontSize(9);
-                                
+
                                 var resultText = result.Result == VerificationResult.Completed ? "REALIZADO" : "PENDIENTE";
                                 var textColor = result.Result == VerificationResult.Completed ? Colors.Green.Medium : Colors.Grey.Medium;
 
@@ -104,12 +104,12 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                         });
 
                         // Observations
-                        col.Item().PaddingTop(20).Column(c => { 
+                        col.Item().PaddingTop(20).Column(c => {
                             c.Item().Text("OBSERVACIONES TÉCNICAS").FontSize(10).SemiBold();
                             c.Item().Border(1).BorderColor(Colors.Grey.Lighten2).Padding(10).Background(Colors.Grey.Lighten4)
                                 .Text(string.IsNullOrEmpty(verification.Observations) ? "Sin observaciones particulares." : verification.Observations).FontSize(9).Italic();
                         });
-                        
+
                         // Condition Snapshot
                         col.Item().PaddingTop(10).Row(r => {
                             r.RelativeItem().Text(t => {
@@ -140,7 +140,7 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                 worksheet.Cell(1, 3).Value = "Equipo";
                 worksheet.Cell(1, 4).Value = "Estado";
                 worksheet.Cell(1, 5).Value = "Observaciones";
-                
+
                 var headerRange = worksheet.Range(1, 1, 1, 5);
                 headerRange.Style.Font.Bold = true;
                 headerRange.Style.Fill.BackgroundColor = XLColor.AirForceBlue;
@@ -184,7 +184,8 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                 // Table Headers
                 int headerRow = 5;
                 var headers = new[] { "ITEM", "DESCRIPCIÓN EQUIPO", "# DE INV.", "MARCA", "ESTADO DEL EQUIPO", "OBSERVACIONES" };
-                for (int i = 0; i < headers.Length; i++) {
+                for (int i = 0; i < headers.Length; i++)
+                {
                     var cell = ws.Cell(headerRow, i + 1);
                     cell.Value = headers[i];
                     cell.Style.Font.Bold = true;
@@ -202,7 +203,8 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                     ws.Cell(currentRow, 4).Value = unit.Equipment?.Brand ?? "-";
 
                     // CORRECCIÓN: Usar los nombres actualizados del enum PhysicalCondition
-                    ws.Cell(currentRow, 5).Value = unit.PhysicalCondition switch {
+                    ws.Cell(currentRow, 5).Value = unit.PhysicalCondition switch
+                    {
                         PhysicalCondition.Excellent => "EXCELENTE",
                         PhysicalCondition.Good => "BUENO",
                         PhysicalCondition.Regular => "REGULAR",

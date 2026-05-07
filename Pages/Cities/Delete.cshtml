@@ -1,0 +1,72 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Cities.DeleteModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+
+
+<div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
+    <div class="col-md-6 col-lg-5">
+        <div class="card text-center shadow-sm border-0">
+            <div class="card-body p-5">
+                <!-- Warning iconography -->
+                <div class="mb-4 text-danger">
+                    <i class="fas fa-exclamation-triangle display-3"></i> 
+                </div>
+
+                <!-- Title and description -->
+                <h3 class="card-title text-dark font-weight-bold">¿Deshabilitar esta localidad?</h3>
+                <p class="text-muted mb-4">
+                    Estás a punto de dar de baja la ciudad <strong class="text-dark">@Model.City.Name</strong>.
+                    Esta acción inhabilitará el acceso a esta sede en los formularios de registro y reportes operativos.
+                </p>
+
+                <!-- Key data box -->
+                <div class="bg-light p-3 rounded mb-4 text-left d-inline-block w-100 border-left border-danger border-3 shadow-none">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small uppercase font-weight-bold">Ciudad:</span>
+                        <strong class="text-dark">@Model.City.Name</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted small uppercase font-weight-bold">País:</span>
+                        <strong class="text-dark">@(Model.City.Country?.Name ?? "N/A")</strong>
+                    </div>
+                    <div class="d-flex justify-content-between border-top pt-2">
+                        <span class="text-muted small uppercase font-weight-bold">Estado Actual:</span>
+                        <span class="text-danger font-weight-bold small">
+                            @Model.City.Status
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Action buttons -->
+                <form method="post">
+                    <input type="hidden" asp-for="City.Id" />
+                    <a asp-page="./Details" asp-route-id="@Model.City.Id" 
+                       class="btn btn-outline-secondary btn-rounded px-4 mr-2">
+                         Ver Detalles
+                    </a>
+                    <button type="submit" class="btn btn-danger btn-rounded px-4 shadow-sm font-weight-bold">
+                        <i class="fas fa-trash-alt mr-1"></i> Sí, Confirmar Baja
+                    </button>
+                </form>
+
+                <div class="mt-4">
+                    <a asp-page="./Index" class="btn btn-link text-muted small">Volver al Control de Sedes</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-3 text-muted small italic">
+            <i class="fas fa-info-circle mr-1"></i> 
+            El sistema conservará el historial técnico de la localidad para fines de auditoría institucional.
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .border-3 { border-left-width: 4px !important; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+}

@@ -1,0 +1,185 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Verifications.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@if (Model.SessionEquipments.Any())
+{
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                        <div>
+                            <h4 class="card-title text-dark font-weight-bold">Sesión de Verificación L-6</h4>
+                            <h6 class="card-subtitle text-muted">
+                                @Model.SessionLabName — @Model.SessionDate.ToString("dd/MM/yyyy") ·
+                                @Model.SessionEquipments.Count equipo(s)
+                            </h6>
+                        </div>
+                        <div class="ml-auto">
+                            <span class="text-muted small">Inspector: <strong>@Model.SessionInspector</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover v-middle">
+                            <thead class="bg-light">
+                                <tr class="small uppercase font-weight-bold">
+                                    <th class="border-top-0">Equipo</th>
+                                    <th class="border-top-0">N° Inventario</th>
+                                    <th class="border-top-0 text-center">Condición Física</th>
+                                    <th class="border-top-0">Observaciones / Fallas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var v in Model.SessionEquipments)
+                                {
+                                    var conditionBadge = v.PhysicalCondition switch
+                                    {
+                                        PhysicalCondition.Excellent => "badge-success",
+                                        PhysicalCondition.Good => "badge-info",
+                                        PhysicalCondition.Regular => "badge-warning",
+                                        PhysicalCondition.Bad => "badge-danger",
+                                        PhysicalCondition.Decommissioned => "badge-dark",
+                                        _ => "badge-secondary"
+                                    };
+
+                                    <tr>
+                                        <td>
+                                            <h6 class="m-0 font-weight-bold text-dark">@v.EquipmentUnit?.Equipment?.Name</h6>
+                                        </td>
+                                        <td>
+                                            <span class="text-muted small font-weight-bold">@v.EquipmentUnit?.InventoryNumber</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge @conditionBadge px-3 py-1">
+                                                @Html.DisplayFor(m => v.PhysicalCondition)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(v.Observations))
+                                            {
+                                                <div class="small text-dark">
+                                                    <i class="fas fa-comment-dots text-danger mr-1"></i>
+                                                    @v.Observations
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">Sin observaciones</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-actions text-right mt-4">
+                        <a asp-page="./Index" asp-route-filterLaboratoryId="@Model.LabId" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
+                            <i class="fas fa-arrow-left mr-1"></i> Volver al Historial
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else if (Model.Verification != null)
+{
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                        <div>
+                            <h4 class="card-title text-dark font-weight-bold">Detalle de Verificación #@Model.Verification.Id</h4>
+                            <h6 class="card-subtitle text-muted">@Model.Verification.EquipmentUnit?.Equipment?.Name</h6>
+                        </div>
+                        <div class="ml-auto mt-2 mt-md-0">
+                            <span class="badge badge-pill badge-info px-4 py-2">
+                                @Html.DisplayFor(m => m.Verification.Status)
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-microchip mr-2"></i>Equipo</h5>
+                            <table class="table table-sm table-borderless bg-light rounded">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-3 pt-2">Nombre</th>
+                                        <td class="font-weight-bold pt-2 text-dark">@Model.Verification.EquipmentUnit?.Equipment?.Name</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-3">Inventario</th>
+                                        <td class="font-weight-bold text-dark">@Model.Verification.EquipmentUnit?.InventoryNumber</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-3 pb-2">Fecha</th>
+                                        <td class="font-weight-bold pb-2 text-dark">@Model.Verification.Date.ToString("dd/MM/yyyy")</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-clipboard-check mr-2"></i>Condición</h5>
+                            <table class="table table-sm table-borderless bg-light rounded">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-3 pt-2">Estado Físico</th>
+                                        <td class="font-weight-bold pt-2 text-dark">@Html.DisplayFor(m => m.Verification.PhysicalCondition)</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-3 pb-2">Inspector</th>
+                                        <td class="font-weight-bold pb-2 text-dark">@(Model.Verification.CreatedBy?.FullName ?? "Sistema")</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Verification.Observations))
+                    {
+                        <div class="alert alert-light border mt-4 p-3 small text-dark border-left border-danger">
+                            <label class="font-weight-bold uppercase mb-1 d-block text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Observaciones:</label>
+                            <div class="text-muted">@Model.Verification.Observations</div>
+                        </div>
+                    }
+
+                    <div class="form-actions text-right mt-4">
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
+                            <i class="fas fa-arrow-left mr-1"></i> Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase border-bottom pb-2">
+                        <i class="fas fa-history mr-2 text-warning"></i>Auditoría
+                    </h5>
+                    <div class="small">
+                        <div class="mb-3">
+                            <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Creado</label>
+                            <span class="font-weight-bold text-dark d-block">@Model.Verification.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                            <span class="text-muted">@(Model.Verification.CreatedBy?.FullName ?? "Sistema")</span>
+                        </div>
+                        @if (Model.Verification.LastModifiedDate.HasValue)
+                        {
+                            <div class="mb-0 border-top pt-3 mt-3">
+                                <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Modificado</label>
+                                <span class="font-weight-bold text-dark d-block">@Model.Verification.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                <span class="text-muted">@(Model.Verification.ModifiedBy?.FullName ?? "-")</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

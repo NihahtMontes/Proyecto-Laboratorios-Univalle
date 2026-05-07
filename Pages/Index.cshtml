@@ -1,0 +1,853 @@
+@page
+@model IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Dashboard de Gestión";
+    var isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
+    var steps = isCorrective
+        ? new[] { "Progreso", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" }
+        : new[] { "Progreso", "L6 Verif.", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" };
+}
+
+@section Styles {
+    <style>
+        /* Modern Design System - Inspired by React Layout */
+        :root {
+            --primary-univalle: #4154f1; /* NiceAdmin Primary */
+            --success-soft: #eafaf1;
+            --danger-soft: #f9ebeb;
+            --warning-soft: #fef9e7;
+            --info-soft: #e8f4fd;
+            --slate-text: #444444;
+            --slate-muted: #899bbd;
+        }
+
+        /* Hero Header */
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--slate-900);
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .management-badge {
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            background: var(--slate-900);
+            color: white;
+            border-radius: 6px;
+        }
+
+        /* Chart Cards */
+        .chart-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--slate-200);
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .chart-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.04);
+        }
+
+        .chart-card h3 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--slate-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .chart-container {
+            height: 160px;
+            width: 100%;
+            position: relative;
+        }
+
+        /* Progress Rings / Center Text */
+        .chart-center-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .chart-center-text .percent {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--slate-800);
+            line-height: 1;
+        }
+
+        .chart-center-text .label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: var(--slate-400);
+            text-transform: uppercase;
+        }
+
+        /* Buttons Premium */
+        .btn-premium-danger {
+            background-color: var(--danger-univalle);
+            color: white;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 40px;
+            padding: 0 16px;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-premium-danger:hover {
+            background-color: #C82333;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(220, 53, 69, 0.2);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-premium-dark {
+            background-color: var(--slate-900);
+            color: white;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 40px;
+            padding: 0 20px;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .btn-premium-dark:hover {
+            background-color: var(--slate-800);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(15, 23, 42, 0.2);
+            color: white;
+            text-decoration: none;
+        }
+
+        /* Filters Bar */
+        .filters-container {
+            background: white;
+            border: 1px solid var(--slate-100);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .filter-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--slate-500);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-button {
+            background: var(--slate-50);
+            border: 1px solid var(--slate-200);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.813rem;
+            font-weight: 600;
+            color: var(--slate-700);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .filter-button:hover { background: var(--slate-100); }
+
+        .status-pill-group {
+            display: flex;
+            background: var(--slate-50);
+            padding: 3px;
+            border-radius: 10px;
+            border: 1px solid var(--slate-200);
+        }
+
+        .status-pill {
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 8px;
+            color: var(--slate-500);
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .status-pill.active {
+            background: white;
+            color: var(--slate-800);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        /* Premium Gantt Table */
+        .premium-table-card {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--slate-200);
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .table-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--slate-100);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h2 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--slate-800);
+            margin: 0;
+        }
+
+        /* Gantt Table Styles */
+        .gantt-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .gantt-table thead th {
+            background: var(--slate-50);
+            padding: 0.75rem 1.5rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--slate-500);
+            letter-spacing: 0.05em;
+            text-align: left;
+            border-bottom: 2px solid var(--slate-200);
+        }
+
+        .gantt-table tbody td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--slate-100);
+            vertical-align: middle;
+        }
+
+        .gantt-table tbody tr:hover {
+            background-color: rgba(248, 249, 250, 0.5);
+        }
+
+        .equipment-name {
+            font-weight: 700;
+            color: var(--blue-500);
+            text-decoration: none;
+        }
+
+        .equipment-name:hover { text-decoration: underline; }
+
+        .inventory-code {
+            font-size: 0.7rem;
+            color: var(--slate-400);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .gantt-indicator {
+            height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 800;
+            width: 100%;
+        }
+
+        .indicator-executed { background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.3); color: #28A745; }
+        .indicator-planned { background: rgba(255, 193, 7, 0.15); border: 1px solid rgba(255, 193, 7, 0.3); color: #856404; }
+        .indicator-placeholder { background: var(--slate-50); border: 1px solid var(--slate-100); opacity: 0.5; }
+
+        /* Sidebar Simulation */
+        #kardexSidebar {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+            z-index: 1050;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        #kardexSidebar.open {
+            right: 0;
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(2px);
+            z-index: 1040;
+            display: none;
+        }
+
+        .sidebar-overlay.active { display: block; }
+
+        /* Custom Utilities for Premium Look */
+        .rounded-4 { border-radius: 1rem !important; }
+        .rounded-2xl { border-radius: 1.5rem !important; }
+        .text-xs-premium { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.025em; }
+
+        /* U-1: Reemplazo de Tailwind suelto */
+        .wizard-title     { font-size: 1.5rem; font-weight: 800; color: #012970; }
+        .wizard-subtitle  { font-size: 0.85rem; color: var(--slate-muted); }
+        .step-stack       { display: flex; flex-direction: column; gap: 0.75rem; }
+        .wiz-rounded-top  { border-radius: 1rem 1rem 0 0; }
+        .wiz-rounded-bot  { border-radius: 0 0 1rem 1rem; }
+        .min-h-500        { min-height: 500px; }
+        
+        /* U-2: Íconos y badges de fase (reemplazo de inline) */
+        .phase-icon {
+            width: 44px; height: 44px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 0.5rem;
+        }
+        .phase-icon--blue   { background: #eff6ff; color: #3b82f6; }
+        .phase-icon--purple { background: #f5f3ff; color: #8b5cf6; }
+        .phase-icon--amber  { background: #fffbeb; color: #f59e0b; }
+        .phase-icon--red    { background: #fef2f2; color: #ef4444; }
+        .phase-icon--green  { background: #d1fae5; color: #10b981; }
+        .phase-icon--slate  { background: #f1f5f9; color: #64748b; }
+
+        .phase-card {
+            border: none; border-radius: 1rem; padding: 1.25rem;
+            text-align: center; height: 100%; transition: transform 0.2s;
+            text-decoration: none !important; display: block;
+        }
+        .phase-card:hover { transform: translateY(-3px); }
+        .phase-card h6 { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 0.5rem; }
+        .phase-card h2 { font-size: 1.8rem; font-weight: 800; margin: 0; }
+    </style>
+}
+
+<div>
+
+    @if (!Model.ShowWizard)
+    {
+        @if (Model.ActiveManagement != null)
+        {
+            <script>
+                window.location.href = '/Managements/Details?id=@Model.ActiveManagement.Id&ActiveTab=dashboard';
+            </script>
+        }
+        else
+        {
+            <!-- FALLBACK GLOBAL DASHBOARD -->
+            <div class="animate-in fade-in duration-500 d-flex flex-column justify-content-center align-items-center text-center p-5" style="min-height: 60vh; background: white; border-radius: 16px; border: 1px solid var(--slate-200); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <div class="mb-4">
+                    <i class="fas fa-folder-open text-primary opacity-25" style="font-size: 5rem; color: #3B82F6 !important;"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800 mb-2">No hay ninguna gestión activa</h2>
+                <p class="text-slate-500 mb-4 max-w-md">Debe aperturar e iniciar una Gestión Institucional O acceder al listado de Gestiones para registrar mantenimientos, analizar datos y utilizar el flujo de procesos.</p>
+                
+                <div class="d-flex gap-3 mt-2">
+                    <a asp-page="/Managements/Create" class="btn btn-primary rounded-pill px-4 shadow-sm" style="background: #3B82F6; border: none;">
+                        <i class="fas fa-plus mr-2"></i> Crear Gestión
+                    </a>
+                    <a asp-page="/Managements/Index" class="btn btn-light border-slate-200 rounded-pill px-4 shadow-sm">
+                        <i class="fas fa-table mr-2"></i> Ver Gestiones
+                    </a>
+                </div>
+            </div>
+        }
+
+    }
+    else
+    {
+        <!-- [KEEP WIZARD LOGIC AS IS] -->
+        <div class="row min-h-500 align-items-center" style="font-family: 'Inter', sans-serif;">
+            <!-- Flecha Anterior (Left Sidebar Style) -->
+            <div class="col-2 col-md-1 d-flex justify-content-center">
+                @if (Model.Step <= 6) {
+                    <form method="post" asp-page-handler="PreviousStep" class="w-100 text-center">
+                        <input type="hidden" asp-for="Step" />
+                        <input type="hidden" asp-for="SelectedLabId" />
+                        <button type="submit" class="btn btn-light rounded-circle shadow-sm hover-float @(Model.Step == 0 ? "invisible" : "")" style="width: 50px; height: 50px; border: 1.5px solid #e2e8f0; padding:0; display:inline-flex; align-items:center; justify-content:center; transition: all 0.2s ease;">
+                            <i class="fas fa-chevron-left text-primary" style="font-size: 1.2rem;"></i>
+                        </button>
+                    </form>
+                }
+            </div>
+
+            <div class="col-8 col-md-10">
+                <div class="card shadow-lg border-0 w-100" style="border-radius: 16px;">
+                    <div class="card-header d-flex justify-content-between align-items-center py-3" style="background-color: #0f172a; border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                        <h5 class="m-0 font-weight-bold text-white" style="font-family: 'Inter', sans-serif; font-weight: 800;"><i class="fas fa-magic mr-2 text-primary"></i>@(isCorrective ? "Mantenimiento Correctivo" : "Ronda de Mantenimiento Progresivo")</h5>
+                        <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-light btn-sm font-weight-bold rounded-pill px-3">Finalizar Wizard</a>
+                    </div>
+
+                    <div class="card-body p-0">
+                        <!-- Wizard Stepper -->
+                        <div class="bg-light border-bottom p-4">
+                            <div class="d-flex justify-content-between text-center px-lg-5">
+                                @for (int i = 0; i < steps.Length; i++)
+                                {
+                                    var stepNum = isCorrective && i > 0 ? i + 1 : i;
+                                    var isActive = Model.Step >= stepNum;
+                                    var isCurrent = Model.Step == stepNum;
+                                    <div class="d-flex flex-column align-items-center" style="flex: 1; position: relative;">
+                                        @if (i > 0) {
+                                            <div style="position: absolute; width: 100%; height: 2px; background: @(isActive ? "#2563eb" : "#e2e8f0"); top: 17px; left: -50%; z-index: 1;"></div>
+                                        }
+                                        <div class="rounded-circle border @(isActive ? "text-white" : "bg-white text-muted") d-flex align-items-center justify-content-center shadow-sm" style="width: 35px; height: 35px; font-weight: bold; z-index: 2; position: relative; @(isActive ? "background: #2563eb; border-color: #2563eb;" : "border-color: #e2e8f0;") @(isCurrent ? "box-shadow: 0 0 0 4px rgba(37,99,235,0.25) !important;" : "")">
+                                            @if (Model.Step > stepNum) { <i class="fas fa-check"></i> } else { @stepNum }
+                                        </div>
+                                        <span class="mt-2 @(isCurrent ? "text-dark font-weight-bold" : "text-muted")" style="font-size: 0.70rem; letter-spacing: 0.05em; text-transform: uppercase;">@steps[i]</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Step Content -->
+                        <div class="p-4 min-h-500">
+                            @if (Model.Step == 0)
+                            {
+                                @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
+                                    Title = "Paso 0: Progreso de Ambiente",
+                                    Description = "Visualiza el estado global de todos los equipos del laboratorio.",
+                                    EmptyMessage = "Selecciona un ambiente para ver el progreso.",
+                                    Plans = Model.ActivePlans,
+                                    StepIndex = 0,
+                                    LaboratoriesList = Model.LaboratoriesList,
+                                    StatusLabel = "Seguimiento",
+                                    BorderClass = "border-slate"
+                                })
+                            }
+                            else if (Model.Step == 1 && !isCorrective)
+                            {
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <div>
+                                        <h3 class="wizard-title text-dark mb-1" style="font-weight: 900; color: #0f172a !important;">Paso 1: L6 Verificación</h3>
+                                        <p class="wizard-subtitle mb-0" style="font-weight: 500; color: #64748b;">Equipos pendientes de inspección técnica inicial.</p>
+                                    </div>
+                                    <form method="get" class="d-flex align-items-center gap-3">
+                                        <input type="hidden" name="ShowWizard" value="true" />
+                                        <input type="hidden" name="Step" value="1" />
+                                        <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control shadow-sm" style="border-radius: 12px; background-color: #f8fafc; border: 1.5px solid #e2e8f0; font-weight: 600; color: #334155; padding: 8px 12px; height: 44px;" onchange="this.form.submit()">
+                                            <option value="">-- Selecciona Laboratorio --</option>
+                                        </select>
+                                    </form>
+                                </div>
+
+                                @if (!Model.Step1Plans.Any())
+                                {
+                                    <div class="text-center py-5 text-muted">
+                                        <i class="fas fa-clipboard-check fa-3x mb-3 d-block opacity-2"></i>
+                                        <span class="font-weight-bold">No hay equipos pendientes de verificación L-6.</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mb-4">
+                                        <span class="badge badge-primary px-3 py-2">@Model.Step1Plans.Count equipo(s) pendiente(s)</span>
+                                    </div>
+                                    <div class="step-stack">
+                                        @foreach (var item in Model.Step1Plans.Take(5))
+                                        {
+                                            <div class="chart-card d-flex justify-content-between align-items-center py-3 px-4 mb-3 premium-card border-start border-4 border-primary" style="background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                                                <div>
+                                                    <h4 class="font-bold text-slate-800 m-0" style="font-weight: 800; color: #1e293b;">@item.EquipmentUnit?.Equipment?.Name</h4>
+                                                    <span class="inventory-code text-muted small" style="font-weight: 600;">@item.EquipmentUnit?.InventoryNumber &middot; Pendiente L-6</span>
+                                                </div>
+                                            </div>
+                                        }
+                                        @if (Model.Step1Plans.Count > 5)
+                                        {
+                                            <div class="text-center text-muted small py-2">
+                                                ...y @(Model.Step1Plans.Count - 5) equipo(s) más
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="text-center mt-4">
+                                        <a asp-page="/Verifications/MassCreate"
+                                           asp-route-isWizard="true"
+                                           asp-route-labId="@(Model.SelectedLabId)"
+                                           class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-3">
+                                            <i class="fas fa-layer-group mr-2"></i> Verificación Masiva por Laboratorio
+                                        </a>
+                                    </div>
+                                }
+                            }
+                            else if (Model.Step == 2)
+                            {
+                                @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
+                                    Title = "Paso 2: L7 Solicitud",
+                                    Description = "Genera la solicitud para equipos con fallas detectadas.",
+                                    EmptyMessage = "No hay equipos pendientes de solicitud L-7.",
+                                    Plans = Model.Step2Plans,
+                                    StepIndex = 2,
+                                    ActionPage = "/Requests/Create",
+                                    ActionLabel = "Hacer Solicitud L7",
+                                    ActionClass = "btn-warning",
+                                    StatusLabel = "Requiere Atención",
+                                    ShowFailCount = true,
+                                    LaboratoriesList = Model.LaboratoriesList,
+                                    BorderClass = "border-warning"
+                                })
+                                @if (Model.ActiveManagement?.Type == ManagementType.Corrective)
+                                {
+                                    <div class="text-center mt-4">
+                                        <a asp-page="/Requests/Create"
+                                           asp-route-isWizard="true"
+                                           asp-route-managementId="@(Model.ActiveManagement?.Id)"
+                                           class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold py-3 text-dark">
+                                            <i class="fas fa-exclamation-triangle mr-2"></i> Reportar Nueva Falla Crítica
+                                        </a>
+                                    </div>
+                                }
+                            }
+                            else if (Model.Step == 3)
+                            {
+                                @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
+                                    Title = "Paso 3: L8 Mantenimiento",
+                                    Description = "Registra el acta de mantenimiento realizado.",
+                                    EmptyMessage = "Sin equipos listos para mantenimiento.",
+                                    Plans = Model.Step3Plans,
+                                    StepIndex = 3,
+                                    ActionPage = "/Maintenances/Create",
+                                    ActionLabel = "Registrar Acta L8",
+                                    ActionClass = "btn-success",
+                                    StatusLabel = "En Mantenimiento",
+                                    LaboratoriesList = Model.LaboratoriesList,
+                                    BorderClass = "border-success"
+                                })
+                            }
+                            else if (Model.Step == 4)
+                            {
+                                @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
+                                    Title = "Paso 4: L3 Salida",
+                                    Description = "Registra la salida temporal del equipo si aplica.",
+                                    EmptyMessage = Model.SelectedLabId.HasValue ? "No hay equipos pendientes de salida externa en este laboratorio." : "Selecciona un laboratorio para ver sus salidas L-3 activas.",
+                                    Plans = Model.Step4Plans,
+                                    StepIndex = 4,
+                                    ActionPage = "/Departures/Create",
+                                    ActionLabel = "Registrar Salida",
+                                    ActionClass = "btn-primary",
+                                    StatusLabel = "Pendiente Salida",
+                                    LaboratoriesList = Model.LaboratoriesList,
+                                    BorderClass = "border-primary"
+                                })
+                            }
+                            else if (Model.Step == 5)
+                            {
+                                @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
+                                    Title = "Paso 5: Kardex",
+                                    Description = "Confirma el retorno a operación y actualiza el historial.",
+                                    EmptyMessage = "Todos los Kardex están al día en este ambiente.",
+                                    Plans = Model.Step5Plans,
+                                    StepIndex = 5,
+                                    ActionPage = "/Kardex/Create",
+                                    ActionLabel = "Actualizar Kardex",
+                                    ActionClass = "btn-info",
+                                    StatusLabel = "Finalizando",
+                                    LaboratoriesList = Model.LaboratoriesList,
+                                    BorderClass = "border-info"
+                                })
+                            }
+                            else if (Model.Step == 6)
+                            {
+                                @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
+                                    Title = "Paso 6: Desembolso",
+                                    Description = "Inicia trámite administrativo si hubo compra de repuestos.",
+                                    EmptyMessage = "Sin solicitudes de desembolso pendientes.",
+                                    Plans = Model.Step6Plans,
+                                    StepIndex = 6,
+                                    ActionPage = "/Acquisitions/Create",
+                                    ActionLabel = "Gestionar Adquisición",
+                                    ActionClass = "btn-dark",
+                                    StatusLabel = "Trámite Administrativo",
+                                    LaboratoriesList = Model.LaboratoriesList,
+                                    BorderClass = "border-dark"
+                                })
+                            }
+                            else
+                            {
+                                <div class="text-center py-5">
+                                    <i class="fas fa-flag-checkered fa-4x text-slate-200 mb-4"></i>
+                                    <h3 class="wizard-title">¡Ronda Finalizada!</h3>
+                                    <p class="wizard-subtitle mb-4">Se han procesado todos los equipos de este ciclo.</p>
+                                    <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-primary rounded-pill px-5 shadow-sm">Volver al Dashboard</a>
+                                </div>
+                            }
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flecha Siguiente (Right Sidebar Style) -->
+            <div class="col-2 col-md-1 d-flex justify-content-center">
+                @if (Model.Step <= 6) {
+                    <form method="post" asp-page-handler="NextStep" class="w-100 text-center">
+                        <input type="hidden" asp-for="Step" />
+                        <input type="hidden" asp-for="SelectedLabId" />
+                        <button type="submit" class="btn rounded-circle shadow-lg hover-float" style="width: 56px; height: 56px; padding: 0; display:inline-flex; align-items:center; justify-content:center; background: linear-gradient(to right, #2563eb, #1e40af); color: white; border: none; box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39); transition: all 0.2s ease;">
+                            @if (Model.Step == 6) { <i class="fas fa-flag-checkered" style="font-size: 1.5rem;"></i> } else { <i class="fas fa-chevron-right" style="font-size: 1.5rem;"></i> }
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- SIDEBAR OVERLAY & SIDEBAR -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<div id="kardexSidebar">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="wizard-title mb-0">Detalle del Equipo</h5>
+        <button class="btn btn-light btn-sm rounded-circle" onclick="closeKardex()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div id="sidebarContent">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+    <script>
+        // ─── 1. DATOS SERIALIZADOS DESDE RAZOR (sin bloques if dentro de JS) ───
+        // Se asignan como variables JS simples. Si el modelo no tiene datos, se usan defaults seguros.
+        const _dashboardData = {
+            isActive:         @Json.Serialize(Model.ActiveManagement != null && !Model.ShowWizard),
+            totalActivos:     @Json.Serialize(Model.TotalActivos),
+            equiposTerminados:@Json.Serialize(Model.EquiposTerminados),
+            totalVencidos:    @Json.Serialize(Model.TotalVencidos),
+            typesLabels:      @Html.Raw(Json.Serialize(Model.TopEquipmentTypes != null ? (IEnumerable<string>)Model.TopEquipmentTypes.Keys : new List<string>())),
+            typesData:        @Html.Raw(Json.Serialize(Model.TopEquipmentTypes != null ? (IEnumerable<int>)Model.TopEquipmentTypes.Values : new List<int>())),
+            labsLabels:       @Html.Raw(Json.Serialize(Model.TopLaboratories != null ? (IEnumerable<string>)Model.TopLaboratories.Keys : new List<string>())),
+            labsData:         @Html.Raw(Json.Serialize(Model.TopLaboratories != null ? (IEnumerable<int>)Model.TopLaboratories.Values : new List<int>()))
+        };
+
+        // ─── 2. REGISTRO ÚNICO DE CHARTS (evita memory leaks al re-renderizar) ───
+        const _charts = {};
+
+        function destroyAllCharts() {
+            Object.keys(_charts).forEach(k => {
+                if (_charts[k]) { _charts[k].destroy(); delete _charts[k]; }
+            });
+        }
+
+        // ─── 3. FUNCIÓN ÚNICA DE INICIALIZACIÓN ───
+        function initDashboardCharts() {
+            const donutEl   = document.getElementById('globalDonutChart');
+            const barTypeEl = document.getElementById('typeBarChart');
+            const barLabEl  = document.getElementById('labBarChart');
+
+            // Salir si no estamos en la vista del dashboard
+            if (!donutEl || !_dashboardData.isActive) return;
+
+            destroyAllCharts();
+
+            const pendientes = Math.max(0,
+                _dashboardData.totalActivos
+                - _dashboardData.equiposTerminados
+                - _dashboardData.totalVencidos
+            );
+
+            // ── Donut: Avance Global ──
+            _charts.donut = new Chart(donutEl.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completados', 'Pendientes', 'Vencidos'],
+                    datasets: [{
+                        data: [
+                            _dashboardData.equiposTerminados,
+                            pendientes,
+                            _dashboardData.totalVencidos
+                        ],
+                        backgroundColor: ['#2eca6a', '#e2e8f0', '#dc3545'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '72%',               // API Chart.js v3
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1E293B',
+                            callbacks: {
+                                label: (ctx) => ` ${ctx.label}: ${ctx.parsed}`
+                            }
+                        }
+                    }
+                }
+            });
+
+            // ── Bar: Por Tipo de Equipo ──
+            if (barTypeEl && _dashboardData.typesLabels.length > 0) {
+                _charts.barType = new Chart(barTypeEl.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: _dashboardData.typesLabels,
+                        datasets: [{
+                            data: _dashboardData.typesData,
+                            backgroundColor: ['#4154f1','#f59e0b','#8b5cf6','#ec4899','#10b981'],
+                            borderRadius: 5,
+                            barThickness: 14
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',           // horizontal bar en Chart.js v3
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { display: false, beginAtZero: true },
+                            y: {
+                                grid: { display: false },
+                                border: { display: false },
+                                ticks: { color: '#64748b', font: { size: 10, weight: '600' } }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ── Bar: Por Laboratorio ──
+            if (barLabEl && _dashboardData.labsLabels.length > 0) {
+                _charts.barLab = new Chart(barLabEl.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: _dashboardData.labsLabels,
+                        datasets: [{
+                            data: _dashboardData.labsData,
+                            backgroundColor: ['#2eca6a','#f43f5e','#3b82f6','#f59e0b','#8b5cf6'],
+                            borderRadius: 5,
+                            barThickness: 14
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { display: false, beginAtZero: true },
+                            y: {
+                                grid: { display: false },
+                                border: { display: false },
+                                ticks: { color: '#64748b', font: { size: 10, weight: '600' } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ─── 4. UTILIDADES ───
+        function escHtml(str) {
+            if (!str) return '—';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        async function openKardex(id) {
+            const sidebar = document.getElementById('kardexSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (!sidebar || !overlay) return;
+
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+
+            const content = document.getElementById('sidebarContent');
+            content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted small">Cargando historial...</p></div>';
+
+            try {
+                const response = await fetch(`?handler=KardexDetail&equipmentId=${id}`);
+                if (!response.ok) throw new Error('Error en red');
+                const data = await response.json();
+
+                content.innerHTML = `
+                    <div class="bg-light p-4 rounded-4 mb-4">
+                        <h5 class="fw-bold text-dark mb-1">${escHtml(data.name)}</h5>
+                        <code class="text-primary font-weight-bold">${escHtml(data.inventoryNumber)}</code>
+                    </div>
+                    <div class="mb-4">
+                        <label class="text-xs-premium text-muted d-block mb-1">Estado Actual</label>
+                        <span class="badge badge-pill badge-info px-3">${escHtml(data.currentStatus)}</span>
+                    </div>
+                    <div class="mb-4 border-bottom pb-3">
+                        <label class="text-xs-premium text-muted d-block mb-1">Última Intervención</label>
+                        <p class="font-weight-bold mb-0 text-dark">${escHtml(data.lastDate)}</p>
+                    </div>
+                    <div class="mb-2">
+                        <label class="text-xs-premium text-muted d-block mb-1">Observaciones / Motivo</label>
+                        <p class="text-muted small">${escHtml(data.reason)}</p>
+                    </div>
+                    <div class="mt-5">
+                        <a href="/Equipments/Details/${id}" class="btn btn-outline-primary btn-block rounded-pill font-weight-bold">Ver Ficha Completa</a>
+                    </div>
+                `;
+            } catch (err) {
+                content.innerHTML = '<div class="alert alert-danger">No se pudo cargar el detalle del equipo. Intente de nuevo.</div>';
+            }
+        }
+
+        function closeKardex() {
+            document.getElementById('kardexSidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+
+        // ─── 5. PUNTO DE ENTRADA ÚNICO ───
+        document.addEventListener('DOMContentLoaded', () => {
+            initDashboardCharts();
+            const overlay = document.getElementById('sidebarOverlay');
+            if(overlay) overlay.addEventListener('click', closeKardex);
+        });
+    </script>
+}

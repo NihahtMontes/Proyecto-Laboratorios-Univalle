@@ -1,0 +1,265 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Maintenances.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active font-weight-bold uppercase small" data-toggle="tab" href="#mantenimientos" role="tab">
+                        <i class="fas fa-tools mr-2"></i> Historial de Mantenimientos
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane active" id="mantenimientos" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center mb-4">
+                            <div>
+                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Registro Técnico de Mantenimiento</h3>
+                                <h6 class="card-subtitle text-muted ml-2">Control centralizado de servicios preventivos y correctivos.</h6>
+                            </div>
+                        </div>
+
+                        <div id="localNotificationsArea" class="mb-4" style="display: none;">
+                            <h5 class="font-weight-bold text-info mb-3 border-bottom pb-2">
+                                <i class="fas fa-bell mr-2"></i> Nuevas Asignaciones
+                            </h5>
+                            <div id="localNotificationsList">
+                            </div>
+                        </div>
+                        <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                            <form method="get">
+                                <div class="row align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="small font-weight-bold text-muted uppercase">Laboratorio de Origen</label>
+                                        <select asp-for="SelectedLaboratoryId" class="form-control custom-select drop-shadow" asp-items="Model.LaboratoryList">
+                                            <option value="">-- Todos los Laboratorios --</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-3">
+                                        <label class="small font-weight-bold text-muted uppercase">Búsqueda Técnica</label>
+                                        <div class="input-group drop-shadow">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                            </div>
+                                            <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo, Inventario..." />
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-2">
+                                        <label class="small font-weight-bold text-muted uppercase">Estado</label>
+                                        <select asp-for="StatusFilter" class="form-control custom-select"
+                                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<MaintenanceStatus>()">
+                                            <option value="">-- Todos --</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-2 text-right">
+                                        <button type="submit" class="btn btn-dark btn-rounded px-3 shadow-sm">
+                                            <i class="fas fa-filter"></i>
+                                        </button>
+                                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover v-middle">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="border-top-0">Equipamiento</th>
+                                        <th class="border-top-0">Servicio / Tipo</th>
+                                        <th class="border-top-0">Responsable</th>
+                                        <th class="border-top-0 text-center">Fecha Ejecución</th>
+                                        <th class="border-top-0 text-center">Situación</th>
+                                        <th class="border-top-0 text-center">Opciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.Maintenances == null || !Model.Maintenances.Any())
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-center py-5 text-muted italic font-weight-bold">
+                                                <i class="fas fa-calendar-times fa-3x mb-3 d-block opacity-2"></i>
+                                                Sin registros encontrados para la búsqueda actual.
+                                            </td>
+                                        </tr>
+                                    }
+                                    else
+                                    {
+                                        foreach (var item in Model.Maintenances)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="m-r-10">
+                                                            <span class="btn btn-circle btn-sm btn-light-info text-info"><i class="fas fa-tools"></i></span>
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
+                                                            <span class="text-muted small">Inv: @item.EquipmentUnit?.InventoryNumber</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-dark font-weight-bold">
+                                                        @(Html.DisplayFor(modelItem => item.MaintenanceType))
+                                                    </div>
+                                                    <small class="text-muted d-block text-truncate" style="max-width: 150px;">
+                                                        @(item.Description ?? "Sin descripción")
+                                                    </small>
+                                                </td>
+                                                <td>
+                                                    <div class="small font-weight-bold">@(item.Technician?.FullName ?? "-")</div>
+                                                    <small class="text-muted">Técnico Asignado</small>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="small font-weight-bold">@(item.ScheduledDate?.ToString("dd/MM/yyyy") ?? "-")</div>
+                                                    <small class="text-muted">Programado</small>
+                                                </td>
+                                                <td class="text-center">
+                                                    @{
+                                                        var (statusClass, statusText) = item.Status switch
+                                                        {
+                                                            MaintenanceStatus.Completed => ("badge-success", "COMPLETADO"),
+                                                            MaintenanceStatus.InProgress => ("badge-warning", "EN EJECUCIÓN"),
+                                                            MaintenanceStatus.Scheduled => ("badge-info", "PROGRAMADO"),
+                                                            MaintenanceStatus.Cancelled => ("badge-danger", "CANCELADO"),
+                                                            _ => ("badge-secondary", "DESCONOCIDO")
+                                                        };
+                                                    }
+                                                    <span class="badge @statusClass px-3 py-1">@statusText</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="btn-group shadow-sm">
+                                                        <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                        <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
+                                                            <i class="fas fa-search-plus"></i>
+                                                        </a>
+                                                        <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@item.EquipmentUnitId" class="btn btn-sm btn-outline-primary btn-rounded mr-1" title="Kardex (Histórico)">
+                                                            <i class="fas fa-history"></i>
+                                                        </a>
+                                                        <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                                        @if (Model.Maintenances.HasPreviousPage || Model.Maintenances.HasNextPage)
+                                        {
+                                            <nav aria-label="Page navigation" class="mt-4">
+                                                <ul class="pagination justify-content-center">
+                                                    @if (Model.Maintenances.HasPreviousPage)
+                                                    {
+                                                        <li class="page-item">
+                                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Maintenances.PageIndex - 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-selectedLaboratoryId="@Model.SelectedLaboratoryId">Anterior</a>
+                                                        </li>
+                                                    }
+                                                    @for (var i = 1; i <= Model.Maintenances.TotalPages; i++)
+                                                    {
+                                                        <li class="page-item @(i == Model.Maintenances.PageIndex ? "active" : "")">
+                                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-selectedLaboratoryId="@Model.SelectedLaboratoryId">@i</a>
+                                                        </li>
+                                                    }
+                                                    @if (Model.Maintenances.HasNextPage)
+                                                    {
+                                                        <li class="page-item">
+                                                            <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Maintenances.PageIndex + 1)" asp-route-searchTerm="@Model.SearchTerm" asp-route-statusFilter="@Model.StatusFilter" asp-route-selectedLaboratoryId="@Model.SelectedLaboratoryId">Siguiente</a>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            </nav>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+@section Styles {
+    <style>
+        .customtab .nav-link { border: none; color: #747d8c; padding: 15px 25px; transition: all 0.3s ease; }
+        .customtab .nav-link.active { color: #2962ff; background: transparent; border-bottom: 3px solid #2962ff; }
+        .v-middle td { vertical-align: middle !important; }
+        .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+        .border-left-3 { border-left-width: 3px !important; }
+        .btn-white { background: #fff; color: #67757c; border: 1px solid #e9ecef; }
+        .btn-white:hover { background: #f8f9fa; }
+    </style>
+}
+
+@section Scripts {
+    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    <script>
+        $(function () {
+             $('[data-toggle="tooltip"]').tooltip();
+             
+             function loadLocalMaintenanceNotifications() {
+                 $.get('/Api/Notifications?handler=Unread&filter=Mantenimiento', function(data) {
+                     const $area = $('#localNotificationsArea');
+                     const $list = $('#localNotificationsList');
+                     
+                     if (data.items && data.items.length > 0) {
+                         $list.empty();
+                         $.each(data.items, function(i, item) {
+                             const icon = item.icon || 'fas fa-wrench text-info';
+                             const url = item.url ? item.url : 'javascript:void(0)';
+                             
+                             $list.append(`
+                                 <div class="alert alert-light border border-info shadow-sm d-flex align-items-center mb-2" id="local-notif-${item.id}">
+                                     <div class="mr-3"><i class="${icon} fa-2x"></i></div>
+                                     <div class="flex-grow-1">
+                                         <h6 class="alert-heading font-weight-bold mb-1 text-dark">${item.title}</h6>
+                                         <p class="mb-0 small text-muted">${item.message}</p>
+                                         <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${item.time}</small>
+                                     </div>
+                                     <div class="ml-3">
+                                         <a href="${url}" class="btn btn-sm btn-info btn-rounded px-3 font-weight-bold shadow-sm" onclick="markLocalAsRead(event, ${item.id}, '${url}')">
+                                             Ir a la Tarea <i class="fas fa-arrow-right ml-1"></i>
+                                         </a>
+                                     </div>
+                                 </div>
+                             `);
+                         });
+                         $area.slideDown();
+                     } else {
+                         $area.slideUp();
+                     }
+                 });
+             }
+
+             loadLocalMaintenanceNotifications();
+
+             window.markLocalAsRead = function(e, id, url) {
+                 $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
+                     if (url && url !== 'javascript:void(0)') {
+                         window.location.href = url;
+                     } else {
+                         $(`#local-notif-${id}`).fadeOut(300, function() {
+                             $(this).remove();
+                             if ($('#localNotificationsList').children().length === 0) {
+                                 $('#localNotificationsArea').slideUp();
+                             }
+                         });
+                     }
+                 });
+             };
+        });
+    </script>
+}

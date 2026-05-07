@@ -1,0 +1,156 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Laboratories.CreateModel
+
+
+
+<div class="row justify-content-center">
+    <div class="col-lg-12 col-xl-11">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Nuevo Espacio de Laboratorio</h4>
+                        <h6 class="card-subtitle text-muted">Defina la infraestructura técnica, ubicación académica y alcance operativo del nuevo centro.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-flask fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+
+                    <div class="row">
+                        <!-- Column 1: Identification -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-card mr-2"></i> Identificación y Facultad
+                            </h5>
+                            
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold small uppercase text-muted">
+                                    Unidad Académica Responsable <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="ViewBag.FacultyId"
+                                        required data-validation-required-message="Debe seleccionar una facultad académica">
+                                    <option value="">-- Seleccionar Facultad --</option>
+                                </select>
+                                <span asp-validation-for="Input.FacultyId" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-5">
+                                    <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-3 rounded shadow-none">
+                                        <label asp-for="Input.Code" class="control-label font-weight-bold small text-warning uppercase">
+                                            Código / Sigla <span class="text-danger">*</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <div class="input-group-prepend">
+                                                <span class="input-group-text bg-white"><i class="fas fa-hashtag text-muted"></i></span>
+                                            </div>
+                                            <input asp-for="Input.Code" class="form-control border-warning shadow-none font-weight-bold" placeholder="EJ: LAB-01" 
+                                                   required data-validation-required-message="Obligatorio" maxlength="20" />
+                                        </div>
+                                        <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold d-block mt-1"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-7">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">
+                                            Nombre del Laboratorio <span class="text-danger">*</span>
+                                        </label>
+                                        <input asp-for="Input.Name" class="form-control" placeholder="Ej: Laboratorio de Redes e Infraestructura" 
+                                               required data-validation-required-message="El nombre es obligatorio" />
+                                        <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Column 2: Technical Location -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-map-marker-alt mr-2"></i> Ubicación Institucional
+                            </h5>
+                            
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.Floor" class="control-label font-weight-bold small uppercase text-muted">
+                                            Nivel / Piso
+                                        </label>
+                                        <input asp-for="Input.Floor" class="form-control" placeholder="Ej: Tercer Piso" />
+                                        <span asp-validation-for="Input.Floor" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small uppercase text-muted">
+                                    Descripción del Ambiente
+                                </label>
+                                <textarea asp-for="Input.Description" class="form-control" rows="3" placeholder="Detalles sobre el acceso, capacidad instalada o equipamiento base..."></textarea>
+                                <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                            </div>
+
+                            <div class="alert alert-light border-0 small p-3 text-info shadow-none italic border-left border-info border-3">
+                                <i class="fas fa-info-circle mr-1"></i> <strong>Aviso:</strong> Al registrar este nuevo espacio, quedará habilitado automáticamente para la asignación de activos, inventario técnico y creación de usuarios operativos.
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> Registrar Laboratorio
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            
+            // Advanced text pattern for Spanish alfanumeric fields
+            var alphanumericPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]*$/;
+            
+            function setupBlocking(selector, pattern) {
+                $(selector).on('input', function() {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]/g, ''));
+                    }
+                });
+            }
+
+            // Apply aggressive validation
+            setupBlocking('#Input_Name', alphanumericPattern);
+            setupBlocking('#Input_Code', alphanumericPattern);
+            setupBlocking('#Input_Floor', alphanumericPattern);
+        });
+    </script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 4px !important; }
+    </style>
+}

@@ -1,0 +1,159 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Services;
+using System.ComponentModel.DataAnnotations;
+
+namespace Proyecto_Laboratorios_Univalle.Pages.Managements
+{
+    [Authorize(Roles = AuthorizationHelper.AdminRoles)]
+    public class CreateModel : PageModel
+    {
+        private readonly ApplicationDbContext _context;
+        private readonly UserManager<User> _userManager;
+        private readonly IManagementContextService _managementContext;
+
+        public CreateModel(ApplicationDbContext context, UserManager<User> userManager, IManagementContextService managementContext)
+        {
+            _context = context;
+            _userManager = userManager;
+            _managementContext = managementContext;
+        }
+
+        public IActionResult OnGet(string? type = null)
+        {
+            Input.Year = DateTime.Now.Year;
+            Input.Semester = DateTime.Now.Month <= 6 ? 1 : 2;
+            if (!string.IsNullOrEmpty(type) && Enum.TryParse<ManagementType>(type, out var typeEnum))
+            {
+                Input.Type = typeEnum;
+            }
+            return Page();
+        }
+
+        [BindProperty]
+        public ManagementInputModel Input { get; set; } = new();
+
+        public class ManagementInputModel
+        {
+            [Required(ErrorMessage = "El año es obligatorio")]
+            [Range(2000, 2100, ErrorMessage = "Año fuera de rango permitido")]
+            [Display(Name = "Año")]
+            public int Year { get; set; }
+
+            [Required(ErrorMessage = "El semestre es obligatorio")]
+            [Range(1, 2, ErrorMessage = "El semestre debe ser 1 o 2")]
+            [Display(Name = "Semestre (1 o 2)")]
+            public int Semester { get; set; }
+
+            [Display(Name = "Descripción general")]
+            public string? Description { get; set; }
+
+            [Display(Name = "Fecha de Inicio")]
+            [DataType(DataType.Date)]
+            public DateTime? StartDate { get; set; }
+
+            [Display(Name = "Fecha Límite Planificada")]
+            [DataType(DataType.Date)]
+            public DateTime? PlannedEndDate { get; set; }
+
+            [Required]
+            [Display(Name = "Estado Inicial")]
+            public ManagementStatus Status { get; set; } = ManagementStatus.Active;
+
+            [Required]
+            [Display(Name = "Tipo de Gestión")]
+            public ManagementType Type { get; set; } = ManagementType.Preventive;
+        }
+
+        public async Task<IActionResult> OnPostAsync()
+        {
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
+
+            // Validar que el año no sea superior al año actual + 1
+            if (Input.Year > DateTime.Now.Year + 1)
+            {
+                ModelState.AddModelError("Input.Year", "No se puede registrar una gestión para un año tan lejano en el futuro.");
+                return Page();
+            }
+
+            // Validar que no exista ya esta gestión (Año-Semestre)
+            var code = $"{Input.Year}-{Input.Semester}";
+            var exists = await _context.Managements.AnyAsync(m => m.Year == Input.Year && m.Semester == Input.Semester && m.Type == Input.Type && m.Status != ManagementStatus.Deleted);
+            if (exists)
+            {
+                ModelState.AddModelError(string.Empty, $"Ya existe una gestión registrada para {code}.");
+                return Page();
+            }
+
+            // Si se intenta crear como ACTIVA, validar que no haya otra activa
+            if (Input.Status == ManagementStatus.Active)
+            {
+                var anyActive = await _context.Managements.AnyAsync(m => m.Status == ManagementStatus.Active);
+                if (anyActive)
+                {
+                    ModelState.AddModelError(string.Empty, "Ya existe una gestión activa. Por favor, cierre o inactive la gestión actual antes de activar una nueva.");
+                    return Page();
+                }
+            }
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            
+            var management = new Management
+            {
+                Year = Input.Year,
+                Semester = Input.Semester,
+                Code = code,
+                Description = Input.Description,
+                StartDate = Input.StartDate,
+                PlannedEndDate = Input.PlannedEndDate,
+                Status = Input.Status,
+                Type = Input.Type,
+                Responsible = currentUser?.FullName ?? User.Identity?.Name ?? "Sistema"
+            };
+
+            _context.Managements.Add(management);
+            await _context.SaveChangesAsync();
+            _managementContext.InvalidateCache();
+
+            if (Input.Type == ManagementType.Preventive)
+            {
+                // Sincronización Automática: Cargar todos los equipos activos a la nueva ronda preventiva
+                var activeUnits = await _context.EquipmentUnits
+                    .Where(u => u.CurrentStatus != EquipmentStatus.Deleted)
+                    .ToListAsync();
+
+                foreach (var unit in activeUnits)
+                {
+                    _context.ManagementPlans.Add(new ManagementPlan
+                    {
+                        ManagementId = management.Id,
+                        EquipmentUnitId = unit.Id,
+                        CurrentPhase = WizardPhase.Verification,
+                        CurrentState = WizardEquipmentState.PendingVerification,
+                        PlanStatus = ManagementPlanStatus.Pending,
+                        PlannedDate = null
+                    });
+                }
+                await _context.SaveChangesAsync();
+                _managementContext.InvalidateCache();
+                TempData.Success($"La Gestión {code} ha sido creada correctamente con todos los equipos activos.");
+            }
+            else
+            {
+                TempData.Success($"La Gestión Correctiva {code} ha sido creada correctamente. Lista para recibir fallas críticas.");
+            }
+
+            return RedirectToPage("./Index", new { type = Input.Type.ToString() });
+        }
+    }
+}

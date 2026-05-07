@@ -1,0 +1,259 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Kardex.CreateModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@{
+    ViewData["Title"] = "Registro en Kardex (Paso 5)";
+    bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+    int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 5);
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-12">
+        @if (isWizard)
+        {
+            await Html.RenderPartialAsync("_WizardSteps", currentPhaseInt);
+        }
+
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Registro de Kardex e Historial</h4>
+                        <h6 class="card-subtitle text-muted italic">Actualización final de estado operativo post-mantenimiento/salida.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0 text-right">
+                         <i class="fas fa-clipboard-list fa-2x text-info"></i>
+                    </div>
+                </div>
+
+                <form method="post" id="kardexForm" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4 small"></div>
+                    
+                    <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
+                    <input type="hidden" asp-for="ManagementPlanId" />
+
+                    <!-- FILA 1: UBICACION (Layout 3 Columnas) -->
+                    <div class="bg-light p-4 rounded mb-4 border-left border-info shadow-sm" style="border-left-width: 4px;">
+                        <h5 class="text-dark font-weight-bold mb-3 uppercase small"><i class="fas fa-map-marker-alt mr-2 text-info"></i>Localización y Activo</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad <span class="text-danger">*</span></label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-info" asp-items="ViewBag.FacultyId" id="facultySelector" disabled></select>
+                                        <input type="hidden" asp-for="Input.FacultyId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-info" asp-items="ViewBag.FacultyId" id="facultySelector" required>
+                                            <option value="">-- Seleccione Facultad --</option>
+                                        </select>
+                                    }
+                                    <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio <span class="text-danger">*</span></label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-info" asp-items="ViewBag.LaboratoryId" id="labSelector" disabled></select>
+                                        <input type="hidden" asp-for="Input.LaboratoryId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-info" asp-items="ViewBag.LaboratoryId" id="labSelector" required>
+                                            <option value="">-- Seleccione Laboratorio --</option>
+                                        </select>
+                                    }
+                                    <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Unidad Física <span class="text-danger">*</span></label>
+                                    @if (isWizard)
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-info" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" disabled></select>
+                                        <input type="hidden" asp-for="Input.EquipmentUnitId" />
+                                    }
+                                    else
+                                    {
+                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-info" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" required>
+                                            <option value="">-- Seleccione Equipo --</option>
+                                        </select>
+                                    }
+                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TARJETA DE REFERENCIA L-3 (o L-8) -->
+                    @if (isWizard && ViewData["LinkedDepartureId"] != null)
+                    {
+                        <div class="bg-light p-3 rounded mb-4 border-left border-warning" style="border-left-width: 4px !important;">
+                            <label class="control-label font-weight-bold small text-uppercase text-muted">Salida de Equipo Relacionada (L-3)</label>
+                            <div class="p-2 rounded mt-2" style="background:#fffbeb; border: 1px solid #fef08a;">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3" style="color: #d97706;"><i class="fas fa-sign-out-alt fa-lg"></i></div>
+                                    <div>
+                                        <h6 class="m-0 font-weight-bold" style="color: #b45309;">Salida L-3 Vinculada</h6>
+                                        <span class="small" style="color: #d97706;">ID: @ViewData["LinkedDepartureId"]</span>
+                                    </div>
+                                    <a href="/Departures/Details?id=@ViewData["LinkedDepartureId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #d97706; border: 1px solid #fef08a;">
+                                        Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 4, 'L-3 Salida', 5)">
+                                        <i class="fas fa-undo"></i> Rehacer L-3
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (isWizard && ViewData["LinkedMaintenanceId"] != null)
+                    {
+                        // En caso de que haya saltado L-3
+                        <div class="bg-light p-3 rounded mb-4 border-left border-purple" style="border-left-width: 4px !important; border-color: #8b5cf6 !important;">
+                            <label class="control-label font-weight-bold small text-uppercase text-muted">Mantenimiento Relacionado (L-8)</label>
+                            <div class="p-2 rounded mt-2" style="background:#f5f3ff; border: 1px solid #ddd6fe;">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3" style="color: #7c3aed;"><i class="fas fa-wrench fa-lg"></i></div>
+                                    <div>
+                                        <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Mantenimiento L-8 Vinculado</h6>
+                                        <span class="small" style="color: #7c3aed;">ID: @ViewData["LinkedMaintenanceId"]</span>
+                                    </div>
+                                    <a href="/Maintenances/Details/@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
+                                        Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 3, 'L-8 Mantenimiento', 5)">
+                                        <i class="fas fa-undo"></i> Rehacer L-8
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- FILA 2: DATOS DE HISTORIAL -->
+                    <div class="row">
+                        <div class="col-lg-7">
+                            <h5 class="text-success font-weight-bold mb-3 uppercase small"><i class="fas fa-check-circle mr-2"></i>Estado Final (Kardex)</h5>
+                            <div class="card border mb-4 shadow-sm">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 border-right">
+                                            <div class="form-group mb-0">
+                                                <label asp-for="Input.Status" class="control-label font-weight-bold small text-uppercase text-muted">Estado Actual del Activo <span class="text-danger">*</span></label>
+                                                <select asp-for="Input.Status" class="form-control custom-select border-success" asp-items="Html.GetEnumSelectList<EquipmentStatus>()" required>
+                                                    <option value="">-- Seleccione Estado --</option>
+                                                </select>
+                                                <span asp-validation-for="Input.Status" class="text-danger small"></span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group mb-0">
+                                                <label asp-for="Input.StartDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha de Novedad <span class="text-danger">*</span></label>
+                                                <input asp-for="Input.StartDate" class="form-control" type="date" required />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-5">
+                            <h5 class="text-primary font-weight-bold mb-3 uppercase small"><i class="fas fa-comment-dots mr-2"></i>Motivo del Registro</h5>
+                            <div class="card bg-light border-0 mb-4 shadow-sm">
+                                <div class="card-body p-4">
+                                    <div class="form-group mb-0">
+                                        <label asp-for="Input.Reason" class="control-label font-weight-bold small text-uppercase text-muted italic">Justificación para Kardex</label>
+                                        <textarea asp-for="Input.Reason" class="form-control bg-white shadow-none" rows="3" required></textarea>
+                                        <span asp-validation-for="Input.Reason" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="mt-4" />
+
+                    <div class="form-actions text-right pb-4 mt-4">
+                        @if (isWizard)
+                        {
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="5" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
+                                <i class="fas fa-undo mr-1"></i> Volver al Wizard
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-page="/Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
+                                 <i class="fas fa-times mr-1"></i> Cancelar
+                            </a>
+                        }
+                        <button type="button" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold text-white py-2" onclick="confirmKardex()">
+                            <i class="fas fa-save mr-1"></i> Registrar en Kardex
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+
+            // Selectores cascada
+            $('#facultySelector').change(function () {
+                var facultyId = $(this).val();
+                $('#labSelector').empty().append('<option value="">-- Seleccione Laboratorio --</option>');
+                $('#unitSelector').empty().append('<option value="">-- Seleccione Equipo --</option>');
+                if (!facultyId) return;
+
+                $.get('?handler=LaboratoriesByFaculty&facultyId=' + facultyId, function (data) {
+                    $.each(data, function (i, item) {
+                        $('#labSelector').append('<option value="' + item.id + '">' + item.name + '</option>');
+                    });
+                });
+            });
+
+            $('#labSelector').change(function () {
+                var labId = $(this).val();
+                $('#unitSelector').empty().append('<option value="">-- Seleccione Equipo --</option>');
+                if (!labId) return;
+
+                $.get('?handler=UnitsByLab&laboratoryId=' + labId, function (data) {
+                    $.each(data, function (i, item) {
+                        $('#unitSelector').append('<option value="' + item.id + '">' + item.name + '</option>');
+                    });
+                });
+            });
+        });
+
+        function confirmKardex() {
+            Swal.fire({
+                title: '¿Confirmar Kardex?',
+                text: 'Se registrará este historial en el Kardex del equipo y se actualizará su estado operativo.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, registrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#17a2b8',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $('#kardexForm').submit();
+                }
+            });
+        }
+    </script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

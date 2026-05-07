@@ -1,0 +1,201 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Equipment.CreateModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Crear Nuevo Equipo";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-11 col-xl-10">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Registrar Definición de Equipo (Catálogo)</h4>
+                        <h6 class="card-subtitle text-muted">Cree la ficha técnica general. La procedencia y ubicación predominante se definen aquí.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-microscope fa-2x text-info"></i>
+                    </div>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" novalidate id="createForm">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+
+                    <div class="row">
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-barcode mr-2"></i> Identificación y Clasificación</h5>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Category" class="control-label font-weight-bold small uppercase text-muted">Tipo de Recurso <span class="text-danger">*</span></label>
+                                <select asp-for="Input.Category" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<EquipmentCategory>()" id="categorySelect" required>
+                                </select>
+                                <span asp-validation-for="Input.Category" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label id="labelDynamic" class="control-label font-weight-bold small uppercase text-muted">Categoría / Clasificación <span class="text-danger">*</span></label>
+                                <select asp-for="Input.TypeClassification" class="form-control custom-select border-info" id="dynamicSelect" required>
+                                    <option value="">-- Seleccione --</option>
+                                </select>
+                                <span asp-validation-for="Input.TypeClassification" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Activo <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" placeholder="Ej: Espectrofotómetro" required />
+                                <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                            </div>
+
+                            <div class="row mt-4 pt-2 border-top">
+                                <div class="col-md-12">
+                                    <h6 class="font-weight-bold text-muted small uppercase mb-3 text-info">Procedencia</h6>
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <label asp-for="Input.CountryId" class="control-label font-weight-bold small uppercase text-muted">País de Origen</label>
+                                    <select asp-for="Input.CountryId" class="form-control custom-select" asp-items="ViewBag.CountryId">
+                                        <option value="">-- Seleccione País --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.CountryId" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-cogs mr-2"></i> Ficha Técnica</h5>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.Brand" class="control-label font-weight-bold small uppercase text-muted">Marca</label>
+                                        <input asp-for="Input.Brand" class="form-control" placeholder="Ej: Nikon" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label asp-for="Input.Model" class="control-label font-weight-bold small uppercase text-muted">Modelo</label>
+                                        <input asp-for="Input.Model" class="form-control" placeholder="Ej: Eclipse E100" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.ImageUpload" class="control-label font-weight-bold small uppercase text-muted">Imagen de Referencia</label>
+                                <div class="custom-file">
+                                    <input asp-for="Input.ImageUpload" type="file" class="custom-file-input" id="customFile" accept="image/*">
+                                    <label class="custom-file-label" for="customFile">Elegir archivo...</label>
+                                </div>
+                                <span asp-validation-for="Input.ImageUpload" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.UsefulLifeYears" class="control-label font-weight-bold small uppercase text-muted">Vida Útil Estimada (Años)</label>
+                                <input asp-for="Input.UsefulLifeYears" class="form-control" placeholder="Ej: 10" type="number" min="1" max="50" />
+                                <span asp-validation-for="Input.UsefulLifeYears" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small uppercase text-muted">Descripción / Notas Adicionales</label>
+                                <textarea asp-for="Input.Description" class="form-control" rows="4" placeholder="Especificaciones técnicas relevantes..."></textarea>
+                                <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="card border shadow-sm mb-4">
+                        <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-3 px-4">
+                            <h5 class="font-weight-bold mb-0 text-dark">
+                                <i class="fas fa-sticky-note mr-2 text-info"></i>Notas del Fabricante / Prevención
+                            </h5>
+                            <button type="button" class="btn btn-sm btn-outline-info btn-rounded ml-auto font-weight-bold" onclick="addNoteRow()">
+                                <i class="fas fa-plus mr-1"></i> Agregar Nota
+                            </button>
+                        </div>
+                        <div class="card-body pt-2 px-4">
+                            <div id="notesContainer">
+                            </div>
+                            <small class="text-muted">Agregue notas importantes del fabricante, recomendaciones de uso o pautas de mantenimiento preventivo.</small>
+                        </div>
+                    </div>
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> Registrar Definición
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                            Volver al Listado
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            // Label de archivo
+            $(".custom-file-input").on("change", function () {
+                var fileName = $(this).val().split("\\").pop();
+                $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+            });
+
+            // --- NOTAS DEL FABRICANTE ---
+            window.addNoteRow = function() {
+                var idx = $('#notesContainer .note-row').length;
+                var row = '<div class="input-group mb-2 note-row">';
+                row += '<input type="text" name="Input.Notes[' + idx + ']" class="form-control border-info" placeholder="Ej: Revisar conexiones cada 3 meses..." required />';
+                row += '<div class="input-group-append">';
+                row += '<button type="button" class="btn btn-outline-danger" onclick="$(this).closest(\'.note-row\').remove()"><i class="fas fa-trash"></i></button>';
+                row += '</div></div>';
+                $('#notesContainer').append(row);
+            };
+
+            // --- LÓGICA DE DOBLE FILTRADO PARA LA INGE ---
+            const equipmentOptions = [
+                { val: '0', text: 'Electrónico / Eléctrico' },
+                { val: '1', text: 'Manual / Mecánico' },
+                { val: '2', text: 'Mobiliario' },
+                { val: '3', text: 'Instrumental de Medición' },
+                { val: '6', text: 'Informático / Software' },
+                { val: '7', text: 'Otro' }
+            ];
+
+            const utensilOptions = [
+                { val: '4', text: 'Material de Vidrio' },
+                { val: '2', text: 'Material de Plástico' },
+                { val: '3', text: 'Material de Metal' },
+                { val: '4', text: 'Porcelana' }
+            ];
+
+            function updateDynamicSelect() {
+                const category = $('#categorySelect').val(); // 0=Equipo, 1=Utensilio
+                const $select = $('#dynamicSelect');
+                const $label = $('#labelDynamic');
+
+                $select.empty().append('<option value="">-- Seleccione --</option>');
+
+                if (category == '0') { // Equipo
+                    $label.text('Clasificación Técnica');
+                    equipmentOptions.forEach(opt => {
+                        $select.append(`<option value="${opt.val}">${opt.text}</option>`);
+                    });
+                } else if (category == '1') { // Utensilio
+                    $label.text('Tipo de Material');
+                    utensilOptions.forEach(opt => {
+                        $select.append(`<option value="${opt.val}">${opt.text}</option>`);
+                    });
+                }
+            }
+
+            $('#categorySelect').on('change', updateDynamicSelect);
+            updateDynamicSelect();
+        });
+    </script>
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
