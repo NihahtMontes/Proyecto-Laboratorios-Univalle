@@ -2,6 +2,10 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
+@{
+    bool isWizard = Model.IsWizard;
+}
+
 @if (Model.SessionEquipments.Any())
 {
     <div class="row">
@@ -76,7 +80,7 @@
                     </div>
 
                     <div class="form-actions text-right mt-4">
-                        <a asp-page="./Index" asp-route-filterLaboratoryId="@Model.LabId" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
+                        <a asp-page="./Index" asp-route-filterLaboratoryId="@Model.LabId" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold shadow-sm">
                             <i class="fas fa-arrow-left mr-1"></i> Volver al Historial
                         </a>
                     </div>
@@ -89,51 +93,73 @@ else if (Model.Verification != null)
 {
     <div class="row">
         <div class="col-lg-8">
-            <div class="card shadow-sm border-0">
+
+            @if (isWizard)
+            {
+                await Html.RenderPartialAsync("_WizardSteps", 1);
+            }
+
+            <div class="card shadow-sm border-0 mb-4 printable-card">
                 <div class="card-body p-4">
-                    <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div class="d-flex no-block align-items-center mb-4">
                         <div>
-                            <h4 class="card-title text-dark font-weight-bold">Detalle de Verificación #@Model.Verification.Id</h4>
-                            <h6 class="card-subtitle text-muted">@Model.Verification.EquipmentUnit?.Equipment?.Name</h6>
+                            <h4 class="card-title text-dark font-weight-bold">Paso 1: Verificación L-6</h4>
+                            <h6 class="card-subtitle text-muted small">Detalle de la inspección técnica inicial. (ID: #@Model.Verification.Id)</h6>
                         </div>
-                        <div class="ml-auto mt-2 mt-md-0">
-                            <span class="badge badge-pill badge-info px-4 py-2">
-                                @Html.DisplayFor(m => m.Verification.Status)
-                            </span>
+                        <div class="ml-auto d-print-none">
+                            <i class="fas fa-clipboard-check fa-2x text-success opacity-5"></i>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <label class="small text-muted font-weight-bold uppercase mb-1">Equipamiento Inspeccionado</label>
+                            <div class="p-3 bg-light rounded border-left border-success font-weight-bold text-dark d-flex justify-content-between align-items-center">
+                                <span>
+                                    <i class="fas fa-microchip mr-2 text-success"></i> @Model.Verification.EquipmentUnit?.Equipment?.Name
+                                    <span class="text-muted font-weight-normal small ml-1">(@(Model.Verification.EquipmentUnit?.InventoryNumber ?? "-"))</span>
+                                </span>
+                                <span class="badge badge-pill badge-success px-3">@Model.Verification.EquipmentUnit?.Equipment?.Category</span>
+                            </div>
                         </div>
                     </div>
 
                     <div class="row mt-4">
                         <div class="col-md-6 border-right">
-                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-microchip mr-2"></i>Equipo</h5>
+                            <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-info-circle mr-2 text-info"></i>Datos del Activo</h5>
                             <table class="table table-sm table-borderless bg-light rounded">
                                 <tbody>
                                     <tr>
-                                        <th class="text-muted small uppercase pl-3 pt-2">Nombre</th>
-                                        <td class="font-weight-bold pt-2 text-dark">@Model.Verification.EquipmentUnit?.Equipment?.Name</td>
+                                        <th class="text-muted small uppercase pl-3 pt-2">Ubicación</th>
+                                        <td class="font-weight-bold pt-2 text-dark">@Model.Verification.EquipmentUnit?.Laboratory?.Name</td>
                                     </tr>
                                     <tr>
-                                        <th class="text-muted small uppercase pl-3">Inventario</th>
+                                        <th class="text-muted small uppercase pl-3">N° Inventario</th>
                                         <td class="font-weight-bold text-dark">@Model.Verification.EquipmentUnit?.InventoryNumber</td>
                                     </tr>
                                     <tr>
-                                        <th class="text-muted small uppercase pl-3 pb-2">Fecha</th>
+                                        <th class="text-muted small uppercase pl-3 pb-2">Fecha Inspección</th>
                                         <td class="font-weight-bold pb-2 text-dark">@Model.Verification.Date.ToString("dd/MM/yyyy")</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                         <div class="col-md-6">
-                            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-clipboard-check mr-2"></i>Condición</h5>
+                            <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-check-double mr-2 text-success"></i>Condición Técnica</h5>
                             <table class="table table-sm table-borderless bg-light rounded">
                                 <tbody>
                                     <tr>
                                         <th class="text-muted small uppercase pl-3 pt-2">Estado Físico</th>
-                                        <td class="font-weight-bold pt-2 text-dark">@Html.DisplayFor(m => m.Verification.PhysicalCondition)</td>
+                                        <td class="font-weight-bold pt-2">
+                                            @{
+                                                var condClass = Model.Verification.PhysicalCondition == PhysicalCondition.Bad ? "text-danger" : (Model.Verification.PhysicalCondition == PhysicalCondition.Regular ? "text-warning" : "text-success");
+                                            }
+                                            <span class="@condClass font-weight-bold">@Html.DisplayFor(m => m.Verification.PhysicalCondition)</span>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th class="text-muted small uppercase pl-3 pb-2">Inspector</th>
-                                        <td class="font-weight-bold pb-2 text-dark">@(Model.Verification.CreatedBy?.FullName ?? "Sistema")</td>
+                                        <td class="font-weight-bold pb-2 text-dark">@(Model.Verification.CreatedBy?.FullName ?? "Administrador Sistema")</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -142,44 +168,88 @@ else if (Model.Verification != null)
 
                     @if (!string.IsNullOrWhiteSpace(Model.Verification.Observations))
                     {
-                        <div class="alert alert-light border mt-4 p-3 small text-dark border-left border-danger">
-                            <label class="font-weight-bold uppercase mb-1 d-block text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Observaciones:</label>
-                            <div class="text-muted">@Model.Verification.Observations</div>
+                        <div class="mt-4">
+                            <label class="control-label font-weight-bold small uppercase text-muted mb-1">Hallazgos y Observaciones</label>
+                            <div class="p-3 bg-white border rounded text-dark border-left border-3 border-danger" style="min-height: 80px; white-space: pre-wrap;">@Model.Verification.Observations</div>
                         </div>
                     }
-
-                    <div class="form-actions text-right mt-4">
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
-                            <i class="fas fa-arrow-left mr-1"></i> Volver
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-4">
+        <div class="col-lg-4 d-print-none">
+            <div class="card shadow-sm border-0 mb-4 border-left border-3" style="background: #f0f9ff; border-color: #28a745 !important;">
+                <div class="card-body">
+                    <h5 class="card-title font-weight-bold small uppercase mb-3" style="color: #28a745;"><i class="fas fa-shield-alt mr-2"></i> Estado de Verificación</h5>
+                    <hr class="mb-4" />
+
+                    <div class="mb-3">
+                        <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Identificador Único</label>
+                        <span class="font-weight-bold text-dark" style="font-size: 1.2rem;">#VER-@Model.Verification.Id.ToString("D5")</span>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estatus de Registro</label>
+                        <span class="badge badge-pill badge-info px-3 py-1 font-weight-bold">@Html.DisplayFor(m => m.Verification.Status)</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body p-4">
-                    <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase border-bottom pb-2">
-                        <i class="fas fa-history mr-2 text-warning"></i>Auditoría
-                    </h5>
-                    <div class="small">
+                <div class="card-body">
+                    <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Bitácora de Auditoría</h5>
+                    <hr />
+                    <div class="audit-log">
                         <div class="mb-3">
-                            <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Creado</label>
-                            <span class="font-weight-bold text-dark d-block">@Model.Verification.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
-                            <span class="text-muted">@(Model.Verification.CreatedBy?.FullName ?? "Sistema")</span>
+                            <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Registro Creado</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Verification.CreatedBy?.FullName ?? "Sistema")</span>
+                            <span class="text-muted small">@Model.Verification.CreatedDate.ToString("dd-MM-yyyy HH:mm")</span>
                         </div>
                         @if (Model.Verification.LastModifiedDate.HasValue)
                         {
                             <div class="mb-0 border-top pt-3 mt-3">
-                                <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Modificado</label>
-                                <span class="font-weight-bold text-dark d-block">@Model.Verification.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                                <span class="text-muted">@(Model.Verification.ModifiedBy?.FullName ?? "-")</span>
+                                <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Última Modificación</label>
+                                <span class="font-weight-bold text-dark d-block">@(Model.Verification.ModifiedBy?.FullName ?? "-")</span>
+                                <span class="text-muted small">@Model.Verification.LastModifiedDate.Value.ToString("dd-MM-yyyy HH:mm")</span>
                             </div>
                         }
                     </div>
                 </div>
             </div>
+
+            <div class="form-actions mt-4">
+                <a asp-page="./Edit" asp-route-id="@Model.Verification.Id"
+                   asp-route-isWizard="@isWizard" asp-route-managementId="@ViewData["ManagementId"]"
+                   class="btn btn-success btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3">
+                    <i class="fas fa-edit mr-2"></i> Editar Registro
+                </a>
+
+                @if (isWizard)
+                {
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2" asp-route-ManagementId="@ViewData["ManagementId"]"
+                       class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
+                        <i class="fas fa-arrow-left mr-2"></i> Volver al Wizard
+                    </a>
+                }
+                else
+                {
+                    <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
+                        <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+                    </a>
+                }
+            </div>
         </div>
     </div>
+}
+
+@section Styles {
+    <style>
+        .opacity-5 { opacity: 0.15; }
+        .border-3 { border-left-width: 4px !important; }
+
+        @@media print {
+            .d-print-none { display: none !important; }
+            .printable-card { border: none !important; box-shadow: none !important; }
+        }
+    </style>
 }

@@ -54,25 +54,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return;
             }
 
-            var query = _context.Verifications
+            var pi = pageIndex ?? 1;
+
+            var verifications = await _context.Verifications
+                .AsNoTracking()
                 .Include(v => v.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                 .Include(v => v.CreatedBy)
                 .Where(v => v.EquipmentUnit!.LaboratoryId == FilterLaboratoryId.Value)
+                .OrderByDescending(v => v.Date)
+                .ToListAsync();
+
+            var grouped = verifications
                 .GroupBy(v => v.Date.Date)
                 .Select(g => new SessionGroup
                 {
                     Date = g.Key,
                     LaboratoryId = FilterLaboratoryId.Value,
-                    LaboratoryName = labs.FirstOrDefault(l => l.Id == FilterLaboratoryId.Value)!.Name,
+                    LaboratoryName = g.First().EquipmentUnit?.Laboratory?.Name ?? "N/A",
                     TotalEquipments = g.Count(),
                     BadCount = g.Count(v => v.PhysicalCondition == PhysicalCondition.Bad),
                     InspectorName = g.First().CreatedBy != null
-                        ? g.First().CreatedBy!.FirstName + " " + g.First().CreatedBy!.LastName
+                        ? $"{g.First().CreatedBy.FirstName} {g.First().CreatedBy.LastName}"
                         : "Sistema"
                 })
-                .OrderByDescending(s => s.Date);
+                .OrderByDescending(s => s.Date)
+                .ToList();
 
-            Sessions = await PaginatedList<SessionGroup>.CreateAsync(query, pageIndex ?? 1, PageSize);
+            var count = grouped.Count;
+            var items = grouped.Skip((pi - 1) * PageSize).Take(PageSize).ToList();
+            Sessions = new PaginatedList<SessionGroup>(items, count, pi, PageSize);
         }
 
         // OnPostGenerateReportAsync eliminado: Los reportes ahora se gestionan centralizadamente.

@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using Proyecto_Laboratorios_Univalle.Services;
-
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Requests
@@ -14,15 +12,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
     public class DetailsModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
-        private readonly IReportService _reportService;
-
-        public DetailsModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, IReportService reportService)
+        public DetailsModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context)
         {
             _context = context;
-            _reportService = reportService;
         }
 
         public new Request Request { get; set; } = default!;
+
+        [BindProperty(SupportsGet = true)]
+        public bool IsWizard { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
@@ -43,42 +44,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             if (request == null) return NotFound();
 
             Request = request;
+
+            var currentMgmt = ManagementId.HasValue
+                ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
+                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+
+            var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
+            ViewData["IsCorrective"] = isCorrective;
+            ViewData["IsWizard"] = IsWizard;
+            ViewData["ManagementId"] = currentMgmt?.Id;
+
             return Page();
         }
 
-        public async Task<IActionResult> OnGetDescargarReporteAsync(int id)
-        {
-            if (id <= 0)
-            {
-                TempData.Error(NotificationHelper.Requests.InvalidId);
-                return RedirectToPage(new { id = id });
-            }
 
-            try
-            {
-                // Determinar tipo para el nombre del archivo
-                var requestType = await _context.Requests
-                    .Where(r => r.Id == id)
-                    .Select(r => r.Type)
-                    .FirstOrDefaultAsync();
-
-                var prefix = requestType == RequestType.Purchasing ? "Solicitud_Adquisicion" : "Solicitud_Mantenimiento";
-
-                var excelBytes = await _reportService.GenerateReport(id);
-                var fileName = $"{prefix}_{id}_{DateTime.UtcNow:yyyyMMdd_HHmm}.xlsx";
-
-                return File(
-                    excelBytes,
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    fileName
-                );
-            }
-            catch (Exception ex)
-            {
-                _context.ChangeTracker.Clear();
-                TempData.Error(NotificationHelper.Requests.SaveError($"No se pudo generar el Excel: {ex.Message}"));
-                return RedirectToPage(new { id = id });
-            }
-        }
     }
 }

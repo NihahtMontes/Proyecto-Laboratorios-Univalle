@@ -26,23 +26,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         [BindProperty]
         public EditInputModel Input { get; set; } = new();
 
-        public List<VerificationCheckItem> CheckItems { get; set; } = [];
+        [BindProperty(SupportsGet = true)]
+        public bool IsWizard { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
 
         public class EditInputModel
         {
             public int Id { get; set; }
 
             [Required]
+            [Display(Name = "Unidad Física")]
             public int EquipmentUnitId { get; set; }
 
+            [Required]
             [DataType(DataType.Date)]
+            [Display(Name = "Fecha Inspección")]
             public DateTime Date { get; set; }
 
+            [Display(Name = "Observaciones y Hallazgos")]
             public string? Observations { get; set; }
 
-            public VerificationStatus Status { get; set; }
+            [Required]
+            [Display(Name = "Condición Física")]
+            public PhysicalCondition PhysicalCondition { get; set; }
 
-            public Dictionary<int, VerificationResult> Results { get; set; } = [];
+            [Required]
+            [Display(Name = "Estado de Registro")]
+            public VerificationStatus Status { get; set; }
         }
 
         public async Task<IActionResult> OnGetAsync(int? id)
@@ -50,14 +62,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             if (id == null) return NotFound();
 
             var verification = await _context.Verifications
-                .Include(v => v.CheckResults)
                 .Include(v => v.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (verification == null) return NotFound();
 
-            // Mapear a InputModel
+            // Mapear a InputModel simple
             Input = new EditInputModel
             {
                 Id = verification.Id,
@@ -65,11 +76,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 Date = verification.Date,
                 Observations = verification.Observations,
                 Status = verification.Status,
-                Results = verification.CheckResults.ToDictionary(r => r.CheckItemId, r => r.Result)
+                PhysicalCondition = verification.PhysicalCondition
             };
 
-            LoadCheckItems();
+            ViewData["EquipmentName"] = verification.EquipmentUnit?.Equipment?.Name ?? "N/A";
+            ViewData["InventoryNumber"] = verification.EquipmentUnit?.InventoryNumber ?? "N/A";
+
             LoadLists();
+
+            var currentMgmt = ManagementId.HasValue
+                ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
+                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+
+            ViewData["IsCorrective"] = currentMgmt?.Type == ManagementType.Corrective;
+            ViewData["IsWizard"] = IsWizard;
+            ViewData["ManagementId"] = currentMgmt?.Id;
 
             return Page();
         }
@@ -78,47 +99,28 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         {
             if (!ModelState.IsValid)
             {
-                LoadCheckItems();
                 LoadLists();
+                ViewData["IsWizard"] = IsWizard;
+                ViewData["ManagementId"] = ManagementId;
                 return Page();
             }
 
             var verification = await _context.Verifications
-                .Include(v => v.CheckResults)
-                .AsTracking()
                 .FirstOrDefaultAsync(v => v.Id == Input.Id);
 
             if (verification == null) return NotFound();
 
-            // Actualizar metadata
+            // Actualizar datos atómicos
             verification.Date = Input.Date;
             verification.Observations = Input.Observations;
             verification.Status = Input.Status;
+            verification.PhysicalCondition = Input.PhysicalCondition;
             verification.EquipmentUnitId = Input.EquipmentUnitId;
 
             // Auditoría
             var user = await _userManager.GetUserAsync(User);
             if (user != null) verification.ModifiedById = user.Id;
             verification.LastModifiedDate = DateTime.UtcNow;
-
-            // Actualizar resultados de checks
-            foreach (var (checkItemId, result) in Input.Results)
-            {
-                var existingResult = verification.CheckResults.FirstOrDefault(r => r.CheckItemId == checkItemId);
-                if (existingResult != null)
-                {
-                    existingResult.Result = result;
-                }
-                else
-                {
-                    _context.VerificationCheckResults.Add(new VerificationCheckResult
-                    {
-                        VerificationId = verification.Id,
-                        CheckItemId = checkItemId,
-                        Result = result
-                    });
-                }
-            }
 
             try
             {
@@ -131,15 +133,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 else throw;
             }
 
-            return RedirectToPage("./Index");
-        }
+            if (IsWizard)
+            {
+                return RedirectToPage("./Details", new { id = verification.Id, isWizard = IsWizard, managementId = ManagementId });
+            }
 
-        private void LoadCheckItems()
-        {
-            CheckItems = _context.VerificationCheckItems
-                .Where(c => c.IsActive)
-                .OrderBy(c => c.Order)
-                .ToList();
+            return RedirectToPage("./Index");
         }
 
         private void LoadLists()

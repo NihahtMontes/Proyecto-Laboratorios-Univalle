@@ -137,7 +137,7 @@
                                                     <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Solicitud L-7 Vinculada</h6>
                                                     <span class="small" style="color: #7c3aed;">Req ID: @Model.Input.RequestId.Value</span>
                                                 </div>
-                                                <a href="/Requests/Details/@Model.Input.RequestId.Value" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
+                                                <a href="/Requests/Details/@Model.Input.RequestId.Value?isWizard=true" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
                                                     Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
                                                 </a>
                                                 <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 2, 'L-7 Solicitud')">
