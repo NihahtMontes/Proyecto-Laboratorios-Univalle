@@ -91,20 +91,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             {
                 var plan = await _context.ManagementPlans
                     .Include(p => p.Maintenance)
+                    .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.Exit);
                 ViewData["ManagementId"] = plan?.ManagementId;
+
                 if (plan?.ManagementId != null)
                 {
                     var mgmt = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
                     ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
-                }
-
-                if (plan?.Maintenance?.TechnicianId != null)
-                {
-                    Input.BorrowerId = plan.Maintenance.TechnicianId.Value;
-                    ViewData["IsLockedBorrower"] = true;
                 }
 
                 // Exponer IDs de fases previas para la sección de referencia vinculada
@@ -112,7 +108,37 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 {
                     ViewData["LinkedMaintenanceId"] = plan.MaintenanceId;
                 }
-                
+
+                if (isWizard)
+                {
+                    // En wizard: técnico SIEMPRE viene de L-8
+                    if (plan?.Maintenance?.TechnicianId != null)
+                    {
+                        Input.BorrowerId = plan.Maintenance.TechnicianId.Value;
+                        ViewData["IsLockedBorrower"] = true;
+
+                        var technician = await _context.People.FindAsync(plan.Maintenance.TechnicianId.Value);
+                        bool isExtern = technician is Extern || technician?.Category == PersonCategory.Externo;
+                        ViewData["TechnicianName"] = technician is Intern i ? i.Name
+                            : technician is Extern ext ? ext.Name
+                            : "Técnico #" + plan.Maintenance.TechnicianId.Value;
+                        ViewData["TechnicianIsExtern"] = isExtern;
+                        ViewData["InferredTypeLabel"] = isExtern ? "Mantenimiento Externo" : "Mantenimiento Interno";
+                        ViewData["TechnicianMissing"] = false;
+                    }
+                    else
+                    {
+                        // Sin técnico en L-8: bloquear hasta que lo asignen allá
+                        ViewData["TechnicianMissing"] = true;
+                    }
+                }
+                else if (plan?.Maintenance?.TechnicianId != null)
+                {
+                    // Fuera del wizard: precargar si hay vínculo
+                    Input.BorrowerId = plan.Maintenance.TechnicianId.Value;
+                    ViewData["IsLockedBorrower"] = true;
+                }
+
                 if (!equipmentUnitId.HasValue && plan?.EquipmentUnitId != null)
                 {
                     equipmentUnitId = plan.EquipmentUnitId;
@@ -122,6 +148,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             if (equipmentUnitId.HasValue)
             {
                 var unit = await _context.EquipmentUnits
+                    .Include(u => u.Equipment)
                     .Include(u => u.Laboratory)
                     .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
 
@@ -182,27 +209,107 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
+            // ─────────────────────────────────────────────────────────────
+            // WIZARD PRE-VALIDATION: reconstruir valores ANTES de ModelState
+            // Los selects disabled no postean → FacultyId/LaboratoryId/
+            // EquipmentUnitId/BorrowerId llegan como 0 → [Required] falla.
+            // ─────────────────────────────────────────────────────────────
+            ManagementPlan? wizardPlan = null;
+            var managementId = (await _managementService.GetCurrentManagementAsync())?.Id ?? 0;
+
+            if (ManagementPlanId.HasValue)
+            {
+                if (isWizard)
+                {
+                    wizardPlan = await _context.ManagementPlans
+                        .AsTracking()
+                        .Include(p => p.Maintenance)
+                        .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
+                        .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
+                        .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+                }
+                else
+                {
+                    wizardPlan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                }
+                if (wizardPlan != null)
+                    managementId = wizardPlan.ManagementId;
+            }
+
+            DepartureType inferredType = DepartureType.InternalLoan;
+            Person? borrower = null;
+
+            if (isWizard && wizardPlan != null)
+            {
+                // Técnico SIEMPRE viene de L-8 en wizard
+                if (wizardPlan.Maintenance?.TechnicianId == null)
+                {
+                    TempData.Error("Debe asignar un técnico en L-8 antes de registrar la salida.");
+                    await LoadLists();
+                    return Page();
+                }
+
+                if (!wizardPlan.EquipmentUnitId.HasValue || wizardPlan.EquipmentUnit == null)
+                {
+                    TempData.Error("El plan de gestión no tiene una unidad de equipo vinculada.");
+                    await LoadLists();
+                    return Page();
+                }
+
+                // Reconstruir valores desde BD (disabled inputs NO postean)
+                Input.BorrowerId = wizardPlan.Maintenance.TechnicianId.Value;
+                Input.EquipmentUnitId = wizardPlan.EquipmentUnitId.Value;
+                Input.LaboratoryId = wizardPlan.EquipmentUnit.LaboratoryId ?? 0;
+                Input.FacultyId = wizardPlan.EquipmentUnit.Laboratory?.FacultyId ?? 0;
+
+                borrower = await _context.People.FindAsync(Input.BorrowerId);
+                inferredType = (borrower is Extern || borrower?.Category == PersonCategory.Externo)
+                    ? DepartureType.ExternalMaintenance
+                    : DepartureType.InternalMaintenance;
+
+                // Limpiar keys que el servidor acaba de reconstruir
+                ModelState.Remove("Input.FacultyId");
+                ModelState.Remove("Input.LaboratoryId");
+                ModelState.Remove("Input.EquipmentUnitId");
+                ModelState.Remove("Input.BorrowerId");
+                ModelState.Remove("Input.Type");
+                // Items en wizard se generan server-side
+                foreach (var key in ModelState.Keys.Where(k => k.StartsWith("Input.Items")).ToList())
+                    ModelState.Remove(key);
+            }
+            else if (isWizard)
+            {
+                TempData.Error($"No se pudo resolver el plan del wizard L-3. ManagementPlanId recibido: {ManagementPlanId?.ToString() ?? "sin valor"}.");
+                await LoadLists();
+                return Page();
+            }
+
+            // ── VALIDACIÓN después de reconstrucción ──
             if (!ModelState.IsValid)
             {
+                var failedKeys = ModelState
+                    .Where(ms => ms.Value != null && ms.Value.Errors.Count > 0)
+                    .Select(ms => $"{ms.Key}: {string.Join(", ", ms.Value!.Errors.Select(e => e.ErrorMessage))}")
+                    .ToList();
+                if (failedKeys.Any())
+                    TempData.Error($"Campos con error: {string.Join(" | ", failedKeys)}");
+
                 await LoadLists();
                 return Page();
             }
 
             try
             {
-                ManagementPlan? wizardPlan = null;
-                var managementId = (await _managementService.GetCurrentManagementAsync())?.Id ?? 0;
-                if (ManagementPlanId.HasValue)
-                {
-                    wizardPlan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
-                    if (wizardPlan != null)
-                        managementId = wizardPlan.ManagementId;
-                }
+                await using var tx = await _context.Database.BeginTransactionAsync();
 
-                var borrower = await _context.People.FindAsync(Input.BorrowerId);
-                var inferredType = (borrower is Extern || borrower?.Category == PersonCategory.Externo) 
-                    ? DepartureType.ExternalMaintenance 
-                    : DepartureType.InternalLoan;
+                // Fuera del wizard: derivar tipo del técnico seleccionado en form
+                if (!isWizard || borrower == null)
+                {
+                    borrower = await _context.People.FindAsync(Input.BorrowerId);
+                    inferredType = (borrower is Extern || borrower?.Category == PersonCategory.Externo)
+                        ? DepartureType.ExternalMaintenance
+                        : DepartureType.InternalLoan;
+                }
 
                 var departure = new Departure
                 {
@@ -221,24 +328,37 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 departure.CreatedById = int.TryParse(currentUser?.Id.ToString(), out var uid) ? uid : (int?)null;
 
                 _context.Departures.Add(departure);
-                await _context.SaveChangesAsync();
 
-                if (Input.Items != null && Input.Items.Count > 0)
+                // Ítem de salida — en wizard derivado desde BD, fuera del wizard desde form
+                if (isWizard && wizardPlan?.EquipmentUnit != null)
+                {
+                    var unit = wizardPlan.EquipmentUnit;
+                    var productName = $"{unit.Equipment?.Name ?? "Equipo"} ({unit.InventoryNumber ?? "S/N"})";
+
+                    _context.DepartureItems.Add(new DepartureItem
+                    {
+                        Departure = departure,
+                        EquipmentUnitId = unit.Id,
+                        ProductName = productName,
+                        Quantity = 1,
+                        UnitOfMeasure = "UNIDAD",
+                        Observations = Input.Items.FirstOrDefault()?.Observations?.Trim()
+                    });
+                }
+                else if (Input.Items != null && Input.Items.Count > 0)
                 {
                     foreach (var itemInput in Input.Items.Where(i => !string.IsNullOrWhiteSpace(i.ProductName)))
                     {
-                        var departureItem = new DepartureItem
+                        _context.DepartureItems.Add(new DepartureItem
                         {
-                            DepartureId = departure.Id,
+                            Departure = departure,
                             EquipmentUnitId = itemInput.EquipmentUnitId ?? Input.EquipmentUnitId,
                             ProductName = itemInput.ProductName.Trim(),
                             Quantity = itemInput.Quantity,
                             UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD",
                             Observations = itemInput.Observations?.Trim()
-                        };
-                        _context.DepartureItems.Add(departureItem);
+                        });
                     }
-                    await _context.SaveChangesAsync();
                 }
 
                 var equipmentUnit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
@@ -246,7 +366,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 {
                     equipmentUnit.CurrentStatus = EquipmentStatus.OnLoan;
                     _context.EquipmentUnits.Update(equipmentUnit);
-                    await _context.SaveChangesAsync();
                 }
 
                 if (ManagementPlanId.HasValue)
@@ -254,16 +373,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     var plan = wizardPlan ?? await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
                     if (plan != null)
                     {
-                        plan.DepartureId = departure.Id;
+                        plan.Departure = departure;
                         plan.CurrentPhase = WizardPhase.Kardex;
                         plan.CurrentState = WizardEquipmentState.AwaitingKardex;
-                        await _context.SaveChangesAsync();
-
-                        if (isWizard)
-                        {
-                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId, ManagementId = plan.ManagementId });
-                        }
                     }
+                }
+
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                if (isWizard && wizardPlan != null)
+                {
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId, ManagementId = wizardPlan.ManagementId });
                 }
 
                 TempData.Success("Salida de equipo registrada exitosamente.");
@@ -271,7 +392,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al guardar: {ex.Message}");
+                var detail = ex.InnerException?.Message ?? ex.Message;
+                TempData.Error($"Error al guardar L-3: {detail}");
                 await LoadLists();
                 return Page();
             }

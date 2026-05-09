@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
@@ -11,12 +12,26 @@ QuestPDF.Settings.License = LicenseType.Community;
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .SetApplicationName("ProyectoLaboratoriosUnivalle");
+
 // DIAGNÓSTICO: Capturador de crash global a nivel OS
 AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
 {
-    var ex = e.ExceptionObject as Exception;
-    File.AppendAllText("crash.log", 
-        $"{DateTime.Now}: {ex?.GetType().Name} - {ex?.Message}\n{ex?.StackTrace}\n\n");
+    try
+    {
+        var ex = e.ExceptionObject as Exception;
+        var message = $"{DateTime.Now:O}: {ex?.GetType().Name} - {ex?.Message}\n{ex?.StackTrace}\n\n";
+        File.WriteAllText($"crash_{DateTime.Now:yyyyMMdd_HHmmss}.log", message);
+    }
+    catch { }
 };
 
 // DEBUG: SameSite=None Fix
@@ -95,6 +110,7 @@ builder.Services.AddScoped<DatabaseErrorHandler>();
 
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
+builder.WebHost.UseSetting("BrowserLink:Enabled", "false");
 
 builder.Services.AddControllers();
 builder.Services.AddRazorPages(options =>

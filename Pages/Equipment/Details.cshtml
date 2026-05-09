@@ -76,6 +76,41 @@
                     </div>
                 </div>
 
+                <!-- NOTAS DEL FABRICANTE MOVIDAS ARRIBA CON PAGINACIÓN -->
+                <div class="card border shadow-sm mt-4 mb-4">
+                    <div class="card-header bg-white border-bottom-0 pt-3 px-4 d-flex justify-content-between align-items-center">
+                        <h6 class="font-weight-bold mb-0 text-dark">
+                            <i class="fas fa-sticky-note mr-2 text-info"></i>Notas del Fabricante / Prevención
+                        </h6>
+                        @if (Model.Equipment.Notes != null && Model.Equipment.Notes.Count > 4)
+                        {
+                            <div class="pagination-controls btn-group btn-group-sm shadow-sm">
+                                <button type="button" class="btn btn-outline-secondary" id="btnPrevNotes" disabled title="Página Anterior"><i class="fas fa-chevron-left"></i></button>
+                                <span class="btn btn-light disabled font-weight-bold text-dark px-3" id="lblPageNotes" style="opacity: 1 !important;">1 / ?</span>
+                                <button type="button" class="btn btn-outline-secondary" id="btnNextNotes" title="Página Siguiente"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                        }
+                    </div>
+                    <div class="card-body pt-2 px-4 pb-4">
+                        @if (Model.Equipment.Notes != null && Model.Equipment.Notes.Any())
+                        {
+                            <ul class="mb-0 pl-3" id="equipmentNotesList">
+                                @foreach (var note in Model.Equipment.Notes)
+                                {
+                                    <li class="mb-3 small text-dark font-weight-bold note-item">@note.Note</li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <div class="text-center py-3">
+                                <i class="fas fa-comment-slash fa-2x text-light mb-2 d-block"></i>
+                                <span class="text-muted small italic">No se han registrado pautas de mantenimiento preventivo para este modelo.</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
                 <div class="mt-5">
                     <div class="d-flex align-items-center mb-4 pb-2 border-bottom">
                         <h5 class="font-weight-bold text-dark mb-0">
@@ -193,31 +228,7 @@
                     </div>
                 }
 
-                <div class="card border shadow-sm mt-4">
-                    <div class="card-header bg-white border-bottom-0 pt-3 px-4">
-                        <h6 class="font-weight-bold mb-0 text-dark">
-                            <i class="fas fa-sticky-note mr-2 text-info"></i>Notas del Fabricante / Prevención
-                        </h6>
-                    </div>
-                    <div class="card-body pt-2 px-4 pb-4">
-                        @if (Model.Equipment.Notes != null && Model.Equipment.Notes.Any())
-                        {
-                            <ul class="mb-0 pl-3">
-                                @foreach (var note in Model.Equipment.Notes)
-                                {
-                                    <li class="mb-2 small text-dark font-weight-bold">@note.Note</li>
-                                }
-                            </ul>
-                        }
-                        else
-                        {
-                            <div class="text-center py-3">
-                                <i class="fas fa-comment-slash fa-2x text-light mb-2 d-block"></i>
-                                <span class="text-muted small italic">No se han registrado pautas de mantenimiento preventivo para este modelo.</span>
-                            </div>
-                        }
-                    </div>
-                </div>
+
             </div>
         </div>
     </div>
@@ -307,4 +318,50 @@
             border-left: 5px solid #03a9f4;
         }
     </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const notes = document.querySelectorAll('.note-item');
+            if (notes.length > 4) {
+                const itemsPerPage = 4;
+                let currentPage = 1;
+                const totalPages = Math.ceil(notes.length / itemsPerPage);
+
+                const btnPrev = document.getElementById('btnPrevNotes');
+                const btnNext = document.getElementById('btnNextNotes');
+                const lblPage = document.getElementById('lblPageNotes');
+
+                function renderPage(page) {
+                    notes.forEach((note, index) => {
+                        if (index >= (page - 1) * itemsPerPage && index < page * itemsPerPage) {
+                            note.style.display = 'list-item';
+                        } else {
+                            note.style.display = 'none';
+                        }
+                    });
+                    lblPage.innerText = page + ' / ' + totalPages;
+                    btnPrev.disabled = page === 1;
+                    btnNext.disabled = page === totalPages;
+                }
+
+                btnPrev.addEventListener('click', () => { 
+                    if (currentPage > 1) { 
+                        currentPage--; 
+                        renderPage(currentPage); 
+                    } 
+                });
+                
+                btnNext.addEventListener('click', () => { 
+                    if (currentPage < totalPages) { 
+                        currentPage++; 
+                        renderPage(currentPage); 
+                    } 
+                });
+
+                renderPage(1);
+            }
+        });
+    </script>
 }

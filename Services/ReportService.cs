@@ -810,78 +810,91 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 .GroupBy(f => f.VerificationId)
                 .ToDictionary(g => g.Key, g => g.Select(f => f.Description).ToList());
 
-            // GENERAR EXCEL DESDE CERO
-            using var package = new ExcelPackage();
-            var ws = package.Workbook.Worksheets.Add("Verificacion L-6");
-
-            ws.Column(1).Width = 6;
-            ws.Column(2).Width = 35;
-            ws.Column(3).Width = 8;
-            ws.Column(4).Width = 14;
-            ws.Column(5).Width = 18;
-            ws.Column(6).Width = 45;
-
-            // Header institucional
-            ws.Cells["A1:F1"].Merge = true;
-            ws.Cells["A1"].Value = "UNIVERSIDAD PRIVADA DEL VALLE";
-            ws.Cells["A1"].Style.Font.Bold = true;
-            ws.Cells["A1"].Style.Font.Size = 14;
-            ws.Cells["A1"].Style.Font.Name = "Arial";
-            ws.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Row(1).Height = 22;
-
-            ws.Cells["A2:F2"].Merge = true;
-            ws.Cells["A2"].Value = "DIRECCION DE LABORATORIOS";
-            ws.Cells["A2"].Style.Font.Bold = true;
-            ws.Cells["A2"].Style.Font.Size = 12;
-            ws.Cells["A2"].Style.Font.Name = "Arial";
-            ws.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Row(2).Height = 20;
-
-            ws.Cells["A3:F3"].Merge = true;
-            ws.Cells["A3"].Value = "VERIFICACION DE EQUIPOS DE LABORATORIO (L-6)";
-            ws.Cells["A3"].Style.Font.Bold = true;
-            ws.Cells["A3"].Style.Font.Size = 11;
-            ws.Cells["A3"].Style.Font.Name = "Arial";
-            ws.Cells["A3"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Row(3).Height = 20;
-
-            ws.Cells["A5"].Value = "Gestion:";
-            ws.Cells["A5"].Style.Font.Bold = true;
-            ws.Cells["B5"].Value = $"I/{DateTime.Now.Year}";
-            ws.Cells["D5"].Value = "Fecha:";
-            ws.Cells["D5"].Style.Font.Bold = true;
-            ws.Cells["E5"].Value = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
-
-            ws.Cells["A6"].Value = "Laboratorio:";
-            ws.Cells["A6"].Style.Font.Bold = true;
-            ws.Cells["B6"].Value = labName.ToUpper();
-            ws.Cells["B6"].Style.Font.Bold = true;
-
-            ws.Cells["A7"].Value = "Responsable:";
-            ws.Cells["A7"].Style.Font.Bold = true;
-            ws.Cells["B7"].Value = responsable.ToUpper();
-
-            // Tabla header
-            int headerRow = 9;
-            string[] headers = { "ITEM", "DESCRIPCION DEL EQUIPO", "CANT.", "ESTADO", "MARCA", "OBSERVACIONES / FALLAS" };
-            for (int i = 0; i < headers.Length; i++)
+            var templatePath = Path.Combine(_env.WebRootPath, "templates", "L6V2.xlsx");
+            if (!File.Exists(templatePath))
             {
-                var cell = ws.Cells[headerRow, i + 1];
-                cell.Value = headers[i];
-                cell.Style.Font.Bold = true;
-                cell.Style.Font.Size = 10;
-                cell.Style.Font.Name = "Arial";
-                cell.Style.Fill.SetBackground(System.Drawing.Color.FromArgb(68, 114, 196));
-                cell.Style.Font.Color.SetColor(System.Drawing.Color.White);
-                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
-                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                _logger.LogWarning("Plantilla L6V2.xlsx no encontrada.");
+                throw new FileNotFoundException("Plantilla L-6 no encontrada en wwwroot/templates/L6V2.xlsx");
             }
-            ws.Row(headerRow).Height = 28;
+
+            using var package = new ExcelPackage(new FileInfo(templatePath));
+            
+            // Buscar si existe una hoja con el nombre del laboratorio, si no, usar la primera
+            var ws = package.Workbook.Worksheets.FirstOrDefault(w => w.Name.Equals(labName, StringComparison.OrdinalIgnoreCase)) 
+                     ?? package.Workbook.Worksheets[0];
+
+            // Eliminar todas las demás hojas para que el reporte sea limpio y exclusivo del laboratorio solicitado
+            var sheetsToDelete = package.Workbook.Worksheets
+                .Where(w => w.Name != ws.Name)
+                .Select(w => w.Name)
+                .ToList();
+                
+            foreach (var sName in sheetsToDelete)
+            {
+                package.Workbook.Worksheets.Delete(sName);
+            }
+
+            // Renombrar la hoja resultante para asegurar consistencia
+            string safeLabName = string.Join("_", (labName ?? "Laboratorio").Split(Path.GetInvalidFileNameChars()));
+            if (safeLabName.Length > 31) safeLabName = safeLabName.Substring(0, 31); // Excel tab names limit
+            ws.Name = safeLabName;
+
+            // METADATOS
+            for (int r = 1; r <= 15; r++)
+            {
+                for (int c = 1; c <= 8; c++)
+                {
+                    var text = ws.Cells[r, c].Text?.ToUpper()?.Trim() ?? "";
+
+                    if (text == "LABORATORIO" || text == "LABORATORIO:")
+                        ws.Cells[r, c + 2].Value = labName?.ToUpper();
+                        
+                    if (text == "RESPONSABLE" || text == "RESPONSABLE:")
+                        ws.Cells[r, c + 2].Value = responsable?.ToUpper();
+                        
+                    if (text.StartsWith("FECHA VERIFICACION") || text.StartsWith("FECHA VERIFICACIÓN"))
+                        ws.Cells[r, c + 2].Value = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+                        
+                    if (text.StartsWith("GESTION") || text.StartsWith("GESTIÓN"))
+                        ws.Cells[r, c].Value = $"GESTION I/{DateTime.Now.Year}";
+                }
+            }   
+
+            // HEADER DINAMICO
+            int headerRow = 12;
+            for (int r = 8; r <= 15; r++)
+            {
+                if (ws.Cells[r, 2].Text?.ToUpper().Contains("DESCRIPCI") == true)
+                {
+                    headerRow = r;
+                    break;
+                }
+            }
+
+            int colDesc = 2, colInv = 3, colMarca = 4, colEstado = 5, colObs = 6;
+            for (int c = 1; c <= 8; c++)
+            {
+                var text = ws.Cells[headerRow, c].Text?.ToUpper() ?? "";
+                if (text.Contains("DESCRIPCI")) colDesc = c;
+                else if (text.Contains("INV")) colInv = c;
+                else if (text.Contains("MARCA")) colMarca = c;
+                else if (text.Contains("ESTADO")) colEstado = c;
+                else if (text.Contains("OBSERVACION")) colObs = c;
+            }
+
+            int startRow = headerRow + 1;
+
+            // Clear dummy data
+            for (int r = startRow; r <= startRow + 30; r++)
+            {
+                for (int c = 1; c <= 8; c++)
+                {
+                    ws.Cells[r, c].Value = null;
+                }
+            }
 
             // Datos
-            int row = headerRow + 1;
+            int row = startRow;
             int item = 1;
             bool alternate = false;
 
@@ -908,69 +921,38 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 }
                 if (string.IsNullOrEmpty(observationsText)) observationsText = "Sin observaciones";
 
-                var rowBg = alternate ? System.Drawing.Color.FromArgb(242, 246, 252) : System.Drawing.Color.White;
-
                 ws.Cells[row, 1].Value = item;
                 ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                ws.Cells[row, 2].Value = eq.EquipmentName?.ToUpper();
-                ws.Cells[row, 2].Style.WrapText = true;
-                ws.Cells[row, 3].Value = 1;
-                ws.Cells[row, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                ws.Cells[row, 4].Value = condition;
-                ws.Cells[row, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                ws.Cells[row, 4].Style.Font.Color.SetColor(condition switch
-                {
-                    "Excelente" or "Bueno" => System.Drawing.Color.FromArgb(39, 124, 52),
-                    "Regular" => System.Drawing.Color.FromArgb(196, 152, 24),
-                    "Malo" or "Baja" => System.Drawing.Color.FromArgb(192, 0, 0),
-                    _ => System.Drawing.Color.Gray
-                });
-                ws.Cells[row, 4].Style.Font.Bold = true;
-                ws.Cells[row, 5].Value = eq.Brand?.ToUpper();
-                ws.Cells[row, 6].Value = observationsText;
-                ws.Cells[row, 6].Style.WrapText = true;
 
+                ws.Cells[row, colDesc].Value = eq.EquipmentName?.ToUpper();
+                ws.Cells[row, colInv].Value = eq.InventoryNumber;
+                
+                ws.Cells[row, colEstado].Value = condition.ToUpper();
+                ws.Cells[row, colEstado].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                if (condition.ToUpper() == "MALO" || condition.ToUpper() == "BAJA")
+                    ws.Cells[row, colEstado].Style.Font.Color.SetColor(System.Drawing.Color.Red);
+
+                ws.Cells[row, colMarca].Value = eq.Brand?.ToUpper() ?? "S/M";
+                ws.Cells[row, colMarca].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+
+                ws.Cells[row, colObs].Value = observationsText.ToUpper();
+
+                var rowBg = alternate ? System.Drawing.Color.FromArgb(242, 246, 252) : System.Drawing.Color.White;
                 for (int c = 1; c <= 6; c++)
                 {
                     ws.Cells[row, c].Style.Fill.SetBackground(rowBg);
                     ws.Cells[row, c].Style.Border.BorderAround(ExcelBorderStyle.Thin, System.Drawing.Color.FromArgb(180, 180, 180));
                     ws.Cells[row, c].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
+                    ws.Cells[row, c].Style.WrapText = true;
                 }
 
-                if (observationsText.Length > 50)
-                    ws.Row(row).Height = Math.Max(20, (observationsText.Length / 50.0) * 15);
+                // Auto height based on text length
+                ws.Row(row).Height = Math.Max(20, (observationsText.Length / 40.0) * 15);
 
-                row++; item++; alternate = !alternate;
+                row++;
+                item++;
+                alternate = !alternate;
             }
-
-            // Pie
-            row += 1;
-            ws.Cells[row, 1].Value = $"Total de equipos verificados: {equipmentData.Count}";
-            ws.Cells[row, 1].Style.Font.Bold = true;
-            ws.Cells[row, 1].Style.Font.Italic = true;
-            ws.Cells[row, 1, row, 3].Merge = true;
-
-            row += 2;
-            ws.Cells[row, 1].Value = "____________________________________";
-            ws.Cells[row, 1, row, 2].Merge = true;
-            ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Cells[row + 1, 1].Value = "Firma del Responsable";
-            ws.Cells[row + 1, 1, row + 1, 2].Merge = true;
-            ws.Cells[row + 1, 1].Style.Font.Bold = true;
-            ws.Cells[row + 1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-            ws.Cells[row, 4].Value = "____________________________________";
-            ws.Cells[row, 4, row, 6].Merge = true;
-            ws.Cells[row, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Cells[row + 1, 4].Value = "Director de Laboratorios";
-            ws.Cells[row + 1, 4, row + 1, 6].Merge = true;
-            ws.Cells[row + 1, 4].Style.Font.Bold = true;
-            ws.Cells[row + 1, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-            ws.PrinterSettings.Orientation = eOrientation.Landscape;
-            ws.PrinterSettings.FitToPage = true;
-            ws.PrinterSettings.FitToWidth = 1;
-            ws.PrinterSettings.FitToHeight = 0;
 
             return SavePackage(package);
         }
@@ -993,166 +975,103 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
             var items = departure.Items.ToList();
 
-            using var package = new ExcelPackage();
-            var ws = package.Workbook.Worksheets.Add("Salida L-3");
-
-            ws.Column(1).Width = 6;
-            ws.Column(2).Width = 35;
-            ws.Column(3).Width = 12;
-            ws.Column(4).Width = 12;
-            ws.Column(5).Width = 12;
-            ws.Column(6).Width = 12;
-            ws.Column(7).Width = 40;
-
-            // Header institucional
-            ws.Cells["A1:G1"].Merge = true;
-            ws.Cells["A1"].Value = "UNIVERSIDAD PRIVADA DEL VALLE";
-            ws.Cells["A1"].Style.Font.Bold = true;
-            ws.Cells["A1"].Style.Font.Size = 14;
-            ws.Cells["A1"].Style.Font.Name = "Arial";
-            ws.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Row(1).Height = 22;
-
-            ws.Cells["A2:G2"].Merge = true;
-            ws.Cells["A2"].Value = "DIRECCION DE LABORATORIOS";
-            ws.Cells["A2"].Style.Font.Bold = true;
-            ws.Cells["A2"].Style.Font.Size = 12;
-            ws.Cells["A2"].Style.Font.Name = "Arial";
-            ws.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Row(2).Height = 20;
-
-            ws.Cells["A3:G3"].Merge = true;
-            ws.Cells["A3"].Value = "ACTA DE SALIDA DE EQUIPO (L-3)";
-            ws.Cells["A3"].Style.Font.Bold = true;
-            ws.Cells["A3"].Style.Font.Size = 11;
-            ws.Cells["A3"].Style.Font.Name = "Arial";
-            ws.Cells["A3"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Row(3).Height = 20;
-
-            ws.Cells["A5"].Value = "Nro. Salida:";
-            ws.Cells["A5"].Style.Font.Bold = true;
-            ws.Cells["B5"].Value = $"L3-{departure.Id:D5}";
-            ws.Cells["D5"].Value = "Fecha:";
-            ws.Cells["D5"].Style.Font.Bold = true;
-            ws.Cells["E5"].Value = departure.DepartureDate.ToString("dd/MM/yyyy");
-            ws.Cells["E5"].Style.Numberformat.Format = "dd/MM/yyyy";
-
-            ws.Cells["A6"].Value = "Laboratorio:";
-            ws.Cells["A6"].Style.Font.Bold = true;
-            ws.Cells["B6"].Value = departure.EquipmentUnit?.Laboratory?.Name?.ToUpper() ?? "—";
-            ws.Cells["B6"].Style.Font.Bold = true;
-
-            ws.Cells["D6"].Value = "Equipo:";
-            ws.Cells["D6"].Style.Font.Bold = true;
-            ws.Cells["E6"].Value = $"{departure.EquipmentUnit?.Equipment?.Name?.ToUpper() ?? "—"} (Inv: {departure.EquipmentUnit?.InventoryNumber ?? "—"})";
-
-            ws.Cells["A7"].Value = "Responsable:";
-            ws.Cells["A7"].Style.Font.Bold = true;
-            ws.Cells["B7"].Value = departure.Borrower?.FullName?.ToUpper() ?? "—";
-
-            ws.Cells["D7"].Value = "Tipo de Salida:";
-            ws.Cells["D7"].Style.Font.Bold = true;
-            ws.Cells["E7"].Value = departure.Type == DepartureType.InternalLoan ? "PRESTAMO INTERNO" : "MANTENIMIENTO EXTERNO";
-
-            ws.Cells["A8"].Value = "Elaborado por:";
-            ws.Cells["A8"].Style.Font.Bold = true;
-            ws.Cells["B8"].Value = departure.CreatedBy?.FullName?.ToUpper() ?? "SISTEMA";
-
-            // Tabla header
-            int headerRow = 10;
-            string[] headers = { "ITEM", "PRODUCTO / DESCRIPCION", "CANTIDAD", "UNIDAD", "DEVUELTO", "SALDO", "OBSERVACIONES" };
-            for (int i = 0; i < headers.Length; i++)
+            var templatePath = Path.Combine(_env.WebRootPath, "templates", "L3.xlsx");
+            if (!File.Exists(templatePath))
             {
-                var cell = ws.Cells[headerRow, i + 1];
-                cell.Value = headers[i];
-                cell.Style.Font.Bold = true;
-                cell.Style.Font.Size = 10;
-                cell.Style.Font.Name = "Arial";
-                cell.Style.Fill.SetBackground(System.Drawing.Color.FromArgb(68, 114, 196));
-                cell.Style.Font.Color.SetColor(System.Drawing.Color.White);
-                cell.Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                cell.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
-                cell.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                _logger.LogWarning("Plantilla L3.xlsx no encontrada.");
+                throw new FileNotFoundException("Plantilla L-3 no encontrada en wwwroot/templates/L3.xlsx");
             }
-            ws.Row(headerRow).Height = 28;
 
-            int row = headerRow + 1;
-            int itemNo = 1;
-            bool alternate = false;
+            using var package = new ExcelPackage(new FileInfo(templatePath));
+            var worksheet = package.Workbook.Worksheets[0];
+
+            // DYNAMIC METADATA REPLACEMENT
+            for (int r = 1; r <= 20; r++)
+            {
+                for (int c = 1; c <= 8; c++)
+                {
+                    var text = worksheet.Cells[r, c].Text?.ToUpper()?.Trim() ?? "";
+                    
+                    if (text == "LABORATORIO" || text == "LABORATORIO DE:" || text == "LABORATORIO:") 
+                        worksheet.Cells[r, c + 1].Value = departure.EquipmentUnit?.Laboratory?.Name?.ToUpper();
+                        
+                    if (text.StartsWith("ENTREGADO POR")) 
+                        worksheet.Cells[r, c].Value = "ENTREGADO POR: " + (departure.CreatedBy?.FullName?.ToUpper() ?? "SISTEMA");
+                        
+                    if (text.StartsWith("RECIBIDO POR")) 
+                        worksheet.Cells[r, c].Value = "RECIBIDO POR: " + (departure.Borrower?.FullName?.ToUpper() ?? "");
+                        
+                    if (text.StartsWith("GESTIÓN:") || text.StartsWith("GESTION:")) 
+                        worksheet.Cells[r, c].Value = "GESTIÓN: I/" + departure.DepartureDate.Year;
+                        
+                    if (text.StartsWith("NRO. DE SOLICITUD") || text.StartsWith("NRO DE SOLICITUD")) 
+                        worksheet.Cells[r, c].Value = "Nro. DE SOLICITUD: L3-" + departure.Id.ToString("D5");
+                        
+                    if (text == "DOCENTE/ESTUDIANTE:" || text == "DOCENTE/ESTUDIANTE" || text.StartsWith("DOCENTE")) 
+                        worksheet.Cells[r, c + 1].Value = departure.Borrower?.FullName?.ToUpper() ?? "";
+                        
+                    if (text == "FECHA CRONOGRAMA" || text.StartsWith("FECHA CRONOGRAMA")) 
+                        worksheet.Cells[r, c + 1].Value = departure.DepartureDate.ToString("dd/MM/yyyy");
+                }
+            }
+
+            // DYNAMIC TABLE MAPPING
+            int headerRow = 18;
+            for (int r = 10; r <= 25; r++)
+            {
+                if (worksheet.Cells[r, 1].Text?.ToUpper().Contains("PRODUCTO") == true)
+                {
+                    headerRow = r;
+                    break;
+                }
+            }
+
+            int colProducto = 1, colCantidad = 2, colUnidad = 3, colDevolucion = 4, colSaldo = 5;
+            for (int c = 1; c <= 10; c++)
+            {
+                var text = worksheet.Cells[headerRow, c].Text?.ToUpper() ?? "";
+                if (text.Contains("PRODUCTO")) colProducto = c;
+                else if (text.Contains("CANTIDAD")) colCantidad = c;
+                else if (text.Contains("UNIDAD")) colUnidad = c;
+                else if (text.Contains("DEVOLUCION") || text.Contains("DEVUELTO")) colDevolucion = c;
+                else if (text.Contains("SALDO")) colSaldo = c;
+            }
+
+            int startRow = headerRow + 1;
+            
+            // Clear previous dummy data in template safely
+            for (int r = startRow; r <= startRow + 25; r++)
+            {
+                for (int c = 1; c <= 8; c++)
+                {
+                    worksheet.Cells[r, c].Value = null;
+                }
+            }
 
             if (items.Count == 0)
             {
                 items.Add(new DepartureItem
                 {
-                    ProductName = departure.EquipmentUnit?.Equipment?.Name ?? "Equipo",
+                    ProductName = departure.EquipmentUnit?.Equipment?.Name ?? "Equipo Principal",
                     Quantity = 1,
-                    UnitOfMeasure = "UNIDAD"
+                    UnitOfMeasure = "UNIDAD",
+                    ReturnedQuantity = 0
                 });
             }
 
-            foreach (var item in items)
+            for (int i = 0; i < items.Count; i++)
             {
-                var rowBg = alternate ? System.Drawing.Color.FromArgb(242, 246, 252) : System.Drawing.Color.White;
+                var item = items[i];
+                int currentRow = startRow + i;
+                
+                if(currentRow > headerRow + 30) break; // Limit to fit template
 
-                ws.Cells[row, 1].Value = itemNo;
-                ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                ws.Cells[row, 2].Value = item.ProductName?.ToUpper();
-                ws.Cells[row, 2].Style.WrapText = true;
-                ws.Cells[row, 3].Value = item.Quantity;
-                ws.Cells[row, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                ws.Cells[row, 4].Value = item.UnitOfMeasure ?? "UNIDAD";
-                ws.Cells[row, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                ws.Cells[row, 5].Value = item.ReturnedQuantity ?? 0;
-                ws.Cells[row, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-                var saldo = item.Balance;
-                ws.Cells[row, 6].Value = saldo;
-                ws.Cells[row, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                if (saldo == 0)
-                    ws.Cells[row, 6].Style.Font.Color.SetColor(System.Drawing.Color.FromArgb(39, 124, 52));
-                else if (saldo > 0)
-                    ws.Cells[row, 6].Style.Font.Color.SetColor(System.Drawing.Color.FromArgb(196, 152, 24));
-                ws.Cells[row, 6].Style.Font.Bold = true;
-
-                ws.Cells[row, 7].Value = item.Observations ?? (departure.DepartureObservations ?? "");
-                ws.Cells[row, 7].Style.WrapText = true;
-
-                for (int c = 1; c <= 7; c++)
-                {
-                    ws.Cells[row, c].Style.Fill.SetBackground(rowBg);
-                    ws.Cells[row, c].Style.Border.BorderAround(ExcelBorderStyle.Thin, System.Drawing.Color.FromArgb(180, 180, 180));
-                    ws.Cells[row, c].Style.VerticalAlignment = ExcelVerticalAlignment.Center;
-                }
-
-                if (!string.IsNullOrEmpty(item.Observations) && item.Observations.Length > 50)
-                    ws.Row(row).Height = Math.Max(20, (item.Observations.Length / 50.0) * 15);
-
-                row++; itemNo++; alternate = !alternate;
+                worksheet.Cells[currentRow, colProducto].Value = item.ProductName?.ToUpper();
+                worksheet.Cells[currentRow, colCantidad].Value = item.Quantity;
+                worksheet.Cells[currentRow, colUnidad].Value = item.UnitOfMeasure ?? "UNIDAD";
+                worksheet.Cells[currentRow, colDevolucion].Value = item.ReturnedQuantity ?? 0;
+                worksheet.Cells[currentRow, colSaldo].Value = item.Balance;
             }
-
-            // Pie
-            row += 1;
-            ws.Cells[row, 1].Value = $"Total de items: {items.Count}";
-            ws.Cells[row, 1].Style.Font.Bold = true;
-            ws.Cells[row, 1].Style.Font.Italic = true;
-            ws.Cells[row, 1, row, 4].Merge = true;
-
-            row += 2;
-            ws.Cells[row, 1].Value = "____________________________________";
-            ws.Cells[row, 1, row, 2].Merge = true;
-            ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Cells[row + 1, 1].Value = "Firma del Solicitante";
-            ws.Cells[row + 1, 1, row + 1, 2].Merge = true;
-            ws.Cells[row + 1, 1].Style.Font.Bold = true;
-            ws.Cells[row + 1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-            ws.Cells[row, 5].Value = "____________________________________";
-            ws.Cells[row, 5, row, 7].Merge = true;
-            ws.Cells[row, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-            ws.Cells[row + 1, 5].Value = "Director de Laboratorios";
-            ws.Cells[row + 1, 5, row + 1, 7].Merge = true;
-            ws.Cells[row + 1, 5].Style.Font.Bold = true;
-            ws.Cells[row + 1, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
             return SavePackage(package);
         }

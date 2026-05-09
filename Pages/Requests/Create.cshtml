@@ -29,10 +29,11 @@
                     </div>
                 </div>
 
-                <form method="post" id="createRequestForm">
+                <form method="post" id="createRequestForm" novalidate>
                     <!-- Mantiene el estado del Wizard -->
                     <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString()?.ToLower() ?? "false")" />
                     <input type="hidden" asp-for="ManagementPlanId" />
+                    <input type="hidden" asp-for="ManagementId" />
 
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
                     <input type="hidden" asp-for="Input.Type" value="Technical" />
@@ -108,9 +109,6 @@
                                             <a href="/Verifications/Details?id=@ViewData["LinkedVerificationId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #16a34a; border: 1px solid #bbf7d0;">
                                                 Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
                                             </a>
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 1, 'L-6 Verificación')">
-                                                <i class="fas fa-undo"></i> Rehacer L-6
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -131,9 +129,39 @@
                         </div>
 
                         <div class="col-md-7 pl-lg-4">
-                            <h5 class="font-weight-bold text-info mb-3">
-                                <i class="fas fa-align-left mr-2"></i> Naturaleza del Problema
-                            </h5>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="font-weight-bold text-info mb-0">
+                                    <i class="fas fa-align-left mr-2"></i> Naturaleza del Problema
+                                </h5>
+                                @if (ViewData["CurrentEquipmentUnitId"] != null)
+                                {
+                                    <a asp-page="/EquipmentUnits/Kardex"
+                                       asp-route-id="@ViewData["CurrentEquipmentUnitId"]"
+                                       asp-route-isWizard="@isWizard"
+                                       asp-route-managementId="@ViewData["ManagementId"]"
+                                       asp-route-selectedLabId="@Model.Input.LaboratoryId"
+                                       asp-route-returnStep="2"
+                                       target="_blank" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Abrir Historial de Kardex en nueva pestaña">
+                                        <i class="fas fa-history mr-1"></i> Ver Histórico <i class="fas fa-external-link-alt ml-1" style="font-size: 0.7em;"></i>
+                                    </a>
+                                }
+                            </div>
+
+                            @if (ViewData["EquipmentNotes"] != null && ((List<string>)ViewData["EquipmentNotes"]).Any())
+                            {
+                                var notes = (List<string>)ViewData["EquipmentNotes"];
+                                <div class="form-group mb-4 pl-3 bg-light p-3 rounded shadow-sm" style="border-left: 4px solid #007bff;">
+                                    <h6 class="font-weight-bold text-primary mb-2">
+                                        <i class="fas fa-sticky-note mr-2"></i> Notas del Fabricante / Prevención
+                                    </h6>
+                                    <ul class="mb-0 pl-3 small text-muted font-weight-bold">
+                                        @foreach (var note in notes)
+                                        {
+                                            <li class="mb-1">@note</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
 
                             <div class="form-group mb-4 pl-3 @(isCorrective ? "" : "bg-light") p-2 rounded" style="border-left: 4px solid #ffc107;">
                                 <label asp-for="Input.Description" class="control-label font-weight-bold small text-uppercase text-dark">FALLAS O PROBLEMAS DEL EQUIPO <span class="text-danger">*</span></label>
@@ -152,7 +180,7 @@
                         {
                             <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded mr-2 px-4">Volver al Wizard</a>
                         }
-                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                        <button type="submit" id="btnSubmitRequest" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
                             Guardar y continuar <i class="fas fa-arrow-right ml-2"></i>
                         </button>
                     </div>
@@ -186,6 +214,40 @@
                     let opts = '<option value="">-- Seleccionar Unidad Física --</option>';
                     $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
                     $('#equipmentUnitSelect').html(opts).prop('disabled', false).trigger('change');
+                });
+            });
+
+            var requestSubmitting = false;
+            $('#createRequestForm').on('submit', function(event) {
+                var form = this;
+                if (requestSubmitting) return true;
+
+                event.preventDefault();
+
+                var submitForm = function() {
+                    requestSubmitting = true;
+                    $('#btnSubmitRequest').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    HTMLFormElement.prototype.submit.call(form);
+                };
+
+                if (typeof Swal === 'undefined') {
+                    submitForm();
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Registrar solicitud L-7?',
+                    text: 'Se guardará la solicitud técnica y el equipo avanzará al paso L-8 de mantenimiento.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#17a2b8',
+                    cancelButtonColor: '#6c757d'
+                }).then(function(result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        submitForm();
+                    }
                 });
             });
         });

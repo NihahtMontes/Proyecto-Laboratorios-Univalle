@@ -33,6 +33,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
         [BindProperty(SupportsGet = true)]
         public int? ManagementPlanId { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
+
         public class InputModel
         {
             [Required(ErrorMessage = "La facultad es obligatoria")]
@@ -91,15 +94,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
             if (ManagementPlanId.HasValue)
             {
-                var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                var plan = await _context.ManagementPlans
+                    .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
+                    .Include(p => p.Maintenance)
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
                 if (plan != null)
                 {
-                    ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
-                    ViewData["ManagementId"] = plan.ManagementId;
-                    var mgmt = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
-                    ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
-                    if (plan.DepartureId.HasValue) ViewData["LinkedDepartureId"] = plan.DepartureId.Value;
-                    if (plan.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = plan.MaintenanceId.Value;
+                    ApplyPlanToInput(plan);
+                    await PopulateWizardViewDataAsync(plan);
                 }
             }
 
@@ -186,28 +188,50 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
+            ManagementPlan? wizardPlan = null;
+            if (ManagementPlanId.HasValue)
+            {
+                wizardPlan = await _context.ManagementPlans
+                    .AsTracking()
+                    .Include(p => p.Management)
+                    .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
+                    .Include(p => p.Maintenance).ThenInclude(m => m!.CostDetails)
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+
+                if (wizardPlan == null)
+                {
+                    TempData.Error($"No se pudo resolver el plan de gestión para L-12. ManagementPlanId recibido: {ManagementPlanId.Value}.");
+                    await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                    ViewData["IsWizard"] = isWizard;
+                    return Page();
+                }
+
+                ApplyPlanToInput(wizardPlan);
+                ModelState.Remove("Input.FacultyId");
+                ModelState.Remove("Input.LaboratoryId");
+                ModelState.Remove("Input.EquipmentUnitId");
+                ModelState.Remove("Input.MaintenanceId");
+            }
+
             if (!ModelState.IsValid)
             {
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
+                ViewData["IsWizard"] = isWizard;
                 return Page();
             }
 
-            var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
+            var unit = wizardPlan?.EquipmentUnit ?? await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
             if (unit == null)
             {
                 ModelState.AddModelError("Input.EquipmentUnitId", "La unidad seleccionada no es válida.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
+                ViewData["IsWizard"] = isWizard;
                 return Page();
             }
 
-            ManagementPlan? wizardPlan = null;
-            var managementId = (await _managementService.GetCurrentManagementAsync())?.Id ?? 0;
-            if (ManagementPlanId.HasValue)
-            {
-                wizardPlan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
-                if (wizardPlan == null) return NotFound();
-                managementId = wizardPlan.ManagementId;
-            }
+            var managementId = wizardPlan?.ManagementId ?? ManagementId ?? (await _managementService.GetCurrentManagementAsync())?.Id ?? 0;
 
             var request = new Request
             {
@@ -227,9 +251,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
             if (Input.MaintenanceId.HasValue)
             {
-                var maintenanceCosts = await _context.CostDetails
-                    .Where(d => d.MaintenanceId == Input.MaintenanceId.Value)
-                    .ToListAsync();
+                var maintenanceCosts = wizardPlan?.Maintenance?.CostDetails?.ToList()
+                    ?? await _context.CostDetails
+                        .Where(d => d.MaintenanceId == Input.MaintenanceId.Value)
+                        .ToListAsync();
 
                 foreach (var cost in maintenanceCosts)
                 {
@@ -256,44 +281,83 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             }
 
             _context.Requests.Add(request);
-            await _context.SaveChangesAsync();
 
-            if (currentUser != null)
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            try
             {
-                var notification = new Notification
-                {
-                    UserId = currentUser.Id,
-                    Title = "Adquisición Solicitada",
-                    Message = $"Se registró correctamente tu solicitud de compra para la unidad {unit.InventoryNumber}.",
-                    ActionUrl = $"/Requests/Details?id={request.Id}",
-                    IconClass = "fas fa-shopping-cart text-success",
-                    IsRead = false,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.Notifications.Add(notification);
                 await _context.SaveChangesAsync();
-            }
 
-            if (ManagementPlanId.HasValue)
-            {
-                var plan = wizardPlan ?? await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
-                if (plan != null)
+                if (currentUser != null)
                 {
-                    plan.AcquisitionRequestId = request.Id;
-                    plan.CurrentPhase = WizardPhase.Disbursement; 
-                    plan.CurrentState = WizardEquipmentState.Completed;
-                    await _context.SaveChangesAsync();
-
-                    if (isWizard)
+                    var notification = new Notification
                     {
-                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 7, SelectedLabId = Input.LaboratoryId, ManagementId = plan.ManagementId });
-                    }
+                        UserId = currentUser.Id,
+                        Title = "Adquisición Solicitada",
+                        Message = $"Se registró correctamente tu solicitud de compra para la unidad {unit.InventoryNumber}.",
+                        ActionUrl = $"/Requests/Details?id={request.Id}",
+                        IconClass = "fas fa-shopping-cart text-success",
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Notifications.Add(notification);
+                    await _context.SaveChangesAsync();
                 }
+
+                if (wizardPlan != null)
+                {
+                    wizardPlan.AcquisitionRequestId = request.Id;
+                    wizardPlan.CurrentPhase = WizardPhase.Disbursement;
+                    wizardPlan.CurrentState = WizardEquipmentState.Completed;
+                    wizardPlan.PlanStatus = ManagementPlanStatus.Completed;
+                    wizardPlan.LastModifiedDate = DateTime.UtcNow;
+                    await _context.SaveChangesAsync();
+                }
+
+                await tx.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                var detail = ex.InnerException?.Message ?? ex.Message;
+                TempData.Error($"Error al registrar adquisición: {detail}");
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
+                ViewData["IsWizard"] = isWizard;
+                return Page();
             }
 
-            TempData.Success($"Solicitud de Adquisición para '{unit.InventoryNumber}' registrada exitosamente.");
+            TempData.Success($"Solicitud de Adquisición para '{unit.InventoryNumber}' registrada exitosamente. El mantenimiento quedó completado en el wizard.");
+
+            if (wizardPlan != null && isWizard)
+            {
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 7, SelectedLabId = Input.LaboratoryId, ManagementId = wizardPlan.ManagementId });
+            }
+
             return RedirectToPage("./Index");
+        }
+
+        private void ApplyPlanToInput(ManagementPlan plan)
+        {
+            if (plan.EquipmentUnit != null)
+            {
+                Input.EquipmentUnitId = plan.EquipmentUnit.Id;
+                Input.LaboratoryId = plan.EquipmentUnit.LaboratoryId ?? 0;
+                Input.FacultyId = plan.EquipmentUnit.Laboratory?.FacultyId ?? 0;
+            }
+
+            Input.MaintenanceId = plan.MaintenanceId;
+            ManagementId = plan.ManagementId;
+        }
+
+        private async Task PopulateWizardViewDataAsync(ManagementPlan plan)
+        {
+            ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+            ViewData["ManagementId"] = plan.ManagementId;
+            var mgmt = plan.Management ?? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
+            ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
+            if (plan.DepartureId.HasValue) ViewData["LinkedDepartureId"] = plan.DepartureId.Value;
+            if (plan.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = plan.MaintenanceId.Value;
         }
 
         private async Task LoadLists(int facultyId = 0, int laboratoryId = 0, int equipmentUnitId = 0)

@@ -17,7 +17,7 @@
         </div>
     </div>
 
-    <form method="post">
+    <form method="post" id="verificationEditForm">
         <input type="hidden" asp-for="Input.Id" />
         <input type="hidden" asp-for="IsWizard" />
         <input type="hidden" asp-for="ManagementId" />
@@ -132,6 +132,40 @@
         });
     </script>
 }
+
+<script>
+    let confirmedHealthySubmit = false;
+    const initialCondition = '@Model.Input.PhysicalCondition';
+    const healthyConditions = ['Excellent', 'Good'];
+
+    document.addEventListener('DOMContentLoaded', function () {
+        $('#verificationEditForm').on('submit', function (e) {
+        const selectedCondition = $('input[name="Input.PhysicalCondition"]:checked').val();
+        const movesToHealthy = !healthyConditions.includes(initialCondition) && healthyConditions.includes(selectedCondition);
+
+        if (!movesToHealthy || confirmedHealthySubmit) {
+            return true;
+        }
+
+        e.preventDefault();
+        Swal.fire({
+            title: 'Enviar activo a sanos',
+            text: 'Al guardar como Bueno o Excelente, el equipo saldra del flujo L-7 y quedara en la lista de activos sanos de la gestion.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Si, enviar a sanos',
+            cancelButtonText: 'Revisar'
+        }).then((result) => {
+            if (result && (result.isConfirmed === true || result.value === true)) {
+                confirmedHealthySubmit = true;
+                $('#verificationEditForm').submit();
+            }
+        });
+        });
+    });
+</script>
 
 @section Styles {
     <style>

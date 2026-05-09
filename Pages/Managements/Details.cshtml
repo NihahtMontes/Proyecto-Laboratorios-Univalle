@@ -605,7 +605,7 @@
                 confirmButtonText: 'Sí, rehacer y limpiar',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result && (result.isConfirmed === true || result.value === true)) {
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = '/Index?handler=RedoPhase';

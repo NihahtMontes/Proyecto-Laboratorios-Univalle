@@ -49,6 +49,7 @@
                 <form method="post" id="massForm">
                     <input type="hidden" name="IsWizard" value="@isWizard.ToString().ToLower()" />
                     <input type="hidden" name="LabId" id="hiddenLabId" value="@Model.LabId" />
+                    <input type="hidden" asp-for="ManagementId" id="hiddenManagementId" />
 
                     <div id="equipmentTable" style="display:none;">
                         <div class="table-responsive">
@@ -71,12 +72,12 @@
                         <div class="form-actions text-right pb-4 mt-4">
                             @if (isWizard)
                             {
-                                <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1"
+                                <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" asp-route-ManagementId="@ViewData["ManagementId"]"
                                    class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
                                     <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
                                 </a>
                             }
-                            <button type="submit" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold">
+                            <button type="submit" id="btnSubmitMassVerification" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold">
                                 <i class="fas fa-save mr-1"></i> Guardar Verificaciones
                             </button>
                         </div>
@@ -145,7 +146,10 @@
             $('#equipmentTable, #emptyState').hide();
             $('#loadingState').show();
 
-            $.get('?handler=EquipmentByLab&labId=' + labId, function (data) {
+            var managementId = $('#hiddenManagementId').val();
+            var requestUrl = '?handler=EquipmentByLab&labId=' + labId + (managementId ? '&managementId=' + managementId : '');
+
+            $.get(requestUrl, function (data) {
                 $('#loadingState').hide();
                 var tbody = $('#tableBody');
                 tbody.empty();
@@ -163,6 +167,9 @@
 
                     var row = '<tr class="hover-light">';
                     row += '<td>';
+                    row += '<input type="hidden" name="Rows[' + i + '].PlanId" value="' + item.planId + '" />';
+                    row += '<input type="hidden" name="Rows[' + i + '].EquipmentUnitId" value="' + item.equipmentUnitId + '" />';
+                    row += '<input type="hidden" name="Rows[' + i + '].Observations" id="obsHidden_' + i + '" value="" />';
                     row += '<h6 class="m-0 font-weight-bold text-dark">' + escapeHtml(item.name) + '</h6>';
                     row += '</td>';
                     row += '<td>';
@@ -186,9 +193,6 @@
                     row += '<i class="fas fa-comment-dots text-danger fa-lg" title="Tiene observaciones"></i>';
                     row += '</span>';
                     row += '</td>';
-                    row += '<input type="hidden" name="Rows[' + i + '].PlanId" value="' + item.planId + '" />';
-                    row += '<input type="hidden" name="Rows[' + i + '].EquipmentUnitId" value="' + item.equipmentUnitId + '" />';
-                    row += '<input type="hidden" name="Rows[' + i + '].Observations" id="obsHidden_' + i + '" value="" />';
                     row += '</tr>';
                     tbody.append(row);
                 });
@@ -250,6 +254,50 @@
             {
                 <text>$('#labSelector').val('@Model.LabId'); loadEquipment();</text>
             }
+
+            var massVerificationSubmitting = false;
+            $('#massForm').on('submit', function (event) {
+                var form = this;
+                if (massVerificationSubmitting) return true;
+
+                event.preventDefault();
+
+                var rowCount = $('#tableBody tr').length;
+                if (rowCount === 0) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'warning', title: 'Sin equipos', text: 'Debe cargar al menos un equipo pendiente antes de guardar.' });
+                    } else {
+                        alert('Debe cargar al menos un equipo pendiente antes de guardar.');
+                    }
+                    return;
+                }
+
+                var submitForm = function () {
+                    massVerificationSubmitting = true;
+                    $('#btnSubmitMassVerification').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    HTMLFormElement.prototype.submit.call(form);
+                };
+
+                if (typeof Swal === 'undefined') {
+                    submitForm();
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Guardar verificaciones L-6?',
+                    text: 'Se registrará la condición física de todos los equipos cargados y el wizard avanzará según las fallas detectadas.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        submitForm();
+                    }
+                });
+            });
         });
     </script>
 }

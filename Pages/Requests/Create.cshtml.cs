@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -66,6 +66,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             {
                 var unit = await _context.EquipmentUnits
                     .Include(u => u.Laboratory)
+                    .Include(u => u.Equipment).ThenInclude(e => e.Notes)
                     .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
 
                 if (unit != null)
@@ -73,6 +74,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     Input.EquipmentUnitId = unit.Id;
                     Input.LaboratoryId = unit.LaboratoryId ?? 0;
                     Input.FacultyId = unit.Laboratory?.FacultyId ?? 0;
+
+                    ViewData["EquipmentNotes"] = unit.Equipment?.Notes?.Select(n => n.Note).ToList();
+                    ViewData["CurrentEquipmentUnitId"] = unit.Id;
 
                     // Forzar carga de listas para que el Select2 muestre los valores
                     ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories.Where(l => l.FacultyId == Input.FacultyId).ToListAsync(), "Id", "Name", Input.LaboratoryId);
@@ -129,85 +133,197 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
-            if (!ModelState.IsValid)
-            {
-                await LoadLists();
-                return Page();
-            }
-
-            var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
-            var currentMgmt = await ResolveManagementAsync();
-            if (currentMgmt == null)
-            {
-                TempData["Warning"] = "No se ha detectado una gestión activa. Debe activar un periodo de gestión o aplicar las migraciones de base de datos para poder registrar solicitudes.";
-                await LoadLists();
-                return Page();
-            }
-
-            var request = new Request
-            {
-                Type = RequestType.Technical,
-                ManagementId = currentMgmt.Id,
-                LaboratoryId = Input.LaboratoryId,
-                EquipmentId = unit?.EquipmentId ?? 0,
-                EquipmentUnitId = Input.EquipmentUnitId,
-                Description = Input.Description.Clean()!,
-                Priority = Input.Priority,
-                Observations = Input.Observations?.Clean()?.Length > 500 ? Input.Observations.Clean()?.Substring(0, 497) + "..." : Input.Observations?.Clean(),
-                EstimatedRepairTime = Input.EstimatedRepairTime?.Clean(),
-                Status = RequestStatus.Pending,
-                CreatedDate = DateTime.UtcNow
-            };
-
-            var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser != null) { request.CreatedById = currentUser.Id; request.RequestedById = currentUser.Id; }
-
-            _context.Requests.Add(request);
-            await _context.SaveChangesAsync();
+            ManagementPlan? wizardPlan = null;
+            Management? currentMgmt = null;
 
             if (ManagementPlanId.HasValue)
             {
-                var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
-                if (plan != null)
+                wizardPlan = await _context.ManagementPlans
+                    .AsTracking()
+                    .Include(p => p.Management)
+                    .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
+                    .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+
+                if (wizardPlan == null)
                 {
-                    plan.RequestId = request.Id;
-                    plan.CurrentPhase = WizardPhase.Maintenance;
-                    plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+                    TempData.Error($"No se pudo resolver el plan del wizard para L-7. ManagementPlanId recibido: {ManagementPlanId.Value}.");
+                    await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                    ViewData["IsWizard"] = isWizard;
+                    return Page();
+                }
+
+                currentMgmt = wizardPlan.Management;
+
+                if (wizardPlan.EquipmentUnitId.HasValue)
+                {
+                    Input.EquipmentUnitId = wizardPlan.EquipmentUnitId.Value;
+                    Input.LaboratoryId = wizardPlan.EquipmentUnit?.LaboratoryId ?? Input.LaboratoryId;
+                    Input.FacultyId = wizardPlan.EquipmentUnit?.Laboratory?.FacultyId ?? Input.FacultyId;
+                }
+
+                ModelState.Remove("Input.FacultyId");
+                ModelState.Remove("Input.LaboratoryId");
+                ModelState.Remove("Input.EquipmentUnitId");
+            }
+
+            currentMgmt ??= await ResolveManagementAsync();
+            var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
+
+            ViewData["IsWizard"] = isWizard;
+            ViewData["IsCorrective"] = isCorrective;
+            ViewData["ManagementId"] = currentMgmt?.Id ?? ManagementId;
+            ViewData["CurrentPhaseInt"] = (int)(wizardPlan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
+
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState
+                    .Where(ms => ms.Value?.Errors.Count > 0)
+                    .SelectMany(ms => ms.Value!.Errors.Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? $"{ms.Key}: valor inválido." : e.ErrorMessage))
+                    .Distinct()
+                    .Take(4)
+                    .ToList();
+
+                TempData.Error(errors.Count > 0
+                    ? "No se pudo registrar la solicitud L-7: " + string.Join(" ", errors)
+                    : "No se pudo registrar la solicitud L-7. Revise los campos obligatorios.");
+
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                return Page();
+            }
+
+            if (currentMgmt == null)
+            {
+                TempData.Warning("No se ha detectado una gestión activa. Debe activar un periodo de gestión para registrar solicitudes.");
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                return Page();
+            }
+
+            var unit = await _context.EquipmentUnits
+                .AsTracking()
+                .FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
+
+            if (unit == null)
+            {
+                TempData.Error("No se pudo registrar la solicitud L-7: la unidad física no existe.");
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                return Page();
+            }
+
+            if (unit.LaboratoryId == null)
+            {
+                TempData.Error("No se pudo registrar la solicitud L-7: la unidad física no tiene laboratorio asignado.");
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                return Page();
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var request = new Request
+                {
+                    Type = RequestType.Technical,
+                    ManagementId = currentMgmt.Id,
+                    LaboratoryId = Input.LaboratoryId,
+                    EquipmentId = unit.EquipmentId,
+                    EquipmentUnitId = Input.EquipmentUnitId,
+                    Description = Input.Description.Clean()!,
+                    Priority = Input.Priority,
+                    Observations = Input.Observations?.Clean()?.Length > 500 ? Input.Observations.Clean()?.Substring(0, 497) + "..." : Input.Observations?.Clean(),
+                    EstimatedRepairTime = Input.EstimatedRepairTime?.Clean(),
+                    Status = RequestStatus.Pending,
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser != null)
+                {
+                    request.CreatedById = currentUser.Id;
+                    request.RequestedById = currentUser.Id;
+                }
+
+                _context.Requests.Add(request);
+                await _context.SaveChangesAsync();
+
+                if (wizardPlan != null)
+                {
+                    wizardPlan.RequestId = request.Id;
+                    wizardPlan.CurrentPhase = WizardPhase.Maintenance;
+                    wizardPlan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
                     await _context.SaveChangesAsync();
                 }
-            }
-            else if (currentMgmt.Type == ManagementType.Corrective)
-            {
-                // Si es correctivo y no tiene ManagementPlan, se crea uno nuevo al momento de reportar la falla
-                var plan = new ManagementPlan
+                else if (currentMgmt.Type == ManagementType.Corrective)
                 {
-                    ManagementId = currentMgmt.Id,
-                    EquipmentUnitId = Input.EquipmentUnitId,
-                    CurrentPhase = WizardPhase.Maintenance,
-                    CurrentState = WizardEquipmentState.AwaitingMaintenance,
-                    PlanStatus = ManagementPlanStatus.Pending,
-                    RequestId = request.Id
-                };
-                _context.ManagementPlans.Add(plan);
-                await _context.SaveChangesAsync();
+                    wizardPlan = new ManagementPlan
+                    {
+                        ManagementId = currentMgmt.Id,
+                        EquipmentUnitId = Input.EquipmentUnitId,
+                        CurrentPhase = WizardPhase.Maintenance,
+                        CurrentState = WizardEquipmentState.AwaitingMaintenance,
+                        PlanStatus = ManagementPlanStatus.Pending,
+                        RequestId = request.Id
+                    };
+                    _context.ManagementPlans.Add(wizardPlan);
+                    await _context.SaveChangesAsync();
+                }
+                else if (isWizard)
+                {
+                    throw new InvalidOperationException("El flujo wizard preventivo requiere un ManagementPlanId válido para avanzar de L-7 a L-8.");
+                }
+
+                await transaction.CommitAsync();
+
+                TempData.Success("Solicitud técnica L-7 registrada exitosamente.");
+
+                if (isWizard)
+                {
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                }
+
+                return RedirectToPage("./Index");
             }
-
-            TempData.Success($"Solicitud técnica L-7 registrada exitosamente.");
-
-            if (isWizard)
+            catch (Exception ex)
             {
-                // Al ser Wizard, el sistema entiende que ya se cumplió el paso de Solicitud (Paso 2)
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                await transaction.RollbackAsync();
+                var detail = ex.InnerException?.Message ?? ex.Message;
+                TempData.Error($"Error al registrar la solicitud L-7: {detail}");
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                return Page();
             }
-
-            return RedirectToPage("./Index");
         }
 
-        private async Task LoadLists()
+        private async Task LoadLists(int facultyId = 0, int labId = 0, int equipmentUnitId = 0)
         {
-            ViewData["FacultyId"] = new SelectList(await _context.Faculties.Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name).ToListAsync(), "Id", "Name");
-            if (Input.FacultyId == 0) ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
-            if (Input.LaboratoryId == 0) ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            ViewData["FacultyId"] = new SelectList(await _context.Faculties
+                .Where(f => f.Status == GeneralStatus.Activo)
+                .OrderBy(f => f.Name)
+                .ToListAsync(), "Id", "Name", facultyId);
+
+            if (facultyId > 0)
+            {
+                ViewData["LaboratoryId"] = new SelectList(await _context.Laboratories
+                    .Where(l => l.FacultyId == facultyId)
+                    .OrderBy(l => l.Name)
+                    .ToListAsync(), "Id", "Name", labId);
+            }
+            else
+            {
+                ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            }
+
+            if (labId > 0)
+            {
+                ViewData["EquipmentUnitId"] = new SelectList(await _context.EquipmentUnits
+                    .Include(u => u.Equipment)
+                    .Where(u => u.LaboratoryId == labId)
+                    .Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" })
+                    .ToListAsync(), "Id", "Name", equipmentUnitId);
+            }
+            else
+            {
+                ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            }
         }
 
         // Handlers para AJAX (Asegúrate de que existan en tu controlador o aquí)

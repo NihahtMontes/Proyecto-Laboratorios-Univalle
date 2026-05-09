@@ -115,16 +115,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Tipo de Mantenimiento")]
             public MaintenanceType MaintenanceType { get; set; } = MaintenanceType.Otros;
 
-            [Required(ErrorMessage = "El técnico es obligatorio")]
             [Display(Name = "Técnico Responsable")]
-            public int TechnicianId { get; set; }
+            public int? TechnicianId { get; set; }
 
             [Display(Name = "Solicitud Relacionada")]
             public int? RequestId { get; set; }
 
-            [Required(ErrorMessage = "La descripción es obligatoria")]
             [Display(Name = "Descripción del Trabajo")]
-            public string Description { get; set; } = string.Empty;
+            public string? Description { get; set; }
 
             [Required]
             [Display(Name = "Fecha Programada")]
@@ -204,10 +202,83 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
-            if (Input.StartDate.HasValue && Input.EndDate.HasValue)
+            // ─────────────────────────────────────────────────────────────
+            // WIZARD PRE-VALIDATION: reconstruir valores ANTES de ModelState
+            // Los selects disabled no postean → FacultyId/LaboratoryId/
+            // EquipmentUnitId/MaintenanceType llegan como 0 → [Required] falla.
+            // ─────────────────────────────────────────────────────────────
+            ManagementPlan? wizardPlan = null;
+            Management? currentMgmt = null;
+
+            if (ManagementPlanId.HasValue)
+            {
+                wizardPlan = await _context.ManagementPlans
+                    .AsTracking()
+                    .Include(p => p.Management)
+                    .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
+                    .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+
+                if (wizardPlan != null)
+                {
+                    currentMgmt = wizardPlan.Management;
+
+                    if (wizardPlan.EquipmentUnitId.HasValue)
+                    {
+                        Input.EquipmentUnitId = wizardPlan.EquipmentUnitId.Value;
+                        Input.LaboratoryId = wizardPlan.EquipmentUnit?.LaboratoryId ?? Input.LaboratoryId;
+                        Input.FacultyId = wizardPlan.EquipmentUnit?.Laboratory?.FacultyId ?? Input.FacultyId;
+                    }
+
+                    if (isWizard)
+                    {
+                        Input.MaintenanceType = MaintenanceType.Preventivo;
+                    }
+
+                    if (wizardPlan.RequestId.HasValue)
+                    {
+                        Input.RequestId = wizardPlan.RequestId;
+                    }
+
+                    // Limpiar keys que el servidor acaba de reconstruir (disabled inputs NO postean)
+                    ModelState.Remove("Input.FacultyId");
+                    ModelState.Remove("Input.LaboratoryId");
+                    ModelState.Remove("Input.EquipmentUnitId");
+                    ModelState.Remove("Input.MaintenanceType");
+                }
+            }
+
+            if (!isWizard && !ManagementPlanId.HasValue)
+            {
+                currentMgmt = await _managementContext.GetCurrentManagementAsync();
+            }
+
+            // Restaurar ViewData wizard para re-render en caso de error
+            if (wizardPlan != null)
+            {
+                ViewData["IsWizard"] = true;
+                ViewData["CurrentPhaseInt"] = (int)wizardPlan.CurrentPhase;
+                ViewData["ManagementId"] = wizardPlan.ManagementId;
+                ViewData["ManagementPlanId"] = wizardPlan.Id;
+                var mgmt = await _context.Managements.AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.Id == wizardPlan.ManagementId);
+                ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
+            }
+
+if (Input.StartDate.HasValue && Input.EndDate.HasValue)
             {
                 if (Input.EndDate < Input.StartDate)
                     ModelState.AddModelError("Input.EndDate", "La fecha de finalización no puede ser anterior al inicio.");
+            }
+
+            if (isWizard && !Input.TechnicianId.HasValue)
+            {
+                ModelState.AddModelError("Input.TechnicianId", "El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que L-3 pueda derivar el responsable de la salida.");
+            }
+
+            if (Input.Status == MaintenanceStatus.Completed && Input.CompletionPercentage != 100)
+            {
+                ModelState.AddModelError("Input.CompletionPercentage", "Para marcar el mantenimiento como Completado, el avance debe estar al 100%.");
             }
 
             var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).AsTracking().FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
@@ -219,28 +290,57 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             {
                 ModelState.AddModelError("Input.EquipmentUnitId", "No se puede realizar mantenimiento a un equipo que actualmente está en préstamo.");
             }
+            else if (equipmentUnit.LaboratoryId == null)
+            {
+                ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física no tiene laboratorio asignado. Asigne un laboratorio al equipo antes de registrar el mantenimiento.");
+            }
 
-            if (Input.CostDetails != null)
-                Input.CostDetails = Input.CostDetails.Where(d => !string.IsNullOrWhiteSpace(d.Concept)).ToList();
+            foreach (var key in ModelState.Keys.Where(k => k.StartsWith("Input.CostDetails")).ToList())
+            {
+                ModelState.Remove(key);
+            }
+
+            Input.CostDetails = Input.CostDetails?
+                .Where(d => !string.IsNullOrWhiteSpace(d.Concept))
+                .ToList() ?? new List<CostDetail>();
+
+            foreach (var detail in Input.CostDetails)
+            {
+                detail.Quantity = detail.Quantity <= 0 ? 1 : detail.Quantity;
+                detail.UnitPrice = detail.UnitPrice < 0 ? 0 : detail.UnitPrice;
+            }
 
             decimal totalCosts = Input.CostDetails?.Sum(d => d.Subtotal) ?? 0;
             Input.ActualCost = totalCosts;
 
             if (!ModelState.IsValid)
             {
-                LoadLists();
+                var errors = ModelState
+                    .Where(ms => ms.Value?.Errors.Count > 0)
+                    .SelectMany(ms => ms.Value!.Errors.Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? $"{ms.Key}: valor inválido." : e.ErrorMessage))
+                    .Distinct()
+                    .Take(4)
+                    .ToList();
+
+                TempData.Error(errors.Count > 0
+                    ? "No se pudo registrar el mantenimiento: " + string.Join(" ", errors)
+                    : "No se pudo registrar el mantenimiento. Revise los campos obligatorios.");
+
+                LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
 
             try
             {
-                var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+                currentMgmt ??= await _managementContext.GetCurrentManagementAsync();
                 if (currentMgmt == null)
                 {
-                    TempData["Warning"] = "No hay una gestión activa disponible o las columnas de base de datos faltan. Por favor active una gestión institucional para registrar el mantenimiento.";
-                    LoadLists();
+                    TempData.Warning("No hay una gestion activa disponible. Por favor active una gestion institucional para registrar el mantenimiento.");
+                    LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                     return Page();
                 }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
 
                 var maintenance = new Maintenance
                 {
@@ -249,7 +349,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     MaintenanceType = Input.MaintenanceType,
                     TechnicianId = Input.TechnicianId,
                     RequestId = Input.RequestId,
-                    Description = Input.Description.Clean(),
+                    Description = Input.Description?.Clean(),
                     ScheduledDate = Input.ScheduledDate,
                     StartDate = Input.StartDate,
                     EndDate = Input.EndDate,
@@ -300,45 +400,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 await _context.SaveChangesAsync();
 
-                // Solo notificar si la fecha programada está a 7 días o menos de vencer
-                if (maintenance.ScheduledDate.HasValue)
+                if (wizardPlan != null)
                 {
-                    var daysUntil = (maintenance.ScheduledDate.Value.Date - DateTime.UtcNow.Date).TotalDays;
-                    if (daysUntil >= 0 && daysUntil <= 7)
-                    {
-                        var notification = new Notification
-                        {
-                            UserId = Input.TechnicianId,
-                            Title = "Mantenimiento Próximo a Vencer",
-                            Message = $"El mantenimiento de la unidad {equipmentUnit?.InventoryNumber} debe realizarse el {maintenance.ScheduledDate.Value:dd/MM/yyyy}.",
-                            ActionUrl = $"/Maintenances/Details/{maintenance.Id}",
-                            IconClass = "fas fa-exclamation-triangle text-warning",
-                            IsRead = false,
-                            CreatedAt = DateTime.UtcNow
-                        };
-
-                        _context.Notifications.Add(notification);
-                        await _context.SaveChangesAsync();
-                    }
+                    wizardPlan.MaintenanceId = maintenance.Id;
+                    wizardPlan.CurrentPhase = WizardPhase.Exit;
+                    wizardPlan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                    await _context.SaveChangesAsync();
                 }
+
+                await transaction.CommitAsync();
+
+                await TryCreateMaintenanceNotificationAsync(maintenance, equipmentUnit);
 
                 TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
 
-                if (ManagementPlanId.HasValue)
+                if (wizardPlan != null && isWizard)
                 {
-                    var plan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
-                    if (plan != null)
-                    {
-                        plan.MaintenanceId = maintenance.Id;
-                        plan.CurrentPhase = WizardPhase.Exit;
-                        plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
-                        await _context.SaveChangesAsync();
-                        
-                        if (isWizard)
-                        {
-                            return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
-                        }
-                    }
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                 }
 
                 return RedirectToPage("./Index");
@@ -346,19 +424,84 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             catch (Exception ex)
             {
                 TempData.Error($"Error al guardar el registro: {ex.Message}");
-                LoadLists();
+                LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
         }
 
-        private void LoadLists()
+        private async Task TryCreateMaintenanceNotificationAsync(Maintenance maintenance, EquipmentUnit? equipmentUnit)
+        {
+            if (!maintenance.ScheduledDate.HasValue || !maintenance.TechnicianId.HasValue)
+                return;
+
+            var daysUntil = (maintenance.ScheduledDate.Value.Date - DateTime.UtcNow.Date).TotalDays;
+            if (daysUntil < 0 || daysUntil > 7)
+                return;
+
+            try
+            {
+                var technician = await _context.People
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == maintenance.TechnicianId.Value);
+
+                if (string.IsNullOrWhiteSpace(technician?.Email))
+                    return;
+
+                var recipient = await _context.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Email == technician.Email);
+
+                if (recipient == null)
+                    return;
+
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = recipient.Id,
+                    Title = "Mantenimiento Próximo a Vencer",
+                    Message = $"El mantenimiento de la unidad {equipmentUnit?.InventoryNumber} debe realizarse el {maintenance.ScheduledDate.Value:dd/MM/yyyy}.",
+                    ActionUrl = $"/Maintenances/Details/{maintenance.Id}",
+                    IconClass = "fas fa-exclamation-triangle text-warning",
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                });
+
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                // La notificación no forma parte del guardado crítico de L-8.
+            }
+        }
+
+        private void LoadLists(int facultyId = 0, int labId = 0, int equipUnitId = 0)
         {
             ViewData["FacultyId"] = new SelectList(_context.Faculties
                 .Where(f => f.Status == GeneralStatus.Activo)
-                .OrderBy(f => f.Name), "Id", "Name");
+                .OrderBy(f => f.Name), "Id", "Name", facultyId);
 
-            ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
-            ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            if (facultyId > 0)
+            {
+                ViewData["LaboratoryId"] = new SelectList(_context.Laboratories
+                    .Where(l => l.FacultyId == facultyId)
+                    .ToList(), "Id", "Name", labId);
+            }
+            else
+            {
+                ViewData["LaboratoryId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            }
+
+            if (labId > 0)
+            {
+                ViewData["EquipmentUnitId"] = new SelectList(_context.EquipmentUnits
+                    .Include(u => u.Equipment)
+                    .Where(u => u.LaboratoryId == labId)
+                    .Select(u => new { Id = u.Id, Name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" })
+                    .ToList(), "Id", "Name", equipUnitId);
+            }
+            else
+            {
+                ViewData["EquipmentUnitId"] = new SelectList(Enumerable.Empty<SelectListItem>());
+            }
 
             // Fix: FullName is NotMapped and causes LINQ translation errors in TPT.
             var people = _context.People

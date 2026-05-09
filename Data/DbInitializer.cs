@@ -22,7 +22,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             foreach (var roleName in roles)
             {
-                if (!await roleManager.RoleExistsAsync(roleName))
+                if (!await roleManager.RoleExistsAsync( roleName))
                 {
                     await roleManager.CreateAsync(new IdentityRole<int>(roleName));
                 }

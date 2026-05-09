@@ -33,9 +33,10 @@
                     </div>
                 </div>
 
-                <form method="post" id="verificationForm">
+                <form method="post" id="verificationForm" novalidate>
                     <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString().ToLower() ?? "false")" />
                     <input type="hidden" asp-for="ManagementPlanId" />
+                    <input type="hidden" asp-for="ManagementId" />
 
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
 
@@ -130,7 +131,7 @@
                         <div>
                             @if (isWizard)
                             {
-                                <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1"
+                                <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" asp-route-ManagementId="@ViewData["ManagementId"]"
                                    class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
                                     <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
                                 </a>
@@ -139,7 +140,7 @@
                         <div class="d-flex align-items-center gap-2">
                             <label asp-for="Input.Status" class="font-weight-bold small uppercase mr-2 mb-0">Estado del Reporte</label>
                             <select asp-for="Input.Status" class="form-control custom-select font-weight-bold" asp-items="Html.GetEnumSelectList<VerificationStatus>()" style="width:auto;"></select>
-                            <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold ml-2">
+                            <button type="submit" id="btnSubmitVerification" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold ml-2">
                                 Guardar y Avanzar <i class="fas fa-arrow-right ml-2"></i>
                             </button>
                         </div>
@@ -229,11 +230,24 @@
         // Validación SweetAlert2
         let isConfirmedSubmit = false;
         $('#verificationForm').on('submit', function(e) {
+            const form = this;
             if (isConfirmedSubmit) return true;
             
             let faultsCount = $('.fault-row').length;
             if (faultsCount === 0) {
                 e.preventDefault();
+
+                const submitForm = function() {
+                    isConfirmedSubmit = true;
+                    $('#btnSubmitVerification').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    HTMLFormElement.prototype.submit.call(form);
+                };
+
+                if (typeof Swal === 'undefined') {
+                    submitForm();
+                    return;
+                }
+
                 Swal.fire({
                     title: '¿Equipo marcado en perfectas condiciones?',
                     text: 'Se guardará sin registrar fallas.',
@@ -244,9 +258,8 @@
                     confirmButtonText: 'Sí, confirmar',
                     cancelButtonText: 'Revisar'
                 }).then((result) => {
-                    if (result.isConfirmed) {
-                        isConfirmedSubmit = true;
-                        $('#verificationForm').submit();
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        submitForm();
                     }
                 });
             }

@@ -1,11 +1,13 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Kardex.CreateModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Helpers
 
 @{
-    ViewData["Title"] = "Registro en Kardex (Paso 5)";
+    ViewData["Title"] = "Concluir Mantenimiento (Kardex)";
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 5);
+    var categoryList = Html.GetEnumSelectList<CostCategory>();
 }
 
 <div class="row justify-content-center">
@@ -15,186 +17,239 @@
             await Html.RenderPartialAsync("_WizardSteps", currentPhaseInt);
         }
 
-        <div class="card shadow-sm border-0 mt-3">
-            <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+        <div class="card shadow-sm border-0 overflow-hidden mt-3">
+            <div class="card-header bg-info p-4">
+                <div class="d-flex no-block align-items-center">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Registro de Kardex e Historial</h4>
-                        <h6 class="card-subtitle text-muted italic">Actualización final de estado operativo post-mantenimiento/salida.</h6>
+                        <h4 class="card-title text-white font-weight-bold mb-0">Concluir Mantenimiento (Kardex)</h4>
+                        <h6 class="card-subtitle text-white-50 mb-0">Completa los datos del mantenimiento L-8, cierra la salida L-3 y habilita el desembolso.</h6>
                     </div>
-                    <div class="ml-auto mt-2 mt-md-0 text-right">
-                         <i class="fas fa-clipboard-list fa-2x text-info"></i>
+                    <div class="ml-auto text-right text-white">
+                        <div class="font-weight-bold h5 mb-1">@Model.EquipmentTitle</div>
+                        <div class="small text-white-50">@Model.InventoryTitle · @Model.LaboratoryTitle</div>
                     </div>
                 </div>
+            </div>
 
-                <form method="post" id="kardexForm" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4 small"></div>
-                    
+            <div class="card-body p-0">
+                <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
+                    <li class="nav-item"><a class="nav-link active font-weight-bold small uppercase" data-toggle="tab" href="#tab-general" role="tab"><i class="fas fa-info-circle mr-2"></i> 1. Datos L-8</a></li>
+                    <li class="nav-item"><a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-costos" role="tab"><i class="fas fa-file-invoice-dollar mr-2"></i> 2. Costos e Insumos</a></li>
+                    <li class="nav-item"><a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-cierre" role="tab"><i class="fas fa-check-double mr-2"></i> 3. Cierre Kardex</a></li>
+                </ul>
+
+                <form method="post" id="kardexForm" class="tab-content p-4" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4"></div>
                     <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
                     <input type="hidden" asp-for="ManagementPlanId" />
+                    <input type="hidden" asp-for="Input.MaintenanceId" />
+                    <input type="hidden" asp-for="Input.EquipmentUnitId" />
+                    <input type="hidden" asp-for="Input.FacultyId" />
+                    <input type="hidden" asp-for="Input.LaboratoryId" />
+                    <input type="hidden" asp-for="Input.Status" value="@MaintenanceStatus.Completed" />
+                    <input type="hidden" asp-for="Input.ActualCost" id="hiddenActualCost" />
+                    <input type="hidden" asp-for="Input.CompletionPercentage" id="hiddenPercentageInput" />
 
-                    <!-- FILA 1: UBICACION (Layout 3 Columnas) -->
-                    <div class="bg-light p-4 rounded mb-4 border-left border-info shadow-sm" style="border-left-width: 4px;">
-                        <h5 class="text-dark font-weight-bold mb-3 uppercase small"><i class="fas fa-map-marker-alt mr-2 text-info"></i>Localización y Activo</h5>
+                    <div class="tab-pane active" id="tab-general" role="tabpanel">
+                        <div class="alert alert-light border-left border-info shadow-sm mb-4" style="border-left-width:4px;">
+                            <div class="row align-items-center">
+                                <div class="col-md-4"><strong>Equipo:</strong> @Model.EquipmentTitle<br /><span class="text-muted small">Inv: @Model.InventoryTitle</span></div>
+                                <div class="col-md-4"><strong>Laboratorio:</strong> @Model.LaboratoryTitle</div>
+                                <div class="col-md-4"><strong>L-3:</strong> @(Model.LinkedDepartureId.HasValue ? $"Salida #{Model.LinkedDepartureId}" : "Sin salida vinculada")<br /><span class="text-muted small">Fecha salida: @(Model.DepartureDate?.ToString("dd/MM/yyyy") ?? "Pendiente")</span></div>
+                            </div>
+                        </div>
+
                         <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad <span class="text-danger">*</span></label>
-                                    @if (isWizard)
-                                    {
-                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-info" asp-items="ViewBag.FacultyId" id="facultySelector" disabled></select>
-                                        <input type="hidden" asp-for="Input.FacultyId" />
-                                    }
-                                    else
-                                    {
-                                        <select asp-for="Input.FacultyId" class="form-control custom-select border-info" asp-items="ViewBag.FacultyId" id="facultySelector" required>
-                                            <option value="">-- Seleccione Facultad --</option>
-                                        </select>
-                                    }
-                                    <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio <span class="text-danger">*</span></label>
-                                    @if (isWizard)
-                                    {
-                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-info" asp-items="ViewBag.LaboratoryId" id="labSelector" disabled></select>
-                                        <input type="hidden" asp-for="Input.LaboratoryId" />
-                                    }
-                                    else
-                                    {
-                                        <select asp-for="Input.LaboratoryId" class="form-control custom-select border-info" asp-items="ViewBag.LaboratoryId" id="labSelector" required>
-                                            <option value="">-- Seleccione Laboratorio --</option>
-                                        </select>
-                                    }
-                                    <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group mb-3">
-                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Unidad Física <span class="text-danger">*</span></label>
-                                    @if (isWizard)
-                                    {
-                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-info" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" disabled></select>
-                                        <input type="hidden" asp-for="Input.EquipmentUnitId" />
-                                    }
-                                    else
-                                    {
-                                        <select asp-for="Input.EquipmentUnitId" class="form-control custom-select border-info" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" required>
-                                            <option value="">-- Seleccione Equipo --</option>
-                                        </select>
-                                    }
-                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- TARJETA DE REFERENCIA L-3 (o L-8) -->
-                    @if (isWizard && ViewData["LinkedDepartureId"] != null)
-                    {
-                        <div class="bg-light p-3 rounded mb-4 border-left border-warning" style="border-left-width: 4px !important;">
-                            <label class="control-label font-weight-bold small text-uppercase text-muted">Salida de Equipo Relacionada (L-3)</label>
-                            <div class="p-2 rounded mt-2" style="background:#fffbeb; border: 1px solid #fef08a;">
-                                <div class="d-flex align-items-center">
-                                    <div class="mr-3" style="color: #d97706;"><i class="fas fa-sign-out-alt fa-lg"></i></div>
-                                    <div>
-                                        <h6 class="m-0 font-weight-bold" style="color: #b45309;">Salida L-3 Vinculada</h6>
-                                        <span class="small" style="color: #d97706;">ID: @ViewData["LinkedDepartureId"]</span>
-                                    </div>
-                                    <a href="/Departures/Details?id=@ViewData["LinkedDepartureId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #d97706; border: 1px solid #fef08a;">
-                                        Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 4, 'L-3 Salida', 5)">
-                                        <i class="fas fa-undo"></i> Rehacer L-3
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                    else if (isWizard && ViewData["LinkedMaintenanceId"] != null)
-                    {
-                        // En caso de que haya saltado L-3
-                        <div class="bg-light p-3 rounded mb-4 border-left border-purple" style="border-left-width: 4px !important; border-color: #8b5cf6 !important;">
-                            <label class="control-label font-weight-bold small text-uppercase text-muted">Mantenimiento Relacionado (L-8)</label>
-                            <div class="p-2 rounded mt-2" style="background:#f5f3ff; border: 1px solid #ddd6fe;">
-                                <div class="d-flex align-items-center">
-                                    <div class="mr-3" style="color: #7c3aed;"><i class="fas fa-wrench fa-lg"></i></div>
-                                    <div>
-                                        <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Mantenimiento L-8 Vinculado</h6>
-                                        <span class="small" style="color: #7c3aed;">ID: @ViewData["LinkedMaintenanceId"]</span>
-                                    </div>
-                                    <a href="/Maintenances/Details/@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
-                                        Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 3, 'L-8 Mantenimiento', 5)">
-                                        <i class="fas fa-undo"></i> Rehacer L-8
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    }
-
-                    <!-- FILA 2: DATOS DE HISTORIAL -->
-                    <div class="row">
-                        <div class="col-lg-7">
-                            <h5 class="text-success font-weight-bold mb-3 uppercase small"><i class="fas fa-check-circle mr-2"></i>Estado Final (Kardex)</h5>
-                            <div class="card border mb-4 shadow-sm">
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 border-right">
-                                            <div class="form-group mb-0">
-                                                <label asp-for="Input.Status" class="control-label font-weight-bold small text-uppercase text-muted">Estado Actual del Activo <span class="text-danger">*</span></label>
-                                                <select asp-for="Input.Status" class="form-control custom-select border-success" asp-items="Html.GetEnumSelectList<EquipmentStatus>()" required>
-                                                    <option value="">-- Seleccione Estado --</option>
-                                                </select>
-                                                <span asp-validation-for="Input.Status" class="text-danger small"></span>
-                                            </div>
+                            <div class="col-md-8 border-right">
+                                <h5 class="text-info font-weight-bold mb-3 small uppercase">Trabajo Realizado</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small uppercase text-muted">Tipo de Mantenimiento <span class="text-danger">*</span></label>
+                                            <select asp-for="Input.MaintenanceType" class="form-control custom-select" asp-items="ViewBag.MaintenanceType" required></select>
+                                            <span asp-validation-for="Input.MaintenanceType" class="text-danger small"></span>
                                         </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group mb-0">
-                                                <label asp-for="Input.StartDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha de Novedad <span class="text-danger">*</span></label>
-                                                <input asp-for="Input.StartDate" class="form-control" type="date" required />
-                                            </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small uppercase text-muted">Técnico Responsable <span class="text-danger">*</span></label>
+                                            <select asp-for="Input.TechnicianId" class="form-control custom-select" asp-items="ViewBag.TechnicianId" required>
+                                                <option value="">-- Asignar Técnico --</option>
+                                            </select>
+                                            <span asp-validation-for="Input.TechnicianId" class="text-danger small"></span>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <div class="col-lg-5">
-                            <h5 class="text-primary font-weight-bold mb-3 uppercase small"><i class="fas fa-comment-dots mr-2"></i>Motivo del Registro</h5>
-                            <div class="card bg-light border-0 mb-4 shadow-sm">
-                                <div class="card-body p-4">
-                                    <div class="form-group mb-0">
-                                        <label asp-for="Input.Reason" class="control-label font-weight-bold small text-uppercase text-muted italic">Justificación para Kardex</label>
-                                        <textarea asp-for="Input.Reason" class="form-control bg-white shadow-none" rows="3" required></textarea>
-                                        <span asp-validation-for="Input.Reason" class="text-danger small"></span>
-                                    </div>
+                                <div class="form-group">
+                                    <label asp-for="Input.Description" class="control-label font-weight-bold text-dark uppercase small">Descripción de Trabajos Realizados <span class="text-danger">*</span></label>
+                                    <textarea asp-for="Input.Description" class="form-control" rows="5" required placeholder="Ej: Mantenimiento correctivo, cambio de piezas, entrega del equipo funcionando..."></textarea>
+                                    <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <h5 class="text-info font-weight-bold mb-3 small uppercase">Fechas de Cierre</h5>
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.ScheduledDate" class="control-label font-weight-bold small uppercase text-muted">Fecha Programada <span class="text-danger">*</span></label>
+                                    <input asp-for="Input.ScheduledDate" class="form-control" type="date" required />
+                                    <span asp-validation-for="Input.ScheduledDate" class="text-danger small"></span>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.StartDate" class="control-label font-weight-bold small uppercase text-muted">Inicio Real <span class="text-danger">*</span></label>
+                                    <input asp-for="Input.StartDate" class="form-control" type="datetime-local" required />
+                                    <span asp-validation-for="Input.StartDate" class="text-danger small"></span>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label asp-for="Input.EndDate" class="control-label font-weight-bold small uppercase text-muted">Finalización Real <span class="text-danger">*</span></label>
+                                    <input asp-for="Input.EndDate" class="form-control" type="datetime-local" required />
+                                    <span asp-validation-for="Input.EndDate" class="text-danger small"></span>
+                                </div>
+                                <div class="form-group mb-0">
+                                    <label asp-for="Input.ActualReturnDate" class="control-label font-weight-bold small uppercase text-muted">Devolución Real L-3 <span class="text-danger">*</span></label>
+                                    <input asp-for="Input.ActualReturnDate" class="form-control border-info" type="date" required />
+                                    <span asp-validation-for="Input.ActualReturnDate" class="text-danger small"></span>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="mt-4 text-right">
+                            <button type="button" class="btn btn-info btn-rounded px-4" onclick="$('a[href=\'#tab-costos\']').tab('show')">Siguiente: Costos <i class="fas fa-arrow-right ml-1"></i></button>
+                        </div>
                     </div>
 
-                    <hr class="mt-4" />
+                    <div class="tab-pane" id="tab-costos" role="tabpanel">
+                        <div class="d-flex align-items-center mb-4">
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Detalle de Costos e Insumos</h5>
+                            <button type="button" class="btn btn-sm btn-success btn-rounded shadow-sm ml-auto font-weight-bold px-3" onclick="addRow()"><i class="fas fa-plus mr-1"></i> Agregar Ítem</button>
+                        </div>
 
-                    <div class="form-actions text-right pb-4 mt-4">
-                        @if (isWizard)
-                        {
-                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="5" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
-                                <i class="fas fa-undo mr-1"></i> Volver al Wizard
-                            </a>
-                        }
-                        else
-                        {
-                            <a asp-page="/Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
-                                 <i class="fas fa-times mr-1"></i> Cancelar
-                            </a>
-                        }
-                        <button type="button" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold text-white py-2" onclick="confirmKardex()">
-                            <i class="fas fa-save mr-1"></i> Registrar en Kardex
-                        </button>
+                        <div class="table-responsive border rounded mb-4">
+                            <table class="table table-hover v-middle mb-0" id="costsTable">
+                                <thead class="bg-light text-uppercase small font-weight-bold text-muted">
+                                    <tr>
+                                        <th class="pl-4" style="width: 28%">Concepto / Repuesto</th>
+                                        <th style="width: 17%">Categoría</th>
+                                        <th style="width: 10%" class="text-center">Cant.</th>
+                                        <th style="width: 12%">Unidad</th>
+                                        <th style="width: 13%" class="text-center">P. Unit (Bs)</th>
+                                        <th style="width: 15%" class="text-center">Subtotal</th>
+                                        <th style="width: 5%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="costsContainer">
+                                    @for (int i = 0; i < Model.Input.CostDetails.Count; i++)
+                                    {
+                                        <tr class="cost-row">
+                                            <td class="pl-4">
+                                                <input type="hidden" name="Input.CostDetails[@i].Id" value="@Model.Input.CostDetails[i].Id" />
+                                                <input name="Input.CostDetails[@i].Concept" class="form-control" value="@Model.Input.CostDetails[i].Concept" required />
+                                            </td>
+                                            <td><select name="Input.CostDetails[@i].Category" class="form-control custom-select" asp-items="@categoryList" asp-for="@Model.Input.CostDetails[i].Category"></select></td>
+                                            <td><input name="Input.CostDetails[@i].Quantity" class="form-control text-center txt-qty" type="number" step="0.01" value="@Model.Input.CostDetails[i].Quantity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" min="0.01" onchange="calculateTotals()" required /></td>
+                                            <td><input name="Input.CostDetails[@i].UnitOfMeasure" class="form-control" value="@(Model.Input.CostDetails[i].UnitOfMeasure ?? "Unidad")" /></td>
+                                            <td><input name="Input.CostDetails[@i].UnitPrice" class="form-control text-center txt-price" type="number" step="0.01" value="@Model.Input.CostDetails[i].UnitPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" min="0" onchange="calculateTotals()" required /></td>
+                                            <td class="text-center font-weight-bold txt-subtotal py-3 text-dark">Bs @Model.Input.CostDetails[i].Subtotal.ToString("N2")</td>
+                                            <td class="text-center"><button type="button" class="btn btn-link text-danger p-0" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr class="bg-light">
+                                        <td colspan="5" class="text-right font-weight-bold text-dark py-3 uppercase small">Importe Total Real:</td>
+                                        <td class="text-center font-weight-bold text-success h5 py-3 mb-0" id="totalDisplay">Bs 0.00</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="mt-4 d-flex justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary btn-rounded px-4" onclick="$('a[href=\'#tab-general\']').tab('show')"><i class="fas fa-arrow-left mr-1"></i> Anterior</button>
+                            <button type="button" class="btn btn-info btn-rounded px-4" onclick="$('a[href=\'#tab-cierre\']').tab('show')">Siguiente: Cierre <i class="fas fa-arrow-right ml-1"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane" id="tab-cierre" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6 border-right">
+                                <h5 class="text-dark font-weight-bold mb-4"><i class="fas fa-comment-medical mr-2 text-warning"></i>Evaluación Final</h5>
+                                <div class="form-group mb-4">
+                                    <label asp-for="Input.SatisfactionLevel" class="control-label font-weight-bold small uppercase text-muted">Nivel de Satisfacción <span class="text-danger">*</span></label>
+                                    <select asp-for="Input.SatisfactionLevel" class="form-control custom-select font-weight-bold" asp-items="Html.GetEnumSelectList<MaintenanceSatisfaction>()" required>
+                                        <option value="">-- Seleccione evaluación --</option>
+                                    </select>
+                                    <span asp-validation-for="Input.SatisfactionLevel" class="text-danger small"></span>
+                                </div>
+                                <div class="form-group mb-4">
+                                    <label asp-for="Input.SuggestedNextMaintenanceDate" class="control-label font-weight-bold small uppercase text-muted">Próximo Mantenimiento <span class="text-danger">*</span></label>
+                                    <input asp-for="Input.SuggestedNextMaintenanceDate" class="form-control" type="date" required />
+                                    <span asp-validation-for="Input.SuggestedNextMaintenanceDate" class="text-danger small"></span>
+                                </div>
+                                <div class="form-group">
+                                    <label asp-for="Input.Recommendations" class="control-label font-weight-bold small uppercase text-muted">Recomendaciones <span class="text-danger">*</span></label>
+                                    <textarea asp-for="Input.Recommendations" class="form-control" rows="4" required></textarea>
+                                    <span asp-validation-for="Input.Recommendations" class="text-danger small"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center mb-3">
+                                    <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Validación Técnica L-48</h5>
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold ml-auto" onclick="addTask()">
+                                        <i class="fas fa-plus mr-1"></i> Agregar Tarea
+                                    </button>
+                                </div>
+                                <div class="bg-light p-4 rounded mb-4">
+                                    <div id="tasksContainer">
+                                        @for (int i = 0; i < Model.Input.Tasks.Count; i++)
+                                        {
+                                            <div class="task-row mb-2 d-flex align-items-center p-2 rounded bg-white border">
+                                                <input type="hidden" name="Input.Tasks[@i].Id" value="@Model.Input.Tasks[i].Id" />
+                                                <div class="custom-control custom-checkbox mr-2">
+                                                    <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_@i" name="Input.Tasks[@i].IsCompleted" value="true" onchange="calculatePercentage()" @(Model.Input.Tasks[i].IsCompleted ? "checked" : "") />
+                                                    <label class="custom-control-label" for="taskChk_@i"></label>
+                                                </div>
+                                                <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required />
+                                                <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="mt-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="font-weight-bold text-muted small text-uppercase">Avance L-48</span>
+                                            <span id="displayProgressText" class="font-weight-bold text-info">0%</span>
+                                        </div>
+                                        <div class="progress rounded-pill shadow-sm" style="height: 10px;">
+                                            <div id="visualProgressBar" class="progress-bar bg-info" role="progressbar" style="width:0%" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones Finales <span class="text-danger">*</span></label>
+                                    <textarea asp-for="Input.Observations" class="form-control" rows="4" required></textarea>
+                                    <span asp-validation-for="Input.Observations" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info border-0 shadow-sm mt-4">
+                            <strong>Al concluir:</strong> el mantenimiento L-8 quedará <strong>Completado</strong>, la salida L-3 se cerrará con devolución y el equipo avanzará a Desembolso. El registro quedará disponible en el Kardex histórico del equipo.
+                        </div>
+
+                        <div class="mt-5 d-flex justify-content-between border-top pt-4">
+                            <div>
+                                <button type="button" class="btn btn-outline-secondary btn-rounded px-4" onclick="$('a[href=\'#tab-costos\']').tab('show')"><i class="fas fa-arrow-left mr-1"></i> Anterior</button>
+                                @if (isWizard)
+                                {
+                                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="5" asp-route-SelectedLabId="@Model.Input.LaboratoryId" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded px-4 ml-2">
+                                        <i class="fas fa-magic mr-1"></i> Volver al Wizard
+                                    </a>
+                                }
+                            </div>
+                            <button type="submit" id="btnSubmitKardex" formnovalidate class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold text-white"><i class="fas fa-check-double mr-2"></i> Concluir Mantenimiento</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -202,58 +257,163 @@
     </div>
 </div>
 
+<table style="display:none">
+    <tbody id="costTemplate">
+        <tr class="cost-row">
+            <td class="pl-4">
+                <input type="hidden" name="Input.CostDetails[INDEX].Id" value="0" disabled />
+                <input name="Input.CostDetails[INDEX].Concept" class="form-control" required placeholder="Nuevo concepto..." disabled />
+            </td>
+            <td><select name="Input.CostDetails[INDEX].Category" class="form-control custom-select" asp-items="categoryList" disabled></select></td>
+            <td><input name="Input.CostDetails[INDEX].Quantity" class="form-control text-center txt-qty" type="number" step="0.01" value="1" min="0.01" onchange="calculateTotals()" required disabled /></td>
+            <td><input name="Input.CostDetails[INDEX].UnitOfMeasure" class="form-control" value="Unidad" disabled /></td>
+            <td><input name="Input.CostDetails[INDEX].UnitPrice" class="form-control text-center txt-price" type="number" step="0.01" value="0.00" min="0" onchange="calculateTotals()" required disabled /></td>
+            <td class="text-center font-weight-bold txt-subtotal py-3 text-dark">Bs 0.00</td>
+            <td class="text-center"><button type="button" class="btn btn-link text-danger p-0" onclick="removeRow(this)"><i class="fas fa-trash-alt"></i></button></td>
+        </tr>
+    </tbody>
+</table>
+
+<div style="display:none" id="taskTemplateContainer">
+    <div class="task-row mb-2 d-flex align-items-center p-2 rounded bg-white border">
+        <input type="hidden" name="Input.Tasks[INDEX].Id" value="0" disabled />
+        <div class="custom-control custom-checkbox mr-2">
+            <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_INDEX" name="Input.Tasks[INDEX].IsCompleted" value="true" onchange="calculatePercentage()" disabled />
+            <label class="custom-control-label" for="taskChk_INDEX"></label>
+        </div>
+        <input type="text" name="Input.Tasks[INDEX].Description" value="" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required disabled />
+        <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .customtab .nav-link { border: none; color: #747d8c; padding: 15px 25px; transition: all 0.3s ease; border-bottom: 2px solid transparent; }
+        .customtab .nav-link.active { color: #17a2b8; background: transparent; border-bottom: 2px solid #17a2b8; }
+        .uppercase { text-transform: uppercase; letter-spacing: 0.8px; }
+    </style>
+}
+
 @section Scripts {
     <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
     <script>
         $(function () {
-            "use strict";
-            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            calculatePercentage();
+            calculateTotals();
 
-            // Selectores cascada
-            $('#facultySelector').change(function () {
-                var facultyId = $(this).val();
-                $('#labSelector').empty().append('<option value="">-- Seleccione Laboratorio --</option>');
-                $('#unitSelector').empty().append('<option value="">-- Seleccione Equipo --</option>');
-                if (!facultyId) return;
+            $('#kardexForm').on('submit', function (event) {
+                const form = this;
+                if ($(form).data('confirmed') === true) return true;
 
-                $.get('?handler=LaboratoriesByFaculty&facultyId=' + facultyId, function (data) {
-                    $.each(data, function (i, item) {
-                        $('#labSelector').append('<option value="' + item.id + '">' + item.name + '</option>');
-                    });
-                });
-            });
+                event.preventDefault();
 
-            $('#labSelector').change(function () {
-                var labId = $(this).val();
-                $('#unitSelector').empty().append('<option value="">-- Seleccione Equipo --</option>');
-                if (!labId) return;
+                const submitForm = function () {
+                    $(form).data('confirmed', true);
+                    $('#btnSubmitKardex').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Cerrando...');
+                    HTMLFormElement.prototype.submit.call(form);
+                };
 
-                $.get('?handler=UnitsByLab&laboratoryId=' + labId, function (data) {
-                    $.each(data, function (i, item) {
-                        $('#unitSelector').append('<option value="' + item.id + '">' + item.name + '</option>');
-                    });
+                if (typeof Swal === 'undefined') {
+                    submitForm();
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Concluir Mantenimiento?',
+                    text: 'Se completará el mantenimiento L-8, se cerrará la salida L-3 con devolución y el equipo avanzará a Desembolso.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, concluir',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#17a2b8',
+                    cancelButtonColor: '#6c757d'
+                }).then((result) => {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        submitForm();
+                    }
                 });
             });
         });
 
-        function confirmKardex() {
-            Swal.fire({
-                title: '¿Confirmar Kardex?',
-                text: 'Se registrará este historial en el Kardex del equipo y se actualizará su estado operativo.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Sí, registrar',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#17a2b8',
-                cancelButtonColor: '#6c757d'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $('#kardexForm').submit();
-                }
+        function calculatePercentage() {
+            const checkboxes = $('#tasksContainer .maintenance-check');
+            const completed = checkboxes.filter(':checked').length;
+            const percentage = checkboxes.length === 0 ? 0 : Math.round((completed / checkboxes.length) * 100);
+            $('#displayProgressText').text(percentage + '%');
+            $('#visualProgressBar').css('width', percentage + '%').attr('aria-valuenow', percentage);
+            $('#hiddenPercentageInput').val(percentage);
+        }
+
+        function addTask() {
+            const container = $('#tasksContainer');
+            const index = container.children('.task-row').length;
+            const template = $('#taskTemplateContainer').html().replace(/INDEX/g, index);
+            container.append(template);
+            container.children().last().find('input').prop('disabled', false);
+            calculatePercentage();
+        }
+
+        function removeTask(btn) {
+            $(btn).closest('.task-row').remove();
+            reindexTasks();
+            calculatePercentage();
+        }
+
+        function reindexTasks() {
+            $('#tasksContainer .task-row').each(function (index) {
+                $(this).find('input').each(function () {
+                    const name = $(this).attr('name');
+                    if (name) $(this).attr('name', name.replace(/Input\.Tasks\[\d+\]/, 'Input.Tasks[' + index + ']'));
+
+                    const id = $(this).attr('id');
+                    if (id && id.startsWith('taskChk_')) $(this).attr('id', 'taskChk_' + index);
+                });
+                $(this).find('label').each(function () {
+                    const forAttr = $(this).attr('for');
+                    if (forAttr && forAttr.startsWith('taskChk_')) $(this).attr('for', 'taskChk_' + index);
+                });
             });
         }
+
+        function addRow() {
+            const container = $('#costsContainer');
+            const template = $('#costTemplate').html();
+            const index = container.children('.cost-row').length;
+            container.append(template.replace(/\[INDEX\]/g, `[${index}]`));
+            container.children().last().find('input, select').prop('disabled', false);
+            calculateTotals();
+        }
+
+        function removeRow(btn) {
+            $(btn).closest('tr').remove();
+            reindexRows();
+            calculateTotals();
+        }
+
+        function reindexRows() {
+            $('#costsContainer .cost-row').each(function (index) {
+                $(this).find('input, select').each(function () {
+                    const name = $(this).attr('name');
+                    if (name) $(this).attr('name', name.replace(/Input\.CostDetails\[\d+\]/, 'Input.CostDetails[' + index + ']'));
+                });
+            });
+        }
+
+        function calculateTotals() {
+            let total = 0;
+            $('#costsContainer .cost-row').each(function () {
+                const qty = parseFloat(($(this).find('.txt-qty').val() || '').toString().replace(',', '.')) || 0;
+                const price = parseFloat(($(this).find('.txt-price').val() || '').toString().replace(',', '.')) || 0;
+                const sub = qty * price;
+                $(this).find('.txt-subtotal').text('Bs ' + sub.toLocaleString('es-BO', { minimumFractionDigits: 2 }));
+                total += sub;
+            });
+            $('#totalDisplay').text('Bs ' + total.toLocaleString('es-BO', { minimumFractionDigits: 2 }));
+            $('#hiddenActualCost').val(total.toFixed(2));
+        }
     </script>
-    @{
-        await Html.RenderPartialAsync("_ValidationScriptsPartial");
-    }
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
 }

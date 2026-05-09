@@ -32,6 +32,7 @@
 
                     <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
                     <input type="hidden" asp-for="ManagementPlanId" />
+                    <input type="hidden" asp-for="ManagementId" />
 
                     <!-- FILA 1: UBICACION (Layout 3 Columnas) -->
                     <div class="bg-light p-4 rounded mb-4 border-left border-dark shadow-sm" style="border-left-width: 4px;">
@@ -201,7 +202,7 @@
                     <div class="form-actions text-right mt-4">
                         @if (isWizard)
                         {
-                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="6" asp-route-ManagementId="@ViewData["ManagementId"]"
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="6" asp-route-SelectedLabId="@Model.Input.LaboratoryId" asp-route-ManagementId="@ViewData["ManagementId"]"
                                class="btn btn-outline-secondary btn-rounded mr-2 px-4 font-weight-bold">
                                 <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
                             </a>
@@ -212,7 +213,7 @@
                                 <i class="fas fa-times mr-1"></i> Cancelar
                             </a>
                         }
-                        <button type="button" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold py-2" onclick="confirmAcquisition()">
+                        <button type="button" id="btnSubmitAcquisition" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold py-2" onclick="confirmAcquisition()">
                             <i class="fas fa-check-circle mr-1"></i> Crear Solicitud L-12
                         </button>
                     </div>
@@ -331,6 +332,17 @@
             });
 
             function confirmAcquisition() {
+                const form = document.getElementById('createAcquisitionForm');
+                const submitForm = function() {
+                    $('#btnSubmitAcquisition').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Registrando...');
+                    HTMLFormElement.prototype.submit.call(form);
+                };
+
+                if (typeof Swal === 'undefined') {
+                    submitForm();
+                    return;
+                }
+
                 Swal.fire({
                     title: '¿Confirmar Solicitud?',
                     text: 'Se enviará la solicitud de adquisición (L-12) para aprobación financiera.',
@@ -341,8 +353,8 @@
                     confirmButtonColor: '#28a745',
                     cancelButtonColor: '#6c757d'
                 }).then((result) => {
-                    if (result.isConfirmed) {
-                        $('#createAcquisitionForm').submit();
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        submitForm();
                     }
                 });
             }

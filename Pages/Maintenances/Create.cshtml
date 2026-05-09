@@ -30,7 +30,26 @@
                 </div>
 
                 <form method="post" id="maintenanceForm" novalidate>
+                    @Html.AntiForgeryToken()
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4"></div>
+
+                    <div class="alert bg-light border-left border-info shadow-sm mb-4 small" style="border-left-width: 4px !important;">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle text-info mr-3 fa-lg"></i>
+                            <div>
+                                @if (isWizard)
+                                {
+                                    <text><strong>Registro de mantenimiento en flujo.</strong> Los campos marcados con <span class="text-danger font-weight-bold">*</span> son obligatorios para avanzar.<br/>
+                                    El <strong>Técnico Responsable</strong> es obligatorio porque la fase L-3 Salida necesita saber quién recibe el equipo.</text>
+                                }
+                                else
+                                {
+                                    <text><strong>Registro inicial de mantenimiento.</strong> Solo los campos marcados con <span class="text-danger font-weight-bold">*</span> son obligatorios para crear el registro.<br/>
+                                    Los campos con <span class="badge badge-light border text-muted ml-1">Kardex</span> se completan después en la fase <strong>Concluir Mantenimiento (Kardex)</strong>.</text>
+                                }
+                            </div>
+                        </div>
+                    </div>
                     
                     <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
                     <input type="hidden" asp-for="ManagementPlanId" />
@@ -40,7 +59,7 @@
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
-                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad</label>
+                                    <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-uppercase text-muted">Facultad <span class="text-danger">*</span></label>
                                     @if (isWizard)
                                     {
                                         <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="ViewBag.FacultyId" id="facultySelector" disabled>
@@ -58,7 +77,7 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
-                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio</label>
+                                    <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio <span class="text-danger">*</span></label>
                                     @if (isWizard)
                                     {
                                         <select asp-for="Input.LaboratoryId" class="form-control custom-select" asp-items="ViewBag.LaboratoryId" id="labSelector" disabled>
@@ -76,7 +95,7 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
-                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Unidad Física</label>
+                                    <label asp-for="Input.EquipmentUnitId" class="control-label font-weight-bold small text-uppercase text-muted">Unidad Física <span class="text-danger">*</span></label>
                                     @if (isWizard)
                                     {
                                         <select asp-for="Input.EquipmentUnitId" class="form-control custom-select" asp-items="ViewBag.EquipmentUnitId" id="unitSelector" disabled>
@@ -96,7 +115,7 @@
                         <div class="row">
                              <div class="col-md-4">
                                 <div class="form-group mb-3">
-                                    <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small text-uppercase text-muted">Tipo de Mantenimiento</label>
+                                    <label asp-for="Input.MaintenanceType" class="control-label font-weight-bold small text-uppercase text-muted">Tipo de Mantenimiento <span class="text-danger">*</span></label>
                                     @if (isWizard)
                                     {
                                         <select class="form-control custom-select bg-light font-weight-bold" disabled>
@@ -116,10 +135,21 @@
 
                             <div class="col-md-4">
                                 <div class="form-group mb-3">
-                                    <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small text-uppercase text-muted">Técnico Responsable</label>
-                                    <select asp-for="Input.TechnicianId" class="form-control custom-select" asp-items="ViewBag.TechnicianId">
-                                        <option value="">-- Asignar Técnico --</option>
-                                    </select>
+                                    @if (isWizard)
+                                    {
+                                        <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small text-uppercase text-muted">Técnico Responsable <span class="text-danger">*</span></label>
+                                        <select asp-for="Input.TechnicianId" class="form-control custom-select" asp-items="ViewBag.TechnicianId" required>
+                                            <option value="">-- Seleccione Técnico --</option>
+                                        </select>
+                                        <span asp-validation-for="Input.TechnicianId" class="text-danger small"></span>
+                                    }
+                                    else
+                                    {
+                                        <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small text-uppercase text-muted">Técnico Responsable <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
+                                        <select asp-for="Input.TechnicianId" class="form-control custom-select" asp-items="ViewBag.TechnicianId">
+                                            <option value="">-- Asignar Técnico --</option>
+                                        </select>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -140,9 +170,6 @@
                                                 <a href="/Requests/Details/@Model.Input.RequestId.Value?isWizard=true" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
                                                     Ver Detalles <i class="fas fa-external-link-alt ml-1"></i>
                                                 </a>
-                                                <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 2, 'L-7 Solicitud')">
-                                                    <i class="fas fa-undo"></i> Rehacer L-7
-                                                </button>
                                             </div>
                                         </div>
                                     }
@@ -165,17 +192,17 @@
                                     <div class="row">
                                         <div class="col-md-6 border-right">
                                             <div class="form-group">
-                                                <label asp-for="Input.ScheduledDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Programada</label>
+                                                <label asp-for="Input.ScheduledDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Programada <span class="text-danger">*</span></label>
                                                 <input asp-for="Input.ScheduledDate" class="form-control" type="date" />
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group mb-3">
-                                                <label asp-for="Input.StartDate" class="control-label font-weight-bold small text-uppercase text-muted">Inicio Real</label>
+                                                <label asp-for="Input.StartDate" class="control-label font-weight-bold small text-uppercase text-muted">Inicio Real <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
                                                 <input asp-for="Input.StartDate" class="form-control" type="datetime-local" />
                                             </div>
                                             <div class="form-group mb-0">
-                                                <label asp-for="Input.EndDate" class="control-label font-weight-bold small text-uppercase text-muted">Finalización</label>
+                                                <label asp-for="Input.EndDate" class="control-label font-weight-bold small text-uppercase text-muted">Finalización <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
                                                 <input asp-for="Input.EndDate" class="form-control" type="datetime-local" />
                                                 <span asp-validation-for="Input.EndDate" class="text-danger small"></span>
                                             </div>
@@ -204,7 +231,7 @@
 
                     <div class="card border mb-4 shadow-none">
                         <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-4 px-4">
-                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Lista de Verificación Técnica (L-48)</h5>
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Lista de Verificación Técnica (L-48) <span class="badge badge-light border text-muted ml-1">Kardex</span></h5>
                             <button type="button" class="btn btn-sm btn-outline-primary btn-rounded ml-auto font-weight-bold" onclick="addTask()">
                                 <i class="fas fa-plus mr-1"></i> Agregar Tarea
                             </button>
@@ -220,12 +247,10 @@
                                                     <input type="checkbox" class="custom-control-input maintenance-check" id="chk_@i"
                                                            name="Input.Tasks[@i].IsCompleted" value="true" onchange="calculatePercentage()"
                                                            @(Model.Input.Tasks[i].IsCompleted ? "checked" : "")>
-                                                    <input type="hidden" name="Input.Tasks[@i].IsCompleted" value="false" />
-                                                    <label class="custom-control-label font-weight-bold w-100" for="chk_@i">
-                                                        <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" 
-                                                               class="form-control form-control-sm border-0 bg-transparent task-desc-input font-weight-bold h5 mb-0 py-0" 
-                                                               style="height: auto; cursor: text;" placeholder="Descripción de la tarea..." required />
-                                                    </label>
+                                                    <label class="custom-control-label font-weight-bold" for="chk_@i"></label>
+                                                    <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description"
+                                                           class="form-control form-control-sm task-desc-input font-weight-bold ml-2"
+                                                           placeholder="Descripción de la tarea..." required />
                                                 </div>
                                                 <button type="button" class="btn btn-sm btn-link text-danger p-0 ml-2" onclick="removeTask(this)">
                                                     <i class="fas fa-trash-alt"></i>
@@ -247,14 +272,14 @@
                     </div>
 
                     <div class="form-group mb-4">
-                        <label asp-for="Input.Description" class="control-label font-weight-bold text-dark">Descripción del Trabajo Realizado / Observaciones Técnicas</label>
+                        <label asp-for="Input.Description" class="control-label font-weight-bold text-dark">Descripción del Trabajo Realizado / Observaciones Técnicas <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
                         <textarea asp-for="Input.Description" id="descriptionInput" class="form-control rounded" rows="3" placeholder="Detalle las fallas encontradas y las soluciones aplicadas..."></textarea>
                         <span asp-validation-for="Input.Description" class="text-danger small"></span>
                     </div>
 
                     <div class="card border shadow-none mb-4">
                         <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-4 px-4">
-                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Control de Costos y Repuestos</h5>
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Control de Costos y Repuestos <span class="badge badge-light border text-muted ml-1">Kardex</span></h5>
                             <button type="button" id="btnAddCost" class="btn btn-sm btn-success btn-rounded shadow-sm ml-auto font-weight-bold px-3" onclick="addRow()">
                                 <i class="fas fa-plus mr-1"></i> Agregar Ítem
                             </button>
@@ -291,27 +316,27 @@
                     <div class="row" id="completedOptionsBlock" style="display:none;">
                         <div class="col-md-6">
                             <div class="form-group mb-4">
-                                <label asp-for="Input.SuggestedNextMaintenanceDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Sugerida Próximo Mantenimiento</label>
+                                <label asp-for="Input.SuggestedNextMaintenanceDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Sugerida Próximo Mantenimiento <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
                                 <input asp-for="Input.SuggestedNextMaintenanceDate" class="form-control" type="date" />
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group mb-4">
-                                <label asp-for="Input.SatisfactionLevel" class="control-label font-weight-bold small text-uppercase text-muted">Nivel de Satisfacción (1-5)</label>
+                                <label asp-for="Input.SatisfactionLevel" class="control-label font-weight-bold small text-uppercase text-muted">Nivel de Satisfacción <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
                                 <div class="rating-stars text-warning h4 m-0" style="cursor: pointer;">
                                     <i class="far fa-star" data-value="1"></i>
                                     <i class="far fa-star" data-value="2"></i>
                                     <i class="far fa-star" data-value="3"></i>
                                     <i class="far fa-star" data-value="4"></i>
                                     <i class="far fa-star" data-value="5"></i>
-                                    <input type="hidden" asp-for="Input.SatisfactionLevel" id="satisfactionInput" value="5" />
+                                    <input type="hidden" asp-for="Input.SatisfactionLevel" id="satisfactionInput" />
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="form-group mb-4">
-                        <label asp-for="Input.Recommendations" class="control-label font-weight-bold small text-uppercase text-muted">Recomendaciones Post-Servicio para el Usuario</label>
+                        <label asp-for="Input.Recommendations" class="control-label font-weight-bold small text-uppercase text-muted">Recomendaciones Post-Servicio <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
                         <textarea asp-for="Input.Recommendations" class="form-control" rows="2" placeholder="Ej: No forzar el mando, limpiar después de cada uso..."></textarea>
                     </div>
 
@@ -326,7 +351,7 @@
                         {
                             <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Cancelar</a>
                         }
-                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark">
+                        <button type="button" id="btnSubmitMaintenance" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark" onclick="window.confirmMaintenanceSubmit()">
                             <i class="fas fa-save mr-1"></i> Registrar Mantenimiento
                         </button>
                     </div>
@@ -341,13 +366,11 @@
     <div class="task-row mb-2 d-flex align-items-center p-2 rounded hover-light">
         <div class="custom-control custom-checkbox flex-grow-1">
             <input type="checkbox" class="custom-control-input maintenance-check" id="chk_INDEX"
-                   name="Input.Tasks[INDEX].IsCompleted" value="true" onchange="calculatePercentage()">
-            <input type="hidden" name="Input.Tasks[INDEX].IsCompleted" value="false" />
-            <label class="custom-control-label font-weight-bold w-100" for="chk_INDEX">
-                <input type="text" name="Input.Tasks[INDEX].Description" value="" 
-                       class="form-control form-control-sm border-0 bg-transparent task-desc-input font-weight-bold h5 mb-0 py-0" 
-                       style="height: auto; cursor: text;" placeholder="Descripción de la tarea..." required />
-            </label>
+                   name="Input.Tasks[INDEX].IsCompleted" value="true" onchange="calculatePercentage()" disabled>
+            <label class="custom-control-label font-weight-bold" for="chk_INDEX"></label>
+            <input type="text" name="Input.Tasks[INDEX].Description" value=""
+                   class="form-control form-control-sm task-desc-input font-weight-bold ml-2"
+                   placeholder="Descripción de la tarea..." required disabled />
         </div>
         <button type="button" class="btn btn-sm btn-link text-danger p-0 ml-2" onclick="removeTask(this)">
             <i class="fas fa-trash-alt"></i>
@@ -360,17 +383,17 @@
     <tbody id="costTemplate">
         <tr class="cost-row">
             <td class="pl-4">
-                <input name="Input.CostDetails[INDEX].Concept" class="form-control" required placeholder="Nombre del repuesto o servicio" />
+                <input name="Input.CostDetails[INDEX].Concept" class="form-control" placeholder="Nombre del repuesto o servicio" disabled />
             </td>
             <td>
-                <select name="Input.CostDetails[INDEX].Category" class="form-control custom-select" asp-items="@categoryList">
+                <select name="Input.CostDetails[INDEX].Category" class="form-control custom-select" asp-items="@categoryList" disabled>
                 </select>
             </td>
             <td>
-                <input name="Input.CostDetails[INDEX].Quantity" class="form-control text-center txt-qty" type="number" step="0.01" value="1" min="0" onchange="calculateTotals()" required />
+                <input name="Input.CostDetails[INDEX].Quantity" class="form-control text-center txt-qty" type="number" step="0.01" value="1" min="0" onchange="calculateTotals()" disabled />
             </td>
             <td>
-                <input name="Input.CostDetails[INDEX].UnitPrice" class="form-control text-center txt-price" type="number" step="0.01" value="0.00" min="0" onchange="calculateTotals()" required />
+                <input name="Input.CostDetails[INDEX].UnitPrice" class="form-control text-center txt-price" type="number" step="0.01" value="0.00" min="0" onchange="calculateTotals()" disabled />
             </td>
             <td class="text-center font-weight-bold txt-subtotal py-3 text-dark">Bs 0.00</td>
             <td class="text-center">
@@ -385,11 +408,9 @@
 
 
 @section Scripts {
-    <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
     <script>
         $(function () {
             "use strict";
-            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
 
             // Selectores cascada
             $('#facultySelector').change(function () {
@@ -417,23 +438,18 @@
                 });
             });
 
-            // Inicializar fila por defecto
-            addRow();
-            
             // Si ya hay datos (por redirección del wizard o recarga) inicializar porcentajes
             calculatePercentage();
 
             function applyStatusLogic() {
                 var status = $('#statusSelector').val();
-                if (status === "Completed") {
+                if (status == "2") {
                     $('#descriptionInput').prop('required', true);
                     $('#completedOptionsBlock').slideDown(300);
                 } else {
                     $('#descriptionInput').prop('required', false);
                     $('#completedOptionsBlock').slideUp(300);
                 }
-                $("input,select,textarea").not("[type=submit]").jqBootstrapValidation("destroy");
-                $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
             }
 
             $('#statusSelector').on('change', applyStatusLogic);
@@ -452,25 +468,78 @@
                 });
             });
             // Initial render for stars
-            var initialValue = $('#satisfactionInput').val() || 5;
-            $('.rating-stars i[data-value="'+initialValue+'"]').trigger('click');
+            var initialValue = $('#satisfactionInput').val();
+            if (initialValue) {
+                $('.rating-stars i[data-value="'+initialValue+'"]').trigger('click');
+            }
 
-            $('#maintenanceForm').on('submit', function(e) {
-                var status = $('#statusSelector').val();
-                var percent = parseInt($('#hiddenPercentageInput').val()) || 0;
-                
-                if (status === "Completed" && percent !== 100) {
-                    e.preventDefault();
+        });
+
+        var isMaintSubmitting = false;
+
+        window.confirmMaintenanceSubmit = function () {
+            var form = document.getElementById('maintenanceForm');
+            if (!form) {
+                alert('No se pudo ubicar el formulario de mantenimiento.');
+                return;
+            }
+
+            if (isMaintSubmitting) return;
+
+            var status = $('#statusSelector').val();
+            var percent = parseInt($('#hiddenPercentageInput').val()) || 0;
+
+            if (status == "2" && percent !== 100) {
+                if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Mantenimiento Incompleto',
                         text: 'Para marcar el mantenimiento como Completado, el avance debe estar al 100%.',
                         icon: 'warning',
-                        confirmButtonText: 'Entendido'
+                        confirmButtonText: 'Entendido',
+                        confirmButtonColor: '#f59e0b'
                     });
-                    return false;
+                } else {
+                    alert('Para marcar el mantenimiento como Completado, el avance debe estar al 100%.');
+                }
+                return;
+            }
+
+            var techId = $('#Input_TechnicianId').val();
+            var statusLabel = $('#statusSelector option:selected').text();
+            var techLabel = techId ? $('#Input_TechnicianId option:selected').text() : 'Sin asignar';
+
+            var detailsHtml = '<div class="text-left mt-3 small">' +
+                '<div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted">Estado:</span><span class="font-weight-bold">' + statusLabel + '</span></div>' +
+                '<div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted">Técnico:</span><span class="font-weight-bold">' + techLabel + '</span></div>' +
+                '<div class="d-flex justify-content-between py-1"><span class="text-muted">Avance:</span><span class="font-weight-bold">' + percent + '%</span></div>' +
+                '</div>';
+
+            var submitForm = function () {
+                isMaintSubmitting = true;
+                $('#btnSubmitMaintenance').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                HTMLFormElement.prototype.submit.call(form);
+            };
+
+            if (typeof Swal === 'undefined') {
+                submitForm();
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Confirmar registro de mantenimiento?',
+                html: detailsHtml,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-save mr-1"></i> Registrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#f59e0b',
+                cancelButtonColor: '#6c757d'
+            }).then(function(result) {
+                if (result && (result.isConfirmed === true || result.value === true)) {
+                    submitForm();
                 }
             });
-        });
+        };
 
         // --- LÓGICA DE CHECKBOXES (PORCENTAJE L-48 DINÁMICO) ---
         function calculatePercentage() {
@@ -496,6 +565,7 @@
 
             const newRow = template.replace(/INDEX/g, index);
             container.append(newRow);
+            container.children().last().find('input, select, textarea').prop('disabled', false);
             calculatePercentage();
         }
 
@@ -536,8 +606,7 @@
 
             const newRow = template.replace(/\[INDEX\]/g, `[${index}]`);
             container.append(newRow);
-
-            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            container.children().last().find('input, select, textarea').prop('disabled', false);
         }
 
         function removeRow(btn) {

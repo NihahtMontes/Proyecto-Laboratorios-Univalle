@@ -68,6 +68,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             if (verification == null) return NotFound();
 
+            var user = await _userManager.GetUserAsync(User);
+            var isHealthyCondition = Input.PhysicalCondition is PhysicalCondition.Excellent or PhysicalCondition.Good;
+
             // Mapear a InputModel simple
             Input = new EditInputModel
             {
@@ -106,26 +109,83 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             }
 
             var verification = await _context.Verifications
+                .AsTracking()
+                .Include(v => v.Faults)
                 .FirstOrDefaultAsync(v => v.Id == Input.Id);
 
             if (verification == null) return NotFound();
 
             // Actualizar datos atómicos
+            var user = await _userManager.GetUserAsync(User);
+            var isHealthyCondition = Input.PhysicalCondition is PhysicalCondition.Excellent or PhysicalCondition.Good;
+
             verification.Date = Input.Date;
             verification.Observations = Input.Observations;
-            verification.Status = Input.Status;
+            verification.Status = isHealthyCondition ? VerificationStatus.Completed : VerificationStatus.WithObservations;
             verification.PhysicalCondition = Input.PhysicalCondition;
             verification.EquipmentUnitId = Input.EquipmentUnitId;
 
             // Auditoría
-            var user = await _userManager.GetUserAsync(User);
             if (user != null) verification.ModifiedById = user.Id;
             verification.LastModifiedDate = DateTime.UtcNow;
 
             try
             {
+                var linkedPlanQuery = _context.ManagementPlans
+                    .AsTracking()
+                    .Include(p => p.TechnicalRequest)
+                    .Where(p => p.VerificationId == verification.Id);
+
+                if (ManagementId.HasValue)
+                {
+                    linkedPlanQuery = linkedPlanQuery.Where(p => p.ManagementId == ManagementId.Value);
+                }
+
+                var linkedPlan = await linkedPlanQuery.FirstOrDefaultAsync();
+
+                if (linkedPlan != null)
+                {
+                    linkedPlan.LastModifiedDate = DateTime.UtcNow;
+                    linkedPlan.ModifiedById = user?.Id;
+
+                    if (isHealthyCondition)
+                    {
+                        if (verification.Faults != null)
+                        {
+                            foreach (var fault in verification.Faults.Where(f => !f.IsDeleted))
+                            {
+                                fault.IsDeleted = true;
+                                fault.LastModifiedDate = DateTime.UtcNow;
+                                fault.ModifiedById = user?.Id;
+                            }
+                        }
+
+                        if (linkedPlan.TechnicalRequest?.Status == RequestStatus.Pending)
+                        {
+                            linkedPlan.TechnicalRequest.Status = RequestStatus.Cancelled;
+                            linkedPlan.TechnicalRequest.LastModifiedDate = DateTime.UtcNow;
+                            linkedPlan.TechnicalRequest.ModifiedById = user?.Id;
+                            linkedPlan.RequestId = null;
+                        }
+                        else if (linkedPlan.RequestId.HasValue && linkedPlan.TechnicalRequest == null)
+                        {
+                            linkedPlan.RequestId = null;
+                        }
+
+                        linkedPlan.CurrentPhase = WizardPhase.Verification;
+                        linkedPlan.CurrentState = WizardEquipmentState.VerifiedGood;
+                    }
+                    else
+                    {
+                        linkedPlan.CurrentPhase = WizardPhase.TechnicalRequest;
+                        linkedPlan.CurrentState = WizardEquipmentState.AwaitingRequest;
+                    }
+                }
+
                 await _context.SaveChangesAsync();
-                TempData.Success(NotificationHelper.Verifications.Updated(verification.Id));
+                TempData.Success(isHealthyCondition
+                    ? $"Verificacion #{verification.Id} actualizada. El activo fue movido a activos sanos."
+                    : NotificationHelper.Verifications.Updated(verification.Id));
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -135,6 +195,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             if (IsWizard)
             {
+                if (isHealthyCondition)
+                {
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, ManagementId });
+                }
+
                 return RedirectToPage("./Details", new { id = verification.Id, isWizard = IsWizard, managementId = ManagementId });
             }
 

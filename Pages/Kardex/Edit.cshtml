@@ -30,8 +30,14 @@
 
                 <form method="post" id="kardexEditForm" novalidate>
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4 small"></div>
-                    
+                     
                     <input type="hidden" asp-for="Input.Id" />
+                    <input type="hidden" asp-for="Input.MaintenanceId" />
+                    <input type="hidden" asp-for="Input.CompletionPercentage" id="hiddenPercentageInput" />
+                    <input type="hidden" asp-for="IsWizard" />
+                    <input type="hidden" asp-for="ManagementId" />
+                    <input type="hidden" asp-for="SelectedLabId" />
+                    <input type="hidden" asp-for="ReturnStep" />
 
                     <!-- FILA 1: UBICACION (Layout 3 Columnas) -->
                     <div class="bg-light p-4 rounded mb-4 border-left border-info shadow-sm" style="border-left-width: 4px;">
@@ -204,12 +210,71 @@
                         </div>
                     </div>
 
+                    <div class="row mt-4">
+                        <div class="col-lg-8">
+                            <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #17a2b8;">
+                                <div class="card-body p-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div>
+                                            <h5 class="text-dark font-weight-bold mb-1 uppercase small"><i class="fas fa-tasks mr-2 text-info"></i>Tareas Técnicas L-48</h5>
+                                            <p class="text-muted small mb-0">Añade, modifica o elimina lógicamente las tareas asociadas al mantenimiento.</p>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-info btn-rounded font-weight-bold ml-auto" onclick="addTask()">
+                                            <i class="fas fa-plus mr-1"></i> Agregar Tarea
+                                        </button>
+                                    </div>
+
+                                    <div id="tasksContainer">
+                                        @for (int i = 0; i < Model.Input.Tasks.Count; i++)
+                                        {
+                                            <div class="task-row mb-2 d-flex align-items-center p-2 rounded bg-light border">
+                                                <input type="hidden" name="Input.Tasks[@i].Id" value="@Model.Input.Tasks[i].Id" />
+                                                <div class="custom-control custom-checkbox mr-2">
+                                                    <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_@i" name="Input.Tasks[@i].IsCompleted" value="true" onchange="calculatePercentage()" @(Model.Input.Tasks[i].IsCompleted ? "checked" : "") />
+                                                    <label class="custom-control-label" for="taskChk_@i"></label>
+                                                </div>
+                                                <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required />
+                                                <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <div class="card bg-info text-white border-0 shadow-sm mb-4">
+                                <div class="card-body p-4">
+                                    <h6 class="text-white-50 font-weight-bold uppercase small mb-2">Avance L-48</h6>
+                                    <div class="d-flex align-items-end mb-3">
+                                        <span id="displayProgressText" class="display-4 font-weight-bold line-height-1">0%</span>
+                                        <span class="ml-2 mb-2 small text-white-50">completado</span>
+                                    </div>
+                                    <div class="progress rounded-pill bg-white-50" style="height: 10px;">
+                                        <div id="visualProgressBar" class="progress-bar bg-white" role="progressbar" style="width:0%" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <hr class="mt-4" />
 
                     <div class="form-actions text-right pb-4 mt-4">
-                        <a href="/EquipmentStateHistories/Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
-                             <i class="fas fa-times mr-1"></i> Cancelar
-                        </a>
+                        @if (isWizard)
+                        {
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="@Model.ReturnStep" asp-route-SelectedLabId="@Model.SelectedLabId" asp-route-ManagementId="@Model.ManagementId" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
+                                <i class="fas fa-magic mr-1"></i> Volver al Wizard
+                            </a>
+                        }
+                        else
+                        {
+                            <a href="/EquipmentStateHistories/Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
+                                 <i class="fas fa-times mr-1"></i> Cancelar
+                            </a>
+                        }
                         <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold text-white py-2">
                             <i class="fas fa-sync-alt mr-1"></i> Actualizar Kardex
                         </button>
@@ -220,13 +285,68 @@
     </div>
 </div>
 
+<div style="display:none" id="taskTemplateContainer">
+    <div class="task-row mb-2 d-flex align-items-center p-2 rounded bg-light border">
+        <input type="hidden" name="Input.Tasks[INDEX].Id" value="0" disabled />
+        <div class="custom-control custom-checkbox mr-2">
+            <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_INDEX" name="Input.Tasks[INDEX].IsCompleted" value="true" onchange="calculatePercentage()" disabled />
+            <label class="custom-control-label" for="taskChk_INDEX"></label>
+        </div>
+        <input type="text" name="Input.Tasks[INDEX].Description" value="" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required disabled />
+        <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+    </div>
+</div>
+
 @section Scripts {
     <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
     <script>
         $(function () {
             "use strict";
             $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+            calculatePercentage();
         });
+
+        function calculatePercentage() {
+            const checkboxes = $('#tasksContainer .maintenance-check');
+            const completed = checkboxes.filter(':checked').length;
+            const percentage = checkboxes.length === 0 ? 0 : Math.round((completed / checkboxes.length) * 100);
+            $('#displayProgressText').text(percentage + '%');
+            $('#visualProgressBar').css('width', percentage + '%').attr('aria-valuenow', percentage);
+            $('#hiddenPercentageInput').val(percentage);
+        }
+
+        function addTask() {
+            const container = $('#tasksContainer');
+            const index = container.children('.task-row').length;
+            const template = $('#taskTemplateContainer').html().replace(/INDEX/g, index);
+            container.append(template);
+            container.children().last().find('input').prop('disabled', false);
+            calculatePercentage();
+        }
+
+        function removeTask(btn) {
+            $(btn).closest('.task-row').remove();
+            reindexTasks();
+            calculatePercentage();
+        }
+
+        function reindexTasks() {
+            $('#tasksContainer .task-row').each(function (index) {
+                $(this).find('input').each(function () {
+                    const name = $(this).attr('name');
+                    if (name) $(this).attr('name', name.replace(/Input\.Tasks\[\d+\]/, 'Input.Tasks[' + index + ']'));
+
+                    const id = $(this).attr('id');
+                    if (id && id.startsWith('taskChk_')) $(this).attr('id', 'taskChk_' + index);
+                });
+                $(this).find('label').each(function () {
+                    const forAttr = $(this).attr('for');
+                    if (forAttr && forAttr.startsWith('taskChk_')) $(this).attr('for', 'taskChk_' + index);
+                });
+            });
+        }
     </script>
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");

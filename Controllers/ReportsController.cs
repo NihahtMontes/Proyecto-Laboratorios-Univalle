@@ -132,6 +132,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                     .ThenInclude(e => e!.Country)
                 .Include(r => r.RequestedBy)
                 .Include(r => r.EquipmentUnit)
+                    .ThenInclude(eu => eu!.Laboratory)
                 .Where(r => r.EquipmentUnitId == unitId)
                 .OrderByDescending(r => r.CreatedDate)
                 .FirstOrDefaultAsync();
