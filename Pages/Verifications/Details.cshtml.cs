@@ -21,6 +21,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         public Verification? Verification { get; set; }
 
         [BindProperty(SupportsGet = true)]
+        public bool IsWizard { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
         public int? LabId { get; set; }
 
         [BindProperty(SupportsGet = true)]
@@ -45,6 +51,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 .Include(v => v.CreatedBy)
                 .Include(v => v.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
+                .Include(v => v.EquipmentUnit)
+                    .ThenInclude(eu => eu!.Laboratory)
                 .Include(v => v.ModifiedBy)
                 .Include(v => v.CheckResults)
                     .ThenInclude(r => r.CheckItem)
@@ -54,6 +62,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return NotFound();
 
             Verification = verification;
+
+            var currentMgmt = ManagementId.HasValue
+                ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
+                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+
+            var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
+            ViewData["IsCorrective"] = isCorrective;
+            ViewData["IsWizard"] = IsWizard;
+            ViewData["ManagementId"] = currentMgmt?.Id;
+
             return Page();
         }
 

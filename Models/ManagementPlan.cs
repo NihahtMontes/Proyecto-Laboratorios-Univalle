@@ -41,6 +41,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Salida de Equipo (L-3)")]
         public int? DepartureId { get; set; }
 
+        [Display(Name = "Historial Kardex")]
+        public int? KardexHistoryId { get; set; }
+
         [Display(Name = "Solicitud Adquisición (Desembolso)")]
         public int? AcquisitionRequestId { get; set; }
 
@@ -116,6 +119,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("DepartureId")]
         public virtual Departure? Departure { get; set; }
+
+        [ForeignKey("KardexHistoryId")]
+        public virtual EquipmentStateHistory? KardexHistory { get; set; }
 
         [ForeignKey("AcquisitionRequestId")]
         public virtual Request? AcquisitionRequest { get; set; }

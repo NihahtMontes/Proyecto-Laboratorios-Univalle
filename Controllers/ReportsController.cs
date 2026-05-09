@@ -60,13 +60,28 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         }
 
         [HttpGet("download/l3")]
-        public async Task<IActionResult> DownloadL3(int unitId)
+        public async Task<IActionResult> DownloadL3(int? departureId, int? unitId)
         {
             try
             {
-                var bytes = await _reportService.GenerateL3SalidaExcel(unitId);
+                var resolvedDepartureId = departureId;
+
+                if (!resolvedDepartureId.HasValue && unitId.HasValue)
+                {
+                    resolvedDepartureId = await _context.Departures
+                        .AsNoTracking()
+                        .Where(d => d.EquipmentUnitId == unitId.Value)
+                        .OrderByDescending(d => d.CreatedDate)
+                        .Select(d => (int?)d.Id)
+                        .FirstOrDefaultAsync();
+                }
+
+                if (!resolvedDepartureId.HasValue)
+                    return NotFound("Este equipo no tiene salidas L-3 registradas.");
+
+                var bytes = await _reportService.GenerateL3SalidaExcel(resolvedDepartureId.Value);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Salida_L3_Equipo_{unitId}.xlsx");
+                    $"Salida_L3_{resolvedDepartureId.Value}.xlsx");
             }
             catch (Exception ex)
             {
@@ -117,6 +132,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                     .ThenInclude(e => e!.Country)
                 .Include(r => r.RequestedBy)
                 .Include(r => r.EquipmentUnit)
+                    .ThenInclude(eu => eu!.Laboratory)
                 .Where(r => r.EquipmentUnitId == unitId)
                 .OrderByDescending(r => r.CreatedDate)
                 .FirstOrDefaultAsync();

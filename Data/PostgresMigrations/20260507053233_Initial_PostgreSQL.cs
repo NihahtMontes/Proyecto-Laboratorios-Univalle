@@ -1,0 +1,1877 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+
+#nullable disable
+
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
+namespace Proyecto_Laboratorios_Univalle.Data.PostgresMigrations
+{
+    /// <inheritdoc />
+    public partial class Initial_PostgreSQL : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.CreateTable(
+                name: "Roles",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Roles", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Users",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    PhoneNumber = table.Column<string>(type: "text", nullable: false),
+                    FirstName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    LastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    SecondLastName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    IdentityCard = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    Role = table.Column<int>(type: "integer", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    Position = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Department = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    HireDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedEmail = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    EmailConfirmed = table.Column<bool>(type: "boolean", nullable: false),
+                    PasswordHash = table.Column<string>(type: "text", nullable: true),
+                    SecurityStamp = table.Column<string>(type: "text", nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "text", nullable: true),
+                    PhoneNumberConfirmed = table.Column<bool>(type: "boolean", nullable: false),
+                    TwoFactorEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    LockoutEnd = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    LockoutEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    AccessFailedCount = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Users", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Users_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Users_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "VerificationCheckItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
+                    Category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Order = table.Column<int>(type: "integer", nullable: false),
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VerificationCheckItems", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "RoleClaims",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    RoleId = table.Column<int>(type: "integer", nullable: false),
+                    ClaimType = table.Column<string>(type: "text", nullable: true),
+                    ClaimValue = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RoleClaims", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RoleClaims_Roles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "Roles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Countries",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Countries", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Countries_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Countries_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Faculties",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Faculties", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Faculties_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Faculties_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Managements",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Year = table.Column<int>(type: "integer", nullable: false),
+                    Semester = table.Column<int>(type: "integer", nullable: false),
+                    Code = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    PlannedEndDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    ActualClosedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    Responsible = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Managements", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Managements_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Managements_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Notifications",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<int>(type: "integer", nullable: true),
+                    Title = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Message = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    ActionUrl = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    IconClass = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    IsRead = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Notifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Notifications_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "People",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    Category = table.Column<int>(type: "integer", nullable: false),
+                    Email = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    PhoneNumber = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_People", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_People_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_People_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserClaims",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    ClaimType = table.Column<string>(type: "text", nullable: true),
+                    ClaimValue = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserClaims", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserClaims_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserLogins",
+                columns: table => new
+                {
+                    LoginProvider = table.Column<string>(type: "text", nullable: false),
+                    ProviderKey = table.Column<string>(type: "text", nullable: false),
+                    ProviderDisplayName = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserLogins", x => new { x.LoginProvider, x.ProviderKey });
+                    table.ForeignKey(
+                        name: "FK_UserLogins_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserRoles",
+                columns: table => new
+                {
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    RoleId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserRoles", x => new { x.UserId, x.RoleId });
+                    table.ForeignKey(
+                        name: "FK_UserRoles_Roles_RoleId",
+                        column: x => x.RoleId,
+                        principalTable: "Roles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_UserRoles_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserTokens",
+                columns: table => new
+                {
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    LoginProvider = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Value = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserTokens", x => new { x.UserId, x.LoginProvider, x.Name });
+                    table.ForeignKey(
+                        name: "FK_UserTokens_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Cities",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    CountryId = table.Column<int>(type: "integer", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Region = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Cities", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Cities_Countries_CountryId",
+                        column: x => x.CountryId,
+                        principalTable: "Countries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Cities_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Cities_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Careers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    FacultadId = table.Column<int>(type: "integer", nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Careers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Careers_Faculties_FacultadId",
+                        column: x => x.FacultadId,
+                        principalTable: "Faculties",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Careers_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Careers_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Externs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false),
+                    IsEntity = table.Column<bool>(type: "boolean", nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Address = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    ExternStatus = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Externs", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Externs_People_Id",
+                        column: x => x.Id,
+                        principalTable: "People",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Interns",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    InternStatus = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Interns", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Interns_People_Id",
+                        column: x => x.Id,
+                        principalTable: "People",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Equipments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Category = table.Column<int>(type: "integer", nullable: false),
+                    UtensilType = table.Column<int>(type: "integer", nullable: false),
+                    TypeClassification = table.Column<int>(type: "integer", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    ImageUrl = table.Column<string>(type: "text", nullable: true),
+                    CountryId = table.Column<int>(type: "integer", nullable: true),
+                    CityId = table.Column<int>(type: "integer", nullable: true),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Brand = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Model = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    UsefulLifeYears = table.Column<int>(type: "integer", nullable: true),
+                    Description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Equipments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Equipments_Cities_CityId",
+                        column: x => x.CityId,
+                        principalTable: "Cities",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Equipments_Countries_CountryId",
+                        column: x => x.CountryId,
+                        principalTable: "Countries",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Equipments_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Equipments_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Laboratories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    FacultyId = table.Column<int>(type: "integer", nullable: false),
+                    Code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Floor = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    CityId = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Laboratories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Laboratories_Cities_CityId",
+                        column: x => x.CityId,
+                        principalTable: "Cities",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Laboratories_Faculties_FacultyId",
+                        column: x => x.FacultyId,
+                        principalTable: "Faculties",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Laboratories_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Laboratories_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EquipmentNotes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    EquipmentId = table.Column<int>(type: "integer", nullable: false),
+                    Note = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EquipmentNotes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EquipmentNotes_Equipments_EquipmentId",
+                        column: x => x.EquipmentId,
+                        principalTable: "Equipments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EquipmentUnits",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ManagementId = table.Column<int>(type: "integer", nullable: false),
+                    EquipmentId = table.Column<int>(type: "integer", nullable: false),
+                    LaboratoryId = table.Column<int>(type: "integer", nullable: true),
+                    InventoryNumber = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    SerialNumber = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    CareerId = table.Column<int>(type: "integer", nullable: true),
+                    InternalLocation = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    AcquisitionDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    ManufacturingDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    AcquisitionValue = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
+                    CurrentStatus = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    PhysicalCondition = table.Column<int>(type: "integer", nullable: true),
+                    Notes = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EquipmentUnits", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EquipmentUnits_Careers_CareerId",
+                        column: x => x.CareerId,
+                        principalTable: "Careers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_EquipmentUnits_Equipments_EquipmentId",
+                        column: x => x.EquipmentId,
+                        principalTable: "Equipments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_EquipmentUnits_Laboratories_LaboratoryId",
+                        column: x => x.LaboratoryId,
+                        principalTable: "Laboratories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_EquipmentUnits_Managements_ManagementId",
+                        column: x => x.ManagementId,
+                        principalTable: "Managements",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_EquipmentUnits_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_EquipmentUnits_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Departures",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ManagementId = table.Column<int>(type: "integer", nullable: false),
+                    EquipmentUnitId = table.Column<int>(type: "integer", nullable: false),
+                    BorrowerId = table.Column<int>(type: "integer", nullable: false),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    DepartureDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    EstimatedReturnDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ActualReturnDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    DepartureObservations = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    ReturnObservations = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Departures", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Departures_EquipmentUnits_EquipmentUnitId",
+                        column: x => x.EquipmentUnitId,
+                        principalTable: "EquipmentUnits",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Departures_Managements_ManagementId",
+                        column: x => x.ManagementId,
+                        principalTable: "Managements",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Departures_People_BorrowerId",
+                        column: x => x.BorrowerId,
+                        principalTable: "People",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Departures_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Departures_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "EquipmentStateHistories",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    EquipmentUnitId = table.Column<int>(type: "integer", nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    StartDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    Reason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_EquipmentStateHistories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_EquipmentStateHistories_EquipmentUnits_EquipmentUnitId",
+                        column: x => x.EquipmentUnitId,
+                        principalTable: "EquipmentUnits",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_EquipmentStateHistories_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_EquipmentStateHistories_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MaintenancePlans",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    LaboratorySnapshot = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    BlockSnapshot = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    EquipmentUnitId = table.Column<int>(type: "integer", nullable: true),
+                    Service = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    ServiceType = table.Column<int>(type: "integer", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    EstimatedTime = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
+                    ActualTime = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
+                    AssignedTechnicianId = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ProviderSnapshot = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    LaboratoryId = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MaintenancePlans", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_MaintenancePlans_EquipmentUnits_EquipmentUnitId",
+                        column: x => x.EquipmentUnitId,
+                        principalTable: "EquipmentUnits",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_MaintenancePlans_Laboratories_LaboratoryId",
+                        column: x => x.LaboratoryId,
+                        principalTable: "Laboratories",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_MaintenancePlans_Users_AssignedTechnicianId",
+                        column: x => x.AssignedTechnicianId,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_MaintenancePlans_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_MaintenancePlans_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Requests",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    LaboratoryId = table.Column<int>(type: "integer", nullable: false),
+                    EquipmentId = table.Column<int>(type: "integer", nullable: false),
+                    EquipmentUnitId = table.Column<int>(type: "integer", nullable: true),
+                    ManagementId = table.Column<int>(type: "integer", nullable: false),
+                    RequestedById = table.Column<int>(type: "integer", nullable: true),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    Priority = table.Column<int>(type: "integer", nullable: false),
+                    Observations = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    EstimatedRepairTime = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    ApprovedById = table.Column<int>(type: "integer", nullable: true),
+                    ApprovalDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    RejectionReason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    InvestmentCode = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    CostCenter = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Requests", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Requests_EquipmentUnits_EquipmentUnitId",
+                        column: x => x.EquipmentUnitId,
+                        principalTable: "EquipmentUnits",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Requests_Equipments_EquipmentId",
+                        column: x => x.EquipmentId,
+                        principalTable: "Equipments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Requests_Laboratories_LaboratoryId",
+                        column: x => x.LaboratoryId,
+                        principalTable: "Laboratories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Requests_Managements_ManagementId",
+                        column: x => x.ManagementId,
+                        principalTable: "Managements",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Requests_Users_ApprovedById",
+                        column: x => x.ApprovedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Requests_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Requests_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Requests_Users_RequestedById",
+                        column: x => x.RequestedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Verifications",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    EquipmentUnitId = table.Column<int>(type: "integer", nullable: false),
+                    ManagementId = table.Column<int>(type: "integer", nullable: false),
+                    Date = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    Observations = table.Column<string>(type: "text", nullable: true),
+                    PhysicalCondition = table.Column<int>(type: "integer", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Verifications", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Verifications_EquipmentUnits_EquipmentUnitId",
+                        column: x => x.EquipmentUnitId,
+                        principalTable: "EquipmentUnits",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Verifications_Managements_ManagementId",
+                        column: x => x.ManagementId,
+                        principalTable: "Managements",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Verifications_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Verifications_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "DepartureItems",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    DepartureId = table.Column<int>(type: "integer", nullable: false),
+                    EquipmentUnitId = table.Column<int>(type: "integer", nullable: true),
+                    ProductName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Quantity = table.Column<int>(type: "integer", nullable: false),
+                    UnitOfMeasure = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    ReturnedQuantity = table.Column<int>(type: "integer", nullable: true),
+                    Observations = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    IsRemoved = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DepartureItems", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_DepartureItems_Departures_DepartureId",
+                        column: x => x.DepartureId,
+                        principalTable: "Departures",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_DepartureItems_EquipmentUnits_EquipmentUnitId",
+                        column: x => x.EquipmentUnitId,
+                        principalTable: "EquipmentUnits",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_DepartureItems_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_DepartureItems_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Maintenances",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    EquipmentUnitId = table.Column<int>(type: "integer", nullable: false),
+                    MaintenanceType = table.Column<int>(type: "integer", nullable: false),
+                    ManagementId = table.Column<int>(type: "integer", nullable: false),
+                    ServiceType = table.Column<int>(type: "integer", nullable: false),
+                    InstitutionalCode = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    TechnicianId = table.Column<int>(type: "integer", nullable: true),
+                    RequestId = table.Column<int>(type: "integer", nullable: true),
+                    ScheduledDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    EndDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    Description = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    CompletionPercentage = table.Column<int>(type: "integer", nullable: false),
+                    Step1_Cleaning = table.Column<bool>(type: "boolean", nullable: false),
+                    Step2_Calibration = table.Column<bool>(type: "boolean", nullable: false),
+                    Step3_Testing = table.Column<bool>(type: "boolean", nullable: false),
+                    Step4_FinalReview = table.Column<bool>(type: "boolean", nullable: false),
+                    EstimatedCost = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
+                    ActualCost = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
+                    Recommendations = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    SuggestedNextMaintenanceDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    SatisfactionLevel = table.Column<int>(type: "integer", nullable: true),
+                    Observations = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Maintenances", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Maintenances_EquipmentUnits_EquipmentUnitId",
+                        column: x => x.EquipmentUnitId,
+                        principalTable: "EquipmentUnits",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Maintenances_Managements_ManagementId",
+                        column: x => x.ManagementId,
+                        principalTable: "Managements",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Maintenances_People_TechnicianId",
+                        column: x => x.TechnicianId,
+                        principalTable: "People",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Maintenances_Requests_RequestId",
+                        column: x => x.RequestId,
+                        principalTable: "Requests",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Maintenances_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Maintenances_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "VerificationCheckResults",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    VerificationId = table.Column<int>(type: "integer", nullable: false),
+                    CheckItemId = table.Column<int>(type: "integer", nullable: false),
+                    Result = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VerificationCheckResults", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_VerificationCheckResults_VerificationCheckItems_CheckItemId",
+                        column: x => x.CheckItemId,
+                        principalTable: "VerificationCheckItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_VerificationCheckResults_Verifications_VerificationId",
+                        column: x => x.VerificationId,
+                        principalTable: "Verifications",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "VerificationFaults",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    VerificationId = table.Column<int>(type: "integer", nullable: false),
+                    Description = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VerificationFaults", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_VerificationFaults_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_VerificationFaults_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_VerificationFaults_Verifications_VerificationId",
+                        column: x => x.VerificationId,
+                        principalTable: "Verifications",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CostDetails",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    RequestId = table.Column<int>(type: "integer", nullable: true),
+                    MaintenanceId = table.Column<int>(type: "integer", nullable: true),
+                    Concept = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    Quantity = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: false),
+                    UnitOfMeasure = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    UnitPrice = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    Category = table.Column<int>(type: "integer", nullable: false),
+                    Provider = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    InvoiceNumber = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CostDetails", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CostDetails_Maintenances_MaintenanceId",
+                        column: x => x.MaintenanceId,
+                        principalTable: "Maintenances",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CostDetails_Requests_RequestId",
+                        column: x => x.RequestId,
+                        principalTable: "Requests",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_CostDetails_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_CostDetails_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MaintenanceTasks",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    MaintenanceId = table.Column<int>(type: "integer", nullable: false),
+                    Description = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    IsCompleted = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MaintenanceTasks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_MaintenanceTasks_Maintenances_MaintenanceId",
+                        column: x => x.MaintenanceId,
+                        principalTable: "Maintenances",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ManagementPlans",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ManagementId = table.Column<int>(type: "integer", nullable: false),
+                    MaintenanceId = table.Column<int>(type: "integer", nullable: true),
+                    EquipmentUnitId = table.Column<int>(type: "integer", nullable: true),
+                    VerificationId = table.Column<int>(type: "integer", nullable: true),
+                    RequestId = table.Column<int>(type: "integer", nullable: true),
+                    DepartureId = table.Column<int>(type: "integer", nullable: true),
+                    KardexHistoryId = table.Column<int>(type: "integer", nullable: true),
+                    AcquisitionRequestId = table.Column<int>(type: "integer", nullable: true),
+                    CurrentPhase = table.Column<int>(type: "integer", nullable: false),
+                    CurrentState = table.Column<int>(type: "integer", nullable: false),
+                    Responsible = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
+                    PlannedWeek = table.Column<int>(type: "integer", nullable: true),
+                    ExecutedWeek = table.Column<int>(type: "integer", nullable: true),
+                    DocumentReference = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    Notes = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: true),
+                    PlannedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    PlanStatus = table.Column<int>(type: "integer", nullable: false),
+                    CreatedById = table.Column<int>(type: "integer", nullable: true),
+                    CreatedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    ModifiedById = table.Column<int>(type: "integer", nullable: true),
+                    LastModifiedDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ManagementPlans", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Departures_DepartureId",
+                        column: x => x.DepartureId,
+                        principalTable: "Departures",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_EquipmentStateHistories_KardexHistoryId",
+                        column: x => x.KardexHistoryId,
+                        principalTable: "EquipmentStateHistories",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_EquipmentUnits_EquipmentUnitId",
+                        column: x => x.EquipmentUnitId,
+                        principalTable: "EquipmentUnits",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Maintenances_MaintenanceId",
+                        column: x => x.MaintenanceId,
+                        principalTable: "Maintenances",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Managements_ManagementId",
+                        column: x => x.ManagementId,
+                        principalTable: "Managements",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Requests_AcquisitionRequestId",
+                        column: x => x.AcquisitionRequestId,
+                        principalTable: "Requests",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Requests_RequestId",
+                        column: x => x.RequestId,
+                        principalTable: "Requests",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Users_CreatedById",
+                        column: x => x.CreatedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Users_ModifiedById",
+                        column: x => x.ModifiedById,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ManagementPlans_Verifications_VerificationId",
+                        column: x => x.VerificationId,
+                        principalTable: "Verifications",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.InsertData(
+                table: "VerificationCheckItems",
+                columns: new[] { "Id", "Category", "IsActive", "Name", "Order" },
+                values: new object[,]
+                {
+                    { 1, "Seguridad", true, "Desconexión del cable de la alimentación eléctrica para mantenimiento preventivo/correctivo 12 horas antes.", 1 },
+                    { 2, "Higiene", true, "Limpieza y desinfección interna con productos no abrasivos.", 2 },
+                    { 3, "Higiene", true, "Limpieza externa de condensador, serpentín, evaporador y retiro de polvo y grasas adheridas.", 3 },
+                    { 4, "Refrigeración", true, "Verificación de presión del refrigerante.", 4 },
+                    { 5, "Refrigeración", true, "Revisión de fugas y/o microfugas en serpentín.", 5 },
+                    { 6, "Refrigeración", true, "Revisión de formaciones de hielo y condensaciones superficiales no esporádicas.", 6 },
+                    { 7, "Control", true, "Control de temperatura y termostatos según norma.", 7 },
+                    { 8, "Mecánica", true, "Revisión de puertas y sellos de goma (empaques).", 8 },
+                    { 9, "Higiene", true, "Limpieza de drenajes de deshielo.", 9 },
+                    { 10, "Mecánica", true, "Verificación del funcionamiento de ventiladores.", 10 },
+                    { 11, "Eléctrico", true, "Mantenimiento eléctrico: inspección de cableado, terminales, protecciones eléctricas, etc.", 11 },
+                    { 12, "Mecánica", true, "Lubricación de partes móviles.", 12 },
+                    { 13, "Gestión", true, "Mantenimiento con personal externo capacitado.", 13 }
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Careers_CreatedById",
+                table: "Careers",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Careers_FacultadId",
+                table: "Careers",
+                column: "FacultadId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Careers_ModifiedById",
+                table: "Careers",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cities_CountryId",
+                table: "Cities",
+                column: "CountryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cities_CreatedById",
+                table: "Cities",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Cities_ModifiedById",
+                table: "Cities",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CostDetails_CreatedById",
+                table: "CostDetails",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CostDetails_MaintenanceId",
+                table: "CostDetails",
+                column: "MaintenanceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CostDetails_ModifiedById",
+                table: "CostDetails",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CostDetails_RequestId",
+                table: "CostDetails",
+                column: "RequestId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Countries_CreatedById",
+                table: "Countries",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Countries_ModifiedById",
+                table: "Countries",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DepartureItems_CreatedById",
+                table: "DepartureItems",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DepartureItems_DepartureId",
+                table: "DepartureItems",
+                column: "DepartureId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DepartureItems_EquipmentUnitId",
+                table: "DepartureItems",
+                column: "EquipmentUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_DepartureItems_ModifiedById",
+                table: "DepartureItems",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Departures_BorrowerId",
+                table: "Departures",
+                column: "BorrowerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Departures_CreatedById",
+                table: "Departures",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Departures_EquipmentUnitId",
+                table: "Departures",
+                column: "EquipmentUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Departures_ManagementId",
+                table: "Departures",
+                column: "ManagementId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Departures_ModifiedById",
+                table: "Departures",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentNotes_EquipmentId",
+                table: "EquipmentNotes",
+                column: "EquipmentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Equipments_CityId",
+                table: "Equipments",
+                column: "CityId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Equipments_CountryId",
+                table: "Equipments",
+                column: "CountryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Equipments_CreatedById",
+                table: "Equipments",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Equipments_ModifiedById",
+                table: "Equipments",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentStateHistories_CreatedById",
+                table: "EquipmentStateHistories",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentStateHistories_EquipmentUnitId",
+                table: "EquipmentStateHistories",
+                column: "EquipmentUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentStateHistories_ModifiedById",
+                table: "EquipmentStateHistories",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentUnits_CareerId",
+                table: "EquipmentUnits",
+                column: "CareerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentUnits_CreatedById",
+                table: "EquipmentUnits",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentUnits_CurrentStatus",
+                table: "EquipmentUnits",
+                column: "CurrentStatus");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentUnits_EquipmentId",
+                table: "EquipmentUnits",
+                column: "EquipmentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentUnits_InventoryNumber",
+                table: "EquipmentUnits",
+                column: "InventoryNumber",
+                unique: true,
+                filter: "\"CurrentStatus\" <> 99");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentUnits_LaboratoryId",
+                table: "EquipmentUnits",
+                column: "LaboratoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentUnits_ManagementId",
+                table: "EquipmentUnits",
+                column: "ManagementId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EquipmentUnits_ModifiedById",
+                table: "EquipmentUnits",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Faculties_CreatedById",
+                table: "Faculties",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Faculties_ModifiedById",
+                table: "Faculties",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Laboratories_CityId",
+                table: "Laboratories",
+                column: "CityId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Laboratories_Code",
+                table: "Laboratories",
+                column: "Code",
+                unique: true,
+                filter: "\"Status\" <> 2");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Laboratories_CreatedById",
+                table: "Laboratories",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Laboratories_FacultyId",
+                table: "Laboratories",
+                column: "FacultyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Laboratories_ModifiedById",
+                table: "Laboratories",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MaintenancePlans_AssignedTechnicianId",
+                table: "MaintenancePlans",
+                column: "AssignedTechnicianId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MaintenancePlans_CreatedById",
+                table: "MaintenancePlans",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MaintenancePlans_EquipmentUnitId",
+                table: "MaintenancePlans",
+                column: "EquipmentUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MaintenancePlans_LaboratoryId",
+                table: "MaintenancePlans",
+                column: "LaboratoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MaintenancePlans_ModifiedById",
+                table: "MaintenancePlans",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maintenances_CreatedById",
+                table: "Maintenances",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maintenances_EquipmentUnitId",
+                table: "Maintenances",
+                column: "EquipmentUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maintenances_ManagementId",
+                table: "Maintenances",
+                column: "ManagementId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maintenances_ModifiedById",
+                table: "Maintenances",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maintenances_RequestId",
+                table: "Maintenances",
+                column: "RequestId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maintenances_Status",
+                table: "Maintenances",
+                column: "Status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Maintenances_TechnicianId",
+                table: "Maintenances",
+                column: "TechnicianId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MaintenanceTasks_MaintenanceId",
+                table: "MaintenanceTasks",
+                column: "MaintenanceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_AcquisitionRequestId",
+                table: "ManagementPlans",
+                column: "AcquisitionRequestId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_CreatedById",
+                table: "ManagementPlans",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_CurrentPhase_ManagementId",
+                table: "ManagementPlans",
+                columns: new[] { "CurrentPhase", "ManagementId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_DepartureId",
+                table: "ManagementPlans",
+                column: "DepartureId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_EquipmentUnitId",
+                table: "ManagementPlans",
+                column: "EquipmentUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_KardexHistoryId",
+                table: "ManagementPlans",
+                column: "KardexHistoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_MaintenanceId",
+                table: "ManagementPlans",
+                column: "MaintenanceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_ManagementId",
+                table: "ManagementPlans",
+                column: "ManagementId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_ModifiedById",
+                table: "ManagementPlans",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_PlanStatus_ManagementId",
+                table: "ManagementPlans",
+                columns: new[] { "PlanStatus", "ManagementId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_RequestId",
+                table: "ManagementPlans",
+                column: "RequestId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ManagementPlans_VerificationId",
+                table: "ManagementPlans",
+                column: "VerificationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Managements_CreatedById",
+                table: "Managements",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Managements_ModifiedById",
+                table: "Managements",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Notifications_UserId",
+                table: "Notifications",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_People_CreatedById",
+                table: "People",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_People_ModifiedById",
+                table: "People",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Requests_ApprovedById",
+                table: "Requests",
+                column: "ApprovedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Requests_CreatedById",
+                table: "Requests",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Requests_EquipmentId",
+                table: "Requests",
+                column: "EquipmentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Requests_EquipmentUnitId",
+                table: "Requests",
+                column: "EquipmentUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Requests_LaboratoryId",
+                table: "Requests",
+                column: "LaboratoryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Requests_ManagementId",
+                table: "Requests",
+                column: "ManagementId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Requests_ModifiedById",
+                table: "Requests",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Requests_RequestedById",
+                table: "Requests",
+                column: "RequestedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RoleClaims_RoleId",
+                table: "RoleClaims",
+                column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "RoleNameIndex",
+                table: "Roles",
+                column: "NormalizedName",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserClaims_UserId",
+                table: "UserClaims",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserLogins_UserId",
+                table: "UserLogins",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserRoles_RoleId",
+                table: "UserRoles",
+                column: "RoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "EmailIndex",
+                table: "Users",
+                column: "NormalizedEmail");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_CreatedById",
+                table: "Users",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_IdentityCard",
+                table: "Users",
+                column: "IdentityCard",
+                unique: true,
+                filter: "\"Status\" <> 2");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_ModifiedById",
+                table: "Users",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "UserNameIndex",
+                table: "Users",
+                column: "NormalizedUserName",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VerificationCheckResults_CheckItemId",
+                table: "VerificationCheckResults",
+                column: "CheckItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VerificationCheckResults_VerificationId",
+                table: "VerificationCheckResults",
+                column: "VerificationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VerificationFaults_CreatedById",
+                table: "VerificationFaults",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VerificationFaults_ModifiedById",
+                table: "VerificationFaults",
+                column: "ModifiedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VerificationFaults_VerificationId",
+                table: "VerificationFaults",
+                column: "VerificationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Verifications_CreatedById",
+                table: "Verifications",
+                column: "CreatedById");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Verifications_EquipmentUnitId",
+                table: "Verifications",
+                column: "EquipmentUnitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Verifications_ManagementId",
+                table: "Verifications",
+                column: "ManagementId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Verifications_ModifiedById",
+                table: "Verifications",
+                column: "ModifiedById");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "CostDetails");
+
+            migrationBuilder.DropTable(
+                name: "DepartureItems");
+
+            migrationBuilder.DropTable(
+                name: "EquipmentNotes");
+
+            migrationBuilder.DropTable(
+                name: "Externs");
+
+            migrationBuilder.DropTable(
+                name: "Interns");
+
+            migrationBuilder.DropTable(
+                name: "MaintenancePlans");
+
+            migrationBuilder.DropTable(
+                name: "MaintenanceTasks");
+
+            migrationBuilder.DropTable(
+                name: "ManagementPlans");
+
+            migrationBuilder.DropTable(
+                name: "Notifications");
+
+            migrationBuilder.DropTable(
+                name: "RoleClaims");
+
+            migrationBuilder.DropTable(
+                name: "UserClaims");
+
+            migrationBuilder.DropTable(
+                name: "UserLogins");
+
+            migrationBuilder.DropTable(
+                name: "UserRoles");
+
+            migrationBuilder.DropTable(
+                name: "UserTokens");
+
+            migrationBuilder.DropTable(
+                name: "VerificationCheckResults");
+
+            migrationBuilder.DropTable(
+                name: "VerificationFaults");
+
+            migrationBuilder.DropTable(
+                name: "Departures");
+
+            migrationBuilder.DropTable(
+                name: "EquipmentStateHistories");
+
+            migrationBuilder.DropTable(
+                name: "Maintenances");
+
+            migrationBuilder.DropTable(
+                name: "Roles");
+
+            migrationBuilder.DropTable(
+                name: "VerificationCheckItems");
+
+            migrationBuilder.DropTable(
+                name: "Verifications");
+
+            migrationBuilder.DropTable(
+                name: "People");
+
+            migrationBuilder.DropTable(
+                name: "Requests");
+
+            migrationBuilder.DropTable(
+                name: "EquipmentUnits");
+
+            migrationBuilder.DropTable(
+                name: "Careers");
+
+            migrationBuilder.DropTable(
+                name: "Equipments");
+
+            migrationBuilder.DropTable(
+                name: "Laboratories");
+
+            migrationBuilder.DropTable(
+                name: "Managements");
+
+            migrationBuilder.DropTable(
+                name: "Cities");
+
+            migrationBuilder.DropTable(
+                name: "Faculties");
+
+            migrationBuilder.DropTable(
+                name: "Countries");
+
+            migrationBuilder.DropTable(
+                name: "Users");
+        }
+    }
+}

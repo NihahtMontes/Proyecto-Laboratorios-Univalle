@@ -1,5 +1,6 @@
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -45,7 +46,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public string? UnitOfMeasure { get; set; } = "Unidad";
 
         [Required]
-        [Column(TypeName = "decimal(18,2)")]
+        [Precision(18, 2)]
         [Display(Name = "Precio Unitario (Estimado)")]
         [Range(0, 999999999, ErrorMessage = "El precio debe ser positivo")]
         public decimal UnitPrice { get; set; }

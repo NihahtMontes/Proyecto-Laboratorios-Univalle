@@ -175,15 +175,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 equipment.ModifiedById = currentUser.Id;
             }
 
-            await _context.SaveChangesAsync();
-
-            var oldNotes = await _context.EquipmentNotes.Where(n => n.EquipmentId == equipment.Id).ToListAsync();
-            _context.EquipmentNotes.RemoveRange(oldNotes);
-            if (Input.Notes != null)
+            try
             {
-                foreach (var note in Input.Notes.Where(n => !string.IsNullOrWhiteSpace(n)))
-                    _context.EquipmentNotes.Add(new EquipmentNote { EquipmentId = equipment.Id, Note = note.Trim() });
+                await using var tx = await _context.Database.BeginTransactionAsync();
+
                 await _context.SaveChangesAsync();
+
+                var oldNotes = await _context.EquipmentNotes.Where(n => n.EquipmentId == equipment.Id).ToListAsync();
+                _context.EquipmentNotes.RemoveRange(oldNotes);
+                if (Input.Notes != null)
+                {
+                    foreach (var note in Input.Notes.Where(n => !string.IsNullOrWhiteSpace(n)))
+                        _context.EquipmentNotes.Add(new EquipmentNote { EquipmentId = equipment.Id, Note = note.Trim() });
+                    await _context.SaveChangesAsync();
+                }
+
+                await tx.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                TempData.Error($"Error al guardar los cambios: {ex.Message}");
+                await ReloadDisplayData(Input.Id);
+                LoadLists();
+                return Page();
             }
 
             TempData.Success($"Datos del equipo '{equipment.Name}' actualizados correctamente.");

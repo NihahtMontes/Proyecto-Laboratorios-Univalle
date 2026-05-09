@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 {
@@ -42,9 +43,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             var request = await _context.Requests.FindAsync(id);
             if (request != null)
             {
-                _context.Requests.Remove(request);
+                request.Status = RequestStatus.Cancelled;
+                request.RejectionReason = string.IsNullOrWhiteSpace(request.RejectionReason)
+                    ? "Solicitud marcada como eliminada lógicamente."
+                    : request.RejectionReason;
+                request.LastModifiedDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Solicitud eliminada correctamente.";
+                TempData.Success("Solicitud marcada como eliminada correctamente.");
             }
 
             return RedirectToPage("./Index");

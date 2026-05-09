@@ -115,6 +115,10 @@
                         </div>
                         <div class="card-body pt-2 px-4">
                             <div id="notesContainer">
+                                <div id="emptyNotesPlaceholder" class="text-center py-3 text-muted small">
+                                    <i class="fas fa-sticky-note fa-2x mb-2 opacity-5 d-block"></i>
+                                    <span>No hay notas del fabricante. Use el botón "Agregar Nota" para añadir pautas de mantenimiento.</span>
+                                </div>
                             </div>
                             <small class="text-muted">Agregue notas importantes del fabricante, recomendaciones de uso o pautas de mantenimiento preventivo.</small>
                         </div>
@@ -145,6 +149,7 @@
 
             // --- NOTAS DEL FABRICANTE ---
             window.addNoteRow = function() {
+                $('#emptyNotesPlaceholder').hide();
                 var idx = $('#notesContainer .note-row').length;
                 var row = '<div class="input-group mb-2 note-row">';
                 row += '<input type="text" name="Input.Notes[' + idx + ']" class="form-control border-info" placeholder="Ej: Revisar conexiones cada 3 meses..." required />';

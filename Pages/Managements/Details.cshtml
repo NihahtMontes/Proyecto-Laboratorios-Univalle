@@ -59,7 +59,7 @@
 <div class="container-fluid py-4">
 
     <!-- CABECERA DE LA GESTIÓN -->
-    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap">
         <div>
             <h1 class="wizard-title mb-1">@(isCorrective ? "Mantenimiento Correctivo" : "Mantenimiento Preventivo") @Model.Management.Code</h1>
             <p class="wizard-subtitle">
@@ -68,34 +68,34 @@
                     : Model.Management.Description)
             </p>
         </div>
-        <div class="d-flex gap-2 flex-wrap">
+        <div class="d-flex flex-wrap">
             @if (isManagementActive)
             {
                 if (!isCorrective)
                 {
-                    <form method="post" asp-page-handler="SyncEquipments" asp-route-id="@Model.Management.Id" class="m-0">
+                    <form method="post" asp-page-handler="SyncEquipments" asp-route-id="@Model.Management.Id" class="m-0 d-inline-block mr-2">
                         <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm" style="color: #7c3aed; border-color: #7c3aed; background: #f5f3ff;">
                             <i class="fas fa-sync-alt mr-2"></i>Sincronizar Equipos
                         </button>
                     </form>
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm" style="background-color: #334155; color: white;">
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm mr-2" style="background-color: #334155; color: white;">
                         <i class="fas fa-play mr-2"></i>Iniciar Ronda (Wizard)
                     </a>
                 }
                 else
                 {
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn btn-danger rounded-pill px-3 font-weight-bold shadow-sm">
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn btn-danger rounded-pill px-3 font-weight-bold shadow-sm mr-2">
                         <i class="fas fa-exclamation-triangle mr-2"></i>Reportar Falla Crítica
                     </a>
                 }
             }
             else
             {
-                <button class="btn btn-light border rounded-pill px-3 font-weight-bold" disabled>
+                <button class="btn btn-light border rounded-pill px-3 font-weight-bold mr-2" disabled>
                     <i class="fas fa-lock mr-2"></i>Histórico Inmutable
                 </button>
             }
-            <a asp-page="/Reports/Index" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white" style="background-color: #0ea5e9;">
+            <a asp-page="/Reports/Index" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white mr-2" style="background-color: #0ea5e9;">
                 <i class="fas fa-file-pdf mr-2"></i>Reportes Oficiales
             </a>
             <a asp-page="./Index" class="btn btn-light border rounded-pill px-4">
@@ -605,7 +605,7 @@
                 confirmButtonText: 'Sí, rehacer y limpiar',
                 cancelButtonText: 'Cancelar'
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result && (result.isConfirmed === true || result.value === true)) {
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = '/Index?handler=RedoPhase';

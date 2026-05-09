@@ -14,8 +14,14 @@
 
 <div class="row">
     <div class="col-lg-8">
-        
-        @{ await Html.RenderPartialAsync("_WizardSteps", 2); }
+
+        @{
+            bool isWizard = Model.IsWizard;
+            if (isWizard)
+            {
+                await Html.RenderPartialAsync("_WizardSteps", 2);
+            }
+        }
 
         <div class="card shadow-sm border-0 mb-4 printable-card">
             <div class="card-body p-4">
@@ -189,14 +195,14 @@
     </div>
 
     <div class="col-lg-4 d-print-none">
-        <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
+        <div class="card shadow-sm border-0 mb-4 border-left border-3" style="background: #f5f3ff; border-color: #7c3aed !important;">
             <div class="card-body">
-                <h5 class="card-title text-white font-weight-bold small uppercase"><i class="fas fa-shield-alt mr-2 text-info"></i> Estado de Trámite</h5>
-                <hr class="border-secondary mb-4" />
+                <h5 class="font-weight-bold small uppercase mb-3" style="color: #7c3aed;"><i class="fas fa-shield-alt mr-2"></i> Estado de Trámite</h5>
+                <hr class="mb-4" />
                 
                 <div class="mb-3">
                     <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Identificador Único</label>
-                    <span class="font-weight-bold text-info" style="font-size: 1.1rem;">#REQ-@Model.Request.Id.ToString("D5")</span>
+                    <span class="font-weight-bold text-dark" style="font-size: 1.2rem;">#REQ-@Model.Request.Id.ToString("D5")</span>
                 </div>
 
                 <div class="mb-0">
@@ -232,77 +238,30 @@
         </div>
 
         <div class="form-actions mt-4">
-            <a asp-page="./Edit" asp-route-id="@Model.Request.Id" class="btn btn-primary btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3">
+            <a asp-page="./Edit" asp-route-id="@Model.Request.Id"
+               asp-route-isWizard="@isWizard" asp-route-managementId="@ViewData["ManagementId"]"
+               class="btn btn-primary btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3">
                 <i class="fas fa-edit mr-2"></i> Editar Registro
             </a>
 
-            <a asp-page="./Details" asp-page-handler="DescargarReporte" asp-route-id="@Model.Request.Id" 
-               class="btn btn-outline-success btn-block btn-rounded font-weight-bold py-2 mb-3 btn-download-report" 
-               data-id="@Model.Request.Id">
-                <i class="fas fa-file-excel mr-2"></i> <span class="download-text">Exportar Excel</span>
-            </a>
-
-            <button type="button" class="btn btn-outline-info btn-block btn-rounded font-weight-bold py-2 mb-3" onclick="window.print()">
-                <i class="fas fa-print mr-2"></i> Imprimir Vista
-            </button>
-
-            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
-                <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
-            </a>
+            @if (isWizard)
+            {
+                <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3" asp-route-ManagementId="@ViewData["ManagementId"]"
+                   class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
+                    <i class="fas fa-arrow-left mr-2"></i> Volver al Wizard
+                </a>
+            }
+            else
+            {
+                <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
+                    <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+                </a>
+            }
         </div>
     </div>
 </div>
 
 @section Scripts {
-    <script>
-        $(document).ready(function() {
-            // Lógica de botones de descarga
-            function updateDownloadButtons() {
-                $('.btn-download-report').each(function() {
-                    const id = $(this).data('id');
-                    if (id && localStorage.getItem('downloaded_request_' + id)) {
-                        $(this).removeClass('btn-outline-success').addClass('btn-outline-info');
-                        $(this).attr('title', 'Volver a descargar reporte');
-                        const $text = $(this).find('.download-text');
-                        if ($text && $text.length > 0) {
-                            $text.text('Re-Descargar Informe');
-                        }
-                    }
-                });
-            }
-
-            $('.btn-download-report').on('click', function() {
-                const id = $(this).data('id');
-                if (id) {
-                    localStorage.setItem('downloaded_request_' + id, 'true');
-                    setTimeout(updateDownloadButtons, 300);
-                }
-            });
-
-            updateDownloadButtons();
-        });
-
-        // ==============================================================
-        // AÑADIDO: Lógica de navegación del Wizard
-        // ==============================================================
-        function advanceToStep6() {
-            // Guardamos bandera en localStorage
-            localStorage.setItem('wizard_next_step', 'L9'); // O la ruta de Desembolso que tengas
-            
-            // En un flujo real, aquí harías: window.location.href = '/TuRutaDeDesembolso';
-            // Por ahora, simularemos el avance exitoso:
-            Swal.fire({
-                title: 'Kardex Confirmado',
-                text: "Avanzando a la ventana de Desembolso Financiero...",
-                icon: 'success',
-                showConfirmButton: false,
-                timer: 1500
-            }).then(() => {
-                // window.location.href = '/ruta-al-paso-6'; 
-                console.log("Navegando al paso 6...");
-            });
-        }
-    </script>
 }
 
 @section Styles {

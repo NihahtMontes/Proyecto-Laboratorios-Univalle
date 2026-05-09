@@ -131,27 +131,7 @@
                     }
                 }
 
-                <hr class="mt-5 mb-4" />
-                <div class="bg-light p-4 rounded border shadow-sm">
-                    <form method="post" asp-page-handler="GenerateReport">
-                        <div class="d-lg-flex align-items-center">
-                            <div class="mb-2 mb-lg-0 mr-auto">
-                                <h6 class="font-weight-bold text-dark mb-1"><i class="fas fa-file-excel mr-2 text-success"></i> Reporte Oficial L-6</h6>
-                                <small class="text-muted d-block">Seleccione los parámetros para descargar el inventario.</small>
-                            </div>
-                            <div class="d-flex flex-wrap align-items-center">
-                                <select asp-for="ReportInput.LaboratoryId" class="form-control form-control-sm mr-2" asp-items="Model.LaboratoryList" required style="width: 200px;">
-                                    <option value="">-- Laboratorio --</option>
-                                </select>
-                                <input asp-for="ReportInput.Term" class="form-control form-control-sm mr-2" placeholder="Gestión" required style="width: 120px;" />
-                                <input asp-for="ReportInput.Responsible" class="form-control form-control-sm mr-2" placeholder="Responsable" required style="width: 160px;" />
-                                <button type="submit" class="btn btn-success btn-sm btn-rounded shadow-sm font-weight-bold px-3">
-                                    <i class="fas fa-download mr-1"></i> Excel
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
+
             </div>
         </div>
     </div>

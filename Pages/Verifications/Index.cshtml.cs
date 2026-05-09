@@ -13,14 +13,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
     public class IndexModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
-        private readonly IVerificationReportService _reportingService;
+        // private readonly IVerificationReportService _reportingService; // Eliminado por refactorización L-6
 
         public IndexModel(
-            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
-            IVerificationReportService reportingService)
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context)
         {
             _context = context;
-            _reportingService = reportingService;
         }
 
         public PaginatedList<SessionGroup> Sessions { get; set; } = default!;
@@ -29,16 +27,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         [BindProperty(SupportsGet = true)]
         public int? FilterLaboratoryId { get; set; }
-
-        [BindProperty]
-        public ReportInputModel ReportInput { get; set; } = new();
-
-        public class ReportInputModel
-        {
-            public int? LaboratoryId { get; set; }
-            public string Term { get; set; } = "II/2025";
-            public string Responsible { get; set; } = string.Empty;
-        }
 
         public class SessionGroup
         {
@@ -66,69 +54,37 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return;
             }
 
-            var query = _context.Verifications
+            var pi = pageIndex ?? 1;
+
+            var verifications = await _context.Verifications
+                .AsNoTracking()
                 .Include(v => v.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                 .Include(v => v.CreatedBy)
                 .Where(v => v.EquipmentUnit!.LaboratoryId == FilterLaboratoryId.Value)
+                .OrderByDescending(v => v.Date)
+                .ToListAsync();
+
+            var grouped = verifications
                 .GroupBy(v => v.Date.Date)
                 .Select(g => new SessionGroup
                 {
                     Date = g.Key,
                     LaboratoryId = FilterLaboratoryId.Value,
-                    LaboratoryName = labs.FirstOrDefault(l => l.Id == FilterLaboratoryId.Value)!.Name,
+                    LaboratoryName = g.First().EquipmentUnit?.Laboratory?.Name ?? "N/A",
                     TotalEquipments = g.Count(),
                     BadCount = g.Count(v => v.PhysicalCondition == PhysicalCondition.Bad),
                     InspectorName = g.First().CreatedBy != null
-                        ? g.First().CreatedBy!.FirstName + " " + g.First().CreatedBy!.LastName
+                        ? $"{g.First().CreatedBy.FirstName} {g.First().CreatedBy.LastName}"
                         : "Sistema"
                 })
-                .OrderByDescending(s => s.Date);
+                .OrderByDescending(s => s.Date)
+                .ToList();
 
-            Sessions = await PaginatedList<SessionGroup>.CreateAsync(query, pageIndex ?? 1, PageSize);
+            var count = grouped.Count;
+            var items = grouped.Skip((pi - 1) * PageSize).Take(PageSize).ToList();
+            Sessions = new PaginatedList<SessionGroup>(items, count, pi, PageSize);
         }
 
-        public async Task<IActionResult> OnPostGenerateReportAsync()
-        {
-            if (ReportInput.LaboratoryId == null)
-                return RedirectToPage();
-
-            try
-            {
-                var lab = await _context.Laboratories.FindAsync(ReportInput.LaboratoryId);
-                if (lab == null) return NotFound();
-
-                var units = await _context.EquipmentUnits
-                    .Include(u => u.Equipment)
-                    .IgnoreQueryFilters()
-                    .Where(u => u.LaboratoryId == ReportInput.LaboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
-                    .OrderBy(u => u.InventoryNumber)
-                    .ToListAsync();
-
-                var latestVerifications = await _context.Verifications
-                    .Where(v => v.EquipmentUnit!.LaboratoryId == ReportInput.LaboratoryId)
-                    .GroupBy(v => v.EquipmentUnitId)
-                    .Select(g => g.OrderByDescending(v => v.Date).First())
-                    .ToDictionaryAsync(v => v.EquipmentUnitId, v => v);
-
-                foreach (var unit in units)
-                {
-                    if (latestVerifications.TryGetValue(unit.Id, out var ver))
-                        unit.Notes = ver.Observations;
-                }
-
-                var fileContent = _reportingService.GenerateLaboratoryReport(
-                    lab.Name, units, ReportInput.Term ?? "II/2025",
-                    ReportInput.Responsible ?? "N/A", DateTime.UtcNow);
-
-                string fileName = $"Reporte_L6_{lab.Name}_{DateTime.UtcNow:yyyyMMdd}.xlsx";
-                return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
-            }
-            catch (Exception ex)
-            {
-                _context.ChangeTracker.Clear();
-                TempData.Error($"Error al generar el reporte L-6: {ex.Message}");
-                return RedirectToPage();
-            }
-        }
+        // OnPostGenerateReportAsync eliminado: Los reportes ahora se gestionan centralizadamente.
     }
 }

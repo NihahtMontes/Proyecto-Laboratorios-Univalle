@@ -74,6 +74,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             [StringLength(500)]
             [Display(Name = "Observaciones de Devolución")]
             public string? ReturnObservations { get; set; }
+
+            public List<ItemInput> Items { get; set; } = new();
+
+            public class ItemInput
+            {
+                public int? Id { get; set; }
+                public int? EquipmentUnitId { get; set; }
+                public string ProductName { get; set; } = string.Empty;
+                public int Quantity { get; set; } = 1;
+                public string UnitOfMeasure { get; set; } = "UNIDAD";
+                public string? Observations { get; set; }
+            }
         }
 
         public async Task<IActionResult> OnGetAsync(int? id)
@@ -86,6 +98,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 .Include(d => d.EquipmentUnit)
                     .ThenInclude(eu => eu!.Laboratory)
                 .Include(d => d.Borrower)
+                .Include(d => d.Items)
                 .FirstOrDefaultAsync(d => d.Id == id);
 
             if (departure == null) return NotFound();
@@ -109,6 +122,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 ReturnObservations = departure.ReturnObservations
             };
 
+            foreach (var item in departure.Items)
+            {
+                Input.Items.Add(new InputModel.ItemInput
+                {
+                    Id = item.Id,
+                    EquipmentUnitId = item.EquipmentUnitId,
+                    ProductName = item.ProductName,
+                    Quantity = item.Quantity,
+                    UnitOfMeasure = item.UnitOfMeasure,
+                    Observations = item.Observations
+                });
+            }
+
             // Detect Wizard Plan
             var plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.DepartureId == id);
             if (plan != null)
@@ -127,19 +153,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         {
             if (!ModelState.IsValid)
             {
-                var departure = await _context.Departures.Include(m => m.EquipmentUnit).ThenInclude(eu => eu.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
-                int facultyId = departure?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
-                int labId = departure?.EquipmentUnit?.LaboratoryId ?? 0;
+                var departureForError = await _context.Departures.Include(m => m.EquipmentUnit).ThenInclude(eu => eu!.Laboratory).Include(d => d.Items).FirstOrDefaultAsync(m => m.Id == Input.Id);
+                int facultyId = departureForError?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
+                int labId = departureForError?.EquipmentUnit?.LaboratoryId ?? 0;
                 CargarListas(facultyId, labId, Input.EquipmentUnitId);
 
-                // Detect Wizard Plan again on error
-                var plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.DepartureId == Input.Id);
-                if (plan != null)
+                var planForError = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.DepartureId == Input.Id);
+                if (planForError != null)
                 {
                     ViewData["IsWizard"] = true;
-                    ViewData["ManagementPlanId"] = plan.Id;
-                    ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
-                    if (plan.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = plan.MaintenanceId.Value;
+                    ViewData["ManagementPlanId"] = planForError.Id;
+                    ViewData["CurrentPhaseInt"] = (int)planForError.CurrentPhase;
+                    if (planForError.MaintenanceId.HasValue) ViewData["LinkedMaintenanceId"] = planForError.MaintenanceId.Value;
                 }
 
                 return Page();
@@ -148,6 +173,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             var departureDB = await _context.Departures
                 .Include(d => d.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
+                .Include(d => d.Items)
                 .AsTracking()
                 .FirstOrDefaultAsync(d => d.Id == Input.Id);
 
@@ -162,7 +188,47 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             departureDB.DepartureObservations = Input.DepartureObservations?.Trim();
             departureDB.ReturnObservations = Input.ReturnObservations?.Trim();
 
-            // Si se devolvió, actualizar el estado del equipo
+            var existingItems = departureDB.Items.ToList();
+            var inputItemIds = Input.Items?.Where(i => i.Id.HasValue && i.Id > 0).Select(i => i.Id.Value).ToList() ?? new List<int>();
+
+            foreach (var existing in existingItems)
+            {
+                if (!inputItemIds.Contains(existing.Id))
+                {
+                    existing.IsRemoved = true;
+                }
+            }
+
+            if (Input.Items != null)
+            {
+                foreach (var itemInput in Input.Items.Where(i => !string.IsNullOrWhiteSpace(i.ProductName)))
+                {
+                    if (itemInput.Id.HasValue && itemInput.Id > 0)
+                    {
+                        var existingItem = existingItems.FirstOrDefault(e => e.Id == itemInput.Id);
+                        if (existingItem != null)
+                        {
+                            existingItem.ProductName = itemInput.ProductName.Trim();
+                            existingItem.Quantity = itemInput.Quantity;
+                            existingItem.UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD";
+                            existingItem.Observations = itemInput.Observations?.Trim();
+                        }
+                    }
+                    else
+                    {
+                        _context.DepartureItems.Add(new DepartureItem
+                        {
+                            DepartureId = departureDB.Id,
+                            EquipmentUnitId = itemInput.EquipmentUnitId ?? Input.EquipmentUnitId,
+                            ProductName = itemInput.ProductName.Trim(),
+                            Quantity = itemInput.Quantity,
+                            UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD",
+                            Observations = itemInput.Observations?.Trim()
+                        });
+                    }
+                }
+            }
+
             if (Input.Status == LoanStatus.Returned && Input.ActualReturnDate.HasValue)
             {
                 var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
@@ -176,15 +242,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             try
             {
                 await _context.SaveChangesAsync();
-                TempData["Success"] = $"Salida #{departureDB.Id} actualizada correctamente.";
+                TempData.Success($"Salida #{departureDB.Id} actualizada correctamente.");
                 return RedirectToPage("./Index");
             }
             catch (Exception ex)
             {
-                TempData["Error"] = $"Error al guardar: {ex.Message}";
-                var departure = await _context.Departures.Include(m => m.EquipmentUnit).ThenInclude(eu => eu.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
-                int facultyId = departure?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
-                int labId = departure?.EquipmentUnit?.LaboratoryId ?? 0;
+                TempData.Error($"Error al guardar: {ex.Message}");
+                var departureForError = await _context.Departures.Include(m => m.EquipmentUnit).ThenInclude(eu => eu!.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
+                int facultyId = departureForError?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
+                int labId = departureForError?.EquipmentUnit?.LaboratoryId ?? 0;
                 CargarListas(facultyId, labId, Input.EquipmentUnitId);
                 return Page();
             }

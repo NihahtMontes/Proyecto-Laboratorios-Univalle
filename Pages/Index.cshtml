@@ -407,6 +407,7 @@
                     <form method="post" asp-page-handler="PreviousStep" class="w-100 text-center">
                         <input type="hidden" asp-for="Step" />
                         <input type="hidden" asp-for="SelectedLabId" />
+                        <input type="hidden" asp-for="ManagementId" />
                         <button type="submit" class="btn btn-light rounded-circle shadow-sm hover-float @(Model.Step == 0 ? "invisible" : "")" style="width: 50px; height: 50px; border: 1.5px solid #e2e8f0; padding:0; display:inline-flex; align-items:center; justify-content:center; transition: all 0.2s ease;">
                             <i class="fas fa-chevron-left text-primary" style="font-size: 1.2rem;"></i>
                         </button>
@@ -468,6 +469,7 @@
                                     <form method="get" class="d-flex align-items-center gap-3">
                                         <input type="hidden" name="ShowWizard" value="true" />
                                         <input type="hidden" name="Step" value="1" />
+                                        <input type="hidden" name="ManagementId" value="@ViewData["ManagementId"]" />
                                         <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control shadow-sm" style="border-radius: 12px; background-color: #f8fafc; border: 1.5px solid #e2e8f0; font-weight: 600; color: #334155; padding: 8px 12px; height: 44px;" onchange="this.form.submit()">
                                             <option value="">-- Selecciona Laboratorio --</option>
                                         </select>
@@ -507,6 +509,7 @@
                                         <a asp-page="/Verifications/MassCreate"
                                            asp-route-isWizard="true"
                                            asp-route-labId="@(Model.SelectedLabId)"
+                                           asp-route-managementId="@(ViewData["ManagementId"])"
                                            class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-3">
                                             <i class="fas fa-layer-group mr-2"></i> Verificación Masiva por Laboratorio
                                         </a>
@@ -561,30 +564,46 @@
                             {
                                 @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
                                     Title = "Paso 4: L3 Salida",
-                                    Description = "Registra la salida temporal del equipo si aplica.",
+                                    Description = "Registra la salida temporal por laboratorio en una sola sesión masiva.",
                                     EmptyMessage = "No hay equipos pendientes de salida externa.",
                                     Plans = Model.Step4Plans,
                                     StepIndex = 4,
-                                    ActionPage = "/Departures/Create",
-                                    ActionLabel = "Registrar Salida",
+                                    ActionPage = string.Empty,
+                                    ActionLabel = string.Empty,
                                     ActionClass = "btn-primary",
                                     StatusLabel = "Pendiente Salida",
                                     LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-primary"
                                 })
+                                @if (Model.Step4Plans.Any())
+                                {
+                                    <div class="text-center mt-4 p-4 rounded shadow-sm" style="background:#fff7ed; border:1px solid #fed7aa;">
+                                        <p class="font-weight-bold mb-3" style="color:#9a3412;">
+                                            <i class="fas fa-info-circle mr-1"></i>
+                                            El L-3 del wizard se registra únicamente en modo masivo por laboratorio.
+                                        </p>
+                                        <a asp-page="/Departures/MassCreate"
+                                           asp-route-isWizard="true"
+                                           asp-route-labId="@(Model.SelectedLabId)"
+                                           asp-route-managementId="@(ViewData["ManagementId"])"
+                                           class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold py-3 text-dark">
+                                            <i class="fas fa-layer-group mr-2"></i> Registrar Salida Masiva L-3
+                                        </a>
+                                    </div>
+                                }
                             }
                             else if (Model.Step == 5)
                             {
                                 @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
-                                    Title = "Paso 5: Kardex",
-                                    Description = "Confirma el retorno a operación y actualiza el historial.",
-                                    EmptyMessage = "Todos los Kardex están al día en este ambiente.",
+                                    Title = "Paso 5: Concluir Mantenimiento",
+                                    Description = "Completa los datos del mantenimiento L-8 y cierra el ciclo técnico del equipo.",
+                                    EmptyMessage = "No hay equipos pendientes de cierre de mantenimiento en este ambiente.",
                                     Plans = Model.Step5Plans,
                                     StepIndex = 5,
                                     ActionPage = "/Kardex/Create",
-                                    ActionLabel = "Actualizar Kardex",
+                                    ActionLabel = "Concluir Mantenimiento",
                                     ActionClass = "btn-info",
-                                    StatusLabel = "Finalizando",
+                                    StatusLabel = "Cierre Técnico",
                                     LaboratoriesList = Model.LaboratoriesList,
                                     BorderClass = "border-info"
                                 })
@@ -626,11 +645,92 @@
                     <form method="post" asp-page-handler="NextStep" class="w-100 text-center">
                         <input type="hidden" asp-for="Step" />
                         <input type="hidden" asp-for="SelectedLabId" />
+                        <input type="hidden" asp-for="ManagementId" />
                         <button type="submit" class="btn rounded-circle shadow-lg hover-float" style="width: 56px; height: 56px; padding: 0; display:inline-flex; align-items:center; justify-content:center; background: linear-gradient(to right, #2563eb, #1e40af); color: white; border: none; box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39); transition: all 0.2s ease;">
                             @if (Model.Step == 6) { <i class="fas fa-flag-checkered" style="font-size: 1.5rem;"></i> } else { <i class="fas fa-chevron-right" style="font-size: 1.5rem;"></i> }
                         </button>
                     </form>
                 }
+            </div>
+        </div>
+
+        <div class="row justify-content-center mt-4">
+            <div class="col-md-10">
+                <div class="card border-0 shadow-sm" style="border-radius:16px; border-left:4px solid #10b981 !important;">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div>
+                                <h5 class="m-0 font-weight-bold text-dark"><i class="fas fa-clipboard-check mr-2 text-success"></i>Procesos Completados</h5>
+                                <p class="text-muted small mb-0">Recapitulación rápida de equipos que ya cerraron L-12 dentro de esta gestión.</p>
+                            </div>
+                            <span class="badge badge-success badge-pill ml-auto px-3 py-2">@Model.CompletedPlans.Count completado(s)</span>
+                        </div>
+
+                        @if (!Model.CompletedPlans.Any())
+                        {
+                            <div class="text-center py-4 text-muted small bg-light rounded">
+                                <i class="fas fa-flag-checkered d-block mb-2 fa-2x opacity-2"></i>
+                                Todavía no hay procesos completados para recapitular.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover v-middle mb-0">
+                                    <thead class="bg-light small text-uppercase text-muted">
+                                        <tr>
+                                            <th>Equipo</th>
+                                            <th>Laboratorio</th>
+                                            <th>Último cierre</th>
+                                            <th class="text-center">Documentos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var plan in Model.CompletedPlans)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <div class="font-weight-bold text-dark">@(plan.EquipmentUnit?.Equipment?.Name ?? "Equipo")</div>
+                                                    <div class="small text-muted">Inv: @(plan.EquipmentUnit?.InventoryNumber ?? "S/N")</div>
+                                                </td>
+                                                <td class="small">@(plan.EquipmentUnit?.Laboratory?.Name ?? "—")</td>
+                                                <td class="small">@((plan.LastModifiedDate ?? plan.CreatedDate).ToString("dd/MM/yyyy"))</td>
+                                                <td class="text-center">
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        @if (plan.VerificationId.HasValue)
+                                                        {
+                                                            <a asp-page="/Verifications/Details" asp-route-id="@plan.VerificationId" class="btn btn-outline-success" title="Ver L-6">L-6</a>
+                                                        }
+                                                        @if (plan.RequestId.HasValue)
+                                                        {
+                                                            <a asp-page="/Requests/Details" asp-route-id="@plan.RequestId" class="btn btn-outline-warning" title="Ver L-7">L-7</a>
+                                                        }
+                                                        @if (plan.MaintenanceId.HasValue)
+                                                        {
+                                                            <a asp-page="/Maintenances/Details" asp-route-id="@plan.MaintenanceId" class="btn btn-outline-success" title="Ver L-8">L-8</a>
+                                                        }
+                                                        @if (plan.DepartureId.HasValue)
+                                                        {
+                                                            <a asp-page="/Departures/Details" asp-route-id="@plan.DepartureId" class="btn btn-outline-primary" title="Ver L-3">L-3</a>
+                                                        }
+                                                        @if (plan.EquipmentUnitId.HasValue)
+                                                        {
+                                                            <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@plan.EquipmentUnitId" asp-route-isWizard="true" asp-route-managementId="@(ViewData["ManagementId"])" asp-route-selectedLabId="@Model.SelectedLabId" asp-route-returnStep="6" class="btn btn-outline-info" title="Ver Kardex">Kardex</a>
+                                                        }
+                                                        @if (plan.AcquisitionRequestId.HasValue)
+                                                        {
+                                                            <a asp-page="/Requests/Details" asp-route-id="@plan.AcquisitionRequestId" class="btn btn-outline-dark" title="Ver L-12">L-12</a>
+                                                        }
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     }

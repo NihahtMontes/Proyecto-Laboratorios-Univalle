@@ -28,27 +28,78 @@
                     </div>
                 </div>
 
-                <!-- TABS DE SELECCIÓN DE TIPO -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="btn-group btn-group-toggle d-flex w-100 shadow-sm rounded overflow-hidden border" data-toggle="buttons">
-                            <label class="btn btn-outline-info active border-0 py-3 w-50 font-weight-bold" id="label-loan-btn">
-                                <input type="radio" name="tempType" id="type-loan" autocomplete="off" checked data-type="2"> 
-                                <i class="fas fa-exchange-alt mr-2"></i> Préstamo Interno
-                            </label>
-                            <label class="btn btn-outline-warning border-0 py-3 w-50 font-weight-bold" id="label-maintenance-btn">
-                                <input type="radio" name="tempType" id="type-maint" autocomplete="off" data-type="3"> 
-                                <i class="fas fa-tools mr-2 text-dark"></i> Mantenimiento Externo
-                            </label>
-                        </div>
+@{
+    bool techMissing = isWizard && (bool)(ViewData["TechnicianMissing"] ?? false);
+    string techName = ViewData["TechnicianName"]?.ToString() ?? "—";
+    bool techIsExtern = (bool)(ViewData["TechnicianIsExtern"] ?? false);
+    string inferredTypeLabel = ViewData["InferredTypeLabel"]?.ToString() ?? "";
+}
+
+@if (!isWizard)
+{
+    <!-- TABS DE SELECCIÓN DE TIPO (solo fuera del wizard) -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="btn-group btn-group-toggle d-flex w-100 shadow-sm rounded overflow-hidden border" data-toggle="buttons">
+                <label class="btn btn-outline-info active border-0 py-3 w-50 font-weight-bold" id="label-loan-btn">
+                    <input type="radio" name="tempType" id="type-loan" autocomplete="off" checked data-type="2"> 
+                    <i class="fas fa-exchange-alt mr-2"></i> Préstamo Interno
+                </label>
+                <label class="btn btn-outline-warning border-0 py-3 w-50 font-weight-bold" id="label-maintenance-btn">
+                    <input type="radio" name="tempType" id="type-maint" autocomplete="off" data-type="3"> 
+                    <i class="fas fa-tools mr-2 text-dark"></i> Mantenimiento Externo
+                </label>
+            </div>
+        </div>
+        <div class="col-md-6 d-flex align-items-center mt-3 mt-md-0">
+            <div class="alert alert-light py-2 px-3 mb-0 border-left border-info shadow-none small d-flex align-items-center w-100">
+                <i class="fas fa-info-circle mr-2 text-info fa-lg"></i>
+                <span id="type-info-text" class="italic">Este registro crea una orden de salida temporal para el control de activos institucionales.</span>
+            </div>
+        </div>
+    </div>
+}
+
+@if (isWizard && techMissing)
+{
+    <!-- BLOQUEO: sin técnico en L-8 -->
+    <div class="alert d-flex align-items-center mb-4 shadow-sm" style="background:#fef2f2; border:1.5px solid #fecaca; border-radius:12px; padding:1.25rem;">
+        <div class="mr-3" style="color:#ef4444; font-size:2rem;"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="flex-grow-1">
+            <h6 class="font-weight-bold mb-1" style="color:#b91c1c;">No hay técnico asignado en L-8</h6>
+            <p class="mb-0 small" style="color:#7f1d1d;">Para registrar la salida, primero debe asignar un técnico en el acta de mantenimiento (L-8). La salida queda vinculada al técnico responsable.</p>
+        </div>
+        @if (ViewData["LinkedMaintenanceId"] != null)
+        {
+            <a href="/Maintenances/Edit?id=@ViewData["LinkedMaintenanceId"]" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold ml-3 shadow-sm">
+                <i class="fas fa-edit mr-1"></i> Asignar Técnico en L-8
+            </a>
+        }
+    </div>
+}
+
+@if (isWizard && !techMissing)
+{
+    <!-- CARD DE TÉCNICO INFERIDO (solo en wizard cuando hay técnico) -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="p-3 rounded" style="background:#f0fdf4; border:1.5px solid #86efac;">
+                <div class="d-flex align-items-center">
+                    <div class="mr-3" style="color:#16a34a; font-size:1.5rem;">
+                        <i class="fas @(techIsExtern ? "fa-user-tie" : "fa-user-cog")"></i>
                     </div>
-                    <div class="col-md-6 d-flex align-items-center mt-3 mt-md-0">
-                        <div class="alert alert-light py-2 px-3 mb-0 border-left border-info shadow-none small d-flex align-items-center w-100">
-                            <i class="fas fa-info-circle mr-2 text-info fa-lg"></i>
-                            <span id="type-info-text" class="italic">Este registro crea una orden de salida temporal para el control de activos institucionales.</span>
-                        </div>
+                    <div class="flex-grow-1">
+                        <p class="font-weight-bold mb-0" style="color:#166534;">@techName</p>
+                        <small class="text-muted">Técnico responsable derivado de L-8</small>
                     </div>
+                    <span class="badge @(techIsExtern ? "badge-warning" : "badge-success") px-3 py-2 ml-auto">
+                        <i class="fas fa-tag mr-1"></i> @inferredTypeLabel
+                    </span>
                 </div>
+            </div>
+        </div>
+    </div>
+}
 
                 <form method="post" id="departureForm" novalidate>
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4 small"></div>
@@ -179,7 +230,8 @@
                                         <div class="col-md-6">
                                             <div class="form-group mb-0">
                                                 <label asp-for="Input.EstimatedReturnDate" class="control-label font-weight-bold small text-uppercase text-muted">Retorno Estimado <span class="text-danger">*</span></label>
-                                                <input asp-for="Input.EstimatedReturnDate" class="form-control border-danger" type="date" required />
+                                                <input asp-for="Input.EstimatedReturnDate" class="form-control" type="date" required />
+                                                <span asp-validation-for="Input.EstimatedReturnDate" class="text-danger small"></span>
                                             </div>
                                         </div>
                                     </div>
@@ -202,6 +254,89 @@
 
                     <hr class="mt-4" />
 
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h5 class="text-dark font-weight-bold mb-3 text-uppercase small"><i class="fas fa-boxes mr-2 text-warning"></i>Ítems de la Salida</h5>
+                            <div class="card border shadow-sm">
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-borderless v-middle mb-0" id="itemsTable">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th style="width:40%">Producto <span class="text-danger">*</span></th>
+                                                    <th style="width:12%">Cantidad</th>
+                                                    <th style="width:12%">Unidad</th>
+                                                    <th style="width:30%">Observaciones</th>
+                                                    @if (!isWizard)
+                                                    {
+                                                        <th style="width:6%"></th>
+                                                    }
+                                                </tr>
+                                            </thead>
+                                            <tbody id="itemsBody">
+                                                @if (Model.Input.Items != null)
+                                                {
+                                                    for (int i = 0; i < Model.Input.Items.Count; i++)
+                                                    {
+                                                        var item = Model.Input.Items[i];
+                                                        <tr class="item-row">
+                                                            <td>
+                                                                <input type="hidden" name="Input.Items[@i].Id" value="@item.Id" />
+                                                                <input type="hidden" name="Input.Items[@i].EquipmentUnitId" value="@item.EquipmentUnitId" />
+                                                                @if (isWizard)
+                                                                {
+                                                                    <select class="form-control form-control-sm custom-select bg-light" disabled>
+                                                                        <option selected>@item.ProductName</option>
+                                                                    </select>
+                                                                    <input type="hidden" name="Input.Items[@i].ProductName" value="@item.ProductName" />
+                                                                }
+                                                                else
+                                                                {
+                                                                    <input type="text" name="Input.Items[@i].ProductName" value="@item.ProductName"
+                                                                           class="form-control form-control-sm" placeholder="Nombre del producto o equipo" required />
+                                                                }
+                                                            </td>
+                                                            <td>
+                                                                <input type="number" name="Input.Items[@i].Quantity" value="@item.Quantity"
+                                                                       class="form-control form-control-sm" min="1" required />
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" name="Input.Items[@i].UnitOfMeasure" value="@item.UnitOfMeasure"
+                                                                       class="form-control form-control-sm" placeholder="UNIDAD" />
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" name="Input.Items[@i].Observations" value="@item.Observations"
+                                                                       class="form-control form-control-sm" placeholder="Opcional" />
+                                                            </td>
+                                                            @if (!isWizard)
+                                                            {
+                                                                <td class="text-center">
+                                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded remove-item-row" title="Quitar">
+                                                                        <i class="fas fa-trash-alt"></i>
+                                                                    </button>
+                                                                </td>
+                                                            }
+                                                        </tr>
+                                                    }
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    @if (!isWizard)
+                                    {
+                                        <div class="p-3 border-top">
+                                            <button type="button" class="btn btn-sm btn-outline-info btn-rounded font-weight-bold" id="addItemBtn">
+                                                <i class="fas fa-plus mr-1"></i> Agregar Ítem
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="mt-4" />
+
                     <div class="form-actions text-right pb-4 mt-4">
                         @if (isWizard)
                         {
@@ -215,9 +350,18 @@
                                  <i class="fas fa-times mr-1"></i> Cancelar
                             </a>
                         }
-                        <button type="button" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark py-2" onclick="confirmDeparture()">
-                            <i class="fas fa-save mr-1"></i> Registrar Salida L-3
-                        </button>
+                        @if (!techMissing)
+                        {
+                            <button type="button" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark py-2" onclick="confirmDepartureDirect()">
+                                <i class="fas fa-save mr-1"></i> Registrar Salida L-3
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-secondary btn-rounded px-5 shadow-sm font-weight-bold py-2" disabled title="Asigne un técnico en L-8 primero">
+                                <i class="fas fa-lock mr-1"></i> Asigne Técnico en L-8 Primero
+                            </button>
+                        }
                     </div>
                 </form>
             </div>
@@ -291,12 +435,13 @@
                     });
                 });
             });
+
         });
 
-        function confirmDeparture() {
+        function confirmDepartureDirect() {
             Swal.fire({
                 title: '¿Confirmar Salida?',
-                text: 'Se registrará la salida temporal de este equipo para mantenimiento o préstamo.',
+                text: 'Se registrará la salida temporal de este equipo y avanzará al Kardex.',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Sí, registrar salida',
@@ -304,10 +449,36 @@
                 confirmButtonColor: '#f59e0b',
                 cancelButtonColor: '#6c757d'
             }).then((result) => {
-                if (result.isConfirmed) {
-                    $('#departureForm').submit();
+                if (result && (result.isConfirmed === true || result.value === true)) {
+                    document.getElementById('departureForm').submit();
                 }
             });
+        }
+
+        @if (!isWizard)
+        {
+        <text>
+        var itemRowCount = @(Model.Input.Items?.Count ?? 0);
+        var itemRowTemplate = '<tr class="item-row">' +
+            '<td><input type="hidden" name="Input.Items[{0}].Id" value="0" />' +
+            '<input type="hidden" name="Input.Items[{0}].EquipmentUnitId" value="" />' +
+            '<input type="text" name="Input.Items[{0}].ProductName" class="form-control form-control-sm" placeholder="Nombre del producto o equipo" required /></td>' +
+            '<td><input type="number" name="Input.Items[{0}].Quantity" value="1" class="form-control form-control-sm" min="1" required /></td>' +
+            '<td><input type="text" name="Input.Items[{0}].UnitOfMeasure" value="UNIDAD" class="form-control form-control-sm" /></td>' +
+            '<td><input type="text" name="Input.Items[{0}].Observations" class="form-control form-control-sm" placeholder="Opcional" /></td>' +
+            '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger btn-rounded remove-item-row" title="Quitar"><i class="fas fa-trash-alt"></i></button></td>' +
+            '</tr>';
+
+        $('#addItemBtn').click(function () {
+            var row = itemRowTemplate.replace(/\{0\}/g, itemRowCount);
+            $('#itemsBody').append(row);
+            itemRowCount++;
+        });
+
+        $('#itemsBody').on('click', '.remove-item-row', function () {
+            $(this).closest('tr.item-row').remove();
+        });
+        </text>
         }
     </script>
     @{

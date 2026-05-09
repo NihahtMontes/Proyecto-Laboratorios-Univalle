@@ -173,8 +173,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             requestToUpdate.LastModifiedDate = DateTime.UtcNow;
             requestToUpdate.ModifiedById = currentUser?.Id;
 
-            // Simple update for cost items
-            _context.CostDetails.RemoveRange(requestToUpdate.CostDetails);
+            // Preserve cost history: detach old rows instead of deleting them physically.
+            foreach (var detail in requestToUpdate.CostDetails.ToList())
+            {
+                detail.RequestId = null;
+                detail.Request = null;
+                detail.LastModifiedDate = DateTime.UtcNow;
+            }
+
             if (Input.Items != null)
             {
                 foreach (var item in Input.Items)
@@ -192,7 +198,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             }
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = "Solicitud actualizada con éxito.";
+            TempData.Success("Solicitud actualizada con éxito.");
             return RedirectToPage("./Index");
         }
 

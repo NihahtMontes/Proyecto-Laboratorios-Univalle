@@ -88,6 +88,13 @@
                                         <img src="~/uploads/equipment/@Model.Input.ExistingImageUrl" alt="Current Image" class="img-thumbnail" style="max-height: 100px;">
                                     </div>
                                 }
+                                else
+                                {
+                                    <div class="mb-2 py-2 bg-light rounded border border-dashed text-muted text-center">
+                                        <i class="fas fa-camera fa-lg mb-1 opacity-5 d-block"></i>
+                                        <span class="small font-weight-bold uppercase">Sin imagen de referencia</span>
+                                    </div>
+                                }
 
                                 <div class="custom-file">
                                     <input asp-for="Input.ImageUpload" type="file" class="custom-file-input" id="customFile" accept="image/*">

@@ -117,6 +117,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         public List<ManagementPlan> Step4Plans { get; set; } = new();
         public List<ManagementPlan> Step5Plans { get; set; } = new();
         public List<ManagementPlan> Step6Plans { get; set; } = new();
+        public List<ManagementPlan> CompletedPlans { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync()
         {
@@ -202,6 +203,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
                         .Include(p => p.Verification).ThenInclude(v => v!.CheckResults)
                         .Include(p => p.TechnicalRequest)
+                        .Include(p => p.AcquisitionRequest)
                         .Include(p => p.Departure)
                         .Where(p => p.ManagementId == ActiveManagement.Id);
 
@@ -300,6 +302,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         Step4Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Exit).ToList();
                         Step5Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Kardex).ToList();
                         Step6Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Disbursement).ToList();
+                        CompletedPlans = ActivePlans
+                            .Where(p => p.CurrentState == WizardEquipmentState.Completed || p.PlanStatus == ManagementPlanStatus.Completed)
+                            .OrderByDescending(p => p.LastModifiedDate ?? p.CreatedDate)
+                            .Take(8)
+                            .ToList();
                     }
                 }
             }
@@ -382,12 +389,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     plan.CurrentPhase = WizardPhase.TechnicalRequest;
                     plan.CurrentState = WizardEquipmentState.AwaitingRequest;
                     await _context.SaveChangesAsync();
-                    return RedirectToPage("/Requests/Create", new { equipmentUnitId = plan.EquipmentUnitId, isWizard = true, managementPlanId = plan.Id });
+                    return RedirectToPage("/Requests/Create", new { equipmentUnitId = plan.EquipmentUnitId, isWizard = true, managementPlanId = plan.Id, ManagementId = plan.ManagementId });
                 }
                 else if (plan != null)
                 {
                     TempData.Error($"Este equipo no está en fase de Verificación (fase actual: {plan.CurrentPhase}). No se puede registrar falla rápida.");
-                    return RedirectToPage(new { ShowWizard = true, Step = (int)plan.CurrentPhase, SelectedLabId = SelectedLabId });
+                    return RedirectToPage(new { ShowWizard = true, Step = (int)plan.CurrentPhase, SelectedLabId = SelectedLabId, ManagementId = plan.ManagementId });
                 }
             }
 
@@ -402,7 +409,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             }
 
             TempData.Error("No se encontró el plan de gestión para este equipo.");
-            return RedirectToPage(new { ShowWizard = true, Step = 1 });
+            return RedirectToPage(new { ShowWizard = true, Step = 1, ManagementId = ManagementId });
         }
 
         public async Task<IActionResult> OnPostConfirmKardexAsync(int planId)

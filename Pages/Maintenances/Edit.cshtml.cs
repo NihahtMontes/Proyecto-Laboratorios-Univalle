@@ -91,7 +91,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             // --------------------------------------------------------
         }
 
-        public async Task<IActionResult> OnGetAsync(int? id)
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementPlanId { get; set; }
+
+        public async Task<IActionResult> OnGetAsync(int? id, bool isWizard = false)
         {
             if (id == null) return NotFound();
 
@@ -134,15 +137,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 // -------------------------------------------------
             };
 
-            // Detect Wizard Plan
-            var plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == id);
+            // Detect Wizard Plan — ManagementPlanId explícito del wizard tiene prioridad
+            ManagementPlan? plan = null;
+            if (ManagementPlanId.HasValue)
+            {
+                plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+            }
+            else
+            {
+                plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == id);
+            }
+
             if (plan != null)
             {
                 ViewData["IsWizard"] = true;
                 ViewData["ManagementPlanId"] = plan.Id;
                 ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+                ViewData["ManagementId"] = plan.ManagementId;
                 if (plan.RequestId.HasValue) ViewData["PreviousPhaseId"] = plan.RequestId.Value;
             }
+
+            ViewData["IsWizardFlag"] = isWizard;
 
             CargarListas(facultyId, labId, maintenance.EquipmentUnitId);
 
@@ -188,13 +203,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 CargarListas(facultyId, labId, Input.EquipmentUnitId);
 
                 // Detect Wizard Plan again on error
-                var plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == Input.Id);
-                if (plan != null)
+                ManagementPlan? errorPlan = null;
+                if (ManagementPlanId.HasValue)
+                    errorPlan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+                else
+                    errorPlan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == Input.Id);
+
+                if (errorPlan != null)
                 {
                     ViewData["IsWizard"] = true;
-                    ViewData["ManagementPlanId"] = plan.Id;
-                    ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
-                    if (plan.RequestId.HasValue) ViewData["PreviousPhaseId"] = plan.RequestId.Value;
+                    ViewData["ManagementPlanId"] = errorPlan.Id;
+                    ViewData["CurrentPhaseInt"] = (int)errorPlan.CurrentPhase;
+                    ViewData["ManagementId"] = errorPlan.ManagementId;
+                    if (errorPlan.RequestId.HasValue) ViewData["PreviousPhaseId"] = errorPlan.RequestId.Value;
                 }
 
                 return Page();
@@ -239,14 +260,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 Input.CostDetails = new List<CostDetail>();
             }
 
-            // Eliminar detalles que ya no están
+            // Desvincular detalles que ya no están sin borrar historial físico.
             var inputDetailIds = Input.CostDetails.Select(d => d.Id).ToList();
             var detailsToRemove = maintenanceDB.CostDetails.Where(d => !inputDetailIds.Contains(d.Id)).ToList();
 
             foreach (var detail in detailsToRemove)
             {
-                maintenanceDB.CostDetails.Remove(detail);
-                _context.Remove(detail);
+                detail.MaintenanceId = null;
+                detail.Maintenance = null;
+                detail.LastModifiedDate = DateTime.UtcNow;
             }
 
             // Actualizar o agregar detalles
@@ -269,7 +291,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 await _context.SaveChangesAsync();
                 TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.EquipmentUnit?.Equipment?.Name));
                 
-                var plan = await _context.ManagementPlans.AsTracking().FirstOrDefaultAsync(p => p.MaintenanceId == maintenanceDB.Id);
+                var plan = await _context.ManagementPlans.AsTracking()
+                    .FirstOrDefaultAsync(p => ManagementPlanId.HasValue
+                        ? p.Id == ManagementPlanId.Value
+                        : p.MaintenanceId == maintenanceDB.Id);
                 if (plan != null)
                 {
                     if (maintenanceDB.Status == MaintenanceStatus.Completed && plan.CurrentPhase == WizardPhase.Maintenance)
@@ -279,7 +304,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         plan.PlanStatus = ManagementPlanStatus.InProgress;
                         await _context.SaveChangesAsync();
                     }
-                    
+
+                    if (ManagementPlanId.HasValue)
+                    {
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = maintenanceDB.EquipmentUnit?.LaboratoryId, ManagementId = plan.ManagementId });
+                    }
+
                     return RedirectToPage("/Managements/Details", new { id = plan.ManagementId, ActiveTab = "l48" });
                 }
 

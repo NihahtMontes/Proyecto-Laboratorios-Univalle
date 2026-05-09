@@ -26,6 +26,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
+        [BindProperty(SupportsGet = true)]
+        public bool IsWizard { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
+
         public new Request Request { get; set; } = default!;
 
         public class InputModel
@@ -123,6 +129,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             };
 
             await LoadLists();
+
+            var currentMgmt = ManagementId.HasValue
+                ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
+                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+
+            ViewData["IsCorrective"] = currentMgmt?.Type == ManagementType.Corrective;
+            ViewData["IsWizard"] = IsWizard;
+            ViewData["ManagementId"] = currentMgmt?.Id;
+
             return Page();
         }
 
@@ -150,8 +165,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             if (!ModelState.IsValid)
             {
                 // Restore display properties
-                Request = requestToUpdate; 
+                Request = requestToUpdate;
                 await LoadLists();
+                ViewData["IsWizard"] = IsWizard;
+                ViewData["ManagementId"] = ManagementId;
                 return Page();
             }
 
@@ -174,8 +191,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             {
                 requestToUpdate.InvestmentCode = Input.InvestmentCode?.Clean();
                 
-                // Update Items: Strategy -> Remove all and re-add (Simple & Clean for this scale)
-                _context.CostDetails.RemoveRange(requestToUpdate.CostDetails);
+                // Preserve cost history: detach old rows instead of deleting them physically.
+                foreach (var detail in requestToUpdate.CostDetails.ToList())
+                {
+                    detail.RequestId = null;
+                    detail.Request = null;
+                    detail.LastModifiedDate = DateTime.UtcNow;
+                }
                 
                 if (Input.Items != null)
                 {
@@ -218,6 +240,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             {
                 if (!RequestExists(requestToUpdate.Id)) return NotFound();
                 else throw;
+            }
+
+            if (IsWizard)
+            {
+                return RedirectToPage("./Details", new { id = requestToUpdate.Id, isWizard = IsWizard, managementId = ManagementId });
             }
 
             return RedirectToPage("./Index");

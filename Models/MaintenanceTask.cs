@@ -19,6 +19,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Completada")]
         public bool IsCompleted { get; set; } = false;
 
+        [Display(Name = "Eliminada")]
+        public bool IsDeleted { get; set; } = false;
+
         [ForeignKey("MaintenanceId")]
         public virtual Maintenance? Maintenance { get; set; }
     }

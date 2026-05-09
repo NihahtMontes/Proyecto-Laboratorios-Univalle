@@ -34,6 +34,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         [BindProperty(SupportsGet = true)]
         public int? LabId { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
+
         [BindProperty]
         public List<RowInput> Rows { get; set; } = new();
 
@@ -50,6 +53,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public async Task OnGetAsync()
         {
+            if (!ManagementId.HasValue)
+            {
+                ManagementId = (await _managementContext.GetCurrentManagementAsync())?.Id;
+            }
+
             var labs = await _context.Laboratories
                 .Where(l => l.Status == GeneralStatus.Activo)
                 .OrderBy(l => l.Name)
@@ -63,11 +71,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             }
 
             ViewData["IsWizard"] = IsWizard;
+            ViewData["ManagementId"] = ManagementId;
         }
 
-        public async Task<JsonResult> OnGetEquipmentByLab(int labId)
+        public async Task<JsonResult> OnGetEquipmentByLab(int labId, int? managementId = null)
         {
-            var activeMgmt = await _managementContext.GetCurrentManagementAsync();
+            var activeMgmt = managementId.HasValue
+                ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == managementId.Value)
+                : await _managementContext.GetCurrentManagementAsync();
             if (activeMgmt == null)
                 return new JsonResult(Array.Empty<object>());
 
@@ -99,10 +110,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             if (Rows == null || Rows.Count == 0)
             {
                 TempData.Error("No hay equipos para procesar.");
-                return RedirectToPage(new { isWizard = IsWizard, labId = LabId });
+                return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = ManagementId });
             }
 
-            var activeMgmt = await _managementContext.GetCurrentManagementAsync();
+            var activeMgmt = ManagementId.HasValue
+                ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
+                : await _managementContext.GetCurrentManagementAsync();
             if (activeMgmt == null)
             {
                 TempData.Error("No hay gestión activa.");
@@ -181,10 +194,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             TempData.Success($"{created} verificaciones registradas ({badCount} equipos con fallas).");
 
             if (IsWizard && badCount > 0)
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, SelectedLabId = LabId });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
 
             if (IsWizard)
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = LabId });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
 
             return RedirectToPage("./Index");
         }

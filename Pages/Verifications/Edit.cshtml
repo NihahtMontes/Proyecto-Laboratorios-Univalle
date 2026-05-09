@@ -5,170 +5,174 @@
     ViewData["Title"] = "Editar Verificación L-6";
 }
 
-<div class="row justify-content-center">
-    <div class="col-lg-12">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-bottom-0 pt-4 px-4 pb-0">
-                <div class="d-flex align-items-center mb-0">
-                    <div class="icon-box bg-soft-warning text-warning rounded-circle mr-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
-                        <i class="fas fa-edit fa-lg"></i>
-                    </div>
-                    <div class="w-100 pr-5">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <h4 class="card-title text-dark font-weight-bold mb-0">Editar Verificación Técnica (L-6)</h4>
-                            <span class="text-info font-weight-bold small"><i class="fas fa-chart-line mr-1"></i>Avance: <span id="percentText">0%</span></span>
+<div class="container-fluid">
+    @* HEADER HERO *@
+    <div class="d-md-flex align-items-center mb-4">
+        <div class="icon-box bg-soft-info text-info rounded-circle mr-3 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+            <i class="fas fa-clipboard-check fa-lg"></i>
+        </div>
+        <div>
+            <h3 class="card-title text-dark font-weight-bold mb-0">Editar Verificación L-6</h3>
+            <h6 class="card-subtitle text-muted small">Actualización de parámetros técnicos de inspección.</h6>
+        </div>
+    </div>
+
+    <form method="post" id="verificationEditForm">
+        <input type="hidden" asp-for="Input.Id" />
+        <input type="hidden" asp-for="IsWizard" />
+        <input type="hidden" asp-for="ManagementId" />
+        <input type="hidden" asp-for="Input.Date" />
+        <input type="hidden" asp-for="Input.Status" />
+        <input type="hidden" asp-for="Input.EquipmentUnitId" />
+
+        <div class="row">
+            @* ZONA DE TRABAJO (8) *@
+            <div class="col-lg-8">
+                @* FICHA DEL EQUIPO *@
+                <div class="card shadow-sm border-0 mb-4 bg-light">
+                    <div class="card-body p-3">
+                        <div class="row align-items-center">
+                            <div class="col-md-7">
+                                <label class="small font-weight-bold text-muted uppercase d-block mb-1">Equipo Inspeccionado</label>
+                                <h5 class="text-dark font-weight-bold mb-0">@ViewData["EquipmentName"]</h5>
+                            </div>
+                            <div class="col-md-5 border-left">
+                                <label class="small font-weight-bold text-muted uppercase d-block mb-1">N° Inventario</label>
+                                <h5 class="text-info font-weight-bold mb-0">@ViewData["InventoryNumber"]</h5>
+                            </div>
                         </div>
-                        <h6 class="card-subtitle text-muted small mt-1">Actualización de puntos de control e inspección.</h6>
-                        <div class="progress mt-2" style="height: 8px; border-radius: 4px; background-color: #f0f0f0;">
-                            <div id="checkProgress" class="progress-bar bg-info" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+
+                @* OBSERVACIONES *@
+                <div class="card shadow-sm border-0 h-100" style="min-height: 400px;">
+                    <div class="card-body p-4">
+                        <div class="form-group mb-0">
+                            <label asp-for="Input.Observations" class="font-weight-bold small uppercase text-muted mb-3 d-block">
+                                <i class="fas fa-comment-dots mr-2 text-info"></i>Observaciones / Fallas Detectadas
+                            </label>
+                            <textarea asp-for="Input.Observations" class="form-control border-0 bg-light p-3" rows="15" 
+                                      style="border-radius: 12px; resize: none;"
+                                      placeholder="Describa aquí de forma detallada cualquier hallazgo técnico, falla crítica o recomendación..."></textarea>
+                            <span asp-validation-for="Input.Observations" class="text-danger small"></span>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <div class="card-body p-4">
-                <form method="post">
-                    <input type="hidden" asp-for="Input.Id" />
-                    
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small mb-4"></div>
 
-                    @* Metadata Card *@
-                    <div class="bg-light p-4 rounded mb-4 border-left border-warning border-3 shadow-none" style="border-width: 4px !important;">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group mb-0">
-                                    <label asp-for="Input.EquipmentUnitId" class="font-weight-bold small uppercase text-muted">Unidad Física Inspeccionada</label>
-                                    <select asp-for="Input.EquipmentUnitId" class="form-control select2 shadow-sm" asp-items="ViewBag.EquipmentUnitId">
-                                        <option value="">-- Seleccionar Unidad --</option>
-                                    </select>
-                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group mb-0">
-                                    <label asp-for="Input.Date" class="font-weight-bold small uppercase text-muted">Fecha Inspección</label>
-                                    <input asp-for="Input.Date" class="form-control shadow-sm" type="date" />
-                                    <span asp-validation-for="Input.Date" class="text-danger small"></span>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group mb-0">
-                                    <label asp-for="Input.Status" class="font-weight-bold small uppercase text-muted">Estado Reporte</label>
-                                    <select asp-for="Input.Status" class="form-control custom-select shadow-sm font-weight-bold" asp-items="Html.GetEnumSelectList<VerificationStatus>()"></select>
-                                    <span asp-validation-for="Input.Status" class="text-danger small"></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            @* PANEL DE MANDO (4) *@
+            <div class="col-lg-4">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body p-4">
+                        <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase border-bottom pb-2">
+                            <i class="fas fa-cog mr-2 text-warning"></i> Evaluación Técnica
+                        </h5>
 
-                    @* Checklist Dinámica *@
-                    @{
-                        var grouped = Model.CheckItems
-                            .GroupBy(c => c.Category ?? "General")
-                            .OrderBy(g => g.Min(c => c.Order));
-                    }
+                        <div class="form-group mb-4">
+                            <label asp-for="Input.PhysicalCondition" class="font-weight-bold small uppercase text-muted d-block mb-3">Condición Física</label>
+                            
+                            @foreach (PhysicalCondition condition in Enum.GetValues(typeof(PhysicalCondition)))
+                            {
+                                var color = condition switch {
+                                    PhysicalCondition.Excellent => "#16a34a",
+                                    PhysicalCondition.Good => "#0ea5e9",
+                                    PhysicalCondition.Regular => "#f59e0b",
+                                    PhysicalCondition.Bad => "#ef4444",
+                                    PhysicalCondition.Decommissioned => "#475569",
+                                    _ => "#64748b"
+                                };
 
-                    <div class="row">
-                        @foreach (var group in grouped)
-                        {
-                            <div class="col-md-6 mb-4">
-                                <div class="card border border-light bg-white shadow-sm h-100">
-                                    <div class="card-header bg-white font-weight-bold text-info border-bottom d-flex justify-content-between align-items-center">
-                                        <span><i class="fas fa-check-circle mr-2"></i> @group.Key</span>
-                                        <button type="button" class="btn btn-link p-0 text-success font-weight-bold text-xs-premium" onclick="markGroupDone(this)">Marcar Grupo</button>
-                                    </div>
-                                    <div class="card-body pt-2 pb-0">
-                                        @foreach (var item in group.OrderBy(c => c.Order))
-                                        {
-                                            var isCompleted = Model.Input.Results.ContainsKey(item.Id) && Model.Input.Results[item.Id] == VerificationResult.Completed;
-
-                                            <div class="row align-items-center py-2 border-bottom check-item hover:bg-slate-50 transition-all">
-                                                <div class="col-1 text-muted small font-weight-bold">@item.Order.</div>
-                                                <div class="col-9">
-                                                    <label class="mb-0 small font-weight-bold text-dark cursor-pointer" for="chk_@item.Id">@item.Name</label>
-                                                </div>
-                                                <div class="col-2 text-right">
-                                                    <div class="custom-control custom-checkbox custom-control-inline m-0">
-                                                        <input type="checkbox" name="Input.Results[@item.Id]" value="Completed" 
-                                                               class="custom-control-input verifier" id="chk_@item.Id" @(isCompleted ? "checked" : "")>
-                                                        <label class="custom-control-label" for="chk_@item.Id"></label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    @* Observaciones Unificadas *@
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="card shadow-sm border-0 bg-soft-danger">
-                                <div class="card-body p-3">
-                                    <label asp-for="Input.Observations" class="font-weight-bold small uppercase text-danger mb-2">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i>Observaciones (Fallas, Hallazgos y Recomendaciones)
+                                <div class="custom-control custom-radio mb-3">
+                                    <input type="radio" asp-for="Input.PhysicalCondition" value="@condition" class="custom-control-input" id="cond_@condition">
+                                    <label class="custom-control-label font-weight-bold" for="cond_@condition" style="color: @color;">
+                                        @Html.DisplayFor(m => condition)
                                     </label>
-                                    <textarea asp-for="Input.Observations" class="form-control border-danger font-weight-bold" rows="4" 
-                                              placeholder="Describa aquí todos los hallazgos técnicos o sugerencias encontradas en vez de las columnas antiguas..."></textarea>
-                                    <span asp-validation-for="Input.Observations" class="text-danger small"></span>
                                 </div>
-                            </div>
+                            }
+                        </div>
+
+                        <hr />
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-info btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3">
+                                <i class="fas fa-save mr-2"></i> Guardar Cambios
+                            </button>
+
+                            @if (Model.IsWizard)
+                            {
+                                <a asp-page="./Details" asp-route-id="@Model.Input.Id" asp-route-isWizard="true" asp-route-managementId="@Model.ManagementId" 
+                                   class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2">
+                                    Cancelar
+                                </a>
+                            }
+                            else
+                            {
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2">
+                                    Volver al Listado
+                                </a>
+                            }
                         </div>
                     </div>
+                </div>
 
-                    <div class="d-flex justify-content-between align-items-center bg-light p-4 rounded shadow-sm border">
-                        <a asp-page="./Index" class="btn btn-rounded btn-outline-secondary px-4 font-weight-bold">
-                            <i class="fas fa-arrow-left mr-2"></i>Cancelar
-                        </a>
-                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold">
-                            <i class="fas fa-save mr-2"></i>Guardar Cambios
-                        </button>
-                    </div>
-                </form>
+                @* INFO BOX DE CONTEXTO *@
+                <div class="alert alert-info border-0 shadow-sm small p-3">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Esta evaluación genera automáticamente el historial de mantenimiento preventivo.
+                </div>
             </div>
         </div>
-    </div>
+    </form>
 </div>
 
 @section Scripts {
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         $(document).ready(function () {
-            $(".select2").select2({ width: '100%' });
-
-            $(".verifier").on("change", function () { updateProgress(); });
-            updateProgress();
+            // Inicialización de validaciones jqBootstrapValidation si aplica
         });
-
-        function markGroupDone(btn) {
-            $(btn).closest('.card').find('.verifier').prop('checked', true).trigger('change');
-        }
-
-        function updateProgress() {
-            var total = $(".verifier").length;
-            var checked = $(".verifier:checked").length;
-            var percent = total > 0 ? Math.round((checked / total) * 100) : 0;
-            
-            $("#checkProgress").css("width", percent + "%");
-            $("#percentText").text(percent + "%");
-            
-            if (percent === 100) {
-                $("#checkProgress").addClass("bg-success").removeClass("bg-info");
-            } else {
-                $("#checkProgress").addClass("bg-info").removeClass("bg-success");
-            }
-        }
     </script>
 }
 
+<script>
+    let confirmedHealthySubmit = false;
+    const initialCondition = '@Model.Input.PhysicalCondition';
+    const healthyConditions = ['Excellent', 'Good'];
+
+    document.addEventListener('DOMContentLoaded', function () {
+        $('#verificationEditForm').on('submit', function (e) {
+        const selectedCondition = $('input[name="Input.PhysicalCondition"]:checked').val();
+        const movesToHealthy = !healthyConditions.includes(initialCondition) && healthyConditions.includes(selectedCondition);
+
+        if (!movesToHealthy || confirmedHealthySubmit) {
+            return true;
+        }
+
+        e.preventDefault();
+        Swal.fire({
+            title: 'Enviar activo a sanos',
+            text: 'Al guardar como Bueno o Excelente, el equipo saldra del flujo L-7 y quedara en la lista de activos sanos de la gestion.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Si, enviar a sanos',
+            cancelButtonText: 'Revisar'
+        }).then((result) => {
+            if (result && (result.isConfirmed === true || result.value === true)) {
+                confirmedHealthySubmit = true;
+                $('#verificationEditForm').submit();
+            }
+        });
+        });
+    });
+</script>
+
 @section Styles {
     <style>
-        .bg-soft-warning { background-color: #fff8e1; }
-        .bg-soft-danger { background-color: #ffebee; }
-        .bg-soft-success { background-color: #e8f5e9; }
-        .select2-container--default .select2-selection--single { border: 1px solid #e2e8f0; border-radius: 8px; }
-        .check-item:hover { background-color: #fafafa; }
+        .bg-soft-info { background-color: #e0f2fe; }
+        .bg-light { background-color: #f8fafc !important; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .custom-control-label { cursor: pointer; padding-left: 5px; }
+        .form-control:focus { background-color: #fff !important; border: 1px solid #0ea5e9 !important; box-shadow: 0 0 0 0.2rem rgba(14, 165, 233, 0.1) !important; }
     </style>
 }

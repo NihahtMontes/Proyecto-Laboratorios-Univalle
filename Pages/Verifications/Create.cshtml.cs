@@ -34,6 +34,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         [BindProperty(SupportsGet = true)]
         public int? ManagementPlanId { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
+
         /// <summary>Lista de puntos de control cargados desde la BD para renderizar la UI dinámica.</summary>
         public List<VerificationCheckItem> CheckItems { get; set; } = [];
 
@@ -76,6 +79,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.Verification);
+                ViewData["ManagementId"] = plan?.ManagementId ?? ManagementId;
+                ManagementId = plan?.ManagementId ?? ManagementId;
 
                 if (plan?.Verification != null)
                 {
@@ -110,6 +115,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             ViewData["ReturnFacultyId"] = returnFacultyId;
             ViewData["ReturnLaboratoryId"] = returnLaboratoryId;
             ViewData["IsWizard"] = isWizard;
+            ViewData["ManagementId"] = ViewData["ManagementId"] ?? ManagementId;
             return Page();
         }
 
@@ -141,6 +147,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             if (!ModelState.IsValid)
             {
                 LoadLists();
+                ViewData["IsWizard"] = isWizard;
+                ViewData["ManagementId"] = ManagementId;
                 return Page();
             }
 
@@ -149,12 +157,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             var physicalCondition = equipmentUnit?.PhysicalCondition ?? PhysicalCondition.Excellent;
 
             // Obtener gestión activa
-            var currentMgmt = await _managementContext.GetCurrentManagementAsync();
+            var currentMgmt = ManagementId.HasValue
+                ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
+                : await _managementContext.GetCurrentManagementAsync();
 
             if (currentMgmt == null)
             {
-                TempData["Warning"] = "No se ha detectado una gestión activa. Por favor, asegúrese de haber aplicado las migraciones de base de datos o de activar un periodo de gestión para poder registrar la verificación.";
+                TempData.Warning("No se ha detectado una gestión activa. Por favor, asegúrese de haber aplicado las migraciones de base de datos o de activar un periodo de gestión para poder registrar la verificación.");
                 LoadLists();
+                ViewData["IsWizard"] = isWizard;
+                ViewData["ManagementId"] = ManagementId;
                 return Page();
             }
 
@@ -279,9 +291,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             if (isWizard)
             {
                 if (hasFailures)
-                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, SelectedLabId = Input.LaboratoryId });
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
 
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
             }
 
             return RedirectToPage("./Index");

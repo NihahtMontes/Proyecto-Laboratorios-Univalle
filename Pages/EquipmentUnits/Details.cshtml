@@ -27,9 +27,12 @@
 
                 <div class="mb-4">
                     <label class="text-muted small uppercase font-weight-bold d-block mb-1"><i class="fas fa-microscope mr-1 text-info"></i> Equipo (Definición)</label>
-                    <a asp-page="/Equipment/Details" asp-route-id="@Model.EquipmentUnit.EquipmentId" class="h5 font-weight-bold text-info d-block">
+                    <a asp-page="/Equipment/Details" asp-route-id="@Model.EquipmentUnit.EquipmentId" class="h5 font-weight-bold text-info d-block mb-1">
                         @Model.EquipmentUnit.Equipment?.Name
                     </a>
+                    <div class="small text-muted font-weight-bold">
+                        @(Model.EquipmentUnit.Equipment?.Brand ?? "Sin Marca") - @(Model.EquipmentUnit.Equipment?.Model ?? "Sin Modelo")
+                    </div>
                 </div>
 
                 @if (Model.EquipmentUnit.Career != null)
@@ -80,6 +83,39 @@
                 </div>
             </div>
         </div>
+
+        <div class="card shadow-sm border-0 mb-4 bg-light border-left border-info">
+            <div class="card-body p-4">
+                <h6 class="font-weight-bold text-info mb-3 uppercase small"><i class="fas fa-clipboard-check mr-2"></i> Ficha Técnica del Catálogo</h6>
+                
+                <div class="mb-3">
+                    <label class="text-muted small uppercase font-weight-bold d-block mb-1">Tipo de Recurso</label>
+                    <span class="text-dark font-weight-bold">@Model.EquipmentUnit.Equipment?.Category</span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="text-muted small uppercase font-weight-bold d-block mb-1">Clasificación / Material</label>
+                    <span class="text-dark font-weight-bold">
+                        @if (Model.EquipmentUnit.Equipment?.Category == Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentCategory.Utensil)
+                        {
+                            @Model.EquipmentUnit.Equipment?.UtensilType
+                        }
+                        else
+                        {
+                            @Model.EquipmentUnit.Equipment?.TypeClassification
+                        }
+                    </span>
+                </div>
+
+                @if (!string.IsNullOrEmpty(Model.EquipmentUnit.Equipment?.Description))
+                {
+                    <div>
+                        <label class="text-muted small uppercase font-weight-bold d-block mb-1">Descripción / Notas Adicionales</label>
+                        <p class="small text-dark mb-0">@Model.EquipmentUnit.Equipment.Description</p>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
 
     <div class="col-lg-8">
@@ -90,6 +126,26 @@
                     <div class="alert alert-soft-info p-3 mb-4 rounded shadow-none border border-info">
                         <label class="text-info small font-weight-bold uppercase mb-1 d-block"><i class="fas fa-sticky-note mr-1"></i> Notas de la Unidad:</label>
                         <span class="text-dark small">@Model.EquipmentUnit.Notes</span>
+                    </div>
+                }
+
+                @if (Model.EquipmentUnit.Equipment?.Notes != null && Model.EquipmentUnit.Equipment.Notes.Any())
+                {
+                    <div class="card border shadow-sm mb-4">
+                        <div class="card-header bg-white border-bottom-0 pt-3 px-4">
+                            <h6 class="font-weight-bold mb-0 text-dark">
+                                <i class="fas fa-clipboard-list mr-2 text-info"></i> Notas del Fabricante / Prevención (@Model.EquipmentUnit.Equipment.Notes.Count)
+                            </h6>
+                        </div>
+                        <div class="card-body pt-2 px-4">
+                            <ul class="mb-0 pl-3">
+                                @foreach (var note in Model.EquipmentUnit.Equipment.Notes)
+                                {
+                                    <li class="mb-2 small text-dark font-weight-bold">@note.Note</li>
+                                }
+                            </ul>
+                            <small class="text-muted italic">Estas pautas aplican a todas las unidades de este modelo.</small>
+                        </div>
                     </div>
                 }
 
@@ -227,17 +283,25 @@
         </div>
 
         <!-- Equipment Product Image -->
-        @if (!string.IsNullOrEmpty(Model.EquipmentUnit.Equipment?.ImageUrl))
-        {
-            <div class="card shadow-sm border-0 mt-4">
-                <div class="card-body p-4 text-center">
-                    <h5 class="font-weight-bold text-dark mb-3 small uppercase"><i class="fas fa-image mr-2 text-info"></i> Imagen del Producto</h5>
-                    <hr />
-                    <img src="@Model.EquipmentUnit.Equipment.ImageUrl" alt="@Model.EquipmentUnit.Equipment.Name" class="img-fluid rounded shadow-sm" style="max-height: 350px; object-fit: contain;" />
+        <div class="card shadow-sm border-0 mt-4">
+            <div class="card-body p-4 text-center">
+                <h5 class="font-weight-bold text-dark mb-3 small uppercase"><i class="fas fa-image mr-2 text-info"></i> Imagen del Producto</h5>
+                <hr />
+                @if (!string.IsNullOrEmpty(Model.EquipmentUnit.Equipment?.ImageUrl))
+                {
+                    <img src="~/uploads/equipment/@Model.EquipmentUnit.Equipment.ImageUrl" alt="@Model.EquipmentUnit.Equipment.Name" class="img-fluid rounded shadow-sm" style="max-height: 350px; object-fit: contain;" />
                     <p class="text-muted small mt-2 mb-0">@Model.EquipmentUnit.Equipment.Name - @(Model.EquipmentUnit.Equipment.Brand ?? "") @(Model.EquipmentUnit.Equipment.Model ?? "")</p>
-                </div>
+                }
+                else
+                {
+                    <div class="py-4 text-muted">
+                        <i class="fas fa-image fa-3x mb-2 opacity-5 d-block"></i>
+                        <span class="small font-weight-bold uppercase">Sin imagen de referencia</span>
+                        <p class="small mt-1 mb-0 opacity-7">Puede agregar una imagen editando la ficha técnica del equipo.</p>
+                    </div>
+                }
             </div>
-        }
+        </div>
     </div>
 </div>
 

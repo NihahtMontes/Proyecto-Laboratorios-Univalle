@@ -20,6 +20,8 @@
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
                     <input type="hidden" asp-for="Input.Id" />
                     <input type="hidden" asp-for="Input.Type" />
+                    <input type="hidden" asp-for="IsWizard" />
+                    <input type="hidden" asp-for="ManagementId" />
 
                     <div class="row mb-4">
                         <div class="col-12">
@@ -149,9 +151,21 @@
                         <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold">
                             <i class="fas fa-save mr-1"></i> Guardar Cambios
                         </button>
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
-                            Cancelar
-                        </a>
+                        @{
+                            bool isWizardEdit = (bool)(ViewData["IsWizard"] ?? false);
+                        }
+                        @if (isWizardEdit)
+                        {
+                            <a asp-page="./Details" asp-route-id="@Model.Input.Id" asp-route-isWizard="true" asp-route-managementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded ml-2">
+                                Cancelar
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2">
+                                Cancelar
+                            </a>
+                        }
                     </div>
                 </form>
             </div>

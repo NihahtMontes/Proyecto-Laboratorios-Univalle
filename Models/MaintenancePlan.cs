@@ -1,5 +1,6 @@
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Models.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -52,12 +53,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [Display(Name = "Tiempo Estimado (horas)")]
         [Range(0, 1000)]
-        [Column(TypeName = "decimal(10,2)")]
+        [Precision(10, 2)]
         public decimal? EstimatedTime { get; set; }
 
         [Display(Name = "Tiempo Real (horas)")]
         [Range(0, 1000)]
-        [Column(TypeName = "decimal(10,2)")]
+        [Precision(10, 2)]
         public decimal? ActualTime { get; set; }
 
         [Display(Name = "Técnico Asignado")]

@@ -28,7 +28,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             }
 
             var maintenance = await _context.Maintenances
-                .Include(m => m.MaintenanceType)
                 .Include(m => m.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
                 .Include(m => m.CreatedBy)

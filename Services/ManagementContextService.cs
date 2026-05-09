@@ -2,8 +2,8 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Memory;
+using Npgsql;
 
 namespace Proyecto_Laboratorios_Univalle.Services
 {
@@ -35,23 +35,13 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
             try
             {
+                var effectiveType = type ?? ManagementType.Preventive;
+
                 var query = _context.Managements
                     .AsNoTracking()
-                    .Where(m => m.Status == ManagementStatus.Active);
-
-                if (type.HasValue)
-                    query = query.Where(m => m.Type == type.Value);
+                    .Where(m => m.Status == ManagementStatus.Active && m.Type == effectiveType);
 
                 var management = await query.FirstOrDefaultAsync();
-
-                if (management == null)
-                {
-                    management = await _context.Managements
-                        .AsNoTracking()
-                        .OrderByDescending(m => m.Year)
-                        .ThenByDescending(m => m.Semester)
-                        .FirstOrDefaultAsync();
-                }
 
                 if (management != null)
                 {
@@ -60,7 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 return management;
             }
-            catch (Exception ex) when (ex is SqlException || ex is InvalidOperationException)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is NpgsqlException)
             {
                 return null;
             }

@@ -27,10 +27,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             var equipmentunit = await _context.EquipmentUnits
                 .Include(e => e.Equipment)
                     .ThenInclude(e => e!.City)
-                .Include(e => e.Equipment)
-                    .ThenInclude(e => e!.Country)
                 .Include(e => e.Laboratory)
                     .ThenInclude(l => l!.Faculty)
+                .Include(e => e.Equipment)
+                    .ThenInclude(e => e!.Notes)
                 .Include(e => e.Career)
                 .Include(e => e.Maintenances!)
                     .ThenInclude(m => m.Technician)

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
@@ -8,14 +9,29 @@ using QuestPDF.Infrastructure;
 using OfficeOpenXml;
 
 QuestPDF.Settings.License = LicenseType.Community;
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys");
+Directory.CreateDirectory(dataProtectionKeysPath);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+    .SetApplicationName("ProyectoLaboratoriosUnivalle");
 
 // DIAGNÓSTICO: Capturador de crash global a nivel OS
 AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
 {
-    var ex = e.ExceptionObject as Exception;
-    File.AppendAllText("crash.log", 
-        $"{DateTime.Now}: {ex?.GetType().Name} - {ex?.Message}\n{ex?.StackTrace}\n\n");
+    try
+    {
+        var ex = e.ExceptionObject as Exception;
+        var message = $"{DateTime.Now:O}: {ex?.GetType().Name} - {ex?.Message}\n{ex?.StackTrace}\n\n";
+        File.WriteAllText($"crash_{DateTime.Now:yyyyMMdd_HHmmss}.log", message);
+    }
+    catch { }
 };
 
 // DEBUG: SameSite=None Fix
@@ -25,10 +41,10 @@ Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIB
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sqlOptions => 
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), npgsqlOptions => 
     {
-        sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-        sqlOptions.CommandTimeout(120);
+        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+        npgsqlOptions.CommandTimeout(120);
     })
     .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
@@ -94,6 +110,7 @@ builder.Services.AddScoped<DatabaseErrorHandler>();
 
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
+builder.WebHost.UseSetting("BrowserLink:Enabled", "false");
 
 builder.Services.AddControllers();
 builder.Services.AddRazorPages(options =>

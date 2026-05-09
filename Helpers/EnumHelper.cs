@@ -41,7 +41,7 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         }
 
         // Esta función busca si le pusiste un [Display(Name="...")] al Enum
-        private static string GetDisplayName(Enum value)
+        public static string GetDisplayName(Enum value)
         {
             var field = value.GetType().GetField(value.ToString());
             var attribute = field?.GetCustomAttribute<DisplayAttribute>();

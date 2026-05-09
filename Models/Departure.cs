@@ -84,5 +84,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("ManagementId")]
         public virtual Management Management { get; set; } = null!;
+
+        public virtual ICollection<DepartureItem> Items { get; set; } = new List<DepartureItem>();
     }
 }
