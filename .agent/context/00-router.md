@@ -20,6 +20,7 @@ Usa este archivo para decidir que leer. No leas todo por defecto.
 | Modificar modelos, relaciones o migraciones | `areas/database-ef.md` | `skills/database/SKILL.md` |
 | Generar Excel/PDF o modificar ReportService | `areas/reporting.md` | `skills/reporting/SKILL.md` |
 | Ajustar flujo guiado | `modules/wizard.md` | `backend_methods` + area necesaria |
+| Dashboard, cards, navegacion, notificaciones visibles | `modules/dashboard-navigation.md` | `ui_premium` + `backend_methods` |
 | Guardar/rehidratar borradores | `modules/drafts.md` | `backend_methods` + `database` |
 | Correctivo | `modules/corrective.md` | `backend_methods` |
 | Verificaciones L-6 | `modules/l6-verifications.md` | `ui_premium` + `backend_methods` |

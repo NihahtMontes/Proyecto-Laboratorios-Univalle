@@ -52,6 +52,7 @@ No agregar dependencias ni cambiar stack sin aprobacion explicita.
 | Entidades, DbContext, migraciones | `.agent/context/areas/database-ef.md` + `.agent/skills/database/SKILL.md` + `Models/AGENTS.md` |
 | Excel, PDF, reportes | `.agent/context/areas/reporting.md` + `.agent/skills/reporting/SKILL.md` + `Services/AGENTS.md` |
 | Wizard preventivo/correctivo | `.agent/context/modules/wizard.md` + modulo especifico |
+| Dashboard, cards, navegacion, notificaciones | `.agent/context/modules/dashboard-navigation.md` |
 | Borradores | `.agent/context/modules/drafts.md` |
 | Correctivo | `.agent/context/modules/corrective.md` |
 | L-6 Verificaciones | `.agent/context/modules/l6-verifications.md` |

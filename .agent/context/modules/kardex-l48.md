@@ -42,6 +42,13 @@ Al cerrar:
 - El template oculto no debe contar en el porcentaje.
 - Tareas retiradas se soft-deletean, no se eliminan fisicamente.
 
+## Calendario/Dashboard
+
+- Si L-48 se muestra en dashboard, filtrar por `ManagementId` y por tipo de gestion.
+- No mezclar preventivo y correctivo en el mismo calendario salvo que la UI lo indique explicitamente.
+- Las acciones del calendario deben volver al dashboard/wizard preservando `ManagementId`, `SelectedLabId` y `Step`.
+- Cualquier cambio de semana, estado o tarea debe guardar con entidad trackeada.
+
 ## Costos
 
 - Total real se calcula en backend con `Quantity * UnitPrice`.

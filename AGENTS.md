@@ -35,6 +35,7 @@ No hacer commit sin aprobacion explicita del usuario.
 | Reportes Excel/PDF | `.agent/context/areas/reporting.md` | `Services/AGENTS.md` | `.agent/skills/reporting/SKILL.md` |
 | Infraestructura/build/despliegue | `.agent/context/areas/infrastructure.md` | `AGENTS_SETUP.md` si existe | segun archivos tocados |
 | Wizard | `.agent/context/modules/wizard.md` | `Pages/AGENTS.md` | backend/ui segun cambio |
+| Dashboard, navegacion y notificaciones | `.agent/context/modules/dashboard-navigation.md` | `Pages/AGENTS.md` | backend/ui |
 | Borradores | `.agent/context/modules/drafts.md` | `Pages/AGENTS.md` | backend/database |
 | Correctivo | `.agent/context/modules/corrective.md` | `Pages/AGENTS.md` | backend |
 
