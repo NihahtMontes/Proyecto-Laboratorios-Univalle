@@ -180,7 +180,10 @@
                         {
                             <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded mr-2 px-4">Volver al Wizard</a>
                         }
-                        <button type="submit" id="btnSubmitRequest" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
+                        <button type="submit" asp-page-handler="Draft" id="btnDraftRequest" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2">
+                            <i class="fas fa-save mr-1"></i> Guardar Borrador
+                        </button>
+                        <button type="submit" id="btnSubmitRequest" formnovalidate class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold">
                             Guardar y continuar <i class="fas fa-arrow-right ml-2"></i>
                         </button>
                     </div>
@@ -224,9 +227,19 @@
 
                 event.preventDefault();
 
+                var submitter = event.originalEvent && event.originalEvent.submitter ? event.originalEvent.submitter : document.activeElement;
+                var isDraft = submitter && submitter.id === 'btnDraftRequest';
+                var targetAction = submitter && submitter.getAttribute('formaction') ? submitter.getAttribute('formaction') : form.action;
+
                 var submitForm = function() {
                     requestSubmitting = true;
-                    $('#btnSubmitRequest').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    form.action = targetAction;
+                    $('#btnDraftRequest, #btnSubmitRequest').prop('disabled', true);
+                    if (isDraft) {
+                        $('#btnDraftRequest').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    } else {
+                        $('#btnSubmitRequest').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    }
                     HTMLFormElement.prototype.submit.call(form);
                 };
 
@@ -236,11 +249,11 @@
                 }
 
                 Swal.fire({
-                    title: '¿Registrar solicitud L-7?',
-                    text: 'Se guardará la solicitud técnica y el equipo avanzará al paso L-8 de mantenimiento.',
+                    title: isDraft ? '¿Guardar borrador L-7?' : '¿Registrar solicitud L-7?',
+                    text: isDraft ? 'Se guardará el avance sin pasar al paso L-8.' : 'Se guardará la solicitud técnica y el equipo avanzará al paso L-8 de mantenimiento.',
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, guardar',
+                    confirmButtonText: isDraft ? 'Sí, guardar borrador' : 'Sí, guardar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#17a2b8',
                     cancelButtonColor: '#6c757d'

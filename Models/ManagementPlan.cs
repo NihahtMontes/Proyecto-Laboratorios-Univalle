@@ -84,6 +84,19 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Estado")]
         public ManagementPlanStatus PlanStatus { get; set; } = ManagementPlanStatus.Pending;
 
+        [Display(Name = "Es Borrador")]
+        public bool IsDraft { get; set; } = false;
+
+        [Display(Name = "Fase en Borrador")]
+        public WizardPhase? DraftPhase { get; set; }
+
+        [Display(Name = "Fecha de Guardado de Borrador")]
+        public DateTime? DraftSavedAt { get; set; }
+
+        [StringLength(300)]
+        [Display(Name = "Resumen del Borrador")]
+        public string? DraftSummary { get; set; }
+
         // ========================================
         // AUDIT
         // ========================================

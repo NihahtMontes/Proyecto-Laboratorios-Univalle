@@ -30,8 +30,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false, int? managementPlanId = null)
         {
-            LoadLists();
-
             Input = new InputModel
             {
                 ScheduledDate = DateTime.UtcNow,
@@ -48,7 +46,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             if (managementPlanId.HasValue)
             {
-                var plan = await _context.ManagementPlans.FindAsync(managementPlanId.Value);
+                var plan = await _context.ManagementPlans
+                    .Include(p => p.Maintenance).ThenInclude(m => m!.CostDetails)
+                    .Include(p => p.Maintenance).ThenInclude(m => m!.Tasks)
+                    .FirstOrDefaultAsync(p => p.Id == managementPlanId.Value);
                 if (plan != null)
                 {
                     ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
@@ -58,6 +59,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     if (plan.RequestId.HasValue)
                     {
                         Input.RequestId = plan.RequestId;
+                    }
+                    if (plan.Maintenance != null)
+                    {
+                        ApplyMaintenanceToInput(plan.Maintenance);
                     }
                     if (!equipmentUnitId.HasValue && plan.EquipmentUnitId.HasValue)
                     {
@@ -88,6 +93,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
 
 
+            LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId, Input.TechnicianId, Input.RequestId);
             return Page();
         }
 
@@ -200,7 +206,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             return new JsonResult(result);
         }
 
+        public async Task<IActionResult> OnPostDraftAsync(bool isWizard = false)
+        {
+            return await SaveMaintenanceAsync(isWizard, saveDraft: true);
+        }
+
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
+        {
+            return await SaveMaintenanceAsync(isWizard, saveDraft: false);
+        }
+
+        private async Task<IActionResult> SaveMaintenanceAsync(bool isWizard, bool saveDraft)
         {
             // ─────────────────────────────────────────────────────────────
             // WIZARD PRE-VALIDATION: reconstruir valores ANTES de ModelState
@@ -215,6 +231,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 wizardPlan = await _context.ManagementPlans
                     .AsTracking()
                     .Include(p => p.Management)
+                    .Include(p => p.Maintenance).ThenInclude(m => m!.CostDetails)
+                    .Include(p => p.Maintenance).ThenInclude(m => m!.Tasks)
                     .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
                     .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
@@ -265,18 +283,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
             }
 
-if (Input.StartDate.HasValue && Input.EndDate.HasValue)
+            if (saveDraft)
+            {
+                ClearDraftModelState();
+            }
+
+            if (Input.StartDate.HasValue && Input.EndDate.HasValue)
             {
                 if (Input.EndDate < Input.StartDate)
                     ModelState.AddModelError("Input.EndDate", "La fecha de finalización no puede ser anterior al inicio.");
             }
 
-            if (isWizard && !Input.TechnicianId.HasValue)
+            if (isWizard && !saveDraft && !Input.TechnicianId.HasValue)
             {
                 ModelState.AddModelError("Input.TechnicianId", "El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que L-3 pueda derivar el responsable de la salida.");
             }
 
-            if (Input.Status == MaintenanceStatus.Completed && Input.CompletionPercentage != 100)
+            if (!saveDraft && Input.Status == MaintenanceStatus.Completed && Input.CompletionPercentage != 100)
             {
                 ModelState.AddModelError("Input.CompletionPercentage", "Para marcar el mantenimiento como Completado, el avance debe estar al 100%.");
             }
@@ -313,6 +336,9 @@ if (Input.StartDate.HasValue && Input.EndDate.HasValue)
             decimal totalCosts = Input.CostDetails?.Sum(d => d.Subtotal) ?? 0;
             Input.ActualCost = totalCosts;
 
+            Input.Tasks = NormalizeTasks(Input.Tasks);
+            Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
+
             if (!ModelState.IsValid)
             {
                 var errors = ModelState
@@ -342,36 +368,35 @@ if (Input.StartDate.HasValue && Input.EndDate.HasValue)
 
                 await using var transaction = await _context.Database.BeginTransactionAsync();
 
-                var maintenance = new Maintenance
+                var maintenance = wizardPlan?.Maintenance ?? new Maintenance
                 {
-                    EquipmentUnitId = Input.EquipmentUnitId,
-                    ManagementId = currentMgmt.Id,
-                    MaintenanceType = Input.MaintenanceType,
-                    TechnicianId = Input.TechnicianId,
-                    RequestId = Input.RequestId,
-                    Description = Input.Description?.Clean(),
-                    ScheduledDate = Input.ScheduledDate,
-                    StartDate = Input.StartDate,
-                    EndDate = Input.EndDate,
-                    ActualCost = Input.ActualCost,
-                    Observations = Input.Observations?.Clean(),
-                    Recommendations = Input.Recommendations?.Clean(),
-                    SuggestedNextMaintenanceDate = Input.SuggestedNextMaintenanceDate,
-                    SatisfactionLevel = (MaintenanceSatisfaction?)Input.SatisfactionLevel,
-                    Status = Input.Status,
-                    CostDetails = Input.CostDetails ?? new(),
                     CreatedDate = DateTime.UtcNow,
-
-                    CompletionPercentage = Input.CompletionPercentage,
-                    Tasks = Input.Tasks ?? new()
+                    CostDetails = new(),
+                    Tasks = new()
                 };
 
                 var currentUser = await _userManager.GetUserAsync(User);
-                maintenance.CreatedById = currentUser?.Id;
+                if (maintenance.Id == 0)
+                {
+                    maintenance.CreatedById = currentUser?.Id;
+                    _context.Maintenances.Add(maintenance);
+                }
+                else
+                {
+                    maintenance.LastModifiedDate = DateTime.UtcNow;
+                    maintenance.ModifiedById = currentUser?.Id;
+                }
 
-                _context.Maintenances.Add(maintenance);
+                SyncMaintenanceScalarFields(maintenance, currentMgmt.Id, saveDraft);
 
-                if (equipmentUnit != null && equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
+                if (maintenance.Id == 0)
+                {
+                    await _context.SaveChangesAsync();
+                }
+
+                SyncMaintenanceChildren(maintenance);
+
+                if (!saveDraft && equipmentUnit != null && equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
                 {
                     var lastHistory = await _context.EquipmentStateHistories
                         .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
@@ -403,20 +428,33 @@ if (Input.StartDate.HasValue && Input.EndDate.HasValue)
                 if (wizardPlan != null)
                 {
                     wizardPlan.MaintenanceId = maintenance.Id;
-                    wizardPlan.CurrentPhase = WizardPhase.Exit;
-                    wizardPlan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                    if (saveDraft)
+                    {
+                        MarkMaintenanceDraft(wizardPlan);
+                    }
+                    else
+                    {
+                        wizardPlan.CurrentPhase = WizardPhase.Exit;
+                        wizardPlan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                        ClearDraft(wizardPlan);
+                    }
                     await _context.SaveChangesAsync();
                 }
 
                 await transaction.CommitAsync();
 
-                await TryCreateMaintenanceNotificationAsync(maintenance, equipmentUnit);
+                if (!saveDraft)
+                {
+                    await TryCreateMaintenanceNotificationAsync(maintenance, equipmentUnit);
+                }
 
-                TempData.Success($"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
+                TempData.Success(saveDraft
+                    ? $"Borrador de mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente."
+                    : $"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
 
                 if (wizardPlan != null && isWizard)
                 {
-                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = saveDraft ? 3 : 4, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                 }
 
                 return RedirectToPage("./Index");
@@ -424,9 +462,192 @@ if (Input.StartDate.HasValue && Input.EndDate.HasValue)
             catch (Exception ex)
             {
                 TempData.Error($"Error al guardar el registro: {ex.Message}");
-                LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId, Input.TechnicianId, Input.RequestId);
                 return Page();
             }
+        }
+
+        private void ClearDraftModelState()
+        {
+            ModelState.Remove("Input.TechnicianId");
+            ModelState.Remove("Input.Description");
+            ModelState.Remove("Input.ScheduledDate");
+            ModelState.Remove("Input.StartDate");
+            ModelState.Remove("Input.EndDate");
+            ModelState.Remove("Input.Observations");
+            ModelState.Remove("Input.Recommendations");
+            ModelState.Remove("Input.SuggestedNextMaintenanceDate");
+            ModelState.Remove("Input.SatisfactionLevel");
+            ModelState.Remove("Input.CostDetails");
+            ModelState.Remove("Input.Tasks");
+            foreach (var key in ModelState.Keys.Where(k => k.StartsWith("Input.CostDetails[") || k.StartsWith("Input.Tasks[")).ToList())
+            {
+                ModelState.Remove(key);
+            }
+        }
+
+        private void ApplyMaintenanceToInput(Maintenance maintenance)
+        {
+            Input.MaintenanceType = maintenance.MaintenanceType;
+            Input.TechnicianId = maintenance.TechnicianId;
+            Input.RequestId = maintenance.RequestId;
+            Input.Description = maintenance.Description;
+            Input.ScheduledDate = maintenance.ScheduledDate ?? DateTime.UtcNow;
+            Input.StartDate = maintenance.StartDate;
+            Input.EndDate = maintenance.EndDate;
+            Input.ActualCost = maintenance.ActualCost ?? 0m;
+            Input.Observations = maintenance.Observations;
+            Input.Recommendations = maintenance.Recommendations;
+            Input.Status = maintenance.Status;
+            Input.CompletionPercentage = maintenance.CompletionPercentage;
+            Input.Step1_Cleaning = maintenance.Step1_Cleaning;
+            Input.Step2_Calibration = maintenance.Step2_Calibration;
+            Input.Step3_Testing = maintenance.Step3_Testing;
+            Input.Step4_FinalReview = maintenance.Step4_FinalReview;
+            Input.SuggestedNextMaintenanceDate = maintenance.SuggestedNextMaintenanceDate;
+            Input.SatisfactionLevel = maintenance.SatisfactionLevel.HasValue ? (int)maintenance.SatisfactionLevel.Value : null;
+            Input.CostDetails = maintenance.CostDetails?.OrderBy(c => c.Id).ToList() ?? new List<CostDetail>();
+            Input.Tasks = maintenance.Tasks?.Where(t => !t.IsDeleted).OrderBy(t => t.Id).ToList() ?? new List<MaintenanceTask>();
+        }
+
+        private void SyncMaintenanceScalarFields(Maintenance maintenance, int managementId, bool saveDraft)
+        {
+            maintenance.EquipmentUnitId = Input.EquipmentUnitId;
+            maintenance.ManagementId = managementId;
+            maintenance.MaintenanceType = Input.MaintenanceType;
+            maintenance.TechnicianId = Input.TechnicianId;
+            maintenance.RequestId = Input.RequestId;
+            maintenance.Description = Input.Description?.Clean();
+            maintenance.ScheduledDate = Input.ScheduledDate;
+            maintenance.StartDate = Input.StartDate;
+            maintenance.EndDate = Input.EndDate;
+            maintenance.ActualCost = Input.ActualCost;
+            maintenance.Observations = Input.Observations?.Clean();
+            maintenance.Recommendations = Input.Recommendations?.Clean();
+            maintenance.SuggestedNextMaintenanceDate = Input.SuggestedNextMaintenanceDate;
+            maintenance.SatisfactionLevel = (MaintenanceSatisfaction?)Input.SatisfactionLevel;
+            maintenance.Status = saveDraft ? MaintenanceStatus.InProgress : Input.Status;
+            maintenance.CompletionPercentage = Input.CompletionPercentage;
+            maintenance.Step1_Cleaning = Input.Tasks.ElementAtOrDefault(0)?.IsCompleted ?? false;
+            maintenance.Step2_Calibration = Input.Tasks.ElementAtOrDefault(1)?.IsCompleted ?? false;
+            maintenance.Step3_Testing = Input.Tasks.ElementAtOrDefault(2)?.IsCompleted ?? false;
+            maintenance.Step4_FinalReview = Input.Tasks.ElementAtOrDefault(3)?.IsCompleted ?? false;
+
+        }
+
+        private void SyncMaintenanceChildren(Maintenance maintenance)
+        {
+            SyncCostDetails(maintenance, Input.CostDetails ?? new List<CostDetail>());
+            SyncTasks(maintenance, Input.Tasks ?? new List<MaintenanceTask>());
+        }
+
+        private static List<MaintenanceTask> NormalizeTasks(List<MaintenanceTask>? tasks)
+        {
+            return (tasks ?? new List<MaintenanceTask>())
+                .Where(t => !t.IsDeleted && (t.Id > 0 || !string.IsNullOrWhiteSpace(t.Description)))
+                .Select(t =>
+                {
+                    t.Description = t.Description?.Trim() ?? string.Empty;
+                    return t;
+                })
+                .ToList();
+        }
+
+        private static int CalculateCompletionPercentage(List<MaintenanceTask> tasks)
+        {
+            if (tasks.Count == 0) return 0;
+            return (int)Math.Round(tasks.Count(t => t.IsCompleted) * 100m / tasks.Count);
+        }
+
+        private void SyncCostDetails(Maintenance maintenance, List<CostDetail> inputDetails)
+        {
+            var inputIds = inputDetails.Where(d => d.Id > 0).Select(d => d.Id).ToHashSet();
+            foreach (var existing in maintenance.CostDetails.Where(d => d.Id > 0 && !inputIds.Contains(d.Id)).ToList())
+            {
+                existing.MaintenanceId = null;
+                existing.Maintenance = null;
+                existing.LastModifiedDate = DateTime.UtcNow;
+            }
+
+            foreach (var detail in inputDetails)
+            {
+                detail.Concept = detail.Concept.Trim();
+                detail.Quantity = detail.Quantity <= 0 ? 1 : detail.Quantity;
+                detail.UnitPrice = detail.UnitPrice < 0 ? 0 : detail.UnitPrice;
+                detail.MaintenanceId = maintenance.Id;
+                detail.Maintenance = maintenance;
+                detail.RequestId = null;
+
+                var existing = maintenance.CostDetails.FirstOrDefault(d => d.Id == detail.Id && d.Id != 0);
+                if (existing != null)
+                {
+                    existing.Concept = detail.Concept;
+                    existing.Description = detail.Description?.Clean();
+                    existing.Quantity = detail.Quantity;
+                    existing.UnitOfMeasure = detail.UnitOfMeasure;
+                    existing.UnitPrice = detail.UnitPrice;
+                    existing.Category = detail.Category;
+                    existing.Provider = detail.Provider;
+                    existing.InvoiceNumber = detail.InvoiceNumber;
+                    existing.LastModifiedDate = DateTime.UtcNow;
+                }
+                else
+                {
+                    detail.CreatedDate = DateTime.UtcNow;
+                    maintenance.CostDetails.Add(detail);
+                }
+            }
+        }
+
+        private static void SyncTasks(Maintenance maintenance, List<MaintenanceTask> inputTasks)
+        {
+            var inputIds = inputTasks.Where(t => t.Id > 0).Select(t => t.Id).ToHashSet();
+            foreach (var existing in maintenance.Tasks.Where(t => t.Id > 0 && !t.IsDeleted && !inputIds.Contains(t.Id)).ToList())
+            {
+                existing.IsDeleted = true;
+                existing.IsCompleted = false;
+            }
+
+            foreach (var task in inputTasks)
+            {
+                var existing = maintenance.Tasks.FirstOrDefault(t => t.Id == task.Id && t.Id != 0);
+                if (existing != null)
+                {
+                    existing.Description = task.Description;
+                    existing.IsCompleted = task.IsCompleted;
+                    existing.IsDeleted = false;
+                }
+                else if (!string.IsNullOrWhiteSpace(task.Description))
+                {
+                    maintenance.Tasks.Add(new MaintenanceTask
+                    {
+                        Description = task.Description,
+                        IsCompleted = task.IsCompleted,
+                        IsDeleted = false
+                    });
+                }
+            }
+        }
+
+        private static void MarkMaintenanceDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = true;
+            plan.DraftPhase = WizardPhase.Maintenance;
+            plan.DraftSavedAt = DateTime.UtcNow;
+            plan.DraftSummary = "Borrador L-8 guardado con planificación parcial de mantenimiento.";
+            plan.CurrentPhase = WizardPhase.Maintenance;
+            plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+            plan.PlanStatus = ManagementPlanStatus.InProgress;
+            plan.LastModifiedDate = DateTime.UtcNow;
+        }
+
+        private static void ClearDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = false;
+            plan.DraftPhase = null;
+            plan.DraftSavedAt = null;
+            plan.DraftSummary = null;
+            plan.LastModifiedDate = DateTime.UtcNow;
         }
 
         private async Task TryCreateMaintenanceNotificationAsync(Maintenance maintenance, EquipmentUnit? equipmentUnit)
@@ -473,7 +694,7 @@ if (Input.StartDate.HasValue && Input.EndDate.HasValue)
             }
         }
 
-        private void LoadLists(int facultyId = 0, int labId = 0, int equipUnitId = 0)
+        private void LoadLists(int facultyId = 0, int labId = 0, int equipUnitId = 0, int? technicianId = null, int? requestId = null)
         {
             ViewData["FacultyId"] = new SelectList(_context.Faculties
                 .Where(f => f.Status == GeneralStatus.Activo)
@@ -516,7 +737,7 @@ if (Input.StartDate.HasValue && Input.EndDate.HasValue)
                 .OrderBy(x => x.Name)
                 .ToList();
 
-            ViewData["TechnicianId"] = new SelectList(technicianList, "Id", "Name");
+            ViewData["TechnicianId"] = new SelectList(technicianList, "Id", "Name", technicianId);
 
             ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
             ViewData["ServiceType"] = EnumHelper.GetStatusSelectList<ServiceType>();
@@ -529,7 +750,7 @@ if (Input.StartDate.HasValue && Input.EndDate.HasValue)
                     Id = r.Id,
                     DisplayText = $"#{r.Id} - {r.Laboratory?.Name} ({r.CreatedDate:dd/MM}): " + (r.Description.Length > 40 ? r.Description.Substring(0, 40) + "..." : r.Description)
                 });
-            ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText");
+            ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText", requestId);
         }
     }
 }

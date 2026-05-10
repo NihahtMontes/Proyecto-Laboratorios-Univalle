@@ -1,8 +1,0 @@
-C:\Program Files\dotnet\sdk\10.0.104\Microsoft.Common.CurrentVersion.targets(5381,5): error MSB3027: No se pudo copiar "C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\obj\Debug\net9.0\apphost.exe" en "bin\Debug\net9.0\Proyecto Laboratorios Univalle.exe". Se superó el número de 10 reintentos. Error. El archivo se ha bloqueado por: "Proyecto Laboratorios Univalle (29816)" [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
-C:\Program Files\dotnet\sdk\10.0.104\Microsoft.Common.CurrentVersion.targets(5381,5): error MSB3021: No se puede copiar "C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\obj\Debug\net9.0\apphost.exe" en "bin\Debug\net9.0\Proyecto Laboratorios Univalle.exe". The process cannot access the file 'C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\bin\Debug\net9.0\Proyecto Laboratorios Univalle.exe' because it is being used by another process. [C:\Users\monte\Desktop\alison login\Proyecto-Laboratorios-Univalle\Proyecto Laboratorios Univalle.csproj]
-
-ERROR al compilar.
-    10 Advertencia(s)
-    2 Errores
-
-Tiempo transcurrido 00:00:19.33

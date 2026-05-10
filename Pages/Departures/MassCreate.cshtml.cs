@@ -99,6 +99,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             var plans = await _context.ManagementPlans
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                 .Include(p => p.Maintenance)
+                .Include(p => p.Departure)
                 .Where(p => p.ManagementId == activeMgmt.Id
                          && p.CurrentPhase == WizardPhase.Exit
                          && p.CurrentState == WizardEquipmentState.AwaitingDeparture
@@ -117,13 +118,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 inventoryNumber = p.EquipmentUnit?.InventoryNumber ?? "N/A",
                 brand = p.EquipmentUnit?.Equipment?.Brand ?? "",
                 hasTechnician = p.Maintenance?.TechnicianId != null,
-                hasLaboratory = p.EquipmentUnit?.LaboratoryId != null
+                hasLaboratory = p.EquipmentUnit?.LaboratoryId != null,
+                departureDate = p.Departure?.DepartureDate.ToString("yyyy-MM-dd"),
+                estimatedReturnDate = p.Departure?.EstimatedReturnDate.ToString("yyyy-MM-dd"),
+                isDraft = p.IsDraft && p.DraftPhase == WizardPhase.Exit
             });
 
             return new JsonResult(result);
         }
 
         public async Task<IActionResult> OnPostAsync()
+        {
+            return await SaveDeparturesAsync(saveDraft: false);
+        }
+
+        public async Task<IActionResult> OnPostDraftAsync()
+        {
+            return await SaveDeparturesAsync(saveDraft: true);
+        }
+
+        private async Task<IActionResult> SaveDeparturesAsync(bool saveDraft)
         {
             // Validar fechas
             if (DepartureDate == default || EstimatedReturnDate == default)
@@ -178,6 +192,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     var plan = await _context.ManagementPlans
                         .AsTracking()
                         .Include(p => p.Maintenance)
+                        .Include(p => p.Departure).ThenInclude(d => d!.Items)
                         .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                         .FirstOrDefaultAsync(p => p.Id == row.PlanId);
 
@@ -198,42 +213,57 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                         ? DepartureType.ExternalMaintenance
                         : DepartureType.InternalMaintenance;
 
-                    var departure = new Departure
+                    var departure = plan.Departure ?? new Departure
                     {
-                        EquipmentUnitId = equipmentUnitId,
-                        BorrowerId = technicianId,
-                        Type = inferredType,
-                        DepartureDate = DepartureDate,
-                        EstimatedReturnDate = EstimatedReturnDate,
-                        DepartureObservations = null,
-                        Status = LoanStatus.Active,
                         CreatedDate = DateTime.UtcNow,
-                        ManagementId = activeMgmt.Id,
                         CreatedById = user?.Id
                     };
 
-                    _context.Departures.Add(departure);
+                    departure.EquipmentUnitId = equipmentUnitId;
+                    departure.BorrowerId = technicianId;
+                    departure.Type = inferredType;
+                    departure.DepartureDate = DepartureDate;
+                    departure.EstimatedReturnDate = EstimatedReturnDate;
+                    departure.DepartureObservations = null;
+                    departure.Status = saveDraft ? LoanStatus.Cancelled : LoanStatus.Active;
+                    departure.ManagementId = activeMgmt.Id;
+                    departure.LastModifiedDate = departure.Id == 0 ? null : DateTime.UtcNow;
+                    if (departure.Id > 0) departure.ModifiedById = user?.Id;
+
+                    if (departure.Id == 0)
+                    {
+                        _context.Departures.Add(departure);
+                    }
 
                     // Ítem de salida derivado desde el equipo real, no desde el HTML.
-                    _context.DepartureItems.Add(new DepartureItem
+                    var item = departure.Items.FirstOrDefault() ?? new DepartureItem { Departure = departure };
+                    item.EquipmentUnitId = equipmentUnitId;
+                    item.ProductName = productName;
+                    item.Quantity = 1;
+                    item.UnitOfMeasure = "UNIDAD";
+                    item.Observations = null;
+                    if (item.Id == 0)
                     {
-                        Departure = departure,
-                        EquipmentUnitId = equipmentUnitId,
-                        ProductName = productName,
-                        Quantity = 1,
-                        UnitOfMeasure = "UNIDAD",
-                        Observations = null
-                    });
+                        _context.DepartureItems.Add(item);
+                    }
 
                     // Actualizar estado del equipo
                     var unit = await _context.EquipmentUnits.FindAsync(equipmentUnitId);
-                    if (unit != null)
+                    if (!saveDraft && unit != null)
                         unit.CurrentStatus = EquipmentStatus.OnLoan;
 
-                    // Avanzar el plan a Kardex
+                    // Vincular salida; solo el guardado final avanza a Kardex.
                     plan.Departure = departure;
-                    plan.CurrentPhase = WizardPhase.Kardex;
-                    plan.CurrentState = WizardEquipmentState.AwaitingKardex;
+                    if (saveDraft)
+                    {
+                        MarkDepartureDraft(plan);
+                    }
+                    else
+                    {
+                        plan.CurrentPhase = WizardPhase.Kardex;
+                        plan.CurrentState = WizardEquipmentState.AwaitingKardex;
+                        ClearDraft(plan);
+                    }
 
                     await _context.SaveChangesAsync();
                     created++;
@@ -258,6 +288,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 return Page();
             }
 
+            if (saveDraft)
+            {
+                TempData.Success($"Borrador L-3 guardado para {created} salida(s).");
+                if (IsWizard)
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
+                return RedirectToPage("./Index");
+            }
+
             var msg = $"{created} salida(s) registrada(s) correctamente.";
             if (skipped > 0) msg += $" {skipped} equipo(s) omitido(s) por no tener técnico en L-8.";
             TempData.Success(msg);
@@ -276,6 +314,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 .ToListAsync();
             LabList = new SelectList(labs, "Id", "Name", LabId);
             ViewData["IsWizard"] = IsWizard;
+        }
+
+        private static void MarkDepartureDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = true;
+            plan.DraftPhase = WizardPhase.Exit;
+            plan.DraftSavedAt = DateTime.UtcNow;
+            plan.DraftSummary = "Borrador L-3 guardado con salida masiva parcial.";
+            plan.CurrentPhase = WizardPhase.Exit;
+            plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+            plan.PlanStatus = ManagementPlanStatus.InProgress;
+            plan.LastModifiedDate = DateTime.UtcNow;
+        }
+
+        private static void ClearDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = false;
+            plan.DraftPhase = null;
+            plan.DraftSavedAt = null;
+            plan.DraftSummary = null;
+            plan.LastModifiedDate = DateTime.UtcNow;
         }
     }
 }

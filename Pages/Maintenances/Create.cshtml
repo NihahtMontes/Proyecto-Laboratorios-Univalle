@@ -243,6 +243,7 @@
                                         @for (int i = 0; i < Model.Input.Tasks.Count; i++)
                                         {
                                             <div class="task-row mb-2 d-flex align-items-center p-2 rounded hover-light">
+                                                <input type="hidden" name="Input.Tasks[@i].Id" value="@Model.Input.Tasks[i].Id" />
                                                 <div class="custom-control custom-checkbox flex-grow-1">
                                                     <input type="checkbox" class="custom-control-input maintenance-check" id="chk_@i"
                                                            name="Input.Tasks[@i].IsCompleted" value="true" onchange="calculatePercentage()"
@@ -298,7 +299,30 @@
                                         </tr>
                                     </thead>
                                     <tbody id="costsContainer">
-                                        <!-- Rows injected by JS -->
+                                        @for (int i = 0; i < Model.Input.CostDetails.Count; i++)
+                                        {
+                                            <tr class="cost-row">
+                                                <td class="pl-4">
+                                                    <input type="hidden" name="Input.CostDetails[@i].Id" value="@Model.Input.CostDetails[i].Id" />
+                                                    <input name="Input.CostDetails[@i].Concept" class="form-control" value="@Model.Input.CostDetails[i].Concept" placeholder="Nombre del repuesto o servicio" />
+                                                </td>
+                                                <td>
+                                                    <select name="Input.CostDetails[@i].Category" class="form-control custom-select" asp-items="@categoryList" asp-for="@Model.Input.CostDetails[i].Category"></select>
+                                                </td>
+                                                <td>
+                                                    <input name="Input.CostDetails[@i].Quantity" class="form-control text-center txt-qty" type="number" step="0.01" value="@Model.Input.CostDetails[i].Quantity.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" min="0" onchange="calculateTotals()" />
+                                                </td>
+                                                <td>
+                                                    <input name="Input.CostDetails[@i].UnitPrice" class="form-control text-center txt-price" type="number" step="0.01" value="@Model.Input.CostDetails[i].UnitPrice.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" min="0" onchange="calculateTotals()" />
+                                                </td>
+                                                <td class="text-center font-weight-bold txt-subtotal py-3 text-dark">Bs @Model.Input.CostDetails[i].Subtotal.ToString("N2")</td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-circle btn-sm btn-outline-danger" onclick="removeRow(this)" data-toggle="tooltip" title="Quitar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
                                     </tbody>
                                     <tfoot>
                                         <tr class="bg-light">
@@ -351,7 +375,10 @@
                         {
                             <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Cancelar</a>
                         }
-                        <button type="button" id="btnSubmitMaintenance" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark" onclick="window.confirmMaintenanceSubmit()">
+                        <button type="submit" asp-page-handler="Draft" id="btnDraftMaintenance" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2">
+                            <i class="fas fa-save mr-1"></i> Guardar Borrador
+                        </button>
+                        <button type="submit" id="btnSubmitMaintenance" formnovalidate class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark">
                             <i class="fas fa-save mr-1"></i> Registrar Mantenimiento
                         </button>
                     </div>
@@ -383,6 +410,7 @@
     <tbody id="costTemplate">
         <tr class="cost-row">
             <td class="pl-4">
+                <input type="hidden" name="Input.CostDetails[INDEX].Id" value="0" disabled />
                 <input name="Input.CostDetails[INDEX].Concept" class="form-control" placeholder="Nombre del repuesto o servicio" disabled />
             </td>
             <td>
@@ -440,6 +468,7 @@
 
             // Si ya hay datos (por redirección del wizard o recarga) inicializar porcentajes
             calculatePercentage();
+            calculateTotals();
 
             function applyStatusLogic() {
                 var status = $('#statusSelector').val();
@@ -454,6 +483,17 @@
 
             $('#statusSelector').on('change', applyStatusLogic);
             applyStatusLogic();
+
+            $('#maintenanceForm').on('submit', function (event) {
+                const form = this;
+                if ($(form).data('confirmed') === true) return true;
+
+                event.preventDefault();
+                const submitter = event.originalEvent && event.originalEvent.submitter ? event.originalEvent.submitter : document.activeElement;
+                const isDraft = submitter && submitter.id === 'btnDraftMaintenance';
+                const targetAction = submitter && submitter.getAttribute('formaction') ? submitter.getAttribute('formaction') : form.action;
+                window.confirmMaintenanceSubmit(isDraft, targetAction);
+            });
 
             // Stars Rating Logic
             $('.rating-stars i').on('click', function() {
@@ -477,7 +517,7 @@
 
         var isMaintSubmitting = false;
 
-        window.confirmMaintenanceSubmit = function () {
+        window.confirmMaintenanceSubmit = function (isDraft, targetAction) {
             var form = document.getElementById('maintenanceForm');
             if (!form) {
                 alert('No se pudo ubicar el formulario de mantenimiento.');
@@ -489,7 +529,7 @@
             var status = $('#statusSelector').val();
             var percent = parseInt($('#hiddenPercentageInput').val()) || 0;
 
-            if (status == "2" && percent !== 100) {
+            if (!isDraft && status == "2" && percent !== 100) {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Mantenimiento Incompleto',
@@ -516,7 +556,14 @@
 
             var submitForm = function () {
                 isMaintSubmitting = true;
-                $('#btnSubmitMaintenance').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                $(form).data('confirmed', true);
+                form.action = targetAction || form.action;
+                $('#btnDraftMaintenance, #btnSubmitMaintenance').prop('disabled', true);
+                if (isDraft) {
+                    $('#btnDraftMaintenance').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                } else {
+                    $('#btnSubmitMaintenance').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                }
                 HTMLFormElement.prototype.submit.call(form);
             };
 
@@ -526,13 +573,13 @@
             }
 
             Swal.fire({
-                title: '¿Confirmar registro de mantenimiento?',
-                html: detailsHtml,
+                title: isDraft ? '¿Guardar borrador L-8?' : '¿Confirmar registro de mantenimiento?',
+                html: isDraft ? 'Se guardará el avance parcial sin pasar a L-3. Podrás continuar el L-8 más tarde.' : detailsHtml,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: '<i class="fas fa-save mr-1"></i> Registrar',
+                confirmButtonText: isDraft ? '<i class="fas fa-save mr-1"></i> Guardar borrador' : '<i class="fas fa-save mr-1"></i> Registrar',
                 cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#f59e0b',
+                confirmButtonColor: isDraft ? '#17a2b8' : '#f59e0b',
                 cancelButtonColor: '#6c757d'
             }).then(function(result) {
                 if (result && (result.isConfirmed === true || result.value === true)) {

@@ -1,66 +1,62 @@
-# 🤖 AGENTS.md (Root Orchestrator)
-**Proyecto**: Laboratorios Univalle
-**Rol**: Agente Orquestador Principal
+# AGENTS.md - Orquestador Principal
 
-## 1. Contexto Cultural y Operativo
-Bienvenido al Sistema de Gestión de Laboratorios Univalle. Somo un equipo enfocado en la **Alta Precisión Técnica**. Nuestro stack tecnológico (ASP.NET Core 9, Razor Pages, EF Core 9) exige rigor estructurado.
-- **Calidad Premium**: No entregamos trabajos a medias ("MVPs feos"). Nuestra UI (basada en NiceAdmin, Bootstrap 4) debe ser siempre asimétrica, validada y con *Soft Badges*.
-- **Integridad de Datos**: La universidad no borra historia. El concepto de `.Remove()` de SQL está estrictamente prohibido a favor del *"Soft Delete"*.
+**Proyecto**: Laboratorios Univalle  
+**Rol**: enrutar contexto tecnico y evitar cambios amplios innecesarios.
 
-## 2. Instrucciones para el Agente Orquestador
-Tu misión primaria es **enrutar y delegar** el contexto. Eres la puerta de entrada.
-- **NO DEBES** alucinar respuestas completas basado solo en este archivo.
-- Todo tu conocimiento técnico está distribuido en múltiples `AGENTS.md` especializados por "Feature" y en un sistema de `Skills`.
-- **ANTES DE EMPEZAR CUALQUIER TAREA**: Leer `CONTEXT.md` completo. Contiene la arquitectura actual, reglas obligatorias, convenciones, y estado de módulos.
-- **NO HACER COMMIT** sin aprobación explícita del usuario.
-- Si la tarea involucra más de 5 archivos, proponer un plan detallado antes de ejecutar.
-- **Documentar** los cambios en `context.md` al finalizar la sesión.
+## Principios
 
-### Flujo de Trabajo Obligatorio
-Cuando el usuario haga una solicitud, debes:
-1. Analizar de qué capa arquitectónica se trata (¿Frontend? ¿Datos? ¿Reportes? ¿Correctivo?).
-2. **Leer `context.md` completo** para entender el estado actual.
-3. Leer el sub-manifiesto correspondiente (`AGENTS.md` locales).
-4. **Auto-invocar** las Skills necesarias en `.agent/skills/`.
+- Alta precision tecnica: cambios pequenos, correctos y verificables.
+- UI premium: NiceAdmin/Bootstrap 4 con jerarquia visual, no formularios planos.
+- Integridad historica: evitar hard-delete; preferir estados, soft-delete o desvinculacion segura.
+- Contexto modular: no leer todo el historico si una tarea solo toca un modulo.
 
-## 3. Directorio de Sub-Manifiestos y Skills (Trigger y Scope)
+## Flujo Obligatorio
 
-### 🖥️ Módulo de UI y Vistas (Frontend)
-- **Localización**: `Pages/AGENTS.md`
-- **Skill a invocar**: `.agent/skills/ui_premium/SKILL.md`
-- **Cuándo Invocarlas**: Modificación de vistas `.cshtml`, SweetAlert2 (usar `@Html.Raw()` para acentos), Bootstrap modals, formularios y validación de cliente (`jqBootstrapValidation`).
+Antes de tocar archivos:
 
-### 🗄️ Módulo de Datos (Dominio y DB)
-- **Localización**: `Models/AGENTS.md`
-- **Skill a invocar**: `.agent/skills/database/SKILL.md`
-- **Cuándo Invocarlas**: Alteración de entidades, Inyección de EF Core, Migraciones (SIEMPRE nuevas, nunca modificar existentes), Relaciones y Auditoría. Atención: Semester en Management acepta 0 (Correctivo), 1, 2.
+1. Leer `context.md`.
+2. Leer `.agent/context/00-router.md`.
+3. Leer `.agent/context/01-global-rules.md`.
+4. Leer el contexto de area o modulo segun la tarea.
+5. Leer el `AGENTS.md` local si existe.
+6. Leer la skill correspondiente en `.agent/skills/`.
 
-### ⚙️ Lógica de Negocio y Controladores
-- **Localización**: *Regresa al maestro o lee los PageModels*.
-- **Skill a invocar**: `.agent/skills/backend_methods/SKILL.md`
-- **Cuándo Invocarlas**: Manejo de `InputModels` dentro de Razor Pages, bloques `try-catch`, y métodos `OnPost`.
-- **Correctivo**: Leer sección 6 de `context.md` — routing con `ManagementId`, `ResolveManagementAsync()`, dropdowns condicionales.
+Si la tarea toca mas de 5 archivos, proponer plan antes de editar.
 
-### 📊 Sistema Transversal de Reportes
-- **Localización**: `Services/AGENTS.md`
-- **Skill a invocar**: `.agent/skills/reporting/SKILL.md`
-- **Cuándo Invocarlas**: Exportación a PDF (QuestPDF), generación de plantillas de Excel, impresión institucional. L-6 Excel genera desde cero (sin template).
+No hacer commit sin aprobacion explicita del usuario.
 
-### 🔧 Configuración e Infraestructura (Onboarding)
-- **Localización**: `AGENTS_SETUP.md`
-- **Cuándo Invocarlas**: Al clonar el proyecto, errores de conexión (`Connection String`), restauración de paquetes, migraciones iniciales y configuración de SQL Server.
-- **BD**: `DB_Laboratorios_Univalle` (o `_N` según appsettings). SeedData en `DbInitializer.cs`.
+## Matriz De Enrutamiento
 
-### 🔄 Módulo Correctivo (NUEVO — leer context.md sección 6)
-- **Flujo**: Saltar L-6, empezar en L-7, mismo wizard L-8→L-12.
-- **Routing**: ManagementId OBLIGATORIO en todos los redirects.
-- **Create pages**: dropdowns solo bloqueados en preventivo (`isWizard && !isCorrective`).
-- **Delete**: permitido en correctivo activo.
+| Capa/Tarea | Contexto | Manifesto | Skill |
+|---|---|---|---|
+| UI Razor, `.cshtml`, JS, SweetAlert2 | `.agent/context/areas/ui.md` | `Pages/AGENTS.md` | `.agent/skills/ui_premium/SKILL.md` |
+| PageModels, handlers, InputModel | `.agent/context/areas/backend-page-models.md` | `Pages/AGENTS.md` | `.agent/skills/backend_methods/SKILL.md` |
+| Modelos, EF, migraciones | `.agent/context/areas/database-ef.md` | `Models/AGENTS.md` | `.agent/skills/database/SKILL.md` |
+| Reportes Excel/PDF | `.agent/context/areas/reporting.md` | `Services/AGENTS.md` | `.agent/skills/reporting/SKILL.md` |
+| Infraestructura/build/despliegue | `.agent/context/areas/infrastructure.md` | `AGENTS_SETUP.md` si existe | segun archivos tocados |
+| Wizard | `.agent/context/modules/wizard.md` | `Pages/AGENTS.md` | backend/ui segun cambio |
+| Dashboard, navegacion y notificaciones | `.agent/context/modules/dashboard-navigation.md` | `Pages/AGENTS.md` | backend/ui |
+| Borradores | `.agent/context/modules/drafts.md` | `Pages/AGENTS.md` | backend/database |
+| Correctivo | `.agent/context/modules/corrective.md` | `Pages/AGENTS.md` | backend |
 
-### 📋 L-6 Verificaciones (REFACTORIZADO — leer context.md sección 7)
-- **MassCreate**: verificación masiva por laboratorio. Sin checklist.
-- **Index**: sesiones agrupadas (SessionGroup). Vista vacía hasta seleccionar lab.
-- **Details**: modo sesión (labId+date) y modo individual (id, fallback).
+## Modulos Especificos
 
----
-*Nota para el Orquestador: Si el usuario solicita un refactor masivo de UI de más de 3 archivos, DEBES levantar un Subagente para procesar la petición y limpiar la memoria contextual.*
+- L-6: `.agent/context/modules/l6-verifications.md`.
+- L-3: `.agent/context/modules/l3-departures.md`.
+- Kardex/L-48: `.agent/context/modules/kardex-l48.md`.
+- L-12: `.agent/context/modules/acquisitions-l12.md`.
+
+## Reglas Criticas Cortas
+
+- `ManagementId` se preserva en todo el wizard.
+- NoTracking global exige `.AsTracking()` para modificar.
+- SweetAlert2 es v7: usar `result.value` ademas de `isConfirmed`.
+- `Completados` es `Step = 7` visual.
+- Migraciones existentes son intocables.
+- No revertir cambios ajenos.
+
+## Documentacion
+
+- `.agent/`: contexto operativo para IA/desarrollo.
+- `docs/`: documentacion humana y despliegue sin secretos.
+- `.agent/archive/`: material historico u obsoleto.

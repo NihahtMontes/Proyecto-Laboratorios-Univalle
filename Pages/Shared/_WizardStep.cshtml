@@ -47,7 +47,15 @@
                             @foreach (var item in group)
                             {
                                 <div class="bg-white p-4 rounded mb-4 shadow-sm border border-light">
-                                    <h5 class="font-weight-bold text-primary mb-3">@item.EquipmentUnit?.Equipment?.Name <span class="text-muted small">(@item.EquipmentUnit?.InventoryNumber)</span></h5>
+                                    <h5 class="font-weight-bold text-primary mb-3">
+                                        @item.EquipmentUnit?.Equipment?.Name <span class="text-muted small">(@item.EquipmentUnit?.InventoryNumber)</span>
+                                        @if (item.IsDraft)
+                                        {
+                                            <span class="badge badge-warning badge-pill ml-2 px-3 py-1" title="@(item.DraftSummary ?? "Avance guardado como borrador")">
+                                                <i class="fas fa-save mr-1"></i> Borrador
+                                            </span>
+                                        }
+                                    </h5>
                                     
                                     <div class="table-responsive">
                                         <table class="table table-bordered table-sm m-0 pixel-perfect-table" style="font-size: 0.85rem;">
@@ -106,6 +114,12 @@
                 <div>
                     <h4 class="font-bold text-slate-800 m-0" style="font-weight: 800; color: #1e293b;">@item.EquipmentUnit?.Equipment?.Name</h4>
                     <span class="inventory-code text-muted small" style="font-weight: 600;">@item.EquipmentUnit?.InventoryNumber • @Model.StatusLabel</span>
+                    @if (item.IsDraft)
+                    {
+                        <span class="badge badge-warning badge-pill d-inline-block mt-2 px-3 py-1" title="@(item.DraftSummary ?? "Avance guardado como borrador")">
+                            <i class="fas fa-save mr-1"></i> Borrador
+                        </span>
+                    }
                     @if (Model.ShowFailCount) {
                         <span class="text-danger small font-bold d-block mt-1">
                             <i class="fas fa-exclamation-triangle"></i> @(item.Verification?.FailuresCount ?? 0) Falla(s) detectada(s)

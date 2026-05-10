@@ -77,7 +77,10 @@
                                     <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
                                 </a>
                             }
-                            <button type="submit" id="btnSubmitMassVerification" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold">
+                            <button type="submit" asp-page-handler="Draft" id="btnDraftMassVerification" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2">
+                                <i class="fas fa-save mr-1"></i> Guardar Borrador
+                            </button>
+                            <button type="submit" id="btnSubmitMassVerification" formnovalidate class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold">
                                 <i class="fas fa-save mr-1"></i> Guardar Verificaciones
                             </button>
                         </div>
@@ -169,7 +172,7 @@
                     row += '<td>';
                     row += '<input type="hidden" name="Rows[' + i + '].PlanId" value="' + item.planId + '" />';
                     row += '<input type="hidden" name="Rows[' + i + '].EquipmentUnitId" value="' + item.equipmentUnitId + '" />';
-                    row += '<input type="hidden" name="Rows[' + i + '].Observations" id="obsHidden_' + i + '" value="" />';
+                    row += '<input type="hidden" name="Rows[' + i + '].Observations" id="obsHidden_' + i + '" value="' + escapeHtml(item.observations || '') + '" />';
                     row += '<h6 class="m-0 font-weight-bold text-dark">' + escapeHtml(item.name) + '</h6>';
                     row += '</td>';
                     row += '<td>';
@@ -181,15 +184,15 @@
                     row += '</td>';
                     row += '<td>';
                     row += '<select name="Rows[' + i + '].Condition" class="form-control custom-select condition-select" data-row="' + i + '" onchange="onConditionChange(this)">';
-                    row += '<option value="5">Excelente (Nuevo)</option>';
-                    row += '<option value="4" selected>Bueno</option>';
-                    row += '<option value="3">Regular</option>';
-                    row += '<option value="2">Malo</option>';
-                    row += '<option value="1">Baja del Equipo</option>';
+                    row += '<option value="5"' + (item.condition == 5 ? ' selected' : '') + '>Excelente (Nuevo)</option>';
+                    row += '<option value="4"' + (item.condition == 4 ? ' selected' : '') + '>Bueno</option>';
+                    row += '<option value="3"' + (item.condition == 3 ? ' selected' : '') + '>Regular</option>';
+                    row += '<option value="2"' + (item.condition == 2 ? ' selected' : '') + '>Malo</option>';
+                    row += '<option value="1"' + (item.condition == 1 ? ' selected' : '') + '>Baja del Equipo</option>';
                     row += '</select>';
                     row += '</td>';
                     row += '<td class="text-center">';
-                    row += '<span class="obs-indicator text-muted" id="obsIcon_' + i + '" style="display:none;">';
+                    row += '<span class="obs-indicator text-muted" id="obsIcon_' + i + '" style="display:' + (item.observations ? 'inline' : 'none') + ';">';
                     row += '<i class="fas fa-comment-dots text-danger fa-lg" title="Tiene observaciones"></i>';
                     row += '</span>';
                     row += '</td>';
@@ -272,9 +275,19 @@
                     return;
                 }
 
+                var submitter = event.originalEvent && event.originalEvent.submitter ? event.originalEvent.submitter : document.activeElement;
+                var isDraft = submitter && submitter.id === 'btnDraftMassVerification';
+                var targetAction = submitter && submitter.getAttribute('formaction') ? submitter.getAttribute('formaction') : form.action;
+
                 var submitForm = function () {
                     massVerificationSubmitting = true;
-                    $('#btnSubmitMassVerification').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    form.action = targetAction;
+                    $('#btnDraftMassVerification, #btnSubmitMassVerification').prop('disabled', true);
+                    if (isDraft) {
+                        $('#btnDraftMassVerification').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    } else {
+                        $('#btnSubmitMassVerification').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    }
                     HTMLFormElement.prototype.submit.call(form);
                 };
 
@@ -284,11 +297,11 @@
                 }
 
                 Swal.fire({
-                    title: '¿Guardar verificaciones L-6?',
-                    text: 'Se registrará la condición física de todos los equipos cargados y el wizard avanzará según las fallas detectadas.',
+                    title: isDraft ? '¿Guardar borrador L-6?' : '¿Guardar verificaciones L-6?',
+                    text: isDraft ? 'Se guardará la revisión parcial sin avanzar de fase.' : 'Se registrará la condición física de todos los equipos cargados y el wizard avanzará según las fallas detectadas.',
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, guardar',
+                    confirmButtonText: isDraft ? 'Sí, guardar borrador' : 'Sí, guardar',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#28a745',
                     cancelButtonColor: '#6c757d'

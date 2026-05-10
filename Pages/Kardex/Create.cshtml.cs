@@ -114,22 +114,47 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync(bool isWizard = false)
+        public async Task<IActionResult> OnPostDraftAsync(bool isWizard = false)
         {
-            var plan = await ResolvePlanAsync(Input.EquipmentUnitId);
-            if (plan == null)
+            var prepared = await PreparePostAsync(isWizard, clearFinalValidation: true);
+            if (prepared.Plan == null) return prepared.Result!;
+
+            var plan = prepared.Plan;
+
+            try
             {
-                TempData.Error($"No se pudo resolver el plan de Kardex. ManagementPlanId recibido: {ManagementPlanId?.ToString() ?? "sin valor"}.");
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                SyncPartialMaintenance(plan, markCompleted: false);
+                MarkDraft(plan, "Borrador Kardex guardado con avance parcial del cierre técnico.");
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData.Success("Borrador de Kardex guardado. Puede continuar después sin avanzar a desembolso.");
+
+                if (isWizard)
+                {
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId, ManagementId = plan.ManagementId });
+                }
+
+                return RedirectToPage("/Index", new { ManagementId = plan.ManagementId });
+            }
+            catch (Exception ex)
+            {
+                var detail = ex.InnerException?.Message ?? ex.Message;
+                TempData.Error($"Error al guardar borrador de Kardex: {detail}");
                 await LoadListsAsync();
                 return Page();
             }
+        }
 
-            PopulateViewData(plan);
-            RebuildServerTruth(plan);
-            Input.CostDetails = NormalizeCostDetails(Input.CostDetails);
-            Input.Tasks = NormalizeTasks(Input.Tasks);
-            Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
+        public async Task<IActionResult> OnPostCloseAsync(bool isWizard = false)
+        {
+            var prepared = await PreparePostAsync(isWizard, clearFinalValidation: false);
+            if (prepared.Plan == null) return prepared.Result!;
 
+            var plan = prepared.Plan;
             var validationMessages = ValidateClosure(plan);
 
             if (!ModelState.IsValid)
@@ -153,33 +178,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 var maintenance = plan.Maintenance!;
                 var departure = plan.Departure;
                 var unit = plan.EquipmentUnit!;
-
-                var totalCosts = Input.CostDetails.Sum(d => d.Quantity * d.UnitPrice);
-
-                maintenance.MaintenanceType = Input.MaintenanceType;
-                maintenance.TechnicianId = Input.TechnicianId;
-                maintenance.ScheduledDate = Input.ScheduledDate;
-                maintenance.StartDate = Input.StartDate;
-                maintenance.EndDate = Input.EndDate;
-                maintenance.Description = Input.Description.Clean();
-                maintenance.SuggestedNextMaintenanceDate = Input.SuggestedNextMaintenanceDate;
-                maintenance.SatisfactionLevel = Input.SatisfactionLevel;
-                maintenance.Recommendations = Input.Recommendations.Clean();
-                maintenance.Observations = Input.Observations.Clean();
-                maintenance.ActualCost = totalCosts;
-                maintenance.Status = MaintenanceStatus.Completed;
-                maintenance.CompletionPercentage = Input.CompletionPercentage;
-                UpdateLegacySteps(maintenance, Input.Tasks);
-                maintenance.LastModifiedDate = DateTime.UtcNow;
-
                 var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (int.TryParse(userIdString, out var uid))
-                {
-                    maintenance.ModifiedById = uid;
-                }
 
-                SyncCostDetails(maintenance, Input.CostDetails);
-                SyncTasks(maintenance, Input.Tasks);
+                SyncPartialMaintenance(plan, markCompleted: true);
 
                 if (departure != null)
                 {
@@ -221,6 +222,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 plan.CurrentPhase = WizardPhase.Disbursement;
                 plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
                 plan.PlanStatus = ManagementPlanStatus.InProgress;
+                ClearDraft(plan);
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -241,6 +243,124 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 await LoadListsAsync();
                 return Page();
             }
+        }
+
+        private async Task<(ManagementPlan? Plan, IActionResult? Result)> PreparePostAsync(bool isWizard, bool clearFinalValidation)
+        {
+            var plan = await ResolvePlanAsync(Input.EquipmentUnitId);
+            if (plan == null)
+            {
+                TempData.Error($"No se pudo resolver el plan de Kardex. ManagementPlanId recibido: {ManagementPlanId?.ToString() ?? "sin valor"}.");
+                ViewData["IsWizard"] = isWizard;
+                await LoadListsAsync();
+                return (null, Page());
+            }
+
+            ViewData["IsWizard"] = isWizard;
+            PopulateViewData(plan);
+            RebuildServerTruth(plan);
+
+            if (clearFinalValidation)
+            {
+                ClearClosureModelState();
+            }
+
+            Input.CostDetails = NormalizeCostDetails(Input.CostDetails);
+            Input.Tasks = NormalizeTasks(Input.Tasks);
+            Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
+
+            if (plan.Maintenance == null || plan.EquipmentUnit == null)
+            {
+                TempData.Error("No se pudo guardar Kardex: el plan no tiene mantenimiento o unidad física vinculada.");
+                await LoadListsAsync();
+                return (null, Page());
+            }
+
+            return (plan, null);
+        }
+
+        private void ClearClosureModelState()
+        {
+            ModelState.Remove("Input.TechnicianId");
+            ModelState.Remove("Input.ScheduledDate");
+            ModelState.Remove("Input.StartDate");
+            ModelState.Remove("Input.EndDate");
+            ModelState.Remove("Input.ActualReturnDate");
+            ModelState.Remove("Input.Description");
+            ModelState.Remove("Input.SuggestedNextMaintenanceDate");
+            ModelState.Remove("Input.SatisfactionLevel");
+            ModelState.Remove("Input.Recommendations");
+            ModelState.Remove("Input.Observations");
+            ModelState.Remove("Input.CostDetails");
+            ModelState.Remove("Input.Tasks");
+            RemoveModelStatePrefix("Input.CostDetails[");
+            RemoveModelStatePrefix("Input.Tasks[");
+        }
+
+        private void RemoveModelStatePrefix(string prefix)
+        {
+            foreach (var key in ModelState.Keys.Where(k => k.StartsWith(prefix, StringComparison.Ordinal)).ToList())
+            {
+                ModelState.Remove(key);
+            }
+        }
+
+        private void SyncPartialMaintenance(ManagementPlan plan, bool markCompleted)
+        {
+            var maintenance = plan.Maintenance!;
+            var totalCosts = Input.CostDetails.Sum(d => d.Quantity * d.UnitPrice);
+
+            maintenance.MaintenanceType = Input.MaintenanceType;
+            maintenance.TechnicianId = Input.TechnicianId;
+            maintenance.ScheduledDate = Input.ScheduledDate;
+            maintenance.StartDate = Input.StartDate;
+            maintenance.EndDate = Input.EndDate;
+            maintenance.Description = Input.Description.Clean();
+            maintenance.SuggestedNextMaintenanceDate = Input.SuggestedNextMaintenanceDate;
+            maintenance.SatisfactionLevel = Input.SatisfactionLevel;
+            maintenance.Recommendations = Input.Recommendations.Clean();
+            maintenance.Observations = Input.Observations.Clean();
+            maintenance.ActualCost = totalCosts;
+            maintenance.Status = markCompleted ? MaintenanceStatus.Completed : MaintenanceStatus.InProgress;
+            maintenance.CompletionPercentage = Input.CompletionPercentage;
+            UpdateLegacySteps(maintenance, Input.Tasks);
+            maintenance.LastModifiedDate = DateTime.UtcNow;
+
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(userIdString, out var uid))
+            {
+                maintenance.ModifiedById = uid;
+            }
+
+            SyncCostDetails(maintenance, Input.CostDetails);
+            SyncTasks(maintenance, Input.Tasks);
+
+            if (!markCompleted && plan.Departure != null && Input.ActualReturnDate.HasValue)
+            {
+                plan.Departure.ActualReturnDate = Input.ActualReturnDate;
+                plan.Departure.LastModifiedDate = DateTime.UtcNow;
+            }
+        }
+
+        private static void MarkDraft(ManagementPlan plan, string summary)
+        {
+            plan.IsDraft = true;
+            plan.DraftPhase = WizardPhase.Kardex;
+            plan.DraftSavedAt = DateTime.UtcNow;
+            plan.DraftSummary = summary;
+            plan.CurrentPhase = WizardPhase.Kardex;
+            plan.CurrentState = WizardEquipmentState.AwaitingKardex;
+            plan.PlanStatus = ManagementPlanStatus.InProgress;
+            plan.LastModifiedDate = DateTime.UtcNow;
+        }
+
+        private static void ClearDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = false;
+            plan.DraftPhase = null;
+            plan.DraftSavedAt = null;
+            plan.DraftSummary = null;
+            plan.LastModifiedDate = DateTime.UtcNow;
         }
 
         private async Task<ManagementPlan?> ResolvePlanAsync(int? equipmentUnitId)
@@ -287,7 +407,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 ScheduledDate = maintenance?.ScheduledDate,
                 StartDate = maintenance?.StartDate,
                 EndDate = maintenance?.EndDate,
-                ActualReturnDate = departure?.ActualReturnDate ?? DateTime.Today,
+                ActualReturnDate = departure?.ActualReturnDate,
                 Description = maintenance?.Description ?? string.Empty,
                 SuggestedNextMaintenanceDate = maintenance?.SuggestedNextMaintenanceDate,
                 SatisfactionLevel = maintenance?.SatisfactionLevel,

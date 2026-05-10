@@ -84,10 +84,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             var plans = await _context.ManagementPlans
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
+                .Include(p => p.Verification)
                 .Where(p => p.ManagementId == activeMgmt.Id
-                         && p.EquipmentUnit!.LaboratoryId == labId
-                         && p.VerificationId == null
-                         && p.CurrentPhase == WizardPhase.Verification)
+                          && p.EquipmentUnit!.LaboratoryId == labId
+                          && (p.VerificationId == null || p.Verification!.Status == VerificationStatus.Draft)
+                          && p.CurrentPhase == WizardPhase.Verification)
                 .AsNoTracking()
                 .OrderBy(p => p.EquipmentUnit!.InventoryNumber)
                 .ToListAsync();
@@ -99,13 +100,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 name = p.EquipmentUnit?.Equipment?.Name ?? "Sin nombre",
                 inventoryNumber = p.EquipmentUnit?.InventoryNumber ?? "N/A",
                 brand = p.EquipmentUnit?.Equipment?.Brand ?? "N/A",
-                currentStatus = p.EquipmentUnit?.CurrentStatus.ToString() ?? "N/A"
+                currentStatus = p.EquipmentUnit?.CurrentStatus.ToString() ?? "N/A",
+                condition = (int)(p.Verification?.PhysicalCondition ?? PhysicalCondition.Good),
+                observations = p.Verification?.Observations ?? string.Empty,
+                isDraft = p.Verification?.Status == VerificationStatus.Draft
             });
 
             return new JsonResult(result);
         }
 
         public async Task<IActionResult> OnPostAsync()
+        {
+            return await SaveVerificationsAsync(saveDraft: false);
+        }
+
+        public async Task<IActionResult> OnPostDraftAsync()
+        {
+            return await SaveVerificationsAsync(saveDraft: true);
+        }
+
+        private async Task<IActionResult> SaveVerificationsAsync(bool saveDraft)
         {
             if (Rows == null || Rows.Count == 0)
             {
@@ -134,24 +148,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
                 if (plan == null) continue;
 
-                var verification = new Verification
-                {
-                    EquipmentUnitId = row.EquipmentUnitId,
-                    ManagementId = activeMgmt.Id,
-                    Date = DateTime.UtcNow,
-                    PhysicalCondition = row.Condition,
-                    Observations = row.Condition == PhysicalCondition.Bad ? row.Observations?.Trim() : null,
-                    Status = row.Condition == PhysicalCondition.Bad
-                        ? VerificationStatus.WithObservations
-                        : VerificationStatus.Completed,
-                    CreatedDate = DateTime.UtcNow,
-                    CreatedById = user?.Id
-                };
+                var verification = plan.VerificationId.HasValue
+                    ? await _context.Verifications.AsTracking().FirstOrDefaultAsync(v => v.Id == plan.VerificationId.Value)
+                    : null;
 
-                _context.Verifications.Add(verification);
+                if (verification == null)
+                {
+                    verification = new Verification
+                    {
+                        EquipmentUnitId = row.EquipmentUnitId,
+                        ManagementId = activeMgmt.Id,
+                        CreatedDate = DateTime.UtcNow,
+                        CreatedById = user?.Id
+                    };
+                    _context.Verifications.Add(verification);
+                }
+
+                verification.Date = DateTime.UtcNow;
+                verification.PhysicalCondition = row.Condition;
+                verification.Observations = row.Condition == PhysicalCondition.Bad ? row.Observations?.Trim() : null;
+                verification.Status = saveDraft
+                    ? VerificationStatus.Draft
+                    : row.Condition == PhysicalCondition.Bad ? VerificationStatus.WithObservations : VerificationStatus.Completed;
+                verification.LastModifiedDate = verification.Id == 0 ? null : DateTime.UtcNow;
+                if (verification.Id > 0) verification.ModifiedById = user?.Id;
                 await _context.SaveChangesAsync();
 
                 plan.VerificationId = verification.Id;
+
+                if (saveDraft)
+                {
+                    MarkVerificationDraft(plan);
+                    await _context.SaveChangesAsync();
+                    created++;
+                    continue;
+                }
 
                 if (row.Condition == PhysicalCondition.Bad)
                 {
@@ -187,8 +218,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     plan.CurrentState = WizardEquipmentState.VerifiedGood;
                 }
 
+                ClearDraft(plan);
+
                 await _context.SaveChangesAsync();
                 created++;
+            }
+
+            if (saveDraft)
+            {
+                TempData.Success($"Borrador L-6 guardado para {created} equipo(s).");
+                if (IsWizard)
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 1, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
+                return RedirectToPage("./Index");
             }
 
             TempData.Success($"{created} verificaciones registradas ({badCount} equipos con fallas).");
@@ -200,6 +241,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
 
             return RedirectToPage("./Index");
+        }
+
+        private static void MarkVerificationDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = true;
+            plan.DraftPhase = WizardPhase.Verification;
+            plan.DraftSavedAt = DateTime.UtcNow;
+            plan.DraftSummary = "Borrador L-6 guardado con verificación masiva parcial.";
+            plan.CurrentPhase = WizardPhase.Verification;
+            plan.CurrentState = WizardEquipmentState.PendingVerification;
+            plan.PlanStatus = ManagementPlanStatus.InProgress;
+            plan.LastModifiedDate = DateTime.UtcNow;
+        }
+
+        private static void ClearDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = false;
+            plan.DraftPhase = null;
+            plan.DraftSavedAt = null;
+            plan.DraftSummary = null;
+            plan.LastModifiedDate = DateTime.UtcNow;
         }
     }
 }
