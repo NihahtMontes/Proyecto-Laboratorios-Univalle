@@ -41,6 +41,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             {
                 var plan = await _context.ManagementPlans
                     .Include(p => p.Verification).ThenInclude(v => v!.Faults)
+                    .Include(p => p.TechnicalRequest)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
@@ -48,6 +49,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 if (plan?.Verification != null && !string.IsNullOrWhiteSpace(plan.Verification.Observations))
                 {
                     Input.Description = plan.Verification.Observations;
+                }
+
+                if (plan?.TechnicalRequest != null)
+                {
+                    ApplyRequestToInput(plan.TechnicalRequest);
                 }
 
                 // Exponer IDs de fases previas para la sección de referencia vinculada
@@ -131,7 +137,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             public string? EstimatedRepairTime { get; set; }
         }
 
+        public async Task<IActionResult> OnPostDraftAsync(bool isWizard = false)
+        {
+            return await SaveRequestAsync(isWizard, saveDraft: true);
+        }
+
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
+        {
+            return await SaveRequestAsync(isWizard, saveDraft: false);
+        }
+
+        private async Task<IActionResult> SaveRequestAsync(bool isWizard, bool saveDraft)
         {
             ManagementPlan? wizardPlan = null;
             Management? currentMgmt = null;
@@ -141,6 +157,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 wizardPlan = await _context.ManagementPlans
                     .AsTracking()
                     .Include(p => p.Management)
+                    .Include(p => p.TechnicalRequest)
                     .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
                     .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
@@ -174,6 +191,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             ViewData["IsCorrective"] = isCorrective;
             ViewData["ManagementId"] = currentMgmt?.Id ?? ManagementId;
             ViewData["CurrentPhaseInt"] = (int)(wizardPlan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
+
+            if (saveDraft)
+            {
+                ModelState.Remove("Input.Description");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -221,36 +243,58 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             try
             {
-                var request = new Request
+                var request = wizardPlan?.TechnicalRequest ?? new Request
                 {
-                    Type = RequestType.Technical,
-                    ManagementId = currentMgmt.Id,
-                    LaboratoryId = Input.LaboratoryId,
-                    EquipmentId = unit.EquipmentId,
-                    EquipmentUnitId = Input.EquipmentUnitId,
-                    Description = Input.Description.Clean()!,
-                    Priority = Input.Priority,
-                    Observations = Input.Observations?.Clean()?.Length > 500 ? Input.Observations.Clean()?.Substring(0, 497) + "..." : Input.Observations?.Clean(),
-                    EstimatedRepairTime = Input.EstimatedRepairTime?.Clean(),
-                    Status = RequestStatus.Pending,
                     CreatedDate = DateTime.UtcNow
                 };
+
+                request.Type = RequestType.Technical;
+                request.ManagementId = currentMgmt.Id;
+                request.LaboratoryId = Input.LaboratoryId;
+                request.EquipmentId = unit.EquipmentId;
+                request.EquipmentUnitId = Input.EquipmentUnitId;
+                request.Description = string.IsNullOrWhiteSpace(Input.Description)
+                    ? "Borrador L-7 pendiente de descripción técnica."
+                    : Input.Description.Clean()!;
+                request.Priority = Input.Priority;
+                request.Observations = Input.Observations?.Clean()?.Length > 500 ? Input.Observations.Clean()?.Substring(0, 497) + "..." : Input.Observations?.Clean();
+                request.EstimatedRepairTime = Input.EstimatedRepairTime?.Clean();
+                request.Status = RequestStatus.Pending;
+                request.LastModifiedDate = request.Id == 0 ? null : DateTime.UtcNow;
 
                 var currentUser = await _userManager.GetUserAsync(User);
                 if (currentUser != null)
                 {
-                    request.CreatedById = currentUser.Id;
-                    request.RequestedById = currentUser.Id;
+                    if (request.Id == 0)
+                    {
+                        request.CreatedById = currentUser.Id;
+                        request.RequestedById = currentUser.Id;
+                    }
+                    else
+                    {
+                        request.ModifiedById = currentUser.Id;
+                    }
                 }
 
-                _context.Requests.Add(request);
+                if (request.Id == 0)
+                {
+                    _context.Requests.Add(request);
+                }
                 await _context.SaveChangesAsync();
 
                 if (wizardPlan != null)
                 {
                     wizardPlan.RequestId = request.Id;
-                    wizardPlan.CurrentPhase = WizardPhase.Maintenance;
-                    wizardPlan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+                    if (saveDraft)
+                    {
+                        MarkRequestDraft(wizardPlan);
+                    }
+                    else
+                    {
+                        wizardPlan.CurrentPhase = WizardPhase.Maintenance;
+                        wizardPlan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+                        ClearDraft(wizardPlan);
+                    }
                     await _context.SaveChangesAsync();
                 }
                 else if (currentMgmt.Type == ManagementType.Corrective)
@@ -259,11 +303,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     {
                         ManagementId = currentMgmt.Id,
                         EquipmentUnitId = Input.EquipmentUnitId,
-                        CurrentPhase = WizardPhase.Maintenance,
-                        CurrentState = WizardEquipmentState.AwaitingMaintenance,
+                        CurrentPhase = saveDraft ? WizardPhase.TechnicalRequest : WizardPhase.Maintenance,
+                        CurrentState = saveDraft ? WizardEquipmentState.AwaitingRequest : WizardEquipmentState.AwaitingMaintenance,
                         PlanStatus = ManagementPlanStatus.Pending,
                         RequestId = request.Id
                     };
+                    if (saveDraft)
+                    {
+                        MarkRequestDraft(wizardPlan);
+                    }
                     _context.ManagementPlans.Add(wizardPlan);
                     await _context.SaveChangesAsync();
                 }
@@ -274,11 +322,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
                 await transaction.CommitAsync();
 
-                TempData.Success("Solicitud técnica L-7 registrada exitosamente.");
+                TempData.Success(saveDraft ? "Borrador L-7 guardado correctamente." : "Solicitud técnica L-7 registrada exitosamente.");
 
                 if (isWizard)
                 {
-                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = saveDraft ? 2 : 3, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                 }
 
                 return RedirectToPage("./Index");
@@ -291,6 +339,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
+        }
+
+        private void ApplyRequestToInput(Request request)
+        {
+            Input.Description = request.Description == "Borrador L-7 pendiente de descripción técnica." ? string.Empty : request.Description;
+            Input.Observations = request.Observations;
+            Input.Priority = request.Priority;
+            Input.EstimatedRepairTime = request.EstimatedRepairTime;
+        }
+
+        private static void MarkRequestDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = true;
+            plan.DraftPhase = WizardPhase.TechnicalRequest;
+            plan.DraftSavedAt = DateTime.UtcNow;
+            plan.DraftSummary = "Borrador L-7 guardado con solicitud técnica parcial.";
+            plan.CurrentPhase = WizardPhase.TechnicalRequest;
+            plan.CurrentState = WizardEquipmentState.AwaitingRequest;
+            plan.PlanStatus = ManagementPlanStatus.InProgress;
+            plan.LastModifiedDate = DateTime.UtcNow;
+        }
+
+        private static void ClearDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = false;
+            plan.DraftPhase = null;
+            plan.DraftSavedAt = null;
+            plan.DraftSummary = null;
+            plan.LastModifiedDate = DateTime.UtcNow;
         }
 
         private async Task LoadLists(int facultyId = 0, int labId = 0, int equipmentUnitId = 0)

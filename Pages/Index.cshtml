@@ -6,8 +6,8 @@
     ViewData["Title"] = "Dashboard de Gestión";
     var isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
     var steps = isCorrective
-        ? new[] { "Progreso", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" }
-        : new[] { "Progreso", "L6 Verif.", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso" };
+        ? new[] { "Progreso", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso", "Completados" }
+        : new[] { "Progreso", "L6 Verif.", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso", "Completados" };
 }
 
 @section Styles {
@@ -403,7 +403,7 @@
         <div class="row min-h-500 align-items-center" style="font-family: 'Inter', sans-serif;">
             <!-- Flecha Anterior (Left Sidebar Style) -->
             <div class="col-2 col-md-1 d-flex justify-content-center">
-                @if (Model.Step <= 6) {
+                @if (Model.Step <= 7) {
                     <form method="post" asp-page-handler="PreviousStep" class="w-100 text-center">
                         <input type="hidden" asp-for="Step" />
                         <input type="hidden" asp-for="SelectedLabId" />
@@ -624,6 +624,90 @@
                                     BorderClass = "border-dark"
                                 })
                             }
+                            else if (Model.Step == 7)
+                            {
+                                <div class="card border-0 shadow-sm" style="border-radius:16px; border-left:4px solid #10b981 !important;">
+                                    <div class="card-body p-4">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div>
+                                                <h5 class="m-0 font-weight-bold text-dark"><i class="fas fa-clipboard-check mr-2 text-success"></i>Procesos Completados</h5>
+                                                <p class="text-muted small mb-0">Recapitulación rápida de equipos que ya cerraron L-12 dentro de esta gestión.</p>
+                                            </div>
+                                            <span class="badge badge-success badge-pill ml-auto px-3 py-2">@Model.CompletedPlans.Count completado(s)</span>
+                                        </div>
+
+                                        @if (!Model.CompletedPlans.Any())
+                                        {
+                                            <div class="text-center py-5 text-muted small bg-light rounded">
+                                                <i class="fas fa-flag-checkered d-block mb-2 fa-3x opacity-2"></i>
+                                                Todavía no hay procesos completados para esta gestión.
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="table-responsive">
+                                                <table class="table table-hover v-middle mb-0">
+                                                    <thead class="bg-light small text-uppercase text-muted">
+                                                        <tr>
+                                                            <th>Equipo</th>
+                                                            <th>Laboratorio</th>
+                                                            <th>Último cierre</th>
+                                                            <th class="text-center">Documentos</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var plan in Model.CompletedPlans)
+                                                        {
+                                                            <tr>
+                                                                <td>
+                                                                    <div class="font-weight-bold text-dark">@(plan.EquipmentUnit?.Equipment?.Name ?? "Equipo")</div>
+                                                                    <div class="small text-muted">Inv: @(plan.EquipmentUnit?.InventoryNumber ?? "S/N")</div>
+                                                                </td>
+                                                                <td class="small">@(plan.EquipmentUnit?.Laboratory?.Name ?? "—")</td>
+                                                                <td class="small">@((plan.LastModifiedDate ?? plan.CreatedDate).ToString("dd/MM/yyyy"))</td>
+                                                                <td class="text-center">
+                                                                    <div class="btn-group btn-group-sm" role="group">
+                                                                        @if (plan.VerificationId.HasValue)
+                                                                        {
+                                                                            <a asp-page="/Verifications/Details" asp-route-id="@plan.VerificationId" class="btn btn-outline-success" title="Ver L-6">L-6</a>
+                                                                        }
+                                                                        @if (plan.RequestId.HasValue)
+                                                                        {
+                                                                            <a asp-page="/Requests/Details" asp-route-id="@plan.RequestId" class="btn btn-outline-warning" title="Ver L-7">L-7</a>
+                                                                        }
+                                                                        @if (plan.MaintenanceId.HasValue)
+                                                                        {
+                                                                            <a asp-page="/Maintenances/Details" asp-route-id="@plan.MaintenanceId" class="btn btn-outline-success" title="Ver L-8">L-8</a>
+                                                                        }
+                                                                        @if (plan.DepartureId.HasValue)
+                                                                        {
+                                                                            <a asp-page="/Departures/Details" asp-route-id="@plan.DepartureId" class="btn btn-outline-primary" title="Ver L-3">L-3</a>
+                                                                        }
+                                                                        @if (plan.EquipmentUnitId.HasValue)
+                                                                        {
+                                                                            <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@plan.EquipmentUnitId" asp-route-isWizard="true" asp-route-managementId="@(ViewData["ManagementId"])" asp-route-selectedLabId="@Model.SelectedLabId" asp-route-returnStep="7" class="btn btn-outline-info" title="Ver Kardex">Kardex</a>
+                                                                        }
+                                                                        @if (plan.AcquisitionRequestId.HasValue)
+                                                                        {
+                                                                            <a asp-page="/Requests/Details" asp-route-id="@plan.AcquisitionRequestId" class="btn btn-outline-dark" title="Ver L-12">L-12</a>
+                                                                        }
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+
+                                        <div class="text-right mt-4">
+                                            <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-primary rounded-pill px-5 shadow-sm">
+                                                <i class="fas fa-arrow-left mr-1"></i> Volver al Dashboard
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                             else
                             {
                                 <div class="text-center py-5">
@@ -641,7 +725,7 @@
 
             <!-- Flecha Siguiente (Right Sidebar Style) -->
             <div class="col-2 col-md-1 d-flex justify-content-center">
-                @if (Model.Step <= 6) {
+                @if (Model.Step < 7) {
                     <form method="post" asp-page-handler="NextStep" class="w-100 text-center">
                         <input type="hidden" asp-for="Step" />
                         <input type="hidden" asp-for="SelectedLabId" />
@@ -651,86 +735,6 @@
                         </button>
                     </form>
                 }
-            </div>
-        </div>
-
-        <div class="row justify-content-center mt-4">
-            <div class="col-md-10">
-                <div class="card border-0 shadow-sm" style="border-radius:16px; border-left:4px solid #10b981 !important;">
-                    <div class="card-body p-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <div>
-                                <h5 class="m-0 font-weight-bold text-dark"><i class="fas fa-clipboard-check mr-2 text-success"></i>Procesos Completados</h5>
-                                <p class="text-muted small mb-0">Recapitulación rápida de equipos que ya cerraron L-12 dentro de esta gestión.</p>
-                            </div>
-                            <span class="badge badge-success badge-pill ml-auto px-3 py-2">@Model.CompletedPlans.Count completado(s)</span>
-                        </div>
-
-                        @if (!Model.CompletedPlans.Any())
-                        {
-                            <div class="text-center py-4 text-muted small bg-light rounded">
-                                <i class="fas fa-flag-checkered d-block mb-2 fa-2x opacity-2"></i>
-                                Todavía no hay procesos completados para recapitular.
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="table-responsive">
-                                <table class="table table-hover v-middle mb-0">
-                                    <thead class="bg-light small text-uppercase text-muted">
-                                        <tr>
-                                            <th>Equipo</th>
-                                            <th>Laboratorio</th>
-                                            <th>Último cierre</th>
-                                            <th class="text-center">Documentos</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var plan in Model.CompletedPlans)
-                                        {
-                                            <tr>
-                                                <td>
-                                                    <div class="font-weight-bold text-dark">@(plan.EquipmentUnit?.Equipment?.Name ?? "Equipo")</div>
-                                                    <div class="small text-muted">Inv: @(plan.EquipmentUnit?.InventoryNumber ?? "S/N")</div>
-                                                </td>
-                                                <td class="small">@(plan.EquipmentUnit?.Laboratory?.Name ?? "—")</td>
-                                                <td class="small">@((plan.LastModifiedDate ?? plan.CreatedDate).ToString("dd/MM/yyyy"))</td>
-                                                <td class="text-center">
-                                                    <div class="btn-group btn-group-sm" role="group">
-                                                        @if (plan.VerificationId.HasValue)
-                                                        {
-                                                            <a asp-page="/Verifications/Details" asp-route-id="@plan.VerificationId" class="btn btn-outline-success" title="Ver L-6">L-6</a>
-                                                        }
-                                                        @if (plan.RequestId.HasValue)
-                                                        {
-                                                            <a asp-page="/Requests/Details" asp-route-id="@plan.RequestId" class="btn btn-outline-warning" title="Ver L-7">L-7</a>
-                                                        }
-                                                        @if (plan.MaintenanceId.HasValue)
-                                                        {
-                                                            <a asp-page="/Maintenances/Details" asp-route-id="@plan.MaintenanceId" class="btn btn-outline-success" title="Ver L-8">L-8</a>
-                                                        }
-                                                        @if (plan.DepartureId.HasValue)
-                                                        {
-                                                            <a asp-page="/Departures/Details" asp-route-id="@plan.DepartureId" class="btn btn-outline-primary" title="Ver L-3">L-3</a>
-                                                        }
-                                                        @if (plan.EquipmentUnitId.HasValue)
-                                                        {
-                                                            <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@plan.EquipmentUnitId" asp-route-isWizard="true" asp-route-managementId="@(ViewData["ManagementId"])" asp-route-selectedLabId="@Model.SelectedLabId" asp-route-returnStep="6" class="btn btn-outline-info" title="Ver Kardex">Kardex</a>
-                                                        }
-                                                        @if (plan.AcquisitionRequestId.HasValue)
-                                                        {
-                                                            <a asp-page="/Requests/Details" asp-route-id="@plan.AcquisitionRequestId" class="btn btn-outline-dark" title="Ver L-12">L-12</a>
-                                                        }
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                    </div>
-                </div>
             </div>
         </div>
     }

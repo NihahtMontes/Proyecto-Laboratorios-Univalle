@@ -97,10 +97,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 var plan = await _context.ManagementPlans
                     .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
                     .Include(p => p.Maintenance)
+                    .Include(p => p.AcquisitionRequest).ThenInclude(r => r!.CostDetails)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
                 if (plan != null)
                 {
                     ApplyPlanToInput(plan);
+                    ApplyAcquisitionRequestToInput(plan.AcquisitionRequest);
                     await PopulateWizardViewDataAsync(plan);
                 }
             }
@@ -186,7 +188,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             return new JsonResult(new { code = suggestedCode });
         }
 
+        public async Task<IActionResult> OnPostDraftAsync(bool isWizard = false)
+        {
+            return await SaveAcquisitionAsync(isWizard, saveDraft: true);
+        }
+
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
+        {
+            return await SaveAcquisitionAsync(isWizard, saveDraft: false);
+        }
+
+        private async Task<IActionResult> SaveAcquisitionAsync(bool isWizard, bool saveDraft)
         {
             ManagementPlan? wizardPlan = null;
             if (ManagementPlanId.HasValue)
@@ -196,6 +208,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                     .Include(p => p.Management)
                     .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
                     .Include(p => p.Maintenance).ThenInclude(m => m!.CostDetails)
+                    .Include(p => p.AcquisitionRequest).ThenInclude(r => r!.CostDetails)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
                 if (wizardPlan == null)
@@ -213,8 +226,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 ModelState.Remove("Input.MaintenanceId");
             }
 
+            if (saveDraft)
+            {
+                ClearDraftModelState();
+            }
+
             if (!ModelState.IsValid)
             {
+                var errors = ModelState
+                    .Where(ms => ms.Value?.Errors.Count > 0)
+                    .SelectMany(ms => ms.Value!.Errors.Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? $"{ms.Key}: valor inválido." : e.ErrorMessage))
+                    .Distinct()
+                    .Take(4)
+                    .ToList();
+                TempData.Error(errors.Count > 0 ? "No se pudo guardar L-12: " + string.Join(" ", errors) : "No se pudo guardar L-12. Revise los campos obligatorios.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
                 ViewData["IsWizard"] = isWizard;
@@ -233,21 +258,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
             var managementId = wizardPlan?.ManagementId ?? ManagementId ?? (await _managementService.GetCurrentManagementAsync())?.Id ?? 0;
 
-            var request = new Request
-            {
-                Type = RequestType.Purchasing,
-                ManagementId = managementId,
-                LaboratoryId = Input.LaboratoryId,
-                EquipmentId = unit.EquipmentId,
-                EquipmentUnitId = unit.Id,
-                Description = Input.Description.Clean()!,
-                Observations = Input.Observations?.Clean(),
-                InvestmentCode = Input.InvestmentCode.Clean(),
-                CostCenter = Input.CostCenter.Clean(),
-                Priority = RequestPriority.Medium,
-                Status = RequestStatus.Pending,
-                CreatedDate = DateTime.UtcNow
-            };
+            var request = wizardPlan?.AcquisitionRequest ?? new Request { CreatedDate = DateTime.UtcNow };
+
+            request.Type = RequestType.Purchasing;
+            request.ManagementId = managementId;
+            request.LaboratoryId = Input.LaboratoryId;
+            request.EquipmentId = unit.EquipmentId;
+            request.EquipmentUnitId = unit.Id;
+            request.Description = string.IsNullOrWhiteSpace(Input.Description)
+                ? "Borrador L-12 pendiente de justificación."
+                : Input.Description.Clean()!;
+            request.Observations = Input.Observations?.Clean();
+            request.InvestmentCode = Input.InvestmentCode.Clean();
+            request.CostCenter = Input.CostCenter.Clean();
+            request.Priority = RequestPriority.Medium;
+            request.Status = RequestStatus.Pending;
+            request.LastModifiedDate = request.Id == 0 ? null : DateTime.UtcNow;
 
             if (Input.MaintenanceId.HasValue)
             {
@@ -256,38 +282,34 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                         .Where(d => d.MaintenanceId == Input.MaintenanceId.Value)
                         .ToListAsync();
 
-                foreach (var cost in maintenanceCosts)
-                {
-                    request.CostDetails.Add(new CostDetail
-                    {
-                        Concept = cost.Concept,
-                        Description = cost.Description,
-                        Quantity = cost.Quantity,
-                        UnitOfMeasure = cost.UnitOfMeasure,
-                        UnitPrice = cost.UnitPrice,
-                        Category = cost.Category,
-                        Provider = cost.Provider,
-                        InvoiceNumber = cost.InvoiceNumber,
-                        CreatedDate = DateTime.UtcNow
-                    });
-                }
+                SyncRequestCosts(request, maintenanceCosts);
             }
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser != null)
             {
-                request.CreatedById = currentUser.Id;
-                request.RequestedById = currentUser.Id;
+                if (request.Id == 0)
+                {
+                    request.CreatedById = currentUser.Id;
+                    request.RequestedById = currentUser.Id;
+                }
+                else
+                {
+                    request.ModifiedById = currentUser.Id;
+                }
             }
 
-            _context.Requests.Add(request);
+            if (request.Id == 0)
+            {
+                _context.Requests.Add(request);
+            }
 
             await using var tx = await _context.Database.BeginTransactionAsync();
             try
             {
                 await _context.SaveChangesAsync();
 
-                if (currentUser != null)
+                if (!saveDraft && currentUser != null)
                 {
                     var notification = new Notification
                     {
@@ -307,10 +329,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 if (wizardPlan != null)
                 {
                     wizardPlan.AcquisitionRequestId = request.Id;
-                    wizardPlan.CurrentPhase = WizardPhase.Disbursement;
-                    wizardPlan.CurrentState = WizardEquipmentState.Completed;
-                    wizardPlan.PlanStatus = ManagementPlanStatus.Completed;
-                    wizardPlan.LastModifiedDate = DateTime.UtcNow;
+                    if (saveDraft)
+                    {
+                        MarkAcquisitionDraft(wizardPlan);
+                    }
+                    else
+                    {
+                        wizardPlan.CurrentPhase = WizardPhase.Disbursement;
+                        wizardPlan.CurrentState = WizardEquipmentState.Completed;
+                        wizardPlan.PlanStatus = ManagementPlanStatus.Completed;
+                        ClearDraft(wizardPlan);
+                    }
                     await _context.SaveChangesAsync();
                 }
 
@@ -320,18 +349,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             {
                 await tx.RollbackAsync();
                 var detail = ex.InnerException?.Message ?? ex.Message;
-                TempData.Error($"Error al registrar adquisición: {detail}");
+                TempData.Error($"Error al {(saveDraft ? "guardar borrador de" : "registrar")} adquisición: {detail}");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
                 ViewData["IsWizard"] = isWizard;
                 return Page();
             }
 
-            TempData.Success($"Solicitud de Adquisición para '{unit.InventoryNumber}' registrada exitosamente. El mantenimiento quedó completado en el wizard.");
+            TempData.Success(saveDraft
+                ? $"Borrador L-12 para '{unit.InventoryNumber}' guardado correctamente."
+                : $"Solicitud de Adquisición para '{unit.InventoryNumber}' registrada exitosamente. El mantenimiento quedó completado en el wizard.");
 
             if (wizardPlan != null && isWizard)
             {
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 7, SelectedLabId = Input.LaboratoryId, ManagementId = wizardPlan.ManagementId });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = saveDraft ? 6 : 7, SelectedLabId = Input.LaboratoryId, ManagementId = wizardPlan.ManagementId });
             }
 
             return RedirectToPage("./Index");
@@ -348,6 +379,72 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
             Input.MaintenanceId = plan.MaintenanceId;
             ManagementId = plan.ManagementId;
+        }
+
+        private void ApplyAcquisitionRequestToInput(Request? request)
+        {
+            if (request == null) return;
+
+            Input.Description = request.Description == "Borrador L-12 pendiente de justificación." ? string.Empty : request.Description;
+            Input.Observations = request.Observations;
+            Input.InvestmentCode = request.InvestmentCode ?? string.Empty;
+            Input.CostCenter = request.CostCenter ?? string.Empty;
+        }
+
+        private void ClearDraftModelState()
+        {
+            ModelState.Remove("Input.Description");
+            ModelState.Remove("Input.InvestmentCode");
+            ModelState.Remove("Input.CostCenter");
+            ModelState.Remove("Input.Observations");
+        }
+
+        private static void SyncRequestCosts(Request request, IEnumerable<CostDetail> maintenanceCosts)
+        {
+            foreach (var existing in request.CostDetails.Where(c => c.Id > 0).ToList())
+            {
+                existing.RequestId = null;
+                existing.Request = null;
+                existing.LastModifiedDate = DateTime.UtcNow;
+            }
+
+            request.CostDetails.Clear();
+            foreach (var cost in maintenanceCosts)
+            {
+                request.CostDetails.Add(new CostDetail
+                {
+                    Concept = cost.Concept,
+                    Description = cost.Description,
+                    Quantity = cost.Quantity,
+                    UnitOfMeasure = cost.UnitOfMeasure,
+                    UnitPrice = cost.UnitPrice,
+                    Category = cost.Category,
+                    Provider = cost.Provider,
+                    InvoiceNumber = cost.InvoiceNumber,
+                    CreatedDate = DateTime.UtcNow
+                });
+            }
+        }
+
+        private static void MarkAcquisitionDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = true;
+            plan.DraftPhase = WizardPhase.Disbursement;
+            plan.DraftSavedAt = DateTime.UtcNow;
+            plan.DraftSummary = "Borrador L-12 guardado con solicitud de adquisición parcial.";
+            plan.CurrentPhase = WizardPhase.Disbursement;
+            plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
+            plan.PlanStatus = ManagementPlanStatus.InProgress;
+            plan.LastModifiedDate = DateTime.UtcNow;
+        }
+
+        private static void ClearDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = false;
+            plan.DraftPhase = null;
+            plan.DraftSavedAt = null;
+            plan.DraftSummary = null;
+            plan.LastModifiedDate = DateTime.UtcNow;
         }
 
         private async Task PopulateWizardViewDataAsync(ManagementPlan plan)

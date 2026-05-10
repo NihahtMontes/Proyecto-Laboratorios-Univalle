@@ -125,7 +125,10 @@
                                     <i class="fas fa-times mr-1"></i> Cancelar
                                 </a>
                             }
-                            <button type="button" id="btnSubmit" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark" onclick="confirmMassSubmitDirect()">
+                            <button type="submit" asp-page-handler="Draft" id="btnDraft" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2">
+                                <i class="fas fa-save mr-1"></i> Guardar Borrador
+                            </button>
+                            <button type="submit" id="btnSubmit" formnovalidate class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark">
                                 <i class="fas fa-save mr-1"></i> Registrar Salidas
                             </button>
                         </div>
@@ -193,6 +196,9 @@
                 }
 
                 $('#equipCount').text(data.length + ' equipo(s) pendiente(s)').show();
+
+                if (data[0] && data[0].departureDate) $('#globalDepartureDate').val(data[0].departureDate);
+                if (data[0] && data[0].estimatedReturnDate) $('#globalReturnDate').val(data[0].estimatedReturnDate);
 
                 $.each(data, function (i, item) {
                     var badges = '';
@@ -280,7 +286,7 @@
             alert((options.title ? options.title + ': ' : '') + (options.text || ''));
         }
 
-        function confirmMassSubmitDirect() {
+        function confirmMassSubmitDirect(isDraft, targetAction) {
             var depDate = $('#globalDepartureDate').val();
             var retDate = $('#globalReturnDate').val();
             var form = document.getElementById('massForm');
@@ -307,7 +313,13 @@
             }
 
             var submitForm = function () {
-                $('#btnSubmit').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Registrando...');
+                form.action = targetAction || form.action;
+                $('#btnDraft, #btnSubmit').prop('disabled', true);
+                if (isDraft) {
+                    $('#btnDraft').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                } else {
+                    $('#btnSubmit').html('<i class="fas fa-spinner fa-spin mr-1"></i> Registrando...');
+                }
                 HTMLFormElement.prototype.submit.call(form);
             };
 
@@ -317,11 +329,11 @@
             }
 
             Swal.fire({
-                title: '¿Confirmar Salidas?',
-                text: 'Se registrará la salida de ' + count + ' equipo(s) seleccionado(s) y avanzarán al Kardex.',
+                title: isDraft ? '¿Guardar borrador L-3?' : '¿Confirmar Salidas?',
+                text: isDraft ? 'Se guardará la selección y fechas sin marcar equipos en salida.' : 'Se registrará la salida de ' + count + ' equipo(s) seleccionado(s) y avanzarán al Kardex.',
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: 'Sí, registrar',
+                confirmButtonText: isDraft ? 'Sí, guardar borrador' : 'Sí, registrar',
                 cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#f59e0b',
                 cancelButtonColor: '#6c757d'
@@ -347,6 +359,14 @@
         }
 
         $(function () {
+            $('#massForm').on('submit', function (event) {
+                event.preventDefault();
+                var submitter = event.originalEvent && event.originalEvent.submitter ? event.originalEvent.submitter : document.activeElement;
+                var isDraft = submitter && submitter.id === 'btnDraft';
+                var targetAction = submitter && submitter.getAttribute('formaction') ? submitter.getAttribute('formaction') : this.action;
+                confirmMassSubmitDirect(isDraft, targetAction);
+            });
+
             @if (Model.LabId.HasValue)
             {
                 <text>$('#labSelector').val('@Model.LabId'); loadEquipment();</text>

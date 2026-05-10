@@ -248,7 +248,14 @@
                                     </a>
                                 }
                             </div>
-                            <button type="submit" id="btnSubmitKardex" formnovalidate class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold text-white"><i class="fas fa-check-double mr-2"></i> Concluir Mantenimiento</button>
+                            <div>
+                                <button type="submit" asp-page-handler="Draft" id="btnDraftKardex" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2">
+                                    <i class="fas fa-save mr-2"></i> Guardar Borrador
+                                </button>
+                                <button type="submit" asp-page-handler="Close" id="btnSubmitKardex" formnovalidate class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold text-white">
+                                    <i class="fas fa-check-double mr-2"></i> Concluir Mantenimiento
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -309,10 +316,19 @@
                 if ($(form).data('confirmed') === true) return true;
 
                 event.preventDefault();
+                const submitter = event.originalEvent && event.originalEvent.submitter ? event.originalEvent.submitter : document.activeElement;
+                const isDraft = submitter && submitter.id === 'btnDraftKardex';
+                const targetAction = submitter && submitter.getAttribute('formaction') ? submitter.getAttribute('formaction') : form.action;
 
                 const submitForm = function () {
                     $(form).data('confirmed', true);
-                    $('#btnSubmitKardex').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Cerrando...');
+                    form.action = targetAction;
+                    $('#btnDraftKardex, #btnSubmitKardex').prop('disabled', true);
+                    if (isDraft) {
+                        $('#btnDraftKardex').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    } else {
+                        $('#btnSubmitKardex').html('<i class="fas fa-spinner fa-spin mr-1"></i> Cerrando...');
+                    }
                     HTMLFormElement.prototype.submit.call(form);
                 };
 
@@ -322,11 +338,13 @@
                 }
 
                 Swal.fire({
-                    title: '¿Concluir Mantenimiento?',
-                    text: 'Se completará el mantenimiento L-8, se cerrará la salida L-3 con devolución y el equipo avanzará a Desembolso.',
+                    title: isDraft ? '¿Guardar borrador?' : '¿Concluir Mantenimiento?',
+                    text: isDraft
+                        ? 'Se guardará el avance sin pasar a desembolso. Podrás continuar el cierre de Kardex más tarde.'
+                        : 'Se completará el mantenimiento L-8, se cerrará la salida L-3 con devolución y el equipo avanzará a Desembolso.',
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, concluir',
+                    confirmButtonText: isDraft ? 'Sí, guardar borrador' : 'Sí, concluir',
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#17a2b8',
                     cancelButtonColor: '#6c757d'

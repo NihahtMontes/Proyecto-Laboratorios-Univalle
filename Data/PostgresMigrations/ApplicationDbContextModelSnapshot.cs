@@ -1146,11 +1146,24 @@ namespace Proyecto_Laboratorios_Univalle.Data.PostgresMigrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<int?>("DraftPhase")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("DraftSavedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("DraftSummary")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<int?>("EquipmentUnitId")
                         .HasColumnType("integer");
 
                     b.Property<int?>("ExecutedWeek")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("boolean");
 
                     b.Property<int?>("KardexHistoryId")
                         .HasColumnType("integer");

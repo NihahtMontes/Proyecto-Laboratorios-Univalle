@@ -172,7 +172,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         p.CurrentPhase,
                         p.CurrentState,
                         p.PlannedDate,
-                        p.VerificationId
+                        p.VerificationId,
+                        p.IsDraft,
+                        p.DraftPhase
                     }).ToListAsync();
 
                     TotalActivos = allStats.Count;
@@ -189,7 +191,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     CountBuenos = allStats.Count(p =>
                         p.CurrentState == WizardEquipmentState.VerifiedGood);
 
-                    CountL6 = ActiveManagement.Type == ManagementType.Corrective ? 0 : allStats.Count(p => p.CurrentPhase == WizardPhase.Verification && p.VerificationId == null);
+                    CountL6 = ActiveManagement.Type == ManagementType.Corrective ? 0 : allStats.Count(p => p.CurrentPhase == WizardPhase.Verification && (p.VerificationId == null || (p.IsDraft && p.DraftPhase == WizardPhase.Verification)));
                     CountL7 = allStats.Count(p => p.CurrentPhase == WizardPhase.TechnicalRequest);
                     CountL8 = allStats.Count(p => p.CurrentPhase == WizardPhase.Maintenance);
                     CountSalida = allStats.Count(p => p.CurrentPhase == WizardPhase.Exit);
@@ -296,7 +298,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         ActivePlans = await wizardQuery.Take(100).ToListAsync();
 
                         // B-1: Poblado de listas por paso (evitando expresión => para no recalcular)
-                        Step1Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Verification && p.VerificationId == null).ToList();
+                        Step1Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Verification && (p.VerificationId == null || (p.IsDraft && p.DraftPhase == WizardPhase.Verification))).ToList();
                         Step2Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.TechnicalRequest).ToList();
                         Step3Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Maintenance).ToList();
                         Step4Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Exit).ToList();
@@ -321,7 +323,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
         public IActionResult OnPostNextStep()
         {
-            return RedirectToPage(new { ShowWizard = true, Step = Step + 1, SelectedLabId = SelectedLabId, ManagementId = ManagementId ?? ActiveManagement?.Id });
+            var nextStep = Step >= 7 ? 7 : Step + 1;
+            return RedirectToPage(new { ShowWizard = true, Step = nextStep, SelectedLabId = SelectedLabId, ManagementId = ManagementId ?? ActiveManagement?.Id });
         }
 
         public IActionResult OnPostPreviousStep()

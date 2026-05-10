@@ -213,7 +213,10 @@
                                 <i class="fas fa-times mr-1"></i> Cancelar
                             </a>
                         }
-                        <button type="button" id="btnSubmitAcquisition" class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold py-2" onclick="confirmAcquisition()">
+                        <button type="submit" asp-page-handler="Draft" id="btnDraftAcquisition" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold py-2 mr-2">
+                            <i class="fas fa-save mr-1"></i> Guardar Borrador
+                        </button>
+                        <button type="submit" id="btnSubmitAcquisition" formnovalidate class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold py-2">
                             <i class="fas fa-check-circle mr-1"></i> Crear Solicitud L-12
                         </button>
                     </div>
@@ -329,12 +332,30 @@
                 if (preMntId) {
                     $('#maintenanceSelect').trigger('change');
                 }
+
+                $('#createAcquisitionForm').on('submit', function(event) {
+                    const form = this;
+                    if ($(form).data('confirmed') === true) return true;
+
+                    event.preventDefault();
+                    const submitter = event.originalEvent && event.originalEvent.submitter ? event.originalEvent.submitter : document.activeElement;
+                    const isDraft = submitter && submitter.id === 'btnDraftAcquisition';
+                    const targetAction = submitter && submitter.getAttribute('formaction') ? submitter.getAttribute('formaction') : form.action;
+                    confirmAcquisition(isDraft, targetAction);
+                });
             });
 
-            function confirmAcquisition() {
+            function confirmAcquisition(isDraft, targetAction) {
                 const form = document.getElementById('createAcquisitionForm');
                 const submitForm = function() {
-                    $('#btnSubmitAcquisition').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Registrando...');
+                    $(form).data('confirmed', true);
+                    form.action = targetAction || form.action;
+                    $('#btnDraftAcquisition, #btnSubmitAcquisition').prop('disabled', true);
+                    if (isDraft) {
+                        $('#btnDraftAcquisition').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    } else {
+                        $('#btnSubmitAcquisition').html('<i class="fas fa-spinner fa-spin mr-1"></i> Registrando...');
+                    }
                     HTMLFormElement.prototype.submit.call(form);
                 };
 
@@ -344,13 +365,15 @@
                 }
 
                 Swal.fire({
-                    title: '¿Confirmar Solicitud?',
-                    text: 'Se enviará la solicitud de adquisición (L-12) para aprobación financiera.',
+                    title: isDraft ? '¿Guardar borrador L-12?' : '¿Confirmar Solicitud?',
+                    text: isDraft
+                        ? 'Se guardará el avance sin cerrar el wizard ni pasar a Completados.'
+                        : 'Se enviará la solicitud de adquisición (L-12) para aprobación financiera.',
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, crear solicitud',
+                    confirmButtonText: isDraft ? 'Sí, guardar borrador' : 'Sí, crear solicitud',
                     cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#28a745',
+                    confirmButtonColor: isDraft ? '#17a2b8' : '#28a745',
                     cancelButtonColor: '#6c757d'
                 }).then((result) => {
                     if (result && (result.isConfirmed === true || result.value === true)) {
