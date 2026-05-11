@@ -47,7 +47,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Técnico Responsable")]
             public int? TechnicianId { get; set; }
 
-            [Required]
             [Display(Name = "Fecha Programada")]
             [DataType(DataType.Date)]
             public DateTime? ScheduledDate { get; set; }
@@ -289,25 +288,39 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.EquipmentUnit?.Equipment?.Name));
                 
                 var plan = await _context.ManagementPlans.AsTracking()
                     .FirstOrDefaultAsync(p => ManagementPlanId.HasValue
                         ? p.Id == ManagementPlanId.Value
                         : p.MaintenanceId == maintenanceDB.Id);
+
+                EquipmentStateHistory? completedHistory = null;
+                if (maintenanceDB.Status == MaintenanceStatus.Completed && maintenanceDB.EquipmentUnit != null && (plan == null || !plan.KardexHistoryId.HasValue))
+                {
+                    completedHistory = await ApplyCompletedMaintenanceClosureAsync(maintenanceDB, maintenanceDB.EquipmentUnit);
+                    await _context.SaveChangesAsync();
+                }
+
+                TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.EquipmentUnit?.Equipment?.Name));
+
                 if (plan != null)
                 {
-                    if (maintenanceDB.Status == MaintenanceStatus.Completed && plan.CurrentPhase == WizardPhase.Maintenance)
+                    if (maintenanceDB.Status == MaintenanceStatus.Completed)
                     {
-                        plan.CurrentPhase = WizardPhase.Exit;
-                        plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                        if (completedHistory != null)
+                        {
+                            plan.KardexHistoryId = completedHistory.Id;
+                        }
+
+                        plan.CurrentPhase = WizardPhase.Disbursement;
+                        plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
                         plan.PlanStatus = ManagementPlanStatus.InProgress;
                         await _context.SaveChangesAsync();
                     }
 
                     if (ManagementPlanId.HasValue)
                     {
-                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = maintenanceDB.EquipmentUnit?.LaboratoryId, ManagementId = plan.ManagementId });
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = maintenanceDB.Status == MaintenanceStatus.Completed ? 6 : 5, SelectedLabId = maintenanceDB.EquipmentUnit?.LaboratoryId, ManagementId = plan.ManagementId });
                     }
 
                     return RedirectToPage("/Managements/Details", new { id = plan.ManagementId, ActiveTab = "l48" });
@@ -324,6 +337,45 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 CargarListas(facultyId, labId, Input.EquipmentUnitId);
                 return Page();
             }
+        }
+
+        private async Task<EquipmentStateHistory> ApplyCompletedMaintenanceClosureAsync(Maintenance maintenance, EquipmentUnit equipmentUnit)
+        {
+            var marker = $"Kardex automático L-8 #{maintenance.Id}:";
+            var existingHistory = await _context.EquipmentStateHistories
+                .AsTracking()
+                .FirstOrDefaultAsync(h => h.EquipmentUnitId == equipmentUnit.Id && h.Reason != null && h.Reason.StartsWith(marker));
+
+            if (existingHistory != null)
+            {
+                equipmentUnit.CurrentStatus = EquipmentStatus.Operational;
+                return existingHistory;
+            }
+
+            var closureDate = maintenance.EndDate ?? DateTime.UtcNow;
+            var lastHistory = await _context.EquipmentStateHistories
+                .AsTracking()
+                .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
+                .OrderByDescending(h => h.StartDate)
+                .FirstOrDefaultAsync();
+
+            if (lastHistory != null)
+            {
+                lastHistory.EndDate = closureDate;
+            }
+
+            var history = new EquipmentStateHistory
+            {
+                EquipmentUnitId = equipmentUnit.Id,
+                Status = EquipmentStatus.Operational,
+                StartDate = closureDate,
+                Reason = $"{marker} {maintenance.Description?.Trim()} | Costo Bs {(maintenance.ActualCost ?? 0m):N2}"
+            };
+
+            _context.EquipmentStateHistories.Add(history);
+            equipmentUnit.CurrentStatus = EquipmentStatus.Operational;
+
+            return history;
         }
 
         private void CargarListas(int facultyId = 0, int laboratoryId = 0, int equipmentUnitId = 0)

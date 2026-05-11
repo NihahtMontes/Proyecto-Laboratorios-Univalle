@@ -31,6 +31,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false)
         {
             await LoadLists();
+            await LoadChecklistItemsAsync();
 
             var currentMgmt = await ResolveManagementAsync();
             var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
@@ -54,6 +55,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 if (plan?.TechnicalRequest != null)
                 {
                     ApplyRequestToInput(plan.TechnicalRequest);
+                    ChecklistItemIds = ChecklistItems.Select(i => i.Id).ToList();
                 }
 
                 // Exponer IDs de fases previas para la sección de referencia vinculada
@@ -92,19 +94,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             if (isWizard)
             {
-                Input.Observations = @"1. Desconexión del cable de la alimentación eléctrica para mantenimiento preventivo/correctivo 12 horas antes.
-2. Limpieza y desinfección interna con productos no abrasivos.
-3. Limpieza externa de condensador, serpentín, evaporador y retiro de polvo y grasas adheridas.
-4. Verificación de presión del refrigerante.
-5. Revisión de fugas y/o microfugas en serpentín.
-6. Revisión de formaciones de hielo y condensaciones superficiales no esporádicas.
-7. Control de temperatura y termostatos según norma.
-8. Revisión de puertas y sellos de goma (empaques).
-9. Limpieza de drenajes de deshielo.
-10. Verificación del funcionamiento de ventiladores.
-11. Mantenimiento eléctrico: inspección de cableado, terminales, protecciones eléctricas, etc.
-12. Lubricación de partes móviles.
-13. Mantenimiento con personal externo capacitado.";
+                ChecklistItemIds = ChecklistItems.Select(i => i.Id).ToList();
             }
 
 
@@ -114,6 +104,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         [BindProperty]
         public InputModel Input { get; set; } = new();
+
+        [BindProperty]
+        public List<int> ChecklistItemIds { get; set; } = new();
+
+        public List<VerificationCheckItem> ChecklistItems { get; set; } = new();
 
         [BindProperty(SupportsGet = true)]
         public int? ManagementPlanId { get; set; }
@@ -191,10 +186,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             ViewData["IsCorrective"] = isCorrective;
             ViewData["ManagementId"] = currentMgmt?.Id ?? ManagementId;
             ViewData["CurrentPhaseInt"] = (int)(wizardPlan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
+            await LoadChecklistItemsAsync();
 
             if (saveDraft)
             {
                 ModelState.Remove("Input.Description");
+            }
+            else
+            {
+                if (!Enum.IsDefined(typeof(RequestPriority), Input.Priority))
+                {
+                    ModelState.AddModelError("Input.Priority", "La prioridad seleccionada no es válida.");
+                }
+
+                var selectedChecklistIds = ChecklistItemIds.ToHashSet();
+                if (ChecklistItems.Count < 13 || ChecklistItems.Any(i => !selectedChecklistIds.Contains(i.Id)))
+                {
+                    ModelState.AddModelError("ChecklistItemIds", "Debe confirmar los 13 puntos del checklist técnico L-7.");
+                }
             }
 
             if (!ModelState.IsValid)
@@ -221,7 +230,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 return Page();
             }
 
-            var unit = await _context.EquipmentUnits
+                var unit = await _context.EquipmentUnits
                 .AsTracking()
                 .FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
 
@@ -237,6 +246,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 TempData.Error("No se pudo registrar la solicitud L-7: la unidad física no tiene laboratorio asignado.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
+            }
+
+            if (!saveDraft)
+            {
+                var hasOpenRequest = await _context.Requests
+                    .AsNoTracking()
+                    .Where(r => r.ManagementId == currentMgmt.Id
+                        && r.Type == RequestType.Technical
+                        && r.EquipmentUnitId == Input.EquipmentUnitId
+                        && r.Status != RequestStatus.Completed
+                        && r.Status != RequestStatus.Rejected
+                        && r.Status != RequestStatus.Cancelled)
+                    .AnyAsync(r => wizardPlan == null || r.Id != wizardPlan.RequestId);
+
+                if (hasOpenRequest)
+                {
+                    TempData.Warning("Este equipo ya tiene una solicitud técnica pendiente o en curso en esta gestión. Finalice esa solicitud antes de reportar una nueva falla crítica.");
+                    await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                    return Page();
+                }
             }
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -257,7 +286,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     ? "Borrador L-7 pendiente de descripción técnica."
                     : Input.Description.Clean()!;
                 request.Priority = Input.Priority;
-                request.Observations = Input.Observations?.Clean()?.Length > 500 ? Input.Observations.Clean()?.Substring(0, 497) + "..." : Input.Observations?.Clean();
+                request.Observations = saveDraft
+                    ? TrimToLength(Input.Observations?.Clean(), 500)
+                    : BuildChecklistObservations(Input.Observations, ChecklistItemIds);
                 request.EstimatedRepairTime = Input.EstimatedRepairTime?.Clean();
                 request.Status = RequestStatus.Pending;
                 request.LastModifiedDate = request.Id == 0 ? null : DateTime.UtcNow;
@@ -339,6 +370,37 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
+        }
+
+        private async Task LoadChecklistItemsAsync()
+        {
+            ChecklistItems = await _context.VerificationCheckItems
+                .AsNoTracking()
+                .Where(i => i.IsActive)
+                .OrderBy(i => i.Order)
+                .ThenBy(i => i.Id)
+                .Take(13)
+                .ToListAsync();
+        }
+
+        private static string BuildChecklistObservations(string? freeText, List<int> checklistIds)
+        {
+            var ids = checklistIds.OrderBy(id => id).ToList();
+            var checklistSummary = $"Checklist L-7 confirmado ({ids.Count}/13): {string.Join(",", ids)}.";
+            var notes = freeText?.Clean();
+            if (!string.IsNullOrWhiteSpace(notes))
+            {
+                checklistSummary += $" Obs: {notes}";
+            }
+
+            return TrimToLength(checklistSummary, 500) ?? checklistSummary;
+        }
+
+        private static string? TrimToLength(string? value, int maxLength)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return value;
+            return value.Length <= maxLength ? value : value.Substring(0, maxLength - 3) + "...";
         }
 
         private void ApplyRequestToInput(Request request)

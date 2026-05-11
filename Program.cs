@@ -9,7 +9,8 @@ using QuestPDF.Infrastructure;
 using OfficeOpenXml;
 
 QuestPDF.Settings.License = LicenseType.Community;
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+// Eliminado el switch de Npgsql ya que usaremos SQL Server
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
@@ -18,6 +19,7 @@ builder.Logging.AddDebug();
 
 var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys");
 Directory.CreateDirectory(dataProtectionKeysPath);
+
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
     .SetApplicationName("ProyectoLaboratoriosUnivalle");
@@ -40,11 +42,12 @@ Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIB
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
+// CORRECCIÓN: Configuración para SQL SERVER
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), npgsqlOptions => 
+    options.UseSqlServer(connectionString, sqlOptions =>
     {
-        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-        npgsqlOptions.CommandTimeout(120);
+        sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+        sqlOptions.CommandTimeout(120);
     })
     .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
@@ -66,7 +69,7 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options => {
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {
     options.CheckConsentNeeded = context => false;
-    options.MinimumSameSitePolicy = SameSiteMode.Lax; // Cambiado a Lax para compatibilidad local
+    options.MinimumSameSitePolicy = SameSiteMode.Lax;
     options.Secure = CookieSecurePolicy.SameAsRequest;
 });
 
@@ -76,7 +79,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-    options.LoginPath = "/Login"; // Ruta a la que redirige si no hay sesión
+    options.LoginPath = "/Login";
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
 });
@@ -106,22 +109,18 @@ builder.Services.AddScoped<IVerificationReportService, VerificationReportService
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IManagementContextService, ManagementContextService>();
 builder.Services.AddScoped<DatabaseErrorHandler>();
-// builder.Services.AddScoped<DataMigrationService>(); // Removido: Mantenimiento de modelos a enums completado.
 
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
 builder.WebHost.UseSetting("BrowserLink:Enabled", "false");
 
 builder.Services.AddControllers();
 builder.Services.AddRazorPages(options =>
 {
-    // Esto obliga a que CUALQUIER página pida Login por defecto
     options.Conventions.AuthorizeFolder("/");
-    // Si tu página de Login está en la raíz, debes permitirle el acceso anónimo:
     options.Conventions.AllowAnonymousToPage("/Login");
 });
-// ==============================================================
 
+// ==============================================================
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -137,12 +136,9 @@ else
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-// AÑADIDO: Activar Middleware de Sesiones
 app.UseSession();
-
 app.UseRouting();
 app.UseCookiePolicy();
-
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -535,12 +535,21 @@
                                 @if (Model.ActiveManagement?.Type == ManagementType.Corrective)
                                 {
                                     <div class="text-center mt-4">
-                                        <a asp-page="/Requests/Create"
-                                           asp-route-isWizard="true"
-                                           asp-route-managementId="@(Model.ActiveManagement?.Id)"
-                                           class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold py-3 text-dark">
-                                            <i class="fas fa-exclamation-triangle mr-2"></i> Reportar Nueva Falla Crítica
-                                        </a>
+                                        @if (!Model.Step2Plans.Any())
+                                        {
+                                            <a asp-page="/Requests/Create"
+                                               asp-route-isWizard="true"
+                                               asp-route-managementId="@(Model.ActiveManagement?.Id)"
+                                               class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold py-3 text-dark">
+                                                <i class="fas fa-exclamation-triangle mr-2"></i> Reportar Nueva Falla Crítica
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-light border rounded-pill px-4 py-2 font-weight-bold text-muted" disabled>
+                                                <i class="fas fa-lock mr-2"></i> Finalice las solicitudes pendientes antes de reportar otra falla crítica
+                                            </button>
+                                        }
                                     </div>
                                 }
                             }

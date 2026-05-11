@@ -169,8 +169,30 @@
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Observations" class="control-label font-weight-bold small text-uppercase text-dark">SUGERENCIAS U OBSERVACIONES PARA MANTENIMIENTO</label>
-                                <textarea asp-for="Input.Observations" class="form-control shadow-sm" rows="14" placeholder="Indique las actividades sugeridas..."></textarea>
+                                <label class="control-label font-weight-bold small text-uppercase text-dark">Checklist técnico L-7 <span class="text-danger">*</span></label>
+                                <div class="p-3 rounded border bg-light">
+                                    @foreach (var item in Model.ChecklistItems)
+                                    {
+                                        var isChecked = Model.ChecklistItemIds.Contains(item.Id);
+                                        <div class="custom-control custom-checkbox mb-2">
+                                            <input type="checkbox"
+                                                   class="custom-control-input"
+                                                   id="checkItem_@item.Id"
+                                                   name="ChecklistItemIds"
+                                                   value="@item.Id"
+                                                   @(isChecked ? "checked" : "") />
+                                            <label class="custom-control-label small font-weight-bold text-dark" for="checkItem_@item.Id">
+                                                @item.Order. @item.Name
+                                            </label>
+                                        </div>
+                                    }
+                                </div>
+                                <span asp-validation-for="ChecklistItemIds" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Observations" class="control-label font-weight-bold small text-uppercase text-dark">OBSERVACIONES COMPLEMENTARIAS</label>
+                                <textarea asp-for="Input.Observations" class="form-control shadow-sm" rows="4" placeholder="Indique detalles adicionales si corresponde..."></textarea>
                             </div>
                         </div>
                     </div>

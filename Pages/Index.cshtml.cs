@@ -173,6 +173,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         p.CurrentState,
                         p.PlannedDate,
                         p.VerificationId,
+                        p.RequestId,
+                        p.MaintenanceId,
+                        p.DepartureId,
+                        p.AcquisitionRequestId,
                         p.IsDraft,
                         p.DraftPhase
                     }).ToListAsync();
@@ -191,11 +195,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     CountBuenos = allStats.Count(p =>
                         p.CurrentState == WizardEquipmentState.VerifiedGood);
 
-                    CountL6 = ActiveManagement.Type == ManagementType.Corrective ? 0 : allStats.Count(p => p.CurrentPhase == WizardPhase.Verification && (p.VerificationId == null || (p.IsDraft && p.DraftPhase == WizardPhase.Verification)));
-                    CountL7 = allStats.Count(p => p.CurrentPhase == WizardPhase.TechnicalRequest);
-                    CountL8 = allStats.Count(p => p.CurrentPhase == WizardPhase.Maintenance);
-                    CountSalida = allStats.Count(p => p.CurrentPhase == WizardPhase.Exit);
-                    CountDesembolso = allStats.Count(p => p.CurrentPhase == WizardPhase.Disbursement);
+                    CountL6 = isCorrective ? 0 : allStats.Count(p => p.VerificationId.HasValue);
+                    CountL7 = allStats.Count(p => p.RequestId.HasValue);
+                    CountL8 = allStats.Count(p => p.MaintenanceId.HasValue);
+                    CountSalida = allStats.Count(p => p.DepartureId.HasValue);
+                    CountDesembolso = allStats.Count(p => p.AcquisitionRequestId.HasValue);
 
                     // 2. DATA QUERY: Base pesada con Includes solo para el Cronograma y el Wizard
                     var dataQuery = _context.ManagementPlans

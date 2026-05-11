@@ -50,7 +50,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             [Display(Name = "Técnico Responsable")]
             public int? TechnicianId { get; set; }
 
-            [Required(ErrorMessage = "La fecha programada es obligatoria")]
             [DataType(DataType.Date)]
             public DateTime? ScheduledDate { get; set; }
 
@@ -191,34 +190,42 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     if (int.TryParse(userIdString, out var duid)) departure.ModifiedById = duid;
                 }
 
-                var historyDate = Input.ActualReturnDate!.Value;
-                var lastHistory = await _context.EquipmentStateHistories
-                    .Where(h => h.EquipmentUnitId == unit.Id && h.EndDate == null)
-                    .OrderByDescending(h => h.StartDate)
-                    .AsTracking()
-                    .FirstOrDefaultAsync();
-
-                if (lastHistory != null)
+                EquipmentStateHistory? newHistory = null;
+                if (!plan.KardexHistoryId.HasValue)
                 {
-                    lastHistory.EndDate = historyDate;
+                    var historyDate = Input.ActualReturnDate!.Value;
+                    var lastHistory = await _context.EquipmentStateHistories
+                        .Where(h => h.EquipmentUnitId == unit.Id && h.EndDate == null)
+                        .OrderByDescending(h => h.StartDate)
+                        .AsTracking()
+                        .FirstOrDefaultAsync();
+
+                    if (lastHistory != null)
+                    {
+                        lastHistory.EndDate = historyDate;
+                    }
+
+                    newHistory = new EquipmentStateHistory
+                    {
+                        EquipmentUnitId = unit.Id,
+                        Status = EquipmentStatus.Operational,
+                        StartDate = historyDate,
+                        Reason = BuildKardexReason(maintenance),
+                        CreatedDate = DateTime.UtcNow,
+                        CreatedById = int.TryParse(userIdString, out var huid) ? huid : null
+                    };
+
+                    _context.EquipmentStateHistories.Add(newHistory);
                 }
 
-                var newHistory = new EquipmentStateHistory
-                {
-                    EquipmentUnitId = unit.Id,
-                    Status = EquipmentStatus.Operational,
-                    StartDate = historyDate,
-                    Reason = BuildKardexReason(maintenance),
-                    CreatedDate = DateTime.UtcNow,
-                    CreatedById = int.TryParse(userIdString, out var huid) ? huid : null
-                };
-
-                _context.EquipmentStateHistories.Add(newHistory);
                 unit.CurrentStatus = EquipmentStatus.Operational;
 
                 await _context.SaveChangesAsync();
 
-                plan.KardexHistoryId = newHistory.Id;
+                if (newHistory != null)
+                {
+                    plan.KardexHistoryId = newHistory.Id;
+                }
                 plan.CurrentPhase = WizardPhase.Disbursement;
                 plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
                 plan.PlanStatus = ManagementPlanStatus.InProgress;
@@ -485,12 +492,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             {
                 ModelState.AddModelError("Input.TechnicianId", "Falta técnico responsable.");
                 messages.Add("Falta técnico responsable.");
-            }
-
-            if (!Input.ScheduledDate.HasValue)
-            {
-                ModelState.AddModelError("Input.ScheduledDate", "Falta fecha programada.");
-                messages.Add("Falta fecha programada.");
             }
 
             if (!Input.StartDate.HasValue)

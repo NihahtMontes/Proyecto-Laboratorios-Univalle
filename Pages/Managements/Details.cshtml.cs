@@ -94,6 +94,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     .ThenInclude(p => p.Maintenance)
                         .ThenInclude(m => m!.Technician)   // B-6: Include del técnico
                 .Include(mg => mg.ManagementPlans)
+                    .ThenInclude(p => p.Maintenance)
+                        .ThenInclude(m => m!.Tasks)
+                .Include(mg => mg.ManagementPlans)
                     .ThenInclude(p => p.Verification)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
@@ -116,12 +119,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             CountPendientes = allPlans.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.CurrentState >= WizardEquipmentState.AwaitingRequest);
             CountBuenos     = allPlans.Count(p => p.CurrentState == WizardEquipmentState.VerifiedGood);
 
-            // Contadores de fase (segunda fila dashboard)
-            CountL6         = allPlans.Count(p => p.CurrentPhase == WizardPhase.Verification && p.CurrentState == WizardEquipmentState.PendingVerification);
-            CountL7         = allPlans.Count(p => p.CurrentPhase == WizardPhase.TechnicalRequest);
-            CountL8         = allPlans.Count(p => p.CurrentPhase == WizardPhase.Maintenance);
-            CountSalida     = allPlans.Count(p => p.CurrentPhase == WizardPhase.Exit);
-            CountDesembolso = allPlans.Count(p => p.CurrentPhase == WizardPhase.Disbursement);
+            // Contadores de documentos reales vinculados a esta gestion.
+            CountL6         = Management.Type == ManagementType.Corrective ? 0 : allPlans.Count(p => p.VerificationId.HasValue);
+            CountL7         = allPlans.Count(p => p.RequestId.HasValue);
+            CountL8         = allPlans.Count(p => p.MaintenanceId.HasValue);
+            CountSalida     = allPlans.Count(p => p.DepartureId.HasValue);
+            CountDesembolso = allPlans.Count(p => p.AcquisitionRequestId.HasValue);
 
             // Gráfico por tipo - misma lógica semántica que Index (B-3)
             TopEquipmentTypes = allPlans
@@ -169,6 +172,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             // (fase L8 Maintenance o posterior: L3 Salida, Kardex, Desembolso)
             CalendarEvents = allPlans
                 .Where(p => p.CurrentPhase >= WizardPhase.Maintenance)
+                .Where(p => p.Maintenance == null || p.Maintenance.Tasks == null || p.Maintenance.Tasks.Any(t => !t.IsDeleted))
                 .Select(p => {
                     // Fecha que se muestra: prioridad ScheduledDate > EndDate > PlannedDate
                     // Si Maintenance fue cancelado (soft delete), Maintenance será null por QueryFilter
@@ -181,17 +185,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     // Título: "INV - NombreEquipo"
                     var inv  = p.EquipmentUnit?.InventoryNumber ?? "—";
                     var name = p.EquipmentUnit?.Equipment?.Name ?? "Equipo";
+                    var isExecuted = p.ExecutedWeek.HasValue || p.Maintenance?.Status == MaintenanceStatus.Completed;
+                    var isCorrectiveEvent = Management.Type == ManagementType.Corrective;
                     return new ManagementPlanCalendarDto
                     {
                         Title           = $"{inv} - {name}",
                         Start           = displayDate.ToString("yyyy-MM-dd"),
                         End             = null, // evento puntual
-                        ClassName       = p.Maintenance?.Status switch
-                        {
-                            MaintenanceStatus.Completed => "ev-completed",
-                            MaintenanceStatus.InProgress => "ev-progress",
-                            _                            => "ev-planned" // Incluye null (mantenimiento cancelado o no iniciado)
-                        },
+                        ClassName       = isCorrectiveEvent ? "ev-corrective" : isExecuted ? "ev-completed" : "ev-planned",
                         InventoryNumber = inv,
                         LabName         = p.EquipmentUnit?.Laboratory?.Name ?? "—",
                         TechnicianName  = p.Maintenance?.Technician?.FullName ?? "Sin asignar",
@@ -229,6 +230,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                 .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                 .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
+                .Include(p => p.Maintenance).ThenInclude(m => m!.Tasks)
                 .Include(p => p.TechnicalRequest)
                 .Include(p => p.Verification)
                 .Where(p => p.ManagementId == id);

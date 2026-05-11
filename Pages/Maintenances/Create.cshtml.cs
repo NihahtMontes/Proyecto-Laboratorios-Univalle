@@ -130,10 +130,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Descripción del Trabajo")]
             public string? Description { get; set; }
 
-            [Required]
             [Display(Name = "Fecha Programada")]
             [DataType(DataType.Date)]
-            public DateTime ScheduledDate { get; set; } = DateTime.UtcNow;
+            public DateTime? ScheduledDate { get; set; } = DateTime.UtcNow;
 
             [Display(Name = "Fecha Inicio Real")]
             [DataType(DataType.DateTime)]
@@ -336,6 +335,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             decimal totalCosts = Input.CostDetails?.Sum(d => d.Subtotal) ?? 0;
             Input.ActualCost = totalCosts;
 
+            if (!saveDraft && Input.Status == MaintenanceStatus.Completed && totalCosts <= 0)
+            {
+                ModelState.AddModelError("Input.ActualCost", "Para cerrar el mantenimiento debe registrar el costo real final.");
+            }
+
             Input.Tasks = NormalizeTasks(Input.Tasks);
             Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
 
@@ -396,7 +400,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 SyncMaintenanceChildren(maintenance);
 
-                if (!saveDraft && equipmentUnit != null && equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
+                if (!saveDraft && Input.Status != MaintenanceStatus.Completed && equipmentUnit != null && equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
                 {
                     var lastHistory = await _context.EquipmentStateHistories
                         .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
@@ -425,12 +429,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 await _context.SaveChangesAsync();
 
+                EquipmentStateHistory? completedHistory = null;
+                if (!saveDraft && Input.Status == MaintenanceStatus.Completed && equipmentUnit != null)
+                {
+                    completedHistory = await ApplyCompletedMaintenanceClosureAsync(maintenance, equipmentUnit);
+                    await _context.SaveChangesAsync();
+                }
+
                 if (wizardPlan != null)
                 {
                     wizardPlan.MaintenanceId = maintenance.Id;
                     if (saveDraft)
                     {
                         MarkMaintenanceDraft(wizardPlan);
+                    }
+                    else if (completedHistory != null)
+                    {
+                        wizardPlan.KardexHistoryId = completedHistory.Id;
+                        wizardPlan.CurrentPhase = WizardPhase.Disbursement;
+                        wizardPlan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
+                        wizardPlan.PlanStatus = ManagementPlanStatus.InProgress;
+                        ClearDraft(wizardPlan);
                     }
                     else
                     {
@@ -454,7 +473,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 if (wizardPlan != null && isWizard)
                 {
-                    return RedirectToPage("/Index", new { ShowWizard = true, Step = saveDraft ? 3 : 4, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = saveDraft ? 3 : (Input.Status == MaintenanceStatus.Completed ? 6 : 4), SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                 }
 
                 return RedirectToPage("./Index");
@@ -533,6 +552,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             maintenance.Step3_Testing = Input.Tasks.ElementAtOrDefault(2)?.IsCompleted ?? false;
             maintenance.Step4_FinalReview = Input.Tasks.ElementAtOrDefault(3)?.IsCompleted ?? false;
 
+        }
+
+        private async Task<EquipmentStateHistory> ApplyCompletedMaintenanceClosureAsync(Maintenance maintenance, EquipmentUnit equipmentUnit)
+        {
+            var closureDate = maintenance.EndDate ?? DateTime.UtcNow;
+
+            var lastHistory = await _context.EquipmentStateHistories
+                .AsTracking()
+                .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
+                .OrderByDescending(h => h.StartDate)
+                .FirstOrDefaultAsync();
+
+            if (lastHistory != null)
+            {
+                lastHistory.EndDate = closureDate;
+            }
+
+            var history = new EquipmentStateHistory
+            {
+                EquipmentUnitId = equipmentUnit.Id,
+                Status = EquipmentStatus.Operational,
+                StartDate = closureDate,
+                Reason = $"Kardex automático L-8 #{maintenance.Id}: {maintenance.Description?.Trim()} | Costo Bs {(maintenance.ActualCost ?? 0m):N2}"
+            };
+
+            _context.EquipmentStateHistories.Add(history);
+            equipmentUnit.CurrentStatus = EquipmentStatus.Operational;
+
+            return history;
         }
 
         private void SyncMaintenanceChildren(Maintenance maintenance)
