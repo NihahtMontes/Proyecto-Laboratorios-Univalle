@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@ViewData["Title"] - Laboratorios Univalle</title>
+    <link rel="icon" type="image/png" sizes="16x16" href="~/assets/images/favicon.png">
+    
+        <link href="~/dist/css/style.min.css" rel="stylesheet">
+            <link href="~/assets/libs/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
+
+    <style>
+        /* ===== WIZARD STEPPER GLOBAL ===== */
+        .wizard-steps   { height: 70px; }
+        .step-line      { border-bottom: 2px solid #e9ecef; position: absolute;
+                          top: 20px; left: 10%; right: 10%; z-index: 1; }
+        .step-item      { position: relative; z-index: 2;
+                          text-align: center; width: 100px; }
+        .step-number    { width: 40px; height: 40px; border-radius: 50%;
+                          background: white; border: 2px solid #e9ecef;
+                          display: flex; align-items: center; justify-content: center;
+                          margin: 0 auto 5px; font-weight: bold; color: #adb5bd; }
+        .step-label     { font-size: 0.75rem; font-weight: bold;
+                          color: #adb5bd; display: block; }
+        .step-item.active .step-number  { border-color: #f59e0b; color: #f59e0b; background: #fffcf0; }
+        .step-item.active .step-label   { color: #f59e0b; }
+    </style>
+
+                @await RenderSectionAsync("Styles", required: false)
+            </head>
+            <body>
+                <div class="preloader">
+                    <div class="lds-ripple">
+                        <div class="lds-pos"></div>
+                        <div class="lds-pos"></div>
+                    </div>
+                </div>
+                <div id="main-wrapper">
+                    <header class="topbar">
+                        <nav class="navbar top-navbar navbar-expand-md navbar-dark">
+                            <div class="navbar-header">
+                                <a class="nav-toggler waves-effect waves-light d-block d-md-none" href="javascript:void(0)">
+                                    <i class="ti-menu ti-close"></i>
+                                </a>
+                                <div class="navbar-brand">
+                                    <a href="/" class="logo">
+                                        <b class="logo-icon">
+                                            <img src="~/assets/images/logo-icon.png" alt="homepage" class="dark-logo" />
+                                            <img src="~/assets/images/logo-light-icon.png" alt="homepage" class="light-logo" />
+                                        </b>
+                                        <span class="logo-text">
+                                            <span class="font-weight-bold text-white" style="font-size: 1.1rem; letter-spacing: 1px;">LABORATORIOS</span>
+                                        </span>
+                                    </a>
+                                    <a class="sidebartoggler d-none d-md-block" href="javascript:void(0)" data-sidebartype="mini-sidebar">
+                                        <i class="mdi mdi-toggle-switch mdi-toggle-switch-off font-20"></i>
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="navbar-collapse collapse" id="navbarSupportedContent">
+                                <ul class="navbar-nav float-left mr-auto">
+                                    <li class="nav-item search-box">
+                                        <a class="nav-link waves-effect waves-dark" href="javascript:void(0)">
+                                            <div class="d-flex align-items-center">
+                                                <i class="mdi mdi-magnify font-20 mr-1"></i>
+                                                <div class="ml-1 d-none d-sm-block"><span>Buscar</span></div>
+                                            </div>
+                                        </a>
+                                        <form class="app-search position-absolute">
+                                            <input type="text" class="form-control" placeholder="Buscar &amp; enter">
+                                            <a class="srh-btn"><i class="ti-close"></i></a>
+                                        </form>
+                                    </li>
+                                </ul>
+
+                                @{
+                                    var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+                                    bool showBell = currentPage == "/Index" || currentPage == "/" || currentPage == "" ||
+                                                    currentPage.StartsWith("/Managements") || currentPage.StartsWith("/Acquisitions") ||
+                                                    currentPage.StartsWith("/Requests") || currentPage.StartsWith("/Maintenances") ||
+                                                    currentPage.StartsWith("/Departures");
+
+                                    var notificationManagementId = ViewData["ManagementId"]?.ToString() ?? "";
+                                    if (string.IsNullOrWhiteSpace(notificationManagementId) && currentPage.StartsWith("/Managements"))
+                                    {
+                                        notificationManagementId = Context.Request.Query["id"].ToString();
+                                    }
+                                    var notificationScope =
+                                        currentPage == "/Index" || currentPage == "/" || currentPage == "" || currentPage.StartsWith("/Managements") ? "dashboard" :
+                                        currentPage.StartsWith("/Maintenances") ? "maintenance" :
+                                        currentPage.StartsWith("/Acquisitions") ? "acquisition" :
+                                        currentPage.StartsWith("/Departures") ? "departure" :
+                                        currentPage.StartsWith("/Requests") ? "request" :
+                                        "";
+                                }
+
+                                <ul class="navbar-nav float-right">
+                                    @if (showBell)
+                                    {
+                                        <li class="nav-item dropdown" id="notificationDropdown">
+                                            <a class="nav-link dropdown-toggle waves-effect waves-dark" href="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                <i class="mdi mdi-bell font-24"></i>
+                                                <span class="badge badge-danger badge-pill rounded-circle" id="notificationCount" style="position: absolute; top: 15px; right: 5px; font-size: 10px; display: none;">0</span>
+                                            </a>
+                                            <div class="dropdown-menu dropdown-menu-right mailbox animated bounceInDown" style="min-width: 300px;">
+                                                <ul class="list-style-none">
+                                                    <li>
+                                                        <div class="drop-title border-bottom font-weight-bold p-3">
+                                                            <i class="fas fa-bell mr-2 text-warning"></i> Notificaciones
+                                                        </div>
+                                                    </li>
+                                                    <li>
+                                                        <div class="message-center message-body p-2" id="notificationList" style="max-height: 300px; overflow-y: auto;">
+                                                            <div class="text-center text-muted p-3 small">Cargando notificaciones...</div>
+                                                        </div>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </li>
+                                    }
+
+                                    <li class="nav-item dropdown">
+                                        <a class="nav-link dropdown-toggle waves-effect waves-dark pro-pic" href="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            <img src="~/assets/images/users/1.jpg" alt="user" class="rounded-circle" width="31">
+                                                <span class="m-l-5 font-medium d-none d-sm-inline-block">
+                                                    @User.Identity?.Name <i class="mdi mdi-chevron-down"></i>
+                                                </span>
+                                            </a>
+                                            <div class="dropdown-menu dropdown-menu-right user-dd animated">
+                                                <a class="dropdown-item" href="javascript:void(0)"><i class="ti-user m-r-5 m-l-5"></i> Mi Perfil</a>
+                                                <div class="dropdown-divider"></div>
+                                                <form class="form-inline" method="post" asp-page="/Logout">
+                                                    <button type="submit" class="dropdown-item"><i class="fa fa-power-off m-r-5 m-l-5"></i> Cerrar Sesión</button>
+                                                </form>
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </nav>
+                        </header>
+                        <partial name="_Sidebar" />
+
+                        <div class="page-wrapper">
+                            <div class="page-breadcrumb">
+                                <div class="row">
+                                    <div class="col-5 align-self-center">
+                                        <h4 class="page-title">@ViewData["Title"]</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="container-fluid">
+                                @RenderBody()
+                            </div>
+                            <footer class="footer text-center">
+                            </footer>
+                        </div>
+                    </div>
+    
+                    <script src="~/assets/libs/jquery/dist/jquery.min.js"></script>
+                    <script src="~/assets/libs/popper.js/dist/umd/popper.min.js"></script>
+                    <script src="~/assets/libs/bootstrap/dist/js/bootstrap.min.js"></script>
+                    <script src="~/dist/js/app.min.js"></script>
+                    <script src="~/dist/js/app.init.js"></script>
+                    <script src="~/dist/js/app-style-switcher.js"></script>
+                    <script src="~/assets/libs/perfect-scrollbar/dist/perfect-scrollbar.jquery.min.js"></script>
+                    <script src="~/assets/extra-libs/sparkline/sparkline.js"></script>
+                    <script src="~/dist/js/waves.js"></script>
+                    <script src="~/dist/js/sidebarmenu.js"></script>
+                    <script src="~/dist/js/custom.min.js"></script>
+                    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+
+                    @* INTERPRETADOR GLOBAL DE NOTIFICACIONES SWEETALERT2 *@
+                    <script>
+                            $(function () {
+                                const Toast = Swal.mixin({
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 4000,
+                                    timerProgressBar: true
+                                });
+
+                                @if (TempData["Success"] != null)
+                                {
+                                        <text>
+                                            Toast.fire({
+                                                icon: 'success',
+                                                title: '@Html.Raw(TempData["Success"]?.ToString() ?? "")'
+                                            });
+                                        </text>
+                                }
+
+                                @if (TempData["Error"] != null)
+                                {
+                                        <text>
+                                            Swal.fire({
+                                                icon: 'error',
+                                                title: '¡Ups!',
+                                                text: '@Html.Raw(TempData["Error"]?.ToString() ?? "")',
+                                                confirmButtonColor: '#2962ff'
+                                            });
+                                        </text>
+                                }
+
+                                @if (TempData["Warning"] != null)
+                                {
+                                        <text>
+                                            Swal.fire({
+                                                icon: 'warning',
+                                                title: 'Atención',
+                                                text: '@Html.Raw(TempData["Warning"]?.ToString() ?? "")',
+                                                confirmButtonColor: '#ffc107'
+                                            });
+                                        </text>
+                                }
+                            });
+                    </script>
+
+                    @await RenderSectionAsync("Scripts", required: false)
+
+                    @if (showBell)
+                    {
+                        <script>
+                                $(function() {
+                                    const managementId = '@notificationManagementId';
+                                    const notificationScope = '@notificationScope';
+
+                                    function getNotificationsUrl() {
+                                        let url = '/Api/Notifications?handler=Unread';
+                                        if (notificationScope) {
+                                            url += '&scope=' + encodeURIComponent(notificationScope);
+                                        }
+                                        if (managementId) {
+                                            url += '&managementId=' + encodeURIComponent(managementId);
+                                        }
+                                        return url;
+                                    }
+
+                                    function sanitizeIconClass(icon) {
+                                        if (!icon || !/^[a-z0-9\-\s]+$/i.test(icon)) {
+                                            return 'fas fa-info-circle text-info';
+                                        }
+                                        return icon;
+                                    }
+
+                                    function getSafeUrl(url) {
+                                        if (!url || typeof url !== 'string') return '';
+                                        return url.indexOf('/') === 0 && url.indexOf('//') !== 0 ? url : '';
+                                    }
+
+                                    function renderNotificationItem(item) {
+                                        const safeUrl = getSafeUrl(item.url);
+                                        const $link = $('<a/>', {
+                                            href: safeUrl || 'javascript:void(0)',
+                                            class: 'message-item d-flex align-items-center border-bottom px-3 py-2 text-decoration-none'
+                                        });
+
+                                        $link.on('click', function (e) {
+                                            e.preventDefault();
+                                            markSingleAsRead(item.id, safeUrl);
+                                        });
+
+                                        const $iconWrap = $('<span/>', {
+                                            class: 'btn btn-circle btn-light-info text-info mr-3',
+                                            style: 'width:40px; height:40px; line-height:40px; text-align:center;'
+                                        });
+                                        $('<i/>', { class: sanitizeIconClass(item.icon) }).appendTo($iconWrap);
+
+                                        const $body = $('<div/>', { class: 'w-75 d-inline-block v-middle' });
+                                        $('<h6/>', { class: 'message-title mb-0 font-weight-bold text-dark text-truncate' }).text(item.title || 'Notificación').appendTo($body);
+                                        $('<span/>', { class: 'font-12 text-nowrap d-block text-muted text-truncate' }).text(item.message || '').appendTo($body);
+                                        $('<span/>', { class: 'font-10 text-nowrap d-block text-muted mt-1' })
+                                            .append($('<i/>', { class: 'far fa-clock mr-1' }))
+                                            .append(document.createTextNode(item.time || ''))
+                                            .appendTo($body);
+
+                                        return $link.append($iconWrap, $body);
+                                    }
+
+                                    function loadNotifications() {
+                                        $.get(getNotificationsUrl(), function(data) {
+                                            const count = data.count || 0;
+                                            const $badge = $('#notificationCount');
+                                            const $list = $('#notificationList');
+
+                                            if (count > 0) {
+                                                $badge.text(count).fadeIn();
+                                            } else {
+                                                $badge.fadeOut();
+                                            }
+
+                                            if (data.items && data.items.length > 0) {
+                                                $list.empty();
+                                                $.each(data.items, function(i, item) {
+                                                    $list.append(renderNotificationItem(item));
+                                                });
+                                            } else {
+                                                $list.html('<div class="text-center text-muted p-4 small"><i class="fas fa-inbox fa-2x mb-2 opacity-5"></i><br/>No tienes notificaciones nuevas.</div>');
+                                            }
+                                        });
+                                    }
+
+                                    loadNotifications();
+                                    setInterval(loadNotifications, 30000);
+
+                                    window.markSingleAsRead = function(id, url) {
+                                        $.get('/Api/Notifications?handler=MarkAsRead&id=' + encodeURIComponent(id), function() {
+                                            loadNotifications();
+                                            if (url) {
+                                                window.location.href = url;
+                                            }
+                                        });
+                                    };
+                                });
+                        </script>
+                    }
+                </body>
+            </html>

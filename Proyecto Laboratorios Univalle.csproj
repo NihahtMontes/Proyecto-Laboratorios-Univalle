@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Proyecto_Laboratorios_Univalle</RootNamespace>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tmp\**;tmp\**\*;tmp/**;tmp/**/*</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,18 +15,27 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid.EntityFrameworkAdapter" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.12">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
     <PackageReference Include="QuestPDF" Version="2025.12.3" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Migrations\**\*.cs" />
     <Compile Remove="Data\Migrations\**\*.cs" />
+    <Compile Remove="Data\PostgresMigrations\**\*.cs" />
+    <Compile Remove="tmp\**\*.cs" />
+    <Compile Remove="tmp/**" />
+    <Content Remove="tmp\**" />
+    <Content Remove="tmp/**" />
+    <EmbeddedResource Remove="tmp\**" />
+    <EmbeddedResource Remove="tmp/**" />
+    <None Remove="tmp\**" />
+    <None Remove="tmp/**" />
   </ItemGroup>
 
 </Project>

@@ -536,17 +536,23 @@
     <!-- ===== TAB: CALENDARIO ===== -->
     @if (Model.ActiveTab == "calendario")
     {
-        <!-- Controles de zoom -->
+        <!-- Controles de vista y zoom -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <span class="badge px-3 py-2 mr-2" style="background:#dbeafe;color:#1d4ed8;"><i class="fa fa-circle mr-1"></i>Preventivo / Planeado</span>
-                <span class="badge px-3 py-2 mr-2" style="background:#dcfce7;color:#15803d;"><i class="fa fa-circle mr-1"></i>Ejecutado</span>
-                <span class="badge px-3 py-2" style="background:#f3e8ff;color:#7e22ce;"><i class="fa fa-circle mr-1"></i>Correctivo</span>
+                <span class="badge px-3 py-2 mr-2" style="background:#dbeafe;color:#1d4ed8;"><i class="fa fa-circle mr-1"></i>Preventivo</span>
+                <span class="badge badge-soft-success px-3 py-2 mr-2"><i class="fa fa-circle mr-1"></i>Ejecutado</span>
+                <span class="badge px-3 py-2" style="background:#ede9fe;color:#6d28d9;"><i class="fa fa-circle mr-1"></i>Correctivo</span>
             </div>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
-                <button type="button" class="btn btn-outline-secondary" id="calZoomOut" title="Reducir"><i class="fas fa-search-minus"></i></button>
-                <button type="button" class="btn btn-outline-secondary" id="calZoomReset" title="Normal">100%</button>
-                <button type="button" class="btn btn-outline-secondary" id="calZoomIn" title="Ampliar"><i class="fas fa-search-plus"></i></button>
+            <div class="d-flex">
+                <div class="btn-group btn-group-sm mr-2" role="group" aria-label="Vista">
+                    <button type="button" class="btn btn-outline-primary active" id="calViewMonth">Mes</button>
+                    <button type="button" class="btn btn-outline-primary" id="calViewWeek">Semana</button>
+                </div>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
+                    <button type="button" class="btn btn-outline-secondary" id="calZoomOut" title="Reducir"><i class="fas fa-search-minus"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" id="calZoomReset" title="Normal">90%</button>
+                    <button type="button" class="btn btn-outline-secondary" id="calZoomIn" title="Ampliar"><i class="fas fa-search-plus"></i></button>
+                </div>
             </div>
         </div>
 
@@ -775,26 +781,17 @@
         <link href="~/assets/libs/fullcalendar/dist/fullcalendar.min.css" rel="stylesheet" />
         <style>
             /* Estilos custom para eventos del calendario */
-            .fc-event.ev-planned    { background:#2563eb !important; border-color:#1d4ed8 !important; color:#fff !important; }
-            .fc-event.ev-completed  { background:#16a34a !important; border-color:#15803d !important; color:#fff !important; }
-            .fc-event.ev-corrective { background:#7e22ce !important; border-color:#6b21a8 !important; color:#fff !important; }
-            .fc-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:12px; }
-            .fc-toolbar .fc-left,
-            .fc-toolbar .fc-center,
-            .fc-toolbar .fc-right { float:none; display:flex; align-items:center; }
-            .fc-toolbar .fc-center { flex:1 1 220px; justify-content:center; min-width:220px; }
-            .fc-toolbar .fc-right { justify-content:flex-end; }
-            .fc-toolbar h2 { font-size:1.05rem; font-weight:800; color:#0f172a; margin:0; white-space:normal; text-align:center; }
-            .fc button { height:30px; padding:0 10px; font-size:0.75rem; font-weight:700; }
-            #calendar { font-size:0.82rem; }
-            #calendar .fc-day-number { font-size:0.72rem; padding:4px 6px; }
-            #calendar .fc-row { min-height:62px !important; }
+            .fc-event.ev-completed  { background:#2eca6a !important; border-color:#25a85c !important; color:#fff !important; }
+            .fc-event.ev-preventive { background:#2563eb !important; border-color:#1d4ed8 !important; color:#fff !important; }
+            .fc-event.ev-corrective { background:#7c3aed !important; border-color:#6d28d9 !important; color:#fff !important; }
             /* Sombreado de 8 semanas */
             .fc-bgevent { opacity: 0.15 !important; }
             /* Hover en día para indicar que es clickeable */
             .fc-day:hover { background: rgba(99,102,241,0.04); cursor: pointer; }
             /* Evento más compacto */
-            .fc-event { font-size: 0.68rem; padding: 1px 4px; border-radius: 4px; margin-bottom: 1px; line-height:1.25; }
+            .fc { font-size: 0.84rem; }
+            .fc-event { font-size: 0.68rem; padding: 1px 4px; border-radius: 4px; margin-bottom: 1px; }
+            .fc-row .fc-content-skeleton td, .fc-row .fc-helper-skeleton td { padding-bottom: 0; }
             /* More link */
             .fc-more { font-size: 0.7rem; font-weight: 700; color: #6366f1; }
             /* Day detail item */
@@ -803,8 +800,8 @@
             .day-detail-item:last-child { border-bottom:none; }
             .day-detail-status { width:8px; height:8px; border-radius:50%; margin-right:12px; flex-shrink:0; }
             .day-detail-status.st-completed { background:#2eca6a; }
-            .day-detail-status.st-progress  { background:#7e22ce; }
-            .day-detail-status.st-planned   { background:#2563eb; }
+            .day-detail-status.st-progress  { background:#f59e0b; }
+            .day-detail-status.st-planned   { background:#6366f1; }
             .day-detail-actions .btn { font-size:0.72rem; padding:3px 10px; }
             .day-detail-empty { padding:40px 20px; text-align:center; color:#94a3b8; }
         </style>
@@ -854,20 +851,13 @@
                     header: {
                         left:   'prev,next today',
                         center: 'title',
-                        right:  'month,agendaWeek'
-                    },
-                    buttonText: {
-                        today: 'Hoy',
-                        month: 'Mes',
-                        week: 'Semana'
+                        right:  ''
                     },
                     locale:           'es',
                     editable:         false,
                     droppable:        false,
                     displayEventTime: false,
                     eventLimit:       3, // +X more cuando hay muchos
-                    contentHeight:    520,
-                    aspectRatio:      1.9,
                     events:           calEvents,
                     dayClick: function (date, jsEvent, view) {
                         openDayPanel(date.format('YYYY-MM-DD'), allEvents);
@@ -885,7 +875,7 @@
                 });
 
                 // ============ ZOOM ============
-                var zoomLevel = 1.0;
+                var zoomLevel = 0.9;
                 var $wrapper = $('#calendarZoomWrapper');
                 var $label   = $('#calZoomReset');
 
@@ -900,7 +890,19 @@
                     if (zoomLevel > 0.5) { zoomLevel -= 0.1; applyZoom(); }
                 });
                 $label.click(function () {
-                    zoomLevel = 1.0; applyZoom();
+                    zoomLevel = 0.9; applyZoom();
+                });
+                applyZoom();
+
+                $('#calViewMonth').click(function () {
+                    $('#calendar').fullCalendar('changeView', 'month');
+                    $('#calViewMonth').addClass('active');
+                    $('#calViewWeek').removeClass('active');
+                });
+                $('#calViewWeek').click(function () {
+                    $('#calendar').fullCalendar('changeView', 'agendaWeek');
+                    $('#calViewWeek').addClass('active');
+                    $('#calViewMonth').removeClass('active');
                 });
 
                 // ============ PANEL DE DÍA ============

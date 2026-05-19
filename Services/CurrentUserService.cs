@@ -1,0 +1,48 @@
+using System.Security.Claims;
+
+namespace Proyecto_Laboratorios_Univalle.Services
+{
+    public interface ICurrentUserService
+    {
+        int? UserId { get; }
+    }
+
+    public class CurrentUserService : ICurrentUserService
+    {
+        private readonly IHttpContextAccessor _httpContextAccessor;
+
+        public CurrentUserService(IHttpContextAccessor httpContextAccessor)
+        {
+            _httpContextAccessor = httpContextAccessor;
+        }
+
+        public int? UserId
+        {
+            get
+            {
+                var user = _httpContextAccessor.HttpContext?.User;
+                
+                // Validación estricta: Si no está autenticado, retornamos null inmediatamente
+                if (user == null || user.Identity?.IsAuthenticated != true)
+                {
+                    return null;
+                }
+
+                // Extracción segura del ID: Intentamos obtener el NameIdentifier estándar
+                var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                {
+                    return null;
+                }
+
+                if (int.TryParse(userIdClaim, out int userId))
+                {
+                    return userId;
+                }
+
+                return null;
+            }
+        }
+    }
+}

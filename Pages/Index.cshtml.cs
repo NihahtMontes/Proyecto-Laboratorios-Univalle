@@ -173,10 +173,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         p.CurrentState,
                         p.PlannedDate,
                         p.VerificationId,
-                        p.RequestId,
-                        p.MaintenanceId,
-                        p.DepartureId,
-                        p.AcquisitionRequestId,
                         p.IsDraft,
                         p.DraftPhase
                     }).ToListAsync();
@@ -195,11 +191,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     CountBuenos = allStats.Count(p =>
                         p.CurrentState == WizardEquipmentState.VerifiedGood);
 
-                    CountL6 = isCorrective ? 0 : allStats.Count(p => p.VerificationId.HasValue);
-                    CountL7 = allStats.Count(p => p.RequestId.HasValue);
-                    CountL8 = allStats.Count(p => p.MaintenanceId.HasValue);
-                    CountSalida = allStats.Count(p => p.DepartureId.HasValue);
-                    CountDesembolso = allStats.Count(p => p.AcquisitionRequestId.HasValue);
+                    CountL6 = ActiveManagement.Type == ManagementType.Corrective ? 0 : allStats.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.CurrentPhase == WizardPhase.Verification && (p.VerificationId == null || (p.IsDraft && p.DraftPhase == WizardPhase.Verification)));
+                    CountL7 = allStats.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.CurrentPhase == WizardPhase.TechnicalRequest);
+                    CountL8 = allStats.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.CurrentPhase == WizardPhase.Maintenance);
+                    CountSalida = allStats.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.CurrentPhase == WizardPhase.Exit);
+                    CountDesembolso = allStats.Count(p => p.PlanStatus != ManagementPlanStatus.Completed && p.CurrentPhase == WizardPhase.Disbursement && p.CurrentState != WizardEquipmentState.Completed);
 
                     // 2. DATA QUERY: Base pesada con Includes solo para el Cronograma y el Wizard
                     var dataQuery = _context.ManagementPlans
@@ -307,7 +303,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                         Step3Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Maintenance).ToList();
                         Step4Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Exit).ToList();
                         Step5Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Kardex).ToList();
-                        Step6Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Disbursement).ToList();
+                        Step6Plans = ActivePlans.Where(p => p.CurrentPhase == WizardPhase.Disbursement && p.PlanStatus != ManagementPlanStatus.Completed && p.CurrentState != WizardEquipmentState.Completed).ToList();
                         CompletedPlans = ActivePlans
                             .Where(p => p.CurrentState == WizardEquipmentState.Completed || p.PlanStatus == ManagementPlanStatus.Completed)
                             .OrderByDescending(p => p.LastModifiedDate ?? p.CreatedDate)

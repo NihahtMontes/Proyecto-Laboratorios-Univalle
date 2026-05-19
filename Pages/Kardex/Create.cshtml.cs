@@ -50,6 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             [Display(Name = "Técnico Responsable")]
             public int? TechnicianId { get; set; }
 
+            [Required(ErrorMessage = "La fecha programada es obligatoria")]
             [DataType(DataType.Date)]
             public DateTime? ScheduledDate { get; set; }
 
@@ -190,42 +191,51 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     if (int.TryParse(userIdString, out var duid)) departure.ModifiedById = duid;
                 }
 
-                EquipmentStateHistory? newHistory = null;
-                if (!plan.KardexHistoryId.HasValue)
-                {
-                    var historyDate = Input.ActualReturnDate!.Value;
-                    var lastHistory = await _context.EquipmentStateHistories
-                        .Where(h => h.EquipmentUnitId == unit.Id && h.EndDate == null)
-                        .OrderByDescending(h => h.StartDate)
+                var historyDate = Input.ActualReturnDate!.Value;
+                var lastHistory = await _context.EquipmentStateHistories
+                    .Where(h => h.EquipmentUnitId == unit.Id && h.EndDate == null)
+                    .OrderByDescending(h => h.StartDate)
+                    .AsTracking()
+                    .FirstOrDefaultAsync();
+
+                var existingKardexHistory = plan.KardexHistoryId.HasValue
+                    ? await _context.EquipmentStateHistories
                         .AsTracking()
-                        .FirstOrDefaultAsync();
+                        .FirstOrDefaultAsync(h => h.Id == plan.KardexHistoryId.Value)
+                    : null;
 
-                    if (lastHistory != null)
-                    {
-                        lastHistory.EndDate = historyDate;
-                    }
+                if (lastHistory != null && lastHistory.Id != existingKardexHistory?.Id)
+                {
+                    lastHistory.EndDate = historyDate;
+                }
 
-                    newHistory = new EquipmentStateHistory
-                    {
-                        EquipmentUnitId = unit.Id,
-                        Status = EquipmentStatus.Operational,
-                        StartDate = historyDate,
-                        Reason = BuildKardexReason(maintenance),
-                        CreatedDate = DateTime.UtcNow,
-                        CreatedById = int.TryParse(userIdString, out var huid) ? huid : null
-                    };
+                var kardexHistory = existingKardexHistory ?? new EquipmentStateHistory
+                {
+                    EquipmentUnitId = unit.Id,
+                    Status = EquipmentStatus.Operational,
+                    StartDate = historyDate,
+                    Reason = BuildKardexReason(maintenance),
+                    CreatedDate = DateTime.UtcNow,
+                    CreatedById = int.TryParse(userIdString, out var huid) ? huid : null
+                };
 
-                    _context.EquipmentStateHistories.Add(newHistory);
+                if (existingKardexHistory == null)
+                {
+                    _context.EquipmentStateHistories.Add(kardexHistory);
+                }
+                else
+                {
+                    kardexHistory.Status = EquipmentStatus.Operational;
+                    kardexHistory.StartDate = historyDate;
+                    kardexHistory.EndDate = null;
+                    kardexHistory.Reason = BuildKardexReason(maintenance);
                 }
 
                 unit.CurrentStatus = EquipmentStatus.Operational;
 
                 await _context.SaveChangesAsync();
 
-                if (newHistory != null)
-                {
-                    plan.KardexHistoryId = newHistory.Id;
-                }
+                plan.KardexHistoryId = kardexHistory.Id;
                 plan.CurrentPhase = WizardPhase.Disbursement;
                 plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
                 plan.PlanStatus = ManagementPlanStatus.InProgress;
