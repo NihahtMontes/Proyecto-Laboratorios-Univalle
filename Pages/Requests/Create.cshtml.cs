@@ -15,6 +15,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
     [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class CreateModel : PageModel
     {
+        private const int TechnicalChecklistMinimumItems = 13;
+        private const string TechnicalChecklistText = @"1. Desconexión del cable de la alimentación eléctrica para mantenimiento preventivo/correctivo 12 horas antes.
+2. Limpieza y desinfección interna con productos no abrasivos.
+3. Limpieza externa de condensador, serpentín, evaporador y retiro de polvo y grasas adheridas.
+4. Verificación de presión del refrigerante.
+5. Revisión de fugas y/o microfugas en serpentín.
+6. Revisión de formaciones de hielo y condensaciones superficiales no esporádicas.
+7. Control de temperatura y termostatos según norma.
+8. Revisión de puertas y sellos de goma (empaques).
+9. Limpieza de drenajes de deshielo.
+10. Verificación del funcionamiento de ventiladores.
+11. Mantenimiento eléctrico: inspección de cableado, terminales, protecciones eléctricas, etc.
+12. Lubricación de partes móviles.
+13. Mantenimiento con personal externo capacitado.";
+
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
@@ -36,6 +51,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
             ViewData["IsCorrective"] = isCorrective;
             ViewData["ManagementId"] = currentMgmt?.Id;
+            ViewData["ManagementType"] = currentMgmt?.Type.ToString();
 
             if (ManagementPlanId.HasValue)
             {
@@ -90,21 +106,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 }
             }
 
-            if (isWizard)
+            if (string.IsNullOrWhiteSpace(Input.Observations))
             {
-                Input.Observations = @"1. Desconexión del cable de la alimentación eléctrica para mantenimiento preventivo/correctivo 12 horas antes.
-2. Limpieza y desinfección interna con productos no abrasivos.
-3. Limpieza externa de condensador, serpentín, evaporador y retiro de polvo y grasas adheridas.
-4. Verificación de presión del refrigerante.
-5. Revisión de fugas y/o microfugas en serpentín.
-6. Revisión de formaciones de hielo y condensaciones superficiales no esporádicas.
-7. Control de temperatura y termostatos según norma.
-8. Revisión de puertas y sellos de goma (empaques).
-9. Limpieza de drenajes de deshielo.
-10. Verificación del funcionamiento de ventiladores.
-11. Mantenimiento eléctrico: inspección de cableado, terminales, protecciones eléctricas, etc.
-12. Lubricación de partes móviles.
-13. Mantenimiento con personal externo capacitado.";
+                Input.Observations = TechnicalChecklistText;
             }
 
 
@@ -135,6 +139,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             public string? Observations { get; set; }
             public RequestPriority Priority { get; set; } = RequestPriority.Medium;
             public string? EstimatedRepairTime { get; set; }
+            public bool TechnicalChecklistConfirmed { get; set; }
         }
 
         public async Task<IActionResult> OnPostDraftAsync(bool isWizard = false)
@@ -184,17 +189,32 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 ModelState.Remove("Input.EquipmentUnitId");
             }
 
-            currentMgmt ??= await ResolveManagementAsync();
+            currentMgmt ??= isWizard && !ManagementId.HasValue && !ManagementPlanId.HasValue
+                ? null
+                : await ResolveManagementAsync();
             var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
 
             ViewData["IsWizard"] = isWizard;
             ViewData["IsCorrective"] = isCorrective;
             ViewData["ManagementId"] = currentMgmt?.Id ?? ManagementId;
+            ViewData["ManagementType"] = currentMgmt?.Type.ToString();
             ViewData["CurrentPhaseInt"] = (int)(wizardPlan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
 
             if (saveDraft)
             {
                 ModelState.Remove("Input.Description");
+            }
+            else
+            {
+                if (!Enum.IsDefined(typeof(RequestPriority), Input.Priority))
+                {
+                    ModelState.AddModelError("Input.Priority", "Debe seleccionar una prioridad válida para la solicitud L-7.");
+                }
+
+                if (!Input.TechnicalChecklistConfirmed || CountChecklistItems(Input.Observations) < TechnicalChecklistMinimumItems)
+                {
+                    ModelState.AddModelError("Input.TechnicalChecklistConfirmed", "Debe revisar y confirmar el checklist técnico obligatorio de 13 puntos.");
+                }
             }
 
             if (!ModelState.IsValid)
@@ -235,6 +255,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             if (unit.LaboratoryId == null)
             {
                 TempData.Error("No se pudo registrar la solicitud L-7: la unidad física no tiene laboratorio asignado.");
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                return Page();
+            }
+
+            var currentRequestId = wizardPlan?.RequestId ?? wizardPlan?.TechnicalRequest?.Id ?? 0;
+            var hasPendingRequest = currentMgmt.Type != ManagementType.Corrective && await _context.Requests
+                .AsNoTracking()
+                .AnyAsync(r => r.Type == RequestType.Technical
+                    && r.ManagementId == currentMgmt.Id
+                    && r.EquipmentUnitId == Input.EquipmentUnitId
+                    && r.Status == RequestStatus.Pending
+                    && r.Id != currentRequestId);
+
+            if (hasPendingRequest)
+            {
+                TempData.Warning("Ya existe una solicitud L-7 pendiente para esta unidad en la gestión seleccionada.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
@@ -305,7 +341,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                         EquipmentUnitId = Input.EquipmentUnitId,
                         CurrentPhase = saveDraft ? WizardPhase.TechnicalRequest : WizardPhase.Maintenance,
                         CurrentState = saveDraft ? WizardEquipmentState.AwaitingRequest : WizardEquipmentState.AwaitingMaintenance,
-                        PlanStatus = ManagementPlanStatus.Pending,
+                        PlanStatus = ManagementPlanStatus.InProgress,
                         RequestId = request.Id
                     };
                     if (saveDraft)
@@ -347,6 +383,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             Input.Observations = request.Observations;
             Input.Priority = request.Priority;
             Input.EstimatedRepairTime = request.EstimatedRepairTime;
+        }
+
+        private static int CountChecklistItems(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return 0;
+
+            return text
+                .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+                .Count(line => char.IsDigit(line.TrimStart().FirstOrDefault()));
         }
 
         private static void MarkRequestDraft(ManagementPlan plan)

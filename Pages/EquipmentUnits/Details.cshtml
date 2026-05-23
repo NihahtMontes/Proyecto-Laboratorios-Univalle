@@ -1,7 +1,10 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Helpers
+@using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
     ViewData["Title"] = "Detalles de Unidad Física";
+    var showMaintenancesTab = HttpContext.Request.Query.Keys.Any(k => k.StartsWith("Maintenance"));
 }
 
 <div class="row">
@@ -90,7 +93,7 @@
                 
                 <div class="mb-3">
                     <label class="text-muted small uppercase font-weight-bold d-block mb-1">Tipo de Recurso</label>
-                    <span class="text-dark font-weight-bold">@Model.EquipmentUnit.Equipment?.Category</span>
+                        <span class="text-dark font-weight-bold">@(Model.EquipmentUnit.Equipment != null ? EnumHelper.GetDisplayName(Model.EquipmentUnit.Equipment.Category) : "Sin dato")</span>
                 </div>
 
                 <div class="mb-3">
@@ -98,11 +101,11 @@
                     <span class="text-dark font-weight-bold">
                         @if (Model.EquipmentUnit.Equipment?.Category == Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentCategory.Utensil)
                         {
-                            @Model.EquipmentUnit.Equipment?.UtensilType
+                            @(Model.EquipmentUnit.Equipment != null ? EnumHelper.GetDisplayName(Model.EquipmentUnit.Equipment.UtensilType) : "Sin dato")
                         }
                         else
                         {
-                            @Model.EquipmentUnit.Equipment?.TypeClassification
+                            @(Model.EquipmentUnit.Equipment != null ? EnumHelper.GetDisplayName(Model.EquipmentUnit.Equipment.TypeClassification) : "Sin dato")
                         }
                     </span>
                 </div>
@@ -151,19 +154,19 @@
 
                 <ul class="nav nav-pills custom-pills mb-4" id="pills-tab" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active" id="pills-history-tab" data-toggle="pill" href="#history" role="tab" aria-controls="pills-history" aria-selected="true">
+                        <a class="nav-link @(showMaintenancesTab ? "" : "active")" id="pills-history-tab" data-toggle="pill" href="#history" role="tab" aria-controls="pills-history" aria-selected="true">
                             <i class="fas fa-history mr-1"></i> Historial de Estados
                         </a>
                     </li>
                     <li class="nav-item pl-2">
-                        <a class="nav-link" id="pills-maintenances-tab" data-toggle="pill" href="#maintenances" role="tab" aria-controls="pills-maintenances" aria-selected="false">
+                        <a class="nav-link @(showMaintenancesTab ? "active" : "")" id="pills-maintenances-tab" data-toggle="pill" href="#maintenances" role="tab" aria-controls="pills-maintenances" aria-selected="false">
                             <i class="fas fa-tools mr-1"></i> Mantenimientos
                         </a>
                     </li>
                 </ul>
 
                 <div class="tab-content" id="pills-tabContent">
-                    <div class="tab-pane fade show active" id="history" role="tabpanel" aria-labelledby="pills-history-tab">
+                    <div class="tab-pane fade @(showMaintenancesTab ? "" : "show active")" id="history" role="tabpanel" aria-labelledby="pills-history-tab">
                         <div class="table-responsive border rounded">
                             <table class="table table-hover mb-0">
                                 <thead class="bg-light">
@@ -180,55 +183,140 @@
                                         {
                                             <tr>
                                                 <td class="font-weight-bold text-dark pl-4">@h.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
-                                                <td><span class="badge badge-pill badge-light border px-2 py-1">@h.Status</span></td>
-                                                <td class="small text-muted">@h.Reason</td>
+                                                <td><span class="badge badge-pill badge-light border px-2 py-1">@EnumHelper.GetDisplayName(h.Status)</span></td>
+                                                <td class="small text-muted">@(h.Reason ?? "Sin detalle")</td>
                                             </tr>
                                         }
                                     }
                                     else
                                     {
-                                        <tr><td colspan="3" class="text-center py-5 text-muted italic">No hay registros históricos para esta unidad física.</td></tr>
+                                        <tr><td colspan="3" class="text-center py-5 text-muted italic">No hay registros historicos para esta unidad fisica.</td></tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    <div class="tab-pane fade" id="maintenances" role="tabpanel" aria-labelledby="pills-maintenances-tab">
-                         <div class="table-responsive border rounded">
-                            <table class="table table-hover mb-0">
+
+                    <div class="tab-pane fade @(showMaintenancesTab ? "show active" : "")" id="maintenances" role="tabpanel" aria-labelledby="pills-maintenances-tab">
+                        <div class="bg-light p-3 rounded border-left border-info mb-3">
+                            <form method="get" asp-page="./Details">
+                                <input type="hidden" name="id" value="@Model.EquipmentUnit.Id" />
+                                <div class="row align-items-end">
+                                    <div class="col-lg-2 col-md-6 mb-2">
+                                        <label class="small font-weight-bold text-muted uppercase">Gestion</label>
+                                        <select asp-for="MaintenanceManagementId" class="form-control custom-select" asp-items="Model.ManagementOptions">
+                                            <option value="">Todas las gestiones</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-2 col-md-6 mb-2">
+                                        <label class="small font-weight-bold text-muted uppercase">Tipo de gestion</label>
+                                        <select asp-for="MaintenanceManagementType" class="form-control custom-select" asp-items="Html.GetEnumSelectList<ManagementType>()">
+                                            <option value="">Todos</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-2 col-md-6 mb-2">
+                                        <label class="small font-weight-bold text-muted uppercase">Satisfaccion</label>
+                                        <select asp-for="MaintenanceSatisfactionFilter" class="form-control custom-select" asp-items="Html.GetEnumSelectList<MaintenanceSatisfaction>()">
+                                            <option value="">Todas</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-lg-3 col-md-6 mb-2">
+                                        <label class="small font-weight-bold text-muted uppercase">Busqueda</label>
+                                        <input asp-for="MaintenanceSearchTerm" class="form-control" placeholder="Tecnico o descripcion..." />
+                                    </div>
+                                    <div class="col-lg-3 col-md-12 mb-2">
+                                        <label class="small font-weight-bold text-muted uppercase d-block">&nbsp;</label>
+                                        <div class="d-flex justify-content-lg-end">
+                                            <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm mr-2"><i class="fas fa-filter mr-1"></i> Filtrar</button>
+                                            <a asp-page="./Details" asp-route-id="@Model.EquipmentUnit.Id" asp-route-MaintenanceManagementId="" class="btn btn-outline-secondary btn-rounded px-3" title="Limpiar filtros"><i class="fas fa-sync-alt"></i></a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small text-muted font-weight-bold">Mostrando @Model.MaintenanceFirstItem-@Model.MaintenanceLastItem de @Model.MaintenanceHistory.TotalCount mantenimientos</span>
+                        </div>
+
+                        <div class="table-responsive border rounded">
+                            <table class="table table-hover mb-0 v-middle">
                                 <thead class="bg-light">
                                     <tr class="text-muted uppercase small font-weight-bold">
-                                        <th class="pl-4">Fecha</th>
-                                        <th>Tipo</th>
-                                        <th>Responsable Técnico</th>
-                                        <th>Resultado</th>
+                                        <th class="pl-4">Gestion</th>
+                                        <th>Fecha</th>
+                                        <th>Trabajo</th>
+                                        <th>Tecnico</th>
+                                        <th>Estado</th>
+                                        <th class="text-right">Costo</th>
+                                        <th>Satisfaccion</th>
+                                        <th class="text-right">Accion</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (Model.EquipmentUnit.Maintenances != null && Model.EquipmentUnit.Maintenances.Any())
+                                    @if (Model.MaintenanceHistory.Any())
                                     {
-                                        foreach (var m in Model.EquipmentUnit.Maintenances.OrderByDescending(x => x.ScheduledDate))
+                                        foreach (var m in Model.MaintenanceHistory)
                                         {
+                                            var date = m.EndDate ?? m.StartDate ?? m.ScheduledDate ?? m.CreatedDate;
+                                            var totalCost = m.ActualCost ?? m.CalculatedTotal;
                                             <tr>
-                                                <td class="font-weight-bold text-dark pl-4">@(m.ScheduledDate?.ToString("dd/MM/yyyy") ?? "-")</td>
-                                                <td>@Html.DisplayFor(modelItem => m.MaintenanceType)</td>
-                                                <td class="small text-muted">@(m.Technician?.FullName ?? "-")</td>
-                                                <td><span class="badge badge-pill badge-primary px-2 py-1">@Html.DisplayFor(modelItem => m.Status)</span></td>
+                                                <td class="pl-4 small font-weight-bold text-dark">@Model.FormatManagement(m.Management)</td>
+                                                <td class="small font-weight-bold">@date.ToString("dd/MM/yyyy")</td>
+                                                <td style="max-width: 260px;">
+                                                    <div class="small font-weight-bold text-dark">@(string.IsNullOrWhiteSpace(m.Description) ? "Sin descripcion" : m.Description)</div>
+                                                    <span class="text-muted small">@EnumHelper.GetDisplayName(m.MaintenanceType)</span>
+                                                </td>
+                                                <td class="small text-muted">@(m.Technician?.FullName ?? "Sin tecnico")</td>
+                                                <td><span class="badge badge-pill badge-primary px-2 py-1">@EnumHelper.GetDisplayName(m.Status)</span></td>
+                                                <td class="text-right small font-weight-bold text-success">@(totalCost > 0 ? $"Bs {totalCost:N2}" : "Sin costo")</td>
+                                                <td class="small">
+                                                    @if (m.SatisfactionLevel.HasValue)
+                                                    {
+                                                        <span class="font-weight-bold text-info">@EnumHelper.GetDisplayName(m.SatisfactionLevel.Value)</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">Sin dato</span>
+                                                    }
+                                                </td>
+                                                <td class="text-right">
+                                                    <a asp-page="/Maintenances/Details" asp-route-id="@m.Id" class="btn btn-sm btn-outline-info btn-rounded font-weight-bold px-3"><i class="fas fa-eye mr-1"></i> Ver detalle</a>
+                                                </td>
                                             </tr>
                                         }
                                     }
                                     else
                                     {
-                                        <tr><td colspan="4" class="text-center py-5 text-muted italic">No existen servicios de mantenimiento registrados para esta unidad.</td></tr>
+                                        <tr><td colspan="8" class="text-center py-5 text-muted italic">No existen servicios de mantenimiento con los filtros actuales.</td></tr>
                                     }
                                 </tbody>
                             </table>
                         </div>
+
+                        @if (Model.MaintenanceHistory.TotalPages > 1)
+                        {
+                            <nav aria-label="Paginacion de mantenimientos" class="mt-3">
+                                <ul class="pagination justify-content-center mb-0">
+                                    <li class="page-item @(Model.MaintenanceHistory.HasPreviousPage ? "" : "disabled")">
+                                        <a class="page-link" asp-page="./Details" asp-route-id="@Model.EquipmentUnit.Id" asp-route-MaintenancePageIndex="@(Model.MaintenanceHistory.PageIndex - 1)" asp-route-MaintenanceManagementId="@Model.MaintenanceManagementId" asp-route-MaintenanceManagementType="@Model.MaintenanceManagementType" asp-route-MaintenanceSatisfactionFilter="@Model.MaintenanceSatisfactionFilter" asp-route-MaintenanceSearchTerm="@Model.MaintenanceSearchTerm">Anterior</a>
+                                    </li>
+                                    @for (var i = 1; i <= Model.MaintenanceHistory.TotalPages; i++)
+                                    {
+                                        <li class="page-item @(i == Model.MaintenanceHistory.PageIndex ? "active" : "")">
+                                            <a class="page-link" asp-page="./Details" asp-route-id="@Model.EquipmentUnit.Id" asp-route-MaintenancePageIndex="@i" asp-route-MaintenanceManagementId="@Model.MaintenanceManagementId" asp-route-MaintenanceManagementType="@Model.MaintenanceManagementType" asp-route-MaintenanceSatisfactionFilter="@Model.MaintenanceSatisfactionFilter" asp-route-MaintenanceSearchTerm="@Model.MaintenanceSearchTerm">@i</a>
+                                        </li>
+                                    }
+                                    <li class="page-item @(Model.MaintenanceHistory.HasNextPage ? "" : "disabled")">
+                                        <a class="page-link" asp-page="./Details" asp-route-id="@Model.EquipmentUnit.Id" asp-route-MaintenancePageIndex="@(Model.MaintenanceHistory.PageIndex + 1)" asp-route-MaintenanceManagementId="@Model.MaintenanceManagementId" asp-route-MaintenanceManagementType="@Model.MaintenanceManagementType" asp-route-MaintenanceSatisfactionFilter="@Model.MaintenanceSatisfactionFilter" asp-route-MaintenanceSearchTerm="@Model.MaintenanceSearchTerm">Siguiente</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        }
                     </div>
                 </div>
             </div>
         </div>
-
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
                 <h5 class="font-weight-bold text-dark mb-3 small uppercase"><i class="fas fa-info-circle mr-2 text-info"></i> Detalles de Ciclo de Vida Individual</h5>

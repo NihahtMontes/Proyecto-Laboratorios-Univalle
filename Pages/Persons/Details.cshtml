@@ -1,6 +1,11 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Persons.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Helpers
+
+@{
+    var showMaintenancesTab = HttpContext.Request.Query.Keys.Any(k => k.StartsWith("Maintenance"));
+}
 
 <div class="row">
     <!-- Main Column: Identity File -->
@@ -20,13 +25,13 @@
                 <!-- Navigation Tabs -->
                 <ul class="nav nav-tabs customtab mb-4" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active" data-toggle="tab" href="#general" role="tab">
+                        <a class="nav-link @(showMaintenancesTab ? "" : "active")" data-toggle="tab" href="#general" role="tab">
                             <span class="hidden-sm-up"><i class="fas fa-home"></i></span>
                             <span class="hidden-xs-down font-weight-bold">Información General</span>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-toggle="tab" href="#maintenances" role="tab">
+                        <a class="nav-link @(showMaintenancesTab ? "active" : "")" data-toggle="tab" href="#maintenances" role="tab">
                             <span class="hidden-sm-up"><i class="fas fa-tools"></i></span>
                             <span class="hidden-xs-down font-weight-bold">Mantenimientos Realizados</span>
                         </a>
@@ -42,7 +47,7 @@
                 <!-- Tab panes -->
                 <div class="tab-content">
                     <!-- General Tab -->
-                    <div class="tab-pane active" id="general" role="tabpanel">
+                    <div class="tab-pane @(showMaintenancesTab ? "" : "active")" id="general" role="tabpanel">
                         <div class="row">
                             <div class="col-md-5 border-right text-center">
                                 <div class="btn btn-circle btn-lg btn-light-info text-info mb-3 shadow-none" style="width: 80px; height: 80px; line-height: 70px;">
@@ -130,37 +135,92 @@
                     </div>
 
                     <!-- Maintenances Tab -->
-                    <div class="tab-pane" id="maintenances" role="tabpanel">
+                    <div class="tab-pane @(showMaintenancesTab ? "active" : "")" id="maintenances" role="tabpanel">
                         <div class="p-3">
-                            <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-tools mr-2 text-info"></i> Últimos Mantenimientos Ejecutados</h5>
+                            <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-tools mr-2 text-info"></i> Mantenimientos Realizados</h5>
+
+                            <div class="bg-light p-3 rounded border-left border-info mb-3">
+                                <form method="get" asp-page="./Details">
+                                    <input type="hidden" name="id" value="@Model.Person.Id" />
+                                    <div class="row align-items-end">
+                                        <div class="col-lg-2 col-md-6 mb-2">
+                                            <label class="small font-weight-bold text-muted uppercase">Gestion</label>
+                                            <select asp-for="MaintenanceManagementId" class="form-control custom-select" asp-items="Model.ManagementOptions">
+                                                <option value="">Todas las gestiones</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-lg-2 col-md-6 mb-2">
+                                            <label class="small font-weight-bold text-muted uppercase">Tipo de gestion</label>
+                                            <select asp-for="MaintenanceManagementType" class="form-control custom-select" asp-items="Html.GetEnumSelectList<ManagementType>()">
+                                                <option value="">Todos</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-lg-2 col-md-6 mb-2">
+                                            <label class="small font-weight-bold text-muted uppercase">Satisfaccion</label>
+                                            <select asp-for="MaintenanceSatisfactionFilter" class="form-control custom-select" asp-items="Html.GetEnumSelectList<MaintenanceSatisfaction>()">
+                                                <option value="">Todas</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-lg-3 col-md-6 mb-2">
+                                            <label class="small font-weight-bold text-muted uppercase">Busqueda</label>
+                                            <input asp-for="MaintenanceSearchTerm" class="form-control" placeholder="Equipo o inventario..." />
+                                        </div>
+                                        <div class="col-lg-3 col-md-12 mb-2">
+                                            <label class="small font-weight-bold text-muted uppercase d-block">&nbsp;</label>
+                                            <div class="d-flex justify-content-lg-end">
+                                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm mr-2"><i class="fas fa-filter mr-1"></i> Filtrar</button>
+                                                <a asp-page="./Details" asp-route-id="@Model.Person.Id" asp-route-MaintenanceManagementId="" class="btn btn-outline-secondary btn-rounded px-3" title="Limpiar filtros"><i class="fas fa-sync-alt"></i></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small text-muted font-weight-bold">Mostrando @Model.MaintenanceFirstItem-@Model.MaintenanceLastItem de @Model.Maintenances.TotalCount mantenimientos</span>
+                            </div>
+
                             @if (Model.Maintenances.Any())
                             {
-                                <div class="table-responsive">
-                                    <table class="table table-hover table-sm small">
-                                        <thead>
+                                <div class="table-responsive border rounded">
+                                    <table class="table table-hover table-sm small mb-0 v-middle">
+                                        <thead class="bg-light">
                                             <tr class="text-muted uppercase small font-weight-bold">
+                                                <th>Gestion</th>
                                                 <th>Fecha</th>
                                                 <th>Equipo / Activo</th>
-                                                <th>Tipo</th>
                                                 <th>Estado</th>
-                                                <th class="text-right">Acción</th>
+                                                <th class="text-right">Costo</th>
+                                                <th>Satisfaccion</th>
+                                                <th class="text-right">Accion</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @foreach (var m in Model.Maintenances)
                                             {
+                                                var date = m.EndDate ?? m.StartDate ?? m.ScheduledDate ?? m.CreatedDate;
+                                                var totalCost = m.ActualCost ?? m.CalculatedTotal;
                                                 <tr>
-                                                    <td>@(m.StartDate?.ToString("dd/MM/yyyy") ?? m.CreatedDate.ToString("dd/MM/yyyy"))</td>
+                                                    <td class="font-weight-bold text-dark">@Model.FormatManagement(m.Management)</td>
+                                                    <td>@date.ToString("dd/MM/yyyy")</td>
                                                     <td>
-                                                        <div class="font-weight-bold text-dark">@m.EquipmentUnit?.Equipment?.Name</div>
-                                                        <div class="text-muted" style="font-size: 0.7rem;">Inv: @m.EquipmentUnit?.InventoryNumber</div>
+                                                        <div class="font-weight-bold text-dark">@(m.EquipmentUnit?.Equipment?.Name ?? "Equipo sin detalle")</div>
+                                                        <div class="text-muted" style="font-size: 0.7rem;">Inv: @(m.EquipmentUnit?.InventoryNumber ?? "Sin inventario")</div>
                                                     </td>
-                                                    <td>@Html.DisplayFor(modelItem => m.MaintenanceType)</td>
+                                                    <td><span class="badge badge-pill badge-light-info text-info px-2">@EnumHelper.GetDisplayName(m.Status)</span></td>
+                                                    <td class="text-right font-weight-bold text-success">@(totalCost > 0 ? $"Bs {totalCost:N2}" : "Sin costo")</td>
                                                     <td>
-                                                        <span class="badge badge-pill badge-light-info text-info px-2">@m.Status</span>
+                                                        @if (m.SatisfactionLevel.HasValue)
+                                                        {
+                                                            <span class="font-weight-bold text-info">@EnumHelper.GetDisplayName(m.SatisfactionLevel.Value)</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">Sin dato</span>
+                                                        }
                                                     </td>
                                                     <td class="text-right">
-                                                        <a asp-page="/Maintenances/Details" asp-route-id="@m.Id" class="btn btn-sm btn-light-info"><i class="fas fa-eye"></i></a>
+                                                        <a asp-page="/Maintenances/Details" asp-route-id="@m.Id" class="btn btn-sm btn-outline-info btn-rounded"><i class="fas fa-eye mr-1"></i> Ver detalle</a>
                                                     </td>
                                                 </tr>
                                             }
@@ -172,12 +232,31 @@
                             {
                                 <div class="text-center py-4 bg-light rounded">
                                     <i class="fas fa-info-circle fa-2x text-muted mb-2"></i>
-                                    <p class="text-muted mb-0">No se registran intervenciones técnicas para esta persona.</p>
+                                    <p class="text-muted mb-0">No se registran intervenciones tecnicas con los filtros actuales.</p>
                                 </div>
+                            }
+
+                            @if (Model.Maintenances.TotalPages > 1)
+                            {
+                                <nav aria-label="Paginacion de mantenimientos" class="mt-3">
+                                    <ul class="pagination justify-content-center mb-0">
+                                        <li class="page-item @(Model.Maintenances.HasPreviousPage ? "" : "disabled")">
+                                            <a class="page-link" asp-page="./Details" asp-route-id="@Model.Person.Id" asp-route-MaintenancePageIndex="@(Model.Maintenances.PageIndex - 1)" asp-route-MaintenanceManagementId="@Model.MaintenanceManagementId" asp-route-MaintenanceManagementType="@Model.MaintenanceManagementType" asp-route-MaintenanceSatisfactionFilter="@Model.MaintenanceSatisfactionFilter" asp-route-MaintenanceSearchTerm="@Model.MaintenanceSearchTerm">Anterior</a>
+                                        </li>
+                                        @for (var i = 1; i <= Model.Maintenances.TotalPages; i++)
+                                        {
+                                            <li class="page-item @(i == Model.Maintenances.PageIndex ? "active" : "")">
+                                                <a class="page-link" asp-page="./Details" asp-route-id="@Model.Person.Id" asp-route-MaintenancePageIndex="@i" asp-route-MaintenanceManagementId="@Model.MaintenanceManagementId" asp-route-MaintenanceManagementType="@Model.MaintenanceManagementType" asp-route-MaintenanceSatisfactionFilter="@Model.MaintenanceSatisfactionFilter" asp-route-MaintenanceSearchTerm="@Model.MaintenanceSearchTerm">@i</a>
+                                            </li>
+                                        }
+                                        <li class="page-item @(Model.Maintenances.HasNextPage ? "" : "disabled")">
+                                            <a class="page-link" asp-page="./Details" asp-route-id="@Model.Person.Id" asp-route-MaintenancePageIndex="@(Model.Maintenances.PageIndex + 1)" asp-route-MaintenanceManagementId="@Model.MaintenanceManagementId" asp-route-MaintenanceManagementType="@Model.MaintenanceManagementType" asp-route-MaintenanceSatisfactionFilter="@Model.MaintenanceSatisfactionFilter" asp-route-MaintenanceSearchTerm="@Model.MaintenanceSearchTerm">Siguiente</a>
+                                        </li>
+                                    </ul>
+                                </nav>
                             }
                         </div>
                     </div>
-
                     <!-- Departures Tab -->
                     <div class="tab-pane" id="departures" role="tabpanel">
                         <div class="p-3">

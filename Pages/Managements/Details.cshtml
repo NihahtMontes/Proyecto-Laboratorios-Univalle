@@ -3,7 +3,7 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using System.Text.Json
 @{
-    ViewData["Title"] = $"Mantenimiento Preventivo {Model.Management.Code}";
+    ViewData["Title"] = $"{(Model.Management.Type == ManagementType.Corrective ? "Mantenimiento Correctivo" : "Mantenimiento Preventivo")} {Model.Management.Code}";
     var isManagementActive = Model.Management.Status == ManagementStatus.Active;
     // Variables L-48 (usadas solo cuando ActiveTab == l48, declaradas aqui para evitar RZ1010)
     var l48Sem      = Model.Management.Semester;
@@ -11,6 +11,8 @@
     var l48Col1Name = l48Sem == 1 ? $"Jun {l48Year}" : $"Dic {l48Year}";
     var l48Col2Name = l48Sem == 1 ? $"Jul {l48Year}" : $"Ene {l48Year + 1}";
     var isCorrective = Model.Management.Type == ManagementType.Corrective;
+    var globalProgressJs = Model.GlobalProgress.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    var remainingProgressJs = Math.Max(0, 100 - Model.GlobalProgress).ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
 
 @section Styles {
@@ -64,7 +66,7 @@
             <h1 class="wizard-title mb-1">@(isCorrective ? "Mantenimiento Correctivo" : "Mantenimiento Preventivo") @Model.Management.Code</h1>
             <p class="wizard-subtitle">
                 @(string.IsNullOrEmpty(Model.Management.Description)
-                    ? (isCorrective ? "Contenedor anual de fallas críticas." : "Resumen de indicadores para este período administrativo.")
+                    ? (isCorrective ? "Gestión semestral de fallas correctivas." : "Resumen de indicadores para este período administrativo.")
                     : Model.Management.Description)
             </p>
         </div>
@@ -95,7 +97,7 @@
                     <i class="fas fa-lock mr-2"></i>Histórico Inmutable
                 </button>
             }
-            <a asp-page="/Reports/Index" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white mr-2" style="background-color: #0ea5e9;">
+            <a asp-page="/Reports/Index" asp-route-managementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white mr-2" style="background-color: #0ea5e9;">
                 <i class="fas fa-file-pdf mr-2"></i>Reportes Oficiales
             </a>
             <a asp-page="./Index" class="btn btn-light border rounded-pill px-4">
@@ -172,7 +174,7 @@
                         <i class="fas fa-exclamation-triangle"></i>
                     </div>
                     <h6 class="text-white opacity-75">Vencidos</h6>
-                    <h2 class="text-white">@Model.OverduePlans.Count</h2>
+                    <h2 class="text-white">@Model.TotalVencidos</h2>
                 </a>
             </div>
             <!-- Completados -->
@@ -188,7 +190,7 @@
                 <div class="phase-card shadow-sm" style="background:#fffbeb;">
                     <div class="phase-icon phase-icon--amber"><i class="fas fa-percentage"></i></div>
                     <h6 style="color:#f59e0b;">% Avance</h6>
-                    <h2 style="color:#f59e0b;">@Model.Management.CompletionPercentage%</h2>
+                    <h2 style="color:#f59e0b;">@Model.GlobalProgress%</h2>
                 </div>
             </div>
         </div>
@@ -249,7 +251,7 @@
                     <div class="chart-container-detail d-flex align-items-center justify-content-center" style="position:relative;">
                         <canvas id="globalProgressChart"></canvas>
                         <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
-                            <span style="font-size:2rem;font-weight:800;color:#1E293B;">@Model.Management.CompletionPercentage%</span>
+                            <span style="font-size:2rem;font-weight:800;color:#1E293B;">@Model.GlobalProgress%</span>
                             <span class="text-muted" style="font-size:0.65rem;letter-spacing:0.05em;">COMPLETADO</span>
                         </div>
                     </div>
@@ -536,17 +538,23 @@
     <!-- ===== TAB: CALENDARIO ===== -->
     @if (Model.ActiveTab == "calendario")
     {
-        <!-- Controles de zoom -->
+        <!-- Controles de vista y zoom -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <span class="badge badge-soft-success px-3 py-2 mr-2"><i class="fa fa-circle mr-1"></i>Completado</span>
-                <span class="badge px-3 py-2 mr-2" style="background:#fff3cd;color:#856404;"><i class="fa fa-circle mr-1"></i>En Progreso</span>
-                <span class="badge px-3 py-2" style="background:#cfe2ff;color:#084298;"><i class="fa fa-circle mr-1"></i>Pendiente</span>
+                <span class="badge px-3 py-2 mr-2" style="background:#dbeafe;color:#1d4ed8;"><i class="fa fa-circle mr-1"></i>Preventivo</span>
+                <span class="badge badge-soft-success px-3 py-2 mr-2"><i class="fa fa-circle mr-1"></i>Ejecutado</span>
+                <span class="badge px-3 py-2" style="background:#ede9fe;color:#6d28d9;"><i class="fa fa-circle mr-1"></i>Correctivo</span>
             </div>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
-                <button type="button" class="btn btn-outline-secondary" id="calZoomOut" title="Reducir"><i class="fas fa-search-minus"></i></button>
-                <button type="button" class="btn btn-outline-secondary" id="calZoomReset" title="Normal">100%</button>
-                <button type="button" class="btn btn-outline-secondary" id="calZoomIn" title="Ampliar"><i class="fas fa-search-plus"></i></button>
+            <div class="d-flex">
+                <div class="btn-group btn-group-sm mr-2" role="group" aria-label="Vista">
+                    <button type="button" class="btn btn-outline-primary active" id="calViewMonth">Mes</button>
+                    <button type="button" class="btn btn-outline-primary" id="calViewWeek">Semana</button>
+                </div>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
+                    <button type="button" class="btn btn-outline-secondary" id="calZoomOut" title="Reducir"><i class="fas fa-search-minus"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" id="calZoomReset" title="Normal">90%</button>
+                    <button type="button" class="btn btn-outline-secondary" id="calZoomIn" title="Ampliar"><i class="fas fa-search-plus"></i></button>
+                </div>
             </div>
         </div>
 
@@ -696,7 +704,7 @@
                         type: 'doughnut',
                         data: {
                             datasets: [{
-                                data: [@Model.Management.CompletionPercentage, @(100 - Model.Management.CompletionPercentage)],
+                                data: [@globalProgressJs, @remainingProgressJs],
                                 backgroundColor: ['#2eca6a', '#e2e8f0'],
                                 borderWidth: 0
                             }]
@@ -775,15 +783,17 @@
         <link href="~/assets/libs/fullcalendar/dist/fullcalendar.min.css" rel="stylesheet" />
         <style>
             /* Estilos custom para eventos del calendario */
-            .fc-event.ev-completed { background:#2eca6a !important; border-color:#25a85c !important; color:#fff !important; }
-            .fc-event.ev-progress  { background:#f59e0b !important; border-color:#d97706 !important; color:#fff !important; }
-            .fc-event.ev-planned   { background:#6366f1 !important; border-color:#4f46e5 !important; color:#fff !important; }
+            .fc-event.ev-completed  { background:#2eca6a !important; border-color:#25a85c !important; color:#fff !important; }
+            .fc-event.ev-preventive { background:#2563eb !important; border-color:#1d4ed8 !important; color:#fff !important; }
+            .fc-event.ev-corrective { background:#7c3aed !important; border-color:#6d28d9 !important; color:#fff !important; }
             /* Sombreado de 8 semanas */
             .fc-bgevent { opacity: 0.15 !important; }
             /* Hover en día para indicar que es clickeable */
             .fc-day:hover { background: rgba(99,102,241,0.04); cursor: pointer; }
             /* Evento más compacto */
-            .fc-event { font-size: 0.72rem; padding: 2px 5px; border-radius: 4px; margin-bottom: 1px; }
+            .fc { font-size: 0.84rem; }
+            .fc-event { font-size: 0.68rem; padding: 1px 4px; border-radius: 4px; margin-bottom: 1px; }
+            .fc-row .fc-content-skeleton td, .fc-row .fc-helper-skeleton td { padding-bottom: 0; }
             /* More link */
             .fc-more { font-size: 0.7rem; font-weight: 700; color: #6366f1; }
             /* Day detail item */
@@ -843,7 +853,7 @@
                     header: {
                         left:   'prev,next today',
                         center: 'title',
-                        right:  'month,agendaWeek'
+                        right:  ''
                     },
                     locale:           'es',
                     editable:         false,
@@ -867,7 +877,7 @@
                 });
 
                 // ============ ZOOM ============
-                var zoomLevel = 1.0;
+                var zoomLevel = 0.9;
                 var $wrapper = $('#calendarZoomWrapper');
                 var $label   = $('#calZoomReset');
 
@@ -882,7 +892,19 @@
                     if (zoomLevel > 0.5) { zoomLevel -= 0.1; applyZoom(); }
                 });
                 $label.click(function () {
-                    zoomLevel = 1.0; applyZoom();
+                    zoomLevel = 0.9; applyZoom();
+                });
+                applyZoom();
+
+                $('#calViewMonth').click(function () {
+                    $('#calendar').fullCalendar('changeView', 'month');
+                    $('#calViewMonth').addClass('active');
+                    $('#calViewWeek').removeClass('active');
+                });
+                $('#calViewWeek').click(function () {
+                    $('#calendar').fullCalendar('changeView', 'agendaWeek');
+                    $('#calViewWeek').addClass('active');
+                    $('#calViewMonth').removeClass('active');
                 });
 
                 // ============ PANEL DE DÍA ============
@@ -900,7 +922,7 @@
                         $body.html('<div class="day-detail-empty"><i class="fas fa-calendar-check fa-2x mb-3 d-block" style="color:#cbd5e1;"></i>No hay mantenimientos para este día</div>');
                     } else {
                         dayEvents.forEach(function (ev) {
-                            var statusClass = ev.ClassName === 'ev-completed' ? 'st-completed' : ev.ClassName === 'ev-progress' ? 'st-progress' : 'st-planned';
+                            var statusClass = ev.ClassName === 'ev-completed' ? 'st-completed' : ev.ClassName === 'ev-corrective' ? 'st-progress' : 'st-planned';
                             var detailUrl = ev.MaintenanceId ? '/Maintenances/Details/' + ev.MaintenanceId : '/Managements/Details?id=' + mgmtId + '&ActiveTab=l48';
                             var editUrl   = ev.MaintenanceId ? '/Maintenances/Edit?id=' + ev.MaintenanceId : null;
 

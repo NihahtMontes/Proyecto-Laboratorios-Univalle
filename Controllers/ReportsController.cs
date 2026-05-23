@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Controllers
@@ -26,9 +27,6 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Obtiene el nombre completo del usuario que está imprimiendo el reporte.
-        /// </summary>
         private async Task<string> GetCurrentUserFullName()
         {
             if (!_currentUser.UserId.HasValue) return "Sistema";
@@ -43,24 +41,28 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         }
 
         [HttpGet("download/l6")]
-        public async Task<IActionResult> DownloadL6(int labId)
+        public async Task<IActionResult> DownloadL6(int managementId, int labId)
         {
             try
             {
+                var management = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == managementId);
+                if (management == null) return NotFound("Gestión no encontrada.");
+                if (management.Type == ManagementType.Corrective) return BadRequest("L-6 solo aplica al proceso preventivo.");
+
                 var responsable = await GetCurrentUserFullName();
-                var bytes = await _reportService.GenerateL6VerificacionExcel(labId, responsable);
+                var bytes = await _reportService.GenerateL6VerificacionExcel(managementId, labId, responsable);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Verificacion_L6_Lab_{labId}.xlsx");
+                    $"Verificacion_L6_{management.Code}_Lab_{labId}.xlsx");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "CRASH en GenerateL6. LabId={LabId}", labId);
+                _logger.LogError(ex, "CRASH en GenerateL6. ManagementId={ManagementId}; LabId={LabId}", managementId, labId);
                 return StatusCode(500, $"Error: {ex.GetType().Name} - {ex.Message}\n{ex.StackTrace}");
             }
         }
 
         [HttpGet("download/l3")]
-        public async Task<IActionResult> DownloadL3(int? departureId, int? unitId)
+        public async Task<IActionResult> DownloadL3(int? departureId, int? unitId, int? managementId)
         {
             try
             {
@@ -68,16 +70,23 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
 
                 if (!resolvedDepartureId.HasValue && unitId.HasValue)
                 {
-                    resolvedDepartureId = await _context.Departures
+                    var departureQuery = _context.Departures
                         .AsNoTracking()
-                        .Where(d => d.EquipmentUnitId == unitId.Value)
+                        .Where(d => d.EquipmentUnitId == unitId.Value);
+
+                    if (managementId.HasValue)
+                    {
+                        departureQuery = departureQuery.Where(d => d.ManagementId == managementId.Value);
+                    }
+
+                    resolvedDepartureId = await departureQuery
                         .OrderByDescending(d => d.CreatedDate)
                         .Select(d => (int?)d.Id)
                         .FirstOrDefaultAsync();
                 }
 
                 if (!resolvedDepartureId.HasValue)
-                    return NotFound("Este equipo no tiene salidas L-3 registradas.");
+                    return NotFound("Este equipo no tiene salidas L-3 registradas en la gestión seleccionada.");
 
                 var bytes = await _reportService.GenerateL3SalidaExcel(resolvedDepartureId.Value);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -90,13 +99,16 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         }
 
         [HttpGet("download/l8")]
-        public async Task<IActionResult> DownloadL8(int unitId)
+        public async Task<IActionResult> DownloadL8(int? managementPlanId, int? unitId, int? managementId)
         {
             try
             {
-                var bytes = await _reportService.GenerateL8KardexExcel(unitId);
+                if (!managementPlanId.HasValue && !unitId.HasValue)
+                    return BadRequest("Debe indicar managementPlanId o unitId.");
+
+                var bytes = await _reportService.GenerateL8KardexExcel(unitId ?? 0, managementPlanId, managementId);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Kardex_L8_Equipo_{unitId}.xlsx");
+                    $"Kardex_L8_{managementPlanId ?? unitId}.xlsx");
             }
             catch (Exception ex)
             {
@@ -105,13 +117,16 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         }
 
         [HttpGet("download/l48")]
-        public async Task<IActionResult> DownloadL48(int labId)
+        public async Task<IActionResult> DownloadL48(int managementId, int labId)
         {
             try
             {
-                var bytes = await _reportService.GenerateL48GanttExcel(labId);
+                var management = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == managementId);
+                if (management == null) return NotFound("Gestión no encontrada.");
+
+                var bytes = await _reportService.GenerateL48GanttExcel(managementId, labId);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Plan_Gantt_L48_Lab_{labId}.xlsx");
+                    $"Plan_Gantt_L48_{management.Code}_Lab_{labId}.xlsx");
             }
             catch (Exception ex)
             {
@@ -120,10 +135,9 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         }
 
         [HttpGet("download/l7")]
-        public async Task<IActionResult> DownloadL7(int unitId)
+        public async Task<IActionResult> DownloadL7(int? requestId, int? unitId, int? managementId)
         {
-            // Buscamos la última solicitud técnica para este equipo CON sus includes
-            var lastRequest = await _context.Requests
+            var requestQuery = _context.Requests
                 .AsNoTracking()
                 .Include(r => r.Laboratory)
                 .Include(r => r.Equipment)
@@ -133,18 +147,37 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                 .Include(r => r.RequestedBy)
                 .Include(r => r.EquipmentUnit)
                     .ThenInclude(eu => eu!.Laboratory)
-                .Where(r => r.EquipmentUnitId == unitId)
+                .Where(r => r.Type == RequestType.Technical);
+
+            if (requestId.HasValue)
+            {
+                requestQuery = requestQuery.Where(r => r.Id == requestId.Value);
+            }
+            else if (unitId.HasValue)
+            {
+                requestQuery = requestQuery.Where(r => r.EquipmentUnitId == unitId.Value);
+                if (managementId.HasValue)
+                {
+                    requestQuery = requestQuery.Where(r => r.ManagementId == managementId.Value);
+                }
+            }
+            else
+            {
+                return BadRequest("Debe indicar requestId para L-7.");
+            }
+
+            var request = await requestQuery
                 .OrderByDescending(r => r.CreatedDate)
                 .FirstOrDefaultAsync();
 
-            if (lastRequest == null)
-                return NotFound("Este equipo no tiene solicitudes L-7 registradas.");
+            if (request == null)
+                return NotFound("Este equipo no tiene solicitudes L-7 registradas en la gestión seleccionada.");
 
             try
             {
-                var bytes = await _reportService.GenerateSolicitudMantenimientoExcel(lastRequest);
+                var bytes = await _reportService.GenerateSolicitudMantenimientoExcel(request);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Solicitud_L7_{lastRequest.Id}.xlsx");
+                    $"Solicitud_L7_{request.Id}.xlsx");
             }
             catch (Exception ex)
             {
@@ -153,27 +186,45 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         }
 
         [HttpGet("download/adquisicion")]
-        public async Task<IActionResult> DownloadAdquisicion(int unitId)
+        public async Task<IActionResult> DownloadAdquisicion(int? requestId, int? unitId, int? managementId)
         {
-            var lastRequest = await _context.Requests
+            var requestQuery = _context.Requests
                 .AsNoTracking()
                 .Include(r => r.Laboratory)
                     .ThenInclude(l => l!.Faculty)
                 .Include(r => r.RequestedBy)
                 .Include(r => r.CostDetails)
-                .Where(r => r.EquipmentUnitId == unitId
-                         && r.Type == Models.Enums.RequestType.Purchasing)
+                .Where(r => r.Type == RequestType.Purchasing);
+
+            if (requestId.HasValue)
+            {
+                requestQuery = requestQuery.Where(r => r.Id == requestId.Value);
+            }
+            else if (unitId.HasValue)
+            {
+                requestQuery = requestQuery.Where(r => r.EquipmentUnitId == unitId.Value);
+                if (managementId.HasValue)
+                {
+                    requestQuery = requestQuery.Where(r => r.ManagementId == managementId.Value);
+                }
+            }
+            else
+            {
+                return BadRequest("Debe indicar requestId para L-12.");
+            }
+
+            var request = await requestQuery
                 .OrderByDescending(r => r.CreatedDate)
                 .FirstOrDefaultAsync();
 
-            if (lastRequest == null)
-                return NotFound("Este equipo no tiene solicitudes de adquisición.");
+            if (request == null)
+                return NotFound("Este equipo no tiene solicitudes de adquisición en la gestión seleccionada.");
 
             try
             {
-                var bytes = await _reportService.GenerateSolicitudAdquisicionExcel(lastRequest);
+                var bytes = await _reportService.GenerateSolicitudAdquisicionExcel(request);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Adquisicion_{lastRequest.Id}.xlsx");
+                    $"Adquisicion_{request.Id}.xlsx");
             }
             catch (Exception ex)
             {

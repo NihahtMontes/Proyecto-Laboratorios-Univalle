@@ -18,6 +18,8 @@ context: .agent/context/areas/backend-page-models.md
 - No bindear entidades de dominio directamente.
 - Usar `InputModel` anidado con solo campos editables.
 - Validaciones deben corresponder a la vista, no a toda la entidad.
+- En Edit, cargar la entidad real con `.AsTracking()` y copiar campos desde `InputModel`; no confiar en una entidad completa posteada.
+- Si el formulario no postea navegaciones, auditoria o campos requeridos no editables, esos campos deben reconstruirse desde BD.
 
 ## Wizard
 
@@ -37,6 +39,8 @@ context: .agent/context/areas/backend-page-models.md
 - En errores de POST: cargar listas y retornar `Page()` con `TempData.Error()`.
 - No redirigir como exito si no se creo/actualizo ninguna fila.
 - Mensajes deben diagnosticar la causa cuando el binding falla.
+- Exitos CRUD deben usar `TempData.Success()` para que el layout global emita SweetAlert/Toast.
+- Deletes deben ser soft-delete cuando la entidad tenga valor historico; la confirmacion vive en la vista, la integridad en el handler.
 
 ## Transacciones
 

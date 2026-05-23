@@ -195,7 +195,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     Date = Input.Date,
                     Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions?.Where(f => !string.IsNullOrWhiteSpace(f)) ?? Enumerable.Empty<string>()) : null,
                     PhysicalCondition = physicalCondition,
-                    Status = Input.Status,
+                    Status = hasFailures ? VerificationStatus.WithObservations : VerificationStatus.Completed,
                     CreatedDate = DateTime.UtcNow,
                     CreatedById = user?.Id,
                     Faults = Input.FaultDescriptions?
@@ -217,7 +217,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 verification.Date = Input.Date;
                 verification.Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions?.Where(f => !string.IsNullOrWhiteSpace(f)) ?? Enumerable.Empty<string>()) : null;
                 verification.PhysicalCondition = physicalCondition;
-                verification.Status = Input.Status;
+                verification.Status = hasFailures ? VerificationStatus.WithObservations : VerificationStatus.Completed;
                 verification.LastModifiedDate = DateTime.UtcNow;
                 verification.ModifiedById = user?.Id;
 
@@ -281,8 +281,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 }
                 else
                 {
-                    plan.CurrentPhase = WizardPhase.Maintenance;
-                    plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+                    plan.CurrentPhase = WizardPhase.Verification;
+                    plan.CurrentState = WizardEquipmentState.VerifiedGood;
                 }
 
                 await _context.SaveChangesAsync();
@@ -293,7 +293,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 if (hasFailures)
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
 
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 1, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
             }
 
             return RedirectToPage("./Index");

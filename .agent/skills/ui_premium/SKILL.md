@@ -42,6 +42,15 @@ Swal.fire({...}).then(function (result) {
 
 Agregar fallback si `Swal` no esta disponible.
 
+## Patron CRUD
+
+- Create: no pedir confirmacion previa en altas comunes; confiar en validacion cliente/servidor y mostrar exito posterior via TempData/SweetAlert global.
+- Edit: interceptar submit y pedir confirmacion SweetAlert antes de guardar.
+- Delete/soft-delete: siempre confirmar con SweetAlert; no usar `window.confirm`.
+- Confirmar con `result && (result.isConfirmed === true || result.value === true)` y luego `HTMLFormElement.prototype.submit.call(form)`.
+- Si `Swal` no existe, permitir fallback nativo que no bloquee la accion.
+- El mensaje posterior debe venir de `TempData.Success/Error/Warning/Info`, no de alertas inline duplicadas.
+
 ## Formularios
 
 - Botones con handlers deben ser submits reales.

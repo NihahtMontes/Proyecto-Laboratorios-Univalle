@@ -91,7 +91,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 activeMgmt = await _context.Managements.AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == managementId.Value && m.Status == ManagementStatus.Active);
 
-            activeMgmt ??= await _managementContext.GetCurrentManagementAsync();
+            if (activeMgmt == null && !IsWizard)
+            {
+                activeMgmt = await _managementContext.GetCurrentManagementAsync(ManagementType.Preventive);
+            }
 
             if (activeMgmt == null)
                 return new JsonResult(Array.Empty<object>());
@@ -171,11 +174,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             if (ManagementId.HasValue)
                 activeMgmt = await _context.Managements.AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == ManagementId.Value);
-            activeMgmt ??= await _managementContext.GetCurrentManagementAsync();
+            if (activeMgmt == null && !IsWizard)
+            {
+                activeMgmt = await _managementContext.GetCurrentManagementAsync(ManagementType.Preventive);
+            }
 
             if (activeMgmt == null)
             {
-                TempData.Error("No hay gestión activa.");
+                TempData.Error("No hay gestión activa para registrar la salida L-3.");
                 await LoadLabList();
                 return Page();
             }
@@ -196,7 +202,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                         .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                         .FirstOrDefaultAsync(p => p.Id == row.PlanId);
 
-                    if (plan == null) continue;
+                    if (plan == null || plan.ManagementId != activeMgmt.Id) continue;
 
                     // Técnico SIEMPRE debe venir de L-8; laboratorio debe estar asignado
                     if (plan.Maintenance?.TechnicianId == null || !plan.EquipmentUnitId.HasValue || plan.EquipmentUnit?.LaboratoryId == null)
@@ -226,7 +232,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     departure.EstimatedReturnDate = EstimatedReturnDate;
                     departure.DepartureObservations = null;
                     departure.Status = saveDraft ? LoanStatus.Cancelled : LoanStatus.Active;
-                    departure.ManagementId = activeMgmt.Id;
+                    departure.ManagementId = plan.ManagementId;
                     departure.LastModifiedDate = departure.Id == 0 ? null : DateTime.UtcNow;
                     if (departure.Id > 0) departure.ModifiedById = user?.Id;
 

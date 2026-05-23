@@ -5,6 +5,7 @@
 @{
     ViewData["Title"] = "Registrar Mantenimiento (L-8)";
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
+    bool isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 3);
     var categoryList = Html.GetEnumSelectList<CostCategory>();
 }
@@ -53,6 +54,7 @@
                     
                     <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
                     <input type="hidden" asp-for="ManagementPlanId" />
+                    <input type="hidden" asp-for="ManagementId" />
 
                     <div class="bg-light p-4 rounded mb-4 border-left border-warning" style="border-left-width: 4px;">
                         <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-microchip mr-2 text-warning"></i>Contexto del Servicio</h5>
@@ -119,9 +121,9 @@
                                     @if (isWizard)
                                     {
                                         <select class="form-control custom-select bg-light font-weight-bold" disabled>
-                                            <option selected>Preventivo</option>
+                                            <option selected>@(isCorrective ? "Correctivo" : "Preventivo")</option>
                                         </select>
-                                        <input type="hidden" asp-for="Input.MaintenanceType" value="1" />
+                                        <input type="hidden" asp-for="Input.MaintenanceType" value="@(isCorrective ? (int)MaintenanceType.Correctivo : (int)MaintenanceType.Preventivo)" />
                                     }
                                     else
                                     {
@@ -192,7 +194,7 @@
                                     <div class="row">
                                         <div class="col-md-6 border-right">
                                             <div class="form-group">
-                                                <label asp-for="Input.ScheduledDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Programada <span class="text-danger">*</span></label>
+                                                <label asp-for="Input.ScheduledDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Programada <span class="text-muted">(tentativa)</span></label>
                                                 <input asp-for="Input.ScheduledDate" class="form-control" type="date" />
                                             </div>
                                         </div>

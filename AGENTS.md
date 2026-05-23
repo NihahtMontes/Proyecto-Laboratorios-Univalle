@@ -51,9 +51,19 @@ No hacer commit sin aprobacion explicita del usuario.
 - `ManagementId` se preserva en todo el wizard.
 - NoTracking global exige `.AsTracking()` para modificar.
 - SweetAlert2 es v7: usar `result.value` ademas de `isConfirmed`.
+- Crear registros muestra exito posterior; editar y eliminar requieren confirmacion SweetAlert cuando cambian datos existentes o hacen soft-delete.
+- Mensajes CRUD deben usar `TempData.Success/Error/Warning/Info`; el layout debe leer `SuccessMessage/ErrorMessage/WarningMessage/InfoMessage`.
 - `Completados` es `Step = 7` visual.
 - Migraciones existentes son intocables.
 - No revertir cambios ajenos.
+
+## Orquestacion Multiagente
+
+Codex actua como orquestador principal: define alcance, reparte tareas, integra resultados, resuelve conflictos y verifica build. No delegar cambios solapados sobre los mismos archivos.
+
+- Agente UI/UX tipo Kimi K2.6: propietario de `.cshtml`, SweetAlert2, textos visibles, botones, confirmaciones y consistencia NiceAdmin/Bootstrap 4.
+- Agente Backend/Data tipo DeepSeek V4 Pro: propietario de `.cshtml.cs`, `InputModel`, EF tracking, soft-delete, redirects, `TempData` y validaciones servidor.
+- Codex: mantiene reglas de datos, evita hard-delete, actualiza contexto operativo y ejecuta verificacion final.
 
 ## Documentacion
 

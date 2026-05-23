@@ -117,6 +117,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Maintenance>().HasIndex(m => m.Status);
             modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.PlanStatus, p.ManagementId });
             modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.CurrentPhase, p.ManagementId });
+            modelBuilder.Entity<Management>().HasIndex(m => new { m.Type, m.Status, m.Year, m.Semester });
+            modelBuilder.Entity<Notification>().HasIndex(n => new { n.ManagementId, n.ManagementType, n.Scope, n.IsRead });
 
             modelBuilder.Entity<User>().Property(u => u.Status).HasDefaultValue(GeneralStatus.Activo);
             modelBuilder.Entity<Faculty>().Property(f => f.Status).HasDefaultValue(GeneralStatus.Activo);
@@ -165,6 +167,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             // Cascade fixes
             modelBuilder.Entity<ManagementPlan>().HasOne(p => p.Management).WithMany(m => m.ManagementPlans).HasForeignKey(p => p.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Notification>().HasOne(n => n.Management).WithMany().HasForeignKey(n => n.ManagementId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<Request>().HasOne(r => r.Laboratory).WithMany().HasForeignKey(r => r.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Laboratory>().HasOne(l => l.City).WithMany().HasForeignKey(l => l.CityId).OnDelete(DeleteBehavior.SetNull);
 

@@ -87,7 +87,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             }
 
             // Validar que no exista ya esta gestión (Año-Semestre)
-            var code = $"{Input.Year}-{Input.Semester}";
+            var code = BuildManagementCode(Input.Type, Input.Year, Input.Semester);
             var exists = await _context.Managements.AnyAsync(m => m.Year == Input.Year && m.Semester == Input.Semester && m.Type == Input.Type && m.Status != ManagementStatus.Deleted);
             if (exists)
             {
@@ -98,10 +98,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             // Si se intenta crear como ACTIVA, validar que no haya otra activa
             if (Input.Status == ManagementStatus.Active)
             {
-                var anyActive = await _context.Managements.AnyAsync(m => m.Status == ManagementStatus.Active);
+                var anyActive = await _context.Managements.AnyAsync(m => m.Status == ManagementStatus.Active && m.Type == Input.Type);
                 if (anyActive)
                 {
-                    ModelState.AddModelError(string.Empty, "Ya existe una gestión activa. Por favor, cierre o inactive la gestión actual antes de activar una nueva.");
+                    var typeLabel = Input.Type == ManagementType.Corrective ? "correctiva" : "preventiva";
+                    ModelState.AddModelError(string.Empty, $"Ya existe una gestión {typeLabel} activa. Cierre o inactive la gestión actual antes de activar otra del mismo tipo.");
                     return Page();
                 }
             }
@@ -154,6 +155,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             }
 
             return RedirectToPage("./Index", new { type = Input.Type.ToString() });
+        }
+
+        private static string BuildManagementCode(ManagementType type, int year, int semester)
+        {
+            return type == ManagementType.Corrective
+                ? $"CORR-{year}-{semester}"
+                : $"{year}-{semester}";
         }
     }
 }

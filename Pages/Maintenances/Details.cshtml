@@ -1,6 +1,7 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Maintenances.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Helpers
 
 <div class="row justify-content-center">
     <!-- Columna Principal: Detalles -->
@@ -41,8 +42,14 @@
                         </div>
 
                         <div class="mb-3">
+                            <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Gestion</label>
+                            <p class="text-dark font-weight-bold mb-1">@Model.FormatManagement(Model.Maintenance.Management)</p>
+                            <span class="text-muted small">@(Model.Maintenance.Management?.Type == ManagementType.Corrective ? "Correctiva" : "Preventiva")</span>
+                        </div>
+
+                        <div class="mb-3">
                             <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Tipo de Mantenimiento</label>
-                                <p class="text-dark">@Html.DisplayFor(m => m.Maintenance.MaintenanceType)</p>
+                                <p class="text-dark">@EnumHelper.GetDisplayName(Model.Maintenance.MaintenanceType)</p>
                         </div>
 
                         <div class="mb-3">
@@ -105,6 +112,49 @@
                     </div>
                 </div>
 
+
+                <!-- Tareas L-48 activas -->
+                @{
+                    var activeTasks = Model.Maintenance.Tasks?
+                        .Where(t => !t.IsDeleted)
+                        .OrderBy(t => t.Id)
+                        .ToList() ?? new List<Proyecto_Laboratorios_Univalle.Models.MaintenanceTask>();
+                }
+                <div class="mt-4 pt-4 border-top">
+                    <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-tasks mr-2 text-info"></i> Tareas L-48 Ejecutadas</h5>
+                    @if (activeTasks.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover border">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="small py-2">Tarea</th>
+                                        <th class="small py-2 text-center">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var task in activeTasks)
+                                    {
+                                        <tr>
+                                            <td class="small font-weight-bold">@task.Description</td>
+                                            <td class="small text-center">
+                                                <span class="badge @(task.IsCompleted ? "badge-success" : "badge-secondary") px-2 py-1">
+                                                    @(task.IsCompleted ? "Completada" : "Pendiente")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-light border shadow-none small">
+                            <i class="fas fa-info-circle mr-2"></i> No se registraron tareas L-48 para este mantenimiento.
+                        </div>
+                    }
+                </div>
 
                 <!-- Tabla de Costos (Si existen) -->
                 @if (Model.Maintenance.CostDetails != null && Model.Maintenance.CostDetails.Any())

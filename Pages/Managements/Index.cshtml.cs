@@ -82,11 +82,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 await _context.SaveChangesAsync();
                 _managementContext.InvalidateCache();
 
-                TempData["Success"] = "La gestión administrativa ha sido cerrada (Terminada) exitosamente.";
+                TempData.Success("La gestión administrativa ha sido cerrada correctamente.");
             }
             catch (Exception)
             {
-                TempData["Error"] = "Error de conexión: No se pudo cerrar la gestión.";
+                TempData.Error("Error de conexión: No se pudo cerrar la gestión.");
             }
 
             return RedirectToPage("./Index");
@@ -131,6 +131,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             var management = await _context.Managements.Include(m => m.ManagementPlans).AsTracking().FirstOrDefaultAsync(m => m.Id == id);
             if (management == null) return NotFound();
 
+            if (management.Type == ManagementType.Corrective)
+            {
+                TempData.Warning("Las gestiones correctivas no sincronizan equipos. Cada activo entra al flujo cuando se reporta una falla L-7.");
+                return RedirectToPage("./Index", new { Type = management.Type.ToString() });
+            }
+
+            if (management.Status != ManagementStatus.Active)
+            {
+                TempData.Warning("Solo se pueden sincronizar equipos en una gestión preventiva activa.");
+                return RedirectToPage("./Index", new { Type = management.Type.ToString() });
+            }
+
             var currentUnitIds = management.ManagementPlans.Select(p => p.EquipmentUnitId).ToList();
                 
             var missingUnits = await _context.EquipmentUnits
@@ -139,8 +151,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (!missingUnits.Any())
             {
-                TempData["Success"] = "Todos los equipos activos ya se encuentran sincronizados con esta gestión.";
-                return RedirectToPage("./Index");
+                TempData.Success("Todos los equipos activos ya se encuentran sincronizados con esta gestión.");
+                return RedirectToPage("./Index", new { Type = management.Type.ToString() });
             }
 
             foreach (var unit in missingUnits)
@@ -158,8 +170,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             await _context.SaveChangesAsync();
             _managementContext.InvalidateCache();
-            TempData["Success"] = $"Se han sincronizado {missingUnits.Count} nuevos equipos a la gestión {management.Code}.";
-            return RedirectToPage("./Index");
+            TempData.Success($"Se han sincronizado {missingUnits.Count} nuevos equipos a la gestión {management.Code}.");
+            return RedirectToPage("./Index", new { Type = management.Type.ToString() });
         }
     }
 }

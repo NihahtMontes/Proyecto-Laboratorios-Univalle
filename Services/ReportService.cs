@@ -14,9 +14,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
         Task<byte[]> GenerateSolicitudMantenimientoExcel(Request request);
         Task<byte[]> GenerateSolicitudAdquisicionExcel(Request request);
         Task<byte[]> GenerateReport(int requestId);
-        Task<byte[]> GenerateL8KardexExcel(int unitId);
-        Task<byte[]> GenerateL48GanttExcel(int labId);
-        Task<byte[]> GenerateL6VerificacionExcel(int labId, string responsable);
+        Task<byte[]> GenerateL8KardexExcel(int unitId, int? managementPlanId = null, int? managementId = null);
+        Task<byte[]> GenerateL48GanttExcel(int managementId, int labId);
+        Task<byte[]> GenerateL6VerificacionExcel(int managementId, int labId, string responsable);
         Task<byte[]> GenerateL3SalidaExcel(int departureId);
     }
 
@@ -615,8 +615,20 @@ namespace Proyecto_Laboratorios_Univalle.Services
             worksheet.Cells["A28"].Style.WrapText = true;
         }
 
-        public async Task<byte[]> GenerateL8KardexExcel(int unitId)
+        public async Task<byte[]> GenerateL8KardexExcel(int unitId, int? managementPlanId = null, int? managementId = null)
         {
+            if (managementPlanId.HasValue)
+            {
+                var planUnitId = await _context.ManagementPlans
+                    .AsNoTracking()
+                    .Where(p => p.Id == managementPlanId.Value && p.EquipmentUnitId.HasValue)
+                    .Select(p => p.EquipmentUnitId!.Value)
+                    .FirstOrDefaultAsync();
+
+                if (planUnitId == 0) throw new Exception("Plan de gestión no encontrado para L-8.");
+                unitId = planUnitId;
+            }
+
             var unit = await _context.EquipmentUnits
                 .Where(u => u.Id == unitId)
                 .Select(u => new {
@@ -653,11 +665,26 @@ namespace Proyecto_Laboratorios_Univalle.Services
             // CUERPO (Iterando mantenimientos completados)
             int startRow = 15;
 
-            var plansWithMaintenance = await _context.ManagementPlans
+            var plansQuery = _context.ManagementPlans
                 .AsNoTracking()
                 .Include(p => p.Maintenance)
                     .ThenInclude(m => m!.Technician)
-                .Where(p => p.EquipmentUnitId == unitId && p.Maintenance != null && p.Maintenance.Status == MaintenanceStatus.Completed)
+                .Where(p => p.EquipmentUnitId == unitId && p.Maintenance != null);
+
+            if (managementPlanId.HasValue)
+            {
+                plansQuery = plansQuery.Where(p => p.Id == managementPlanId.Value);
+            }
+            else
+            {
+                plansQuery = plansQuery.Where(p => p.Maintenance!.Status == MaintenanceStatus.Completed);
+                if (managementId.HasValue)
+                {
+                    plansQuery = plansQuery.Where(p => p.ManagementId == managementId.Value);
+                }
+            }
+
+            var plansWithMaintenance = await plansQuery
                 .OrderBy(p => p.Maintenance!.EndDate)
                 .ToListAsync();
 
@@ -681,8 +708,13 @@ namespace Proyecto_Laboratorios_Univalle.Services
             return SavePackage(package);
         }
 
-        public async Task<byte[]> GenerateL48GanttExcel(int labId)
+        public async Task<byte[]> GenerateL48GanttExcel(int managementId, int labId)
         {
+            var management = await _context.Managements
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == managementId);
+            if (management == null) throw new Exception("Gestión no encontrada.");
+
             var labName = await _context.Laboratories
                 .Where(l => l.Id == labId)
                 .Select(l => l.Name)
@@ -693,7 +725,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 .AsNoTracking()
                 .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
                 .Include(p => p.Maintenance).ThenInclude(m => m!.Technician)
-                .Where(p => p.EquipmentUnit!.LaboratoryId == labId)
+                .Where(p => p.ManagementId == managementId && p.EquipmentUnit!.LaboratoryId == labId)
                 .OrderBy(p => p.EquipmentUnit!.InventoryNumber)
                 .ToListAsync();
 
@@ -703,7 +735,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
             using var package = new ExcelPackage(new FileInfo(templatePath));
             var worksheet = package.Workbook.Worksheets[0];
 
-            worksheet.Cells["A5"].Value = $"PLAN DE MANTENIMIENTO PREVENTIVO Y CORRECTIVO EQUIPOS DE LABORATORIO GESTIÓN I/{DateTime.UtcNow.Year}";
+            var processLabel = management.Type == ManagementType.Corrective ? "CORRECTIVO" : "PREVENTIVO";
+            worksheet.Cells["A5"].Value = $"PLAN DE MANTENIMIENTO {processLabel} EQUIPOS DE LABORATORIO GESTIÓN {management.Code}";
             for (int r = 13; r <= 60; r++)
                 for (int c = 1; c <= 16; c++)
                     try { worksheet.Cells[r, c].Value = null; } catch { }
@@ -764,7 +797,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             return SavePackage(package);
         }
 
-        public async Task<byte[]> GenerateL6VerificacionExcel(int labId, string responsable = "Sistema")
+        public async Task<byte[]> GenerateL6VerificacionExcel(int managementId, int labId, string responsable = "Sistema")
         {
             // L-6 GENERADO DESDE CERO (SIN TEMPLATE)
             // Worksheets.Add(sourceSheet.Name, sourceSheet) copia estilos XML del template
@@ -778,20 +811,31 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
             if (string.IsNullOrEmpty(labName)) throw new Exception("Laboratorio no encontrado.");
 
-            // BATCH QUERIES (3 totales, sin N+1)
-            var equipmentData = await _context.EquipmentUnits
+            var management = await _context.Managements
                 .AsNoTracking()
-                .Include(eu => eu.Equipment)
-                .Where(eu => eu.LaboratoryId == labId && eu.CurrentStatus != EquipmentStatus.Deleted)
-                .OrderBy(eu => eu.InventoryNumber)
-                .Select(eu => new { eu.Id, EquipmentName = eu.Equipment != null ? eu.Equipment.Name : "", Brand = eu.Equipment != null ? eu.Equipment.Brand : "", eu.InventoryNumber })
+                .FirstOrDefaultAsync(m => m.Id == managementId);
+            if (management == null) throw new Exception("Gestión no encontrada.");
+            if (management.Type == ManagementType.Corrective) throw new Exception("L-6 solo aplica al proceso preventivo.");
+
+            // BATCH QUERIES (3 totales, sin N+1)
+            var equipmentData = await _context.ManagementPlans
+                .AsNoTracking()
+                .Where(p => p.ManagementId == managementId && p.EquipmentUnit != null && p.EquipmentUnit.LaboratoryId == labId)
+                .OrderBy(p => p.EquipmentUnit!.InventoryNumber)
+                .Select(p => new
+                {
+                    Id = p.EquipmentUnit!.Id,
+                    EquipmentName = p.EquipmentUnit.Equipment != null ? p.EquipmentUnit.Equipment.Name : "",
+                    Brand = p.EquipmentUnit.Equipment != null ? p.EquipmentUnit.Equipment.Brand : "",
+                    p.EquipmentUnit.InventoryNumber
+                })
                 .ToListAsync();
 
             var unitIds = equipmentData.Select(e => e.Id).ToList();
 
             var allVerifications = await _context.Verifications
                 .AsNoTracking()
-                .Where(v => unitIds.Contains(v.EquipmentUnitId) && v.Status != VerificationStatus.Annulled)
+                .Where(v => v.ManagementId == managementId && unitIds.Contains(v.EquipmentUnitId) && v.Status != VerificationStatus.Annulled)
                 .OrderByDescending(v => v.Date)
                 .ToListAsync();
 
@@ -856,7 +900,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                         ws.Cells[r, c + 2].Value = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
                         
                     if (text.StartsWith("GESTION") || text.StartsWith("GESTIÓN"))
-                        ws.Cells[r, c].Value = $"GESTION I/{DateTime.Now.Year}";
+                        ws.Cells[r, c].Value = $"GESTION {management.Code}";
                 }
             }   
 

@@ -198,12 +198,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     .AsTracking()
                     .FirstOrDefaultAsync();
 
-                if (lastHistory != null)
+                var existingKardexHistory = plan.KardexHistoryId.HasValue
+                    ? await _context.EquipmentStateHistories
+                        .AsTracking()
+                        .FirstOrDefaultAsync(h => h.Id == plan.KardexHistoryId.Value)
+                    : null;
+
+                if (lastHistory != null && lastHistory.Id != existingKardexHistory?.Id)
                 {
                     lastHistory.EndDate = historyDate;
                 }
 
-                var newHistory = new EquipmentStateHistory
+                var kardexHistory = existingKardexHistory ?? new EquipmentStateHistory
                 {
                     EquipmentUnitId = unit.Id,
                     Status = EquipmentStatus.Operational,
@@ -213,12 +219,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     CreatedById = int.TryParse(userIdString, out var huid) ? huid : null
                 };
 
-                _context.EquipmentStateHistories.Add(newHistory);
+                if (existingKardexHistory == null)
+                {
+                    _context.EquipmentStateHistories.Add(kardexHistory);
+                }
+                else
+                {
+                    kardexHistory.Status = EquipmentStatus.Operational;
+                    kardexHistory.StartDate = historyDate;
+                    kardexHistory.EndDate = null;
+                    kardexHistory.Reason = BuildKardexReason(maintenance);
+                }
+
                 unit.CurrentStatus = EquipmentStatus.Operational;
 
                 await _context.SaveChangesAsync();
 
-                plan.KardexHistoryId = newHistory.Id;
+                plan.KardexHistoryId = kardexHistory.Id;
                 plan.CurrentPhase = WizardPhase.Disbursement;
                 plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
                 plan.PlanStatus = ManagementPlanStatus.InProgress;

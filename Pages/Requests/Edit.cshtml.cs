@@ -252,11 +252,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         private async Task LoadLists()
         {
-            var evaluators = await _context.Users
+            var evaluatorUsers = await _context.Users
                 .Where(u => (u.Role == UserRole.Administrador || u.Role == UserRole.SuperAdmin) && u.Status == GeneralStatus.Activo)
                 .OrderBy(u => u.FirstName)
-                .Select(u => new { Id = u.Id, FullName = u.FullName })
                 .ToListAsync();
+
+            var evaluators = evaluatorUsers
+                .Select(u => new { Id = u.Id, FullName = u.FullName })
+                .ToList();
 
             ViewData["ApprovedById"] = new SelectList(evaluators, "Id", "FullName");
         }

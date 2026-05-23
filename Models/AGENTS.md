@@ -15,7 +15,7 @@
 - No hard-delete en entidades de negocio.
 - NoTracking global exige `.AsTracking()` para modificar desde PageModels.
 - PostgreSQL/Npgsql es el proveedor vigente.
-- `Management.Semester = 0` es valido para correctivo.
+- Correctivo usa gestiones semestrales (`Semester = 1/2`); no crear nuevos contenedores `Semester = 0`.
 - `Person.FullName` es `[NotMapped]`; no usar en LINQ.
 - No agregar query filters globales sin revisar impacto.
 

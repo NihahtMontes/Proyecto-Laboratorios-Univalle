@@ -78,8 +78,23 @@
                                 @{
                                     var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
                                     bool showBell = currentPage == "/Index" || currentPage == "/" || currentPage == "" ||
-                                                    currentPage.StartsWith("/Acquisitions") || currentPage.StartsWith("/Requests") ||
-                                                    currentPage.StartsWith("/Maintenances") || currentPage.StartsWith("/Departures");
+                                                    currentPage.StartsWith("/Managements") || currentPage.StartsWith("/Acquisitions") ||
+                                                    currentPage.StartsWith("/Requests") || currentPage.StartsWith("/Maintenances") ||
+                                                    currentPage.StartsWith("/Departures");
+
+                                    var notificationManagementId = ViewData["ManagementId"]?.ToString() ?? "";
+                                    if (string.IsNullOrWhiteSpace(notificationManagementId) && currentPage.StartsWith("/Managements"))
+                                    {
+                                        notificationManagementId = Context.Request.Query["id"].ToString();
+                                    }
+                                    var notificationManagementType = ViewData["ManagementType"]?.ToString() ?? Context.Request.Query["ManagementType"].ToString();
+                                    var notificationScope =
+                                        currentPage == "/Index" || currentPage == "/" || currentPage == "" || currentPage.StartsWith("/Managements") ? "dashboard" :
+                                        currentPage.StartsWith("/Maintenances") ? "maintenance" :
+                                        currentPage.StartsWith("/Acquisitions") ? "acquisition" :
+                                        currentPage.StartsWith("/Departures") ? "departure" :
+                                        currentPage.StartsWith("/Requests") ? "request" :
+                                        "";
                                 }
 
                                 <ul class="navbar-nav float-right">
@@ -168,36 +183,58 @@
                                     timerProgressBar: true
                                 });
 
-                                @if (TempData["Success"] != null)
+                                @{
+                                    var successMessage = TempData["SuccessMessage"] ?? TempData["Success"];
+                                    var errorMessage = TempData["ErrorMessage"] ?? TempData["Error"];
+                                    var warningMessage = TempData["WarningMessage"] ?? TempData["Warning"];
+                                    var infoMessage = TempData["InfoMessage"] ?? TempData["Info"];
+
+                                    var successMessageJson = System.Text.Json.JsonSerializer.Serialize(successMessage?.ToString() ?? string.Empty);
+                                    var errorMessageJson = System.Text.Json.JsonSerializer.Serialize(errorMessage?.ToString() ?? string.Empty);
+                                    var warningMessageJson = System.Text.Json.JsonSerializer.Serialize(warningMessage?.ToString() ?? string.Empty);
+                                    var infoMessageJson = System.Text.Json.JsonSerializer.Serialize(infoMessage?.ToString() ?? string.Empty);
+                                }
+
+                                @if (successMessage != null)
                                 {
                                         <text>
                                             Toast.fire({
                                                 icon: 'success',
-                                                title: '@Html.Raw(TempData["Success"]?.ToString() ?? "")'
+                                                title: @Html.Raw(successMessageJson)
                                             });
                                         </text>
                                 }
 
-                                @if (TempData["Error"] != null)
+                                @if (errorMessage != null)
                                 {
                                         <text>
                                             Swal.fire({
                                                 icon: 'error',
                                                 title: '¡Ups!',
-                                                text: '@Html.Raw(TempData["Error"]?.ToString() ?? "")',
+                                                text: @Html.Raw(errorMessageJson),
                                                 confirmButtonColor: '#2962ff'
                                             });
                                         </text>
                                 }
 
-                                @if (TempData["Warning"] != null)
+                                @if (warningMessage != null)
                                 {
                                         <text>
                                             Swal.fire({
                                                 icon: 'warning',
                                                 title: 'Atención',
-                                                text: '@Html.Raw(TempData["Warning"]?.ToString() ?? "")',
+                                                text: @Html.Raw(warningMessageJson),
                                                 confirmButtonColor: '#ffc107'
+                                            });
+                                        </text>
+                                }
+
+                                @if (infoMessage != null)
+                                {
+                                        <text>
+                                            Toast.fire({
+                                                icon: 'info',
+                                                title: @Html.Raw(infoMessageJson)
                                             });
                                         </text>
                                 }
@@ -210,8 +247,67 @@
                     {
                         <script>
                                 $(function() {
+                                    const managementId = '@notificationManagementId';
+                                    const managementType = '@notificationManagementType';
+                                    const notificationScope = '@notificationScope';
+
+                                    function getNotificationsUrl() {
+                                        let url = '/Api/Notifications?handler=Unread';
+                                        if (notificationScope) {
+                                            url += '&scope=' + encodeURIComponent(notificationScope);
+                                        }
+                                        if (managementId) {
+                                            url += '&managementId=' + encodeURIComponent(managementId);
+                                        }
+                                        if (managementType) {
+                                            url += '&managementType=' + encodeURIComponent(managementType);
+                                        }
+                                        return url;
+                                    }
+
+                                    function sanitizeIconClass(icon) {
+                                        if (!icon || !/^[a-z0-9\-\s]+$/i.test(icon)) {
+                                            return 'fas fa-info-circle text-info';
+                                        }
+                                        return icon;
+                                    }
+
+                                    function getSafeUrl(url) {
+                                        if (!url || typeof url !== 'string') return '';
+                                        return url.indexOf('/') === 0 && url.indexOf('//') !== 0 ? url : '';
+                                    }
+
+                                    function renderNotificationItem(item) {
+                                        const safeUrl = getSafeUrl(item.url);
+                                        const $link = $('<a/>', {
+                                            href: safeUrl || 'javascript:void(0)',
+                                            class: 'message-item d-flex align-items-center border-bottom px-3 py-2 text-decoration-none'
+                                        });
+
+                                        $link.on('click', function (e) {
+                                            e.preventDefault();
+                                            markSingleAsRead(item.id, safeUrl);
+                                        });
+
+                                        const $iconWrap = $('<span/>', {
+                                            class: 'btn btn-circle btn-light-info text-info mr-3',
+                                            style: 'width:40px; height:40px; line-height:40px; text-align:center;'
+                                        });
+                                        $('<i/>', { class: sanitizeIconClass(item.icon) }).appendTo($iconWrap);
+
+                                        const $body = $('<div/>', { class: 'w-75 d-inline-block v-middle' });
+                                        $('<h6/>', { class: 'message-title mb-0 font-weight-bold text-dark text-truncate' }).text(item.title || 'Notificación').appendTo($body);
+                                        $('<span/>', { class: 'font-12 text-nowrap d-block text-muted text-truncate' }).text(item.message || '').appendTo($body);
+                                        $('<span/>', { class: 'font-10 text-nowrap d-block text-muted mt-1' })
+                                            .append($('<i/>', { class: 'far fa-clock mr-1' }))
+                                            .append(document.createTextNode(item.time || ''))
+                                            .appendTo($body);
+
+                                        return $link.append($iconWrap, $body);
+                                    }
+
                                     function loadNotifications() {
-                                        $.get('/Api/Notifications?handler=Unread', function(data) {
+                                        $.get(getNotificationsUrl(), function(data) {
                                             const count = data.count || 0;
                                             const $badge = $('#notificationCount');
                                             const $list = $('#notificationList');
@@ -225,18 +321,7 @@
                                             if (data.items && data.items.length > 0) {
                                                 $list.empty();
                                                 $.each(data.items, function(i, item) {
-                                                    const icon = item.icon || 'fas fa-info-circle text-info';
-                                                    const url = item.url ? item.url : 'javascript:void(0)';
-                                                    $list.append(`
-                                                        <a href="${url}" class="message-item d-flex align-items-center border-bottom px-3 py-2 text-decoration-none" onclick="markSingleAsRead(${item.id})">
-                                                            <span class="btn btn-circle btn-light-info text-info mr-3" style="width:40px; height:40px; line-height:40px; text-align:center;"><i class="${icon}"></i></span>
-                                                            <div class="w-75 d-inline-block v-middle">
-                                                                <h6 class="message-title mb-0 font-weight-bold text-dark text-truncate">${item.title}</h6>
-                                                                <span class="font-12 text-nowrap d-block text-muted text-truncate">${item.message}</span>
-                                                                <span class="font-10 text-nowrap d-block text-muted mt-1"><i class="far fa-clock mr-1"></i>${item.time}</span>
-                                                            </div>
-                                                        </a>
-                                                    `);
+                                                    $list.append(renderNotificationItem(item));
                                                 });
                                             } else {
                                                 $list.html('<div class="text-center text-muted p-4 small"><i class="fas fa-inbox fa-2x mb-2 opacity-5"></i><br/>No tienes notificaciones nuevas.</div>');
@@ -247,9 +332,12 @@
                                     loadNotifications();
                                     setInterval(loadNotifications, 30000);
 
-                                    window.markSingleAsRead = function(id) {
-                                        $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
+                                    window.markSingleAsRead = function(id, url) {
+                                        $.get('/Api/Notifications?handler=MarkAsRead&id=' + encodeURIComponent(id), function() {
                                             loadNotifications();
+                                            if (url) {
+                                                window.location.href = url;
+                                            }
                                         });
                                     };
                                 });

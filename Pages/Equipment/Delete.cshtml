@@ -17,9 +17,9 @@
                     </div>
                 </div>
 
-                <h3 class="font-weight-bold text-dark mb-2">¿Eliminar esta definición?</h3>
+                <h3 class="font-weight-bold text-dark mb-2">¿Dar de baja esta definición?</h3>
                 <p class="text-muted mb-4 opacity-7">
-                    Estás a punto de eliminar la definición de catálogo <span class="font-weight-bold text-dark">@Model.Equipment.Name</span>. Esta acción solo es posible si <span class="text-danger font-weight-bold">no existen unidades físicas</span> asociadas.
+                    Estás a punto de dar de baja la definición de catálogo <span class="font-weight-bold text-dark">@Model.Equipment.Name</span>. Sus unidades físicas activas asociadas también quedarán dadas de baja.
                 </p>
 
                 <div class="card bg-light border-0 mb-4 p-3 text-left shadow-none">
@@ -52,7 +52,7 @@
                     </div>
                 </div>
 
-                <form method="post" class="d-flex justify-content-center">
+                <form method="post" class="d-flex justify-content-center" id="deleteForm">
                     <input type="hidden" asp-for="Equipment.Id" />
 
                     <a asp-page="./Details" asp-route-id="@Model.Equipment.Id" class="btn btn-outline-secondary btn-rounded font-weight-bold px-4 mr-2 py-2">
@@ -83,4 +83,34 @@
             }
         }
     </style>
+}
+
+@section Scripts {
+    <script>
+        $(function () {
+            var $deleteForm = $('#deleteForm');
+            $deleteForm.on('submit', function(e) {
+                e.preventDefault();
+                var form = this;
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call(form);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Dar de baja esta definición?',
+                    text: 'Se marcará como eliminada la definición de catálogo y sus unidades asociadas activas.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, Confirmar Baja',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d'
+                }).then(function(result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
+        });
+    </script>
 }

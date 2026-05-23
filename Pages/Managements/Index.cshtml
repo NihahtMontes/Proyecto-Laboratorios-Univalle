@@ -33,12 +33,9 @@
                                 <h6 class="card-subtitle text-muted ml-2">Gestión centralizada de ciclos de mantenimiento.</h6>
                             </div>
                             <div class="ml-auto mt-3">
-                                @if (Model.Type != "Corrective")
-                                {
-                                    <a asp-page="Create" asp-route-type="@Model.Type" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
-                                        <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Gestión
-                                    </a>
-                                }
+                                <a asp-page="Create" asp-route-type="@Model.Type" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                                    <i class="fas fa-plus-circle mr-1 text-info"></i> @(Model.Type == "Corrective" ? "Nueva Gestión Correctiva" : "Nueva Gestión")
+                                </a>
                             </div>
                         </div>
 

@@ -16,7 +16,7 @@
                     </div>
                 </div>
 
-                <form method="post" novalidate>
+                <form method="post" novalidate id="editForm">
                     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
                     <input type="hidden" asp-for="EquipmentUnit.Id" />
                     <input type="hidden" asp-for="EquipmentUnit.CreatedById" />
@@ -163,6 +163,33 @@
                 else if (condition == "2" && ($status.val() == "0" || $status.val() == "10")) {
                     $status.val("1").trigger('change');
                 }
+            });
+
+            // Confirmación SweetAlert2 para Guardar Cambios
+            var $editForm = $('#editForm');
+            $editForm.on('submit', function(e) {
+                e.preventDefault();
+                if (!$editForm.valid()) {
+                    return;
+                }
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call(this);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Guardar cambios?',
+                    text: 'Se actualizarán los datos de esta unidad física.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#6c757d'
+                }).then(function(result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call($editForm[0]);
+                    }
+                });
             });
         });
     </script>

@@ -25,6 +25,15 @@ Swal.fire({...}).then(function (result) {
 
 No usar solo `result.isConfirmed`.
 
+## Feedback CRUD
+
+- Create normal: no mostrar confirmacion previa; guardar y mostrar exito posterior con el SweetAlert global.
+- Edit: mostrar confirmacion previa con SweetAlert antes de guardar cambios.
+- Delete/soft-delete: mostrar confirmacion previa con SweetAlert; reemplazar cualquier `confirm()` nativo.
+- Confirmaciones deben tener fallback si `Swal` no esta disponible y usar `HTMLFormElement.prototype.submit.call(form)`.
+- Exitos, errores, warnings e info se disparan desde `TempData.Success/Error/Warning/Info`; el layout debe leer `SuccessMessage/ErrorMessage/WarningMessage/InfoMessage`.
+- Mantener fallback para claves legacy `Success/Error/Warning/Info` cuando exista codigo antiguo.
+
 ## Formularios Criticos
 
 - Preferir botones reales `type="submit"` con `asp-page-handler` cuando hay multiples acciones.

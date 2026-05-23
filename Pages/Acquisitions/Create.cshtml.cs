@@ -256,7 +256,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 return Page();
             }
 
-            var managementId = wizardPlan?.ManagementId ?? ManagementId ?? (await _managementService.GetCurrentManagementAsync())?.Id ?? 0;
+            var management = wizardPlan?.Management;
+            if (management == null && ManagementId.HasValue)
+            {
+                management = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value);
+            }
+            if (management == null && !isWizard)
+            {
+                management = await _managementService.GetCurrentManagementAsync(ManagementType.Preventive);
+            }
+
+            if (management == null)
+            {
+                TempData.Error("No hay gestión activa para registrar L-12 en este flujo.");
+                await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
+                ViewData["IsWizard"] = isWizard;
+                return Page();
+            }
+
+            var managementId = management.Id;
 
             var request = wizardPlan?.AcquisitionRequest ?? new Request { CreatedDate = DateTime.UtcNow };
 
@@ -316,8 +335,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                         UserId = currentUser.Id,
                         Title = "Adquisición Solicitada",
                         Message = $"Se registró correctamente tu solicitud de compra para la unidad {unit.InventoryNumber}.",
-                        ActionUrl = $"/Requests/Details?id={request.Id}",
+                        ActionUrl = wizardPlan != null
+                            ? $"/Requests/Details/{request.Id}?IsWizard=true&ManagementId={wizardPlan.ManagementId}&ManagementType={management.Type}&Step=6"
+                            : $"/Requests/Details/{request.Id}?ManagementId={management.Id}&ManagementType={management.Type}",
                         IconClass = "fas fa-shopping-cart text-success",
+                        ManagementId = management.Id,
+                        ManagementType = management.Type,
+                        Scope = "acquisition",
                         IsRead = false,
                         CreatedAt = DateTime.UtcNow
                     };

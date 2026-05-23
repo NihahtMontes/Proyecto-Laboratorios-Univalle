@@ -47,7 +47,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Técnico Responsable")]
             public int? TechnicianId { get; set; }
 
-            [Required]
             [Display(Name = "Fecha Programada")]
             [DataType(DataType.Date)]
             public DateTime? ScheduledDate { get; set; }

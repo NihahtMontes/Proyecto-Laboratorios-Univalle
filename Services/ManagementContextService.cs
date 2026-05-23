@@ -3,7 +3,7 @@ using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Npgsql;
+using System.Data.Common;
 
 namespace Proyecto_Laboratorios_Univalle.Services
 {
@@ -50,7 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 return management;
             }
-            catch (Exception ex) when (ex is InvalidOperationException || ex is NpgsqlException)
+            catch (Exception ex) when (ex is InvalidOperationException || ex is DbException)
             {
                 return null;
             }

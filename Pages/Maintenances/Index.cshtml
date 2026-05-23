@@ -209,28 +209,41 @@
     <script>
         $(function () {
              $('[data-toggle="tooltip"]').tooltip();
+
+             function escapeHtml(value) {
+                 return $('<div/>').text(value || '').html();
+             }
+
+             function sanitizeIconClass(value) {
+                 return value && /^[a-z0-9\-\s]+$/i.test(value) ? value : 'fas fa-wrench text-info';
+             }
+
+             function getSafeNotificationUrl(url) {
+                 return url && typeof url === 'string' && url.indexOf('/') === 0 && url.indexOf('//') !== 0 ? url : '';
+             }
              
              function loadLocalMaintenanceNotifications() {
-                 $.get('/Api/Notifications?handler=Unread&filter=Mantenimiento', function(data) {
+                 $.get('/Api/Notifications?handler=Unread&scope=maintenance', function(data) {
                      const $area = $('#localNotificationsArea');
                      const $list = $('#localNotificationsList');
                      
                      if (data.items && data.items.length > 0) {
                          $list.empty();
                          $.each(data.items, function(i, item) {
-                             const icon = item.icon || 'fas fa-wrench text-info';
-                             const url = item.url ? item.url : 'javascript:void(0)';
+                             const id = parseInt(item.id, 10) || 0;
+                             const icon = sanitizeIconClass(item.icon);
+                             const url = getSafeNotificationUrl(item.url);
                              
                              $list.append(`
-                                 <div class="alert alert-light border border-info shadow-sm d-flex align-items-center mb-2" id="local-notif-${item.id}">
+                                 <div class="alert alert-light border border-info shadow-sm d-flex align-items-center mb-2" id="local-notif-${id}">
                                      <div class="mr-3"><i class="${icon} fa-2x"></i></div>
                                      <div class="flex-grow-1">
-                                         <h6 class="alert-heading font-weight-bold mb-1 text-dark">${item.title}</h6>
-                                         <p class="mb-0 small text-muted">${item.message}</p>
-                                         <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${item.time}</small>
+                                         <h6 class="alert-heading font-weight-bold mb-1 text-dark">${escapeHtml(item.title || 'Notificación')}</h6>
+                                         <p class="mb-0 small text-muted">${escapeHtml(item.message)}</p>
+                                         <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${escapeHtml(item.time)}</small>
                                      </div>
                                      <div class="ml-3">
-                                         <a href="${url}" class="btn btn-sm btn-info btn-rounded px-3 font-weight-bold shadow-sm" onclick="markLocalAsRead(event, ${item.id}, '${url}')">
+                                         <a href="${url || 'javascript:void(0)'}" class="btn btn-sm btn-info btn-rounded px-3 font-weight-bold shadow-sm js-local-notification-link" data-notification-id="${id}" data-notification-url="${escapeHtml(url)}">
                                              Ir a la Tarea <i class="fas fa-arrow-right ml-1"></i>
                                          </a>
                                      </div>
@@ -247,7 +260,8 @@
              loadLocalMaintenanceNotifications();
 
              window.markLocalAsRead = function(e, id, url) {
-                 $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
+                 if (e) e.preventDefault();
+                 $.get('/Api/Notifications?handler=MarkAsRead&id=' + encodeURIComponent(id), function() {
                      if (url && url !== 'javascript:void(0)') {
                          window.location.href = url;
                      } else {
@@ -260,6 +274,10 @@
                      }
                  });
              };
+
+             $('#localNotificationsList').on('click', '.js-local-notification-link', function(e) {
+                 markLocalAsRead(e, $(this).data('notification-id'), $(this).data('notification-url'));
+             });
         });
     </script>
 }

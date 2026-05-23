@@ -197,8 +197,8 @@
                                                     <a asp-page="/EquipmentUnits/Details" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-info" title="Ver Historial">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
-                                                    <form method="post" asp-page-handler="DeleteUnit" asp-route-id="@unit.Id" class="d-inline" onsubmit="return confirm('¿Dar de baja esta unidad?');">
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger ml-1" title="Eliminar">
+                                                    <form method="post" asp-page-handler="DeleteUnit" asp-route-id="@unit.Id" class="d-inline delete-unit-form">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger ml-1" title="Dar de baja">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
                                                     </form>
@@ -284,7 +284,7 @@
             </a>
 
             <a asp-page="./Delete" asp-route-id="@Model.Equipment.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">
-                <i class="fas fa-trash-alt mr-1"></i> Eliminar Definición del Sistema
+                <i class="fas fa-trash-alt mr-1"></i> Dar de Baja Definición del Sistema
             </a>
         </div>
     </div>
@@ -362,6 +362,30 @@
 
                 renderPage(1);
             }
+
+            // Confirmación SweetAlert2 para eliminar unidad física
+            $(document).on('submit', '.delete-unit-form', function(e) {
+                e.preventDefault();
+                var form = this;
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call(form);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Dar de baja esta unidad?',
+                    text: 'Esta acción marcará la unidad física como eliminada.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, dar de baja',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d'
+                }).then(function(result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
         });
     </script>
 }

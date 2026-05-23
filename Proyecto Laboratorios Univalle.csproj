@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Proyecto_Laboratorios_Univalle</RootNamespace>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tmp\**;tmp\**\*;tmp/**;tmp/**/*</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +27,14 @@
   <ItemGroup>
     <Compile Remove="Migrations\**\*.cs" />
     <Compile Remove="Data\Migrations\**\*.cs" />
+    <Compile Remove="tmp\**\*.cs" />
+    <Compile Remove="tmp/**" />
+    <Content Remove="tmp\**" />
+    <Content Remove="tmp/**" />
+    <EmbeddedResource Remove="tmp\**" />
+    <EmbeddedResource Remove="tmp/**" />
+    <None Remove="tmp\**" />
+    <None Remove="tmp/**" />
   </ItemGroup>
 
 </Project>

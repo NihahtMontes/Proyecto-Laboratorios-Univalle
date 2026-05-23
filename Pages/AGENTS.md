@@ -20,6 +20,10 @@
 - No reintroducir `jqBootstrapValidation` en `Maintenances/Create`.
 - Usar `InputModel`, no bindear entidades completas.
 - Mensajes con `TempData.Success/Error/Warning`.
+- Create: no pedir confirmacion previa salvo flujo critico; mostrar exito posterior via SweetAlert global.
+- Edit: confirmar con SweetAlert antes de guardar cambios.
+- Delete/soft-delete: confirmar con SweetAlert antes de enviar; no usar `confirm()` nativo.
+- El layout debe leer `SuccessMessage/ErrorMessage/WarningMessage/InfoMessage` generados por `TempDataExtensions`.
 
 ## UI
 
