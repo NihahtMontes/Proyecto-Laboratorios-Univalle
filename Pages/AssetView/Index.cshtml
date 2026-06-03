@@ -1,0 +1,99 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.AssetView.IndexModel
+
+@{
+    ViewData["Title"] = "Ver Inventario";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <ul class="nav nav-tabs customtab px-4 pt-3 border-0" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link @(Model.ShowInventoryTab ? "" : "active") font-weight-bold" data-toggle="tab" href="#metricas" role="tab">
+                        <span class="hidden-xs-down"><i class="fas fa-chart-pie mr-2"></i> Metricas</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(Model.ShowInventoryTab ? "active" : "") font-weight-bold" data-toggle="tab" href="#inventario" role="tab">
+                        <span class="hidden-xs-down"><i class="fas fa-boxes mr-2"></i> Inventario</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content border-top">
+                <div class="tab-pane @(Model.ShowInventoryTab ? "" : "active")" id="metricas" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                            <div>
+                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Metricas de Activos</h3>
+                                <h6 class="card-subtitle text-muted ml-2">Panel reservado para indicadores generales del modulo de activos.</h6>
+                            </div>
+                        </div>
+
+                        <div class="bg-light p-5 text-center rounded border-left border-info shadow-sm">
+                            <i class="fas fa-chart-line fa-3x text-info mb-3"></i>
+                            <h4 class="font-weight-bold text-dark">Metricas en preparacion</h4>
+                            <p class="text-muted mb-0">Esta seccion queda lista para conectar indicadores cuando definamos el alcance de metricas.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane @(Model.ShowInventoryTab ? "active" : "")" id="inventario" role="tabpanel">
+                    <div class="card-body">
+                        <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                            <div>
+                                <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Inventario por Tipo de Recurso</h3>
+                                <h6 class="card-subtitle text-muted ml-2">Navegacion en cascada para consultar unidades fisicas vigentes.</h6>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <a asp-page="./EquipmentClassifications" asp-route-activeTab="Inventario" class="text-decoration-none">
+                                    <div class="card text-white bg-primary shadow-sm border-0 h-100">
+                                        <div class="card-header bg-transparent border-0">
+                                            <h4 class="m-b-0 text-white"><i class="fas fa-microscope mr-2"></i>Equipos</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <h2 class="card-title text-white font-weight-bold">@Model.EquipmentUnitsCount</h2>
+                                            <p class="card-text mb-0">Unidades fisicas clasificadas como equipos.</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <a asp-page="./UtensilClassifications" asp-route-activeTab="Inventario" class="text-decoration-none">
+                                    <div class="card text-white bg-success shadow-sm border-0 h-100">
+                                        <div class="card-header bg-transparent border-0">
+                                            <h4 class="m-b-0 text-white"><i class="fas fa-utensils mr-2"></i>Utensilios</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <h2 class="card-title text-white font-weight-bold">@Model.UtensilUnitsCount</h2>
+                                            <p class="card-text mb-0">Unidades fisicas clasificadas como utensilios.</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <a asp-page="./OtherUnits" asp-route-activeTab="Inventario" class="text-decoration-none">
+                                    <div class="card text-white bg-warning shadow-sm border-0 h-100">
+                                        <div class="card-header bg-transparent border-0">
+                                            <h4 class="m-b-0 text-white"><i class="fas fa-layer-group mr-2"></i>Otros</h4>
+                                        </div>
+                                        <div class="card-body">
+                                            <h2 class="card-title text-white font-weight-bold">@Model.OtherUnitsCount</h2>
+                                            <p class="card-text mb-0">Unidades fisicas fuera de equipos y utensilios.</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

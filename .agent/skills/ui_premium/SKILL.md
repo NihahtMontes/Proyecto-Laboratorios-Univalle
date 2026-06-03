@@ -1,36 +1,37 @@
 ---
 name: ui_premium
-description: UI Razor/NiceAdmin, SweetAlert2, formularios, tablas dinamicas y validaciones frontend.
-trigger: Modificacion de `.cshtml`, JavaScript embebido, botones, modales, wizard visual o feedback al usuario.
-scope: Pages/UI
+description: UI Razor/NiceAdmin WrapPixel Bootstrap 4, layouts, tabs, cards, SweetAlert2 v7, formularios y tablas.
+trigger: Modificacion de `.cshtml`, JavaScript embebido, layout, sidebar, cards, tabs, botones, modales, wizard visual o feedback al usuario.
+scope: Pages/UI/wwwroot
 context: .agent/context/areas/ui.md
 ---
 # Skill UI Premium
 
-## Leer Antes
+## 1. Contexto Del Modulo
 
-- `.agent/context/areas/ui.md`.
-- `Pages/AGENTS.md`.
-- Modulo especifico si la vista pertenece al wizard.
+La UI del proyecto vive principalmente en `Pages/` con Razor Pages y componentes compartidos en `Pages/Shared/`. El frontend usa NiceAdmin/WrapPixel sobre Bootstrap 4, jQuery, Select2 y SweetAlert2 v7.19.3.
 
-## Reglas Visuales
+Flujo general: el usuario navega desde `_Sidebar.cshtml` o dashboards, el PageModel prepara datos, Razor pinta formularios/tablas/cards y JavaScript local aplica confirmaciones, cascadas de selects, filtros o validaciones.
 
-- Mantener NiceAdmin/Bootstrap 4.
-- Index debe tener busqueda/filtros claros, no solo tabla plana.
-- Create/Edit debe usar layout asimetrico y panel lateral cuando aporte contexto.
-- Details debe mostrar estado, historial y acciones con jerarquia.
-- UI visible en espanol.
+## 2. Arquitectura Y Archivos Clave
 
-## Botones
+- Layout base: `Pages/Shared/_Layout.cshtml`.
+- Sidebar: `Pages/Shared/_Sidebar.cshtml`.
+- Validaciones: `Pages/_ValidationScriptsPartial.cshtml`.
+- Dashboard/wizard: `Pages/Index.cshtml`, `Pages/Shared/_WizardStep.cshtml`, `Pages/Shared/_WizardSteps.cshtml`.
+- Inventario visual actual: `Pages/AssetView/Index.cshtml`, `EquipmentClassifications.cshtml`, `Units.cshtml`, `UtensilClassifications.cshtml`, `UtensilUnits.cshtml`, `OtherUnits.cshtml`.
+- CRUD activos: `Pages/Equipment/*.cshtml`, `Pages/EquipmentUnits/*.cshtml`.
+- Assets: `wwwroot/dist/**`, `wwwroot/assets/**`, `wwwroot/js/site.js`, `wwwroot/css/site.css`.
 
-- Accion principal: `btn-info btn-rounded shadow-sm` o color semantico equivalente existente.
-- Edicion: `btn-warning`.
-- Riesgo: `btn-danger`.
-- Volver/cancelar: `btn-outline-secondary`.
+## 3. Integracion Con NiceAdmin
 
-## SweetAlert2 Critico
-
-La version instalada es v7.19.3. No usar solo `result.isConfirmed`.
+- Usar WrapPixel/NiceAdmin Bootstrap 4 real del proyecto: `wwwroot/dist/css/style.min.css`, `wwwroot/dist/js/app.min.js`, `wwwroot/dist/js/sidebarmenu.js`, `wwwroot/dist/js/waves.js`.
+- Iconos disponibles: Material Design Icons (`mdi`), Font Awesome (`fas`) y Themify (`ti`). No asumir BootstrapMade, bootstrap-icons, boxicons o remixicon.
+- Cards de color: `card text-white bg-primary/bg-success/bg-warning/bg-info/bg-danger/bg-secondary`.
+- Tablas: `table table-hover v-middle`, encabezados `bg-light`, acciones con `btn-outline-info`, `btn-outline-warning`, `btn-outline-danger`.
+- Botones: principal `btn-info btn-rounded shadow-sm`, editar `btn-warning`, peligro `btn-danger`, volver/cancelar `btn-outline-secondary`.
+- Tabs: `nav nav-tabs customtab`; si una pagina debe abrir un tab especifico, usar query string como `activeTab=Inventario` y activar clases Razor desde el PageModel.
+- SweetAlert2 es v7. Usar:
 
 ```javascript
 Swal.fire({...}).then(function (result) {
@@ -40,31 +41,23 @@ Swal.fire({...}).then(function (result) {
 });
 ```
 
-Agregar fallback si `Swal` no esta disponible.
+## 4. Patrones Y Convenciones
 
-## Patron CRUD
+- UI visible en espanol.
+- Create normal: sin confirmacion previa; exito posterior via `TempData.Success()`.
+- Edit: confirmar antes de guardar.
+- Delete/soft-delete: confirmar antes de enviar; nunca usar `window.confirm`.
+- Hidden inputs dentro de `<td>` cuando estan en tablas.
+- No inyectar strings C# no confiables en JavaScript sin serializacion segura.
+- En activos, la taxonomia actual local es:
+  - `Equipment`: clasificaciones tecnicas controladas.
+  - `Utensil`: subclasificaciones controladas.
+  - `Other`: listado directo sin subclasificacion.
 
-- Create: no pedir confirmacion previa en altas comunes; confiar en validacion cliente/servidor y mostrar exito posterior via TempData/SweetAlert global.
-- Edit: interceptar submit y pedir confirmacion SweetAlert antes de guardar.
-- Delete/soft-delete: siempre confirmar con SweetAlert; no usar `window.confirm`.
-- Confirmar con `result && (result.isConfirmed === true || result.value === true)` y luego `HTMLFormElement.prototype.submit.call(form)`.
-- Si `Swal` no existe, permitir fallback nativo que no bloquee la accion.
-- El mensaje posterior debe venir de `TempData.Success/Error/Warning/Info`, no de alertas inline duplicadas.
+## 5. Contexto Para Agente
 
-## Formularios
-
-- Botones con handlers deben ser submits reales.
-- Preservar `formaction` del boton que disparo el submit.
-- Usar submit nativo para evitar bloqueos de validadores JS en wizard.
-- No reintroducir `jqBootstrapValidation` en `Pages/Maintenances/Create.cshtml`.
-
-## Tablas Dinamicas
-
-- Hidden inputs siempre dentro de `<td>`.
-- Templates ocultos con inputs `disabled` hasta insertar fila real.
-- Checkbox de fila sin hidden `false` con el mismo name.
-
-## Seguridad JS
-
-- Al inyectar TempData o strings C# en JS, usar helpers seguros del proyecto.
-- No concatenar strings no confiables en JavaScript inline.
+- Antes de tocar UI, leer `context.md`, `.agent/context/areas/ui.md`, `Pages/AGENTS.md` y esta skill.
+- No cambiar stack visual ni meter nuevas librerias sin aprobacion.
+- No usar patrones BootstrapMade; este proyecto usa WrapPixel/NiceAdmin Bootstrap 4.
+- En `AssetView`, los botones Volver deben conservar contexto de Inventario; no depender solo de `history.back()`.
+- Si se edita una accion critica, preservar fallback si `Swal` no esta disponible.

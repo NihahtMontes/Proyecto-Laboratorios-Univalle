@@ -11,8 +11,8 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Registrar Definición de Equipo (Catálogo)</h4>
-                        <h6 class="card-subtitle text-muted">Cree la ficha técnica general. La procedencia y ubicación predominante se definen aquí.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Registrar Definición de Activo (Catálogo)</h4>
+                        <h6 class="card-subtitle text-muted">Cree la ficha técnica general del recurso. La procedencia y ubicación predominante se definen aquí.</h6>
                     </div>
                     <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-microscope fa-2x text-info"></i>
@@ -33,16 +33,22 @@
                                 <span asp-validation-for="Input.Category" class="text-danger small"></span>
                             </div>
 
-                            <div class="form-group mb-3">
-                                <label id="labelDynamic" class="control-label font-weight-bold small uppercase text-muted">Categoría / Clasificación <span class="text-danger">*</span></label>
-                                <select asp-for="Input.TypeClassification" class="form-control custom-select border-info" id="dynamicSelect" required>
-                                    <option value="">-- Seleccione --</option>
+                            <div class="form-group mb-3" id="utensilContainer" style="display:none;">
+                                <label asp-for="Input.UtensilType" class="control-label font-weight-bold small uppercase text-muted">Subclasificacion de Utensilio <span class="text-danger">*</span></label>
+                                <select asp-for="Input.UtensilType" class="form-control custom-select border-info" asp-items="Model.UtensilTypeOptions" id="utensilSelect">
+                                </select>
+                                <span asp-validation-for="Input.UtensilType" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3" id="classificationContainer">
+                                <label asp-for="Input.TypeClassification" class="control-label font-weight-bold small uppercase text-muted">Clasificacion Tecnica <span class="text-danger">*</span></label>
+                                <select asp-for="Input.TypeClassification" class="form-control custom-select border-info" asp-items="Model.EquipmentTypeClassificationOptions" id="classificationSelect">
                                 </select>
                                 <span asp-validation-for="Input.TypeClassification" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-3">
-                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Activo <span class="text-danger">*</span></label>
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Activo / Recurso <span class="text-danger">*</span></label>
                                 <input asp-for="Input.Name" class="form-control" placeholder="Ej: Espectrofotómetro" required />
                                 <span asp-validation-for="Input.Name" class="text-danger small"></span>
                             </div>
@@ -159,45 +165,25 @@
                 $('#notesContainer').append(row);
             };
 
-            // --- LÓGICA DE DOBLE FILTRADO PARA LA INGE ---
-            const equipmentOptions = [
-                { val: '0', text: 'Electrónico / Eléctrico' },
-                { val: '1', text: 'Manual / Mecánico' },
-                { val: '2', text: 'Mobiliario' },
-                { val: '3', text: 'Instrumental de Medición' },
-                { val: '6', text: 'Informático / Software' },
-                { val: '7', text: 'Otro' }
-            ];
-
-            const utensilOptions = [
-                { val: '4', text: 'Material de Vidrio' },
-                { val: '2', text: 'Material de Plástico' },
-                { val: '3', text: 'Material de Metal' },
-                { val: '4', text: 'Porcelana' }
-            ];
-
-            function updateDynamicSelect() {
-                const category = $('#categorySelect').val(); // 0=Equipo, 1=Utensilio
-                const $select = $('#dynamicSelect');
-                const $label = $('#labelDynamic');
-
-                $select.empty().append('<option value="">-- Seleccione --</option>');
-
-                if (category == '0') { // Equipo
-                    $label.text('Clasificación Técnica');
-                    equipmentOptions.forEach(opt => {
-                        $select.append(`<option value="${opt.val}">${opt.text}</option>`);
-                    });
-                } else if (category == '1') { // Utensilio
-                    $label.text('Tipo de Material');
-                    utensilOptions.forEach(opt => {
-                        $select.append(`<option value="${opt.val}">${opt.text}</option>`);
-                    });
+            function toggleType() {
+                var category = $('#categorySelect').val();
+                if (category == '1') {
+                    $('#utensilContainer').fadeIn();
+                    $('#classificationSelect').val('7');
+                    $('#classificationContainer').fadeOut();
+                } else {
+                    $('#utensilContainer').fadeOut();
+                    $('#utensilSelect').val('0');
+                    $('#classificationContainer').fadeIn();
+                    if (category == '2') {
+                        $('#classificationSelect').val('7');
+                        $('#classificationContainer').fadeOut();
+                    }
                 }
             }
 
-            $('#categorySelect').on('change', updateDynamicSelect);
-            updateDynamicSelect();
+            $('#categorySelect').on('change', toggleType);
+            toggleType();
         });
     </script>
     @{

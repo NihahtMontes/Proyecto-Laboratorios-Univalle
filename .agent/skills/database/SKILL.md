@@ -1,52 +1,52 @@
 ---
 name: database
-description: EF Core, PostgreSQL, migraciones, soft-delete, tracking y modelado historico.
-trigger: Cambios en `Models/`, `Data/`, migraciones, relaciones, queries LINQ de escritura o borrado.
-scope: Data/Models
+description: EF Core 9 con PostgreSQL/Npgsql, entidades, enums, DbContext, query filters, auditoria, soft-delete y migraciones.
+trigger: Cambios en `Models/`, `Data/`, enums, relaciones EF, migraciones, seeds, query filters o consultas de escritura.
+scope: Models/Data/Infrastructure
 context: .agent/context/areas/database-ef.md
 ---
 # Skill Database
 
-## Leer Antes
+## 1. Contexto Del Modulo
 
-- `.agent/context/areas/database-ef.md`.
-- `Models/AGENTS.md`.
+La capa de datos usa `ApplicationDbContext` con PostgreSQL/Npgsql, Identity y entidades de mantenimiento, activos, personas, gestion, wizard y reportes. El modelo conserva historial: se prefieren estados, soft-delete o desvinculaciones en vez de hard-delete.
 
-## Prohibido
+Flujo: PageModel/Service -> `ApplicationDbContext` -> entidades y query filters -> PostgreSQL -> SaveChanges con auditoria.
 
-- Modificar migraciones existentes.
-- Hard-delete de entidades con valor historico.
-- Actualizar entidades cargadas sin tracking.
-- Agregar query filters globales sin revisar impacto.
+## 2. Arquitectura Y Archivos Clave
 
-## Tracking
+- DbContext: `Data/ApplicationDbContext.cs`.
+- Seed: `Data/DbInitializer.cs`.
+- Migraciones vigentes PostgreSQL: `Data/PostgresMigrations/`.
+- Migraciones legacy/historicas: `Data/Migrations/`.
+- Entidades core: `Models/Equipment.cs`, `EquipmentUnit.cs`, `Management.cs`, `ManagementPlan.cs`, `Maintenance.cs`, `Request.cs`, `Verification.cs`, `Departure.cs`, `Notification.cs`.
+- Enums: `Models/Enums/*.cs`, incluyendo `EquipmentCategory.cs` y `EquipmentTypeClassification.cs.cs`.
 
-NoTracking global esta activo. Para modificar:
+## 3. Integracion Con NiceAdmin
 
-```csharp
-var entity = await _context.Entities
-    .AsTracking()
-    .FirstOrDefaultAsync(...);
-```
+- Los enums deben tener `Display(Name=...)` para badges/selects.
+- Las vistas usan `EnumHelper.GetDisplayName(...)`; mantener nombres de display claros.
+- Query filters impactan tablas visuales: unidades eliminadas no aparecen en inventario operativo.
+- Para tarjetas y contadores, proyectar desde entidades vigentes y no cargar historicos completos.
 
-`FindAsync()` tambien trackea.
+## 4. Patrones Y Convenciones
 
-## Soft Delete
+- Proveedor fijo: PostgreSQL con Npgsql.
+- NoTracking global configurado en `Program.cs`; para modificar usar `.AsTracking()` o `FindAsync()`.
+- Query filters actuales excluyen eliminados/cancelados en entidades principales.
+- No modificar migraciones existentes; crear una nueva en `Data/PostgresMigrations/` cuando cambie schema.
+- No versionar credenciales ni connection strings reales.
+- Taxonomia local actual de activos:
+  - `EquipmentCategory.Equipment = 0`
+  - `EquipmentCategory.Utensil = 1`
+  - `EquipmentCategory.Other = 2`
+  - `UtensilType` conserva legacy `Vidrio/Plastico/Metal/Porcelana` y agrega subclasificaciones nuevas.
+  - `EquipmentTypeClassification` conserva legacy y agrega clasificaciones tecnicas nuevas.
 
-Preferir:
+## 5. Contexto Para Agente
 
-- `Status = Deleted/Cancelled/Eliminado`.
-- `IsDeleted = true`.
-- Desvincular FK nullable preservando el registro.
-
-## Migraciones
-
-- Crear nuevas migraciones en `Data/PostgresMigrations/`.
-- Revisar PostgreSQL/Npgsql, no SQL Server.
-- No incluir credenciales en cambios de configuracion.
-
-## Datos Especiales
-
-- `Management.Semester = 0` es valido para correctivo.
+- Leer `Models/AGENTS.md` y `.agent/context/areas/database-ef.md`.
+- No agregar query filters nuevos sin revisar reportes, Includes y conteos.
 - `EquipmentUnit.LaboratoryId` es nullable.
-- `Person.FullName` no se usa en LINQ.
+- `Management.Semester` puede ser 1/2 para gestiones semestrales; no inventar formatos sin revisar modulo correctivo.
+- Hard-delete residual conocido: `EquipmentNotes.RemoveRange` existe; no cambiarlo sin modelado/migracion.
