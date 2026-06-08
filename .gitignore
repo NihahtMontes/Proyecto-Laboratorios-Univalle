@@ -19,6 +19,7 @@ db_update_output.txt
 test_*.xlsx
 
 appsettings.Development.json
+appsettings.Production.json
 
 # No ignorar archivos fuente ni migraciones EF.
 !**/*.cs
