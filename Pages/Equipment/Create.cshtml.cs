@@ -47,9 +47,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             [Display(Name = "Tipo de Material")]
             public UtensilType UtensilType { get; set; }
 
-            //[Display(Name = "Tipo de Equipo")]
-            //public int? EquipmentTypeId { get; set; }
-
             [Display(Name = "Imagen del Equipo")]
             public IFormFile? ImageUpload { get; set; }
 
@@ -176,7 +173,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 UtensilType = Input.UtensilType, // Asignamos el nuevo Enum
                 TypeClassification = Input.TypeClassification, // CORRECCIÓN: Se añade el mapeo de la clasificación dinámica
 
-                //EquipmentTypeId = Input.EquipmentTypeId,
                 ImageUrl = uniqueFileName,
                 CountryId = Input.CountryId,
                 CityId = Input.CityId,
@@ -210,8 +206,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
         private void LoadLists()
         {
-            //ViewData["EquipmentTypeId"] = new SelectList(_context.EquipmentTypes.OrderBy(et => et.Name), "Id", "Name");
-
             var countries = _context.Countries
                 .Where(c => c.Status == GeneralStatus.Activo)
                 .OrderBy(c => c.Name)

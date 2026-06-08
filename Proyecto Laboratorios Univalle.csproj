@@ -26,9 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Migrations\**\*.cs" />
-    <Compile Remove="Data\Migrations\**\*.cs" />
-    <Compile Remove="Data\PostgresMigrations\**\*.cs" />
     <Compile Remove="Tools\**\*.cs" />
     <Compile Remove="tmp\**\*.cs" />
     <Compile Remove="tmp/**" />
