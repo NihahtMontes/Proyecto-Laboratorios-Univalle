@@ -5,17 +5,7 @@
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm border-0">
-            <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active font-weight-bold uppercase small" data-toggle="tab" href="#mantenimientos" role="tab">
-                        <i class="fas fa-tools mr-2"></i> Historial de Mantenimientos
-                    </a>
-                </li>
-            </ul>
-
-            <div class="tab-content">
-                <div class="tab-pane active" id="mantenimientos" role="tabpanel">
-                    <div class="card-body">
+            <div class="card-body">
                         <div class="d-md-flex align-items-center mb-4">
                             <div>
                                 <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Registro Técnico de Mantenimiento</h3>
@@ -59,10 +49,10 @@
                                     </div>
 
                                     <div class="col-md-2 text-right">
-                                        <button type="submit" class="btn btn-dark btn-rounded px-3 shadow-sm">
-                                            <i class="fas fa-filter"></i>
+                                        <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                            <i class="fas fa-filter mr-1"></i> Filtrar
                                         </button>
-                                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
+                                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
                                             <i class="fas fa-sync-alt"></i>
                                         </a>
                                     </div>
@@ -73,13 +63,13 @@
                         <div class="table-responsive">
                             <table class="table table-hover v-middle">
                                 <thead class="bg-light">
-                                    <tr>
-                                        <th class="border-top-0">Equipamiento</th>
-                                        <th class="border-top-0">Servicio / Tipo</th>
-                                        <th class="border-top-0">Responsable</th>
-                                        <th class="border-top-0 text-center">Fecha Ejecución</th>
-                                        <th class="border-top-0 text-center">Situación</th>
-                                        <th class="border-top-0 text-center">Opciones</th>
+                                    <tr class="small uppercase font-weight-bold">
+                                        <th>Equipamiento</th>
+                                        <th>Servicio / Tipo</th>
+                                        <th>Responsable</th>
+                                        <th class="text-center">Fecha Ejecución</th>
+                                        <th class="text-center">Situación</th>
+                                        <th class="text-center">Opciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -99,9 +89,6 @@
                                             <tr>
                                                 <td>
                                                     <div class="d-flex align-items-center">
-                                                        <div class="m-r-10">
-                                                            <span class="btn btn-circle btn-sm btn-light-info text-info"><i class="fas fa-tools"></i></span>
-                                                        </div>
                                                         <div>
                                                             <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
                                                             <span class="text-muted small">Inv: @item.EquipmentUnit?.InventoryNumber</span>
@@ -128,14 +115,15 @@
                                                     @{
                                                         var (statusClass, statusText) = item.Status switch
                                                         {
-                                                            MaintenanceStatus.Completed => ("badge-success", "COMPLETADO"),
+                                                            MaintenanceStatus.Pending => ("badge-warning", "PENDIENTE"),
                                                             MaintenanceStatus.InProgress => ("badge-warning", "EN EJECUCIÓN"),
                                                             MaintenanceStatus.Scheduled => ("badge-info", "PROGRAMADO"),
+                                                            MaintenanceStatus.Completed => ("badge-success", "COMPLETADO"),
                                                             MaintenanceStatus.Cancelled => ("badge-danger", "CANCELADO"),
                                                             _ => ("badge-secondary", "DESCONOCIDO")
                                                         };
                                                     }
-                                                    <span class="badge @statusClass px-3 py-1">@statusText</span>
+                                                    <span class="badge @statusClass px-3 py-1 font-weight-bold">@statusText</span>
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group shadow-sm">
@@ -185,7 +173,6 @@
                                                 </ul>
                                             </nav>
                                         }
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -194,10 +181,11 @@
 
 @section Styles {
     <style>
-        .customtab .nav-link { border: none; color: #747d8c; padding: 15px 25px; transition: all 0.3s ease; }
-        .customtab .nav-link.active { color: #2962ff; background: transparent; border-bottom: 3px solid #2962ff; }
         .v-middle td { vertical-align: middle !important; }
         .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+        .italic { font-style: italic; }
+        .opacity-2 { opacity: 0.2; }
         .border-left-3 { border-left-width: 3px !important; }
         .btn-white { background: #fff; color: #67757c; border: 1px solid #e9ecef; }
         .btn-white:hover { background: #f8f9fa; }
@@ -209,28 +197,41 @@
     <script>
         $(function () {
              $('[data-toggle="tooltip"]').tooltip();
+
+             function escapeHtml(value) {
+                 return $('<div/>').text(value || '').html();
+             }
+
+             function sanitizeIconClass(value) {
+                 return value && /^[a-z0-9\-\s]+$/i.test(value) ? value : 'fas fa-wrench text-info';
+             }
+
+             function getSafeNotificationUrl(url) {
+                 return url && typeof url === 'string' && url.indexOf('/') === 0 && url.indexOf('//') !== 0 ? url : '';
+             }
              
              function loadLocalMaintenanceNotifications() {
-                 $.get('/Api/Notifications?handler=Unread&filter=Mantenimiento', function(data) {
+                 $.get('/Api/Notifications?handler=Unread&scope=maintenance', function(data) {
                      const $area = $('#localNotificationsArea');
                      const $list = $('#localNotificationsList');
                      
                      if (data.items && data.items.length > 0) {
                          $list.empty();
                          $.each(data.items, function(i, item) {
-                             const icon = item.icon || 'fas fa-wrench text-info';
-                             const url = item.url ? item.url : 'javascript:void(0)';
+                             const id = parseInt(item.id, 10) || 0;
+                             const icon = sanitizeIconClass(item.icon);
+                             const url = getSafeNotificationUrl(item.url);
                              
                              $list.append(`
-                                 <div class="alert alert-light border border-info shadow-sm d-flex align-items-center mb-2" id="local-notif-${item.id}">
+                                 <div class="alert alert-light border border-info shadow-sm d-flex align-items-center mb-2" id="local-notif-${id}">
                                      <div class="mr-3"><i class="${icon} fa-2x"></i></div>
                                      <div class="flex-grow-1">
-                                         <h6 class="alert-heading font-weight-bold mb-1 text-dark">${item.title}</h6>
-                                         <p class="mb-0 small text-muted">${item.message}</p>
-                                         <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${item.time}</small>
+                                         <h6 class="alert-heading font-weight-bold mb-1 text-dark">${escapeHtml(item.title || 'Notificación')}</h6>
+                                         <p class="mb-0 small text-muted">${escapeHtml(item.message)}</p>
+                                         <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${escapeHtml(item.time)}</small>
                                      </div>
                                      <div class="ml-3">
-                                         <a href="${url}" class="btn btn-sm btn-info btn-rounded px-3 font-weight-bold shadow-sm" onclick="markLocalAsRead(event, ${item.id}, '${url}')">
+                                         <a href="${url || 'javascript:void(0)'}" class="btn btn-sm btn-info btn-rounded px-3 font-weight-bold shadow-sm js-local-notification-link" data-notification-id="${id}" data-notification-url="${escapeHtml(url)}">
                                              Ir a la Tarea <i class="fas fa-arrow-right ml-1"></i>
                                          </a>
                                      </div>
@@ -247,7 +248,8 @@
              loadLocalMaintenanceNotifications();
 
              window.markLocalAsRead = function(e, id, url) {
-                 $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
+                 if (e) e.preventDefault();
+                 $.get('/Api/Notifications?handler=MarkAsRead&id=' + encodeURIComponent(id), function() {
                      if (url && url !== 'javascript:void(0)') {
                          window.location.href = url;
                      } else {
@@ -260,6 +262,10 @@
                      }
                  });
              };
+
+             $('#localNotificationsList').on('click', '.js-local-notification-link', function(e) {
+                 markLocalAsRead(e, $(this).data('notification-id'), $(this).data('notification-url'));
+             });
         });
     </script>
 }

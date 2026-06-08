@@ -17,7 +17,7 @@
 - No usar `System.Drawing.Color`.
 - Limpiar datos dummy con `.Value = null` antes de escribir.
 - Mantener coordenadas exactas de plantillas institucionales.
-- Para montos literales usar `ReportService.ConvertirEnteroATexto`.
+- Para montos literales usar los helpers del parcial de adquisicion de `ReportService`.
 
 ## Datos
 

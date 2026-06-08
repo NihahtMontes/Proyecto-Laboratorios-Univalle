@@ -101,7 +101,14 @@
                                             <td>
                                                 <div class="d-flex align-items-center">
                                                     <div class="m-r-10">
-                                                        <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm">@item.Initials</span>
+                                                        @if (!string.IsNullOrEmpty(item.ProfilePictureUrl))
+                                                        {
+                                                            <img src="~/uploads/users/@item.ProfilePictureUrl" alt="@item.FullName" class="rounded-circle shadow-sm" style="width: 36px; height: 36px; object-fit: cover;">
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="btn btn-circle btn-info font-weight-bold text-white shadow-sm">@item.Initials</span>
+                                                        }
                                                     </div>
                                                     <div>
                                                         <h6 class="m-b-0 font-weight-bold text-dark">@item.FullName</h6>

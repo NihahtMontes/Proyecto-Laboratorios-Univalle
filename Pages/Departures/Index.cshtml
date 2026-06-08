@@ -3,7 +3,17 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Salidas de Equipos (L-3)";
+    ViewData["Title"] = "Control de Salidas de Equipos (L-3)";
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mx-4 mt-3" role="alert">
+        <i class="fas fa-exclamation-triangle mr-2"></i> @TempData["Error"]
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
 }
 
 <div class="row">
@@ -22,9 +32,52 @@
                     </div>
                 </div>
 
+                <!-- FILTROS -->
+                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                    <form method="get">
+                        <div class="row align-items-end">
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo, inventario o responsable..." />
+                                </div>
+                            </div>
+                            <div class="col-md-3 mt-3 mt-md-0">
+                                <label class="small font-weight-bold text-muted uppercase">Tipo de Salida</label>
+                                <select asp-for="FilterType" class="form-control custom-select drop-shadow" asp-items="Html.GetEnumSelectList<DepartureType>()">
+                                    <option value="">-- Todos los Tipos --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mt-3 mt-md-0">
+                                <label class="small font-weight-bold text-muted uppercase">Estado</label>
+                                <select asp-for="FilterStatus" class="form-control custom-select drop-shadow" asp-items="Html.GetEnumSelectList<LoanStatus>()">
+                                    <option value="">-- Todos --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 mt-3 mt-md-0">
+                                <label class="small font-weight-bold text-muted uppercase">Laboratorio</label>
+                                <select asp-for="FilterLaboratoryId" class="form-control custom-select drop-shadow" asp-items="Model.LaboratoriesList">
+                                    <option value="">-- Todos --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 text-right mt-3 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
+                                </button>
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
+                                    <i class="fas fa-sync-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-hover v-middle">
-                        <thead class="thead-light">
+                        <thead class="bg-light">
                             <tr class="small uppercase font-weight-bold">
                                 <th>Equipo / Unidad</th>
                                 <th>Responsable</th>
@@ -52,9 +105,6 @@
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <div class="m-r-10">
-                                                    <span class="btn btn-circle btn-sm btn-light-warning text-warning shadow-sm"><i class="fas fa-truck-loading"></i></span>
-                                                </div>
                                                 <div>
                                                     <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
                                                     <small class="text-muted italic">Inv: @item.EquipmentUnit?.InventoryNumber</small>
@@ -67,11 +117,17 @@
                                         </td>
                                         <td class="text-center v-middle">
                                             @{
-                                                var tBadge = item.Type == DepartureType.ExternalMaintenance ? "badge-light-info text-info" : "badge-light-primary text-primary";
+                                                var (tClass, tText) = item.Type switch
+                                                {
+                                                    DepartureType.ExternalLoan => ("badge-info", "PRÉSTAMO EXT."),
+                                                    DepartureType.InternalLoan => ("badge-primary", "PRÉSTAMO INT."),
+                                                    DepartureType.ExternalMaintenance => ("badge-warning", "MANT. EXT."),
+                                                    DepartureType.InternalMaintenance => ("badge-warning", "MANT. INT."),
+                                                    DepartureType.DefinitiveExit => ("badge-danger", "BAJA DEFINITIVA"),
+                                                    _ => ("badge-secondary", "DESCONOCIDO")
+                                                };
                                             }
-                                            <span class="badge badge-pill @tBadge px-3 py-1 font-weight-bold shadow-sm">
-                                                @item.Type
-                                            </span>
+                                            <span class="badge @tClass px-3 py-1 font-weight-bold">@tText</span>
                                         </td>
                                         <td class="text-center v-middle">
                                             <div class="text-dark">@item.DepartureDate.ToString("dd/MM/yyyy")</div>
@@ -81,11 +137,16 @@
                                         </td>
                                         <td class="text-center v-middle">
                                             @{
-                                                var sBadge = item.Status == LoanStatus.Active ? "badge-light-warning text-warning" : "badge-light-success text-success";
+                                                var (sClass, sText) = item.Status switch
+                                                {
+                                                    LoanStatus.Active => ("badge-warning", "ACTIVO"),
+                                                    LoanStatus.Returned => ("badge-success", "DEVUELTO"),
+                                                    LoanStatus.Overdue => ("badge-danger", "VENCIDO"),
+                                                    LoanStatus.Cancelled => ("badge-secondary", "CANCELADO"),
+                                                    _ => ("badge-secondary", "DESCONOCIDO")
+                                                };
                                             }
-                                            <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold shadow-sm border">
-                                                @(item.Status == LoanStatus.Active ? "ACTIVO" : "DEVUELTO")
-                                            </span>
+                                            <span class="badge @sClass px-3 py-1 font-weight-bold">@sText</span>
                                         </td>
                                         <td class="text-center v-middle">
                                             <div class="btn-group">
@@ -111,19 +172,19 @@
                             @if (Model.Departures.HasPreviousPage)
                             {
                                 <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Departures.PageIndex - 1)">Anterior</a>
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Departures.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-FilterType="@Model.FilterType" asp-route-FilterStatus="@Model.FilterStatus" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
                                 </li>
                             }
                             @for (var i = 1; i <= Model.Departures.TotalPages; i++)
                             {
                                 <li class="page-item @(i == Model.Departures.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i">@i</a>
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-FilterType="@Model.FilterType" asp-route-FilterStatus="@Model.FilterStatus" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
                                 </li>
                             }
                             @if (Model.Departures.HasNextPage)
                             {
                                 <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Departures.PageIndex + 1)">Siguiente</a>
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Departures.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-FilterType="@Model.FilterType" asp-route-FilterStatus="@Model.FilterStatus" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
                                 </li>
                             }
                         </ul>
@@ -140,12 +201,6 @@
         .opacity-2 { opacity: 0.2; }
         .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
         .italic { font-style: italic; }
-        
-        /* Soft Badges */
-        .badge-light-success { background-color: #e8fadf; color: #71dd37; }
-        .badge-light-danger { background-color: #ffe5e5; color: #ff3e1d; }
-        .badge-light-warning { background-color: #fff2d6; color: #ffab00; }
-        .badge-light-info { background-color: #e7e7ff; color: #696cff; }
-        .badge-light-primary { background-color: #e7e7ff; color: #696cff; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
     </style>
 }

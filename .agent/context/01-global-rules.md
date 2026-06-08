@@ -28,12 +28,14 @@ Estas reglas aplican a cualquier cambio.
 - SweetAlert2 instalado es v7.19.3. Confirmar con `result && (result.isConfirmed === true || result.value === true)`.
 - Para submits criticos, confirmar y luego ejecutar `HTMLFormElement.prototype.submit.call(form)`.
 - Si SweetAlert2 no carga, debe existir fallback que no deje la accion muerta.
+- CRUD estandar: Create muestra exito posterior sin confirmacion previa; Edit confirma antes de guardar; Delete/soft-delete confirma antes de enviar.
 - Los hidden inputs dentro de tablas deben estar dentro de un `<td>` valido.
 - No usar hidden `false` con checkbox `true` para el mismo name en filas dinamicas; checked envia `true`, unchecked no envia y el modelo usa default.
 
 ## Mensajes
 
 - Usar `TempData.Success()`, `TempData.Error()`, `TempData.Warning()`.
+- El layout debe leer `SuccessMessage`, `ErrorMessage`, `WarningMessage`, `InfoMessage` de `TempDataExtensions`.
 - No usar `TempData["Success"] = ...` para mensajes nuevos.
 - Al inyectar texto C# en JavaScript, usar helper seguro o `Html.Raw` solo si el contenido ya esta controlado.
 

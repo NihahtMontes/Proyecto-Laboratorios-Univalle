@@ -21,6 +21,7 @@
         <input type="hidden" asp-for="Input.Id" />
         <input type="hidden" asp-for="IsWizard" />
         <input type="hidden" asp-for="ManagementId" />
+        <input type="hidden" asp-for="FocusPlanId" />
         <input type="hidden" asp-for="Input.Date" />
         <input type="hidden" asp-for="Input.Status" />
         <input type="hidden" asp-for="Input.EquipmentUnitId" />
@@ -100,7 +101,7 @@
 
                             @if (Model.IsWizard)
                             {
-                                <a asp-page="./Details" asp-route-id="@Model.Input.Id" asp-route-isWizard="true" asp-route-managementId="@Model.ManagementId" 
+                                <a asp-page="./Details" asp-route-id="@Model.Input.Id" asp-route-isWizard="true" asp-route-managementId="@Model.ManagementId" asp-route-focusPlanId="@Model.FocusPlanId"
                                    class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2">
                                     Cancelar
                                 </a>

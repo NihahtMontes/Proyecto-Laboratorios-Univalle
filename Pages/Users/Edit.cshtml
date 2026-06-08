@@ -19,7 +19,7 @@
                     </div>
                 </div>
 
-                <form method="post" novalidate>
+                <form method="post" enctype="multipart/form-data" novalidate>
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
                     <input type="hidden" name="id" value="@Model.Id" />
 
@@ -69,6 +69,28 @@
                                 <label asp-for="Input.PhoneNumber" class="control-label font-weight-bold small uppercase text-muted">Teléfono de Contacto</label>
                                 <input asp-for="Input.PhoneNumber" class="form-control" />
                                 <span asp-validation-for="Input.PhoneNumber" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.ProfilePictureUpload" class="control-label font-weight-bold small uppercase text-muted">Foto de Perfil</label>
+                                @if (!string.IsNullOrEmpty(Model.Input.ExistingProfilePictureUrl))
+                                {
+                                    <div class="mb-2">
+                                        <img src="~/uploads/users/@Model.Input.ExistingProfilePictureUrl" alt="Foto actual" class="img-thumbnail" style="max-height: 100px;">
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mb-2 py-2 bg-light rounded border border-dashed text-muted text-center">
+                                        <i class="fas fa-camera fa-lg mb-1 opacity-5 d-block"></i>
+                                        <span class="small font-weight-bold uppercase">Sin foto de perfil</span>
+                                    </div>
+                                }
+                                <div class="custom-file">
+                                    <input asp-for="Input.ProfilePictureUpload" type="file" class="custom-file-input" id="customFile" accept="image/*">
+                                    <label class="custom-file-label" for="customFile">Cambiar foto...</label>
+                                </div>
+                                <span asp-validation-for="Input.ProfilePictureUpload" class="text-danger small"></span>
                             </div>
                         </div>
 
@@ -123,9 +145,21 @@
                         <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Guardar Cambios
                         </button>
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
-                            Cancelar
-                        </a>
+                        @{
+                            var returnUrl = ViewData["ReturnUrl"]?.ToString();
+                        }
+                        @if (returnUrl == "Details")
+                        {
+                            <a asp-page="./Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                                Cancelar
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                                Cancelar
+                            </a>
+                        }
                     </div>
                 </form>
             </div>
@@ -178,6 +212,13 @@
     <script>
         $(function () {
             "use strict";
+
+            // Update custom file label when a file is selected
+            $(".custom-file-input").on("change", function () {
+                var fileName = $(this).val().split("\\").pop();
+                $(this).siblings(".custom-file-label").addClass("selected").html(fileName || "Cambiar foto...");
+            });
+
             $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
             
             // Advanced text pattern for Spanish names

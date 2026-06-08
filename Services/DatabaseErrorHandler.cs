@@ -1,4 +1,4 @@
-using Npgsql;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 
@@ -14,7 +14,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
         }
 
         /// <summary>
-        /// Registra un error de conexión en un archivo de texto local para diagnóstico
+        /// Registra un error de conexion en un archivo de texto local para diagnostico.
         /// </summary>
         public void LogConnectionError(Exception ex, string additionalContext = "")
         {
@@ -29,33 +29,30 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 }
 
                 var errorMessage = new StringBuilder();
-                errorMessage.AppendLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR DE CONEXIÓN A BASE DE DATOS");
+                errorMessage.AppendLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR DE CONEXION A BASE DE DATOS");
                 errorMessage.AppendLine($"Contexto: {additionalContext}");
                 errorMessage.AppendLine($"Mensaje: {ex.Message}");
                 errorMessage.AppendLine($"Tipo: {ex.GetType().Name}");
 
                 if (ex.InnerException != null)
                 {
-                    errorMessage.AppendLine($"Excepción Interna: {ex.InnerException.Message}");
+                    errorMessage.AppendLine($"Excepcion Interna: {ex.InnerException.Message}");
                 }
 
                 errorMessage.AppendLine($"Stack Trace: {ex.StackTrace}");
                 errorMessage.AppendLine(new string('-', 80));
 
                 File.AppendAllText(logFilePath, errorMessage.ToString());
-
-                // También registrar en el logger de ASP.NET
-                _logger.LogError(ex, "Error de conexión a base de datos: {Context}", additionalContext);
+                _logger.LogError(ex, "Error de conexion a base de datos: {Context}", additionalContext);
             }
             catch (Exception logEx)
             {
-                // Si falla el registro, al menos intentar registrar en el logger
                 _logger.LogError(logEx, "Error al intentar registrar error de base de datos");
             }
         }
 
         /// <summary>
-        /// Verifica la conectividad a la base de datos y devuelve un mensaje descriptivo
+        /// Verifica la conectividad a la base de datos y devuelve un mensaje descriptivo.
         /// </summary>
         public async Task<(bool Success, string Message)> TestDatabaseConnection(DbContext context)
         {
@@ -63,56 +60,66 @@ namespace Proyecto_Laboratorios_Univalle.Services
             {
                 await context.Database.OpenConnectionAsync();
                 await context.Database.CloseConnectionAsync();
-                return (true, "Conexión exitosa a la base de datos.");
+                return (true, "Conexion exitosa a la base de datos.");
             }
-            catch (PostgresException pgEx)
+            catch (SqlException sqlEx)
             {
-                LogConnectionError(pgEx, "Prueba de conexión a base de datos");
-
-                var errorMessage = pgEx.SqlState switch
-                {
-                    "28P01" => "Credenciales incorrectas. Verifica el usuario y contraseña de la base de datos.",
-                    "3D000" => "No se puede abrir la base de datos solicitada. Verifica el nombre de la base de datos.",
-                    "08001" => "No se pudo conectar al servidor. Verifica que el servidor esté accesible y que no haya problemas de red.",
-                    "08006" => "Error de conexión fallida.",
-                    _ => $"Error PostgreSQL #{pgEx.SqlState}: {pgEx.MessageText}"
-                };
-
-                return (false, errorMessage);
+                LogConnectionError(sqlEx, "Prueba de conexion a base de datos");
+                return (false, GetSqlServerConnectionMessage(sqlEx));
             }
             catch (Exception ex)
             {
-                LogConnectionError(ex, "Prueba de conexión a base de datos");
+                LogConnectionError(ex, "Prueba de conexion a base de datos");
                 return (false, $"Error inesperado: {ex.Message}");
             }
         }
 
         /// <summary>
-        /// Obtiene un mensaje de error amigable basado en la excepción
+        /// Obtiene un mensaje de error amigable basado en la excepcion.
         /// </summary>
         public string GetFriendlyErrorMessage(Exception ex)
         {
-            if (ex is PostgresException pgEx)
+            if (ex is SqlException sqlEx)
             {
-                return pgEx.SqlState switch
+                return sqlEx.Number switch
                 {
-                    "08001" or "08006" => "No se pudo conectar a la base de datos. Por favor, intenta de nuevo más tarde.",
-                    "28P01" => "Error de autenticación con la base de datos.",
-                    "3D000" => "La base de datos no está disponible en este momento.",
-                    "23505" => "Ya existe un registro con estos datos. Por favor, verifica los datos duplicados.", // unique violation
-                    "23503" => "No se puede eliminar este registro porque está siendo utilizado por otros registros.", // foreign key violation
-                    _ => "Ocurrió un error en la base de datos. Por favor, contacta al administrador."
+                    53 or 233 or 10054 or 10060 => "No se pudo conectar a la base de datos. Por favor, intenta de nuevo mas tarde.",
+                    18456 => "Error de autenticacion con la base de datos.",
+                    4060 => "La base de datos no esta disponible en este momento.",
+                    2601 or 2627 => "Ya existe un registro con estos datos. Por favor, verifica los datos duplicados.",
+                    547 => "No se puede eliminar este registro porque esta siendo utilizado por otros registros.",
+                    _ => "Ocurrio un error en la base de datos. Por favor, contacta al administrador."
                 };
-            }            else if (ex is DbUpdateException)
+            }
+
+            if (ex is DbUpdateException dbUpdateException && dbUpdateException.InnerException is SqlException innerSqlEx)
+            {
+                return GetFriendlyErrorMessage(innerSqlEx);
+            }
+
+            if (ex is DbUpdateException)
             {
                 return "No se pudieron guardar los cambios. Verifica que los datos sean correctos.";
             }
-            else if (ex is TimeoutException)
+
+            if (ex is TimeoutException)
             {
-                return "La operación tardó demasiado tiempo. Por favor, intenta de nuevo.";
+                return "La operacion tardo demasiado tiempo. Por favor, intenta de nuevo.";
             }
 
-            return "Ocurrió un error inesperado. Por favor, contacta al administrador.";
+            return "Ocurrio un error inesperado. Por favor, contacta al administrador.";
+        }
+
+        private static string GetSqlServerConnectionMessage(SqlException sqlEx)
+        {
+            return sqlEx.Number switch
+            {
+                18456 => "Credenciales incorrectas. Verifica el usuario y contrasena de SQL Server.",
+                4060 => "No se puede abrir la base de datos solicitada. Verifica el nombre de la base de datos.",
+                53 or 233 or 10054 or 10060 => "No se pudo conectar al servidor SQL Server. Verifica que el servidor este accesible.",
+                -2 => "La conexion a SQL Server tardo demasiado tiempo.",
+                _ => $"Error SQL Server #{sqlEx.Number}: {sqlEx.Message}"
+            };
         }
     }
 }

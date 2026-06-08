@@ -133,18 +133,9 @@
                                 <h5 class="font-weight-bold text-info mb-0">
                                     <i class="fas fa-align-left mr-2"></i> Naturaleza del Problema
                                 </h5>
-                                @if (ViewData["CurrentEquipmentUnitId"] != null)
-                                {
-                                    <a asp-page="/EquipmentUnits/Kardex"
-                                       asp-route-id="@ViewData["CurrentEquipmentUnitId"]"
-                                       asp-route-isWizard="@isWizard"
-                                       asp-route-managementId="@ViewData["ManagementId"]"
-                                       asp-route-selectedLabId="@Model.Input.LaboratoryId"
-                                       asp-route-returnStep="2"
-                                       target="_blank" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Abrir Historial de Kardex en nueva pestaña">
-                                        <i class="fas fa-history mr-1"></i> Ver Histórico <i class="fas fa-external-link-alt ml-1" style="font-size: 0.7em;"></i>
-                                    </a>
-                                }
+                                <button type="button" id="btnVerHistorico" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Ver historial de Kardex del equipo seleccionado">
+                                    <i class="fas fa-history mr-1"></i> Ver Histórico
+                                </button>
                             </div>
 
                             @if (ViewData["EquipmentNotes"] != null && ((List<string>)ViewData["EquipmentNotes"]).Any())
@@ -169,8 +160,17 @@
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Observations" class="control-label font-weight-bold small text-uppercase text-dark">SUGERENCIAS U OBSERVACIONES PARA MANTENIMIENTO</label>
+                                <label asp-for="Input.Observations" class="control-label font-weight-bold small text-uppercase text-dark">CHECKLIST TÉCNICO OBLIGATORIO Y OBSERVACIONES</label>
                                 <textarea asp-for="Input.Observations" class="form-control shadow-sm" rows="14" placeholder="Indique las actividades sugeridas..."></textarea>
+                                <span asp-validation-for="Input.Observations" class="text-danger small"></span>
+                            </div>
+
+                            <div class="custom-control custom-checkbox mb-4 p-3 rounded" style="background:#f0f9ff; border:1px solid #bae6fd;">
+                                <input asp-for="Input.TechnicalChecklistConfirmed" class="custom-control-input" id="technicalChecklistConfirmed" />
+                                <label class="custom-control-label font-weight-bold small text-info" for="technicalChecklistConfirmed">
+                                    Confirmo que revisé los 13 puntos técnicos obligatorios antes de registrar la solicitud L-7.
+                                </label>
+                                <span asp-validation-for="Input.TechnicalChecklistConfirmed" class="text-danger small d-block mt-1"></span>
                             </div>
                         </div>
                     </div>
@@ -189,6 +189,47 @@
                     </div>
                 </form>
             </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #kardexSidebar {
+        position: fixed;
+        top: 0;
+        right: -400px;
+        width: 400px;
+        height: 100vh;
+        background: white;
+        box-shadow: -10px 0 30px rgba(0,0,0,0.1);
+        z-index: 1050;
+        transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 2rem;
+        overflow-y: auto;
+    }
+    #kardexSidebar.open { right: 0; }
+    .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(2px);
+        z-index: 1040;
+        display: none;
+    }
+    .sidebar-overlay.active { display: block; }
+</style>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<div id="kardexSidebar">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="font-weight-bold mb-0">Detalle del Equipo</h5>
+        <button class="btn btn-light btn-sm rounded-circle" onclick="closeKardex()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div id="sidebarContent">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
         </div>
     </div>
 </div>
@@ -263,6 +304,79 @@
                     }
                 });
             });
+
+            // ─── Kardex Sidebar ───
+            function escHtml(str) {
+                if (!str) return '';
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            async function openKardex(id) {
+                const sidebar = document.getElementById('kardexSidebar');
+                const overlay = document.getElementById('sidebarOverlay');
+                if (!sidebar || !overlay) return;
+
+                sidebar.classList.add('open');
+                overlay.classList.add('active');
+
+                const content = document.getElementById('sidebarContent');
+                content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted small">Cargando historial...</p></div>';
+
+                try {
+                    const response = await fetch(`?handler=KardexDetail&equipmentId=${id}`);
+                    if (!response.ok) throw new Error('Error en red');
+                    const data = await response.json();
+
+                    content.innerHTML = `
+                        <div class="bg-light p-4 rounded-4 mb-4">
+                            <h5 class="fw-bold text-dark mb-1">${escHtml(data.name)}</h5>
+                            <code class="text-primary font-weight-bold">${escHtml(data.inventoryNumber)}</code>
+                        </div>
+                        <div class="mb-4">
+                            <label class="text-xs-premium text-muted d-block mb-1">Estado Actual</label>
+                            <span class="badge badge-pill badge-info px-3">${escHtml(data.currentStatus)}</span>
+                        </div>
+                        <div class="mb-4 border-bottom pb-3">
+                            <label class="text-xs-premium text-muted d-block mb-1">Última Intervención</label>
+                            <p class="font-weight-bold mb-0 text-dark">${escHtml(data.lastDate)}</p>
+                        </div>
+                        <div class="mb-2">
+                            <label class="text-xs-premium text-muted d-block mb-1">Observaciones / Motivo</label>
+                            <p class="text-muted small">${escHtml(data.reason)}</p>
+                        </div>
+                        <div class="mt-5">
+                            <a href="/EquipmentUnits/Kardex/${id}" target="_blank" class="btn btn-outline-info btn-block rounded-pill font-weight-bold">
+                                <i class="fas fa-history mr-1"></i> Ver Kardex Completo
+                            </a>
+                        </div>
+                    `;
+                } catch (err) {
+                    content.innerHTML = '<div class="alert alert-danger">No se pudo cargar el detalle del equipo. Intente de nuevo.</div>';
+                }
+            }
+
+            function closeKardex() {
+                document.getElementById('kardexSidebar').classList.remove('open');
+                document.getElementById('sidebarOverlay').classList.remove('active');
+            }
+
+            $('#btnVerHistorico').on('click', function() {
+                var equipmentId = $('input[name="Input.EquipmentUnitId"]').val() || $('#equipmentUnitSelect').val();
+                if (!equipmentId) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Atención',
+                        text: 'Seleccione primero el equipo para ver su historial.'
+                    });
+                    return;
+                }
+                openKardex(equipmentId);
+            });
+
+            var overlay = document.getElementById('sidebarOverlay');
+            if (overlay) overlay.addEventListener('click', closeKardex);
         });
     </script>
 }

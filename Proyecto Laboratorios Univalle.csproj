@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Proyecto_Laboratorios_Univalle</RootNamespace>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tmp\**;tmp\**\*;tmp/**;tmp/**/*</DefaultItemExcludes>
+    <UserSecretsId>e2ee0ec6-49ab-4006-8a26-76ab45a791b4</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,18 +16,27 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid.EntityFrameworkAdapter" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.12" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
     <PackageReference Include="QuestPDF" Version="2025.12.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Migrations\**\*.cs" />
-    <Compile Remove="Data\Migrations\**\*.cs" />
+    <Compile Remove="Tools\**\*.cs" />
+    <Compile Remove="tmp\**\*.cs" />
+    <Compile Remove="tmp/**" />
+    <Content Remove="Gastro\**;Gastro/**;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
+    <Content Remove="tmp\**" />
+    <Content Remove="tmp/**" />
+    <EmbeddedResource Remove="tmp\**" />
+    <EmbeddedResource Remove="tmp/**" />
+    <None Remove="Gastro\**;Gastro/**;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
+    <None Remove="tmp\**" />
+    <None Remove="tmp/**" />
   </ItemGroup>
 
 </Project>

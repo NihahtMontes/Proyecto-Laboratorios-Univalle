@@ -1,0 +1,119 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.AssetView.EnvironmentsModel
+
+@{
+    ViewData["Title"] = "Ambientes";
+}
+
+@section Styles {
+    <style>
+        .asset-nav-card {
+            min-height: 186px;
+            border-radius: 8px;
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
+            overflow: hidden;
+            position: relative;
+            transition: transform .18s ease, box-shadow .18s ease;
+        }
+
+        .asset-nav-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 30px rgba(15, 23, 42, .16);
+        }
+
+        .asset-nav-card:after {
+            content: "";
+            width: 112px;
+            height: 112px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .16);
+            position: absolute;
+            right: -24px;
+            top: -24px;
+        }
+
+        .asset-nav-card.bg-primary { background: linear-gradient(135deg, #2962ff, #36a3ff) !important; }
+        .asset-nav-card.bg-success { background: linear-gradient(135deg, #00c292, #48d65b) !important; }
+        .asset-nav-card.bg-warning { background: linear-gradient(135deg, #ffb22b, #ff8f00) !important; }
+        .asset-nav-card.bg-danger { background: linear-gradient(135deg, #f62d51, #ff6b6b) !important; }
+        .asset-nav-card.bg-info,
+        .asset-nav-card.bg-cyan { background: linear-gradient(135deg, #03a9f3, #4fc3f7) !important; }
+        .asset-nav-card.bg-secondary { background: linear-gradient(135deg, #6c757d, #95a5a6) !important; }
+
+        .asset-nav-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .18);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .asset-nav-title {
+            min-height: 48px;
+            font-size: 1rem;
+            line-height: 1.25;
+            letter-spacing: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .asset-nav-value {
+            font-size: 2rem;
+            line-height: 1;
+            letter-spacing: 0;
+        }
+    </style>
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Ambientes</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Seleccione un ambiente para consultar sus unidades fisicas vigentes.</h6>
+                    </div>
+                    <div class="ml-auto mt-3 mt-md-0">
+                        <a asp-page="./Index" asp-route-activeTab="Inventario" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
+                            <i class="fas fa-arrow-left mr-1"></i> Volver
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row">
+                    @if (Model.Cards == null || !Model.Cards.Any())
+                    {
+                        <div class="col-12">
+                            <div class="bg-light p-5 text-center rounded border-left border-info shadow-sm">
+                                <i class="fas fa-door-open fa-3x text-muted mb-3"></i>
+                                <h4 class="font-weight-bold text-dark">Sin ambientes activos</h4>
+                                <p class="text-muted mb-0">No hay ambientes disponibles para consultar inventario.</p>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var card in Model.Cards)
+                        {
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                <a asp-page="./EnvironmentUnits" asp-route-laboratoryId="@card.Id" class="text-decoration-none">
+                                    <div class="asset-nav-card @card.ColorClass h-100 p-3">
+                                        <div class="asset-nav-icon mb-3"><i class="fas fa-door-open"></i></div>
+                                        <h5 class="asset-nav-title text-white font-weight-bold mb-3">@card.DisplayName</h5>
+                                        <div class="asset-nav-value font-weight-bold mb-2">@card.UnitCount</div>
+                                        <p class="mb-1 font-weight-bold">Unidades vigentes</p>
+                                        <small class="text-white-50">Codigo: @(string.IsNullOrWhiteSpace(card.Code) ? "Sin codigo" : card.Code)</small>
+                                    </div>
+                                </a>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

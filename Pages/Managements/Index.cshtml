@@ -33,12 +33,9 @@
                                 <h6 class="card-subtitle text-muted ml-2">Gestión centralizada de ciclos de mantenimiento.</h6>
                             </div>
                             <div class="ml-auto mt-3">
-                                @if (Model.Type != "Corrective")
-                                {
-                                    <a asp-page="Create" asp-route-type="@Model.Type" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
-                                        <i class="fas fa-plus-circle mr-1 text-info"></i> Nueva Gestión
-                                    </a>
-                                }
+                                <a asp-page="Create" asp-route-type="@Model.Type" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                                    <i class="fas fa-plus-circle mr-1 text-info"></i> @(Model.Type == "Corrective" ? "Nueva Gestión Correctiva" : "Nueva Gestión")
+                                </a>
                             </div>
                         </div>
 
@@ -48,6 +45,7 @@
                                     <tr>
                                         <th class="border-top-0">Código / Período</th>
                                         <th class="border-top-0">Descripción</th>
+                                        <th class="border-top-0 text-center">Facultad</th>
                                         <th class="border-top-0 text-center">Avance L-48</th>
                                         <th class="border-top-0 text-center">Estado</th>
                                         <th class="border-top-0 text-center">Acciones</th>
@@ -56,8 +54,8 @@
                                 <tbody>
                                     @if (Model.ManagementList == null || !Model.ManagementList.Any(m => m.Status != ManagementStatus.Deleted))
                                     {
-                                        <tr>
-                                            <td colspan="5" class="text-center py-5 text-muted italic font-weight-bold">
+                                         <tr>
+                                            <td colspan="6" class="text-center py-5 text-muted italic font-weight-bold">
                                                 <i class="fas fa-folder-open fa-3x mb-3 d-block opacity-2"></i>
                                                 No se encontraron gestiones registradas.
                                             </td>
@@ -88,6 +86,11 @@
                                                     <div class="font-12">
                                                         <i class="fas fa-user-tie mr-1 text-muted"></i> Resp: @item.Responsible
                                                     </div>
+                                                </td>
+                                                <td class="text-center v-middle">
+                                                    <span class="badge badge-light border text-muted small">
+                                                        @(item.Faculty?.Name ?? "Todas")
+                                                    </span>
                                                 </td>
                                                 <td class="text-center" style="min-width: 150px;">
                                                     <div class="progress mb-1" style="height: 6px;">
@@ -121,18 +124,24 @@
 
                                                         @if (item.Status == ManagementStatus.Active && item.Type != ManagementType.Corrective)
                                                         {
-                                                            <form method="post" asp-page-handler="SyncPlans" asp-route-id="@item.Id" class="d-inline ml-1">
-                                                                <button type="submit" class="btn btn-sm btn-outline-primary btn-rounded shadow-sm" title="Sincronizar Nuevos Equipos">
-                                                                    <i class="fas fa-sync"></i>
-                                                                </button>
-                                                            </form>
+                                                            <a asp-page="./PlanAssets" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary btn-rounded shadow-sm ml-1" title="Planificar Activos">
+                                                                <i class="fas fa-tasks"></i>
+                                                            </a>
                                                         }
                                                         <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded mx-1 shadow-sm" title="Editar">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
+                                                        @if (item.Status != ManagementStatus.Active)
+                                                        {
+                                                            <form method="post" asp-page-handler="ActivateManagement" asp-route-id="@item.Id" class="d-inline js-activate-management-form">
+                                                                <button type="submit" class="btn btn-sm btn-outline-success btn-rounded shadow-sm" title="Activar gestiÃ³n">
+                                                                    <i class="fas fa-check-circle"></i>
+                                                                </button>
+                                                            </form>
+                                                        }
                                                         @if (item.Status != ManagementStatus.Active || item.Type == ManagementType.Corrective)
                                                         {
-                                                            <form method="post" asp-page-handler="DeleteLogical" asp-route-id="@item.Id" class="d-inline" onsubmit="return confirm('¿Estás seguro de eliminar esta gestión?');">
+                                                            <form method="post" asp-page-handler="DeleteLogical" asp-route-id="@item.Id" class="d-inline js-delete-management-form">
                                                                 <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded shadow-sm" title="Eliminar (Lógico)">
                                                                     <i class="fas fa-trash"></i>
                                                                 </button>
@@ -200,4 +209,78 @@
             letter-spacing: 0.5px;
         }
     </style>
+}
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('.js-delete-management-form').on('submit', function (event) {
+                var form = this;
+
+                if (form.dataset.confirmed === 'true') {
+                    return true;
+                }
+
+                event.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    form.dataset.confirmed = 'true';
+                    HTMLFormElement.prototype.submit.call(form);
+                    return false;
+                }
+
+                Swal.fire({
+                    title: 'Eliminar gestion',
+                    text: 'La gestion sera dada de baja de forma logica.',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Si, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        form.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+
+                return false;
+            });
+
+            $('.js-activate-management-form').on('submit', function (event) {
+                var form = this;
+
+                if (form.dataset.confirmed === 'true') {
+                    return true;
+                }
+
+                event.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    form.dataset.confirmed = 'true';
+                    HTMLFormElement.prototype.submit.call(form);
+                    return false;
+                }
+
+                Swal.fire({
+                    title: 'Activar gestion',
+                    text: 'Esta gestion quedara activa y cualquier otra gestion activa del mismo tipo se cerrara automaticamente.',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10b981',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Si, activar',
+                    cancelButtonText: 'Cancelar'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        form.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+
+                return false;
+            });
+        });
+    </script>
 }

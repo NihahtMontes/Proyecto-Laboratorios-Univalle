@@ -47,6 +47,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             if (managementPlanId.HasValue)
             {
                 var plan = await _context.ManagementPlans
+                    .Include(p => p.Management)
                     .Include(p => p.Maintenance).ThenInclude(m => m!.CostDetails)
                     .Include(p => p.Maintenance).ThenInclude(m => m!.Tasks)
                     .FirstOrDefaultAsync(p => p.Id == managementPlanId.Value);
@@ -54,8 +55,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 {
                     ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
                     ViewData["ManagementId"] = plan.ManagementId;
-                    var mgmt = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
+                    ManagementId = plan.ManagementId;
+                    var mgmt = plan.Management ?? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == plan.ManagementId);
                     ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
+                    ViewData["ManagementType"] = mgmt?.Type.ToString();
                     if (plan.RequestId.HasValue)
                     {
                         Input.RequestId = plan.RequestId;
@@ -63,6 +66,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     if (plan.Maintenance != null)
                     {
                         ApplyMaintenanceToInput(plan.Maintenance);
+                    }
+                    else if (isWizard)
+                    {
+                        Input.MaintenanceType = GetMaintenanceTypeForManagement(mgmt);
                     }
                     if (!equipmentUnitId.HasValue && plan.EquipmentUnitId.HasValue)
                     {
@@ -103,6 +110,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         [BindProperty(SupportsGet = true)]
         public int? ManagementPlanId { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
+
         public class InputModel
         {
             [Required(ErrorMessage = "La facultad es obligatoria")]
@@ -130,10 +140,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Descripción del Trabajo")]
             public string? Description { get; set; }
 
-            [Required]
             [Display(Name = "Fecha Programada")]
             [DataType(DataType.Date)]
-            public DateTime ScheduledDate { get; set; } = DateTime.UtcNow;
+            public DateTime? ScheduledDate { get; set; } = DateTime.UtcNow;
 
             [Display(Name = "Fecha Inicio Real")]
             [DataType(DataType.DateTime)]
@@ -250,7 +259,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                     if (isWizard)
                     {
-                        Input.MaintenanceType = MaintenanceType.Preventivo;
+                        Input.MaintenanceType = GetMaintenanceTypeForManagement(currentMgmt);
                     }
 
                     if (wizardPlan.RequestId.HasValue)
@@ -268,7 +277,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             if (!isWizard && !ManagementPlanId.HasValue)
             {
-                currentMgmt = await _managementContext.GetCurrentManagementAsync();
+                currentMgmt = ManagementId.HasValue
+                    ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
+                    : await _managementContext.GetCurrentManagementAsync();
             }
 
             // Restaurar ViewData wizard para re-render en caso de error
@@ -281,6 +292,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 var mgmt = await _context.Managements.AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == wizardPlan.ManagementId);
                 ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
+                ViewData["ManagementType"] = mgmt?.Type.ToString();
             }
 
             if (saveDraft)
@@ -358,7 +370,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             try
             {
-                currentMgmt ??= await _managementContext.GetCurrentManagementAsync();
+                currentMgmt ??= ManagementId.HasValue
+                    ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
+                    : isWizard ? null : await _managementContext.GetCurrentManagementAsync();
                 if (currentMgmt == null)
                 {
                     TempData.Warning("No hay una gestion activa disponible. Por favor active una gestion institucional para registrar el mantenimiento.");
@@ -396,7 +410,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 SyncMaintenanceChildren(maintenance);
 
-                if (!saveDraft && equipmentUnit != null && equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
+                if (!saveDraft && equipmentUnit != null)
                 {
                     var lastHistory = await _context.EquipmentStateHistories
                         .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
@@ -404,22 +418,65 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         .AsTracking()
                         .FirstOrDefaultAsync();
 
-                    if (lastHistory != null)
+                    if (Input.Status == MaintenanceStatus.Completed)
                     {
-                        lastHistory.EndDate = DateTime.UtcNow;
-                        _context.EquipmentStateHistories.Update(lastHistory);
+                        var kardexHistory = wizardPlan?.KardexHistoryId != null
+                            ? await _context.EquipmentStateHistories
+                                .AsTracking()
+                                .FirstOrDefaultAsync(h => h.Id == wizardPlan.KardexHistoryId.Value)
+                            : null;
+
+                        if (lastHistory != null && lastHistory.Id != kardexHistory?.Id)
+                        {
+                            lastHistory.EndDate = Input.EndDate ?? DateTime.UtcNow;
+                            _context.EquipmentStateHistories.Update(lastHistory);
+                        }
+
+                        if (kardexHistory == null)
+                        {
+                            kardexHistory = new EquipmentStateHistory
+                            {
+                                EquipmentUnitId = equipmentUnit.Id,
+                                Status = EquipmentStatus.Operational,
+                                StartDate = Input.EndDate ?? DateTime.UtcNow,
+                                Reason = $"Cierre automático L-8 #{maintenance.Id}: {maintenance.Description?.Trim()} | Costo Bs {(maintenance.ActualCost ?? 0m):N2}"
+                            };
+                            _context.EquipmentStateHistories.Add(kardexHistory);
+                            if (wizardPlan != null)
+                            {
+                                wizardPlan.KardexHistory = kardexHistory;
+                            }
+                        }
+                        else
+                        {
+                            kardexHistory.Status = EquipmentStatus.Operational;
+                            kardexHistory.StartDate = Input.EndDate ?? DateTime.UtcNow;
+                            kardexHistory.EndDate = null;
+                            kardexHistory.Reason = $"Cierre automático L-8 #{maintenance.Id}: {maintenance.Description?.Trim()} | Costo Bs {(maintenance.ActualCost ?? 0m):N2}";
+                        }
+
+                        equipmentUnit.CurrentStatus = EquipmentStatus.Operational;
+                    }
+                    else if (equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
+                    {
+                        if (lastHistory != null)
+                        {
+                            lastHistory.EndDate = DateTime.UtcNow;
+                            _context.EquipmentStateHistories.Update(lastHistory);
+                        }
+
+                        var newHistory = new EquipmentStateHistory
+                        {
+                            EquipmentUnitId = equipmentUnit.Id,
+                            Status = EquipmentStatus.UnderMaintenance,
+                            StartDate = DateTime.UtcNow,
+                            Reason = "Ingreso a proceso de mantenimiento."
+                        };
+                        _context.EquipmentStateHistories.Add(newHistory);
+
+                        equipmentUnit.CurrentStatus = EquipmentStatus.UnderMaintenance;
                     }
 
-                    var newHistory = new EquipmentStateHistory
-                    {
-                        EquipmentUnitId = equipmentUnit.Id,
-                        Status = EquipmentStatus.UnderMaintenance,
-                        StartDate = DateTime.UtcNow,
-                        Reason = "Ingreso a proceso de mantenimiento."
-                    };
-                    _context.EquipmentStateHistories.Add(newHistory);
-
-                    equipmentUnit.CurrentStatus = EquipmentStatus.UnderMaintenance;
                     _context.EquipmentUnits.Update(equipmentUnit);
                 }
 
@@ -492,7 +549,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             Input.TechnicianId = maintenance.TechnicianId;
             Input.RequestId = maintenance.RequestId;
             Input.Description = maintenance.Description;
-            Input.ScheduledDate = maintenance.ScheduledDate ?? DateTime.UtcNow;
+            Input.ScheduledDate = maintenance.ScheduledDate;
             Input.StartDate = maintenance.StartDate;
             Input.EndDate = maintenance.EndDate;
             Input.ActualCost = maintenance.ActualCost ?? 0m;
@@ -650,6 +707,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             plan.LastModifiedDate = DateTime.UtcNow;
         }
 
+        private static MaintenanceType GetMaintenanceTypeForManagement(Management? management)
+        {
+            return management?.Type == ManagementType.Corrective
+                ? MaintenanceType.Correctivo
+                : MaintenanceType.Preventivo;
+        }
+
         private async Task TryCreateMaintenanceNotificationAsync(Maintenance maintenance, EquipmentUnit? equipmentUnit)
         {
             if (!maintenance.ScheduledDate.HasValue || !maintenance.TechnicianId.HasValue)
@@ -675,13 +739,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 if (recipient == null)
                     return;
 
+                var managementType = await _context.Managements
+                    .AsNoTracking()
+                    .Where(m => m.Id == maintenance.ManagementId)
+                    .Select(m => (ManagementType?)m.Type)
+                    .FirstOrDefaultAsync();
+
                 _context.Notifications.Add(new Notification
                 {
                     UserId = recipient.Id,
                     Title = "Mantenimiento Próximo a Vencer",
                     Message = $"El mantenimiento de la unidad {equipmentUnit?.InventoryNumber} debe realizarse el {maintenance.ScheduledDate.Value:dd/MM/yyyy}.",
-                    ActionUrl = $"/Maintenances/Details/{maintenance.Id}",
+                    ActionUrl = $"/Maintenances/Details/{maintenance.Id}?ManagementId={maintenance.ManagementId}&ManagementType={managementType}",
                     IconClass = "fas fa-exclamation-triangle text-warning",
+                    ManagementId = maintenance.ManagementId,
+                    ManagementType = managementType,
+                    Scope = "maintenance",
                     IsRead = false,
                     CreatedAt = DateTime.UtcNow
                 });
@@ -751,6 +824,28 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     DisplayText = $"#{r.Id} - {r.Laboratory?.Name} ({r.CreatedDate:dd/MM}): " + (r.Description.Length > 40 ? r.Description.Substring(0, 40) + "..." : r.Description)
                 });
             ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText", requestId);
+        }
+
+        public async Task<JsonResult> OnGetKardexDetailAsync(int equipmentId)
+        {
+            var unit = await _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Include(u => u.StateHistory)
+                .FirstOrDefaultAsync(u => u.Id == equipmentId);
+
+            if (unit == null) return new JsonResult(new { error = "No encontrado" });
+
+            var lastHistory = unit.StateHistory?
+                .OrderByDescending(h => h.StartDate)
+                .FirstOrDefault();
+
+            return new JsonResult(new {
+                name = unit.Equipment?.Name ?? "Sin nombre",
+                inventoryNumber = unit.InventoryNumber,
+                currentStatus = unit.CurrentStatus.ToString(),
+                lastDate = lastHistory?.StartDate.ToString("dd 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-ES")) ?? "Sin registros",
+                reason = lastHistory?.Reason ?? "—"
+            });
         }
     }
 }

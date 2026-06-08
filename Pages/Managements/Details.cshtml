@@ -3,7 +3,7 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using System.Text.Json
 @{
-    ViewData["Title"] = $"Mantenimiento Preventivo {Model.Management.Code}";
+    ViewData["Title"] = $"{(Model.Management.Type == ManagementType.Corrective ? "Mantenimiento Correctivo" : "Mantenimiento Preventivo")} {Model.Management.Code}";
     var isManagementActive = Model.Management.Status == ManagementStatus.Active;
     // Variables L-48 (usadas solo cuando ActiveTab == l48, declaradas aqui para evitar RZ1010)
     var l48Sem      = Model.Management.Semester;
@@ -11,6 +11,8 @@
     var l48Col1Name = l48Sem == 1 ? $"Jun {l48Year}" : $"Dic {l48Year}";
     var l48Col2Name = l48Sem == 1 ? $"Jul {l48Year}" : $"Ene {l48Year + 1}";
     var isCorrective = Model.Management.Type == ManagementType.Corrective;
+    var globalProgressJs = Model.GlobalProgress.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    var remainingProgressJs = Math.Max(0, 100 - Model.GlobalProgress).ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
 
 @section Styles {
@@ -23,25 +25,46 @@
         .wizard-title    { font-size: 1.5rem; font-weight: 800; color: #012970; }
         .wizard-subtitle { font-size: 0.85rem; color: #899bbd; }
 
-        /* Phase cards (replicated from Index) */
-        .phase-icon {
-            width: 44px; height: 44px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 0.5rem;
+        /* Metric tiles (modern style from AssetView) */
+        .asset-metric-tile {
+            min-height: 134px;
+            border-radius: 8px;
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
+            overflow: hidden;
+            position: relative;
+            transition: transform .18s ease, box-shadow .18s ease;
+            display: block;
+            text-decoration: none !important;
         }
-        .phase-icon--blue   { background: #eff6ff; color: #3b82f6; }
-        .phase-icon--purple { background: #f5f3ff; color: #8b5cf6; }
-        .phase-icon--amber  { background: #fffbeb; color: #f59e0b; }
-        .phase-icon--red    { background: #fef2f2; color: #ef4444; }
-        .phase-icon--green  { background: #d1fae5; color: #10b981; }
-        .phase-card {
-            border: none; border-radius: 1rem; padding: 1.25rem;
-            text-align: center; height: 100%; transition: transform 0.2s;
-            text-decoration: none !important; display: block;
+        .asset-metric-tile:hover { transform: translateY(-3px); box-shadow: 0 16px 30px rgba(15, 23, 42, .16); }
+        .asset-metric-tile:after {
+            content: "";
+            width: 96px; height: 96px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .14);
+            position: absolute;
+            right: -24px; top: -24px;
         }
-        .phase-card:hover { transform: translateY(-3px); }
-        .phase-card h6 { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 0.5rem; }
-        .phase-card h2 { font-size: 1.8rem; font-weight: 800; margin: 0; }
+        .asset-metric-icon {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .18);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .asset-metric-value {
+            font-size: 2rem;
+            line-height: 1;
+            letter-spacing: 0;
+        }
+        .asset-bg-blue   { background: linear-gradient(135deg, #2962ff, #36a3ff); }
+        .asset-bg-green  { background: linear-gradient(135deg, #00c292, #48d65b); }
+        .asset-bg-amber  { background: linear-gradient(135deg, #ffb22b, #ff8f00); }
+        .asset-bg-purple { background: linear-gradient(135deg, #7460ee, #a163f7); }
+        .asset-bg-red    { background: linear-gradient(135deg, #f62d51, #ff6b6b); }
+        .asset-bg-cyan   { background: linear-gradient(135deg, #03a9f3, #4fc3f7); }
+        .asset-bg-slate  { background: linear-gradient(135deg, #475569, #64748b); }
 
         /* Nav tabs override */
         .nav-tabs .nav-link { color: #64748b; font-weight: 600; }
@@ -64,7 +87,7 @@
             <h1 class="wizard-title mb-1">@(isCorrective ? "Mantenimiento Correctivo" : "Mantenimiento Preventivo") @Model.Management.Code</h1>
             <p class="wizard-subtitle">
                 @(string.IsNullOrEmpty(Model.Management.Description)
-                    ? (isCorrective ? "Contenedor anual de fallas críticas." : "Resumen de indicadores para este período administrativo.")
+                    ? (isCorrective ? "Gestión semestral de fallas correctivas." : "Resumen de indicadores para este período administrativo.")
                     : Model.Management.Description)
             </p>
         </div>
@@ -73,11 +96,9 @@
             {
                 if (!isCorrective)
                 {
-                    <form method="post" asp-page-handler="SyncEquipments" asp-route-id="@Model.Management.Id" class="m-0 d-inline-block mr-2">
-                        <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm" style="color: #7c3aed; border-color: #7c3aed; background: #f5f3ff;">
-                            <i class="fas fa-sync-alt mr-2"></i>Sincronizar Equipos
-                        </button>
-                    </form>
+                    <a asp-page="./PlanAssets" asp-route-id="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm mr-2" style="color: #7c3aed; border-color: #7c3aed; background: #f5f3ff;">
+                        <i class="fas fa-tasks mr-2"></i>Planificar Activos
+                    </a>
                     <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm mr-2" style="background-color: #334155; color: white;">
                         <i class="fas fa-play mr-2"></i>Iniciar Ronda (Wizard)
                     </a>
@@ -95,9 +116,14 @@
                     <i class="fas fa-lock mr-2"></i>Histórico Inmutable
                 </button>
             }
-            <a asp-page="/Reports/Index" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white mr-2" style="background-color: #0ea5e9;">
+            <a asp-page="/Reports/Index" asp-route-managementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white mr-2" style="background-color: #0ea5e9;">
                 <i class="fas fa-file-pdf mr-2"></i>Reportes Oficiales
             </a>
+            <form method="post" asp-page-handler="UpdateActiveManagement" asp-route-id="@Model.Management.Id" class="d-inline mr-2">
+                <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white" style="background-color:#10b981;">
+                    <i class="fas fa-sync-alt mr-2"></i>Actualizar Gestión
+                </button>
+            </form>
             <a asp-page="./Index" class="btn btn-light border rounded-pill px-4">
                 <i class="fas fa-arrow-left mr-2"></i>Volver
             </a>
@@ -148,47 +174,45 @@
         <div class="row mb-3">
             <!-- Activos Totales -->
             <div class="col-6 col-md mb-3">
-                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Todos" class="phase-card shadow-sm" style="background:#f6f9ff;">
-                    <div class="phase-icon phase-icon--blue"><i class="fas fa-boxes"></i></div>
-                    <h6 class="text-muted">Activos Totales</h6>
-                    <h2 style="color:#4154f1;">@Model.TotalPlans</h2>
+                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Todos" class="asset-metric-tile asset-bg-blue p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-boxes"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.TotalPlans</div>
+                    <div class="font-weight-bold mt-2">Activos Totales</div>
                 </a>
             </div>
             @if (!isCorrective)
             {
                 <!-- Activos Sanos -->
                 <div class="col-6 col-md mb-3">
-                    <a href="?id=@Model.Management.Id&ActiveTab=sanos" class="phase-card shadow-sm" style="background:#eafaf1; border:1px solid #a7f3d0;">
-                        <div class="phase-icon phase-icon--green"><i class="fas fa-heartbeat"></i></div>
-                        <h6 style="color:#059669;">Activos Sanos</h6>
-                        <h2 style="color:#059669;">@Model.CountBuenos</h2>
+                    <a href="?id=@Model.Management.Id&ActiveTab=sanos" class="asset-metric-tile asset-bg-green p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-heartbeat"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.CountBuenos</div>
+                        <div class="font-weight-bold mt-2">Activos Sanos</div>
                     </a>
                 </div>
             }
             <!-- Vencidos -->
             <div class="col-6 col-md mb-3">
-                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Delay" class="phase-card shadow-sm bg-danger text-white">
-                    <div class="phase-icon" style="background:rgba(255,255,255,.2);color:#fff;">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <h6 class="text-white opacity-75">Vencidos</h6>
-                    <h2 class="text-white">@Model.OverduePlans.Count</h2>
+                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Delay" class="asset-metric-tile asset-bg-red p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.TotalVencidos</div>
+                    <div class="font-weight-bold mt-2">Vencidos</div>
                 </a>
             </div>
             <!-- Completados -->
             <div class="col-6 col-md mb-3">
-                <a href="/Index?ShowWizard=true&Step=7&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#d1fae5;">
-                    <div class="phase-icon phase-icon--green"><i class="fas fa-check-circle"></i></div>
-                    <h6 style="color:#10b981;">Completados</h6>
-                    <h2 style="color:#10b981;">@Model.CompletedPlans</h2>
+                <a href="/Index?ShowWizard=true&Step=7&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-cyan p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-check-circle"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CompletedPlans</div>
+                    <div class="font-weight-bold mt-2">Completados</div>
                 </a>
             </div>
             <!-- Avance -->
             <div class="col-6 col-md mb-3">
-                <div class="phase-card shadow-sm" style="background:#fffbeb;">
-                    <div class="phase-icon phase-icon--amber"><i class="fas fa-percentage"></i></div>
-                    <h6 style="color:#f59e0b;">% Avance</h6>
-                    <h2 style="color:#f59e0b;">@Model.Management.CompletionPercentage%</h2>
+                <div class="asset-metric-tile asset-bg-amber p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-percentage"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.GlobalProgress%</div>
+                    <div class="font-weight-bold mt-2">% Avance</div>
                 </div>
             </div>
         </div>
@@ -199,43 +223,43 @@
             {
                 <!-- L6 -->
                 <div class="col-6 col-md-2 mb-3">
-                    <a href="/Index?ShowWizard=true&Step=1&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#e0f2fe; border:1px solid #bae6fd;">
-                        <div class="phase-icon phase-icon--blue"><i class="fas fa-clipboard-check"></i></div>
-                        <h6 style="color:#0284c7; font-size:0.75rem;">L-6 Verificación</h6>
-                        <h2 style="color:#0284c7; font-size:1.5rem;">@Model.CountL6</h2>
+                    <a href="/Index?ShowWizard=true&Step=1&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-cyan p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.CountL6</div>
+                        <div class="font-weight-bold mt-2">L-6 Verificación</div>
                     </a>
                 </div>
             }
             <!-- L7 -->
             <div class="col-6 col-md-2 mb-3">
-                <a href="/Index?ShowWizard=true&Step=2&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#fef3c7; border:1px solid #fde68a;">
-                    <div class="phase-icon phase-icon--amber"><i class="fas fa-tools"></i></div>
-                    <h6 style="color:#d97706; font-size:0.75rem;">L-7 Solicitud</h6>
-                    <h2 style="color:#d97706; font-size:1.5rem;">@Model.CountL7</h2>
+                <a href="/Index?ShowWizard=true&Step=2&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-amber p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-tools"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CountL7</div>
+                    <div class="font-weight-bold mt-2">L-7 Solicitud</div>
                 </a>
             </div>
             <!-- L8 -->
             <div class="col-6 col-md-2 mb-3">
-                <a href="/Index?ShowWizard=true&Step=3&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#fee2e2; border:1px solid #fecaca;">
-                    <div class="phase-icon phase-icon--red"><i class="fas fa-wrench"></i></div>
-                    <h6 style="color:#dc2626; font-size:0.75rem;">L-8 Mantenimiento</h6>
-                    <h2 style="color:#dc2626; font-size:1.5rem;">@Model.CountL8</h2>
+                <a href="/Index?ShowWizard=true&Step=3&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-red p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-wrench"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CountL8</div>
+                    <div class="font-weight-bold mt-2">L-8 Mantenimiento</div>
                 </a>
             </div>
             <!-- L3 / Salida -->
             <div class="col-6 col-md-3 mb-3">
-                <a href="/Index?ShowWizard=true&Step=4&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#f3e8ff; border:1px solid #e9d5ff;">
-                    <div class="phase-icon" style="background:rgba(147, 51, 234, 0.1); color:#9333ea;"><i class="fas fa-truck-loading"></i></div>
-                    <h6 style="color:#9333ea; font-size:0.75rem;">L-3 Salida</h6>
-                    <h2 style="color:#9333ea; font-size:1.5rem;">@Model.CountSalida</h2>
+                <a href="/Index?ShowWizard=true&Step=4&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-purple p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-truck-loading"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CountSalida</div>
+                    <div class="font-weight-bold mt-2">L-3 Salida</div>
                 </a>
             </div>
             <!-- Desembolso -->
             <div class="col-12 col-md-3 mb-3">
-                <a href="/Index?ShowWizard=true&Step=6&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#f1f5f9; border:1px solid #e2e8f0;">
-                    <div class="phase-icon" style="background:rgba(71, 85, 105, 0.1); color:#475569;"><i class="fas fa-file-invoice-dollar"></i></div>
-                    <h6 style="color:#475569; font-size:0.75rem;">Desembolso</h6>
-                    <h2 style="color:#475569; font-size:1.5rem;">@Model.CountDesembolso</h2>
+                <a href="/Index?ShowWizard=true&Step=6&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-slate p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CountDesembolso</div>
+                    <div class="font-weight-bold mt-2">Desembolso</div>
                 </a>
             </div>
         </div>
@@ -249,7 +273,7 @@
                     <div class="chart-container-detail d-flex align-items-center justify-content-center" style="position:relative;">
                         <canvas id="globalProgressChart"></canvas>
                         <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
-                            <span style="font-size:2rem;font-weight:800;color:#1E293B;">@Model.Management.CompletionPercentage%</span>
+                            <span style="font-size:2rem;font-weight:800;color:#1E293B;">@Model.GlobalProgress%</span>
                             <span class="text-muted" style="font-size:0.65rem;letter-spacing:0.05em;">COMPLETADO</span>
                         </div>
                     </div>
@@ -410,7 +434,7 @@
                     <option value="Utensilio"    selected="@(Model.CategoryFilter == "Utensilio")">Utensilio</option>
                 </select>
 
-                @foreach (var s in new[] { "Todos", "Planeado", "InProgress", "Completed", "Externo" })
+                @foreach (var s in new[] { "Todos", "Planeado", "InProgress", "Completed", "Externo", "Delay" })
                 {
                     var label = s switch {
                         "Todos"      => "Todos",
@@ -418,10 +442,15 @@
                         "InProgress" => "En Progreso",
                         "Completed"  => "Ejecutado",
                         "Externo"    => "Externo",
+                        "Delay"      => "Vencidos",
                         _            => s
                     };
+                    var btnClass = s == "Delay"
+                        ? (Model.StatusFilter == s ? "btn-danger" : "btn-outline-danger")
+                        : (Model.StatusFilter == s || (s == "Todos" && string.IsNullOrEmpty(Model.StatusFilter)) ? "btn-primary" : "btn-outline-secondary");
                     <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=@s&LabFilterId=@Model.LabFilterId&TechFilterId=@Model.TechFilterId&CategoryFilter=@Model.CategoryFilter"
-                       class="btn btn-sm @(Model.StatusFilter == s || (s == "Todos" && string.IsNullOrEmpty(Model.StatusFilter)) ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3">
+                       class="btn btn-sm @btnClass rounded-pill px-3">
+                        @if (s == "Delay") { <i class="fas fa-exclamation-triangle mr-1"></i> }
                         @label
                     </a>
                 }
@@ -443,13 +472,14 @@
                             <th class="text-muted small text-center" colspan="4">@l48Col2Name</th>
                             <th class="text-muted small text-center">%</th>
                             <th class="text-muted small">Técnico</th>
+                            <th class="text-muted small text-center" style="width: 120px;">Acciones</th>
                         </tr>
                         <tr class="bg-light">
                             <th colspan="5"></th>
                             @for (int s2 = 1; s2 <= 8; s2++) {
                                 <th class="text-center small text-muted" style="min-width:42px;">S@(s2)</th>
                             }
-                            <th colspan="2"></th>
+                            <th colspan="3"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -473,9 +503,32 @@
                                 <td rowspan="2" class="font-weight-bold align-middle small">
                                     @plan.EquipmentUnit?.Laboratory?.Name
                                 </td>
+                                @{
+                                    var wizardStep = isCorrective
+                                        ? plan.CurrentPhase switch {
+                                            WizardPhase.TechnicalRequest => 1,
+                                            WizardPhase.Maintenance => 2,
+                                            WizardPhase.Exit => 3,
+                                            WizardPhase.Kardex => 4,
+                                            WizardPhase.Disbursement => 5,
+                                            _ => 1
+                                        }
+                                        : plan.CurrentPhase switch {
+                                            WizardPhase.Verification => 1,
+                                            WizardPhase.TechnicalRequest => 2,
+                                            WizardPhase.Maintenance => 3,
+                                            WizardPhase.Exit => 4,
+                                            WizardPhase.Kardex => 5,
+                                            WizardPhase.Disbursement => 6,
+                                            _ => 1
+                                        };
+                                    var wizardUrl = $"/Index?ShowWizard=true&Step={wizardStep}&ManagementId={Model.Management.Id}&SelectedLabId={plan.EquipmentUnit?.LaboratoryId}&FocusPlanId={plan.Id}";
+                                }
                                 <td rowspan="2" class="align-middle">
-                                    <div class="font-weight-bold text-primary" style="font-size:0.82rem;">
-                                        @plan.EquipmentUnit?.Equipment?.Name
+                                    <div class="font-weight-bold" style="font-size:0.82rem;">
+                                        <a href="@wizardUrl" class="text-primary" title="Abrir wizard en fase actual">
+                                            @plan.EquipmentUnit?.Equipment?.Name
+                                        </a>
                                     </div>
                                     <div class="text-muted" style="font-size:0.72rem;">
                                         INV-@plan.EquipmentUnit?.InventoryNumber
@@ -507,6 +560,11 @@
                                 <td rowspan="2" class="small align-middle text-muted">
                                     @(plan.Maintenance?.Technician?.FullName ?? "—")
                                 </td>
+                                <td rowspan="2" class="align-middle text-center">
+                                    <a href="@wizardUrl" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold shadow-sm" title="Atender en wizard">
+                                        <i class="fas fa-external-link-alt mr-1"></i> Atender
+                                    </a>
+                                </td>
                             </tr>
                             <!-- FILA 2: Real -->
                             <tr>
@@ -536,17 +594,23 @@
     <!-- ===== TAB: CALENDARIO ===== -->
     @if (Model.ActiveTab == "calendario")
     {
-        <!-- Controles de zoom -->
+        <!-- Controles de vista y zoom -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <span class="badge badge-soft-success px-3 py-2 mr-2"><i class="fa fa-circle mr-1"></i>Completado</span>
-                <span class="badge px-3 py-2 mr-2" style="background:#fff3cd;color:#856404;"><i class="fa fa-circle mr-1"></i>En Progreso</span>
-                <span class="badge px-3 py-2" style="background:#cfe2ff;color:#084298;"><i class="fa fa-circle mr-1"></i>Pendiente</span>
+                <span class="badge px-3 py-2 mr-2" style="background:#dbeafe;color:#1d4ed8;"><i class="fa fa-circle mr-1"></i>Preventivo</span>
+                <span class="badge badge-soft-success px-3 py-2 mr-2"><i class="fa fa-circle mr-1"></i>Ejecutado</span>
+                <span class="badge px-3 py-2" style="background:#ede9fe;color:#6d28d9;"><i class="fa fa-circle mr-1"></i>Correctivo</span>
             </div>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
-                <button type="button" class="btn btn-outline-secondary" id="calZoomOut" title="Reducir"><i class="fas fa-search-minus"></i></button>
-                <button type="button" class="btn btn-outline-secondary" id="calZoomReset" title="Normal">100%</button>
-                <button type="button" class="btn btn-outline-secondary" id="calZoomIn" title="Ampliar"><i class="fas fa-search-plus"></i></button>
+            <div class="d-flex">
+                <div class="btn-group btn-group-sm mr-2" role="group" aria-label="Vista">
+                    <button type="button" class="btn btn-outline-primary active" id="calViewMonth">Mes</button>
+                    <button type="button" class="btn btn-outline-primary" id="calViewWeek">Semana</button>
+                </div>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
+                    <button type="button" class="btn btn-outline-secondary" id="calZoomOut" title="Reducir"><i class="fas fa-search-minus"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" id="calZoomReset" title="Normal">90%</button>
+                    <button type="button" class="btn btn-outline-secondary" id="calZoomIn" title="Ampliar"><i class="fas fa-search-plus"></i></button>
+                </div>
             </div>
         </div>
 
@@ -696,7 +760,7 @@
                         type: 'doughnut',
                         data: {
                             datasets: [{
-                                data: [@Model.Management.CompletionPercentage, @(100 - Model.Management.CompletionPercentage)],
+                                data: [@globalProgressJs, @remainingProgressJs],
                                 backgroundColor: ['#2eca6a', '#e2e8f0'],
                                 borderWidth: 0
                             }]
@@ -775,15 +839,17 @@
         <link href="~/assets/libs/fullcalendar/dist/fullcalendar.min.css" rel="stylesheet" />
         <style>
             /* Estilos custom para eventos del calendario */
-            .fc-event.ev-completed { background:#2eca6a !important; border-color:#25a85c !important; color:#fff !important; }
-            .fc-event.ev-progress  { background:#f59e0b !important; border-color:#d97706 !important; color:#fff !important; }
-            .fc-event.ev-planned   { background:#6366f1 !important; border-color:#4f46e5 !important; color:#fff !important; }
+            .fc-event.ev-completed  { background:#2eca6a !important; border-color:#25a85c !important; color:#fff !important; }
+            .fc-event.ev-preventive { background:#2563eb !important; border-color:#1d4ed8 !important; color:#fff !important; }
+            .fc-event.ev-corrective { background:#7c3aed !important; border-color:#6d28d9 !important; color:#fff !important; }
             /* Sombreado de 8 semanas */
             .fc-bgevent { opacity: 0.15 !important; }
             /* Hover en día para indicar que es clickeable */
             .fc-day:hover { background: rgba(99,102,241,0.04); cursor: pointer; }
             /* Evento más compacto */
-            .fc-event { font-size: 0.72rem; padding: 2px 5px; border-radius: 4px; margin-bottom: 1px; }
+            .fc { font-size: 0.84rem; }
+            .fc-event { font-size: 0.68rem; padding: 1px 4px; border-radius: 4px; margin-bottom: 1px; }
+            .fc-row .fc-content-skeleton td, .fc-row .fc-helper-skeleton td { padding-bottom: 0; }
             /* More link */
             .fc-more { font-size: 0.7rem; font-weight: 700; color: #6366f1; }
             /* Day detail item */
@@ -843,7 +909,7 @@
                     header: {
                         left:   'prev,next today',
                         center: 'title',
-                        right:  'month,agendaWeek'
+                        right:  ''
                     },
                     locale:           'es',
                     editable:         false,
@@ -867,7 +933,7 @@
                 });
 
                 // ============ ZOOM ============
-                var zoomLevel = 1.0;
+                var zoomLevel = 0.9;
                 var $wrapper = $('#calendarZoomWrapper');
                 var $label   = $('#calZoomReset');
 
@@ -882,7 +948,19 @@
                     if (zoomLevel > 0.5) { zoomLevel -= 0.1; applyZoom(); }
                 });
                 $label.click(function () {
-                    zoomLevel = 1.0; applyZoom();
+                    zoomLevel = 0.9; applyZoom();
+                });
+                applyZoom();
+
+                $('#calViewMonth').click(function () {
+                    $('#calendar').fullCalendar('changeView', 'month');
+                    $('#calViewMonth').addClass('active');
+                    $('#calViewWeek').removeClass('active');
+                });
+                $('#calViewWeek').click(function () {
+                    $('#calendar').fullCalendar('changeView', 'agendaWeek');
+                    $('#calViewWeek').addClass('active');
+                    $('#calViewMonth').removeClass('active');
                 });
 
                 // ============ PANEL DE DÍA ============
@@ -900,7 +978,7 @@
                         $body.html('<div class="day-detail-empty"><i class="fas fa-calendar-check fa-2x mb-3 d-block" style="color:#cbd5e1;"></i>No hay mantenimientos para este día</div>');
                     } else {
                         dayEvents.forEach(function (ev) {
-                            var statusClass = ev.ClassName === 'ev-completed' ? 'st-completed' : ev.ClassName === 'ev-progress' ? 'st-progress' : 'st-planned';
+                            var statusClass = ev.ClassName === 'ev-completed' ? 'st-completed' : ev.ClassName === 'ev-corrective' ? 'st-progress' : 'st-planned';
                             var detailUrl = ev.MaintenanceId ? '/Maintenances/Details/' + ev.MaintenanceId : '/Managements/Details?id=' + mgmtId + '&ActiveTab=l48';
                             var editUrl   = ev.MaintenanceId ? '/Maintenances/Edit?id=' + ev.MaintenanceId : null;
 

@@ -117,7 +117,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             var currentMgmt = await _managementService.GetCurrentManagementAsync();
             if (currentMgmt == null)
             {
-                TempData["Warning"] = "No se ha detectado una gestión activa o el esquema de base de datos no está actualizado. Por favor, asegúrese de aplicar las migraciones o de activar un periodo de gestión para poder registrar activos.";
+                TempData.Warning("No se ha detectado una gestión activa o el esquema de base de datos no está actualizado. Por favor, asegúrese de aplicar las migraciones o de activar un periodo de gestión para poder registrar activos.");
                 LoadLists();
                 return Page();
             }
@@ -153,7 +153,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             _context.EquipmentStateHistories.Add(initialHistory);
             await _context.SaveChangesAsync();
 
-            TempData.Success("Unidad física registrada correctamente.");
+            var equipmentName = await _context.Equipments
+                .Where(e => e.Id == unit.EquipmentId)
+                .Select(e => e.Name)
+                .FirstOrDefaultAsync() ?? "Equipo";
+
+            TempData.Success($"Equipo {equipmentName} ({unit.InventoryNumber}) fue creado exitosamente.");
             return RedirectToPage("/Equipment/Details", new { id = unit.EquipmentId });
         }
 

@@ -209,6 +209,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
+            return await SaveDepartureAsync(isWizard, saveDraft: false);
+        }
+
+        public async Task<IActionResult> OnPostDraftAsync(bool isWizard = false)
+        {
+            return await SaveDepartureAsync(isWizard, saveDraft: true);
+        }
+
+        private async Task<IActionResult> SaveDepartureAsync(bool isWizard, bool saveDraft)
+        {
             // ─────────────────────────────────────────────────────────────
             // WIZARD PRE-VALIDATION: reconstruir valores ANTES de ModelState
             // Los selects disabled no postean → FacultyId/LaboratoryId/
@@ -224,13 +234,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     wizardPlan = await _context.ManagementPlans
                         .AsTracking()
                         .Include(p => p.Maintenance)
+                        .Include(p => p.Departure).ThenInclude(d => d!.Items)
                         .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
                         .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Laboratory)
                         .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
                 }
                 else
                 {
-                    wizardPlan = await _context.ManagementPlans.FindAsync(ManagementPlanId.Value);
+                    wizardPlan = await _context.ManagementPlans
+                        .AsTracking()
+                        .Include(p => p.Departure).ThenInclude(d => d!.Items)
+                        .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
                 }
                 if (wizardPlan != null)
                     managementId = wizardPlan.ManagementId;
@@ -284,6 +298,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 return Page();
             }
 
+            if (saveDraft)
+            {
+                ModelState.Remove("Input.DepartureDate");
+                ModelState.Remove("Input.EstimatedReturnDate");
+            }
+
             // ── VALIDACIÓN después de reconstrucción ──
             if (!ModelState.IsValid)
             {
@@ -311,23 +331,38 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                         : DepartureType.InternalLoan;
                 }
 
-                var departure = new Departure
+                Departure? departure;
+                bool isNewDeparture = wizardPlan?.Departure == null;
+
+                if (isNewDeparture)
                 {
-                    EquipmentUnitId = Input.EquipmentUnitId,
-                    BorrowerId = Input.BorrowerId,
-                    Type = inferredType,
-                    DepartureDate = Input.DepartureDate,
-                    EstimatedReturnDate = Input.EstimatedReturnDate,
-                    DepartureObservations = Input.DepartureObservations?.Trim(),
-                    Status = LoanStatus.Active,
-                    CreatedDate = DateTime.UtcNow,
-                    ManagementId = managementId
-                };
+                    departure = new Departure
+                    {
+                        EquipmentUnitId = Input.EquipmentUnitId,
+                        BorrowerId = Input.BorrowerId,
+                        Type = inferredType,
+                        DepartureDate = Input.DepartureDate,
+                        EstimatedReturnDate = Input.EstimatedReturnDate,
+                        DepartureObservations = Input.DepartureObservations?.Trim(),
+                        Status = saveDraft ? LoanStatus.Cancelled : LoanStatus.Active,
+                        CreatedDate = DateTime.UtcNow,
+                        ManagementId = managementId
+                    };
 
-                var currentUser = await _userManager.GetUserAsync(User);
-                departure.CreatedById = int.TryParse(currentUser?.Id.ToString(), out var uid) ? uid : (int?)null;
+                    var currentUser = await _userManager.GetUserAsync(User);
+                    departure.CreatedById = int.TryParse(currentUser?.Id.ToString(), out var uid) ? uid : (int?)null;
 
-                _context.Departures.Add(departure);
+                    _context.Departures.Add(departure);
+                }
+                else
+                {
+                    departure = wizardPlan!.Departure!;
+                    departure.DepartureDate = Input.DepartureDate;
+                    departure.EstimatedReturnDate = Input.EstimatedReturnDate;
+                    departure.DepartureObservations = Input.DepartureObservations?.Trim();
+                    departure.Status = saveDraft ? LoanStatus.Cancelled : LoanStatus.Active;
+                    departure.LastModifiedDate = DateTime.UtcNow;
+                }
 
                 // Ítem de salida — en wizard derivado desde BD, fuera del wizard desde form
                 if (isWizard && wizardPlan?.EquipmentUnit != null)
@@ -335,37 +370,73 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     var unit = wizardPlan.EquipmentUnit;
                     var productName = $"{unit.Equipment?.Name ?? "Equipo"} ({unit.InventoryNumber ?? "S/N"})";
 
-                    _context.DepartureItems.Add(new DepartureItem
-                    {
-                        Departure = departure,
-                        EquipmentUnitId = unit.Id,
-                        ProductName = productName,
-                        Quantity = 1,
-                        UnitOfMeasure = "UNIDAD",
-                        Observations = Input.Items.FirstOrDefault()?.Observations?.Trim()
-                    });
-                }
-                else if (Input.Items != null && Input.Items.Count > 0)
-                {
-                    foreach (var itemInput in Input.Items.Where(i => !string.IsNullOrWhiteSpace(i.ProductName)))
+                    if (isNewDeparture)
                     {
                         _context.DepartureItems.Add(new DepartureItem
                         {
                             Departure = departure,
-                            EquipmentUnitId = itemInput.EquipmentUnitId ?? Input.EquipmentUnitId,
-                            ProductName = itemInput.ProductName.Trim(),
-                            Quantity = itemInput.Quantity,
-                            UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD",
-                            Observations = itemInput.Observations?.Trim()
+                            EquipmentUnitId = unit.Id,
+                            ProductName = productName,
+                            Quantity = 1,
+                            UnitOfMeasure = "UNIDAD",
+                            Observations = Input.Items.FirstOrDefault()?.Observations?.Trim()
                         });
                     }
                 }
-
-                var equipmentUnit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
-                if (equipmentUnit != null)
+                else if (!isWizard && Input.Items != null && Input.Items.Count > 0)
                 {
-                    equipmentUnit.CurrentStatus = EquipmentStatus.OnLoan;
-                    _context.EquipmentUnits.Update(equipmentUnit);
+                    if (departure.Items != null && departure.Items.Any())
+                    {
+                        // Update existing items or add new ones
+                        foreach (var itemInput in Input.Items.Where(i => !string.IsNullOrWhiteSpace(i.ProductName)))
+                        {
+                            var existing = departure.Items.FirstOrDefault(i => i.Id == itemInput.Id && itemInput.Id > 0);
+                            if (existing != null)
+                            {
+                                existing.ProductName = itemInput.ProductName.Trim();
+                                existing.Quantity = itemInput.Quantity;
+                                existing.UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD";
+                                existing.Observations = itemInput.Observations?.Trim();
+                            }
+                            else
+                            {
+                                _context.DepartureItems.Add(new DepartureItem
+                                {
+                                    Departure = departure,
+                                    EquipmentUnitId = itemInput.EquipmentUnitId ?? Input.EquipmentUnitId,
+                                    ProductName = itemInput.ProductName.Trim(),
+                                    Quantity = itemInput.Quantity,
+                                    UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD",
+                                    Observations = itemInput.Observations?.Trim()
+                                });
+                            }
+                        }
+                    }
+                    else
+                    {
+                        foreach (var itemInput in Input.Items.Where(i => !string.IsNullOrWhiteSpace(i.ProductName)))
+                        {
+                            _context.DepartureItems.Add(new DepartureItem
+                            {
+                                Departure = departure,
+                                EquipmentUnitId = itemInput.EquipmentUnitId ?? Input.EquipmentUnitId,
+                                ProductName = itemInput.ProductName.Trim(),
+                                Quantity = itemInput.Quantity,
+                                UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD",
+                                Observations = itemInput.Observations?.Trim()
+                            });
+                        }
+                    }
+                }
+
+                if (!saveDraft)
+                {
+                    var equipmentUnit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
+                    if (equipmentUnit != null)
+                    {
+                        equipmentUnit.CurrentStatus = EquipmentStatus.OnLoan;
+                        _context.EquipmentUnits.Update(equipmentUnit);
+                    }
                 }
 
                 if (ManagementPlanId.HasValue)
@@ -374,8 +445,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     if (plan != null)
                     {
                         plan.Departure = departure;
-                        plan.CurrentPhase = WizardPhase.Kardex;
-                        plan.CurrentState = WizardEquipmentState.AwaitingKardex;
+
+                        if (saveDraft)
+                        {
+                            MarkDepartureDraft(plan);
+                        }
+                        else
+                        {
+                            plan.CurrentPhase = WizardPhase.Kardex;
+                            plan.CurrentState = WizardEquipmentState.AwaitingKardex;
+                            ClearDraft(plan);
+                        }
                     }
                 }
 
@@ -384,10 +464,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
                 if (isWizard && wizardPlan != null)
                 {
+                    if (saveDraft)
+                    {
+                        TempData.Success("Borrador L-3 guardado correctamente.");
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId, ManagementId = wizardPlan.ManagementId });
+                    }
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId, ManagementId = wizardPlan.ManagementId });
                 }
 
-                TempData.Success("Salida de equipo registrada exitosamente.");
+                TempData.Success(saveDraft ? "Borrador guardado correctamente." : "Salida de equipo registrada exitosamente.");
                 return RedirectToPage("./Index");
             }
             catch (Exception ex)
@@ -397,6 +482,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 await LoadLists();
                 return Page();
             }
+        }
+
+        private static void MarkDepartureDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = true;
+            plan.DraftPhase = WizardPhase.Exit;
+            plan.DraftSavedAt = DateTime.UtcNow;
+            plan.DraftSummary = "Borrador L-3 guardado con salida parcial.";
+            plan.CurrentPhase = WizardPhase.Exit;
+            plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+            plan.PlanStatus = ManagementPlanStatus.InProgress;
+            plan.LastModifiedDate = DateTime.UtcNow;
+        }
+
+        private static void ClearDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = false;
+            plan.DraftPhase = null;
+            plan.DraftSavedAt = null;
+            plan.DraftSummary = null;
+            plan.LastModifiedDate = DateTime.UtcNow;
         }
 
         private async Task LoadLists()

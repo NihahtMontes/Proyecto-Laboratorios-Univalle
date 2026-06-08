@@ -8,13 +8,17 @@ Leer junto con `.agent/skills/backend_methods/SKILL.md`.
 - Usar `InputModel` anidado por PageModel.
 - El `InputModel` debe contener solo campos editables por esa vista.
 - Limpiar `ModelState` de campos que el servidor reconstruye desde `ManagementPlan`.
+- En Edit de entidades con navegaciones requeridas, no bindear la entidad completa; cargar la entidad con `.AsTracking()` y aplicar campos del `InputModel`.
+- Las validaciones del `InputModel` deben reflejar solo lo que el usuario puede editar en pantalla.
 
 ## Handlers
 
 - Handlers de escritura deben manejar errores con try/catch cuando hay EF complejo, archivos o reportes.
 - Usar mensajes via `TempData.Error()` y volver a cargar listas antes de `Page()`.
+- Usar `TempData.Success()`, `TempData.Error()`, `TempData.Warning()` o `TempData.Info()`; no escribir nuevas claves manuales como `TempData["Success"]`.
 - Si se modifica `ManagementPlan`, cargar con `.AsTracking()`.
 - En redirects del wizard conservar `ShowWizard=true`, `Step`, `ManagementId` y `SelectedLabId` cuando aplique.
+- Create normal muestra exito posterior; Edit y Delete coordinan confirmacion desde la vista y resultado desde `TempData`.
 
 ## Resolver Contexto De Gestion
 

@@ -21,14 +21,17 @@ Warnings de nullability existentes no bloquean si no fueron introducidos por el 
 
 - Connection strings reales van en `appsettings.Development.json`, user-secrets o variables de entorno.
 - No versionar credenciales.
-- Produccion debe usar `Include Error Detail=false`.
+- No usar LocalDB ni instancias Express/SQLEXPRESS. El entorno local vigente usa SQL Server Developer Edition en instancia predeterminada: `Server=localhost` o `Data Source=.`
+- La cadena versionada preferida usa autenticacion de Windows. Si se usa autenticacion mixta con `sa`, colocar password en user-secrets, variables de entorno o configuracion segura.
 
 ## Despliegue
 
 La documentacion humana de despliegue vive en `docs/deployment/` y debe usar placeholders, no passwords reales.
 
-## PostgreSQL
+## SQL Server
 
-- Produccion usa PostgreSQL local en el servidor de la universidad.
+- Desarrollo usa SQL Server Developer Edition en instancia predeterminada: `Server=localhost`.
+- Produccion debe usar SQL Server completo con usuario dedicado o autenticacion configurada fuera del repo.
+- Optimizar pensando en motor completo sin limites de SQL Express/LocalDB.
 - Migraciones se aplican al arrancar con `Database.MigrateAsync()` si el flujo actual se mantiene.
 - Hacer backup antes de migraciones de produccion.

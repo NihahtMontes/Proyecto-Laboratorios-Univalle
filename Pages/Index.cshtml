@@ -6,8 +6,31 @@
     ViewData["Title"] = "Dashboard de Gestión";
     var isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
     var steps = isCorrective
-        ? new[] { "Progreso", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso", "Completados" }
-        : new[] { "Progreso", "L6 Verif.", "L7 Solic.", "L8 Mant.", "L3 Salida", "Kardex", "Desembolso", "Completados" };
+        ? new[] { "PROGRESO", "L7 SOLIC.", "L8 MANT.", "L3 SALIDA", "KARDEX", "DESEMB.", "COMPLET." }
+        : new[] { "PROGRESO", "L6 VERIF.", "L7 SOLIC.", "L8 MANT.", "L3 SALIDA", "KARDEX", "DESEMB.", "COMPLET." };
+
+    var stepIcons = isCorrective
+        ? new[] { "fa-chart-pie", "fa-clipboard-list", "fa-wrench", "fa-truck-loading", "fa-history", "fa-file-invoice-dollar", "fa-flag-checkered" }
+        : new[] { "fa-chart-pie", "fa-clipboard-check", "fa-clipboard-list", "fa-wrench", "fa-truck-loading", "fa-history", "fa-file-invoice-dollar", "fa-flag-checkered" };
+
+    // Variables para paginación de Step 7 (Completados)
+    var completedBaseUrl = $"?ShowWizard=true&Step=7&ManagementId={Model.ManagementId}";
+    if (Model.SelectedLabId.HasValue) { completedBaseUrl += $"&SelectedLabId={Model.SelectedLabId}"; }
+    if (Model.FocusPlanId.HasValue) { completedBaseUrl += $"&FocusPlanId={Model.FocusPlanId}"; }
+    if (!string.IsNullOrEmpty(Model.SearchTerm)) { completedBaseUrl += $"&SearchTerm={Uri.EscapeDataString(Model.SearchTerm)}"; }
+    if (!string.IsNullOrEmpty(Model.SerialNumberFilter)) { completedBaseUrl += $"&SerialNumberFilter={Uri.EscapeDataString(Model.SerialNumberFilter)}"; }
+    if (!string.IsNullOrEmpty(Model.InventoryNumberFilter)) { completedBaseUrl += $"&InventoryNumberFilter={Uri.EscapeDataString(Model.InventoryNumberFilter)}"; }
+    var completedTotalPages = (int)Math.Ceiling((double)Model.CompletedTotalItems / 5.0);
+    var focusedPhaseLabel = Model.FocusedPlan?.CurrentPhase switch
+    {
+        WizardPhase.Verification => "L-6 Verificacion",
+        WizardPhase.TechnicalRequest => "L-7 Solicitud",
+        WizardPhase.Maintenance => "L-8 Mantenimiento",
+        WizardPhase.Exit => "L-3 Salida",
+        WizardPhase.Kardex => "Kardex / L-48",
+        WizardPhase.Disbursement => "L-12 Desembolso",
+        _ => "Sin fase"
+    };
 }
 
 @section Styles {
@@ -362,6 +385,125 @@
         .phase-card:hover { transform: translateY(-3px); }
         .phase-card h6 { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 0.5rem; }
         .phase-card h2 { font-size: 1.8rem; font-weight: 800; margin: 0; }
+
+        /* Wizard Stepper Redesign */
+        .wizard-stepper {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            position: relative;
+            padding: 0 8px;
+        }
+        .wizard-stepper::before {
+            content: '';
+            position: absolute;
+            top: 24px;
+            left: 48px;
+            right: 48px;
+            height: 3px;
+            background: #e2e8f0;
+            z-index: 0;
+            border-radius: 3px;
+        }
+        .step-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            flex: 1;
+            text-decoration: none !important;
+        }
+        .step-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+        .step-circle.completed {
+            background: #10b981;
+            color: white;
+            border: 2px solid #10b981;
+        }
+        .step-circle.active {
+            background: #2563eb;
+            color: white;
+            border: 2px solid #2563eb;
+            box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.15);
+            animation: step-pulse 2s infinite;
+        }
+        .step-circle.pending {
+            background: white;
+            color: #94a3b8;
+            border: 2px solid #e2e8f0;
+        }
+        .step-label {
+            margin-top: 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            color: #64748b;
+            text-align: center;
+            line-height: 1.2;
+            max-width: 100px;
+            white-space: nowrap;
+        }
+        .step-label.active {
+            color: #1e293b;
+        }
+        .step-label.completed {
+            color: #10b981;
+        }
+        .step-connector-right {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            width: 100%;
+            height: 3px;
+            z-index: 0;
+            border-radius: 3px;
+        }
+        .step-connector-right.completed {
+            background: #10b981;
+        }
+        .step-connector-right.pending {
+            background: #e2e8f0;
+        }
+        @@keyframes step-pulse {
+            0% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.15); }
+            50% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0.08); }
+            100% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.15); }
+        }
+        @@media (max-width: 768px) {
+            .step-circle { width: 36px; height: 36px; font-size: 0.9rem; }
+            .step-label { font-size: 0.6rem; max-width: 60px; }
+            .wizard-stepper::before { top: 18px; left: 36px; right: 36px; }
+            .step-connector-right { top: 18px; }
+        }
+
+        /* Wizard Filter Panel */
+        .wizard-filter-panel {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 0 12px 12px 0;
+        }
+        .wizard-filter-panel .form-control {
+            border-radius: 8px;
+            border: 1.5px solid #e2e8f0;
+            font-weight: 500;
+            color: #334155;
+            height: 40px;
+        }
+        .wizard-filter-panel .form-control:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
     </style>
 }
 
@@ -408,6 +550,10 @@
                         <input type="hidden" asp-for="Step" />
                         <input type="hidden" asp-for="SelectedLabId" />
                         <input type="hidden" asp-for="ManagementId" />
+                        <input type="hidden" asp-for="FocusPlanId" />
+                        <input type="hidden" asp-for="SearchTerm" />
+                        <input type="hidden" asp-for="SerialNumberFilter" />
+                        <input type="hidden" asp-for="InventoryNumberFilter" />
                         <button type="submit" class="btn btn-light rounded-circle shadow-sm hover-float @(Model.Step == 0 ? "invisible" : "")" style="width: 50px; height: 50px; border: 1.5px solid #e2e8f0; padding:0; display:inline-flex; align-items:center; justify-content:center; transition: all 0.2s ease;">
                             <i class="fas fa-chevron-left text-primary" style="font-size: 1.2rem;"></i>
                         </button>
@@ -418,27 +564,99 @@
             <div class="col-8 col-md-10">
                 <div class="card shadow-lg border-0 w-100" style="border-radius: 16px;">
                     <div class="card-header d-flex justify-content-between align-items-center py-3" style="background-color: #0f172a; border-top-left-radius: 16px; border-top-right-radius: 16px;">
-                        <h5 class="m-0 font-weight-bold text-white" style="font-family: 'Inter', sans-serif; font-weight: 800;"><i class="fas fa-magic mr-2 text-primary"></i>@(isCorrective ? "Mantenimiento Correctivo" : "Ronda de Mantenimiento Progresivo")</h5>
-                        <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-light btn-sm font-weight-bold rounded-pill px-3">Finalizar Wizard</a>
+                        <h5 class="m-0 font-weight-bold text-white" style="font-family: 'Inter', sans-serif; font-weight: 800;">
+                            <i class="fas fa-magic mr-2 text-primary"></i>@(isCorrective ? "Mantenimiento Correctivo" : "Ronda de Mantenimiento Progresivo")
+                            @if (Model.FocusPlanId.HasValue) { <span class="text-info"> — Atendiendo Equipo</span> }
+                        </h5>
+                        @if (Model.FocusPlanId.HasValue)
+                        {
+                            <a href="?ShowWizard=true&Step=@Model.Step&ManagementId=@ViewData["ManagementId"]" class="btn btn-outline-light btn-sm font-weight-bold rounded-pill px-3">Finalizar Atención</a>
+                        }
+                        else
+                        {
+                            <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-light btn-sm font-weight-bold rounded-pill px-3">Finalizar Wizard</a>
+                        }
                     </div>
 
+                    @if (Model.FocusPlanId.HasValue && Model.FocusedPlan != null)
+                    {
+                        <div class="d-flex justify-content-between align-items-center px-4 py-2" style="background: linear-gradient(135deg, #dbeafe, #eff6ff); border-bottom: 2px solid #3b82f6;">
+                            <div>
+                                <i class="fas fa-crosshairs mr-2 text-primary"></i>
+                                <strong class="text-dark">@Model.FocusedPlan.EquipmentUnit?.Equipment?.Name</strong>
+                                <span class="badge badge-primary ml-2">INV-@Model.FocusedPlan.EquipmentUnit?.InventoryNumber</span>
+                                <span class="badge badge-light ml-2 border">@Model.FocusedPlan.EquipmentUnit?.Laboratory?.Name</span>
+                            </div>
+                            <span class="badge badge-info px-3 py-2">Fase: @focusedPhaseLabel</span>
+                        </div>
+                    }
+
                     <div class="card-body p-0">
+                        <!-- Wizard Filter Panel -->
+                        <div class="wizard-filter-panel p-3 mb-0 border-bottom">
+                            <form method="get" class="d-flex flex-wrap align-items-center">
+                                <input type="hidden" name="ShowWizard" value="true" />
+                                <input type="hidden" name="Step" value="@Model.Step" />
+                                <input type="hidden" name="ManagementId" value="@ViewData["ManagementId"]" />
+                                @if (Model.FocusPlanId.HasValue) { <input type="hidden" name="FocusPlanId" value="@Model.FocusPlanId" /> }
+
+                                <div class="input-group mr-2 mb-0" style="width: 220px;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" name="SearchTerm" value="@Model.SearchTerm" class="form-control border-left-0" placeholder="Buscar equipo..." />
+                                </div>
+
+                                <div class="input-group mr-2 mb-0" style="width: 160px;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-fingerprint text-muted"></i></span>
+                                    </div>
+                                    <input type="text" name="SerialNumberFilter" value="@Model.SerialNumberFilter" class="form-control border-left-0" placeholder="N° Serie" />
+                                </div>
+
+                                <div class="input-group mr-2 mb-0" style="width: 160px;">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-barcode text-muted"></i></span>
+                                    </div>
+                                    <input type="text" name="InventoryNumberFilter" value="@Model.InventoryNumberFilter" class="form-control border-left-0" placeholder="N° Inventario" />
+                                </div>
+
+                                <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control mr-2" style="width: 200px;">
+                                    <option value="">Todos los laboratorios</option>
+                                </select>
+
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm mr-2">
+                                    <i class="fas fa-filter mr-2"></i>Filtrar
+                                </button>
+                                <a href="?ShowWizard=true&Step=@Model.Step&ManagementId=@ViewData["ManagementId"]@(Model.FocusPlanId.HasValue ? $"&FocusPlanId={Model.FocusPlanId}" : "")" class="btn btn-outline-secondary btn-rounded px-3" title="Limpiar Filtros">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            </form>
+                        </div>
+
                         <!-- Wizard Stepper -->
                         <div class="bg-light border-bottom p-4">
-                            <div class="d-flex justify-content-between text-center px-lg-5">
+                            <div class="wizard-stepper">
                                 @for (int i = 0; i < steps.Length; i++)
                                 {
                                     var stepNum = isCorrective && i > 0 ? i + 1 : i;
                                     var isActive = Model.Step >= stepNum;
                                     var isCurrent = Model.Step == stepNum;
-                                    <div class="d-flex flex-column align-items-center" style="flex: 1; position: relative;">
-                                        @if (i > 0) {
-                                            <div style="position: absolute; width: 100%; height: 2px; background: @(isActive ? "#2563eb" : "#e2e8f0"); top: 17px; left: -50%; z-index: 1;"></div>
+                                    var isCompleted = Model.Step > stepNum;
+
+                                    <div class="step-item">
+                                        @if (i < steps.Length - 1) {
+                                            var connectorActive = Model.Step >= stepNum;
+                                            <div class="step-connector-right @(connectorActive ? "completed" : "pending")"></div>
                                         }
-                                        <div class="rounded-circle border @(isActive ? "text-white" : "bg-white text-muted") d-flex align-items-center justify-content-center shadow-sm" style="width: 35px; height: 35px; font-weight: bold; z-index: 2; position: relative; @(isActive ? "background: #2563eb; border-color: #2563eb;" : "border-color: #e2e8f0;") @(isCurrent ? "box-shadow: 0 0 0 4px rgba(37,99,235,0.25) !important;" : "")">
-                                            @if (Model.Step > stepNum) { <i class="fas fa-check"></i> } else { @stepNum }
+                                        <div class="step-circle @(isCompleted ? "completed" : isCurrent ? "active" : "pending")">
+                                            @if (isCompleted) {
+                                                <i class="fas fa-check"></i>
+                                            } else {
+                                                <i class="fas @stepIcons[i]"></i>
+                                            }
                                         </div>
-                                        <span class="mt-2 @(isCurrent ? "text-dark font-weight-bold" : "text-muted")" style="font-size: 0.70rem; letter-spacing: 0.05em; text-transform: uppercase;">@steps[i]</span>
+                                        <span class="step-label @(isCurrent ? "active" : isCompleted ? "completed" : "")">@steps[i]</span>
                                     </div>
                                 }
                             </div>
@@ -456,64 +674,179 @@
                                     StepIndex = 0,
                                     LaboratoriesList = Model.LaboratoriesList,
                                     StatusLabel = "Seguimiento",
-                                    BorderClass = "border-slate"
+                                    BorderClass = "border-slate",
+                                    CurrentPage = Model.CurrentPage,
+                                    TotalPages = (int)Math.Ceiling((double)Model.ActiveTotalItems / 5.0),
+                                    TotalItems = Model.ActiveTotalItems,
+                                    PageSize = 5,
+                                    SearchTerm = Model.SearchTerm,
+                                    SerialNumberFilter = Model.SerialNumberFilter,
+                                    InventoryNumberFilter = Model.InventoryNumberFilter,
+                                    SelectedLabId = Model.SelectedLabId,
+                                    ManagementId = Model.ManagementId,
+                                    FocusPlanId = Model.FocusPlanId
                                 })
                             }
                             else if (Model.Step == 1 && !isCorrective)
                             {
-                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                var step1BaseUrl = $"?ShowWizard=true&Step=1&ManagementId={Model.ManagementId}";
+                                if (Model.FocusPlanId.HasValue) { step1BaseUrl += $"&FocusPlanId={Model.FocusPlanId}"; }
+                                if (!string.IsNullOrEmpty(Model.SearchTerm)) { step1BaseUrl += $"&SearchTerm={Uri.EscapeDataString(Model.SearchTerm)}"; }
+                                if (!string.IsNullOrEmpty(Model.SerialNumberFilter)) { step1BaseUrl += $"&SerialNumberFilter={Uri.EscapeDataString(Model.SerialNumberFilter)}"; }
+                                if (!string.IsNullOrEmpty(Model.InventoryNumberFilter)) { step1BaseUrl += $"&InventoryNumberFilter={Uri.EscapeDataString(Model.InventoryNumberFilter)}"; }
+
+                                var step1PageSize = 2;
+                                var step1TotalPages = Model.Step1LabTotalPages;
+                                var step1Current = Model.CurrentPage;
+                                var step1TotalItems = Model.Step1Labs.Count;
+                                var step1PagedLabs = Model.Step1Labs.Skip((step1Current - 1) * step1PageSize).Take(step1PageSize).ToList();
+
+                                @if (Model.FocusPlanId.HasValue)
+                                {
+                                    @await Html.PartialAsync("_WizardStep", new WizardStepViewModel {
+                                        Title = "Paso 1: L-6 Verificacion",
+                                        Description = "Consulta la verificacion registrada para este equipo.",
+                                        EmptyMessage = "Este equipo todavia no tiene L-6 registrado.",
+                                        EmptyIcon = "fas fa-clipboard-check",
+                                        Plans = Model.Step1Plans,
+                                        StepIndex = 1,
+                                        ActionPage = string.Empty,
+                                        ActionLabel = string.Empty,
+                                        ActionClass = "btn-info",
+                                        StatusLabel = "Verificacion del equipo",
+                                        ShowFailCount = true,
+                                        LaboratoriesList = Model.LaboratoriesList,
+                                        BorderClass = "border-info",
+                                        CurrentPage = Model.CurrentPage,
+                                        TotalPages = (int)Math.Ceiling((double)Model.Step1TotalItems / 5.0),
+                                        TotalItems = Model.Step1TotalItems,
+                                        PageSize = 5,
+                                        SearchTerm = Model.SearchTerm,
+                                        SerialNumberFilter = Model.SerialNumberFilter,
+                                        InventoryNumberFilter = Model.InventoryNumberFilter,
+                                        SelectedLabId = Model.SelectedLabId,
+                                        ManagementId = Model.ManagementId,
+                                        FocusPlanId = Model.FocusPlanId
+                                    })
+                                }
+                                else
+                                {
+                                <div class="d-flex justify-content-between align-items-center mb-4" style="font-family: 'Inter', sans-serif;">
                                     <div>
-                                        <h3 class="wizard-title text-dark mb-1" style="font-weight: 900; color: #0f172a !important;">Paso 1: L6 Verificación</h3>
-                                        <p class="wizard-subtitle mb-0" style="font-weight: 500; color: #64748b;">Equipos pendientes de inspección técnica inicial.</p>
+                                        <h3 class="wizard-title text-dark mb-1" style="font-weight: 900; color: #0f172a !important;">Paso 1: L-6 Verificación</h3>
+                                        <p class="wizard-subtitle mb-0" style="font-weight: 500; color: #64748b;">Seleccione un laboratorio para verificar sus equipos en forma masiva.</p>
                                     </div>
-                                    <form method="get" class="d-flex align-items-center gap-3">
-                                        <input type="hidden" name="ShowWizard" value="true" />
-                                        <input type="hidden" name="Step" value="1" />
-                                        <input type="hidden" name="ManagementId" value="@ViewData["ManagementId"]" />
-                                        <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control shadow-sm" style="border-radius: 12px; background-color: #f8fafc; border: 1.5px solid #e2e8f0; font-weight: 600; color: #334155; padding: 8px 12px; height: 44px;" onchange="this.form.submit()">
-                                            <option value="">-- Selecciona Laboratorio --</option>
-                                        </select>
-                                    </form>
                                 </div>
 
-                                @if (!Model.Step1Plans.Any())
+                                @if (!Model.Step1Labs.Any())
                                 {
-                                    <div class="text-center py-5 text-muted">
-                                        <i class="fas fa-clipboard-check fa-3x mb-3 d-block opacity-2"></i>
-                                        <span class="font-weight-bold">No hay equipos pendientes de verificación L-6.</span>
+                                    <div class="border-2 border-dashed rounded p-5 text-center text-slate-400 bg-slate-50" style="border-radius: 12px !important;">
+                                        <i class="fas fa-clipboard-check text-3xl mb-3 opacity-25 d-block"></i>
+                                        <span style="font-weight: 500;">No hay equipos pendientes de verificación L-6.</span>
                                     </div>
                                 }
                                 else
                                 {
-                                    <div class="mb-4">
-                                        <span class="badge badge-primary px-3 py-2">@Model.Step1Plans.Count equipo(s) pendiente(s)</span>
-                                    </div>
-                                    <div class="step-stack">
-                                        @foreach (var item in Model.Step1Plans.Take(5))
+                                    <div class="step-stack" style="font-family: 'Inter', sans-serif;">
+                                        @foreach (var lab in step1PagedLabs)
                                         {
-                                            <div class="chart-card d-flex justify-content-between align-items-center py-3 px-4 mb-3 premium-card border-start border-4 border-primary" style="background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-                                                <div>
-                                                    <h4 class="font-bold text-slate-800 m-0" style="font-weight: 800; color: #1e293b;">@item.EquipmentUnit?.Equipment?.Name</h4>
-                                                    <span class="inventory-code text-muted small" style="font-weight: 600;">@item.EquipmentUnit?.InventoryNumber &middot; Pendiente L-6</span>
+                                            <div class="chart-card d-flex justify-content-between align-items-center py-3 px-4 mb-3 premium-card border-start border-4 border-primary" style="background: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s;">
+                                                <div class="d-flex align-items-center flex-grow-1 min-width-0 mr-3">
+                                                    <div class="rounded-circle d-flex align-items-center justify-content-center mr-3 flex-shrink-0" style="width: 44px; height: 44px; background: rgba(23, 125, 239, 0.1);">
+                                                        <i class="fas fa-flask text-primary"></i>
+                                                    </div>
+                                                    <div class="min-width-0">
+                                                        <h5 class="font-weight-bold text-dark mb-0 text-truncate" style="font-size: 1rem;">@lab.LabName</h5>
+                                                        <span class="text-muted small" style="font-size: 0.78rem;">
+                                                            @(lab.PendingCount == 1 ? "1 equipo pendiente" : $"{lab.PendingCount} equipos pendientes")
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="d-flex align-items-center flex-shrink-0">
+                                                    <span class="badge badge-primary badge-pill px-3 py-2 font-weight-bold mr-3">@lab.PendingCount</span>
+                                                    <a asp-page="/Verifications/MassCreate"
+                                                       asp-route-isWizard="true"
+                                                       asp-route-labId="@lab.LabId"
+                                                       asp-route-managementId="@ViewData["ManagementId"]"
+                                                       class="btn btn-info btn-rounded shadow-sm font-weight-bold px-4">
+                                                        <i class="fas fa-clipboard-check mr-2"></i> Verificar
+                                                    </a>
                                                 </div>
                                             </div>
                                         }
-                                        @if (Model.Step1Plans.Count > 5)
-                                        {
-                                            <div class="text-center text-muted small py-2">
-                                                ...y @(Model.Step1Plans.Count - 5) equipo(s) más
-                                            </div>
-                                        }
                                     </div>
-                                    <div class="text-center mt-4">
-                                        <a asp-page="/Verifications/MassCreate"
-                                           asp-route-isWizard="true"
-                                           asp-route-labId="@(Model.SelectedLabId)"
-                                           asp-route-managementId="@(ViewData["ManagementId"])"
-                                           class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-3">
-                                            <i class="fas fa-layer-group mr-2"></i> Verificación Masiva por Laboratorio
-                                        </a>
-                                    </div>
+
+                                    @if (step1TotalPages > 1)
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                                            <span class="text-muted small">
+                                                Mostrando @(((step1Current - 1) * step1PageSize) + 1)-@Math.Min(step1Current * step1PageSize, step1TotalItems) de @step1TotalItems laboratorios
+                                            </span>
+                                            <nav aria-label="Paginación L-6">
+                                                <ul class="pagination pagination-sm mb-0">
+                                                    <li class="page-item @(step1Current <= 1 ? "disabled" : "")">
+                                                        <a class="page-link" href="@(step1BaseUrl)&CurrentPage=@(step1Current - 1)" aria-label="Anterior">
+                                                            <span aria-hidden="true"><i class="fas fa-chevron-left"></i></span>
+                                                        </a>
+                                                    </li>
+                                                    @{
+                                                        var pageNumbers = new List<int>();
+                                                        var total = step1TotalPages;
+                                                        var current = step1Current;
+                                                        if (total <= 9)
+                                                        {
+                                                            for (int p = 1; p <= total; p++) { pageNumbers.Add(p); }
+                                                        }
+                                                        else if (current <= 5)
+                                                        {
+                                                            for (int p = 1; p <= 5; p++) { pageNumbers.Add(p); }
+                                                            pageNumbers.Add(-1);
+                                                            pageNumbers.Add(total);
+                                                        }
+                                                        else if (current >= total - 4)
+                                                        {
+                                                            pageNumbers.Add(1);
+                                                            pageNumbers.Add(-1);
+                                                            for (int p = total - 4; p <= total; p++) { pageNumbers.Add(p); }
+                                                        }
+                                                        else
+                                                        {
+                                                            pageNumbers.Add(1);
+                                                            pageNumbers.Add(-1);
+                                                            for (int p = current - 2; p <= current + 2; p++) { pageNumbers.Add(p); }
+                                                            pageNumbers.Add(-1);
+                                                            pageNumbers.Add(total);
+                                                        }
+                                                    }
+                                                    @foreach (var p in pageNumbers)
+                                                    {
+                                                        if (p == -1)
+                                                        {
+                                                            <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                                                        }
+                                                        else
+                                                        {
+                                                            <li class="page-item @(p == step1Current ? "active" : "")">
+                                                                <a class="page-link" href="@(step1BaseUrl)&CurrentPage=@p">@p</a>
+                                                            </li>
+                                                        }
+                                                    }
+                                                    <li class="page-item @(step1Current >= step1TotalPages ? "disabled" : "")">
+                                                        <a class="page-link" href="@(step1BaseUrl)&CurrentPage=@(step1Current + 1)" aria-label="Siguiente">
+                                                            <span aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </nav>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center mt-3">
+                                            <span class="text-muted small">Mostrando @step1TotalItems laboratorio(s)</span>
+                                        </div>
+                                    }
+                                }
                                 }
                             }
                             else if (Model.Step == 2)
@@ -530,7 +863,17 @@
                                     StatusLabel = "Requiere Atención",
                                     ShowFailCount = true,
                                     LaboratoriesList = Model.LaboratoriesList,
-                                    BorderClass = "border-warning"
+                                    BorderClass = "border-warning",
+                                    CurrentPage = Model.CurrentPage,
+                                    TotalPages = (int)Math.Ceiling((double)Model.Step2TotalItems / 5.0),
+                                    TotalItems = Model.Step2TotalItems,
+                                    PageSize = 5,
+                                    SearchTerm = Model.SearchTerm,
+                                    SerialNumberFilter = Model.SerialNumberFilter,
+                                    InventoryNumberFilter = Model.InventoryNumberFilter,
+                                    SelectedLabId = Model.SelectedLabId,
+                                    ManagementId = Model.ManagementId,
+                                    FocusPlanId = Model.FocusPlanId
                                 })
                                 @if (Model.ActiveManagement?.Type == ManagementType.Corrective)
                                 {
@@ -557,7 +900,17 @@
                                     ActionClass = "btn-success",
                                     StatusLabel = "En Mantenimiento",
                                     LaboratoriesList = Model.LaboratoriesList,
-                                    BorderClass = "border-success"
+                                    BorderClass = "border-success",
+                                    CurrentPage = Model.CurrentPage,
+                                    TotalPages = (int)Math.Ceiling((double)Model.Step3TotalItems / 5.0),
+                                    TotalItems = Model.Step3TotalItems,
+                                    PageSize = 5,
+                                    SearchTerm = Model.SearchTerm,
+                                    SerialNumberFilter = Model.SerialNumberFilter,
+                                    InventoryNumberFilter = Model.InventoryNumberFilter,
+                                    SelectedLabId = Model.SelectedLabId,
+                                    ManagementId = Model.ManagementId,
+                                    FocusPlanId = Model.FocusPlanId
                                 })
                             }
                             else if (Model.Step == 4)
@@ -573,7 +926,17 @@
                                     ActionClass = "btn-primary",
                                     StatusLabel = "Pendiente Salida",
                                     LaboratoriesList = Model.LaboratoriesList,
-                                    BorderClass = "border-primary"
+                                    BorderClass = "border-primary",
+                                    CurrentPage = Model.CurrentPage,
+                                    TotalPages = (int)Math.Ceiling((double)Model.Step4TotalItems / 5.0),
+                                    TotalItems = Model.Step4TotalItems,
+                                    PageSize = 5,
+                                    SearchTerm = Model.SearchTerm,
+                                    SerialNumberFilter = Model.SerialNumberFilter,
+                                    InventoryNumberFilter = Model.InventoryNumberFilter,
+                                    SelectedLabId = Model.SelectedLabId,
+                                    ManagementId = Model.ManagementId,
+                                    FocusPlanId = Model.FocusPlanId
                                 })
                                 @if (Model.Step4Plans.Any())
                                 {
@@ -605,7 +968,17 @@
                                     ActionClass = "btn-info",
                                     StatusLabel = "Cierre Técnico",
                                     LaboratoriesList = Model.LaboratoriesList,
-                                    BorderClass = "border-info"
+                                    BorderClass = "border-info",
+                                    CurrentPage = Model.CurrentPage,
+                                    TotalPages = (int)Math.Ceiling((double)Model.Step5TotalItems / 5.0),
+                                    TotalItems = Model.Step5TotalItems,
+                                    PageSize = 5,
+                                    SearchTerm = Model.SearchTerm,
+                                    SerialNumberFilter = Model.SerialNumberFilter,
+                                    InventoryNumberFilter = Model.InventoryNumberFilter,
+                                    SelectedLabId = Model.SelectedLabId,
+                                    ManagementId = Model.ManagementId,
+                                    FocusPlanId = Model.FocusPlanId
                                 })
                             }
                             else if (Model.Step == 6)
@@ -621,7 +994,17 @@
                                     ActionClass = "btn-dark",
                                     StatusLabel = "Trámite Administrativo",
                                     LaboratoriesList = Model.LaboratoriesList,
-                                    BorderClass = "border-dark"
+                                    BorderClass = "border-dark",
+                                    CurrentPage = Model.CurrentPage,
+                                    TotalPages = (int)Math.Ceiling((double)Model.Step6TotalItems / 5.0),
+                                    TotalItems = Model.Step6TotalItems,
+                                    PageSize = 5,
+                                    SearchTerm = Model.SearchTerm,
+                                    SerialNumberFilter = Model.SerialNumberFilter,
+                                    InventoryNumberFilter = Model.InventoryNumberFilter,
+                                    SelectedLabId = Model.SelectedLabId,
+                                    ManagementId = Model.ManagementId,
+                                    FocusPlanId = Model.FocusPlanId
                                 })
                             }
                             else if (Model.Step == 7)
@@ -669,15 +1052,15 @@
                                                                     <div class="btn-group btn-group-sm" role="group">
                                                                         @if (plan.VerificationId.HasValue)
                                                                         {
-                                                                            <a asp-page="/Verifications/Details" asp-route-id="@plan.VerificationId" class="btn btn-outline-success" title="Ver L-6">L-6</a>
+                                                                            <a asp-page="/Verifications/Details" asp-route-id="@plan.VerificationId" asp-route-isWizard="true" asp-route-managementId="@ViewData["ManagementId"]" asp-route-focusPlanId="@Model.FocusPlanId" class="btn btn-outline-success" title="Ver L-6">L-6</a>
                                                                         }
                                                                         @if (plan.RequestId.HasValue)
                                                                         {
-                                                                            <a asp-page="/Requests/Details" asp-route-id="@plan.RequestId" class="btn btn-outline-warning" title="Ver L-7">L-7</a>
+                                                                            <a asp-page="/Requests/Details" asp-route-id="@plan.RequestId" asp-route-isWizard="true" asp-route-managementId="@ViewData["ManagementId"]" asp-route-focusPlanId="@Model.FocusPlanId" class="btn btn-outline-warning" title="Ver L-7">L-7</a>
                                                                         }
                                                                         @if (plan.MaintenanceId.HasValue)
                                                                         {
-                                                                            <a asp-page="/Maintenances/Details" asp-route-id="@plan.MaintenanceId" class="btn btn-outline-success" title="Ver L-8">L-8</a>
+                                                                            <a asp-page="/Maintenances/Details" asp-route-id="@plan.MaintenanceId" asp-route-isWizard="true" asp-route-managementId="@ViewData["ManagementId"]" asp-route-focusPlanId="@Model.FocusPlanId" class="btn btn-outline-success" title="Ver L-8">L-8</a>
                                                                         }
                                                                         @if (plan.DepartureId.HasValue)
                                                                         {
@@ -698,12 +1081,95 @@
                                                     </tbody>
                                                 </table>
                                             </div>
+
+                                            @if (completedTotalPages > 1)
+                                            {
+                                                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                                                    <span class="text-muted small">
+                                                        Mostrando @(((Model.CurrentPage - 1) * 5) + 1)-@Math.Min(Model.CurrentPage * 5, Model.CompletedTotalItems) de @Model.CompletedTotalItems completados
+                                                    </span>
+                                                    <nav aria-label="Paginación">
+                                                        <ul class="pagination pagination-sm mb-0">
+                                                            @* Anterior *@
+                                                            <li class="page-item @(Model.CurrentPage <= 1 ? "disabled" : "")">
+                                                                <a class="page-link" href="@(completedBaseUrl)&CurrentPage=@(Model.CurrentPage - 1)"><i class="fas fa-chevron-left"></i></a>
+                                                            </li>
+
+                                                            @* Números de página con ventana deslizante *@
+                                                            @{
+                                                                var cPageNumbers = new List<int>();
+                                                                var cTotal = completedTotalPages;
+                                                                var cCurrent = Model.CurrentPage;
+
+                                                                if (cTotal <= 9)
+                                                                {
+                                                                    for (int p = 1; p <= cTotal; p++) { cPageNumbers.Add(p); }
+                                                                }
+                                                                else if (cCurrent <= 5)
+                                                                {
+                                                                    for (int p = 1; p <= 5; p++) { cPageNumbers.Add(p); }
+                                                                    cPageNumbers.Add(-1);
+                                                                    cPageNumbers.Add(cTotal);
+                                                                }
+                                                                else if (cCurrent >= cTotal - 4)
+                                                                {
+                                                                    cPageNumbers.Add(1);
+                                                                    cPageNumbers.Add(-1);
+                                                                    for (int p = cTotal - 4; p <= cTotal; p++) { cPageNumbers.Add(p); }
+                                                                }
+                                                                else
+                                                                {
+                                                                    cPageNumbers.Add(1);
+                                                                    cPageNumbers.Add(-1);
+                                                                    for (int p = cCurrent - 2; p <= cCurrent + 2; p++) { cPageNumbers.Add(p); }
+                                                                    cPageNumbers.Add(-1);
+                                                                    cPageNumbers.Add(cTotal);
+                                                                }
+                                                            }
+
+                                                            @foreach (var p in cPageNumbers)
+                                                            {
+                                                                if (p == -1)
+                                                                {
+                                                                    <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <li class="page-item @(p == Model.CurrentPage ? "active" : "")">
+                                                                        <a class="page-link" href="@(completedBaseUrl)&CurrentPage=@p">@p</a>
+                                                                    </li>
+                                                                }
+                                                            }
+
+                                                            @* Siguiente *@
+                                                            <li class="page-item @(Model.CurrentPage >= completedTotalPages ? "disabled" : "")">
+                                                                <a class="page-link" href="@(completedBaseUrl)&CurrentPage=@(Model.CurrentPage + 1)"><i class="fas fa-chevron-right"></i></a>
+                                                            </li>
+                                                        </ul>
+                                                    </nav>
+                                                </div>
+                                            }
+                                            else if (Model.CompletedTotalItems > 0)
+                                            {
+                                                <div class="text-center mt-3">
+                                                    <span class="text-muted small">Mostrando @Model.CompletedTotalItems completado(s)</span>
+                                                </div>
+                                            }
                                         }
 
                                         <div class="text-right mt-4">
-                                            <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-primary rounded-pill px-5 shadow-sm">
-                                                <i class="fas fa-arrow-left mr-1"></i> Volver al Dashboard
-                                            </a>
+                                            @if (Model.FocusPlanId.HasValue)
+                                            {
+                                                <a href="?ShowWizard=true&Step=0&ManagementId=@ViewData["ManagementId"]" class="btn btn-primary rounded-pill px-5 shadow-sm">
+                                                    <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard Completo
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-primary rounded-pill px-5 shadow-sm">
+                                                    <i class="fas fa-arrow-left mr-1"></i> Volver al Dashboard
+                                                </a>
+                                            }
                                         </div>
                                     </div>
                                 </div>
@@ -714,7 +1180,14 @@
                                     <i class="fas fa-flag-checkered fa-4x text-slate-200 mb-4"></i>
                                     <h3 class="wizard-title">¡Ronda Finalizada!</h3>
                                     <p class="wizard-subtitle mb-4">Se han procesado todos los equipos de este ciclo.</p>
-                                    <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-primary rounded-pill px-5 shadow-sm">Volver al Dashboard</a>
+                                    @if (Model.FocusPlanId.HasValue)
+                                    {
+                                        <a href="?ShowWizard=true&Step=0&ManagementId=@ViewData["ManagementId"]" class="btn btn-primary rounded-pill px-5 shadow-sm">Volver al Wizard Completo</a>
+                                    }
+                                    else
+                                    {
+                                        <a asp-page="/Index" asp-route-ShowWizard="false" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-primary rounded-pill px-5 shadow-sm">Volver al Dashboard</a>
+                                    }
                                 </div>
                             }
 
@@ -730,6 +1203,10 @@
                         <input type="hidden" asp-for="Step" />
                         <input type="hidden" asp-for="SelectedLabId" />
                         <input type="hidden" asp-for="ManagementId" />
+                        <input type="hidden" asp-for="FocusPlanId" />
+                        <input type="hidden" asp-for="SearchTerm" />
+                        <input type="hidden" asp-for="SerialNumberFilter" />
+                        <input type="hidden" asp-for="InventoryNumberFilter" />
                         <button type="submit" class="btn rounded-circle shadow-lg hover-float" style="width: 56px; height: 56px; padding: 0; display:inline-flex; align-items:center; justify-content:center; background: linear-gradient(to right, #2563eb, #1e40af); color: white; border: none; box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39); transition: all 0.2s ease;">
                             @if (Model.Step == 6) { <i class="fas fa-flag-checkered" style="font-size: 1.5rem;"></i> } else { <i class="fas fa-chevron-right" style="font-size: 1.5rem;"></i> }
                         </button>
@@ -952,6 +1429,30 @@
             initDashboardCharts();
             const overlay = document.getElementById('sidebarOverlay');
             if(overlay) overlay.addEventListener('click', closeKardex);
+
+            document.querySelectorAll('.js-l6-observation-form').forEach(form => {
+                form.addEventListener('submit', event => {
+                    event.preventDefault();
+
+                    const submitForm = () => HTMLFormElement.prototype.submit.call(form);
+                    if (window.Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            title: 'Actualizar observacion L-6',
+                            text: 'Se guardara el comentario solo para este equipo.',
+                            type: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: 'Guardar',
+                            cancelButtonText: 'Cancelar'
+                        }).then(result => {
+                            if (result && (result.isConfirmed === true || result.value === true)) {
+                                submitForm();
+                            }
+                        });
+                    } else if (window.confirm('Se guardara el comentario L-6 de este equipo.')) {
+                        submitForm();
+                    }
+                });
+            });
         });
     </script>
 }

@@ -4,7 +4,7 @@
 - [ ] Migraciones revisadas.
 - [ ] Connection string de produccion configurado fuera del repo.
 - [ ] `ASPNETCORE_ENVIRONMENT=Production` configurado.
-- [ ] `Include Error Detail=false`.
+- [ ] Connection string sin credenciales versionadas ni diagnostico sensible.
 - [ ] Build Release exitoso.
 - [ ] Publish generado.
 - [ ] Servicio detenido antes de reemplazar archivos.

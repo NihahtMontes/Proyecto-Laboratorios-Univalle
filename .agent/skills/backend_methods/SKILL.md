@@ -1,43 +1,51 @@
 ---
 name: backend_methods
-description: PageModels Razor, handlers OnGet/OnPost, InputModel, reconstruccion de contexto y flujo wizard.
-trigger: Modificacion de `.cshtml.cs`, handlers, servicios usados por paginas o logica de formularios.
-scope: Backend/PageModels
+description: Razor PageModels, handlers OnGet/OnPost, InputModel, EF tracking, redirects, TempData y logica de formularios.
+trigger: Modificacion de `.cshtml.cs`, handlers Razor Pages, InputModel, consultas para vistas, redirects, filtros server-side o escritura de entidades.
+scope: Pages/PageModels
 context: .agent/context/areas/backend-page-models.md
 ---
 # Skill Backend PageModels
 
-## Leer Antes
+## 1. Contexto Del Modulo
 
-- `.agent/context/areas/backend-page-models.md`.
-- `.agent/context/01-global-rules.md`.
-- Modulo especifico si toca wizard.
+Los PageModels conectan UI Razor con EF Core y servicios. Reciben query string/form data, validan `InputModel`, cargan datos con `ApplicationDbContext`, aplican cambios con tracking y responden con `Page()` o `RedirectToPage()`.
 
-## InputModel
+Flujo: request HTTP -> handler `OnGet/OnPost` -> validacion -> consulta/proyeccion -> vista o persistencia -> `TempData` -> redirect.
 
-- No bindear entidades de dominio directamente.
-- Usar `InputModel` anidado con solo campos editables.
-- Validaciones deben corresponder a la vista, no a toda la entidad.
+## 2. Arquitectura Y Archivos Clave
 
-## Wizard
+- PageModels por modulo: `Pages/<Modulo>/*.cshtml.cs`.
+- Activos catalogo: `Pages/Equipment/Create.cshtml.cs`, `Edit.cshtml.cs`, `Details.cshtml.cs`.
+- Unidades fisicas: `Pages/EquipmentUnits/*.cshtml.cs`.
+- Consulta inventario: `Pages/AssetView/*.cshtml.cs`.
+- Wizard: `Pages/Index.cshtml.cs` y modulos L-6/L-7/L-8/L-3/Kardex/L-12.
+- Servicios consumidos: `Services/ManagementContextService.cs`, `Services/CurrentUserService.cs`, `Services/ReportService.cs`.
 
-- Resolver `ManagementPlan` con `.AsTracking()` cuando se actualiza.
-- Reconstruir `EquipmentUnitId`, `LaboratoryId`, `RequestId`, `MaintenanceId` desde BD.
-- No confiar en selects disabled ni texto posteado.
-- Preservar `ManagementId` en redirects.
+## 3. Integracion Con NiceAdmin
 
-## Borradores
+- PageModels deben entregar a Razor datos ya listos para tarjetas, tabs, badges, tablas y selects.
+- Para selects, preferir `SelectListItem` controlado cuando el enum contiene valores legacy o internos.
+- Para filtros de tablas, usar `[BindProperty(SupportsGet = true)]` y preservar query string en paginacion, limpiar filtro, POST y redirect.
+- `TempData.Success/Error/Warning/Info` alimenta el SweetAlert global del layout.
 
-- `Draft` guarda parcial y mantiene fase.
-- Accion final valida completo, avanza fase y limpia borrador.
-- No generar notificaciones ni estados finales durante borrador.
+## 4. Patrones Y Convenciones
 
-## Errores
+- No bindear entidades completas en formularios: usar `InputModel` con campos editables.
+- El proyecto usa NoTracking global; toda escritura debe cargar con `.AsTracking()` o `FindAsync()`.
+- En POST fallido: repoblar listas/ViewData y retornar `Page()`.
+- Redireccionar solo despues de guardar correctamente.
+- Preservar `ManagementId`, `ManagementPlanId`, `Step`, `SelectedLabId` y filtros cuando aplique.
+- CRUD activos actual:
+  - `EquipmentCategory.Equipment`: exige clasificacion tecnica valida y guarda `UtensilType.NoAplica`.
+  - `EquipmentCategory.Utensil`: exige subclasificacion valida y guarda `TypeClassification.Otro`.
+  - `EquipmentCategory.Other`: guarda `TypeClassification.Otro` y `UtensilType.NoAplica`.
+  - Edicion permite valores legacy solo si ya existen en el registro.
 
-- En errores de POST: cargar listas y retornar `Page()` con `TempData.Error()`.
-- No redirigir como exito si no se creo/actualizo ninguna fila.
-- Mensajes deben diagnosticar la causa cuando el binding falla.
+## 5. Contexto Para Agente
 
-## Transacciones
-
-Usar transaccion cuando se crea entidad, se vincula al plan y se avanza fase en una sola accion.
+- Leer `.agent/context/areas/backend-page-models.md` y `Pages/AGENTS.md` antes de tocar PageModels.
+- No usar `Person.FullName` en LINQ: es `[NotMapped]`.
+- No confiar en selects disabled; reconstruir verdad desde BD.
+- Si una accion modifica historial o fase de wizard, usar transaccion cuando haya varias escrituras acopladas.
+- No crear notificaciones durante borradores.

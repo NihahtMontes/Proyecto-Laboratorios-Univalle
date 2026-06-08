@@ -27,7 +27,7 @@
                 </div>
 
                 <!-- FILTROS -->
-                <div class="bg-light p-3 mb-4 rounded border-left border-primary shadow-sm" style="background-color: #f8f9fa !important;">
+                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
                     <form method="get">
                         <div class="row align-items-end">
                             <div class="col-md-3">
@@ -40,9 +40,9 @@
                                 <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
                                 <div class="input-group drop-shadow">
                                     <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0" style="border-radius: 4px 0 0 4px;"><i class="fas fa-search text-muted"></i></span>
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                                     </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" style="border-radius: 0 4px 4px 0;" placeholder="Ítem, código o solicitante..." />
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Ítem, código o solicitante..." />
                                 </div>
                             </div>
                             <div class="col-md-2">
@@ -59,11 +59,11 @@
                                     <option value="">-- Todos --</option>
                                 </select>
                             </div>
-                            <div class="col-md-2 text-right mt-2 mt-md-0 d-flex align-items-center justify-content-end">
-                                <button type="submit" class="btn btn-dark btn-circle shadow-sm" title="Filtrar" style="width: 45px; height: 45px; border-radius: 50% !important; background-color: #343a40 !important;">
-                                    <i class="fas fa-filter"></i>
+                            <div class="col-md-2 text-right mt-2 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
                                 </button>
-                                <a asp-page="./Index" class="btn btn-outline-secondary btn-circle ml-2 shadow-sm d-flex align-items-center justify-content-center" title="Limpiar Filtros" style="width: 45px; height: 45px; border-radius: 50% !important;">
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
                                     <i class="fas fa-sync-alt"></i>
                                 </a>
                             </div>
@@ -85,13 +85,13 @@
                 <div class="table-responsive">
                     <table class="table table-hover v-middle">
                         <thead class="bg-light">
-                            <tr class="small uppercase font-weight-bold text-muted" style="background-color: #f1f3f5 !important; color: #495057 !important;">
-                                <th class="border-0 px-4">Ítem / Concepto</th>
-                                <th class="border-0">Ubicación</th>
-                                <th class="border-0 text-center">Prioridad</th>
-                                <th class="border-0 text-center">Estado</th>
-                                <th class="border-0">Solicitante</th>
-                                <th class="border-0 text-center">Acciones</th>
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Ítem / Concepto</th>
+                                <th>Ubicación</th>
+                                <th class="text-center">Prioridad</th>
+                                <th class="text-center">Estado</th>
+                                <th>Solicitante</th>
+                                <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -111,9 +111,6 @@
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <div class="m-r-10">
-                                                    <span class="btn btn-circle btn-sm btn-light-success text-success shadow-sm"><i class="fas fa-shopping-cart"></i></span>
-                                                </div>
                                                 <div>
                                                     <h6 class="m-b-0 font-weight-bold text-dark">@(item.Equipment?.Name ?? "Item Especial")</h6>
                                                     <small class="text-muted text-truncate d-block" style="max-width: 200px;">@item.Description</small>
@@ -127,19 +124,32 @@
                                         </td>
                                         <td class="text-center v-middle">
                                             @{
-                                                var pBadge = item.Priority == RequestPriority.High ? "badge-light-danger text-danger" : (item.Priority == RequestPriority.Medium ? "badge-light-warning text-warning" : "badge-light-info text-info");
+                                                var (pClass, pText) = item.Priority switch
+                                                {
+                                                    RequestPriority.VeryHigh => ("badge-dark", "CRÍTICA"),
+                                                    RequestPriority.High => ("badge-danger", "ALTA"),
+                                                    RequestPriority.Medium => ("badge-warning", "MEDIA"),
+                                                    RequestPriority.Low => ("badge-info", "BAJA"),
+                                                    _ => ("badge-secondary", "—")
+                                                };
                                             }
-                                            <span class="badge badge-pill @pBadge px-3 py-1 font-weight-bold shadow-sm">
-                                                <i class="fas fa-bolt mr-1"></i> @item.Priority
-                                            </span>
+                                            <span class="badge @pClass px-3 py-1 font-weight-bold">@pText</span>
                                         </td>
                                         <td class="text-center v-middle">
                                             @{
-                                                var sBadge = item.Status == RequestStatus.Approved ? "badge-light-success text-success" : (item.Status == RequestStatus.Rejected ? "badge-light-danger text-danger" : "badge-light-warning text-warning");
+                                                var (sClass, sText) = item.Status switch
+                                                {
+                                                    RequestStatus.Approved => ("badge-success", "APROBADA"),
+                                                    RequestStatus.Completed => ("badge-success", "COMPLETADA"),
+                                                    RequestStatus.InProgress => ("badge-info", "EN PROCESO"),
+                                                    RequestStatus.Scheduled => ("badge-primary", "PROGRAMADA"),
+                                                    RequestStatus.Pending => ("badge-warning", "PENDIENTE"),
+                                                    RequestStatus.Rejected => ("badge-danger", "RECHAZADA"),
+                                                    RequestStatus.Cancelled => ("badge-secondary", "CANCELADA"),
+                                                    _ => ("badge-secondary", "DESCONOCIDA")
+                                                };
                                             }
-                                            <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold shadow-sm border">
-                                                @item.Status
-                                            </span>
+                                            <span class="badge @sClass px-3 py-1 font-weight-bold">@sText</span>
                                         </td>
                                         <td class="v-middle">
                                             <div class="font-weight-bold text-dark">@(item.RequestedBy?.FullName ?? "N/A")</div>
@@ -176,58 +186,46 @@
         .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
         .italic { font-style: italic; }
         .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
-        
-        /* Soft Badges */
-        .badge-light-success { background-color: #e8fadf; color: #71dd37; }
-        .badge-light-danger { background-color: #ffe5e5; color: #ff3e1d; }
-        .badge-light-warning { background-color: #fff2d6; color: #ffab00; }
-        .badge-light-info { background-color: #e7e7ff; color: #696cff; }
-        
-        /* Buttons circle fix */
-        .btn-circle {
-            width: 45px;
-            height: 45px;
-            padding: 10px 0;
-            border-radius: 50% !important;
-            font-size: 15px;
-            line-height: normal;
-        }
-
-        /* Acquisition Specific Blue Theme */
-        .border-primary { border-color: #2962ff !important; }
-        .text-primary { color: #2962ff !important; }
-        .btn-primary { background-color: #2962ff; border-color: #2962ff; }
     </style>
 }
 
 @section Scripts {
     <script>
         $(document).ready(function() {
-            // ==============================================================
-            // AÑADIDO: LÓGICA DE NOTIFICACIONES LOCALES PARA ADQUISICIONES
-            // ==============================================================
+            function escapeHtml(value) {
+                return $('<div/>').text(value || '').html();
+            }
+
+            function sanitizeIconClass(value) {
+                return value && /^[a-z0-9\-\s]+$/i.test(value) ? value : 'fas fa-shopping-cart text-success';
+            }
+
+            function getSafeNotificationUrl(url) {
+                return url && typeof url === 'string' && url.indexOf('/') === 0 && url.indexOf('//') !== 0 ? url : '';
+            }
+
             function loadLocalAcquisitionNotifications() {
-                // Le pasamos el filtro 'Adquisición' a la API
-                $.get('/Api/Notifications?handler=Unread&filter=Adquisición', function(data) {
+                $.get('/Api/Notifications?handler=Unread&scope=acquisition', function(data) {
                     const $area = $('#localNotificationsArea');
                     const $list = $('#localNotificationsList');
                     
                     if (data.items && data.items.length > 0) {
                         $list.empty();
                         $.each(data.items, function(i, item) {
-                            const icon = item.icon || 'fas fa-shopping-cart text-success';
-                            const url = item.url ? item.url : 'javascript:void(0)';
+                            const id = parseInt(item.id, 10) || 0;
+                            const icon = sanitizeIconClass(item.icon);
+                            const url = getSafeNotificationUrl(item.url);
                             
                             $list.append(`
-                                <div class="alert alert-light border border-success shadow-sm d-flex align-items-center mb-2" id="local-notif-${item.id}">
+                                <div class="alert alert-light border border-success shadow-sm d-flex align-items-center mb-2" id="local-notif-${id}">
                                     <div class="mr-3"><i class="${icon} fa-2x"></i></div>
                                     <div class="flex-grow-1">
-                                        <h6 class="alert-heading font-weight-bold mb-1 text-dark">${item.title}</h6>
-                                        <p class="mb-0 small text-muted">${item.message}</p>
-                                        <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${item.time}</small>
+                                        <h6 class="alert-heading font-weight-bold mb-1 text-dark">${escapeHtml(item.title || 'Notificación')}</h6>
+                                        <p class="mb-0 small text-muted">${escapeHtml(item.message)}</p>
+                                        <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${escapeHtml(item.time)}</small>
                                     </div>
                                     <div class="ml-3">
-                                        <a href="${url}" class="btn btn-sm btn-success btn-rounded px-3 font-weight-bold shadow-sm" onclick="markLocalAsRead(event, ${item.id}, '${url}')">
+                                        <a href="${url || 'javascript:void(0)'}" class="btn btn-sm btn-success btn-rounded px-3 font-weight-bold shadow-sm js-local-notification-link" data-notification-id="${id}" data-notification-url="${escapeHtml(url)}">
                                             Ver Detalles <i class="fas fa-arrow-right ml-1"></i>
                                         </a>
                                     </div>
@@ -241,19 +239,16 @@
                 });
             }
 
-            // Ejecutamos al cargar la vista
             loadLocalAcquisitionNotifications();
 
-            // Función para marcar como leída y desaparecer la alerta
             window.markLocalAsRead = function(e, id, url) {
-                $.get(`/Api/Notifications?handler=MarkAsRead&id=${id}`, function() {
+                if (e) e.preventDefault();
+                $.get('/Api/Notifications?handler=MarkAsRead&id=' + encodeURIComponent(id), function() {
                     if (url && url !== 'javascript:void(0)') {
                         window.location.href = url;
                     } else {
-                        // Ocultamos el cuadro suavemente
                         $(`#local-notif-${id}`).fadeOut(300, function() {
                             $(this).remove();
-                            // Si era la última alerta, ocultamos todo el panel principal
                             if ($('#localNotificationsList').children().length === 0) {
                                 $('#localNotificationsArea').slideUp();
                             }
@@ -261,6 +256,10 @@
                     }
                 });
             };
+
+            $('#localNotificationsList').on('click', '.js-local-notification-link', function(e) {
+                markLocalAsRead(e, $(this).data('notification-id'), $(this).data('notification-url'));
+            });
             
         });
     </script>

@@ -53,6 +53,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Cédula de Identidad")]
         public string IdentityCard { get; set; } = string.Empty;
 
+        [Display(Name = "Foto de Perfil")]
+        public string? ProfilePictureUrl { get; set; }
+
         // ========================================
         // ROLE AND STATUS
         // ========================================

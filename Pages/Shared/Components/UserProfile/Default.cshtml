@@ -1,0 +1,93 @@
+@model Proyecto_Laboratorios_Univalle.Pages.Shared.Components.UserProfileViewModel
+@{
+    var displayName = string.IsNullOrWhiteSpace(Model.FullName) ? (User.Identity?.Name ?? "Usuario") : Model.FullName;
+    var initials = string.IsNullOrWhiteSpace(Model.Initials) ? "US" : Model.Initials;
+    var avatarUrl = !string.IsNullOrWhiteSpace(Model.ProfilePictureUrl)
+        ? $"{Url.Content("~/uploads/users/" + Model.ProfilePictureUrl)}?v={Model.ProfilePictureVersion}"
+        : null;
+}
+
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle waves-effect waves-dark pro-pic d-flex align-items-center" href="" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        @if (!string.IsNullOrEmpty(avatarUrl))
+        {
+            <img src="@avatarUrl" alt="@displayName" class="rounded-circle user-profile-avatar-sm">
+        }
+        else
+        {
+            <span class="rounded-circle bg-info text-white font-weight-bold shadow-sm user-profile-avatar-sm user-profile-initials">
+                @initials
+            </span>
+        }
+        <span class="m-l-5 font-medium d-none d-sm-inline-block">
+            @displayName <i class="mdi mdi-chevron-down"></i>
+        </span>
+    </a>
+    <div class="dropdown-menu dropdown-menu-right user-dd animated" style="min-width: 240px;">
+        <div class="px-3 py-3 border-bottom">
+            <div class="d-flex align-items-center mb-2">
+                @if (!string.IsNullOrEmpty(avatarUrl))
+                {
+                    <img src="@avatarUrl" alt="@displayName" class="rounded-circle mr-2 user-profile-avatar-lg">
+                }
+                else
+                {
+                    <span class="rounded-circle bg-info text-white font-weight-bold shadow-sm mr-2 user-profile-avatar-lg user-profile-initials">
+                        @initials
+                    </span>
+                }
+                <div class="min-w-0">
+                    <h6 class="font-weight-bold text-dark mb-0 text-truncate">@displayName</h6>
+                    <small class="text-muted d-block text-truncate">@(string.IsNullOrWhiteSpace(Model.Email) ? "Correo no registrado" : Model.Email)</small>
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.PhoneNumber))
+            {
+                <div class="text-muted small">
+                    <i class="fas fa-phone-alt mr-1 text-info"></i> @Model.PhoneNumber
+                </div>
+            }
+        </div>
+
+        <a class="dropdown-item" asp-page="/Users/Details" asp-route-id="@Model.UserId">
+            <i class="ti-user m-r-5 m-l-5"></i> Mi Perfil
+        </a>
+        <div class="dropdown-divider"></div>
+        <form class="form-inline" method="post" asp-page="/Logout">
+            <button type="submit" class="dropdown-item"><i class="fa fa-power-off m-r-5 m-l-5"></i> Cerrar Sesion</button>
+        </form>
+    </div>
+</li>
+
+<style>
+    .user-profile-avatar-sm,
+    .user-profile-avatar-lg {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        object-fit: cover;
+        flex: 0 0 auto;
+    }
+
+    .user-profile-avatar-sm {
+        width: 31px;
+        height: 31px;
+        min-width: 31px;
+        font-size: 0.75rem;
+    }
+
+    .user-profile-avatar-lg {
+        width: 50px;
+        height: 50px;
+        min-width: 50px;
+        font-size: 1.1rem;
+    }
+
+    .user-profile-initials {
+        line-height: 1;
+    }
+
+    .min-w-0 {
+        min-width: 0;
+    }
+</style>

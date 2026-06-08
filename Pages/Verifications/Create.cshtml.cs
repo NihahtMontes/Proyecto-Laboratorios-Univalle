@@ -141,8 +141,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public async Task<IActionResult> OnPostAsync(bool isWizard = false)
         {
+            return await SaveVerificationAsync(isWizard, saveDraft: false);
+        }
+
+        public async Task<IActionResult> OnPostDraftAsync(bool isWizard = false)
+        {
+            return await SaveVerificationAsync(isWizard, saveDraft: true);
+        }
+
+        private async Task<IActionResult> SaveVerificationAsync(bool isWizard, bool saveDraft)
+        {
             // Recarga los checks para que la UI renderice bien si hay validación fallida
             LoadCheckItems();
+
+            if (saveDraft)
+            {
+                ModelState.Remove("Input.FacultyId");
+                ModelState.Remove("Input.LaboratoryId");
+                ModelState.Remove("Input.EquipmentUnitId");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -195,7 +212,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     Date = Input.Date,
                     Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions?.Where(f => !string.IsNullOrWhiteSpace(f)) ?? Enumerable.Empty<string>()) : null,
                     PhysicalCondition = physicalCondition,
-                    Status = Input.Status,
+                    Status = saveDraft ? VerificationStatus.Draft : (hasFailures ? VerificationStatus.WithObservations : VerificationStatus.Completed),
                     CreatedDate = DateTime.UtcNow,
                     CreatedById = user?.Id,
                     Faults = Input.FaultDescriptions?
@@ -217,7 +234,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 verification.Date = Input.Date;
                 verification.Observations = hasFailures ? string.Join(" | ", Input.FaultDescriptions?.Where(f => !string.IsNullOrWhiteSpace(f)) ?? Enumerable.Empty<string>()) : null;
                 verification.PhysicalCondition = physicalCondition;
-                verification.Status = Input.Status;
+                verification.Status = saveDraft ? VerificationStatus.Draft : (hasFailures ? VerificationStatus.WithObservations : VerificationStatus.Completed);
                 verification.LastModifiedDate = DateTime.UtcNow;
                 verification.ModifiedById = user?.Id;
 
@@ -269,20 +286,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             }
             await _context.SaveChangesAsync();
 
-            // Check if there were any failures to adjust the management plan state
+            // Actualizar management plan
             if (plan != null)
             {
                 plan.VerificationId = verification.Id;
 
-                if (hasFailures)
+                if (saveDraft)
+                {
+                    MarkVerificationDraft(plan);
+                }
+                else if (hasFailures)
                 {
                     plan.CurrentPhase = WizardPhase.TechnicalRequest;
                     plan.CurrentState = WizardEquipmentState.AwaitingRequest;
+                    ClearDraft(plan);
                 }
                 else
                 {
-                    plan.CurrentPhase = WizardPhase.Maintenance;
-                    plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
+                    plan.CurrentPhase = WizardPhase.Verification;
+                    plan.CurrentState = WizardEquipmentState.VerifiedGood;
+                    ClearDraft(plan);
                 }
 
                 await _context.SaveChangesAsync();
@@ -290,13 +313,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             if (isWizard)
             {
+                if (saveDraft)
+                {
+                    TempData.Success($"Borrador L-6 guardado correctamente.");
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 1, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                }
+
                 if (hasFailures)
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
 
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 1, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
             }
 
+            TempData.Success(saveDraft ? "Borrador guardado correctamente." : "Verificación registrada correctamente.");
             return RedirectToPage("./Index");
+        }
+
+        private static void MarkVerificationDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = true;
+            plan.DraftPhase = WizardPhase.Verification;
+            plan.DraftSavedAt = DateTime.UtcNow;
+            plan.DraftSummary = "Borrador L-6 guardado con verificación parcial.";
+            plan.CurrentPhase = WizardPhase.Verification;
+            plan.CurrentState = WizardEquipmentState.PendingVerification;
+            plan.PlanStatus = ManagementPlanStatus.InProgress;
+            plan.LastModifiedDate = DateTime.UtcNow;
+        }
+
+        private static void ClearDraft(ManagementPlan plan)
+        {
+            plan.IsDraft = false;
+            plan.DraftPhase = null;
+            plan.DraftSavedAt = null;
+            plan.DraftSummary = null;
+            plan.LastModifiedDate = DateTime.UtcNow;
         }
 
         private void LoadCheckItems()

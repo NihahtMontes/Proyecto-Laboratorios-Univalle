@@ -48,17 +48,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             // A) CARGAR LA LISTA DE LABORATORIOS PARA EL DESPLEGABLE
             var labs = await _context.Laboratories
                 .Where(l => l.Status == GeneralStatus.Activo)
-                .OrderBy(l => l.Name)
+                .OrderBy(l => l.Code)
+                .ThenBy(l => l.Name)
                 .ToListAsync();
-            LaboratoriesList = new SelectList(labs, "Id", "Name");
+            LaboratoriesList = new SelectList(LaboratoryDisplayHelper.ToSelectItems(labs), "Id", "DisplayName");
 
             // Lógica de Búsqueda 
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                equipmentQuery = equipmentQuery.Where(e => e.Name.ToLower().Contains(term) ||
-                                                           e.Units!.Any(u => u.InventoryNumber.Contains(term) || (u.Career != null && u.Career.Name.ToLower().Contains(term))) ||
-                                                           (e.Brand != null && e.Brand.ToLower().Contains(term)));
+                equipmentQuery = equipmentQuery.Where(e =>
+                    e.Name.ToLower().Contains(term) ||
+                    (e.Brand != null && e.Brand.ToLower().Contains(term)) ||
+                    (e.Model != null && e.Model.ToLower().Contains(term)) ||
+                    e.Units!.Any(u =>
+                        u.CurrentStatus != EquipmentStatus.Deleted &&
+                        (u.InventoryNumber.ToLower().Contains(term) ||
+                         (u.SerialNumber != null && u.SerialNumber.ToLower().Contains(term)) ||
+                         (u.Career != null && u.Career.Name.ToLower().Contains(term)))));
             }
 
             // Filtro por Categoría (Enum)
@@ -70,7 +77,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             // B) APLICAR EL FILTRO POR AMBIENTE (LABORATORIO)
             if (SelectedLaboratoryId.HasValue)
             {
-                equipmentQuery = equipmentQuery.Where(e => e.Units!.Any(u => u.LaboratoryId == SelectedLaboratoryId.Value));
+                equipmentQuery = equipmentQuery.Where(e => e.Units!.Any(u =>
+                    u.CurrentStatus != EquipmentStatus.Deleted &&
+                    u.LaboratoryId == SelectedLaboratoryId.Value));
             }
 
             // C) ORDENAR ALFABÉTICAMENTE POR NOMBRE

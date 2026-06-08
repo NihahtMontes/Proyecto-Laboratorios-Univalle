@@ -16,7 +16,7 @@
                     </div>
                 </div>
 
-                <form method="post" novalidate>
+                <form method="post" novalidate id="edit-management-form">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small font-weight-bold" role="alert"></div>
                     <input type="hidden" asp-for="Input.Id" />
 
@@ -33,6 +33,10 @@
                             <div class="form-group mb-4">
                                 <label asp-for="Input.Semester" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Semestre <span class="text-danger">*</span></label>
                                 <select asp-for="Input.Semester" class="form-control custom-select">
+                                    @if (Model.ManagementType == ManagementType.Corrective && Model.Input.Semester == 0)
+                                    {
+                                        <option value="0">Correctivo general (sin semestre)</option>
+                                    }
                                     <option value="1">Semestre 1 (Enero - Junio)</option>
                                     <option value="2">Semestre 2 (Julio - Diciembre)</option>
                                 </select>
@@ -67,6 +71,14 @@
                                 <small class="form-text text-muted italic mt-1 font-12"><i class="fas fa-exclamation-triangle mr-1 text-warning"></i> Solo una gestión puede estar "Activa" a la vez.</small>
                             </div>
 
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Facultad Asociada</label>
+                                <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="Model.FacultyList">
+                                    <option value="">-- Seleccione Facultad --</option>
+                                </select>
+                                <span asp-validation-for="Input.FacultyId" class="text-danger small font-weight-bold"></span>
+                            </div>
+
                             <div class="form-group mb-0 bg-light p-3 rounded">
                                 <label asp-for="Input.Description" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Observaciones Generales</label>
                                 <textarea asp-for="Input.Description" class="form-control italic" rows="4" placeholder="Detalles sobre este periodo..."></textarea>
@@ -91,4 +103,44 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        $(function () {
+            var form = document.getElementById('edit-management-form');
+            if (!form) {
+                return;
+            }
+
+            form.addEventListener('submit', function (event) {
+                if (form.dataset.confirmed === 'true') {
+                    return true;
+                }
+
+                event.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    form.dataset.confirmed = 'true';
+                    HTMLFormElement.prototype.submit.call(form);
+                    return false;
+                }
+
+                Swal.fire({
+                    title: 'Guardar cambios',
+                    text: 'Se actualizaran los parametros administrativos de esta gestion L-48.',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Si, guardar',
+                    cancelButtonText: 'Cancelar'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        form.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+
+                return false;
+            });
+        });
+    </script>
 }

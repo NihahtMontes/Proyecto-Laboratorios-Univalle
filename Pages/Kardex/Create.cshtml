@@ -4,7 +4,7 @@
 @using Proyecto_Laboratorios_Univalle.Helpers
 
 @{
-    ViewData["Title"] = "Concluir Mantenimiento (Kardex)";
+    ViewData["Title"] = "Completar Kardex";
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 5);
     var categoryList = Html.GetEnumSelectList<CostCategory>();
@@ -21,7 +21,7 @@
             <div class="card-header bg-info p-4">
                 <div class="d-flex no-block align-items-center">
                     <div>
-                        <h4 class="card-title text-white font-weight-bold mb-0">Concluir Mantenimiento (Kardex)</h4>
+                        <h4 class="card-title text-white font-weight-bold mb-0">Completar Kardex</h4>
                         <h6 class="card-subtitle text-white-50 mb-0">Completa los datos del mantenimiento L-8, cierra la salida L-3 y habilita el desembolso.</h6>
                     </div>
                     <div class="ml-auto text-right text-white">
@@ -235,7 +235,7 @@
                         </div>
 
                         <div class="alert alert-info border-0 shadow-sm mt-4">
-                            <strong>Al concluir:</strong> el mantenimiento L-8 quedará <strong>Completado</strong>, la salida L-3 se cerrará con devolución y el equipo avanzará a Desembolso. El registro quedará disponible en el Kardex histórico del equipo.
+                            <strong>                            Al completar Kardex:</strong> el mantenimiento L-8 quedará <strong>Completado</strong>, la salida L-3 se cerrará con devolución y el equipo avanzará a Desembolso. El registro quedará disponible en el Kardex histórico del equipo.
                         </div>
 
                         <div class="mt-5 d-flex justify-content-between border-top pt-4">
@@ -253,7 +253,7 @@
                                     <i class="fas fa-save mr-2"></i> Guardar Borrador
                                 </button>
                                 <button type="submit" asp-page-handler="Close" id="btnSubmitKardex" formnovalidate class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold text-white">
-                                    <i class="fas fa-check-double mr-2"></i> Concluir Mantenimiento
+                                    <i class="fas fa-check-double mr-2"></i> Completar Kardex
                                 </button>
                             </div>
                         </div>
@@ -338,7 +338,7 @@
                 }
 
                 Swal.fire({
-                    title: isDraft ? '¿Guardar borrador?' : '¿Concluir Mantenimiento?',
+                    title: isDraft ? '¿Guardar borrador?' : '¿Completar Kardex?',
                     text: isDraft
                         ? 'Se guardará el avance sin pasar a desembolso. Podrás continuar el cierre de Kardex más tarde.'
                         : 'Se completará el mantenimiento L-8, se cerrará la salida L-3 con devolución y el equipo avanzará a Desembolso.',

@@ -352,6 +352,10 @@
                         }
                         @if (!techMissing)
                         {
+                            <button type="submit" asp-page-handler="Draft" id="btnDraftDeparture" formnovalidate
+                                    class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2 py-2">
+                                <i class="fas fa-save mr-1"></i> Guardar Borrador
+                            </button>
                             <button type="button" class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark py-2" onclick="confirmDepartureDirect()">
                                 <i class="fas fa-save mr-1"></i> Registrar Salida L-3
                             </button>
@@ -436,6 +440,45 @@
                 });
             });
 
+        });
+
+        let isConfirmedSubmit = false;
+        $('#departureForm').on('submit', function(e) {
+            if (isConfirmedSubmit) return true;
+
+            var submitter = e.originalEvent && e.originalEvent.submitter ? e.originalEvent.submitter : document.activeElement;
+            var isDraft = submitter && submitter.id === 'btnDraftDeparture';
+
+            if (isDraft) {
+                e.preventDefault();
+
+                const form = this;
+                const submitForm = function() {
+                    isConfirmedSubmit = true;
+                    $('#btnDraftDeparture').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                    HTMLFormElement.prototype.submit.call(form);
+                };
+
+                if (typeof Swal === 'undefined') {
+                    submitForm();
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Guardar borrador L-3?',
+                    text: 'Se guardará el avance parcial sin pasar al Kardex. Podrás continuar la salida más tarde.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#17a2b8',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, guardar borrador',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        submitForm();
+                    }
+                });
+            }
         });
 
         function confirmDepartureDirect() {

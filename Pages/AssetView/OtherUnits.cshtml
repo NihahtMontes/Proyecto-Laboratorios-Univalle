@@ -1,0 +1,171 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.AssetView.OtherUnitsModel
+@using Proyecto_Laboratorios_Univalle.Helpers
+
+@{
+    ViewData["Title"] = "Otros Activos";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h2 class="card-title text-dark font-weight-bold mt-2 ml-2">Otros Activos</h2>
+                        <h6 class="card-subtitle text-muted ml-2">Unidades fisicas vigentes que no pertenecen a equipos ni utensilios.</h6>
+                    </div>
+                    <div class="ml-auto mt-3 mt-md-0">
+                        <a asp-page="./Index" asp-route-activeTab="Inventario" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
+                            <i class="fas fa-arrow-left mr-1"></i> Volver
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-light p-3 mb-4 rounded border-left border-warning shadow-sm">
+                    <form method="get">
+                        <div class="row align-items-end">
+                            <div class="col-md-8">
+                                <label class="small font-weight-bold text-muted uppercase">Busqueda por activo, inventario o serie</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, numero de inventario o numero de serie..." />
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-right mt-3 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
+                                </button>
+                                <a asp-page="./OtherUnits" class="btn btn-outline-secondary btn-rounded ml-1">
+                                    <i class="fas fa-sync-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Activo</th>
+                                <th>Inventario</th>
+                                <th>Serie</th>
+                                <th>Laboratorio</th>
+                                <th>Estado / Condicion</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Units == null || !Model.Units.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted italic font-weight-bold">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron unidades fisicas para otros activos.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var unit in Model.Units)
+                                {
+                                    <tr>
+                                        <td>
+                                            <h6 class="m-b-0 font-weight-bold text-dark">@unit.Equipment?.Name</h6>
+                                            <span class="text-muted small">@unit.Equipment?.Brand @unit.Equipment?.Model</span>
+                                        </td>
+                                        <td class="font-weight-bold text-dark">@unit.InventoryNumber</td>
+                                        <td>@(unit.SerialNumber ?? "Sin dato")</td>
+                                        <td>@(unit.Laboratory?.Name ?? "Sin asignar")</td>
+                                        <td>
+                                            <span class="badge badge-pill badge-info px-3 py-1">@EnumHelper.GetDisplayName(unit.CurrentStatus)</span>
+                                            <span class="badge badge-pill badge-light border px-3 py-1">@((unit.PhysicalCondition.HasValue ? EnumHelper.GetDisplayName(unit.PhysicalCondition.Value) : "Sin dato"))</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group">
+                                                <a asp-page="/EquipmentUnits/Details" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Ver">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </a>
+                                                <a asp-page="/EquipmentUnits/Edit" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-warning btn-rounded" title="Editar">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <form method="post" asp-page-handler="DeleteUnit" asp-route-id="@unit.Id" class="d-inline delete-unit-form">
+                                                    <input type="hidden" asp-for="SearchTerm" />
+                                                    <input type="hidden" asp-for="PageIndex" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded ml-1" title="Dar de baja">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @{
+                    var pagedUnits = Model.Units;
+                }
+                @if (pagedUnits != null && pagedUnits.TotalPages > 1)
+                {
+                    <nav aria-label="Paginacion de unidades">
+                        <ul class="pagination justify-content-center">
+                            @if (pagedUnits.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./OtherUnits" asp-route-searchTerm="@Model.SearchTerm" asp-route-pageIndex="@(pagedUnits.PageIndex - 1)">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= pagedUnits.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == pagedUnits.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./OtherUnits" asp-route-searchTerm="@Model.SearchTerm" asp-route-pageIndex="@i">@i</a>
+                                </li>
+                            }
+                            @if (pagedUnits.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./OtherUnits" asp-route-searchTerm="@Model.SearchTerm" asp-route-pageIndex="@(pagedUnits.PageIndex + 1)">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $(document).on('submit', '.delete-unit-form', function(e) {
+                e.preventDefault();
+                var form = this;
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call(form);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Dar de baja esta unidad?',
+                    text: 'Esta accion marcara la unidad fisica como eliminada.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, dar de baja',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d'
+                }).then(function(result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
+        });
+    </script>
+}

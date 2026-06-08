@@ -1,0 +1,359 @@
+@page
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@model Proyecto_Laboratorios_Univalle.Pages.Managements.PlanAssetsModel
+
+@{
+    ViewData["Title"] = "Planificar activos";
+}
+
+@section Styles {
+    <style>
+        .asset-metric-tile {
+            min-height: 134px;
+            border-radius: 8px;
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
+            overflow: hidden;
+            position: relative;
+            transition: transform .18s ease, box-shadow .18s ease;
+        }
+        .asset-metric-tile:hover { transform: translateY(-3px); box-shadow: 0 16px 30px rgba(15, 23, 42, .16); }
+        .asset-metric-tile:after {
+            content: "";
+            width: 96px; height: 96px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .14);
+            position: absolute;
+            right: -24px; top: -24px;
+        }
+        .asset-metric-icon {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .18);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .asset-metric-value {
+            font-size: 2rem;
+            line-height: 1;
+            letter-spacing: 0;
+        }
+        .asset-bg-blue   { background: linear-gradient(135deg, #2962ff, #36a3ff); }
+        .asset-bg-green  { background: linear-gradient(135deg, #00c292, #48d65b); }
+        .asset-bg-amber  { background: linear-gradient(135deg, #ffb22b, #ff8f00); }
+        .asset-bg-purple { background: linear-gradient(135deg, #7460ee, #a163f7); }
+        .asset-bg-slate  { background: linear-gradient(135deg, #475569, #64748b); }
+    </style>
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-md-flex align-items-start mb-4 pb-3 border-bottom">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Planificar activos</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Seleccione unidades fisicas para la ronda preventiva @Model.Management.Code.</h6>
+                    </div>
+                    <div class="ml-auto mt-3 mt-md-0">
+                        <a asp-page="./Details" asp-route-id="@Model.Management.Id" asp-route-ActiveTab="dashboard" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
+                            <i class="fas fa-arrow-left mr-1"></i> Volver
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="asset-metric-tile asset-bg-blue p-3">
+                            <div class="asset-metric-icon mb-3"><i class="fas fa-search"></i></div>
+                            <div class="asset-metric-value font-weight-bold">@Model.TotalMatching</div>
+                            <div class="font-weight-bold mt-2">Coincidencias</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="asset-metric-tile asset-bg-amber p-3">
+                            <div class="asset-metric-icon mb-3"><i class="fas fa-check-double"></i></div>
+                            <div class="asset-metric-value font-weight-bold">@Model.AlreadyPlanned</div>
+                            <div class="font-weight-bold mt-2">Ya planificados</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="asset-metric-tile asset-bg-green p-3">
+                            <div class="asset-metric-icon mb-3"><i class="fas fa-layer-group"></i></div>
+                            <div class="asset-metric-value font-weight-bold">@Model.AvailableMatching</div>
+                            <div class="font-weight-bold mt-2">Disponibles</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="asset-metric-tile asset-bg-purple p-3">
+                            <div class="asset-metric-icon mb-3"><i class="fas fa-history"></i></div>
+                            <div class="asset-metric-value font-weight-bold">@Model.WithHistory</div>
+                            <div class="font-weight-bold mt-2">Con historial visible</div>
+                        </div>
+                    </div>
+                </div>
+
+                <form method="get" class="bg-light border rounded p-3 mb-4">
+                    <input type="hidden" name="id" value="@Model.Management.Id" />
+                    <div class="row">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <label class="small font-weight-bold text-muted text-uppercase">Ambiente</label>
+                            <select asp-for="LaboratoryId" asp-items="Model.LaboratoryList" class="form-control custom-select">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6 mb-3">
+                            <label class="small font-weight-bold text-muted text-uppercase">Categoria</label>
+                            <select asp-for="Category" asp-items="Model.CategoryList" class="form-control custom-select">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <label class="small font-weight-bold text-muted text-uppercase">Clasificacion tecnica</label>
+                            <select asp-for="TypeClassification" asp-items="Model.TypeClassificationList" class="form-control custom-select">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6 mb-3">
+                            <label class="small font-weight-bold text-muted text-uppercase">Utensilio</label>
+                            <select asp-for="UtensilType" asp-items="Model.UtensilTypeList" class="form-control custom-select">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-6 mb-3">
+                            <label class="small font-weight-bold text-muted text-uppercase">Buscar</label>
+                            <input asp-for="SearchTerm" class="form-control" placeholder="Inventario o nombre" />
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-rounded px-4 font-weight-bold">
+                        <i class="fas fa-filter mr-1"></i> Filtrar
+                    </button>
+                    <a asp-page="./PlanAssets" asp-route-id="@Model.Management.Id" class="btn btn-light border btn-rounded px-4 font-weight-bold ml-2">
+                        <i class="fas fa-undo mr-1"></i> Limpiar
+                    </a>
+                </form>
+
+                <form method="post" asp-page-handler="ApplySelection" id="planSelectionForm">
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="LaboratoryId" />
+                    <input type="hidden" asp-for="Category" />
+                    <input type="hidden" asp-for="TypeClassification" />
+                    <input type="hidden" asp-for="UtensilType" />
+                    <input type="hidden" asp-for="SearchTerm" />
+                    <input type="hidden" asp-for="PageIndex" />
+
+                    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-3">
+                        <div class="text-muted small">
+                            Mostrando <strong>@Model.FirstItemNumber</strong> - <strong>@Model.LastItemNumber</strong> de <strong>@Model.TotalMatching</strong> coincidencias.
+                            <span class="ml-md-2 d-block d-md-inline">Pagina <strong>@Model.CurrentPage</strong> de <strong>@Model.TotalPages</strong>.</span>
+                        </div>
+                        <div class="text-muted small mt-2 mt-md-0">
+                            <i class="fas fa-info-circle mr-1"></i> La seleccion aplica solo a la pagina visible.
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover v-middle">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="border-top-0" style="width:48px;">
+                                        <input type="checkbox" id="selectAllCandidates" />
+                                    </th>
+                                    <th class="border-top-0">Activo</th>
+                                    <th class="border-top-0">Inventario</th>
+                                    <th class="border-top-0">Subclasificacion</th>
+                                    <th class="border-top-0">Ambiente</th>
+                                    <th class="border-top-0 text-center">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.Candidates.Any())
+                                {
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-5">No hay activos con los filtros actuales.</td>
+                                    </tr>
+                                }
+                                @foreach (var item in Model.Candidates)
+                                {
+                                    <tr class="@(item.AlreadyPlanned ? "text-muted" : "")">
+                                        <td>
+                                            <input type="hidden" name="PageUnitIds" value="@item.UnitId" />
+                                            <input type="checkbox"
+                                                   name="SelectedUnitIds"
+                                                   value="@item.UnitId"
+                                                   class="candidate-check"
+                                                   data-planned="@(item.AlreadyPlanned ? "true" : "false")"
+                                                   data-history="@(item.HasHistory ? "true" : "false")"
+                                                   checked="@item.AlreadyPlanned" />
+                                        </td>
+                                        <td class="font-weight-bold text-dark">@item.EquipmentName</td>
+                                        <td>@item.InventoryNumber</td>
+                                        <td>@item.CategoryName</td>
+                                        <td>@item.LaboratoryName</td>
+                                        <td class="text-center">
+                                            @if (item.AlreadyPlanned)
+                                            {
+                                                if (item.HasHistory)
+                                                {
+                                                    <span class="badge badge-light-warning text-warning px-3 py-1">Con historial</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge badge-light-success text-success px-3 py-1">Planificado</span>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-light-info text-info px-3 py-1">Disponible</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    @if (Model.TotalPages > 1)
+                    {
+                        <nav aria-label="Paginacion de activos para planificacion" class="mt-3">
+                            <ul class="pagination justify-content-center mb-0">
+                                <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                                    <a class="page-link"
+                                       asp-page="./PlanAssets"
+                                       asp-route-id="@Model.Management.Id"
+                                       asp-route-LaboratoryId="@Model.LaboratoryId"
+                                       asp-route-Category="@Model.Category"
+                                       asp-route-TypeClassification="@Model.TypeClassification"
+                                       asp-route-UtensilType="@Model.UtensilType"
+                                       asp-route-SearchTerm="@Model.SearchTerm"
+                                       asp-route-PageIndex="@(Model.CurrentPage - 1)">Anterior</a>
+                                </li>
+
+                                @{
+                                    var startPage = Math.Max(1, Model.CurrentPage - 2);
+                                    var endPage = Math.Min(Model.TotalPages, Model.CurrentPage + 2);
+                                }
+
+                                @if (startPage > 1)
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link"
+                                           asp-page="./PlanAssets"
+                                           asp-route-id="@Model.Management.Id"
+                                           asp-route-LaboratoryId="@Model.LaboratoryId"
+                                           asp-route-Category="@Model.Category"
+                                           asp-route-TypeClassification="@Model.TypeClassification"
+                                           asp-route-UtensilType="@Model.UtensilType"
+                                           asp-route-SearchTerm="@Model.SearchTerm"
+                                           asp-route-PageIndex="1">1</a>
+                                    </li>
+                                    @if (startPage > 2)
+                                    {
+                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                    }
+                                }
+
+                                @for (var pageNumber = startPage; pageNumber <= endPage; pageNumber++)
+                                {
+                                    <li class="page-item @(pageNumber == Model.CurrentPage ? "active" : "")">
+                                        <a class="page-link"
+                                           asp-page="./PlanAssets"
+                                           asp-route-id="@Model.Management.Id"
+                                           asp-route-LaboratoryId="@Model.LaboratoryId"
+                                           asp-route-Category="@Model.Category"
+                                           asp-route-TypeClassification="@Model.TypeClassification"
+                                           asp-route-UtensilType="@Model.UtensilType"
+                                           asp-route-SearchTerm="@Model.SearchTerm"
+                                           asp-route-PageIndex="@pageNumber">@pageNumber</a>
+                                    </li>
+                                }
+
+                                @if (endPage < Model.TotalPages)
+                                {
+                                    @if (endPage < Model.TotalPages - 1)
+                                    {
+                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                    }
+                                    <li class="page-item">
+                                        <a class="page-link"
+                                           asp-page="./PlanAssets"
+                                           asp-route-id="@Model.Management.Id"
+                                           asp-route-LaboratoryId="@Model.LaboratoryId"
+                                           asp-route-Category="@Model.Category"
+                                           asp-route-TypeClassification="@Model.TypeClassification"
+                                           asp-route-UtensilType="@Model.UtensilType"
+                                           asp-route-SearchTerm="@Model.SearchTerm"
+                                           asp-route-PageIndex="@Model.TotalPages">@Model.TotalPages</a>
+                                    </li>
+                                }
+
+                                <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                                    <a class="page-link"
+                                       asp-page="./PlanAssets"
+                                       asp-route-id="@Model.Management.Id"
+                                       asp-route-LaboratoryId="@Model.LaboratoryId"
+                                       asp-route-Category="@Model.Category"
+                                       asp-route-TypeClassification="@Model.TypeClassification"
+                                       asp-route-UtensilType="@Model.UtensilType"
+                                       asp-route-SearchTerm="@Model.SearchTerm"
+                                       asp-route-PageIndex="@(Model.CurrentPage + 1)">Siguiente</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    }
+
+                    <div class="d-flex justify-content-end mt-3">
+                        <button type="submit" class="btn btn-success btn-rounded px-4 font-weight-bold shadow-sm">
+                            <i class="fas fa-save mr-1"></i> Aplicar cambios de planificacion
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('#selectAllCandidates').on('change', function () {
+                $('.candidate-check').prop('checked', this.checked);
+            });
+
+            $('#planSelectionForm').on('submit', function (event) {
+                var form = this;
+                var removals = $('.candidate-check[data-planned="true"]:not(:checked)').length;
+                var removalsWithHistory = $('.candidate-check[data-planned="true"][data-history="true"]:not(:checked)').length;
+
+                if (removals === 0) {
+                    return true;
+                }
+
+                event.preventDefault();
+
+                var message = removalsWithHistory > 0
+                    ? 'Se excluiran ' + removals + ' activo(s) de esta pagina. ' + removalsWithHistory + ' tienen historial; sus registros L-6/L-7/L-8/L-3/L-12 se cancelaran logicamente.'
+                    : 'Se excluiran ' + removals + ' activo(s) de esta pagina visible.';
+
+                if (window.Swal && typeof Swal.fire === 'function') {
+                    Swal.fire({
+                        title: 'Aplicar cambios de planificacion',
+                        text: message,
+                        type: removalsWithHistory > 0 ? 'warning' : 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Si, aplicar cambios',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#28a745',
+                        cancelButtonColor: '#6c757d'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            HTMLFormElement.prototype.submit.call(form);
+                        }
+                    });
+                } else if (confirm(message)) {
+                    HTMLFormElement.prototype.submit.call(form);
+                }
+            });
+        });
+    </script>
+}

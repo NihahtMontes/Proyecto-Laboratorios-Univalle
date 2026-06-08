@@ -214,7 +214,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 }
                 else
                 {
-                    plan.CurrentPhase = WizardPhase.Maintenance;
+                    plan.CurrentPhase = WizardPhase.Verification;
                     plan.CurrentState = WizardEquipmentState.VerifiedGood;
                 }
 
@@ -238,7 +238,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
 
             if (IsWizard)
-                return RedirectToPage("/Index", new { ShowWizard = true, Step = 3, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
+                return RedirectToPage("/Index", new { ShowWizard = true, Step = 1, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
 
             return RedirectToPage("./Index");
         }

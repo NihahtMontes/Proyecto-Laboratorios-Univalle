@@ -23,18 +23,21 @@
                     </div>
                 </div>
 
-                <div class="bg-light p-4 mb-4 rounded border shadow-sm">
-                    <form method="get" class="mb-0">
+                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                    <form method="get">
                         <div class="row align-items-end">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="small font-weight-bold text-muted uppercase">Laboratorio / Ambiente</label>
-                                <select asp-for="FilterLaboratoryId" class="form-control custom-select" asp-items="Model.LaboratoryList" onchange="this.form.submit()">
+                                <select asp-for="FilterLaboratoryId" class="form-control custom-select drop-shadow" asp-items="Model.LaboratoryList">
                                     <option value="">-- Seleccione un laboratorio --</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded font-weight-bold">
-                                    <i class="fas fa-sync-alt mr-1"></i> Limpiar filtro
+                            <div class="col-md-4 text-right mt-2 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
+                                </button>
+                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
+                                    <i class="fas fa-sync-alt"></i>
                                 </a>
                             </div>
                         </div>
@@ -63,11 +66,11 @@
                         <table class="table table-hover v-middle">
                             <thead class="bg-light">
                                 <tr class="small uppercase font-weight-bold">
-                                    <th class="border-top-0 text-center" style="width: 15%;">Fecha</th>
-                                    <th class="border-top-0" style="width: 25%;">Laboratorio</th>
-                                    <th class="border-top-0 text-center" style="width: 20%;">Equipos</th>
-                                    <th class="border-top-0" style="width: 25%;">Inspector</th>
-                                    <th class="border-top-0 text-center" style="width: 15%;">Acción</th>
+                                    <th class="text-center" style="width: 15%;">Fecha</th>
+                                    <th style="width: 25%;">Laboratorio</th>
+                                    <th class="text-center" style="width: 20%;">Equipos</th>
+                                    <th style="width: 25%;">Inspector</th>
+                                    <th class="text-center" style="width: 15%;">Acción</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -136,3 +139,28 @@
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .v-middle td {
+            vertical-align: middle !important;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .drop-shadow {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .opacity-2 {
+            opacity: 0.2;
+        }
+    </style>
+}

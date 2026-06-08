@@ -2,7 +2,7 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Editar Definición de Equipo";
+    ViewData["Title"] = "Editar Definición de Activo";
 }
 
 <div class="row">
@@ -11,8 +11,8 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Editar Definición: @(Model.ExistingEquipmentDisplay?.Name ?? "Equipo")</h4>
-                        <h6 class="card-subtitle text-muted">Actualice la ficha técnica general del catálogo.</h6>
+                        <h4 class="card-title text-dark font-weight-bold">Editar Definición: @(Model.ExistingEquipmentDisplay?.Name ?? "Activo")</h4>
+                        <h6 class="card-subtitle text-muted">Actualice la ficha técnica general del recurso en catálogo.</h6>
                     </div>
                     <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-edit fa-2x text-warning"></i>
@@ -35,14 +35,21 @@
                             </div>
 
                             <div class="form-group mb-3" id="utensilContainer" style="display:none;">
-                                <label asp-for="Input.UtensilType" class="control-label font-weight-bold small uppercase text-muted">Tipo de Material / Utensilio <span class="text-danger">*</span></label>
-                                <select asp-for="Input.UtensilType" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<UtensilType>()" id="utensilSelect">
+                                <label asp-for="Input.UtensilType" class="control-label font-weight-bold small uppercase text-muted">Subclasificacion de Utensilio <span class="text-danger">*</span></label>
+                                <select asp-for="Input.UtensilType" class="form-control custom-select border-info" asp-items="Model.UtensilTypeOptions" id="utensilSelect">
                                 </select>
                                 <span asp-validation-for="Input.UtensilType" class="text-danger small"></span>
                             </div>
 
+                            <div class="form-group mb-3" id="classificationContainer">
+                                <label asp-for="Input.TypeClassification" class="control-label font-weight-bold small uppercase text-muted">Clasificación Técnica <span class="text-danger">*</span></label>
+                                <select asp-for="Input.TypeClassification" class="form-control custom-select border-info" asp-items="Model.EquipmentTypeClassificationOptions" id="classificationSelect">
+                                </select>
+                                <span asp-validation-for="Input.TypeClassification" class="text-danger small"></span>
+                            </div>
+
                             <div class="form-group mb-3">
-                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Activo <span class="text-danger">*</span></label>
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Activo / Recurso <span class="text-danger">*</span></label>
                                 <input asp-for="Input.Name" class="form-control" required placeholder="Ej: Espectrofotómetro" />
                                 <span asp-validation-for="Input.Name" class="text-danger small"></span>
                             </div>
@@ -149,7 +156,10 @@
                         <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Guardar Cambios
                         </button>
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                        @{
+                            var returnUrl = ViewData["ReturnUrl"]?.ToString();
+                        }
+                        <a href="@(returnUrl == "Details" ? Url.Page("./Details", new { id = Model.Input.Id }) : Url.Page("./Index"))" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                             Cancelar
                         </a>
                     </div>
@@ -169,7 +179,7 @@
                         <i class="fas fa-microscope fa-lg"></i>
                     </div>
                     <h5 class="font-weight-bold text-white mb-1">@Model.Input.Name</h5>
-                    <span class="badge badge-pill badge-info px-3 small font-weight-bold">Catálogo</span>
+                        <span class="badge badge-pill badge-info px-3 small font-weight-bold">Catálogo</span>
                 </div>
 
                 <div class="d-flex justify-content-between mb-2">
@@ -228,14 +238,47 @@
                 // 1 es Utensilio (Utensil) en el Enum
                 if (category == '1') {
                     $('#utensilContainer').fadeIn();
+                    $('#classificationContainer').fadeOut();
                 } else {
                     $('#utensilContainer').fadeOut();
                     $('#utensilSelect').val('0'); // Reset a "No Aplica"
+                    $('#classificationContainer').fadeIn();
+                    if (category == '2') {
+                        $('#classificationSelect').val('7');
+                        $('#classificationContainer').fadeOut();
+                    }
                 }
             }
 
             $('#categorySelect').change(toggleType);
             toggleType(); // Inicializar al cargar
+
+            // Confirmación SweetAlert2 para Guardar Cambios
+            var $editForm = $('#editForm');
+            $editForm.on('submit', function(e) {
+                e.preventDefault();
+                if (!$editForm.valid()) {
+                    return;
+                }
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call(this);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Guardar cambios?',
+                    text: 'Se actualizarán los datos de la definición de catálogo.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#6c757d'
+                }).then(function(result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call($editForm[0]);
+                    }
+                });
+            });
         });
     </script>
     @{

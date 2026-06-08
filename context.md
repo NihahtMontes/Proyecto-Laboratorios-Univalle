@@ -19,7 +19,7 @@ El contexto historico completo anterior quedo archivado en `.agent/archive/conte
 | Capa | Tecnologia |
 |---|---|
 | Backend | ASP.NET Core 9.0 con Razor Pages |
-| ORM | Entity Framework Core 9.0 con PostgreSQL/Npgsql |
+| ORM | Entity Framework Core 9.0 con SQL Server |
 | Frontend | Razor Pages, Bootstrap 4, NiceAdmin, jQuery, Select2 |
 | Alertas | SweetAlert2 v7.19.3 |
 | Excel | EPPlus 7.5.2 |
@@ -39,9 +39,18 @@ No agregar dependencias ni cambiar stack sin aprobacion explicita.
 - SweetAlert2 instalado es v7. Usar `result && (result.isConfirmed === true || result.value === true)`.
 - Para submits criticos usar `HTMLFormElement.prototype.submit.call(form)` despues de confirmar.
 - TempData debe usar helpers seguros: `TempData.Success()`, `TempData.Error()`, `TempData.Warning()`.
+- El layout global debe consumir las claves reales de helpers: `SuccessMessage`, `ErrorMessage`, `WarningMessage`, `InfoMessage` y mantener fallback legacy si existe.
+- CRUD estandar: Create muestra exito posterior sin confirmacion previa; Edit requiere confirmacion SweetAlert antes de guardar; Delete/soft-delete requiere confirmacion SweetAlert antes de enviar.
 - No usar `FullName` de `Person` en LINQ porque es `[NotMapped]`.
 - `Semester` en `Management` acepta `0` para correctivo, `1` y `2` para preventivo.
 - Si la tarea toca mas de 5 archivos, proponer plan antes de editar.
+
+## Orquestacion De Agentes
+
+- Codex es el orquestador: lee contexto, divide trabajo, evita ediciones solapadas, integra resultados y verifica build.
+- Agente UI/UX tipo Kimi K2.6: revisar vistas `.cshtml`, SweetAlert2 v7, textos, botones, accesibilidad visual y consistencia NiceAdmin/Bootstrap 4.
+- Agente Backend/Data tipo DeepSeek V4 Pro: revisar PageModels `.cshtml.cs`, `InputModel`, EF Core tracking, soft-delete, redirects y `TempData`.
+- Para tareas de mas de 5 archivos, Codex debe entregar un plan y prompts de subagente antes de ejecutar.
 
 ## Mapa Rapido
 

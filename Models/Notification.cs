@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
@@ -24,6 +25,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(50)]
         public string? IconClass { get; set; } 
 
+        public int? ManagementId { get; set; }
+
+        public ManagementType? ManagementType { get; set; }
+
+        [StringLength(50)]
+        public string? Scope { get; set; }
+
         public bool IsRead { get; set; } = false;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -31,5 +39,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // Propiedad de navegación
         [ForeignKey("UserId")]
         public virtual User? User { get; set; }
+
+        [ForeignKey("ManagementId")]
+        public virtual Management? Management { get; set; }
     }
 }

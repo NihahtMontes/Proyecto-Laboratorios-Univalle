@@ -2,143 +2,205 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Reports.IndexModel
 @{
     ViewData["Title"] = "Centro de Reportes Oficiales";
+    var managementLabel = Model.SelectedManagement == null
+        ? "Seleccione una gestión para exportar reportes oficiales."
+        : $"Gestión {Model.SelectedManagement.Code} - {(Model.IsCorrective ? "Correctivo" : "Preventivo")}";
+    var labLabel = Model.SelectedLaboratory?.Name ?? "Todos los laboratorios";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4" style="font-family: 'Inter', sans-serif;">
-    <div>
-        <h3 class="wizard-title text-dark mb-1" style="font-weight: 900; color: #0f172a !important;">Centro de Reportes Oficiales</h3>
-        <p class="wizard-subtitle mb-0" style="font-weight: 500; color: #64748b;">Panel central para exportación de actas y formularios de laboratorio.</p>
-    </div>
-</div>
-
-<section class="section dashboard" style="font-family: 'Inter', sans-serif;">
-    <!-- FILTRO DE LABORATORIO -->
-    <div class="card premium-card border-0 mb-4 shadow-sm" style="border-radius: 16px; background: #ffffff; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-        <div class="card-body p-4">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <h5 class="card-title p-0 m-0" style="font-weight: 800; color: #1e293b; border-bottom: none;">
-                        <i class="fas fa-filter text-primary mr-2"></i> Selecciona un Laboratorio
-                    </h5>
-                    <p class="text-muted small mt-1 mb-0" style="font-weight: 500;">Elige un ambiente para ver sus equipos y descargar reportes individuales o consolidados.</p>
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Centro de Reportes Oficiales</h3>
+                        <h6 class="card-subtitle text-muted ml-2">
+                            @managementLabel
+                            @if (Model.SelectedManagement != null && Model.SelectedLabId.HasValue)
+                            {
+                                <span> / @labLabel</span>
+                            }
+                        </h6>
+                    </div>
+                    <div class="ml-auto mt-3">
+                        @if (Model.SelectedManagement != null)
+                        {
+                            <a asp-page="/Managements/Details" asp-route-id="@Model.SelectedManagement.Id" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                                <i class="fas fa-arrow-left mr-1 text-info"></i> Volver a Gestión
+                            </a>
+                        }
+                    </div>
                 </div>
-                <div class="col-md-6 text-right">
-                    <form method="get" class="d-flex align-items-center justify-content-end gap-3">
-                        <select asp-for="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control shadow-sm input-group-custom w-100" style="border-radius: 12px; background-color: #f8fafc; border: 1.5px solid #e2e8f0; font-weight: 600; color: #334155; padding: 8px 12px; height: 48px; outline: none; transition: box-shadow 0.2s; max-width: 350px;" onchange="this.form.submit()">
-                            <option value="">-- Todos los Laboratorios --</option>
-                        </select>
+
+                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                    <form method="get">
+                        <input type="hidden" asp-for="ManagementId" />
+                        <div class="row align-items-end">
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold text-muted uppercase">Laboratorio</label>
+                                <select asp-for="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control custom-select drop-shadow">
+                                    <option value="">-- Todos --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small font-weight-bold text-muted uppercase">Búsqueda rápida</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo, inventario, marca o modelo..." />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold text-muted uppercase">Disponibilidad</label>
+                                <select asp-for="ReportFilter" class="form-control custom-select">
+                                    <option value="all">Todos los equipos</option>
+                                    <option value="available">Con reportes</option>
+                                    <option value="missing">Sin reportes</option>
+                                    @if (!Model.IsCorrective)
+                                    {
+                                        <option value="l6">Con L-6</option>
+                                    }
+                                    <option value="l7">Con L-7</option>
+                                    <option value="l8">Con L-8</option>
+                                    <option value="l3">Con L-3</option>
+                                    <option value="l12">Con L-12/Insumos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 text-right mt-2 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
+                                </button>
+                                <a asp-page="./Index" asp-route-managementId="@Model.ManagementId" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
+                                    <i class="fas fa-sync-alt"></i>
+                                </a>
+                            </div>
+                        </div>
                     </form>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    @if (Model.SelectedLabId.HasValue && Model.SelectedLaboratory != null)
-    {
-        <!-- CONSOLIDADOS DEL LABORATORIO -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 style="font-weight: 800; color: #334155; font-size: 1.2rem;" class="m-0">
-                <i class="fas fa-flask text-primary mr-2"></i> Equipos en @Model.SelectedLaboratory.Name
-            </h4>
-            <div class="d-flex gap-2">
-                <a href="/api/reports/download/l6?labId=@Model.SelectedLabId" class="btn btn-login-glow text-white font-weight-bold px-4 rounded-pill shadow-sm" style="background: linear-gradient(to right, #10b981, #059669); border: none; font-size: 0.9rem;">
-                    <i class="fas fa-file-excel mr-2"></i> Descargar L-6 Consolidado
-                </a>
-                <a href="/api/reports/download/l48?labId=@Model.SelectedLabId" class="btn btn-login-glow text-white font-weight-bold px-4 rounded-pill shadow-sm" style="background: linear-gradient(to right, #f59e0b, #d97706); border: none; font-size: 0.9rem;">
-                    <i class="fas fa-project-diagram mr-2"></i> Plan L-48 (Gantt)
-                </a>
-            </div>
-        </div>
+                @if (Model.SelectedLabId.HasValue && Model.SelectedLaboratory != null)
+                {
+                    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+                        <div>
+                            <h5 class="font-weight-bold text-dark mb-1">Reportes de @Model.SelectedLaboratory.Name</h5>
+                            <small class="text-muted">Descarga documentos consolidados o formularios individuales por equipo.</small>
+                        </div>
+                        <div class="mt-2 mt-md-0">
+                            @if (!Model.IsCorrective)
+                            {
+                                <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-success btn-rounded font-weight-bold px-3 mr-1 shadow-sm">
+                                    <i class="fas fa-file-excel mr-1"></i> L-6 Consolidado
+                                </a>
+                            }
+                            <a href="/api/reports/download/l48?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold px-3 shadow-sm">
+                                <i class="fas fa-project-diagram mr-1"></i> Plan L-48
+                            </a>
+                        </div>
+                    </div>
+                }
 
-        <!-- LISTA DE EQUIPOS -->
-        <div class="step-stack">
-            @if (!Model.EquipmentStatuses.Any())
-            {
-                <div class="border-2 border-dashed rounded p-5 text-center text-slate-400 bg-slate-50" style="border-radius: 12px !important; border: 2px dashed #cbd5e1;">
-                    <i class="fas fa-inbox text-3xl mb-3 opacity-25" style="font-size: 3rem; color: #94a3b8;"></i><br>
-                    <span style="font-weight: 500; color: #64748b;">No hay equipos registrados en este laboratorio.</span>
-                </div>
-            }
-            else
-            {
-                <div class="bg-white p-0 rounded shadow-sm border-0" style="border-radius: 16px !important; overflow: hidden;">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 pixel-perfect-table" style="font-size: 0.9rem;">
-                            <thead class="bg-primary text-white text-center">
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Equipo</th>
+                                <th class="text-center">Inventario</th>
+                                <th class="text-center">Disponibles</th>
+                                <th class="text-center">Reportes oficiales</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.SelectedLabId.HasValue)
+                            {
                                 <tr>
-                                    <th style="width: 35%; padding: 15px;" class="text-left font-weight-bold">EQUIPO</th>
-                                    <th style="width: 15%; padding: 15px;" class="font-weight-bold">N° INVENTARIO</th>
-                                    <th style="width: 50%; padding: 15px;" class="font-weight-bold">REPORTES TÉCNICOS INDIVIDUALES</th>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="fas fa-filter fa-3x mb-3 d-block opacity-2"></i>
+                                        Selecciona un laboratorio para listar sus reportes oficiales.
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
+                            }
+                            else if (!Model.EquipmentStatuses.Any())
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron equipos con los filtros actuales.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
                                 @foreach (var status in Model.EquipmentStatuses)
                                 {
                                     var unit = status.Unit;
-                                    var hasAny = status.HasL7 || status.HasL8 || status.HasL3 || status.HasAdquisicion;
-                                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                                        <td class="text-left p-3">
-                                            <div class="d-flex align-items-center">
-                                                <div class="icon-box bg-light text-primary rounded-circle d-flex align-items-center justify-content-center mr-3 shadow-sm" style="width: 45px; height: 45px;">
-                                                    <i class="fas fa-microscope" style="font-size: 1.1rem;"></i>
-                                                </div>
-                                                <div>
-                                                    <h6 class="mb-0" style="font-weight: 800; color: #1e293b;">@unit.Equipment?.Name</h6>
-                                                    <small class="text-muted" style="font-weight: 500;">@unit.Equipment?.Brand @unit.Equipment?.Model</small>
-                                                </div>
-                                            </div>
+                                    var availableCount = 0;
+                                    if (status.HasL6) availableCount++;
+                                    if (status.HasL7) availableCount++;
+                                    if (status.HasL8) availableCount++;
+                                    if (status.HasL3) availableCount++;
+                                    if (status.HasAdquisicion) availableCount++;
+                                    var hasAny = availableCount > 0;
+
+                                    <tr>
+                                        <td>
+                                            <h6 class="m-b-0 font-weight-bold text-dark">@(unit.Equipment?.Name ?? "Equipo sin nombre")</h6>
+                                            <span class="text-muted small">
+                                                @(unit.Equipment?.Brand ?? "Sin marca") @(unit.Equipment?.Model ?? "")
+                                                <span class="mx-1">/</span>
+                                                @(unit.Laboratory?.Name ?? "Sin laboratorio")
+                                            </span>
                                         </td>
-                                        <td class="text-center p-3">
-                                            <span class="badge" style="background-color: #f1f5f9; color: #475569; font-weight: 700; padding: 8px 12px; font-size: 0.85rem; border: 1px solid #e2e8f0;">@unit.InventoryNumber</span>
+                                        <td class="text-center">
+                                            <span class="badge badge-light border px-3 py-1 font-weight-bold">@(unit.InventoryNumber ?? "Sin dato")</span>
                                         </td>
-                                        <td class="text-center p-3">
-                                            @if (!hasAny)
+                                        <td class="text-center">
+                                            @if (hasAny)
                                             {
-                                                <span class="text-muted small" style="font-weight: 500; font-style: italic;">
-                                                    <i class="fas fa-info-circle mr-1"></i> Sin registros disponibles
-                                                </span>
+                                                <span class="badge badge-success px-3 py-1 font-weight-bold">@availableCount reporte(s)</span>
                                             }
                                             else
                                             {
-                                                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                                <span class="badge badge-secondary px-3 py-1 font-weight-bold">Sin reportes</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (!hasAny)
+                                            {
+                                                <span class="text-muted small italic">Sin registros disponibles</span>
+                                            }
+                                            else
+                                            {
+                                                <div class="btn-group flex-wrap justify-content-center">
+                                                    @if (!Model.IsCorrective && status.HasL6)
+                                                    {
+                                                        <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-success btn-rounded mr-1 mb-1" title="Descargar L-6">
+                                                            <i class="fas fa-file-excel mr-1"></i> L-6
+                                                        </a>
+                                                    }
                                                     @if (status.HasL7)
                                                     {
-                                                        <a href="/api/reports/download/l7?unitId=@unit.Id"
-                                                           class="btn btn-sm rounded-pill font-weight-bold shadow-sm px-3"
-                                                           style="background-color: #e0e7ff; color: #4f46e5; border: 1px solid #c7d2fe; transition: all 0.2s;"
-                                                           onmouseover="this.style.backgroundColor='#4f46e5'; this.style.color='white'"
-                                                           onmouseout="this.style.backgroundColor='#e0e7ff'; this.style.color='#4f46e5'">
+                                                        <a href="/api/reports/download/l7?requestId=@status.RequestId&managementId=@Model.ManagementId" class="btn btn-sm btn-outline-info btn-rounded mr-1 mb-1" title="Descargar L-7">
                                                             <i class="fas fa-file-signature mr-1"></i> L-7
                                                         </a>
                                                     }
                                                     @if (status.HasL8)
                                                     {
-                                                        <a href="/api/reports/download/l8?unitId=@unit.Id"
-                                                           class="btn btn-sm rounded-pill font-weight-bold shadow-sm px-3"
-                                                           style="background-color: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; transition: all 0.2s;"
-                                                           onmouseover="this.style.backgroundColor='#16a34a'; this.style.color='white'"
-                                                           onmouseout="this.style.backgroundColor='#dcfce7'; this.style.color='#16a34a'">
-                                                            <i class="fas fa-history mr-1"></i> L-8 Kardex
+                                                        <a href="/api/reports/download/l8?managementPlanId=@status.PlanId" class="btn btn-sm btn-outline-warning btn-rounded mr-1 mb-1" title="Descargar L-8">
+                                                            <i class="fas fa-wrench mr-1"></i> L-8
                                                         </a>
                                                     }
                                                     @if (status.HasL3)
                                                     {
-                                                        <a href="/api/reports/download/l3?unitId=@unit.Id"
-                                                           class="btn btn-sm rounded-pill font-weight-bold shadow-sm px-3"
-                                                           style="background-color: #fee2e2; color: #dc2626; border: 1px solid #fecaca; transition: all 0.2s;"
-                                                           onmouseover="this.style.backgroundColor='#dc2626'; this.style.color='white'"
-                                                           onmouseout="this.style.backgroundColor='#fee2e2'; this.style.color='#dc2626'">
-                                                            <i class="fas fa-sign-out-alt mr-1"></i> L-3 Salida
+                                                        <a href="/api/reports/download/l3?departureId=@status.DepartureId" class="btn btn-sm btn-outline-primary btn-rounded mr-1 mb-1" title="Descargar L-3">
+                                                            <i class="fas fa-sign-out-alt mr-1"></i> L-3
                                                         </a>
                                                     }
                                                     @if (status.HasAdquisicion)
                                                     {
-                                                        <a href="/api/reports/download/adquisicion?unitId=@unit.Id"
-                                                           class="btn btn-sm rounded-pill font-weight-bold shadow-sm px-3"
-                                                           style="background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; transition: all 0.2s;"
-                                                           onmouseover="this.style.backgroundColor='#0284c7'; this.style.color='white'"
-                                                           onmouseout="this.style.backgroundColor='#e0f2fe'; this.style.color='#0284c7'">
-                                                            <i class="fas fa-shopping-cart mr-1"></i> Insumos
+                                                        <a href="/api/reports/download/adquisicion?requestId=@status.AcquisitionRequestId" class="btn btn-sm btn-outline-dark btn-rounded mr-1 mb-1" title="Descargar L-12/Insumos">
+                                                            <i class="fas fa-shopping-cart mr-1"></i> L-12/Insumos
                                                         </a>
                                                     }
                                                 </div>
@@ -146,22 +208,40 @@
                                         </td>
                                     </tr>
                                 }
-                            </tbody>
-                        </table>
-                    </div>
+                            }
+                        </tbody>
+                    </table>
                 </div>
-            }
-        </div>
-    }
-    else if (!Model.SelectedLabId.HasValue)
-    {
-        <!-- ESTADO INICIAL -->
-        <div class="border-2 border-dashed rounded p-5 text-center bg-white shadow-sm mt-4" style="border-radius: 16px !important; border: 2px dashed #cbd5e1;">
-            <div class="icon-box bg-light text-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-4" style="width: 80px; height: 80px;">
-                <i class="fas fa-file-excel" style="font-size: 2.5rem;"></i>
             </div>
-            <h4 style="font-weight: 800; color: #1e293b;">Selecciona un Laboratorio</h4>
-            <p style="font-weight: 500; color: #64748b; max-width: 500px; margin: 0 auto;">Para comenzar a descargar y administrar los reportes de Verificación (L-6), Mantenimiento (L-8) y más, elige un laboratorio en el menú superior.</p>
         </div>
-    }
-</section>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .v-middle td {
+            vertical-align: middle !important;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .drop-shadow {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .opacity-2 {
+            opacity: 0.2;
+        }
+
+        .btn-group.flex-wrap {
+            gap: 0;
+        }
+    </style>
+}

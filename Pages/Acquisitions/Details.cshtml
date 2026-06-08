@@ -13,7 +13,7 @@
 }
 
 <div class="row">
-    <div class="col-lg-8 border-right">
+    <div class="col-lg-8">
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
@@ -21,22 +21,20 @@
                         <h4 class="card-title text-dark font-weight-bold">Solicitud de Adquisición: #@Model.AcquisitionRequest.Id</h4>
                         <h6 class="card-subtitle text-muted small italic">Detalles del requerimiento de compra e inversión para laboratorio.</h6>
                     </div>
-                    <div class="ml-auto mt-2 mt-md-0">
-                        <span class="badge badge-pill badge-success px-4 py-2" style="font-size: 0.9rem;">
-                            <i class="fas fa-shopping-cart mr-2"></i> @Html.DisplayFor(m => m.AcquisitionRequest.Status)
-                        </span>
+                    <div class="ml-auto d-print-none">
+                        <i class="fas fa-shopping-cart fa-2x text-success opacity-5"></i>
                     </div>
                 </div>
 
                 <div class="row mb-4">
                     <div class="col-12">
                         <label class="small text-muted font-weight-bold uppercase mb-1">Activo Afectado / Vinculado</label>
-                        <div class="p-3 bg-light rounded border-left border-success font-weight-bold text-dark d-flex justify-content-between align-items-center shadow-sm">
+                        <div class="p-3 bg-light rounded border-left border-3 border-success font-weight-bold text-dark d-flex justify-content-between align-items-center shadow-sm">
                             <span>
                                 <i class="fas fa-cube mr-2 text-success"></i> @(Model.AcquisitionRequest.Equipment?.Name ?? "Item Especial de Manual")
                                 <span class="text-muted font-weight-normal small ml-1 italic">(@(Model.AcquisitionRequest.EquipmentUnit?.InventoryNumber ?? "Nuevo Activo / Sin Inv."))</span>
                             </span>
-                            <span class="badge badge-pill badge-outline-success px-3 border border-success text-success bg-white small">@Html.DisplayFor(m => m.AcquisitionRequest.Equipment.Category)</span>
+                            <span class="badge badge-success font-weight-bold px-3">@Html.DisplayFor(m => m.AcquisitionRequest.Equipment.Category)</span>
                         </div>
                     </div>
                 </div>
@@ -63,7 +61,12 @@
                                 <label class="control-label font-weight-bold small uppercase text-muted mb-1">Nivel de Prioridad</label>
                                 <div class="p-2 px-3 bg-light rounded border text-dark font-weight-bold shadow-sm">
                                     @{
-                                        var pIcon = Model.AcquisitionRequest.Priority == RequestPriority.High ? "fa-bolt text-danger" : (Model.AcquisitionRequest.Priority == RequestPriority.Medium ? "fa-info-circle text-warning" : "fa-check-circle text-info");
+                                        var pIcon = Model.AcquisitionRequest.Priority switch {
+                                            RequestPriority.VeryHigh => "fa-exclamation-circle text-dark",
+                                            RequestPriority.High => "fa-bolt text-danger",
+                                            RequestPriority.Medium => "fa-info-circle text-warning",
+                                            _ => "fa-check-circle text-info"
+                                        };
                                     }
                                     <i class="fas @pIcon mr-2"></i> @Html.DisplayFor(m => m.AcquisitionRequest.Priority)
                                 </div>
@@ -96,9 +99,9 @@
                             <table class="table table-sm table-hover mb-0">
                                 <thead class="bg-light text-muted small uppercase font-weight-bold">
                                     <tr>
-                                        <th class="border-top-0 pl-3 py-2">Concepto</th>
-                                        <th class="border-top-0 text-center py-2">Cant / Unid.</th>
-                                        <th class="border-top-0 text-right pr-3 py-2">Subtotal</th>
+                                        <th class="pl-3 py-2">Concepto</th>
+                                        <th class="text-center py-2">Cant / Unid.</th>
+                                        <th class="text-right pr-3 py-2">Subtotal</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -152,38 +155,44 @@
         </div>
     </div>
 
-    <div class="col-lg-4">
-        <!-- Sidebar Detalles Premium -->
-        <div class="card shadow-sm border-0 mb-4 bg-dark text-white shadow-lg overflow-hidden">
-            <div class="card-body p-4 position-relative">
-                <i class="fas fa-shopping-basket position-absolute text-white" style="font-size: 8rem; opacity: 0.05; right:-20px; top:-20px;"></i>
-                <h5 class="card-title text-white font-weight-bold small uppercase mb-4 border-bottom border-secondary pb-2"><i class="fas fa-shield-alt mr-2 text-info"></i> Control Fiscal</h5>
+    <div class="col-lg-4 d-print-none">
+        <div class="card shadow-sm border-0 mb-4 border-left border-3" style="background: #f5f3ff; border-color: #7c3aed !important;">
+            <div class="card-body">
+                <h5 class="font-weight-bold small uppercase mb-3" style="color: #7c3aed;"><i class="fas fa-shield-alt mr-2"></i> Control Fiscal</h5>
+                <hr class="mb-4" />
                 
-                <div class="mb-4">
-                    <label class="text-muted uppercase font-weight-bold d-block mb-1" style="font-size: 0.65rem;">Identificador Sistema</label>
-                    <span class="font-weight-bold text-info" style="font-size: 1.3rem;">#ACQ-@Model.AcquisitionRequest.Id.ToString("D5")</span>
+                <div class="mb-3">
+                    <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Identificador Sistema</label>
+                    <span class="font-weight-bold text-dark" style="font-size: 1.2rem;">#ACQ-@Model.AcquisitionRequest.Id.ToString("D5")</span>
                 </div>
                 
                 <div class="mb-0">
-                    <label class="text-muted uppercase font-weight-bold d-block mb-2" style="font-size: 0.65rem;">Estado Operativo</label>
+                    <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estado Operativo</label>
                     @{
-                        var sBadge = Model.AcquisitionRequest.Status == RequestStatus.Approved ? "badge-success" : (Model.AcquisitionRequest.Status == RequestStatus.Rejected ? "badge-danger" : "badge-warning");
+                        var sBadge = Model.AcquisitionRequest.Status switch {
+                            RequestStatus.Approved => "badge-success",
+                            RequestStatus.Completed => "badge-success",
+                            RequestStatus.Rejected => "badge-danger",
+                            RequestStatus.InProgress => "badge-info",
+                            RequestStatus.Scheduled => "badge-primary",
+                            RequestStatus.Pending => "badge-warning",
+                            RequestStatus.Cancelled => "badge-secondary",
+                            _ => "badge-secondary"
+                        };
                     }
-                    <span class="badge badge-pill @sBadge px-4 py-2 font-weight-bold shadow-sm" style="font-size: 0.85rem;">
-                        <i class="fas fa-dot-circle mr-1 animate__animated animate__pulse animate__infinite"></i> @Html.DisplayFor(m => m.AcquisitionRequest.Status)
-                    </span>
+                    <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold">@Html.DisplayFor(m => m.AcquisitionRequest.Status)</span>
                 </div>
             </div>
         </div>
 
         <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body p-4">
+            <div class="card-body">
                 <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase border-bottom pb-2">
-                    <i class="fas fa-history mr-2 text-warning"></i> Control de Auditoría
+                    <i class="fas fa-history mr-2 text-warning"></i> Bitácora de Auditoría
                 </h5>
                 <div class="audit-log small">
                     <div class="mb-3">
-                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Originado Por</label>
+                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Origen de Solicitud</label>
                         <span class="font-weight-bold text-dark d-block">@(Model.AcquisitionRequest.RequestedBy?.FullName ?? "Solicitante Externo")</span>
                         <div class="text-muted pt-1 small italic"><i class="far fa-clock mr-1"></i> @Model.AcquisitionRequest.CreatedDate.ToString("dd-MM-yyyy HH:mm")</div>
                     </div>
@@ -191,17 +200,17 @@
             </div>
         </div>
 
-        <div class="form-actions mt-4 px-2">
+        <div class="form-actions mt-4">
             @if (Model.AcquisitionRequest.Status == RequestStatus.Pending)
             {
-            <a asp-page="./Edit" asp-route-id="@Model.AcquisitionRequest.Id" class="btn btn-warning btn-block btn-rounded text-dark shadow-sm font-weight-bold py-3 mb-3">
+                <a asp-page="./Edit" asp-route-id="@Model.AcquisitionRequest.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-3 mb-3">
                     <i class="fas fa-edit mr-2"></i> Editar Registro
                 </a>
             }
 
-            <a asp-page="./Details" asp-page-handler="DescargarReporte" asp-route-id="@Model.AcquisitionRequest.Id" 
+            <a href="/api/reports/download/adquisicion?requestId=@Model.AcquisitionRequest.Id"
                class="btn btn-success btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3">
-                <i class="fas fa-file-excel mr-2"></i> Exportar a Excel
+                <i class="fas fa-file-excel mr-2"></i> Descargar Solicitud de Adquisición
             </a>
 
             <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
@@ -211,13 +220,16 @@
     </div>
 </div>
 
-
 @section Styles {
     <style>
         .bg-light-success { background-color: rgba(40, 167, 69, 0.05); }
         .bg-light-danger { background-color: rgba(220, 53, 69, 0.05); }
+        .bg-light-warning { background-color: rgba(255, 193, 7, 0.05); }
         .opacity-5 { opacity: 0.15; }
         .italic { font-style: italic; }
         .border-left-3 { border-left-width: 4px !important; }
+        .audit-log label { letter-spacing: 0.5px; }
+        .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
     </style>
 }

@@ -27,6 +27,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         public int? ManagementId { get; set; }
 
         [BindProperty(SupportsGet = true)]
+        public int? FocusPlanId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
         public int? LabId { get; set; }
 
         [BindProperty(SupportsGet = true)]
@@ -36,6 +39,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         public string SessionLabName { get; set; } = string.Empty;
         public string SessionInspector { get; set; } = string.Empty;
         public DateTime SessionDate { get; set; }
+        public int? SessionManagementId { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
@@ -92,6 +96,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             var first = SessionEquipments.First();
             SessionDate = Date.Value;
             SessionLabName = first.EquipmentUnit?.Laboratory?.Name ?? "Laboratorio";
+            SessionManagementId = ManagementId ?? first.ManagementId;
             SessionInspector = first.CreatedBy != null
                 ? first.CreatedBy.FirstName + " " + first.CreatedBy.LastName
                 : "Sistema";

@@ -41,6 +41,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             [Display(Name = "Tipo de Material")]
             public UtensilType UtensilType { get; set; }
 
+            [Required(ErrorMessage = "La clasificación técnica es obligatoria")]
+            [Display(Name = "Clasificación de Tipo")]
+            public EquipmentTypeClassification TypeClassification { get; set; } = EquipmentTypeClassification.Otro;
+
             // ELIMINADO: EquipmentTypeId ya no se utiliza
 
             [Display(Name = "Imagen del Equipo")]
@@ -74,6 +78,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         }
 
         public Models.Equipment ExistingEquipmentDisplay { get; set; } = default!;
+        public List<SelectListItem> UtensilTypeOptions { get; set; } = new();
+        public List<SelectListItem> EquipmentTypeClassificationOptions { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
@@ -95,6 +101,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 Id = equipment.Id,
                 Category = equipment.Category,
                 UtensilType = equipment.UtensilType,
+                TypeClassification = equipment.TypeClassification,
 
                 ExistingImageUrl = equipment.ImageUrl,
                 CountryId = equipment.CountryId,
@@ -111,6 +118,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             };
 
             LoadLists();
+            ViewData["ReturnUrl"] = Request.Query["returnUrl"].ToString();
             return Page();
         }
 
@@ -159,7 +167,37 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             // Update Fields (Manteniendo tu lógica de .Clean())
             equipment.Name = Input.Name.Clean();
             equipment.Category = Input.Category;
+            if (Input.Category == EquipmentCategory.Equipment && !IsValidEquipmentClassificationForEdit(Input.TypeClassification, equipment.TypeClassification))
+            {
+                ModelState.AddModelError("Input.TypeClassification", "Seleccione una clasificacion tecnica valida para equipo.");
+                await ReloadDisplayData(Input.Id);
+                LoadLists();
+                return Page();
+            }
+
+            if (Input.Category == EquipmentCategory.Utensil && !IsValidUtensilTypeForEdit(Input.UtensilType, equipment.UtensilType))
+            {
+                ModelState.AddModelError("Input.UtensilType", "Seleccione una subclasificacion de utensilio.");
+                await ReloadDisplayData(Input.Id);
+                LoadLists();
+                return Page();
+            }
+
+            if (Input.Category == EquipmentCategory.Other)
+            {
+                Input.UtensilType = UtensilType.NoAplica;
+                Input.TypeClassification = EquipmentTypeClassification.Otro;
+            }
+            else if (Input.Category == EquipmentCategory.Equipment)
+            {
+                Input.UtensilType = UtensilType.NoAplica;
+            }
+            else if (Input.Category == EquipmentCategory.Utensil)
+            {
+                Input.TypeClassification = EquipmentTypeClassification.Otro;
+            }
             equipment.UtensilType = Input.UtensilType; // Actualizamos el Enum
+            equipment.TypeClassification = Input.TypeClassification;
 
             equipment.CountryId = Input.CountryId;
             equipment.CityId = Input.CityId;
@@ -201,7 +239,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             }
 
             TempData.Success($"Datos del equipo '{equipment.Name}' actualizados correctamente.");
-            return RedirectToPage("./Index");
+            return RedirectToPage("./Details", new { id = equipment.Id });
         }
 
         private async Task ReloadDisplayData(int id)
@@ -236,6 +274,94 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             {
                 ViewData["CityId"] = new SelectList(Enumerable.Empty<SelectListItem>(), "Value", "Text");
             }
+
+            UtensilTypeOptions = GetUtensilTypeOptions(Input.UtensilType);
+            EquipmentTypeClassificationOptions = GetEquipmentTypeClassificationOptions(Input.TypeClassification);
         }
+
+        private static List<SelectListItem> GetUtensilTypeOptions(UtensilType selected)
+        {
+            var options = new List<UtensilType>
+            {
+                UtensilType.NoAplica,
+                UtensilType.MenajeCocina,
+                UtensilType.BartendingBarismo,
+                UtensilType.PanaderiaReposteriaPasteleria,
+                UtensilType.Servicio,
+                UtensilType.Manteleria,
+                UtensilType.VajillaGeneral,
+                UtensilType.Otros
+            };
+
+            if (selected is UtensilType.Vidrio or UtensilType.Plastico or UtensilType.Metal or UtensilType.Porcelana)
+            {
+                options.Add(selected);
+            }
+
+            return options
+                .Distinct()
+                .Select(value => new SelectListItem
+                {
+                    Value = ((int)value).ToString(),
+                    Text = EnumHelper.GetDisplayName(value),
+                    Selected = value == selected
+                })
+                .ToList();
+        }
+
+        private static List<SelectListItem> GetEquipmentTypeClassificationOptions(EquipmentTypeClassification selected)
+        {
+            var options = GetValidEquipmentClassifications().ToList();
+            if (!options.Contains(selected))
+            {
+                options.Add(selected);
+            }
+
+            return options
+                .Distinct()
+                .Select(value => new SelectListItem
+                {
+                    Value = ((int)value).ToString(),
+                    Text = EnumHelper.GetDisplayName(value),
+                    Selected = value == selected
+                })
+                .ToList();
+        }
+
+        private static bool IsValidEquipmentClassificationForEdit(EquipmentTypeClassification posted, EquipmentTypeClassification original)
+            => GetValidEquipmentClassifications().Contains(posted) || posted == original;
+
+        private static bool IsValidUtensilTypeForEdit(UtensilType posted, UtensilType original)
+            => IsValidNewUtensilType(posted) || (IsLegacyUtensilType(posted) && posted == original);
+
+        private static bool IsValidNewUtensilType(UtensilType utensilType)
+            => utensilType is UtensilType.MenajeCocina
+                or UtensilType.BartendingBarismo
+                or UtensilType.PanaderiaReposteriaPasteleria
+                or UtensilType.Servicio
+                or UtensilType.Manteleria
+                or UtensilType.VajillaGeneral
+                or UtensilType.Otros;
+
+        private static bool IsLegacyUtensilType(UtensilType utensilType)
+            => utensilType is UtensilType.Vidrio
+                or UtensilType.Plastico
+                or UtensilType.Metal
+                or UtensilType.Porcelana;
+
+        private static EquipmentTypeClassification[] GetValidEquipmentClassifications() => new[]
+        {
+            EquipmentTypeClassification.Calor,
+            EquipmentTypeClassification.Frio,
+            EquipmentTypeClassification.Congelacion,
+            EquipmentTypeClassification.Ultracongelacion,
+            EquipmentTypeClassification.MaquinasRotativas,
+            EquipmentTypeClassification.Electronico,
+            EquipmentTypeClassification.SeguridadIndustrial,
+            EquipmentTypeClassification.Medicion,
+            EquipmentTypeClassification.Audiovisuales,
+            EquipmentTypeClassification.Electricos,
+            EquipmentTypeClassification.Otro
+        };
     }
 }

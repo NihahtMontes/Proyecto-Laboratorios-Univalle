@@ -119,16 +119,16 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 await context.SaveChangesAsync();
             }
 
-            // 6b. Gestión Correctiva 2026 (contenedor de fallas)
-            var correctiveMgmt = await context.Managements.FirstOrDefaultAsync(m => m.Type == ManagementType.Corrective && m.Year == 2026);
+            // 6b. Gestión Correctiva I-2026 (fallas semestrales, sin sincronización masiva)
+            var correctiveMgmt = await context.Managements.FirstOrDefaultAsync(m => m.Type == ManagementType.Corrective && m.Year == 2026 && m.Semester == 1);
             if (correctiveMgmt == null)
             {
                 correctiveMgmt = new Management
                 {
                     Year = 2026,
-                    Semester = 0,
-                    Code = "CORR-2026",
-                    Description = "Contenedor automático de fallas correctivas.",
+                    Semester = 1,
+                    Code = "CORR-2026-1",
+                    Description = "Gestión correctiva I-2026 para fallas reportadas por L-7.",
                     Status = ManagementStatus.Active,
                     Type = ManagementType.Corrective
                 };

@@ -68,15 +68,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
         public async Task<IActionResult> OnPostDeleteUnitAsync(int id)
         {
-            var unit = await _context.EquipmentUnits.FindAsync(id);
+            var unit = await _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .AsTracking()
+                .FirstOrDefaultAsync(u => u.Id == id);
 
             if (unit != null)
             {
                 unit.CurrentStatus = EquipmentStatus.Deleted;
-                _context.Attach(unit).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
 
-                TempData.Success($"Unidad '{unit.InventoryNumber}' eliminada correctamente.");
+                TempData.Success($"Unidad {unit.Equipment?.Name ?? "Equipo"} ({unit.InventoryNumber}) dada de baja correctamente.");
             }
 
             return RedirectToPage(new { id = unit?.EquipmentId });

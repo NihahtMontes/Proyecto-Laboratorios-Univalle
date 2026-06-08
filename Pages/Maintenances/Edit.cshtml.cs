@@ -47,7 +47,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             [Display(Name = "Técnico Responsable")]
             public int? TechnicianId { get; set; }
 
-            [Required]
             [Display(Name = "Fecha Programada")]
             [DataType(DataType.Date)]
             public DateTime? ScheduledDate { get; set; }
@@ -89,10 +88,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             public bool Step3_Testing { get; set; } = false;
             public bool Step4_FinalReview { get; set; } = false;
             // --------------------------------------------------------
+
+            // --- TAREAS DINÁMICAS L-48 ---
+            public List<MaintenanceTask> Tasks { get; set; } = new();
+            // -----------------------------
         }
 
         [BindProperty(SupportsGet = true)]
         public int? ManagementPlanId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public int? FocusPlanId { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int? id, bool isWizard = false)
         {
@@ -100,6 +106,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             var maintenance = await _context.Maintenances
                 .Include(m => m.CostDetails)
+                .Include(m => m.Tasks)
                 .Include(m => m.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
                 .FirstOrDefaultAsync(m => m.Id == id);
@@ -137,27 +144,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 // -------------------------------------------------
             };
 
-            // Detect Wizard Plan — ManagementPlanId explícito del wizard tiene prioridad
-            ManagementPlan? plan = null;
-            if (ManagementPlanId.HasValue)
+            // Cargar tareas dinámicas (excluyendo eliminadas)
+            Input.Tasks = maintenance.Tasks
+                .Where(t => !t.IsDeleted)
+                .OrderBy(t => t.Id)
+                .ToList();
+
+            // Si no hay tareas, crear las 4 por defecto
+            if (!Input.Tasks.Any())
             {
-                plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
-            }
-            else
-            {
-                plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == id);
+                Input.Tasks = GetDefaultTasks();
             }
 
-            if (plan != null)
+            Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
+
+            // Solo mostrar wizard si viene explícitamente del wizard
+            if (ManagementPlanId.HasValue || isWizard)
             {
-                ViewData["IsWizard"] = true;
-                ViewData["ManagementPlanId"] = plan.Id;
-                ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
-                ViewData["ManagementId"] = plan.ManagementId;
-                if (plan.RequestId.HasValue) ViewData["PreviousPhaseId"] = plan.RequestId.Value;
+                ManagementPlan? plan = null;
+                if (ManagementPlanId.HasValue)
+                    plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+                else
+                    plan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == id);
+
+                if (plan != null)
+                {
+                    ViewData["IsWizard"] = true;
+                    ViewData["ManagementPlanId"] = plan.Id;
+                    ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
+                    ViewData["ManagementId"] = plan.ManagementId;
+                    if (plan.RequestId.HasValue) ViewData["PreviousPhaseId"] = plan.RequestId.Value;
+                }
             }
 
             ViewData["IsWizardFlag"] = isWizard;
+            ViewData["ReturnUrl"] = HttpContext.Request.Query["returnUrl"].ToString();
 
             CargarListas(facultyId, labId, maintenance.EquipmentUnitId);
 
@@ -202,27 +223,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 int labId = maintenance?.EquipmentUnit?.LaboratoryId ?? 0;
                 CargarListas(facultyId, labId, Input.EquipmentUnitId);
 
-                // Detect Wizard Plan again on error
-                ManagementPlan? errorPlan = null;
+                // Restore wizard context only if explicitly set on GET
                 if (ManagementPlanId.HasValue)
-                    errorPlan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
-                else
-                    errorPlan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.MaintenanceId == Input.Id);
-
-                if (errorPlan != null)
                 {
-                    ViewData["IsWizard"] = true;
-                    ViewData["ManagementPlanId"] = errorPlan.Id;
-                    ViewData["CurrentPhaseInt"] = (int)errorPlan.CurrentPhase;
-                    ViewData["ManagementId"] = errorPlan.ManagementId;
-                    if (errorPlan.RequestId.HasValue) ViewData["PreviousPhaseId"] = errorPlan.RequestId.Value;
+                    ManagementPlan? errorPlan = await _context.ManagementPlans.FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+                    if (errorPlan != null)
+                    {
+                        ViewData["IsWizard"] = true;
+                        ViewData["ManagementPlanId"] = errorPlan.Id;
+                        ViewData["CurrentPhaseInt"] = (int)errorPlan.CurrentPhase;
+                        ViewData["ManagementId"] = errorPlan.ManagementId;
+                        if (errorPlan.RequestId.HasValue) ViewData["PreviousPhaseId"] = errorPlan.RequestId.Value;
+                    }
                 }
 
+                ViewData["ReturnUrl"] = HttpContext.Request.Query["returnUrl"].ToString();
                 return Page();
             }
 
             var maintenanceDB = await _context.Maintenances
                 .Include(m => m.CostDetails)
+                .Include(m => m.Tasks)
                 .Include(m => m.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
                 .AsTracking()
@@ -244,12 +265,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             maintenanceDB.ActualCost = Input.ActualCost;
 
             // --- GUARDAR LOS DATOS DE CHECKBOXES EN LA BD ---
+            // Normalizar y sincronizar tareas dinámicas
+            Input.Tasks = (Input.Tasks ?? new())
+                .Where(t => !string.IsNullOrWhiteSpace(t.Description))
+                .ToList();
+            Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
+
             maintenanceDB.CompletionPercentage = Input.CompletionPercentage;
-            maintenanceDB.Step1_Cleaning = Input.Step1_Cleaning;
-            maintenanceDB.Step2_Calibration = Input.Step2_Calibration;
-            maintenanceDB.Step3_Testing = Input.Step3_Testing;
-            maintenanceDB.Step4_FinalReview = Input.Step4_FinalReview;
+            UpdateLegacySteps(maintenanceDB, Input.Tasks);
             // ------------------------------------------------
+
+            // Sincronizar tareas dinámicas con la BD
+            SyncTasks(maintenanceDB, Input.Tasks);
 
             if (Input.CostDetails != null)
             {
@@ -291,27 +318,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 await _context.SaveChangesAsync();
                 TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.EquipmentUnit?.Equipment?.Name));
                 
-                var plan = await _context.ManagementPlans.AsTracking()
-                    .FirstOrDefaultAsync(p => ManagementPlanId.HasValue
-                        ? p.Id == ManagementPlanId.Value
-                        : p.MaintenanceId == maintenanceDB.Id);
-                if (plan != null)
+                // Solo redirigir al wizard si ManagementPlanId fue explícito (desde wizard)
+                if (ManagementPlanId.HasValue)
                 {
-                    if (maintenanceDB.Status == MaintenanceStatus.Completed && plan.CurrentPhase == WizardPhase.Maintenance)
+                    var plan = await _context.ManagementPlans.AsTracking()
+                        .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+                    if (plan != null)
                     {
-                        plan.CurrentPhase = WizardPhase.Exit;
-                        plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
-                        plan.PlanStatus = ManagementPlanStatus.InProgress;
-                        await _context.SaveChangesAsync();
-                    }
+                        if (maintenanceDB.Status == MaintenanceStatus.Completed && plan.CurrentPhase == WizardPhase.Maintenance)
+                        {
+                            plan.CurrentPhase = WizardPhase.Exit;
+                            plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                            plan.PlanStatus = ManagementPlanStatus.InProgress;
+                            await _context.SaveChangesAsync();
+                        }
 
-                    if (ManagementPlanId.HasValue)
-                    {
-                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = maintenanceDB.EquipmentUnit?.LaboratoryId, ManagementId = plan.ManagementId });
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = maintenanceDB.EquipmentUnit?.LaboratoryId, ManagementId = plan.ManagementId, FocusPlanId });
                     }
-
-                    return RedirectToPage("/Managements/Details", new { id = plan.ManagementId, ActiveTab = "l48" });
                 }
+
+                // CRUD: redirigir según returnUrl o Index
+                var returnUrlPost = HttpContext.Request.Query["returnUrl"].ToString();
+                if (returnUrlPost == "Details")
+                    return RedirectToPage("./Details", new { id = maintenanceDB.Id, isWizard = ManagementPlanId.HasValue, managementId = maintenanceDB.ManagementId, focusPlanId = FocusPlanId });
 
                 return RedirectToPage("./Index");
             }
@@ -370,6 +399,170 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     DisplayText = $"#{r.Id} - {r.Laboratory?.Name} ({r.CreatedDate:dd/MM}): " + (r.Description.Length > 40 ? r.Description.Substring(0, 40) + "..." : r.Description)
                 });
             ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText");
+        }
+
+        // ─── DRAFT HANDLER ────────────────────────────────────────────────
+        public async Task<IActionResult> OnPostDraftAsync()
+        {
+            Input.Description = Input.Description?.Clean() ?? string.Empty;
+            Input.Observations = Input.Observations?.Clean();
+            Input.Recommendations = Input.Recommendations?.Clean();
+            Input.CostDetails = (Input.CostDetails ?? new()).Where(d => !string.IsNullOrWhiteSpace(d.Concept)).ToList();
+            Input.Tasks = (Input.Tasks ?? new()).Where(t => !string.IsNullOrWhiteSpace(t.Description)).ToList();
+            Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
+
+            var maintenanceDB = await _context.Maintenances
+                .Include(m => m.CostDetails)
+                .Include(m => m.Tasks)
+                .Include(m => m.EquipmentUnit)
+                .AsTracking()
+                .FirstOrDefaultAsync(m => m.Id == Input.Id);
+
+            if (maintenanceDB == null) return NotFound();
+
+            // Guardar todo sin validaciones estrictas
+            maintenanceDB.MaintenanceType = Input.MaintenanceType;
+            maintenanceDB.TechnicianId = Input.TechnicianId;
+            maintenanceDB.ScheduledDate = Input.ScheduledDate;
+            maintenanceDB.StartDate = Input.StartDate;
+            maintenanceDB.EndDate = Input.EndDate;
+            maintenanceDB.Description = Input.Description;
+            maintenanceDB.SatisfactionLevel = Input.SatisfactionLevel;
+            maintenanceDB.Recommendations = Input.Recommendations;
+            maintenanceDB.Observations = Input.Observations;
+            maintenanceDB.ActualCost = Input.CostDetails.Sum(d => d.Quantity * d.UnitPrice);
+            maintenanceDB.Status = MaintenanceStatus.InProgress;
+            maintenanceDB.CompletionPercentage = Input.CompletionPercentage;
+            maintenanceDB.LastModifiedDate = DateTime.UtcNow;
+
+            UpdateLegacySteps(maintenanceDB, Input.Tasks);
+            SyncTasks(maintenanceDB, Input.Tasks);
+
+            // Sincronizar CostDetails (misma lógica que OnPostAsync)
+            var inputDetailIds = Input.CostDetails.Select(d => d.Id).ToList();
+            var detailsToRemove = maintenanceDB.CostDetails.Where(d => !inputDetailIds.Contains(d.Id)).ToList();
+            foreach (var detail in detailsToRemove)
+            {
+                detail.MaintenanceId = null;
+                detail.Maintenance = null;
+                detail.LastModifiedDate = DateTime.UtcNow;
+            }
+            foreach (var detailForm in Input.CostDetails)
+            {
+                detailForm.MaintenanceId = maintenanceDB.Id;
+                var existingDetail = maintenanceDB.CostDetails.FirstOrDefault(d => d.Id == detailForm.Id && d.Id != 0);
+                if (existingDetail != null)
+                {
+                    _context.Entry(existingDetail).CurrentValues.SetValues(detailForm);
+                }
+                else
+                {
+                    maintenanceDB.CostDetails.Add(detailForm);
+                }
+            }
+
+            // Marcar plan como borrador
+            if (ManagementPlanId.HasValue)
+            {
+                var plan = await _context.ManagementPlans
+                    .AsTracking()
+                    .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+                if (plan != null)
+                {
+                    plan.IsDraft = true;
+                    plan.DraftPhase = WizardPhase.Maintenance;
+                    plan.DraftSavedAt = DateTime.UtcNow;
+                    plan.DraftSummary = $"Borrador L-8 guardado al {Input.CompletionPercentage}% de avance técnico.";
+                    plan.LastModifiedDate = DateTime.UtcNow;
+                }
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                TempData.Success($"Borrador L-8 guardado al {Input.CompletionPercentage}%. Puede continuar más tarde.");
+
+                if (ManagementPlanId.HasValue)
+                {
+                    var plan = await _context.ManagementPlans.AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+                    if (plan != null)
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = maintenanceDB.EquipmentUnit?.LaboratoryId, ManagementId = plan.ManagementId, FocusPlanId });
+                }
+
+                return RedirectToPage("./Index");
+            }
+            catch (Exception ex)
+            {
+                TempData.Error($"Error al guardar borrador: {ex.Message}");
+                CargarListas(maintenanceDB.EquipmentUnit?.Laboratory?.FacultyId ?? 0, maintenanceDB.EquipmentUnit?.LaboratoryId ?? 0, Input.EquipmentUnitId);
+                return Page();
+            }
+        }
+
+        // ─── HELPER METHODS ───────────────────────────────────────────────
+        private static List<MaintenanceTask> GetDefaultTasks()
+        {
+            return new List<MaintenanceTask>
+            {
+                new MaintenanceTask { Description = "Limpieza y Desinfección de Componentes" },
+                new MaintenanceTask { Description = "Calibración y Ajuste de Sistema" },
+                new MaintenanceTask { Description = "Pruebas de Esfuerzo y Carga Operativa" },
+                new MaintenanceTask { Description = "Revisión Final de Seguridad y Cierre" }
+            };
+        }
+
+        private static int CalculateCompletionPercentage(List<MaintenanceTask> tasks)
+        {
+            if (tasks == null || !tasks.Any()) return 0;
+            var completed = tasks.Count(t => t.IsCompleted);
+            return (int)Math.Round((double)completed / tasks.Count * 100);
+        }
+
+        private static void UpdateLegacySteps(Maintenance maintenance, List<MaintenanceTask> tasks)
+        {
+            if (tasks.Count >= 1) maintenance.Step1_Cleaning = tasks[0].IsCompleted;
+            if (tasks.Count >= 2) maintenance.Step2_Calibration = tasks[1].IsCompleted;
+            if (tasks.Count >= 3) maintenance.Step3_Testing = tasks[2].IsCompleted;
+            if (tasks.Count >= 4) maintenance.Step4_FinalReview = tasks[3].IsCompleted;
+        }
+
+        private void SyncTasks(Maintenance maintenance, List<MaintenanceTask> inputTasks)
+        {
+            var existingTasks = maintenance.Tasks.Where(t => !t.IsDeleted).ToList();
+            var inputIds = inputTasks.Where(t => t.Id > 0).Select(t => t.Id).ToHashSet();
+
+            // Marcar como eliminadas las que ya no están en el input
+            foreach (var existing in existingTasks)
+            {
+                if (!inputIds.Contains(existing.Id))
+                {
+                    existing.IsDeleted = true;
+                }
+            }
+
+            // Actualizar o agregar tareas
+            for (int i = 0; i < inputTasks.Count; i++)
+            {
+                var inputTask = inputTasks[i];
+                if (inputTask.Id > 0)
+                {
+                    var existing = maintenance.Tasks.FirstOrDefault(t => t.Id == inputTask.Id);
+                    if (existing != null)
+                    {
+                        existing.Description = inputTask.Description;
+                        existing.IsCompleted = inputTask.IsCompleted;
+                    }
+                }
+                else
+                {
+                    maintenance.Tasks.Add(new MaintenanceTask
+                    {
+                        Description = inputTask.Description,
+                        IsCompleted = inputTask.IsCompleted
+                    });
+                }
+            }
         }
     }
 }

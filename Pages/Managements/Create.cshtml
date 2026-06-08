@@ -34,7 +34,7 @@
                         @if (Model.Input.Type == ManagementType.Corrective)
                         {
                             <div class="alert alert-danger" role="alert">
-                                <i class="fas fa-exclamation-triangle"></i> Está creando una <strong>Gestión Correctiva</strong>. Esta actuará como contenedor anual para fallas críticas. No sincronizará equipos automáticamente.
+                                <i class="fas fa-exclamation-triangle"></i> Está creando una <strong>Gestión Correctiva semestral</strong>. No sincronizará equipos automáticamente; solo agrupará las fallas reportadas por L-7 en este semestre.
                             </div>
                         }
                         else
@@ -89,6 +89,13 @@
                                         asp-items="Html.GetEnumSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.ManagementStatus>().Where(x => x.Value != ((int)Proyecto_Laboratorios_Univalle.Models.Enums.ManagementStatus.Deleted).ToString())">
                                 </select>
                                 <span asp-validation-for="Input.Status" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold"></label>
+                                <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="Model.FacultyList">
+                                    <option value="">-- Seleccione Facultad --</option>
+                                </select>
+                                <span asp-validation-for="Input.FacultyId" class="text-danger"></span>
                             </div>
                         </div>
 
