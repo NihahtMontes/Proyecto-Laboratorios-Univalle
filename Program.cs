@@ -9,6 +9,7 @@ using QuestPDF.Infrastructure;
 using OfficeOpenXml;
 
 QuestPDF.Settings.License = LicenseType.Community;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
@@ -17,6 +18,7 @@ builder.Logging.AddDebug();
 
 var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys");
 Directory.CreateDirectory(dataProtectionKeysPath);
+
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
     .SetApplicationName("ProyectoLaboratoriosUnivalle");
@@ -65,8 +67,8 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options => {
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {
     options.CheckConsentNeeded = context => false;
-    options.MinimumSameSitePolicy = SameSiteMode.Lax; // Cambiado a Lax para compatibilidad local
-    options.Secure = CookieSecurePolicy.SameAsRequest;
+    options.MinimumSameSitePolicy = SameSiteMode.Lax; // Lax es ideal para funcionar sin SSL localmente
+    options.Secure = CookieSecurePolicy.SameAsRequest; // Usa Secure en HTTPS, no usa Secure en HTTP
 });
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -75,7 +77,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-    options.LoginPath = "/Login"; // Ruta a la que redirige si no hay sesión
+    options.LoginPath = "/Login";
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromDays(7);
 });
@@ -96,6 +98,7 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.Name = ".ProyectoUnivalle.WizardSession";
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // <-- Añadido para asegurar compatibilidad de sesión
 });
 
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, UserClaimsPrincipalFactory>();
@@ -108,26 +111,22 @@ builder.Services.AddScoped<IManagementContextService, ManagementContextService>(
 builder.Services.AddScoped<IManagementActivationService, ManagementActivationService>();
 builder.Services.AddScoped<IManagementPlanExclusionService, ManagementPlanExclusionService>();
 builder.Services.AddScoped<DatabaseErrorHandler>();
-// builder.Services.AddScoped<DataMigrationService>(); // Removido: Mantenimiento de modelos a enums completado.
 
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
 builder.WebHost.UseSetting("BrowserLink:Enabled", "false");
 
 builder.Services.AddControllers();
 builder.Services.AddRazorPages(options =>
 {
-    // Esto obliga a que CUALQUIER página pida Login por defecto
     options.Conventions.AuthorizeFolder("/");
-    // Si tu página de Login está en la raíz, debes permitirle el acceso anónimo:
     options.Conventions.AllowAnonymousToPage("/Login");
     options.Conventions.AddPageRoute("/Requests/Details", "Requests/Details/{id:int}");
     options.Conventions.AddPageRoute("/Requests/Details", "Requests/Details/{id:int}/{*extra}");
     options.Conventions.AddPageRoute("/Maintenances/Details", "Maintenances/Details/{id:int}");
     options.Conventions.AddPageRoute("/Maintenances/Details", "Maintenances/Details/{id:int}/{*extra}");
 });
-// ==============================================================
 
+// ==============================================================
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -136,26 +135,22 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseHsts();
+    // COMENTADO: HSTS obliga al navegador a usar HTTPS estricto. Se desactiva para permitir HTTP puro.
+    // app.UseHsts(); 
 }
 
 app.UseExceptionHandler("/Error");
 
-app.UseHttpsRedirection();
+// COMENTADO: Redirección HTTPS desactivada. Si entra por HTTP, se queda en HTTP.
+// app.UseHttpsRedirection(); 
+
 app.UseStaticFiles();
-
-// AÑADIDO: Activar Middleware de Sesiones
 app.UseSession();
-
 app.UseRouting();
-app.UseStaticFiles();
 
-// AÑADIDO: Activar Middleware de Sesiones
-app.UseSession();
+// SE ELIMINÓ LA DUPLICACIÓN DE CÓDIGO (Tenías StaticFiles, Session y Routing declarados dos veces)
 
-app.UseRouting();
 app.UseCookiePolicy();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
