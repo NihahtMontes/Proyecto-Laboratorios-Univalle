@@ -19,7 +19,7 @@ Flujo: catalogo define tipo/recurso -> unidad fisica hereda catalogo y ubicacion
 - Unidades fisicas: `Pages/EquipmentUnits/Create/Edit/Details/Kardex`.
 - Consulta visual: `Pages/AssetView/Index`, `EquipmentClassifications`, `Units`, `UtensilClassifications`, `UtensilUnits`, `OtherUnits`.
 - Modelos: `Models/Equipment.cs`, `Models/EquipmentUnit.cs`, `Models/EquipmentStateHistory.cs`, `Models/EquipmentNote.cs`.
-- Enums: `Models/Enums/EquipmentCategory.cs`, `Models/Enums/EquipmentTypeClassification.cs.cs`, `Models/Enums/EquipmentStatus.cs`.
+- Enums: `Models/Enums/EquipmentCategory.cs`, `Models/Enums/EquipmentTypeClassification.cs`, `Models/Enums/EquipmentStatus.cs`.
 
 ## 3. Integracion Con NiceAdmin
 

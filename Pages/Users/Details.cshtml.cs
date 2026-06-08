@@ -18,19 +18,42 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         }
 
         public new User User { get; set; } = default!;
+        public string ProfilePictureVersion { get; set; } = string.Empty;
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null) return NotFound();
+            if (id == null)
+            {
+                return RedirectToPage("/Error", new
+                {
+                    module = "Usuarios",
+                    message = "No se recibio el identificador del usuario.",
+                    returnUrl = Url.Page("./Index"),
+                    listUrl = Url.Page("./Index")
+                });
+            }
 
             var user = await _context.Users
+                .IgnoreQueryFilters()
+                .AsNoTracking()
                 .Include(u => u.CreatedBy)
                 .Include(u => u.ModifiedBy)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (user == null) return NotFound();
+            if (user == null)
+            {
+                return RedirectToPage("/Error", new
+                {
+                    module = "Usuarios",
+                    entityId = id.ToString(),
+                    message = "No se encontro el usuario solicitado.",
+                    returnUrl = Url.Page("./Index"),
+                    listUrl = Url.Page("./Index")
+                });
+            }
             
             User = user;
+            ProfilePictureVersion = (user.LastModifiedDate ?? user.CreatedDate).Ticks.ToString();
             return Page();
         }
     }

@@ -13,7 +13,7 @@ Permitir guardar avance parcial sin avanzar fase ni exigir validacion final.
 - `DraftSavedAt`.
 - `DraftSummary`.
 
-Migracion vigente: `Data/PostgresMigrations/20260509211650_AddManagementPlanDraftFields.cs`.
+Campos incluidos en la linea base vigente de SQL Server (`Data/SqlServerMigrations/`). La migracion PostgreSQL previa queda como historica/excluida.
 
 ## Semantica
 

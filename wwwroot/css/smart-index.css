@@ -1,0 +1,155 @@
+.smart-index-card {
+    margin-top: 1rem;
+}
+
+.smart-index-header {
+    border-bottom: 1px solid #e9ecef;
+    margin-bottom: 1.65rem;
+    padding: .65rem .75rem 1.35rem;
+}
+
+.smart-index-title {
+    color: #1f2d3d;
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: 0;
+    margin-bottom: .25rem;
+}
+
+.smart-index-subtitle {
+    color: #8d97ad;
+    font-size: .9rem;
+    margin-bottom: 0;
+}
+
+.smart-index-filter {
+    background: #f8fafc;
+    border-left: 3px solid #2962ff;
+    border-radius: 4px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, .04);
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+}
+
+.smart-index-label {
+    color: #9aa7b8;
+    display: block;
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    margin-bottom: .45rem;
+    text-transform: uppercase;
+}
+
+.smart-index-search .input-group-text,
+.smart-index-search .form-control,
+.smart-index-filter .custom-select {
+    border-color: #e1e7ee;
+    min-height: 38px;
+}
+
+.smart-index-search .input-group-text {
+    color: #9aa7b8;
+}
+
+.smart-index-table thead th {
+    border-top: 0;
+    color: #5f7288;
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.smart-index-table td {
+    vertical-align: middle !important;
+}
+
+.smart-index-icon {
+    align-items: center;
+    border-radius: 50%;
+    display: inline-flex;
+    height: 40px;
+    justify-content: center;
+    width: 40px;
+}
+
+.smart-index-badge {
+    border-radius: 999px;
+    display: inline-block;
+    font-size: .7rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: .45rem .75rem;
+}
+
+.smart-index-badge-info {
+    background: #e7f3ff;
+    color: #2962ff;
+}
+
+.smart-index-badge-equipment {
+    background: #0d6efd;
+    color: #fff;
+}
+
+.smart-index-badge-utensil {
+    background: #17b86a;
+    color: #fff;
+}
+
+.smart-index-badge-other {
+    background: #6c757d;
+    color: #fff;
+}
+
+.smart-index-badge-success {
+    background: #e8f8ef;
+    color: #00a65a;
+}
+
+.smart-index-badge-warning {
+    background: #fff4df;
+    color: #d98200;
+}
+
+.smart-index-badge-danger {
+    background: #ffe5e9;
+    color: #f62d51;
+}
+
+.smart-index-badge-muted {
+    background: #eef2f7;
+    color: #637083;
+}
+
+.smart-index-row-title {
+    color: #1f2d3d;
+    font-size: .92rem;
+    font-weight: 800;
+    margin-bottom: .2rem;
+}
+
+.smart-index-row-subtitle {
+    color: #8d97ad;
+    font-size: .78rem;
+}
+
+.smart-index-empty {
+    color: #8d97ad;
+    font-style: italic;
+    font-weight: 700;
+    padding: 3rem 1rem;
+    text-align: center;
+}
+
+.smart-index-empty i {
+    display: block;
+    font-size: 2.5rem;
+    margin-bottom: .75rem;
+    opacity: .25;
+}
+
+.smart-index-actions .btn {
+    box-shadow: none;
+}

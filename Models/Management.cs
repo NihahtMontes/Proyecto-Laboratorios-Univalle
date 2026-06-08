@@ -24,7 +24,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int Year { get; set; }
 
         [Required(ErrorMessage = "El semestre es obligatorio")]
-        [Range(1, 2, ErrorMessage = "El semestre debe ser 1 o 2")]
+        [Range(0, 2, ErrorMessage = "El semestre debe ser 0, 1 o 2")]
         [Display(Name = "Semestre")]
         public int Semester { get; set; }
 
@@ -67,6 +67,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Tipo de Gestión")]
         public ManagementType Type { get; set; } = ManagementType.Preventive;
 
+        [Display(Name = "Facultad Asociada")]
+        public int? FacultyId { get; set; }
+
         // ========================================
         // AUDITORÍA (IAuditable)
         // ========================================
@@ -91,6 +94,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
 
+        [ForeignKey("FacultyId")]
+        public virtual Faculty? Faculty { get; set; }
+
         // Todas las entradas del plan para este periodo
         public virtual ICollection<ManagementPlan> ManagementPlans { get; set; } = new List<ManagementPlan>();
 
@@ -101,10 +107,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public bool IsClosed => Status == ManagementStatus.Completed;
 
         [NotMapped]
-        public int TotalEquipments => ManagementPlans?.Count ?? 0;
+        public int TotalEquipments => ManagementPlans?.Count(p => p.EquipmentUnitId.HasValue) ?? 0;
 
         [NotMapped]
-        public int CompletedMaintenances => ManagementPlans?.Count(p => p.PlanStatus == ManagementPlanStatus.Completed) ?? 0;
+        public int CompletedMaintenances => ManagementPlans?.Count(p =>
+            p.EquipmentUnitId.HasValue && p.PlanStatus == ManagementPlanStatus.Completed) ?? 0;
 
         [NotMapped]
         public int CompletionPercentage => TotalEquipments > 0

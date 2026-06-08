@@ -74,6 +74,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 var term = SearchTerm.Trim().ToLower();
                 query = query.Where(u =>
                     u.Equipment!.Name.ToLower().Contains(term) ||
+                    u.InventoryNumber.ToLower().Contains(term) ||
                     (u.SerialNumber != null && u.SerialNumber.ToLower().Contains(term)));
             }
 

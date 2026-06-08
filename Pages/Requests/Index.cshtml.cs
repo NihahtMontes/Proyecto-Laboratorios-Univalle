@@ -83,8 +83,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 pageIndex ?? 1, PageSize);
 
             // Load labs for the dropdown
-            var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();
-            LaboratoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(labs, "Id", "Name", FilterLaboratoryId);
+            var labs = await _context.Laboratories
+                .Where(l => l.Status == GeneralStatus.Activo)
+                .OrderBy(l => l.Code)
+                .ThenBy(l => l.Name)
+                .ToListAsync();
+            LaboratoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(LaboratoryDisplayHelper.ToSelectItems(labs), "Id", "DisplayName", FilterLaboratoryId);
         }
 
         public async Task<IActionResult> OnGetDescargarReporteAsync(int id)

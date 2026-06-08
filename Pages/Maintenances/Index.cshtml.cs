@@ -39,8 +39,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         {
 
             var labsQuery = _context.Laboratories.AsQueryable();
-            var labs = await labsQuery.OrderBy(l => l.Name).ToListAsync();
-            LaboratoryList = new SelectList(labs, "Id", "Name");
+            var labs = await labsQuery.OrderBy(l => l.Code).ThenBy(l => l.Name).ToListAsync();
+            LaboratoryList = new SelectList(LaboratoryDisplayHelper.ToSelectItems(labs), "Id", "DisplayName", SelectedLaboratoryId);
 
 
 
@@ -57,10 +57,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
+                var technicianIds = await _context.People
+                    .OfType<Intern>()
+                    .Where(p => p.Name.ToLower().Contains(term))
+                    .Select(p => p.Id)
+                    .Concat(_context.People
+                        .OfType<Extern>()
+                        .Where(p => p.Name.ToLower().Contains(term))
+                        .Select(p => p.Id))
+                    .ToListAsync();
+
                 query = query.Where(m =>
                     m.EquipmentUnit!.Equipment!.Name.ToLower().Contains(term) ||
                     m.EquipmentUnit.InventoryNumber.ToLower().Contains(term) ||
-                    (m.Technician != null && m.Technician.FullName.ToLower().Contains(term))
+                    (m.TechnicianId.HasValue && technicianIds.Contains(m.TechnicianId.Value))
                 );
             }
 

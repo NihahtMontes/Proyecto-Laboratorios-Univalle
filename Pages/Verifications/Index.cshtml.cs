@@ -44,9 +44,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         {
             var labs = await _context.Laboratories
                 .Where(l => l.Status == GeneralStatus.Activo)
-                .OrderBy(l => l.Name)
+                .OrderBy(l => l.Code)
+                .ThenBy(l => l.Name)
                 .ToListAsync();
-            LaboratoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(labs, "Id", "Name");
+            LaboratoryList = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(LaboratoryDisplayHelper.ToSelectItems(labs), "Id", "DisplayName");
 
             if (!FilterLaboratoryId.HasValue)
             {

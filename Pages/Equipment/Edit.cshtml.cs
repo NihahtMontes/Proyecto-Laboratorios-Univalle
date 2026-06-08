@@ -118,6 +118,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             };
 
             LoadLists();
+            ViewData["ReturnUrl"] = Request.Query["returnUrl"].ToString();
             return Page();
         }
 
@@ -238,7 +239,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             }
 
             TempData.Success($"Datos del equipo '{equipment.Name}' actualizados correctamente.");
-            return RedirectToPage("./Index");
+            return RedirectToPage("./Details", new { id = equipment.Id });
         }
 
         private async Task ReloadDisplayData(int id)

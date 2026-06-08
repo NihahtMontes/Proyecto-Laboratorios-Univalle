@@ -9,7 +9,6 @@ using QuestPDF.Infrastructure;
 using OfficeOpenXml;
 
 QuestPDF.Settings.License = LicenseType.Community;
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
@@ -41,10 +40,10 @@ Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIB
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), npgsqlOptions => 
+    options.UseSqlServer(connectionString, sqlServerOptions =>
     {
-        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-        npgsqlOptions.CommandTimeout(120);
+        sqlServerOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+        sqlServerOptions.CommandTimeout(120);
     })
     .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
@@ -104,7 +103,10 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IVerificationReportService, VerificationReportService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IDashboardReadService, DashboardReadService>();
 builder.Services.AddScoped<IManagementContextService, ManagementContextService>();
+builder.Services.AddScoped<IManagementActivationService, ManagementActivationService>();
+builder.Services.AddScoped<IManagementPlanExclusionService, ManagementPlanExclusionService>();
 builder.Services.AddScoped<DatabaseErrorHandler>();
 // builder.Services.AddScoped<DataMigrationService>(); // Removido: Mantenimiento de modelos a enums completado.
 
@@ -119,6 +121,10 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizeFolder("/");
     // Si tu página de Login está en la raíz, debes permitirle el acceso anónimo:
     options.Conventions.AllowAnonymousToPage("/Login");
+    options.Conventions.AddPageRoute("/Requests/Details", "Requests/Details/{id:int}");
+    options.Conventions.AddPageRoute("/Requests/Details", "Requests/Details/{id:int}/{*extra}");
+    options.Conventions.AddPageRoute("/Maintenances/Details", "Maintenances/Details/{id:int}");
+    options.Conventions.AddPageRoute("/Maintenances/Details", "Maintenances/Details/{id:int}/{*extra}");
 });
 // ==============================================================
 
@@ -130,11 +136,18 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
 
+app.UseExceptionHandler("/Error");
+
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+// AÑADIDO: Activar Middleware de Sesiones
+app.UseSession();
+
+app.UseRouting();
 app.UseStaticFiles();
 
 // AÑADIDO: Activar Middleware de Sesiones
@@ -156,12 +169,30 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var db = services.GetRequiredService<ApplicationDbContext>();
-        Console.WriteLine(">>> APLICANDO MIGRACIONES DE EF <<<");
-        await db.Database.MigrateAsync();
+        var config = services.GetRequiredService<IConfiguration>();
+        bool autoMigrate = config.GetValue<bool>("Database:AutoMigrate", false);
+        bool runSeed = config.GetValue<bool>("Database:RunSeed", false);
 
-        Console.WriteLine(">>> INICIANDO SEMILLA DE BASE DE DATOS <<<");
-        await DbInitializer.SeedAsync(services);
-        Console.WriteLine(">>> SEMILLA DE BASE DE DATOS COMPLETADA CON ÉXITO <<<");
+        if (autoMigrate)
+        {
+            Console.WriteLine(">>> APLICANDO MIGRACIONES DE EF <<<");
+            await db.Database.MigrateAsync();
+        }
+        else
+        {
+            Console.WriteLine(">>> AUTO-MIGRATE DESACTIVADO: Saltando migraciones de EF <<<");
+        }
+
+        if (runSeed)
+        {
+            Console.WriteLine(">>> INICIANDO SEMILLA DE BASE DE DATOS <<<");
+            await DbInitializer.SeedAsync(services);
+            Console.WriteLine(">>> SEMILLA DE BASE DE DATOS COMPLETADA CON ÉXITO <<<");
+        }
+        else
+        {
+            Console.WriteLine(">>> RUN-SEED DESACTIVADO: Saltando semilla de base de datos <<<");
+        }
     }
     catch (Exception ex)
     {

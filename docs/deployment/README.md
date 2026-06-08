@@ -6,7 +6,7 @@ Guia sanitizada para publicar el sistema. Las credenciales reales deben vivir fu
 
 - Backup reciente de la base de datos.
 - Runtime .NET 9 instalado si el publish es framework-dependent.
-- PostgreSQL configurado en el servidor de produccion.
+- SQL Server completo configurado en el servidor de produccion o en `localhost` para despliegue local.
 - Variables de entorno o secrets configurados para connection string.
 
 ## Publicacion Recomendada
@@ -26,17 +26,23 @@ dotnet publish -c Release -r win-x64 --self-contained true -o ./publish-selfcont
 ## Configuracion Produccion
 
 - `ASPNETCORE_ENVIRONMENT=Production`.
-- `Include Error Detail=false`.
 - `DetailedErrors=false`.
-- Usuario PostgreSQL dedicado, no superusuario.
+- Usuario SQL Server dedicado con permisos minimos necesarios, o autenticacion de Windows si el backend corre con una identidad confiable.
+- No usar LocalDB, SQL Express ni `SQLEXPRESS`.
 - HTTPS obligatorio si se expone fuera de red local.
 
 ## Connection String
 
-Usar variables de entorno o user-secrets. Ejemplo con placeholders:
+Usar variables de entorno, user-secrets o configuracion segura del hosting. Ejemplo con placeholders:
 
 ```text
-Host=[DB_HOST];Port=5432;Database=[DB_NAME];Username=[DB_USER];Password=[DB_PASSWORD];Include Error Detail=false
+Server=localhost;Database=[DB_NAME];User Id=[DB_USER];Password=[DB_PASSWORD];MultipleActiveResultSets=true;TrustServerCertificate=True
+```
+
+Alternativa con autenticacion de Windows:
+
+```text
+Server=localhost;Database=[DB_NAME];Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
 ```
 
 ## Verificacion

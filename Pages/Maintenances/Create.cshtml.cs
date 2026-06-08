@@ -825,5 +825,27 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 });
             ViewData["RequestId"] = new SelectList(requests, "Id", "DisplayText", requestId);
         }
+
+        public async Task<JsonResult> OnGetKardexDetailAsync(int equipmentId)
+        {
+            var unit = await _context.EquipmentUnits
+                .Include(u => u.Equipment)
+                .Include(u => u.StateHistory)
+                .FirstOrDefaultAsync(u => u.Id == equipmentId);
+
+            if (unit == null) return new JsonResult(new { error = "No encontrado" });
+
+            var lastHistory = unit.StateHistory?
+                .OrderByDescending(h => h.StartDate)
+                .FirstOrDefault();
+
+            return new JsonResult(new {
+                name = unit.Equipment?.Name ?? "Sin nombre",
+                inventoryNumber = unit.InventoryNumber,
+                currentStatus = unit.CurrentStatus.ToString(),
+                lastDate = lastHistory?.StartDate.ToString("dd 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-ES")) ?? "Sin registros",
+                reason = lastHistory?.Reason ?? "—"
+            });
+        }
     }
 }

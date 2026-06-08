@@ -4,7 +4,7 @@ Leer junto con `Models/AGENTS.md` y `.agent/skills/database/SKILL.md`.
 
 ## Proveedor Actual
 
-- PostgreSQL con Npgsql 9.0.0.
+- SQL Server con Microsoft.EntityFrameworkCore.SqlServer 9.0.12.
 - Base dev esperada: `DB_Laboratorios_Univalle_DEV`.
 - Produccion: `DB_Laboratorios_Univalle`.
 - Connection strings reales no deben estar versionadas.
@@ -17,10 +17,11 @@ Leer junto con `Models/AGENTS.md` y `.agent/skills/database/SKILL.md`.
 
 ## Migraciones
 
-- PostgreSQL migrations en `Data/PostgresMigrations/`.
-- Migraciones antiguas SQL Server estan historicas/excluidas.
+- Migraciones SQL Server vigentes en `Data/SqlServerMigrations/`.
+- Migraciones PostgreSQL en `Data/PostgresMigrations/` quedan historicas/excluidas.
+- Migraciones antiguas SQL Server en `Data/Migrations/` y `Migrations/` quedan historicas/excluidas.
 - Nunca modificar una migracion existente.
-- Crear migracion nueva para columnas como `IsDeleted`, FK nullable o campos de borrador.
+- Crear migracion nueva en `Data/SqlServerMigrations/` para cambios de schema.
 
 ## Soft Delete
 

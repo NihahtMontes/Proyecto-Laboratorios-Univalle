@@ -18,7 +18,7 @@
                     </div>
                 </div>
 
-                <form method="post" novalidate>
+                <form method="post" enctype="multipart/form-data" novalidate>
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
                     <div class="row">
@@ -70,6 +70,15 @@
                                 <label asp-for="Input.PhoneNumber" class="control-label font-weight-bold small uppercase text-muted">Teléfono de Contacto <span class="text-danger">*</span></label>
                                 <input asp-for="Input.PhoneNumber" class="form-control" placeholder="70000000" />
                                 <span asp-validation-for="Input.PhoneNumber" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.ProfilePictureUpload" class="control-label font-weight-bold small uppercase text-muted">Foto de Perfil</label>
+                                <div class="custom-file">
+                                    <input asp-for="Input.ProfilePictureUpload" type="file" class="custom-file-input" id="customFile" accept="image/*">
+                                    <label class="custom-file-label" for="customFile">Elegir archivo...</label>
+                                </div>
+                                <span asp-validation-for="Input.ProfilePictureUpload" class="text-danger small"></span>
                             </div>
                         </div>
 

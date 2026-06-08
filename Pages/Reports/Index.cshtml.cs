@@ -49,6 +49,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
         [BindProperty(SupportsGet = true)]
         public int? ManagementId { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public string? SearchTerm { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public string? ReportFilter { get; set; }
+
         public SelectList LaboratoriesList { get; set; } = null!;
         public List<EquipmentUnitReportStatus> EquipmentStatuses { get; set; } = new();
         public Laboratory? SelectedLaboratory { get; set; }
@@ -98,7 +104,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
                     .ThenBy(p => p.Id)
                     .ToListAsync();
 
-                EquipmentStatuses = plans
+                var statuses = plans
                     .Where(p => p.EquipmentUnit != null)
                     .Select(p => new EquipmentUnitReportStatus
                     {
@@ -111,12 +117,54 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
                         HasL6 = !IsCorrective && p.VerificationId.HasValue
                     })
                     .ToList();
+
+                if (!string.IsNullOrWhiteSpace(SearchTerm))
+                {
+                    var term = SearchTerm.Trim();
+                    statuses = statuses
+                        .Where(s =>
+                            Contains(s.Unit.Equipment?.Name, term) ||
+                            Contains(s.Unit.InventoryNumber, term) ||
+                            Contains(s.Unit.SerialNumber, term) ||
+                            Contains(s.Unit.Equipment?.Brand, term) ||
+                            Contains(s.Unit.Equipment?.Model, term))
+                        .ToList();
+                }
+
+                statuses = (ReportFilter ?? "all") switch
+                {
+                    "available" => statuses.Where(HasAnyReport).ToList(),
+                    "missing" => statuses.Where(s => !HasAnyReport(s)).ToList(),
+                    "l6" => statuses.Where(s => s.HasL6).ToList(),
+                    "l7" => statuses.Where(s => s.HasL7).ToList(),
+                    "l8" => statuses.Where(s => s.HasL8).ToList(),
+                    "l3" => statuses.Where(s => s.HasL3).ToList(),
+                    "l12" => statuses.Where(s => s.HasAdquisicion).ToList(),
+                    _ => statuses
+                };
+
+                EquipmentStatuses = statuses;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error cargando el Centro de Reportes para la gestion {ManagementId} y lab {LabId}", ManagementId, SelectedLabId);
                 LaboratoriesList ??= new SelectList(new List<Laboratory>(), "Id", "Name");
             }
+        }
+
+        private static bool Contains(string? value, string term)
+        {
+            return !string.IsNullOrWhiteSpace(value)
+                && value.Contains(term, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool HasAnyReport(EquipmentUnitReportStatus status)
+        {
+            return status.HasL6
+                || status.HasL7
+                || status.HasL8
+                || status.HasL3
+                || status.HasAdquisicion;
         }
     }
 }

@@ -17,7 +17,7 @@ Flujo: `_Layout.cshtml` referencia CSS/JS -> navegador carga assets -> vistas us
 
 - WrapPixel/NiceAdmin: `wwwroot/dist/css/*`, `wwwroot/dist/js/*`.
 - Assets alternos/base: `wwwroot/assets/css/*`, `wwwroot/assets/js/*`, `wwwroot/assets/scss/*`.
-- CSS local: `wwwroot/css/site.css`, `wwwroot/css/tailwind-dashboard.css`.
+- CSS local activo: `wwwroot/css/site.css`. `wwwroot/css/tailwind-dashboard.css` es legacy no referenciado y excluido de publish.
 - JS local: `wwwroot/js/site.js`.
 - Librerias: `wwwroot/lib/jquery*`, validation unobtrusive.
 - Templates reportes: `wwwroot/templates/**`.

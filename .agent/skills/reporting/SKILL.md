@@ -16,7 +16,7 @@ Flujo: UI o wizard -> endpoint/pagina de reportes -> `ReportService` -> consulta
 ## 2. Arquitectura Y Archivos Clave
 
 - Controller API: `Controllers/ReportsController.cs`.
-- Servicio Excel principal: `Services/ReportService.cs`.
+- Servicio Excel principal: `Services/ReportService.cs` con parciales por modulo en `Services/Reports/`.
 - Servicio PDF verificacion: `Services/Reporting/VerificationReportService.cs`.
 - Interfaz PDF: `Services/Reporting/IVerificationReportService.cs`.
 - Pagina centro reportes: `Pages/Reports/Index.cshtml(.cs)`.

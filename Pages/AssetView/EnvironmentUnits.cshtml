@@ -1,0 +1,164 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.AssetView.EnvironmentUnitsModel
+@using Proyecto_Laboratorios_Univalle.Helpers
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@{
+    ViewData["Title"] = Model.LaboratoryDisplayName;
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h2 class="card-title text-dark font-weight-bold mt-2 ml-2">@Model.LaboratoryDisplayName</h2>
+                        <h6 class="card-subtitle text-muted ml-2">Unidades fisicas vigentes asignadas a este ambiente.</h6>
+                    </div>
+                    <div class="ml-auto mt-3 mt-md-0">
+                        <a asp-page="./Environments" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
+                            <i class="fas fa-arrow-left mr-1"></i> Volver
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
+                    <form method="get">
+                        <input type="hidden" asp-for="LaboratoryId" />
+                        <div class="row align-items-end">
+                            <div class="col-md-8">
+                                <label class="small font-weight-bold text-muted uppercase">Busqueda por activo, inventario o serie</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                    </div>
+                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, numero de inventario o numero de serie..." />
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-right mt-3 mt-md-0">
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
+                                </button>
+                                <a asp-page="./EnvironmentUnits" asp-route-laboratoryId="@Model.LaboratoryId" class="btn btn-outline-secondary btn-rounded ml-1">
+                                    <i class="fas fa-sync-alt"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Activo</th>
+                                <th>Categoria</th>
+                                <th>Inventario</th>
+                                <th>Serie</th>
+                                <th>Clasificacion</th>
+                                <th>Estado / Condicion</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Units == null || !Model.Units.Any())
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center py-5 text-muted italic font-weight-bold">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron unidades fisicas para este ambiente.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var unit in Model.Units)
+                                {
+                                    var equipment = unit.Equipment;
+                                    var categoryText = equipment?.Category switch
+                                    {
+                                        EquipmentCategory.Equipment => "Equipo",
+                                        EquipmentCategory.Utensil => "Utensilio",
+                                        EquipmentCategory.Other => "Otro",
+                                        _ => "Activo"
+                                    };
+                                    var classificationText = equipment?.Category == EquipmentCategory.Utensil
+                                        ? EnumHelper.GetDisplayName(equipment.UtensilType)
+                                        : equipment != null
+                                            ? EnumHelper.GetDisplayName(equipment.TypeClassification)
+                                            : "Sin clasificacion";
+
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="m-r-10">
+                                                    <span class="btn btn-circle btn-sm btn-light-info text-info"><i class="fas fa-cube"></i></span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="m-b-0 font-weight-bold text-dark">@(equipment?.Name ?? "Sin nombre")</h6>
+                                                    <span class="text-muted small">@(equipment?.Brand ?? "Sin marca") / @(equipment?.Model ?? "-")</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-pill badge-info px-3 py-1">@categoryText</span>
+                                        </td>
+                                        <td class="font-weight-bold text-dark">@unit.InventoryNumber</td>
+                                        <td>@(string.IsNullOrWhiteSpace(unit.SerialNumber) ? "Sin serie" : unit.SerialNumber)</td>
+                                        <td>@classificationText</td>
+                                        <td>
+                                            <div class="small">
+                                                <span class="badge badge-light border">@EnumHelper.GetDisplayName(unit.CurrentStatus)</span>
+                                                <div class="text-muted mt-1">@(unit.PhysicalCondition.HasValue ? EnumHelper.GetDisplayName(unit.PhysicalCondition.Value) : "Sin condicion")</div>
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group">
+                                                <a asp-page="/EquipmentUnits/Details" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Ver unidad">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </a>
+                                                @if (equipment != null)
+                                                {
+                                                    <a asp-page="/Equipment/Details" asp-route-id="@equipment.Id" class="btn btn-sm btn-outline-secondary btn-rounded" title="Ver definicion">
+                                                        <i class="fas fa-microscope"></i>
+                                                    </a>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.Units != null && Model.Units.TotalPages > 1)
+                {
+                    <nav aria-label="Paginacion de unidades por ambiente">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.Units.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./EnvironmentUnits" asp-route-laboratoryId="@Model.LaboratoryId" asp-route-pageIndex="@(Model.Units.PageIndex - 1)" asp-route-searchTerm="@Model.SearchTerm">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.Units.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Units.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./EnvironmentUnits" asp-route-laboratoryId="@Model.LaboratoryId" asp-route-pageIndex="@i" asp-route-searchTerm="@Model.SearchTerm">@i</a>
+                                </li>
+                            }
+                            @if (Model.Units.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./EnvironmentUnits" asp-route-laboratoryId="@Model.LaboratoryId" asp-route-pageIndex="@(Model.Units.PageIndex + 1)" asp-route-searchTerm="@Model.SearchTerm">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            </div>
+        </div>
+    </div>
+</div>

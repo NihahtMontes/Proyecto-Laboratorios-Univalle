@@ -39,7 +39,10 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
                 var query = _context.Managements
                     .AsNoTracking()
-                    .Where(m => m.Status == ManagementStatus.Active && m.Type == effectiveType);
+                    .Where(m => m.Status == ManagementStatus.Active && m.Type == effectiveType)
+                    .OrderByDescending(m => m.Year)
+                    .ThenByDescending(m => m.Semester)
+                    .ThenByDescending(m => m.CreatedDate);
 
                 var management = await query.FirstOrDefaultAsync();
 

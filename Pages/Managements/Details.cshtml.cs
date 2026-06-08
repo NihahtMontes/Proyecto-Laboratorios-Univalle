@@ -7,6 +7,7 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 {
@@ -15,10 +16,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
     public class DetailsModel : PageModel
     {
         private readonly ApplicationDbContext _context;
+        private readonly IManagementActivationService _managementActivation;
+        private readonly IManagementContextService _managementContext;
 
-        public DetailsModel(ApplicationDbContext context)
+        public DetailsModel(
+            ApplicationDbContext context,
+            IManagementActivationService managementActivation,
+            IManagementContextService managementContext)
         {
             _context = context;
+            _managementActivation = managementActivation;
+            _managementContext = managementContext;
         }
 
         public Management Management { get; set; } = default!;
@@ -70,7 +78,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         public ManagementPlanStatus? FilterStatus { get; set; }
         // Tab activo (para el frontend)
         [BindProperty(SupportsGet = true)]
-        public string ActiveTab { get; set; } = "l48";
+        public string ActiveTab { get; set; } = "";
 
         [BindProperty(SupportsGet = true)]
         public string? Type { get; set; }
@@ -84,6 +92,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     .Where(m => m.Type == ManagementType.Corrective && m.Status == ManagementStatus.Active)
                     .OrderByDescending(m => m.Year)
                     .ThenByDescending(m => m.Semester)
+                    .ThenByDescending(m => m.CreatedDate)
                     .Select(m => (int?)m.Id)
                     .FirstOrDefaultAsync();
 
@@ -113,9 +122,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (m == null)
             {
-                return NotFound();
+                TempData.Warning("La gestión solicitada fue eliminada o no existe.");
+                return RedirectToPage("./Index");
             }
             Management = m;
+            if (string.IsNullOrWhiteSpace(ActiveTab))
+            {
+                ActiveTab = Management.Type == ManagementType.Corrective ? "dashboard" : "l48";
+            }
             ViewData["ManagementId"] = Management.Id;
             ViewData["ManagementType"] = Management.Type.ToString();
 
@@ -164,7 +178,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             TopLaboratories = allPlans
                 .Where(p => p.EquipmentUnit?.Laboratory != null)
-                .GroupBy(p => p.EquipmentUnit!.Laboratory!.Name)
+                .GroupBy(p => LaboratoryDisplayHelper.Format(p.EquipmentUnit!.Laboratory))
                 .OrderByDescending(g => g.Count())
                 .ToDictionary(g => g.Key, g => g.Count());
 
@@ -174,8 +188,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 .ToList();
 
             // Listas para filtros del Cronograma L-48
-            var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();
-            LabFList  = new SelectList(labs, "Id", "Name", LabFilterId);
+            var labs = await _context.Laboratories.OrderBy(l => l.Code).ThenBy(l => l.Name).ToListAsync();
+            LabFList  = new SelectList(LaboratoryDisplayHelper.ToSelectItems(labs), "Id", "DisplayName", LabFilterId);
             
             // Fix: OrderBy in-memory since FullName is [NotMapped]
             var techsList = await _context.People
@@ -285,6 +299,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     case "Externo":
                         query = query.Where(p => p.Maintenance != null && p.Maintenance.ServiceType == ServiceType.External);
                         break;
+                    case "Delay":
+                        var utcNow = DateTime.UtcNow;
+                        query = query.Where(p =>
+                            p.PlannedDate.HasValue &&
+                            p.PlannedDate.Value < utcNow &&
+                            p.CurrentState != WizardEquipmentState.Completed &&
+                            p.CurrentState != WizardEquipmentState.VerifiedGood &&
+                            p.PlanStatus != ManagementPlanStatus.Completed);
+                        break;
                 }
             }
             ManagementPlans = await query
@@ -293,6 +316,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 .ToListAsync();
 
             return Page();
+        }
+
+        public async Task<IActionResult> OnPostUpdateActiveManagementAsync(int id)
+        {
+            var currentManagement = await _context.Managements
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (currentManagement == null)
+            {
+                TempData.Warning("No se encontro la gestion solicitada para actualizar el dashboard.");
+                return RedirectToPage("./Index");
+            }
+
+            var preferredId = currentManagement.Status == ManagementStatus.Active
+                ? currentManagement.Id
+                : (int?)null;
+
+            var activationResult = await _managementActivation.ReconcileActiveAsync(currentManagement.Type, preferredId);
+
+            if (activationResult.ActiveManagement == null)
+            {
+                TempData.Warning("No hay una gestion activa para este tipo. Cree o active una gestion antes de continuar.");
+                return RedirectToPage("./Index", new { Type = currentManagement.Type.ToString() });
+            }
+
+            await _context.SaveChangesAsync();
+            _managementContext.InvalidateCache();
+
+            var closedMessage = activationResult.ClosedCount > 0
+                ? $" Se cerro {activationResult.ClosedCount} gestion activa duplicada."
+                : string.Empty;
+
+            TempData.Success($"Gestion actualizada correctamente. Ahora estas en {activationResult.ActiveManagement.Code}.{closedMessage}");
+            return RedirectToPage("./Details", new { id = activationResult.ActiveManagement.Id, ActiveTab = "dashboard" });
         }
 
         public async Task<IActionResult> OnPostSyncEquipmentsAsync(int id)
@@ -304,16 +362,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             if (management == null || management.Status != ManagementStatus.Active)
             {
                 TempData.Error("No se puede sincronizar una gestión que no está activa.");
-                return RedirectToPage(new { id });
+                return RedirectToPage(new { id, ActiveTab });
             }
 
             if (management.Type == ManagementType.Corrective)
             {
                 TempData.Warning("Las gestiones correctivas no sincronizan equipos. Cada activo entra al flujo cuando se reporta una falla L-7.");
-                return RedirectToPage(new { id });
+                return RedirectToPage(new { id, ActiveTab });
             }
 
             // Obtener todos los IDs de equipos ya en esta gestión
+            if (management.Type == ManagementType.Preventive)
+            {
+                TempData.Info("Seleccione las categorias, subclasificaciones y unidades que entraran a esta ronda preventiva.");
+                return RedirectToPage("./PlanAssets", new { id });
+            }
+
             var existingEquipmentIds = management.ManagementPlans
                 .Select(p => p.EquipmentUnitId)
                 .Where(id => id.HasValue)
@@ -328,7 +392,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             if (!newEquipments.Any())
             {
                 TempData.Info("Todos los equipos activos ya están incluidos en esta ronda.");
-                return RedirectToPage(new { id });
+                return RedirectToPage(new { id, ActiveTab });
             }
 
             foreach (var eu in newEquipments)
@@ -349,7 +413,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             await _context.SaveChangesAsync();
             TempData.Success($"Se han sincronizado {newEquipments.Count} equipos nuevos a esta ronda.");
 
-            return RedirectToPage(new { id });
+            return RedirectToPage(new { id, ActiveTab });
         }
 
         public async Task<IActionResult> OnPostToggleWeekAsync(int planId, int weekNumber, string type)

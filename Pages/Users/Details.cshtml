@@ -1,154 +1,194 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Users.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Detalle de Usuario";
 
+    string ValueOrFallback(string? value, string fallback = "Sin dato")
+    {
+        return string.IsNullOrWhiteSpace(value) ? fallback : value;
+    }
 
+    var avatarUrl = !string.IsNullOrWhiteSpace(Model.User.ProfilePictureUrl)
+        ? $"{Url.Content("~/uploads/users/" + Model.User.ProfilePictureUrl)}?v={Model.ProfilePictureVersion}"
+        : null;
+    var statusClass = Model.User.Status == GeneralStatus.Activo ? "success" : "danger";
+}
 
 <div class="row">
-    <!-- Main Column: User Dossier -->
     <div class="col-lg-8">
         <div class="card shadow-sm border-0">
             <div class="card-body p-4">
-                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
-                    <div>
-                        <h4 class="card-title text-dark font-weight-bold">Expediente de Usuario</h4>
-                        <h6 class="card-subtitle text-muted">Información técnica, administrativa y perfil de seguridad de la cuenta.</h6>
+                <div class="d-flex flex-wrap align-items-center border-bottom pb-4 mb-4">
+                    <div class="mr-4 mb-3 mb-md-0">
+                        @if (!string.IsNullOrEmpty(avatarUrl))
+                        {
+                            <img src="@avatarUrl" alt="@Model.User.FullName" class="rounded-circle shadow user-detail-avatar">
+                        }
+                        else
+                        {
+                            <span class="rounded-circle bg-info text-white font-weight-bold shadow user-detail-avatar user-detail-initials">
+                                @(string.IsNullOrWhiteSpace(Model.User.Initials) ? "US" : Model.User.Initials)
+                            </span>
+                        }
                     </div>
-                    <div class="ml-auto mt-2 mt-md-0">
-                        <i class="fas fa-user-shield fa-2x text-info opacity-5"></i>
+                    <div class="flex-grow-1">
+                        <small class="text-muted text-uppercase font-weight-bold">Ficha de usuario</small>
+                        <h2 class="font-weight-bold text-dark mb-1">@Model.User.FullName</h2>
+                        <div class="text-muted mb-2">@ValueOrFallback(Model.User.Position, "Cargo no registrado")</div>
+                        <span class="badge badge-pill badge-info px-3 py-1 mr-1">@Model.User.Role</span>
+                        <span class="badge badge-pill badge-@statusClass px-3 py-1">@Model.User.Status</span>
                     </div>
                 </div>
 
-                <div class="row mt-4">
-                    <div class="col-md-5 border-right text-center">
-                        <span class="btn btn-circle btn-info btn-xl font-weight-bold text-white shadow mb-3" style="width: 100px; height: 100px; line-height: 75px; font-size: 2.5rem;">
-                            @Model.User.Initials
-                        </span>
-                        <h4 class="font-weight-bold text-dark mb-1">@Model.User.FullName</h4>
-                        <div class="mb-3">
-                            <span class="badge badge-pill badge-info px-4 py-1 font-weight-bold">@Model.User.Role</span>
-                        </div>
-                        
-                        <div class="bg-light p-3 rounded border shadow-none text-left d-inline-block w-100 italic border-left border-info border-3">
-                            <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
-                                <span class="text-muted small uppercase font-weight-bold">Usuario:</span>
-                                <strong class="text-info">@@@Model.User.UserName</strong>
-                            </div>
-                            <div class="d-flex justify-content-between pt-1">
-                                <span class="text-muted small uppercase font-weight-bold">Identidad (CI):</span>
-                                <strong class="text-dark">@Model.User.IdentityCard</strong>
-                            </div>
-                        </div>
+                <h5 class="font-weight-bold text-info mb-3">
+                    <i class="fas fa-id-card-alt mr-2"></i> Identidad
+                </h5>
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <label class="user-detail-label">Nombres</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.FirstName)</div>
                     </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="user-detail-label">Apellido paterno</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.LastName)</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="user-detail-label">Apellido materno</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.SecondLastName, "No registrado")</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="user-detail-label">C.I.</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.IdentityCard)</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="user-detail-label">Usuario / login</label>
+                        <div class="user-detail-value">@($"@{ValueOrFallback(Model.User.UserName)}")</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="user-detail-label">Fecha de alta</label>
+                        <div class="user-detail-value">@(Model.User.HireDate?.ToString("dd/MM/yyyy") ?? "No registrada")</div>
+                    </div>
+                </div>
 
-                    <div class="col-md-7">
-                        <h5 class="font-weight-bold text-info mb-3">
-                            <i class="fas fa-id-card-alt mr-2"></i> Contacto e Identidad
-                        </h5>
-                        
-                        <div class="mb-4">
-                            <div class="d-flex align-items-center mb-3">
-                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3 font-weight-bold"><i class="fas fa-envelope"></i></span>
-                                <div>
-                                    <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Correo Institucional</small>
-                                    <span class="font-weight-bold text-dark">@Model.User.Email</span>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <span class="btn btn-circle btn-sm btn-light-info text-info mr-3 font-weight-bold"><i class="fas fa-phone-alt"></i></span>
-                                <div>
-                                    <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.65rem;">Teléfono de Contacto</small>
-                                    <span class="font-weight-bold text-dark">@(Model.User.PhoneNumber ?? "No registrado")</span>
-                                </div>
-                            </div>
-                        </div>
+                <h5 class="font-weight-bold text-info mb-3">
+                    <i class="fas fa-address-book mr-2"></i> Contacto y perfil laboral
+                </h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="user-detail-label">Correo institucional</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.Email, "Correo no registrado")</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="user-detail-label">Telefono</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.PhoneNumber, "Telefono no registrado")</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="user-detail-label">Cargo</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.Position, "Cargo no registrado")</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="user-detail-label">Departamento</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.Department, "Departamento no registrado")</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                        <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-briefcase mr-2"></i> Perfil Profesional</h5>
-                        <div class="table-responsive shadow-none">
-                            <table class="table table-sm table-borderless bg-light rounded p-2">
-                                <tbody>
-                                    <tr>
-                                        <th class="text-muted small uppercase pl-3 font-weight-bold" style="width: 40%;">Cargo Actual:</th>
-                                        <td class="font-weight-bold text-dark">@(Model.User.Position ?? "-")</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted small uppercase pl-3 font-weight-bold">Departamento/Área:</th>
-                                        <td class="font-weight-bold text-dark">@(Model.User.Department ?? "-")</td>
-                                    </tr>
-                                    <tr>
-                                        <th class="text-muted small uppercase pl-3 font-weight-bold">Fecha de Alta:</th>
-                                        <td class="font-weight-bold text-dark">@(Model.User.HireDate?.ToString("dd/MM/yyyy") ?? "-")</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <h5 class="font-weight-bold text-dark mb-4">
+                    <i class="fas fa-history mr-2 text-warning"></i> Auditoria
+                </h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="user-detail-label">Creado por</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.CreatedBy?.FullName, "Sistema")</div>
+                        <small class="text-muted">@Model.User.CreatedDate.ToString("dd/MM/yyyy HH:mm")</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="user-detail-label">Ultima modificacion</label>
+                        <div class="user-detail-value">@ValueOrFallback(Model.User.ModifiedBy?.FullName, "Sin modificaciones")</div>
+                        <small class="text-muted">@(Model.User.LastModifiedDate?.ToString("dd/MM/yyyy HH:mm") ?? "Sin fecha registrada")</small>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Sidebar: Status and Control -->
     <div class="col-lg-4">
         <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
-            <div class="card-body">
-                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-shield-alt mr-2 text-info"></i> Seguridad de Acceso</h5>
+            <div class="card-body p-4">
+                <h5 class="card-title text-white font-weight-bold small text-uppercase mb-4">
+                    <i class="fas fa-shield-alt mr-2 text-info"></i> Seguridad de acceso
+                </h5>
                 <hr class="border-secondary" />
-                
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Estado Operativo:</small>
-                    <span class="badge badge-pill badge-@(Model.User.Status == GeneralStatus.Activo ? "success" : "danger") px-3 font-weight-bold">@Model.User.Status</span>
+                    <span class="text-muted small text-uppercase font-weight-bold">Rol</span>
+                    <span class="font-weight-bold text-white">@Model.User.Role</span>
                 </div>
-
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted small text-uppercase font-weight-bold">Estado</span>
+                    <span class="badge badge-pill badge-@statusClass px-3">@Model.User.Status</span>
+                </div>
                 <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Token de Acceso:</small>
-                    <span class="badge badge-pill badge-light text-dark px-3 font-weight-bold">Vigente</span>
+                    <span class="text-muted small text-uppercase font-weight-bold">Foto</span>
+                    <span class="font-weight-bold text-white">@(string.IsNullOrWhiteSpace(Model.User.ProfilePictureUrl) ? "Sin foto de perfil" : "Registrada")</span>
                 </div>
             </div>
         </div>
 
         <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Auditoría de Registro</h5>
-                <hr />
-                <div class="small">
-                    <div class="mb-3">
-                        <label class="text-muted d-block small uppercase mb-0">Alta de Sistema</label>
-                        <span class="font-weight-bold text-dark d-block">@Model.User.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
-                        <div class="text-muted small">Por: @(Model.User.CreatedBy?.FullName ?? "Admin Principal")</div>
-                    </div>
-                    @if (Model.User.LastModifiedDate.HasValue)
-                    {
-                        <div class="mb-0 border-top pt-2">
-                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
-                            <span class="font-weight-bold text-dark d-block">@(Model.User.ModifiedBy?.FullName ?? "-")</span>
-                            <span class="text-muted small text-muted">@Model.User.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                        </div>
-                    }
-                </div>
+            <div class="card-body p-4">
+                <h5 class="card-title font-weight-bold text-dark mb-4">
+                    <i class="fas fa-cogs mr-2 text-warning"></i> Acciones
+                </h5>
+                <a asp-page="./Edit" asp-route-id="@Model.User.Id" asp-route-returnUrl="Details" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
+                    <i class="fas fa-edit mr-1"></i> Modificar Perfil
+                </a>
+                <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 font-weight-bold mb-3">
+                    <i class="fas fa-list mr-1"></i> Volver al Listado
+                </a>
+                <a asp-page="./Delete" asp-route-id="@Model.User.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
+                    <i class="fas fa-user-minus mr-1"></i> Revocar Acceso
+                </a>
             </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="form-actions mt-4">
-            <a asp-page="./Edit" asp-route-id="@Model.User.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
-                <i class="fas fa-edit mr-1"></i> Modificar Credenciales
-            </a>
-            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 font-weight-bold mb-4">
-                <i class="fas fa-list mr-1"></i> Volver al Listado
-            </a>
-            
-            <a asp-page="./Delete" asp-route-id="@Model.User.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">
-                <i class="fas fa-user-minus mr-1"></i> Revocar Acceso permanentemente
-            </a>
         </div>
     </div>
 </div>
 
 @section Styles {
     <style>
-        .italic { font-style: italic; }
-        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
-        .border-3 { border-left-width: 3px !important; }
+        .user-detail-avatar {
+            width: 150px;
+            height: 150px;
+            min-width: 150px;
+            object-fit: cover;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 4px solid #e0f2fe;
+        }
+
+        .user-detail-initials {
+            font-size: 3.1rem;
+            line-height: 1;
+        }
+
+        .user-detail-label {
+            display: block;
+            color: #a6b0bf;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .user-detail-value {
+            color: #1f2d3d;
+            font-weight: 700;
+            word-break: break-word;
+        }
     </style>
 }

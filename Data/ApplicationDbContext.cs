@@ -108,9 +108,9 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<MaintenancePlan>().Property(p => p.EstimatedTime).HasPrecision(10, 2);
             modelBuilder.Entity<MaintenancePlan>().Property(p => p.ActualTime).HasPrecision(10, 2);
 
-            modelBuilder.Entity<User>().HasIndex(u => u.IdentityCard).IsUnique().HasFilter("\"Status\" <> 2");
-            modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("\"CurrentStatus\" <> 99");
-            modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("\"Status\" <> 2");
+            modelBuilder.Entity<User>().HasIndex(u => u.IdentityCard).IsUnique().HasFilter("[Status] <> 2");
+            modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("[CurrentStatus] <> 99");
+            modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("[Status] <> 2");
 
             // Bloque 5A: Índices de Performance
             modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.CurrentStatus);
@@ -159,6 +159,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             // modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => t.Maintenance!.Status != MaintenanceStatus.Cancelled);
 
             // Management Relationships
+            modelBuilder.Entity<Management>().HasOne(m => m.Faculty).WithMany().HasForeignKey(m => m.FacultyId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<Verification>().HasOne(v => v.Management).WithMany().HasForeignKey(v => v.ManagementId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Request>().HasOne(r => r.Management).WithMany().HasForeignKey(r => r.ManagementId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Maintenance>().HasOne(m => m.Management).WithMany().HasForeignKey(m => m.ManagementId).OnDelete(DeleteBehavior.Restrict);

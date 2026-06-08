@@ -32,6 +32,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         [BindProperty(SupportsGet = true)]
         public int? ManagementId { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? FocusPlanId { get; set; }
+
         public class EditInputModel
         {
             public int Id { get; set; }
@@ -197,10 +200,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             {
                 if (isHealthyCondition)
                 {
-                    return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, ManagementId });
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = FocusPlanId.HasValue ? (int)WizardPhase.Verification : 2, ManagementId, FocusPlanId });
                 }
 
-                return RedirectToPage("./Details", new { id = verification.Id, isWizard = IsWizard, managementId = ManagementId });
+                return RedirectToPage("./Details", new { id = verification.Id, isWizard = IsWizard, managementId = ManagementId, focusPlanId = FocusPlanId });
             }
 
             return RedirectToPage("./Index");

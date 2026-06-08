@@ -53,7 +53,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             }
             catch (Exception ex)
             {
-                TempData["Error"] = "No se pudo generar el Excel: " + ex.Message;
+                TempData.Error("No se pudo generar el Excel: " + ex.Message);
                 return RedirectToPage(new { id = id });
             }
         }

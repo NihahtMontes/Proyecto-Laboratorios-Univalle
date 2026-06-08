@@ -19,7 +19,7 @@ El contexto historico completo anterior quedo archivado en `.agent/archive/conte
 | Capa | Tecnologia |
 |---|---|
 | Backend | ASP.NET Core 9.0 con Razor Pages |
-| ORM | Entity Framework Core 9.0 con PostgreSQL/Npgsql |
+| ORM | Entity Framework Core 9.0 con SQL Server |
 | Frontend | Razor Pages, Bootstrap 4, NiceAdmin, jQuery, Select2 |
 | Alertas | SweetAlert2 v7.19.3 |
 | Excel | EPPlus 7.5.2 |

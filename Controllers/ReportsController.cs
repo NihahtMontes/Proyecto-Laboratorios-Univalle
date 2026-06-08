@@ -41,7 +41,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         }
 
         [HttpGet("download/l6")]
-        public async Task<IActionResult> DownloadL6(int managementId, int labId)
+        public async Task<IActionResult> DownloadL6(int managementId, int labId, DateTime? date = null)
         {
             try
             {
@@ -50,9 +50,11 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                 if (management.Type == ManagementType.Corrective) return BadRequest("L-6 solo aplica al proceso preventivo.");
 
                 var responsable = await GetCurrentUserFullName();
-                var bytes = await _reportService.GenerateL6VerificacionExcel(managementId, labId, responsable);
+                var bytes = await _reportService.GenerateL6VerificacionExcel(managementId, labId, responsable, date);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    $"Verificacion_L6_{management.Code}_Lab_{labId}.xlsx");
+                    date.HasValue
+                        ? $"Verificacion_L6_{management.Code}_Lab_{labId}_{date.Value:yyyyMMdd}.xlsx"
+                        : $"Verificacion_L6_{management.Code}_Lab_{labId}.xlsx");
             }
             catch (Exception ex)
             {

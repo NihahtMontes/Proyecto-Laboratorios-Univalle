@@ -32,7 +32,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         [BindProperty(SupportsGet = true)]
         public int? ManagementId { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public int? FocusPlanId { get; set; }
+
         public new Request Request { get; set; } = default!;
+
+        public bool IsReadOnlyFromL6 { get; set; } = false;
 
         public class InputModel
         {
@@ -137,6 +142,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             ViewData["IsCorrective"] = currentMgmt?.Type == ManagementType.Corrective;
             ViewData["IsWizard"] = IsWizard;
             ViewData["ManagementId"] = currentMgmt?.Id;
+            ViewData["ReturnUrl"] = HttpContext.Request.Query["returnUrl"].ToString();
+
+            // Detectar si el L7 deriva de un L6 (flujo preventivo)
+            var linkedPlan = await _context.ManagementPlans
+                .AsNoTracking()
+                .Include(p => p.Verification)
+                .FirstOrDefaultAsync(p => p.RequestId == id);
+            if (linkedPlan != null && linkedPlan.VerificationId.HasValue && currentMgmt?.Type != ManagementType.Corrective)
+            {
+                IsReadOnlyFromL6 = true;
+                // Reflejar la observación VIVA de L6 (no la copia stale del L7)
+                if (linkedPlan.Verification != null)
+                {
+                    Input.Description = linkedPlan.Verification.Observations ?? Input.Description;
+                }
+            }
+            ViewData["IsReadOnlyFromL6"] = IsReadOnlyFromL6;
 
             return Page();
         }
@@ -151,6 +173,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 .FirstOrDefaultAsync(m => m.Id == Input.Id);
 
             if (requestToUpdate == null) return NotFound();
+
+            // Server guard: prevent editing Description/Observations for preventive L7 from L6
+            var postPlan = await _context.ManagementPlans
+                .AsNoTracking()
+                .Include(p => p.Management)
+                .FirstOrDefaultAsync(p => p.RequestId == Input.Id);
+            if (postPlan != null && postPlan.VerificationId.HasValue && postPlan.Management?.Type != ManagementType.Corrective)
+            {
+                // Restore original values from DB — don't allow changes
+                Input.Description = requestToUpdate.Description;
+                Input.Observations = requestToUpdate.Observations;
+            }
 
             // Manual Validation for Purchasing items
             if (requestToUpdate.Type == RequestType.Purchasing)
@@ -169,6 +203,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 await LoadLists();
                 ViewData["IsWizard"] = IsWizard;
                 ViewData["ManagementId"] = ManagementId;
+                ViewData["ReturnUrl"] = HttpContext.Request.Query["returnUrl"].ToString();
                 return Page();
             }
 
@@ -244,7 +279,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             if (IsWizard)
             {
-                return RedirectToPage("./Details", new { id = requestToUpdate.Id, isWizard = IsWizard, managementId = ManagementId });
+                return RedirectToPage("./Details", new { id = requestToUpdate.Id, isWizard = IsWizard, managementId = ManagementId, focusPlanId = FocusPlanId });
+            }
+
+            var returnUrlPost = HttpContext.Request.Query["returnUrl"].ToString();
+            if (returnUrlPost == "Details")
+            {
+                return RedirectToPage("./Details", new { id = requestToUpdate.Id });
             }
 
             return RedirectToPage("./Index");

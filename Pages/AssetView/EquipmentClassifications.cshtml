@@ -5,6 +5,68 @@
     ViewData["Title"] = "Clasificacion de Equipos";
 }
 
+@section Styles {
+    <style>
+        .asset-nav-card {
+            min-height: 174px;
+            border-radius: 8px;
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
+            overflow: hidden;
+            position: relative;
+            transition: transform .18s ease, box-shadow .18s ease;
+        }
+
+        .asset-nav-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 30px rgba(15, 23, 42, .16);
+        }
+
+        .asset-nav-card:after {
+            content: "";
+            width: 112px;
+            height: 112px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .16);
+            position: absolute;
+            right: -24px;
+            top: -24px;
+        }
+
+        .asset-nav-card.bg-primary { background: linear-gradient(135deg, #2962ff, #36a3ff) !important; }
+        .asset-nav-card.bg-success { background: linear-gradient(135deg, #00c292, #48d65b) !important; }
+        .asset-nav-card.bg-warning { background: linear-gradient(135deg, #ffb22b, #ff8f00) !important; }
+        .asset-nav-card.bg-danger { background: linear-gradient(135deg, #f62d51, #ff6b6b) !important; }
+        .asset-nav-card.bg-info,
+        .asset-nav-card.bg-cyan { background: linear-gradient(135deg, #03a9f3, #4fc3f7) !important; }
+        .asset-nav-card.bg-secondary { background: linear-gradient(135deg, #6c757d, #95a5a6) !important; }
+
+        .asset-nav-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .18);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .asset-nav-title {
+            min-height: 44px;
+            font-size: 1rem;
+            line-height: 1.25;
+            letter-spacing: 0;
+        }
+
+        .asset-nav-value {
+            font-size: 2rem;
+            line-height: 1;
+            letter-spacing: 0;
+        }
+    </style>
+}
+
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm border-0">
@@ -26,21 +88,11 @@
                     {
                         <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                             <a asp-page="./Units" asp-route-classification="@card.Classification" class="text-decoration-none">
-                                <div class="card text-white @card.ColorClass shadow-sm border-0 h-100">
-                                    <div class="card-header bg-transparent border-0">
-                                        <h5 class="m-b-0 text-white">@card.Title</h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center">
-                                            <div class="mr-3">
-                                                <i class="@card.IconClass fa-2x"></i>
-                                            </div>
-                                            <div>
-                                                <h2 class="card-title text-white font-weight-bold mb-0">@card.Count</h2>
-                                                <p class="card-text mb-0">Unidades vigentes</p>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="asset-nav-card @card.ColorClass h-100 p-3">
+                                    <div class="asset-nav-icon mb-3"><i class="@card.IconClass"></i></div>
+                                    <h5 class="asset-nav-title text-white font-weight-bold mb-3">@card.Title</h5>
+                                    <div class="asset-nav-value font-weight-bold mb-2">@card.Count</div>
+                                    <p class="mb-0 font-weight-bold">Unidades vigentes</p>
                                 </div>
                             </a>
                         </div>

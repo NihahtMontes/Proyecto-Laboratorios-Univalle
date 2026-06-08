@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -16,11 +17,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
     {
         private readonly UserManager<User> _userManager;
         private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _environment;
 
-        public CreateModel(UserManager<User> userManager, ApplicationDbContext context)
+        public CreateModel(UserManager<User> userManager, ApplicationDbContext context, IWebHostEnvironment environment)
         {
             _userManager = userManager;
             _context = context;
+            _environment = environment;
         }
 
         public class InputModel
@@ -70,6 +73,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             [DataType(DataType.Password)]
             [StringLength(100, MinimumLength = 8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
             public string Password { get; set; } = string.Empty;
+
+            [Display(Name = "Foto de Perfil")]
+            public IFormFile? ProfilePictureUpload { get; set; }
         }
 
         [BindProperty]
@@ -143,6 +149,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             if (currentUser != null)
             {
                 user.CreatedById = currentUser.Id;
+            }
+
+            // Handle profile picture upload
+            if (Input.ProfilePictureUpload != null)
+            {
+                string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "users");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                string safeFileName = Path.GetFileName(Input.ProfilePictureUpload.FileName);
+                string uniqueFileName = $"{Guid.NewGuid()}_{safeFileName}";
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await Input.ProfilePictureUpload.CopyToAsync(fileStream);
+                }
+                user.ProfilePictureUrl = uniqueFileName;
             }
 
             var result = await _userManager.CreateAsync(user, Input.Password);

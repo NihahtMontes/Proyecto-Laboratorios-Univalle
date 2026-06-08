@@ -156,7 +156,10 @@
                         <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Guardar Cambios
                         </button>
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                        @{
+                            var returnUrl = ViewData["ReturnUrl"]?.ToString();
+                        }
+                        <a href="@(returnUrl == "Details" ? Url.Page("./Details", new { id = Model.Input.Id }) : Url.Page("./Index"))" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                             Cancelar
                         </a>
                     </div>

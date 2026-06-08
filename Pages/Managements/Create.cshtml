@@ -90,6 +90,13 @@
                                 </select>
                                 <span asp-validation-for="Input.Status" class="text-danger"></span>
                             </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Input.FacultyId" class="control-label font-weight-bold"></label>
+                                <select asp-for="Input.FacultyId" class="form-control custom-select" asp-items="Model.FacultyList">
+                                    <option value="">-- Seleccione Facultad --</option>
+                                </select>
+                                <span asp-validation-for="Input.FacultyId" class="text-danger"></span>
+                            </div>
                         </div>
 
                         <hr />

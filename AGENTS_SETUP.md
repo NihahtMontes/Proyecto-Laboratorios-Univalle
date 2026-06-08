@@ -1,44 +1,67 @@
-# 🔧 AGENTS_SETUP.md (Configuración Post-Clonación y Conexión)
-**Objetivo**: Prevenir errores de infraestructura al descargar el proyecto y asegurar la integridad del entorno local de base de datos.
+# AGENTS_SETUP.md - Configuracion Post-Clonacion Y Conexion
 
-## 1. El Check-list del Recién Llegado (Post-Clonación)
-Después de realizar un `git clone`, SIGUE ESTE ORDEN para evitar fallos críticos de ejecución:
+**Objetivo**: prevenir errores de infraestructura al descargar el proyecto y asegurar la integridad del entorno local de base de datos.
 
-### 1.1 Verificación de Dependencias
-- Corre `dotnet build` en la terminal para restaurar paquetes NuGet y validar la compilación base.
-- **QuestPDF**: El sistema usa una licencia comunitaria configurada en `Program.cs` (QuestPDF.Settings.License = LicenseType.Community).
+## 1. Checklist Post-Clonacion
 
-### 1.2 Configuración de la Base de Datos (SQL Server)
-Este es el punto más propenso a errores. Verifica tu `appsettings.json`:
+Despues de realizar un `git clone`, sigue este orden para evitar fallos criticos de ejecucion:
 
-#### Sintaxis Correcta del Connection String
-La cadena de conexión **DEBE** comenzar obligatoriamente con la palabra clave `Server=` o `Data Source=`.
+### 1.1 Verificacion De Dependencias
 
-*   ✅ **Correcto (Standard/Local):** `"Server=.\\SQLEXPRESS;Database=DB_Laboratorios_Univalle;..."`
-*   ❌ **Error de Sintaxis:** `"\\SQLEXPRESS;Database=..."` (Esto genera el error: `Keyword not supported`)
+- Ejecuta `dotnet restore` para regenerar `obj/project.assets.json` con la configuracion NuGet de la maquina actual.
+- Ejecuta `dotnet build "Proyecto Laboratorios Univalle.csproj"` para validar la compilacion base.
+- **QuestPDF**: el sistema usa licencia comunitaria configurada en `Program.cs` con `QuestPDF.Settings.License = LicenseType.Community`.
 
-> **⚠️ NOTA TÉCNICA (Escape de JSON):** En el archivo JSON, la barra invertida `\` debe escaparse con otra barra `\\`. Al final, C# leerá un solo `.\SQLEXPRESS`.
+### 1.2 Configuracion De Base De Datos SQL Server
 
-### 1.3 Inicialización de Datos
-El proyecto está configurado para **auto-migrar** al iniciar. En `Program.cs`:
-- Se llama a `db.Database.MigrateAsync()` para crear tablas si no existen.
-- Se llama a `DbInitializer.SeedAsync(services)` para cargar datos de prueba (usuarios, roles, catálogos).
+El proveedor vigente es SQL Server con `Microsoft.EntityFrameworkCore.SqlServer`.
 
-Si prefieres hacerlo manualmente, usa:
-```bash
-dotnet ef database update
+La cadena de desarrollo esperada usa SQL Server Developer Edition en instancia predeterminada (`localhost` o `.`). No usar LocalDB, SQL Express ni `SQLEXPRESS`.
+
+```json
+"DefaultConnection": "Server=localhost;Database=DB_Laboratorios_Univalle_DEV;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
 ```
 
-## 2. Resolución de Errores Comunes de Infraestructura
+Reglas:
 
-### `Keyword not supported: '\sqlexpress;database'`
-Ocurre cuando la cadena de conexión está mal escrita. El parser del driver de SQL Server (SqlClient) no reconoce el inicio de la cadena porque le falta el identificador `Server=`.
-- **Solución**: Asegúrate de que la cadena empiece con `Server=.\\SQLEXPRESS` (o el nombre de tu instancia).
+- Desarrollo usa normalmente `DB_Laboratorios_Univalle_DEV`.
+- Produccion usa `DB_Laboratorios_Univalle`.
+- No versionar passwords reales.
+- Si se usa autenticacion mixta con `sa` o usuario dedicado, colocar credenciales en user-secrets, variables de entorno o configuracion segura de despliegue.
 
-### `An error occurred while connecting to the database`
-Si la sintaxis es correcta pero no conecta:
-1. Verifica que el servicio de **SQL Server (SQLEXPRESS)** esté en ejecución en Windows.
-2. Asegúrate de que `TrustServerCertificate=True` esté presente en la cadena de conexión si no tienes certificados SSL configurados localmente.
+### 1.3 Inicializacion De Datos
 
-### Confusión PostgreSQL vs SQL Server
-Si en el pasado se usó PostgreSQL y los paquetes `Npgsql` están presentes en el `.csproj`, verifica en `Program.cs` si el servicio `AddDbContext` está llamando a `.UseSqlServer()` o `.UseNpgsql()`. No mezcles cadenas de conexión de un motor con el driver del otro.
+El proyecto esta configurado para auto-migrar al iniciar. En `Program.cs`:
+
+- Se llama a `db.Database.MigrateAsync()` para aplicar migraciones pendientes.
+- Se llama a `DbInitializer.SeedAsync(services)` para cargar datos base.
+
+Si prefieres aplicar migraciones manualmente, usa:
+
+```bash
+dotnet ef database update --context ApplicationDbContext
+```
+
+## 2. Errores Comunes De Infraestructura
+
+### `Cannot open database ... requested by the login`
+
+Ocurre cuando la base no existe o el usuario no tiene permisos.
+
+Solucion recomendada:
+
+```bash
+dotnet ef database update --context ApplicationDbContext
+```
+
+### Error De Conexion A SQL Server Developer
+
+Si la cadena tiene formato correcto pero no conecta:
+
+1. Verifica que el servicio de SQL Server Developer Edition este iniciado.
+2. Confirma que la instancia predeterminada responda en `localhost` o `.`.
+3. Si usas autenticacion mixta, confirma que el login `sa` este habilitado y que la password no este versionada.
+
+### Confusion SQL Server Vs PostgreSQL
+
+El proyecto vigente usa `UseSqlServer()` en `Program.cs`. No uses cadenas tipo `Host=localhost;Port=5432` ni dependencias Npgsql salvo que se apruebe explicitamente otro cambio de proveedor.

@@ -25,25 +25,46 @@
         .wizard-title    { font-size: 1.5rem; font-weight: 800; color: #012970; }
         .wizard-subtitle { font-size: 0.85rem; color: #899bbd; }
 
-        /* Phase cards (replicated from Index) */
-        .phase-icon {
-            width: 44px; height: 44px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 0.5rem;
+        /* Metric tiles (modern style from AssetView) */
+        .asset-metric-tile {
+            min-height: 134px;
+            border-radius: 8px;
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, .12);
+            overflow: hidden;
+            position: relative;
+            transition: transform .18s ease, box-shadow .18s ease;
+            display: block;
+            text-decoration: none !important;
         }
-        .phase-icon--blue   { background: #eff6ff; color: #3b82f6; }
-        .phase-icon--purple { background: #f5f3ff; color: #8b5cf6; }
-        .phase-icon--amber  { background: #fffbeb; color: #f59e0b; }
-        .phase-icon--red    { background: #fef2f2; color: #ef4444; }
-        .phase-icon--green  { background: #d1fae5; color: #10b981; }
-        .phase-card {
-            border: none; border-radius: 1rem; padding: 1.25rem;
-            text-align: center; height: 100%; transition: transform 0.2s;
-            text-decoration: none !important; display: block;
+        .asset-metric-tile:hover { transform: translateY(-3px); box-shadow: 0 16px 30px rgba(15, 23, 42, .16); }
+        .asset-metric-tile:after {
+            content: "";
+            width: 96px; height: 96px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .14);
+            position: absolute;
+            right: -24px; top: -24px;
         }
-        .phase-card:hover { transform: translateY(-3px); }
-        .phase-card h6 { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 0.5rem; }
-        .phase-card h2 { font-size: 1.8rem; font-weight: 800; margin: 0; }
+        .asset-metric-icon {
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .18);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 18px;
+        }
+        .asset-metric-value {
+            font-size: 2rem;
+            line-height: 1;
+            letter-spacing: 0;
+        }
+        .asset-bg-blue   { background: linear-gradient(135deg, #2962ff, #36a3ff); }
+        .asset-bg-green  { background: linear-gradient(135deg, #00c292, #48d65b); }
+        .asset-bg-amber  { background: linear-gradient(135deg, #ffb22b, #ff8f00); }
+        .asset-bg-purple { background: linear-gradient(135deg, #7460ee, #a163f7); }
+        .asset-bg-red    { background: linear-gradient(135deg, #f62d51, #ff6b6b); }
+        .asset-bg-cyan   { background: linear-gradient(135deg, #03a9f3, #4fc3f7); }
+        .asset-bg-slate  { background: linear-gradient(135deg, #475569, #64748b); }
 
         /* Nav tabs override */
         .nav-tabs .nav-link { color: #64748b; font-weight: 600; }
@@ -75,11 +96,9 @@
             {
                 if (!isCorrective)
                 {
-                    <form method="post" asp-page-handler="SyncEquipments" asp-route-id="@Model.Management.Id" class="m-0 d-inline-block mr-2">
-                        <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm" style="color: #7c3aed; border-color: #7c3aed; background: #f5f3ff;">
-                            <i class="fas fa-sync-alt mr-2"></i>Sincronizar Equipos
-                        </button>
-                    </form>
+                    <a asp-page="./PlanAssets" asp-route-id="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm mr-2" style="color: #7c3aed; border-color: #7c3aed; background: #f5f3ff;">
+                        <i class="fas fa-tasks mr-2"></i>Planificar Activos
+                    </a>
                     <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm mr-2" style="background-color: #334155; color: white;">
                         <i class="fas fa-play mr-2"></i>Iniciar Ronda (Wizard)
                     </a>
@@ -100,6 +119,11 @@
             <a asp-page="/Reports/Index" asp-route-managementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white mr-2" style="background-color: #0ea5e9;">
                 <i class="fas fa-file-pdf mr-2"></i>Reportes Oficiales
             </a>
+            <form method="post" asp-page-handler="UpdateActiveManagement" asp-route-id="@Model.Management.Id" class="d-inline mr-2">
+                <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white" style="background-color:#10b981;">
+                    <i class="fas fa-sync-alt mr-2"></i>Actualizar Gestión
+                </button>
+            </form>
             <a asp-page="./Index" class="btn btn-light border rounded-pill px-4">
                 <i class="fas fa-arrow-left mr-2"></i>Volver
             </a>
@@ -150,47 +174,45 @@
         <div class="row mb-3">
             <!-- Activos Totales -->
             <div class="col-6 col-md mb-3">
-                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Todos" class="phase-card shadow-sm" style="background:#f6f9ff;">
-                    <div class="phase-icon phase-icon--blue"><i class="fas fa-boxes"></i></div>
-                    <h6 class="text-muted">Activos Totales</h6>
-                    <h2 style="color:#4154f1;">@Model.TotalPlans</h2>
+                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Todos" class="asset-metric-tile asset-bg-blue p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-boxes"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.TotalPlans</div>
+                    <div class="font-weight-bold mt-2">Activos Totales</div>
                 </a>
             </div>
             @if (!isCorrective)
             {
                 <!-- Activos Sanos -->
                 <div class="col-6 col-md mb-3">
-                    <a href="?id=@Model.Management.Id&ActiveTab=sanos" class="phase-card shadow-sm" style="background:#eafaf1; border:1px solid #a7f3d0;">
-                        <div class="phase-icon phase-icon--green"><i class="fas fa-heartbeat"></i></div>
-                        <h6 style="color:#059669;">Activos Sanos</h6>
-                        <h2 style="color:#059669;">@Model.CountBuenos</h2>
+                    <a href="?id=@Model.Management.Id&ActiveTab=sanos" class="asset-metric-tile asset-bg-green p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-heartbeat"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.CountBuenos</div>
+                        <div class="font-weight-bold mt-2">Activos Sanos</div>
                     </a>
                 </div>
             }
             <!-- Vencidos -->
             <div class="col-6 col-md mb-3">
-                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Delay" class="phase-card shadow-sm bg-danger text-white">
-                    <div class="phase-icon" style="background:rgba(255,255,255,.2);color:#fff;">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <h6 class="text-white opacity-75">Vencidos</h6>
-                    <h2 class="text-white">@Model.TotalVencidos</h2>
+                <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=Delay" class="asset-metric-tile asset-bg-red p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.TotalVencidos</div>
+                    <div class="font-weight-bold mt-2">Vencidos</div>
                 </a>
             </div>
             <!-- Completados -->
             <div class="col-6 col-md mb-3">
-                <a href="/Index?ShowWizard=true&Step=7&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#d1fae5;">
-                    <div class="phase-icon phase-icon--green"><i class="fas fa-check-circle"></i></div>
-                    <h6 style="color:#10b981;">Completados</h6>
-                    <h2 style="color:#10b981;">@Model.CompletedPlans</h2>
+                <a href="/Index?ShowWizard=true&Step=7&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-cyan p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-check-circle"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CompletedPlans</div>
+                    <div class="font-weight-bold mt-2">Completados</div>
                 </a>
             </div>
             <!-- Avance -->
             <div class="col-6 col-md mb-3">
-                <div class="phase-card shadow-sm" style="background:#fffbeb;">
-                    <div class="phase-icon phase-icon--amber"><i class="fas fa-percentage"></i></div>
-                    <h6 style="color:#f59e0b;">% Avance</h6>
-                    <h2 style="color:#f59e0b;">@Model.GlobalProgress%</h2>
+                <div class="asset-metric-tile asset-bg-amber p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-percentage"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.GlobalProgress%</div>
+                    <div class="font-weight-bold mt-2">% Avance</div>
                 </div>
             </div>
         </div>
@@ -201,43 +223,43 @@
             {
                 <!-- L6 -->
                 <div class="col-6 col-md-2 mb-3">
-                    <a href="/Index?ShowWizard=true&Step=1&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#e0f2fe; border:1px solid #bae6fd;">
-                        <div class="phase-icon phase-icon--blue"><i class="fas fa-clipboard-check"></i></div>
-                        <h6 style="color:#0284c7; font-size:0.75rem;">L-6 Verificación</h6>
-                        <h2 style="color:#0284c7; font-size:1.5rem;">@Model.CountL6</h2>
+                    <a href="/Index?ShowWizard=true&Step=1&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-cyan p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.CountL6</div>
+                        <div class="font-weight-bold mt-2">L-6 Verificación</div>
                     </a>
                 </div>
             }
             <!-- L7 -->
             <div class="col-6 col-md-2 mb-3">
-                <a href="/Index?ShowWizard=true&Step=2&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#fef3c7; border:1px solid #fde68a;">
-                    <div class="phase-icon phase-icon--amber"><i class="fas fa-tools"></i></div>
-                    <h6 style="color:#d97706; font-size:0.75rem;">L-7 Solicitud</h6>
-                    <h2 style="color:#d97706; font-size:1.5rem;">@Model.CountL7</h2>
+                <a href="/Index?ShowWizard=true&Step=2&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-amber p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-tools"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CountL7</div>
+                    <div class="font-weight-bold mt-2">L-7 Solicitud</div>
                 </a>
             </div>
             <!-- L8 -->
             <div class="col-6 col-md-2 mb-3">
-                <a href="/Index?ShowWizard=true&Step=3&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#fee2e2; border:1px solid #fecaca;">
-                    <div class="phase-icon phase-icon--red"><i class="fas fa-wrench"></i></div>
-                    <h6 style="color:#dc2626; font-size:0.75rem;">L-8 Mantenimiento</h6>
-                    <h2 style="color:#dc2626; font-size:1.5rem;">@Model.CountL8</h2>
+                <a href="/Index?ShowWizard=true&Step=3&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-red p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-wrench"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CountL8</div>
+                    <div class="font-weight-bold mt-2">L-8 Mantenimiento</div>
                 </a>
             </div>
             <!-- L3 / Salida -->
             <div class="col-6 col-md-3 mb-3">
-                <a href="/Index?ShowWizard=true&Step=4&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#f3e8ff; border:1px solid #e9d5ff;">
-                    <div class="phase-icon" style="background:rgba(147, 51, 234, 0.1); color:#9333ea;"><i class="fas fa-truck-loading"></i></div>
-                    <h6 style="color:#9333ea; font-size:0.75rem;">L-3 Salida</h6>
-                    <h2 style="color:#9333ea; font-size:1.5rem;">@Model.CountSalida</h2>
+                <a href="/Index?ShowWizard=true&Step=4&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-purple p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-truck-loading"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CountSalida</div>
+                    <div class="font-weight-bold mt-2">L-3 Salida</div>
                 </a>
             </div>
             <!-- Desembolso -->
             <div class="col-12 col-md-3 mb-3">
-                <a href="/Index?ShowWizard=true&Step=6&ManagementId=@Model.Management.Id" class="phase-card shadow-sm" style="background:#f1f5f9; border:1px solid #e2e8f0;">
-                    <div class="phase-icon" style="background:rgba(71, 85, 105, 0.1); color:#475569;"><i class="fas fa-file-invoice-dollar"></i></div>
-                    <h6 style="color:#475569; font-size:0.75rem;">Desembolso</h6>
-                    <h2 style="color:#475569; font-size:1.5rem;">@Model.CountDesembolso</h2>
+                <a href="/Index?ShowWizard=true&Step=6&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-slate p-3">
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="asset-metric-value font-weight-bold">@Model.CountDesembolso</div>
+                    <div class="font-weight-bold mt-2">Desembolso</div>
                 </a>
             </div>
         </div>
@@ -412,7 +434,7 @@
                     <option value="Utensilio"    selected="@(Model.CategoryFilter == "Utensilio")">Utensilio</option>
                 </select>
 
-                @foreach (var s in new[] { "Todos", "Planeado", "InProgress", "Completed", "Externo" })
+                @foreach (var s in new[] { "Todos", "Planeado", "InProgress", "Completed", "Externo", "Delay" })
                 {
                     var label = s switch {
                         "Todos"      => "Todos",
@@ -420,10 +442,15 @@
                         "InProgress" => "En Progreso",
                         "Completed"  => "Ejecutado",
                         "Externo"    => "Externo",
+                        "Delay"      => "Vencidos",
                         _            => s
                     };
+                    var btnClass = s == "Delay"
+                        ? (Model.StatusFilter == s ? "btn-danger" : "btn-outline-danger")
+                        : (Model.StatusFilter == s || (s == "Todos" && string.IsNullOrEmpty(Model.StatusFilter)) ? "btn-primary" : "btn-outline-secondary");
                     <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=@s&LabFilterId=@Model.LabFilterId&TechFilterId=@Model.TechFilterId&CategoryFilter=@Model.CategoryFilter"
-                       class="btn btn-sm @(Model.StatusFilter == s || (s == "Todos" && string.IsNullOrEmpty(Model.StatusFilter)) ? "btn-primary" : "btn-outline-secondary") rounded-pill px-3">
+                       class="btn btn-sm @btnClass rounded-pill px-3">
+                        @if (s == "Delay") { <i class="fas fa-exclamation-triangle mr-1"></i> }
                         @label
                     </a>
                 }
@@ -445,13 +472,14 @@
                             <th class="text-muted small text-center" colspan="4">@l48Col2Name</th>
                             <th class="text-muted small text-center">%</th>
                             <th class="text-muted small">Técnico</th>
+                            <th class="text-muted small text-center" style="width: 120px;">Acciones</th>
                         </tr>
                         <tr class="bg-light">
                             <th colspan="5"></th>
                             @for (int s2 = 1; s2 <= 8; s2++) {
                                 <th class="text-center small text-muted" style="min-width:42px;">S@(s2)</th>
                             }
-                            <th colspan="2"></th>
+                            <th colspan="3"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -475,9 +503,32 @@
                                 <td rowspan="2" class="font-weight-bold align-middle small">
                                     @plan.EquipmentUnit?.Laboratory?.Name
                                 </td>
+                                @{
+                                    var wizardStep = isCorrective
+                                        ? plan.CurrentPhase switch {
+                                            WizardPhase.TechnicalRequest => 1,
+                                            WizardPhase.Maintenance => 2,
+                                            WizardPhase.Exit => 3,
+                                            WizardPhase.Kardex => 4,
+                                            WizardPhase.Disbursement => 5,
+                                            _ => 1
+                                        }
+                                        : plan.CurrentPhase switch {
+                                            WizardPhase.Verification => 1,
+                                            WizardPhase.TechnicalRequest => 2,
+                                            WizardPhase.Maintenance => 3,
+                                            WizardPhase.Exit => 4,
+                                            WizardPhase.Kardex => 5,
+                                            WizardPhase.Disbursement => 6,
+                                            _ => 1
+                                        };
+                                    var wizardUrl = $"/Index?ShowWizard=true&Step={wizardStep}&ManagementId={Model.Management.Id}&SelectedLabId={plan.EquipmentUnit?.LaboratoryId}&FocusPlanId={plan.Id}";
+                                }
                                 <td rowspan="2" class="align-middle">
-                                    <div class="font-weight-bold text-primary" style="font-size:0.82rem;">
-                                        @plan.EquipmentUnit?.Equipment?.Name
+                                    <div class="font-weight-bold" style="font-size:0.82rem;">
+                                        <a href="@wizardUrl" class="text-primary" title="Abrir wizard en fase actual">
+                                            @plan.EquipmentUnit?.Equipment?.Name
+                                        </a>
                                     </div>
                                     <div class="text-muted" style="font-size:0.72rem;">
                                         INV-@plan.EquipmentUnit?.InventoryNumber
@@ -508,6 +559,11 @@
                                 </td>
                                 <td rowspan="2" class="small align-middle text-muted">
                                     @(plan.Maintenance?.Technician?.FullName ?? "—")
+                                </td>
+                                <td rowspan="2" class="align-middle text-center">
+                                    <a href="@wizardUrl" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold shadow-sm" title="Atender en wizard">
+                                        <i class="fas fa-external-link-alt mr-1"></i> Atender
+                                    </a>
                                 </td>
                             </tr>
                             <!-- FILA 2: Real -->

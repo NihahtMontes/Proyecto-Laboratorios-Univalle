@@ -56,8 +56,8 @@
                             </div>
 
                             <div class="col-md-2 text-right mt-3 mt-md-0">
-                                <button type="submit" class="btn btn-dark btn-rounded shadow-sm px-3" title="Filtrar">
-                                    <i class="fas fa-filter"></i>
+                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
+                                    <i class="fas fa-filter mr-1"></i> Filtrar
                                 </button>
                                 <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
                                     <i class="fas fa-sync-alt"></i>
@@ -69,7 +69,7 @@
 
                 <div class="table-responsive">
                     <table class="table table-hover v-middle">
-                        <thead class="thead-light">
+                        <thead class="bg-light">
                             <tr class="small uppercase font-weight-bold">
                                 <th>Definición de Equipo</th>
                                 <th>Clasificación</th>
@@ -96,18 +96,15 @@
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <div class="m-r-10">
-                                                    <span class="btn btn-circle btn-sm btn-light-info text-info"><i class="fas fa-microscope"></i></span>
-                                                </div>
                                                 <div>
                                                     <h6 class="m-b-0 font-weight-bold text-dark">@item.Name</h6>
-                                                    <span class="text-muted small">@item.Category @(item.Category == EquipmentCategory.Utensil ? $"({item.UtensilType})" : "")</span>
+                                                    <span class="text-muted small">@Html.DisplayFor(modelItem => item.Category)</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="v-middle">
-                                            <span class="badge badge-pill badge-info px-3 py-1 shadow-sm">
-                                                <i class="fas fa-microchip mr-1"></i> @Html.DisplayFor(modelItem => item.TypeClassification)
+                                            <span class="badge badge-pill @(item.Category == EquipmentCategory.Equipment ? "badge-info" : item.Category == EquipmentCategory.Utensil ? "badge-success" : "badge-secondary") px-3 py-1 shadow-sm font-weight-bold">
+                                                <i class="fas @(item.Category == EquipmentCategory.Equipment ? "fa-microchip" : item.Category == EquipmentCategory.Utensil ? "fa-utensils" : "fa-cube") mr-1"></i> @Html.DisplayFor(modelItem => item.TypeClassification)
                                             </span>
                                         </td>
                                         <td class="v-middle">
@@ -137,7 +134,7 @@
                                             <small class="text-muted italic">@(item.Model ?? "-")</small>
                                         </td>
                                         <td class="text-center">
-                                            <span class="badge badge-pill badge-info px-3 py-1 text-white border-0 shadow-sm">
+                                            <span class="badge badge-pill @(item.Category == EquipmentCategory.Equipment ? "badge-info" : item.Category == EquipmentCategory.Utensil ? "badge-success" : "badge-secondary") px-3 py-1 text-white border-0 shadow-sm font-weight-bold">
                                                 <i class="fas fa-cubes mr-1" style="font-size: 0.65rem;"></i> @(item.Units?.Count ?? 0) Und.
                                             </span>
                                         </td>

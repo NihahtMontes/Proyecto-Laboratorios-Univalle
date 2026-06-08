@@ -20,8 +20,15 @@
                                 @Model.SessionEquipments.Count equipo(s)
                             </h6>
                         </div>
-                        <div class="ml-auto">
-                            <span class="text-muted small">Inspector: <strong>@Model.SessionInspector</strong></span>
+                        <div class="ml-auto text-right">
+                            <span class="text-muted small d-block mb-2">Inspector: <strong>@Model.SessionInspector</strong></span>
+                            @if (Model.SessionManagementId.HasValue)
+                            {
+                                <a href="/api/reports/download/l6?managementId=@Model.SessionManagementId&labId=@Model.LabId&date=@Model.SessionDate.ToString("yyyy-MM-dd")"
+                                   class="btn btn-success btn-rounded shadow-sm font-weight-bold px-4">
+                                    <i class="fas fa-file-excel mr-2"></i> Descargar Verificación L-6
+                                </a>
+                            }
                         </div>
                     </div>
 
@@ -220,13 +227,14 @@ else if (Model.Verification != null)
             <div class="form-actions mt-4">
                 <a asp-page="./Edit" asp-route-id="@Model.Verification.Id"
                    asp-route-isWizard="@isWizard" asp-route-managementId="@ViewData["ManagementId"]"
+                   asp-route-focusPlanId="@Model.FocusPlanId"
                    class="btn btn-success btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3">
                     <i class="fas fa-edit mr-2"></i> Editar Registro
                 </a>
 
                 @if (isWizard)
                 {
-                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2" asp-route-ManagementId="@ViewData["ManagementId"]"
+                    <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="@(Model.FocusPlanId.HasValue ? 1 : 2)" asp-route-ManagementId="@ViewData["ManagementId"]" asp-route-focusPlanId="@Model.FocusPlanId"
                        class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
                         <i class="fas fa-arrow-left mr-2"></i> Volver al Wizard
                     </a>

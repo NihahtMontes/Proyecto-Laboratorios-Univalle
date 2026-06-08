@@ -84,7 +84,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                     Url = n.ActionUrl,
                     Icon = n.IconClass,
                     SortDate = n.CreatedAt,
-                    Time = n.CreatedAt.ToString("dd/MM HH:mm")
+                    Time = n.CreatedAt.ToString("dd/MM HH:mm"),
+                    Group = n.Scope == "maintenance" ? "proximos" : n.Scope == "acquisition" ? "adquisiciones" : n.Scope == "departure" ? "prestamos" : "otros",
+                    Urgency = "info"
                 })
                 .ToListAsync();
 
@@ -113,7 +115,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                     message = i.Message,
                     url = i.Url,
                     icon = i.Icon,
-                    time = i.Time
+                    time = i.Time,
+                    syntheticKey = i.SyntheticKey,
+                    group = i.Group,
+                    urgency = i.Urgency
                 })
             });
         }
@@ -133,6 +138,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                 await _context.SaveChangesAsync();
             }
 
+            return new OkResult();
+        }
+
+        public async Task<IActionResult> OnGetMarkAllAsReadAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            var unread = await _context.Notifications
+                .AsTracking()
+                .Where(n => n.UserId == user.Id && !n.IsRead)
+                .ToListAsync();
+
+            foreach (var notif in unread)
+            {
+                notif.IsRead = true;
+            }
+
+            await _context.SaveChangesAsync();
             return new OkResult();
         }
 
@@ -249,7 +273,46 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                 ? "Mantenimiento correctivo próximo"
                 : "Mantenimiento preventivo próximo";
 
-            var maintenanceQuery = _context.Maintenances
+            var overdueMaintenanceQuery = _context.Maintenances
+                .AsNoTracking()
+                .Include(m => m.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
+                .Where(m =>
+                    m.ScheduledDate.HasValue &&
+                    m.ScheduledDate.Value.Date < today &&
+                    m.ScheduledDate.Value.Date >= today.AddDays(-30) &&
+                    m.Status != MaintenanceStatus.Completed &&
+                    m.Status != MaintenanceStatus.Cancelled);
+
+            if (managementId.HasValue)
+            {
+                overdueMaintenanceQuery = overdueMaintenanceQuery.Where(m => m.ManagementId == managementId.Value);
+            }
+
+            var overdueMaintenances = await overdueMaintenanceQuery
+                .OrderBy(m => m.ScheduledDate)
+                .Take(8)
+                .ToListAsync();
+
+            items.AddRange(overdueMaintenances.Select(m =>
+            {
+                var scheduledDate = m.ScheduledDate!.Value.Date;
+                var unit = m.EquipmentUnit?.InventoryNumber ?? "S/N";
+                return new NotificationItem
+                {
+                    Id = -100000 - m.Id,
+                    Title = "Mantenimiento vencido",
+                    Message = $"Unidad {unit}: programado para el {scheduledDate:dd/MM/yyyy}.",
+                    Url = $"/Maintenances/Details/{m.Id}?ManagementId={m.ManagementId}{typeQuery}&Step=3",
+                    Icon = "fas fa-exclamation-triangle text-danger",
+                    SortDate = scheduledDate,
+                    Time = RelativeDayLabel(today, scheduledDate),
+                    SyntheticKey = $"mait-{m.Id}",
+                    Group = "vencidos",
+                    Urgency = "danger"
+                };
+            }));
+
+            var upcomingMaintenanceQuery = _context.Maintenances
                 .AsNoTracking()
                 .Include(m => m.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                 .Where(m =>
@@ -261,15 +324,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
 
             if (managementId.HasValue)
             {
-                maintenanceQuery = maintenanceQuery.Where(m => m.ManagementId == managementId.Value);
+                upcomingMaintenanceQuery = upcomingMaintenanceQuery.Where(m => m.ManagementId == managementId.Value);
             }
 
-            var maintenances = await maintenanceQuery
+            var upcomingMaintenances = await upcomingMaintenanceQuery
                 .OrderBy(m => m.ScheduledDate)
                 .Take(8)
                 .ToListAsync();
 
-            items.AddRange(maintenances.Select(m =>
+            items.AddRange(upcomingMaintenances.Select(m =>
             {
                 var scheduledDate = m.ScheduledDate!.Value.Date;
                 var unit = m.EquipmentUnit?.InventoryNumber ?? "S/N";
@@ -281,11 +344,53 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                     Url = $"/Maintenances/Details/{m.Id}?ManagementId={m.ManagementId}{typeQuery}&Step=3",
                     Icon = "fas fa-tools text-info",
                     SortDate = scheduledDate,
-                    Time = RelativeDayLabel(today, scheduledDate)
+                    Time = RelativeDayLabel(today, scheduledDate),
+                    SyntheticKey = $"mait-{m.Id}",
+                    Group = "proximos",
+                    Urgency = "info"
                 };
             }));
 
-            var departureQuery = _context.Departures
+            var overdueDepartureQuery = _context.Departures
+                .AsNoTracking()
+                .Include(d => d.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
+                .Where(d =>
+                    d.ActualReturnDate == null &&
+                    d.Status != LoanStatus.Returned &&
+                    d.Status != LoanStatus.Cancelled &&
+                    d.EstimatedReturnDate.Date < today &&
+                    d.EstimatedReturnDate.Date >= today.AddDays(-30));
+
+            if (managementId.HasValue)
+            {
+                overdueDepartureQuery = overdueDepartureQuery.Where(d => d.ManagementId == managementId.Value);
+            }
+
+            var overdueDepartures = await overdueDepartureQuery
+                .OrderBy(d => d.EstimatedReturnDate)
+                .Take(8)
+                .ToListAsync();
+
+            items.AddRange(overdueDepartures.Select(d =>
+            {
+                var returnDate = d.EstimatedReturnDate.Date;
+                var unit = d.EquipmentUnit?.InventoryNumber ?? "S/N";
+                return new NotificationItem
+                {
+                    Id = -200000 - d.Id,
+                    Title = "Préstamo vencido",
+                    Message = $"Unidad {unit}: devolución estimada el {returnDate:dd/MM/yyyy}.",
+                    Url = $"/Departures/Details?id={d.Id}&ManagementId={d.ManagementId}{typeQuery}&Step=4",
+                    Icon = "fas fa-exclamation-triangle text-danger",
+                    SortDate = returnDate,
+                    Time = RelativeDayLabel(today, returnDate),
+                    SyntheticKey = $"dept-{d.Id}",
+                    Group = "vencidos",
+                    Urgency = "danger"
+                };
+            }));
+
+            var upcomingDepartureQuery = _context.Departures
                 .AsNoTracking()
                 .Include(d => d.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                 .Where(d =>
@@ -297,15 +402,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
 
             if (managementId.HasValue)
             {
-                departureQuery = departureQuery.Where(d => d.ManagementId == managementId.Value);
+                upcomingDepartureQuery = upcomingDepartureQuery.Where(d => d.ManagementId == managementId.Value);
             }
 
-            var departures = await departureQuery
+            var upcomingDepartures = await upcomingDepartureQuery
                 .OrderBy(d => d.EstimatedReturnDate)
                 .Take(8)
                 .ToListAsync();
 
-            items.AddRange(departures.Select(d =>
+            items.AddRange(upcomingDepartures.Select(d =>
             {
                 var returnDate = d.EstimatedReturnDate.Date;
                 var unit = d.EquipmentUnit?.InventoryNumber ?? "S/N";
@@ -317,7 +422,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                     Url = $"/Departures/Details?id={d.Id}&ManagementId={d.ManagementId}{typeQuery}&Step=4",
                     Icon = "fas fa-exchange-alt text-warning",
                     SortDate = returnDate,
-                    Time = RelativeDayLabel(today, returnDate)
+                    Time = RelativeDayLabel(today, returnDate),
+                    SyntheticKey = $"dept-{d.Id}",
+                    Group = "prestamos",
+                    Urgency = "warning"
                 };
             }));
 
@@ -356,7 +464,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                     Url = $"/Requests/Details/{request.Id}?IsWizard=true&ManagementId={p.ManagementId}{typeQuery}&Step=6",
                     Icon = "fas fa-shopping-cart text-success",
                     SortDate = dueDate,
-                    Time = RelativeDayLabel(today, dueDate)
+                    Time = RelativeDayLabel(today, dueDate),
+                    SyntheticKey = $"acq-{request.Id}",
+                    Group = "adquisiciones",
+                    Urgency = "success"
                 };
             }));
 
@@ -387,7 +498,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                 Url = $"/Requests/Details/{r.Id}?IsWizard=true&ManagementId={r.ManagementId}{typeQuery}&Step=6",
                 Icon = "fas fa-shopping-cart text-success",
                 SortDate = r.CreatedDate.Date,
-                Time = "Más de 2 semanas"
+                Time = "Más de 2 semanas",
+                SyntheticKey = $"stale-{r.Id}",
+                Group = "adquisiciones",
+                Urgency = "success"
             }));
 
             return items
@@ -419,6 +533,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
             public string? Icon { get; set; }
             public string Time { get; set; } = string.Empty;
             public DateTime SortDate { get; set; }
+            public string? SyntheticKey { get; set; }
+            public string Group { get; set; } = "otros";
+            public string Urgency { get; set; } = "info";
         }
     }
 }
