@@ -19,12 +19,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementService;
+        private readonly ILogger<CreateModel> _logger;
 
-        public CreateModel(ApplicationDbContext context, UserManager<User> userManager, IManagementContextService managementService)
+        public CreateModel(
+            ApplicationDbContext context,
+            UserManager<User> userManager,
+            IManagementContextService managementService,
+            ILogger<CreateModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _managementService = managementService;
+            _logger = logger;
         }
 
         [BindProperty]
@@ -279,6 +285,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
             var request = wizardPlan?.AcquisitionRequest ?? new Request { CreatedDate = DateTime.UtcNow };
 
+            request.RequestDate ??= request.CreatedDate.Date;
             request.Type = RequestType.Purchasing;
             request.ManagementId = managementId;
             request.LaboratoryId = Input.LaboratoryId;
@@ -372,8 +379,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             catch (Exception ex)
             {
                 await tx.RollbackAsync();
-                var detail = ex.InnerException?.Message ?? ex.Message;
-                TempData.Error($"Error al {(saveDraft ? "guardar borrador de" : "registrar")} adquisición: {detail}");
+                _logger.LogError(
+                    ex,
+                    "Error al guardar adquisicion para unidad {EquipmentUnitId} y plan {ManagementPlanId}.",
+                    Input.EquipmentUnitId,
+                    ManagementPlanId);
+                TempData.Error($"No se pudo {(saveDraft ? "guardar el borrador de la" : "registrar la")} adquisición. Intente nuevamente.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
                 ViewData["IsWizard"] = isWizard;

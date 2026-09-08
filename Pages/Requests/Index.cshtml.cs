@@ -14,11 +14,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly IReportService _reportService;
+        private readonly ILogger<IndexModel> _logger;
 
-        public IndexModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, IReportService reportService)
+        public IndexModel(
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            IReportService reportService,
+            ILogger<IndexModel> logger)
         {
             _context = context;
             _reportService = reportService;
+            _logger = logger;
         }
 
         public PaginatedList<Request> Requests { get; set; } = default!;
@@ -46,6 +51,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 .Include(r => r.EquipmentUnit)
                     .ThenInclude(eu => eu != null ? eu.Laboratory : null)
                 .Include(r => r.RequestedBy)
+                .Include(r => r.RequestedByPerson)
                 .Include(r => r.ApprovedBy)
                 .Include(r => r.CreatedBy)
                 .Include(r => r.ModifiedBy)
@@ -79,7 +85,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             }
 
             Requests = await PaginatedList<Request>.CreateAsync(
-                query.OrderByDescending(r => r.CreatedDate),
+                query.OrderByDescending(r => r.RequestDate ?? r.CreatedDate),
                 pageIndex ?? 1, PageSize);
 
             // Load labs for the dropdown
@@ -132,7 +138,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             catch (Exception ex)
             {
                 _context.ChangeTracker.Clear();
-                TempData.Error(NotificationHelper.Requests.SaveError($"Error técnico: {ex.Message}"));
+                _logger.LogError(ex, "No se pudo generar el reporte de solicitudes.");
+                TempData.Error(NotificationHelper.Requests.SaveError("Intente nuevamente o contacte al administrador."));
                 return RedirectToPage();
             }
         }

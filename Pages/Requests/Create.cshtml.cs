@@ -33,14 +33,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
+        private readonly ILogger<CreateModel> _logger;
 
         public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, 
             UserManager<User> userManager,
-            IManagementContextService managementContext)
+            IManagementContextService managementContext,
+            ILogger<CreateModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
+            _logger = logger;
         }
 
         public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false)
@@ -88,7 +91,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             {
                 var unit = await _context.EquipmentUnits
                     .Include(u => u.Laboratory)
-                    .Include(u => u.Equipment).ThenInclude(e => e.Notes)
+                    .Include(u => u.Equipment).ThenInclude(e => e!.Notes)
                     .FirstOrDefaultAsync(u => u.Id == equipmentUnitId.Value);
 
                 if (unit != null)
@@ -284,6 +287,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     CreatedDate = DateTime.UtcNow
                 };
 
+                request.RequestDate ??= request.CreatedDate.Date;
                 request.Type = RequestType.Technical;
                 request.ManagementId = currentMgmt.Id;
                 request.LaboratoryId = Input.LaboratoryId;
@@ -370,8 +374,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                var detail = ex.InnerException?.Message ?? ex.Message;
-                TempData.Error($"Error al registrar la solicitud L-7: {detail}");
+                _logger.LogError(
+                    ex,
+                    "Error al registrar solicitud L-7 para unidad {EquipmentUnitId} y plan {ManagementPlanId}.",
+                    Input.EquipmentUnitId,
+                    ManagementPlanId);
+                TempData.Error("No se pudo registrar la solicitud L-7. Intente nuevamente.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
@@ -464,24 +472,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         public async Task<JsonResult> OnGetKardexDetailAsync(int equipmentId)
         {
-            var unit = await _context.EquipmentUnits
-                .Include(u => u.Equipment)
-                .Include(u => u.StateHistory)
-                .FirstOrDefaultAsync(u => u.Id == equipmentId);
-
-            if (unit == null) return new JsonResult(new { error = "No encontrado" });
-
-            var lastHistory = unit.StateHistory?
-                .OrderByDescending(h => h.StartDate)
-                .FirstOrDefault();
-
-            return new JsonResult(new {
-                name = unit.Equipment?.Name ?? "Sin nombre",
-                inventoryNumber = unit.InventoryNumber,
-                currentStatus = unit.CurrentStatus.ToString(),
-                lastDate = lastHistory?.StartDate.ToString("dd 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-ES")) ?? "Sin registros",
-                reason = lastHistory?.Reason ?? "—"
-            });
+            var summary = await EquipmentKardexSummaryBuilder.BuildAsync(_context, equipmentId, HttpContext.RequestAborted);
+            return summary == null
+                ? new JsonResult(new { error = "No encontrado" }) { StatusCode = StatusCodes.Status404NotFound }
+                : new JsonResult(summary);
         }
 
         private async Task<Management?> ResolveManagementAsync()

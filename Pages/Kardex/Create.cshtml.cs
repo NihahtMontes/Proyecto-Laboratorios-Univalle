@@ -16,10 +16,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
     public class CreateModel : PageModel
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<CreateModel> _logger;
 
-        public CreateModel(ApplicationDbContext context)
+        public CreateModel(ApplicationDbContext context, ILogger<CreateModel> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [BindProperty]
@@ -142,8 +144,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             }
             catch (Exception ex)
             {
-                var detail = ex.InnerException?.Message ?? ex.Message;
-                TempData.Error($"Error al guardar borrador de Kardex: {detail}");
+                _logger.LogError(
+                    ex,
+                    "Error al guardar borrador Kardex para unidad {EquipmentUnitId} y plan {ManagementPlanId}.",
+                    Input.EquipmentUnitId,
+                    ManagementPlanId);
+                TempData.Error("No se pudo guardar el borrador de Kardex. Intente nuevamente.");
                 await LoadListsAsync();
                 return Page();
             }
@@ -255,8 +261,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             }
             catch (Exception ex)
             {
-                var detail = ex.InnerException?.Message ?? ex.Message;
-                TempData.Error($"Error al cerrar Kardex: {detail}");
+                _logger.LogError(
+                    ex,
+                    "Error al cerrar Kardex para unidad {EquipmentUnitId} y plan {ManagementPlanId}.",
+                    Input.EquipmentUnitId,
+                    ManagementPlanId);
+                TempData.Error("No se pudo cerrar Kardex. Intente nuevamente.");
                 await LoadListsAsync();
                 return Page();
             }

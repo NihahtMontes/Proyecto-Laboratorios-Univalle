@@ -22,6 +22,16 @@
                 <form method="post" enctype="multipart/form-data" novalidate id="editForm">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
                     <input type="hidden" asp-for="Input.Id" />
+                    <input type="hidden" name="Input.Category" value="@((int)Model.Input.Category)" />
+                    <input type="hidden" name="Input.UtensilType" value="@(Model.Input.UtensilType.HasValue ? ((int)Model.Input.UtensilType.Value).ToString() : string.Empty)" />
+                    <input type="hidden" name="Input.TypeClassification" value="@(Model.Input.TypeClassification.HasValue ? ((int)Model.Input.TypeClassification.Value).ToString() : string.Empty)" />
+
+                    <div class="alert alert-info border-0 shadow-sm" role="status">
+                        <i class="fas fa-shield-alt mr-2"></i>
+                        La clasificación está protegida por auditoría.
+                        Estado: <strong>@(Model.ExistingEquipmentDisplay?.ClassificationReviewStatus.ToString() ?? "Sin dato")</strong>.
+                        Los cambios de categoría o subtipo se realizan mediante el flujo de decisión con evidencia.
+                    </div>
 
                     <div class="row">
                         <div class="col-md-6 border-right">
@@ -29,21 +39,21 @@
 
                             <div class="form-group mb-3">
                                 <label asp-for="Input.Category" class="control-label font-weight-bold small uppercase text-muted">Tipo de Recurso <span class="text-danger">*</span></label>
-                                <select asp-for="Input.Category" class="form-control custom-select" asp-items="Html.GetEnumSelectList<EquipmentCategory>()" id="categorySelect" required>
+                                <select asp-for="Input.Category" class="form-control custom-select" asp-items="Html.GetEnumSelectList<EquipmentCategory>()" id="categorySelect" disabled>
                                 </select>
                                 <span asp-validation-for="Input.Category" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-3" id="utensilContainer" style="display:none;">
                                 <label asp-for="Input.UtensilType" class="control-label font-weight-bold small uppercase text-muted">Subclasificacion de Utensilio <span class="text-danger">*</span></label>
-                                <select asp-for="Input.UtensilType" class="form-control custom-select border-info" asp-items="Model.UtensilTypeOptions" id="utensilSelect">
+                                <select asp-for="Input.UtensilType" class="form-control custom-select" asp-items="Model.UtensilTypeOptions" id="utensilSelect" disabled>
                                 </select>
                                 <span asp-validation-for="Input.UtensilType" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-3" id="classificationContainer">
                                 <label asp-for="Input.TypeClassification" class="control-label font-weight-bold small uppercase text-muted">Clasificación Técnica <span class="text-danger">*</span></label>
-                                <select asp-for="Input.TypeClassification" class="form-control custom-select border-info" asp-items="Model.EquipmentTypeClassificationOptions" id="classificationSelect">
+                                <select asp-for="Input.TypeClassification" class="form-control custom-select" asp-items="Model.EquipmentTypeClassificationOptions" id="classificationSelect" disabled>
                                 </select>
                                 <span asp-validation-for="Input.TypeClassification" class="text-danger small"></span>
                             </div>
@@ -219,7 +229,7 @@
              // Custom file input label update
             $(".custom-file-input").on("change", function () {
                 var fileName = $(this).val().split("\\").pop();
-                $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+                $(this).siblings(".custom-file-label").addClass("selected").text(fileName);
             });
 
             window.addNoteRow = function() {
@@ -266,7 +276,7 @@
                 }
                 Swal.fire({
                     title: '¿Guardar cambios?',
-                    text: 'Se actualizarán los datos de la definición de catálogo.',
+                    text: 'Se actualizará la ficha técnica. La clasificación auditable se conservará.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Sí, guardar',

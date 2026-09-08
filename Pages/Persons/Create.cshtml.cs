@@ -15,11 +15,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly ILogger<CreateModel> _logger;
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public CreateModel(
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            UserManager<User> userManager,
+            ILogger<CreateModel> logger)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger;
         }
 
         public IActionResult OnGet()
@@ -99,7 +104,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al registrar: {ex.Message}");
+                _logger.LogError(ex, "No se pudo registrar la persona.");
+                TempData.Error("No se pudo registrar la persona. Intente nuevamente.");
                 return Page();
             }
         }

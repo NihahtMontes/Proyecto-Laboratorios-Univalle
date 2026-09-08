@@ -53,6 +53,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             var verification = await _context.Verifications
                 .Include(v => v.CreatedBy)
+                .Include(v => v.ResponsiblePerson)
                 .Include(v => v.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
                 .Include(v => v.EquipmentUnit)
@@ -81,12 +82,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         private async Task<IActionResult> LoadSessionView()
         {
+            if (LabId is not int laboratoryId || Date is not DateTime sessionDate)
+                return NotFound();
+
             var query = _context.Verifications
                 .Include(v => v.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                 .Include(v => v.EquipmentUnit).ThenInclude(eu => eu!.Laboratory)
                 .Include(v => v.CreatedBy)
-                .Where(v => v.EquipmentUnit!.LaboratoryId == LabId.Value
-                         && v.Date.Date == Date.Value.Date);
+                .Include(v => v.ResponsiblePerson)
+                .Where(v => v.EquipmentUnit != null
+                         && v.EquipmentUnit.LaboratoryId == laboratoryId
+                         && v.Date.Date == sessionDate.Date);
 
             SessionEquipments = await query.OrderBy(v => v.EquipmentUnit!.InventoryNumber).ToListAsync();
 
@@ -94,12 +100,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 return NotFound();
 
             var first = SessionEquipments.First();
-            SessionDate = Date.Value;
+            SessionDate = sessionDate;
             SessionLabName = first.EquipmentUnit?.Laboratory?.Name ?? "Laboratorio";
             SessionManagementId = ManagementId ?? first.ManagementId;
-            SessionInspector = first.CreatedBy != null
-                ? first.CreatedBy.FirstName + " " + first.CreatedBy.LastName
-                : "Sistema";
+            SessionInspector = first.ResponsiblePerson?.FullName
+                ?? first.CreatedBy?.FullName
+                ?? "Sistema";
 
             return Page();
         }

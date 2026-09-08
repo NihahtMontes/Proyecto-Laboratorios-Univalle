@@ -34,7 +34,7 @@
                 </div>
 
                 <form method="post" id="verificationForm" novalidate>
-                    <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString().ToLower() ?? "false")" />
+                    <input type="hidden" name="isWizard" value="@(ViewData["IsWizard"]?.ToString()?.ToLowerInvariant() ?? "false")" />
                     <input type="hidden" asp-for="ManagementPlanId" />
                     <input type="hidden" asp-for="ManagementId" />
 
@@ -168,9 +168,10 @@
                     return;
                 }
                 $.get('/Verifications/Create?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
-                    let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
-                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
-                    $('#laboratorySelect').html(opts).trigger('change');
+                    const $laboratory = $('#laboratorySelect');
+                    $laboratory.empty().append(new Option('-- Seleccionar Laboratorio --', ''));
+                    $.each(data, function(i, item) { $laboratory.append(new Option(item.name || '', item.id)); });
+                    $laboratory.trigger('change');
                 });
             });
 
@@ -178,9 +179,10 @@
                 let id = $(this).val();
                 if (!id) return;
                 $.get('/Verifications/Create?handler=UnitsByLab', { laboratoryId: id }, function(data) {
-                    let opts = '<option value="">-- Seleccionar Unidad --</option>';
-                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
-                    $('#equipmentUnitSelect').html(opts).trigger('change');
+                    const $unit = $('#equipmentUnitSelect');
+                    $unit.empty().append(new Option('-- Seleccionar Unidad --', ''));
+                    $.each(data, function(i, item) { $unit.append(new Option(item.name || '', item.id)); });
+                    $unit.trigger('change');
                 });
             });
 

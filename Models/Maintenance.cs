@@ -106,6 +106,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Observaciones del Técnico")]
         public string? Observations { get; set; }
 
+        [StringLength(200)]
+        public string? HistoricalSourceKey { get; set; }
+
+        public int? ImportBatchId { get; set; }
+
         // ========================================
         // AUDIT
         // ========================================
@@ -120,6 +125,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [Display(Name = "Última Modificación")]
         public DateTime? LastModifiedDate { get; set; }
+
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = [];
 
         // ========================================
         // NAVIGATION
@@ -145,6 +153,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual List<CostDetail> CostDetails { get; set; } = new List<CostDetail>();
 
         public virtual List<MaintenanceTask> Tasks { get; set; } = new List<MaintenanceTask>();
+
+        public virtual ICollection<MaintenanceParticipant> Participants { get; set; } = [];
+        public virtual ICollection<MaintenanceRequest> RequestLinks { get; set; } = [];
+
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
 
         // ========================================
         // CALCULATED PROPERTIES

@@ -11,27 +11,51 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
         [StringLength(200)]
         [Display(Name = "Laboratorio (Snapshot)")]
-        public string LaboratorySnapshot { get; set; } = string.Empty;
+        public string? LaboratorySnapshot { get; set; }
 
-        [Required]
         [StringLength(200)]
         [Display(Name = "Bloque (Snapshot)")]
-        public string BlockSnapshot { get; set; } = string.Empty;
+        public string? BlockSnapshot { get; set; }
 
         [Display(Name = "Unidad de Equipamiento")]
         public int? EquipmentUnitId { get; set; }
 
-        [Required]
+        [Display(Name = "Laboratorio")]
+        public int? LaboratoryId { get; set; }
+
         [StringLength(200)]
         [Display(Name = "Servicio")]
-        public string Service { get; set; } = string.Empty;
+        public string? Service { get; set; }
 
-        [Required]
         [Display(Name = "Tipo de Servicio")]
-        public ServiceType ServiceType { get; set; } = ServiceType.Internal;
+        public ServiceType? ServiceType { get; set; }
+
+        [StringLength(50)]
+        [Display(Name = "Código del plan histórico")]
+        public string? PlanCode { get; set; }
+
+        [StringLength(200)]
+        public string? HistoricalSourceKey { get; set; }
+
+        [Display(Name = "Gestión")]
+        public int? ManagementId { get; set; }
+
+        [Display(Name = "Tipo de mantenimiento")]
+        public MaintenanceType? MaintenanceType { get; set; }
+
+        [Display(Name = "Fecha planificada")]
+        [DataType(DataType.Date)]
+        public DateTime? PlannedDate { get; set; }
+
+        [Display(Name = "Estado histórico")]
+        public MaintenanceStatus? Status { get; set; }
+
+        [Display(Name = "Actor responsable")]
+        public int? ResponsiblePersonId { get; set; }
+
+        public int? ImportBatchId { get; set; }
 
         // ========================================
         // AUDIT
@@ -69,6 +93,18 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("EquipmentUnitId")]
         public virtual EquipmentUnit? EquipmentUnit { get; set; }
+
+        [ForeignKey(nameof(LaboratoryId))]
+        public virtual Laboratory? Laboratory { get; set; }
+
+        [ForeignKey(nameof(ManagementId))]
+        public virtual Management? Management { get; set; }
+
+        [ForeignKey(nameof(ResponsiblePersonId))]
+        public virtual Person? ResponsiblePerson { get; set; }
+
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
 
         [ForeignKey("AssignedTechnicianId")]
         public virtual User? Technician { get; set; }

@@ -16,6 +16,14 @@ namespace Proyecto_Laboratorios_Univalle.Data
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
             var userManager = serviceProvider.GetRequiredService<UserManager<User>>();
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+            var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+            var defaultPassword = configuration["Seed:DefaultPassword"];
+
+            if (string.IsNullOrWhiteSpace(defaultPassword))
+            {
+                throw new InvalidOperationException(
+                    "Database:RunSeed requiere Seed:DefaultPassword mediante secretos de usuario o una variable de entorno.");
+            }
 
             // 1. Crear Roles si no existen
             string[] roles = { AuthorizationHelper.RoleSupervisor, AuthorizationHelper.RoleAdministrator, AuthorizationHelper.RoleSuperAdmin };
@@ -24,14 +32,15 @@ namespace Proyecto_Laboratorios_Univalle.Data
             {
                 if (!await roleManager.RoleExistsAsync( roleName))
                 {
-                    await roleManager.CreateAsync(new IdentityRole<int>(roleName));
+                    var roleResult = await roleManager.CreateAsync(new IdentityRole<int>(roleName));
+                    ThrowIfFailed(roleResult, $"crear el rol {roleName}");
                 }
             }
 
             // 2. Crear Usuarios (Administrador y Técnicos/Jefes de Lab)
-            var adminUser = await EnsureUserAsync(userManager, "admin", "admin@univalle.edu", "Administrador", "Sistema", AuthorizationHelper.RoleSuperAdmin);
-            var labJefe1 = await EnsureUserAsync(userManager, "jlab.cocina", "cocina@univalle.edu", "Juan", "Perez", AuthorizationHelper.RoleAdministrator);
-            var labJefe2 = await EnsureUserAsync(userManager, "jlab.quimica", "quimica@univalle.edu", "Maria", "Gomez", AuthorizationHelper.RoleAdministrator);
+            var adminUser = await EnsureUserAsync(userManager, "admin", "admin@univalle.edu", "Administrador", "Sistema", AuthorizationHelper.RoleSuperAdmin, defaultPassword);
+            var labJefe1 = await EnsureUserAsync(userManager, "jlab.cocina", "cocina@univalle.edu", "Juan", "Perez", AuthorizationHelper.RoleAdministrator, defaultPassword);
+            var labJefe2 = await EnsureUserAsync(userManager, "jlab.quimica", "quimica@univalle.edu", "Maria", "Gomez", AuthorizationHelper.RoleAdministrator, defaultPassword);
 
             // 3. Crear Técnicos (Personas) -> Internos y Externos
             if (!context.People.Any())
@@ -46,8 +55,10 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 await context.SaveChangesAsync();
             }
 
-            var tInt1 = await context.Interns.FirstOrDefaultAsync(x => x.Name.Contains("Carlos"));
-            var tExt1 = await context.Externs.FirstOrDefaultAsync(x => x.Name.Contains("Soporte"));
+            var tInt1 = await context.Interns.FirstOrDefaultAsync(x => x.Name.Contains("Carlos"))
+                ?? throw new InvalidOperationException("La semilla requiere el técnico interno Carlos.");
+            var tExt1 = await context.Externs.FirstOrDefaultAsync(x => x.Name.Contains("Soporte"))
+                ?? throw new InvalidOperationException("La semilla requiere el proveedor de soporte externo.");
 
             // 4. Jerarquía: Países, Ciudades, Facultades, Carreras, Laboratorios
             if (!context.Countries.Any())
@@ -76,10 +87,14 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 await context.SaveChangesAsync();
             }
 
-            var lCocina = await context.Laboratories.FirstOrDefaultAsync(x => x.Code == "LAB-GAS-01");
-            var lQuimica = await context.Laboratories.FirstOrDefaultAsync(x => x.Code == "LAB-BIO-01");
-            var boliviaEntity = await context.Countries.FirstOrDefaultAsync();
-            var cbbaEntity = await context.Cities.FirstOrDefaultAsync();
+            var lCocina = await context.Laboratories.FirstOrDefaultAsync(x => x.Code == "LAB-GAS-01")
+                ?? throw new InvalidOperationException("La semilla requiere el laboratorio LAB-GAS-01.");
+            var lQuimica = await context.Laboratories.FirstOrDefaultAsync(x => x.Code == "LAB-BIO-01")
+                ?? throw new InvalidOperationException("La semilla requiere el laboratorio LAB-BIO-01.");
+            var boliviaEntity = await context.Countries.FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException("La semilla requiere al menos un país.");
+            var cbbaEntity = await context.Cities.FirstOrDefaultAsync()
+                ?? throw new InvalidOperationException("La semilla requiere al menos una ciudad.");
 
             // 5. Equipos Catalogo
             if (!context.Equipments.Any())
@@ -95,11 +110,16 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 await context.SaveChangesAsync();
             }
 
-            var eBat = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Batidora"));
-            var eMic = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Microondas"));
-            var eHorno = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Horno Rational"));
-            var eMicroscopio = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Microscopio"));
-            var eEsp = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Espectro"));
+            var eBat = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Batidora"))
+                ?? throw new InvalidOperationException("La semilla requiere el equipo Batidora.");
+            var eMic = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Microondas"))
+                ?? throw new InvalidOperationException("La semilla requiere el equipo Microondas.");
+            var eHorno = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Horno Rational"))
+                ?? throw new InvalidOperationException("La semilla requiere el equipo Horno Rational.");
+            var eMicroscopio = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Microscopio"))
+                ?? throw new InvalidOperationException("La semilla requiere el equipo Microscopio.");
+            var eEsp = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Espectro"))
+                ?? throw new InvalidOperationException("La semilla requiere el equipo Espectrofotómetro.");
 
             // 6. Gestión Principal 1-2026
             var management = await context.Managements.FirstOrDefaultAsync(m => m.Year == 2026 && m.Semester == 1);
@@ -119,16 +139,16 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 await context.SaveChangesAsync();
             }
 
-            // 6b. Gestión Correctiva I-2026 (fallas semestrales, sin sincronización masiva)
-            var correctiveMgmt = await context.Managements.FirstOrDefaultAsync(m => m.Type == ManagementType.Corrective && m.Year == 2026 && m.Semester == 1);
+            // 6b. Gestión correctiva anual (sin sincronización masiva)
+            var correctiveMgmt = await context.Managements.FirstOrDefaultAsync(m => m.Type == ManagementType.Corrective && m.Year == 2026 && m.Semester == 0);
             if (correctiveMgmt == null)
             {
                 correctiveMgmt = new Management
                 {
                     Year = 2026,
-                    Semester = 1,
-                    Code = "CORR-2026-1",
-                    Description = "Gestión correctiva I-2026 para fallas reportadas por L-7.",
+                    Semester = 0,
+                    Code = "CORR-2026-0",
+                    Description = "Gestión correctiva 2026 para fallas reportadas por L-7.",
                     Status = ManagementStatus.Active,
                     Type = ManagementType.Corrective
                 };
@@ -180,7 +200,14 @@ namespace Proyecto_Laboratorios_Univalle.Data
             }
         }
 
-        private static async Task<User> EnsureUserAsync(UserManager<User> userManager, string userName, string email, string firstName, string lastName, string role)
+        private static async Task<User> EnsureUserAsync(
+            UserManager<User> userManager,
+            string userName,
+            string email,
+            string firstName,
+            string lastName,
+            string role,
+            string defaultPassword)
         {
             var user = await userManager.FindByNameAsync(userName);
             if (user == null)
@@ -192,27 +219,46 @@ namespace Proyecto_Laboratorios_Univalle.Data
                     EmailConfirmed = true,
                     FirstName = firstName,
                     LastName = lastName,
-                    IdentityCard = "1234567" + new Random().Next(10, 99),
+                    IdentityCard = "1234567" + Random.Shared.Next(10, 99),
                     PhoneNumber = "70000000",
+                    Role = ToUserRole(role),
                     Status = GeneralStatus.Activo,
                     CreatedDate = DateTime.UtcNow
                 };
-                var result = await userManager.CreateAsync(user, "admin123");
-                if (result.Succeeded)
-                {
-                    await userManager.AddToRoleAsync(user, role);
-                }
+                var result = await userManager.CreateAsync(user, defaultPassword);
+                ThrowIfFailed(result, $"crear el usuario {userName}");
             }
             else
             {
-                if (!await userManager.IsInRoleAsync(user, role))
-                {
-                    await userManager.AddToRoleAsync(user, role);
-                }
-                var token = await userManager.GeneratePasswordResetTokenAsync(user);
-                await userManager.ResetPasswordAsync(user, token, "admin123");
+                user.Role = ToUserRole(role);
+                user.Status = GeneralStatus.Activo;
+                var updateResult = await userManager.UpdateAsync(user);
+                ThrowIfFailed(updateResult, $"actualizar el usuario {userName}");
             }
+
+            var roleResult = await userManager.SynchronizeManagedRoleAsync(user, user.Role);
+            ThrowIfFailed(roleResult, $"sincronizar el rol del usuario {userName}");
             return user;
+        }
+
+        private static UserRole ToUserRole(string role)
+        {
+            return role switch
+            {
+                AuthorizationHelper.RoleSuperAdmin => UserRole.SuperAdmin,
+                AuthorizationHelper.RoleAdministrator => UserRole.Administrador,
+                AuthorizationHelper.RoleSupervisor => UserRole.Supervisor,
+                _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Rol de semilla no soportado.")
+            };
+        }
+
+        private static void ThrowIfFailed(IdentityResult result, string operation)
+        {
+            if (result.Succeeded)
+                return;
+
+            var errors = string.Join("; ", result.Errors.Select(error => error.Description));
+            throw new InvalidOperationException($"No se pudo {operation}: {errors}");
         }
 
         private static void CreateSanoScenario(ApplicationDbContext context, EquipmentUnit eu, Management mgmt)

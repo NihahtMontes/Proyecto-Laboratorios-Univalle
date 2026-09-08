@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -18,37 +17,50 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         private readonly UserManager<User> _userManager;
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
+        private readonly ILogger<CreateModel> _logger;
 
-        public CreateModel(UserManager<User> userManager, ApplicationDbContext context, IWebHostEnvironment environment)
+        public CreateModel(
+            UserManager<User> userManager,
+            ApplicationDbContext context,
+            IWebHostEnvironment environment,
+            ILogger<CreateModel> logger)
         {
             _userManager = userManager;
             _context = context;
             _environment = environment;
+            _logger = logger;
         }
 
         public class InputModel
         {
             [Required(ErrorMessage = "El nombre de usuario es obligatorio")]
+            [StringLength(256)]
             [Display(Name = "Usuario")]
             public string UserName { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "El correo institucional es obligatorio")]
             [EmailAddress(ErrorMessage = "Correo electrónico inválido")]
+            [StringLength(256)]
             [Display(Name = "Correo")]
             public string Email { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "Los nombres son obligatorios")]
+            [StringLength(100)]
             [Display(Name = "Nombres")]
             public string FirstName { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "El primer apellido es obligatorio")]
+            [StringLength(100)]
             [Display(Name = "Apellido")]
             public string LastName { get; set; } = string.Empty;
 
+            [StringLength(100)]
             [Display(Name = "Segundo Apellido")]
             public string? SecondLastName { get; set; }
 
             [Required(ErrorMessage = "El documento de identidad es obligatorio")]
+            [StringLength(10)]
+            [RegularExpression(@"^[0-9A-Z-]*$", ErrorMessage = "Formato de cédula inválido")]
             [Display(Name = "C.I.")]
             public string IdentityCard { get; set; } = string.Empty;
 
@@ -56,9 +68,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             [Display(Name = "Rol")]
             public UserRole Role { get; set; }
 
+            [StringLength(100)]
             [Display(Name = "Cargo")]
             public string? Position { get; set; }
 
+            [StringLength(100)]
             [Display(Name = "Departamento")]
             public string? Department { get; set; }
 
@@ -66,6 +80,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             public DateTime? HireDate { get; set; }
 
             [Required(ErrorMessage = "El teléfono es obligatorio")]
+            [Phone(ErrorMessage = "Formato de teléfono inválido")]
             [Display(Name = "Teléfono")]
             public string? PhoneNumber { get; set; }
 
@@ -89,35 +104,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid)
+            if (!Enum.IsDefined(typeof(UserRole), Input.Role))
             {
-                LoadRoles();
-                return Page();
+                ModelState.AddModelError("Input.Role", "Seleccione un rol válido.");
             }
 
-            // Normalization
-            var normalizedCI = Input.IdentityCard.Trim();
-            var normalizedEmail = Input.Email.Trim().ToLower();
-            var normalizedUserName = Input.UserName.Trim().ToLower();
+            if (Input.Role == UserRole.SuperAdmin &&
+                !User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+            {
+                ModelState.AddModelError("Input.Role", "Solo un superadministrador puede asignar este rol.");
+            }
 
-            // Duplicate Validations (Ignoring soft-deleted)
-            bool ciExists = await _context.Users
-               .IgnoreQueryFilters()
-               .AnyAsync(u => u.IdentityCard.Trim() == normalizedCI && u.Status != GeneralStatus.Eliminado);
+            var imageValidationError = await SafeImageUpload.ValidateAsync(
+                Input.ProfilePictureUpload,
+                HttpContext.RequestAborted);
 
-            if (ciExists) ModelState.AddModelError("Input.IdentityCard", "Este documento de identidad ya está vinculado a otra cuenta.");
-
-            bool emailExists = await _context.Users
-                .IgnoreQueryFilters()
-                .AnyAsync(u => u.Email != null && u.Email.Trim().ToLower() == normalizedEmail && u.Status != GeneralStatus.Eliminado);
-
-            if (emailExists) ModelState.AddModelError("Input.Email", "Este correo electrónico ya se encuentra registrado.");
-
-            bool userNameExists = await _context.Users
-                .IgnoreQueryFilters()
-                .AnyAsync(u => u.UserName != null && u.UserName.Trim().ToLower() == normalizedUserName && u.Status != GeneralStatus.Eliminado);
-
-            if (userNameExists) ModelState.AddModelError("Input.UserName", "El nombre de usuario ya está en uso.");
+            if (imageValidationError != null)
+            {
+                ModelState.AddModelError("Input.ProfilePictureUpload", imageValidationError);
+            }
 
             if (!ModelState.IsValid)
             {
@@ -125,7 +130,37 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 return Page();
             }
 
-            // User creation
+            var normalizedCI = Input.IdentityCard.Trim().ToUpperInvariant();
+            var normalizedEmail = Input.Email.Trim().ToLowerInvariant();
+            var normalizedUserName = Input.UserName.Trim().ToLowerInvariant();
+
+            var ciExists = await _context.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(u => u.IdentityCard.Trim() == normalizedCI && u.Status != GeneralStatus.Eliminado);
+
+            if (ciExists)
+                ModelState.AddModelError("Input.IdentityCard", "Este documento de identidad ya está vinculado a otra cuenta.");
+
+            var emailExists = await _context.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(u => u.Email != null && u.Email.Trim().ToLower() == normalizedEmail);
+
+            if (emailExists)
+                ModelState.AddModelError("Input.Email", "Este correo electrónico ya se encuentra registrado.");
+
+            var userNameExists = await _context.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(u => u.UserName != null && u.UserName.Trim().ToLower() == normalizedUserName);
+
+            if (userNameExists)
+                ModelState.AddModelError("Input.UserName", "El nombre de usuario ya está en uso.");
+
+            if (!ModelState.IsValid)
+            {
+                LoadRoles();
+                return Page();
+            }
+
             var user = new User
             {
                 UserName = normalizedUserName,
@@ -144,50 +179,79 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 CreatedDate = DateTime.UtcNow
             };
 
-            // Get current auditor
             var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser != null)
+            user.CreatedById = currentUser?.Id;
+
+            var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "users");
+            string? uploadedFilePath = null;
+
+            try
             {
-                user.CreatedById = currentUser.Id;
-            }
-
-            // Handle profile picture upload
-            if (Input.ProfilePictureUpload != null)
-            {
-                string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "users");
-                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-                string safeFileName = Path.GetFileName(Input.ProfilePictureUpload.FileName);
-                string uniqueFileName = $"{Guid.NewGuid()}_{safeFileName}";
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                if (Input.ProfilePictureUpload is { Length: > 0 })
                 {
-                    await Input.ProfilePictureUpload.CopyToAsync(fileStream);
+                    var storedFileName = await SafeImageUpload.SaveAsync(
+                        Input.ProfilePictureUpload,
+                        uploadsFolder,
+                        HttpContext.RequestAborted);
+                    user.ProfilePictureUrl = storedFileName;
+                    uploadedFilePath = Path.Combine(uploadsFolder, storedFileName);
                 }
-                user.ProfilePictureUrl = uniqueFileName;
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                var createResult = await _userManager.CreateAsync(user, Input.Password);
+                if (!createResult.Succeeded)
+                {
+                    AddIdentityErrors(createResult);
+                    await transaction.RollbackAsync();
+                    SafeImageUpload.DeleteIfExists(uploadedFilePath);
+                    LoadRoles();
+                    return Page();
+                }
+
+                var roleResult = await _userManager.SynchronizeManagedRoleAsync(user, Input.Role);
+                if (!roleResult.Succeeded)
+                {
+                    AddIdentityErrors(roleResult);
+                    await transaction.RollbackAsync();
+                    SafeImageUpload.DeleteIfExists(uploadedFilePath);
+                    LoadRoles();
+                    return Page();
+                }
+
+                await transaction.CommitAsync();
             }
-
-            var result = await _userManager.CreateAsync(user, Input.Password);
-
-            if (result.Succeeded)
+            catch (Exception ex)
             {
-                TempData.Success($"Cuenta de usuario para '{user.FullName}' creada exitosamente.");
-                return RedirectToPage("./Index");
+                SafeImageUpload.DeleteIfExists(uploadedFilePath);
+                _logger.LogError(ex, "No se pudo crear la cuenta {UserName}.", normalizedUserName);
+                ModelState.AddModelError(string.Empty,
+                    "No se pudo crear la cuenta. Revise los datos e intente nuevamente.");
+                LoadRoles();
+                return Page();
             }
 
+            TempData.Success($"Cuenta de usuario para '{user.FullName}' creada exitosamente.");
+            return RedirectToPage("./Index");
+        }
+
+        private void AddIdentityErrors(IdentityResult result)
+        {
             foreach (var error in result.Errors)
             {
                 ModelState.AddModelError(string.Empty, error.Description);
             }
-
-            LoadRoles();
-            return Page();
         }
 
         private void LoadRoles()
         {
-            ViewData["UserRole"] = EnumHelper.ToSelectList<UserRole>();
+            var roles = EnumHelper.ToSelectList<UserRole>();
+            if (!User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+            {
+                roles.RemoveAll(item => item.Value == ((int)UserRole.SuperAdmin).ToString());
+            }
+
+            ViewData["UserRole"] = roles;
         }
     }
 }

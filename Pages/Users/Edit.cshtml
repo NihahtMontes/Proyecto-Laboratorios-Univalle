@@ -216,7 +216,7 @@
             // Update custom file label when a file is selected
             $(".custom-file-input").on("change", function () {
                 var fileName = $(this).val().split("\\").pop();
-                $(this).siblings(".custom-file-label").addClass("selected").html(fileName || "Cambiar foto...");
+                $(this).siblings(".custom-file-label").addClass("selected").text(fileName || "Cambiar foto...");
             });
 
             $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();

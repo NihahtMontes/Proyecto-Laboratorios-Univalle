@@ -5,9 +5,8 @@
 ## Lectura Obligatoria
 
 - `../context.md`.
-- `../.agent/context/areas/reporting.md` si toca reportes.
-- `../.agent/skills/reporting/SKILL.md`.
-- `../.agent/context/troubleshooting/excel-crashes.md` si hay crash o template corrupto.
+- `../.agents/skills/reporting/SKILL.md` si toca reportes.
+- Evidencia del template, servicio y endpoint si hay crash de Excel o un archivo corrupto.
 
 ## Reglas Reportes
 

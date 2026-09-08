@@ -1,6 +1,19 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.IndexModel
+@using Proyecto_Laboratorios_Univalle.Helpers
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@{
+    var isEquipmentCategory = Model.SelectedCategory == EquipmentCategory.Equipment;
+    var isUtensilCategory = Model.SelectedCategory == EquipmentCategory.Utensil;
+    var hasSubclassification = isEquipmentCategory || isUtensilCategory;
+    var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
+        || Model.SelectedCategory.HasValue
+        || Model.SelectedEquipmentTypeClassification.HasValue
+        || Model.SelectedUtensilType.HasValue
+        || Model.SelectedReviewStatus.HasValue
+        || Model.SelectedLaboratoryId.HasValue;
+}
 
 @if (TempData["Error"] != null)
 {
@@ -28,41 +41,81 @@
                     </div>
                 </div>
 
-                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
-                    <form method="get">
-                        <div class="row align-items-end">
-                            <div class="col-md-4">
-                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
-                                <div class="input-group drop-shadow">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
-                                    </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, marca o modelo..." />
+                <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                    <form method="get" data-live-filter-form>
+                        <label asp-for="SearchTerm" class="sr-only">Buscar por nombre, marca o código</label>
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                            </div>
+                            <input type="search" asp-for="SearchTerm"
+                                   class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                                   placeholder="Buscar por nombre, marca o código"
+                                   autocomplete="off"
+                                   data-live-filter-search />
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                            <select asp-for="SelectedCategory"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.SelectedCategory.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="Html.GetEnumSelectList<EquipmentCategory>()"
+                                    aria-label="Tipo de recurso"
+                                    data-live-filter-control>
+                                <option value="">Tipo de recurso</option>
+                            </select>
+
+                            <div id="subclassificationColumn" class="mr-2 mb-2 @(hasSubclassification ? "" : "d-none")">
+                                <div id="equipmentSubclassificationContainer" class="@(isEquipmentCategory ? "" : "d-none")">
+                                    <select asp-for="SelectedEquipmentTypeClassification"
+                                            class="custom-select btn-rounded w-auto mw-100 @(Model.SelectedEquipmentTypeClassification.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                            asp-items="Model.EquipmentTypeClassificationOptions"
+                                            aria-label="Subclasificación de equipo"
+                                            data-live-filter-control
+                                            disabled="@(!isEquipmentCategory)">
+                                        <option value="">Subclasificación</option>
+                                    </select>
+                                </div>
+
+                                <div id="utensilSubclassificationContainer" class="@(isUtensilCategory ? "" : "d-none")">
+                                    <select asp-for="SelectedUtensilType"
+                                            class="custom-select btn-rounded w-auto mw-100 @(Model.SelectedUtensilType.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                            asp-items="Model.UtensilTypeOptions"
+                                            aria-label="Subclasificación de utensilio"
+                                            data-live-filter-control
+                                            disabled="@(!isUtensilCategory)">
+                                        <option value="">Subclasificación</option>
+                                    </select>
                                 </div>
                             </div>
 
-                            <div class="col-md-3 mt-3 mt-md-0">
-                                <label class="small font-weight-bold text-muted uppercase">Categoría</label>
-                                <select asp-for="SelectedCategory" class="form-control custom-select drop-shadow" asp-items="Html.GetEnumSelectList<EquipmentCategory>()">
-                                    <option value="">-- Todas las Categorías --</option>
-                                </select>
-                            </div>
+                            <select asp-for="SelectedReviewStatus"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.SelectedReviewStatus.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    aria-label="Estado de revisión"
+                                    data-live-filter-control>
+                                <option value="">Revisión</option>
+                                <option value="@((int)EquipmentClassificationReviewStatus.Confirmed)" class="text-success">● @EnumHelper.GetDisplayName(EquipmentClassificationReviewStatus.Confirmed)</option>
+                                <option value="@((int)EquipmentClassificationReviewStatus.PendingClient)" class="text-warning">● @EnumHelper.GetDisplayName(EquipmentClassificationReviewStatus.PendingClient)</option>
+                                <option value="@((int)EquipmentClassificationReviewStatus.LegacyInferred)" class="text-danger">● @EnumHelper.GetDisplayName(EquipmentClassificationReviewStatus.LegacyInferred)</option>
+                            </select>
 
-                            <div class="col-md-3 mt-3 mt-md-0">
-                                <label class="small font-weight-bold text-info uppercase"><i class="fas fa-door-open mr-1"></i> Ambiente</label>
-                                <select asp-for="SelectedLaboratoryId" class="form-control custom-select border-info drop-shadow" asp-items="Model.LaboratoriesList">
-                                    <option value="">-- Todos los Ambientes --</option>
-                                </select>
-                            </div>
+                            <select asp-for="SelectedLaboratoryId"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.SelectedLaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="Model.LaboratoriesList"
+                                    aria-label="Ambiente"
+                                    data-live-filter-control>
+                                <option value="">Ambiente</option>
+                            </select>
 
-                            <div class="col-md-2 text-right mt-3 mt-md-0">
-                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
-                                    <i class="fas fa-filter mr-1"></i> Filtrar
-                                </button>
-                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
-                                    <i class="fas fa-sync-alt"></i>
+                            @if (hasActiveFilters)
+                            {
+                                <a asp-page="./Index" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                    <i class="fas fa-times mr-1"></i> Limpiar filtros
                                 </a>
-                            </div>
+                            }
+
+                            <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                <strong class="text-dark">@Model.Equipment.TotalCount</strong> activo(s)
+                            </span>
                         </div>
                     </form>
                 </div>
@@ -93,18 +146,37 @@
                             {
                                 foreach (var item in Model.Equipment)
                                 {
+                                    var classificationConfirmed = item.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed;
+                                    var resolvedCategory = item.Category;
+                                    var subclassificationName = !classificationConfirmed
+                                        ? (item.ClassificationReviewStatus == EquipmentClassificationReviewStatus.PendingClient
+                                            ? "Pendiente de cliente"
+                                            : "Inferido legado")
+                                        : resolvedCategory switch
+                                    {
+                                        EquipmentCategory.Equipment when item.TypeClassification.HasValue => EnumHelper.GetDisplayName(item.TypeClassification.Value),
+                                        EquipmentCategory.Utensil when item.UtensilType.HasValue => EnumHelper.GetDisplayName(item.UtensilType.Value),
+                                        EquipmentCategory.Other => item.OtherClassificationDetail ?? "Otro confirmado",
+                                        _ => "Sin subclasificación confirmada"
+                                    };
+                                    var classificationBadge = !classificationConfirmed
+                                        ? (item.ClassificationReviewStatus == EquipmentClassificationReviewStatus.PendingClient ? "badge-warning" : "badge-dark")
+                                        : resolvedCategory == EquipmentCategory.Equipment ? "badge-info"
+                                        : resolvedCategory == EquipmentCategory.Utensil ? "badge-success"
+                                        : "badge-secondary";
+
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div>
                                                     <h6 class="m-b-0 font-weight-bold text-dark">@item.Name</h6>
-                                                    <span class="text-muted small">@Html.DisplayFor(modelItem => item.Category)</span>
+                                                    <span class="text-muted small">@(classificationConfirmed ? EnumHelper.GetDisplayName(resolvedCategory) : "Clasificación no confirmada")</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td class="v-middle">
-                                            <span class="badge badge-pill @(item.Category == EquipmentCategory.Equipment ? "badge-info" : item.Category == EquipmentCategory.Utensil ? "badge-success" : "badge-secondary") px-3 py-1 shadow-sm font-weight-bold">
-                                                <i class="fas @(item.Category == EquipmentCategory.Equipment ? "fa-microchip" : item.Category == EquipmentCategory.Utensil ? "fa-utensils" : "fa-cube") mr-1"></i> @Html.DisplayFor(modelItem => item.TypeClassification)
+                                            <span class="badge badge-pill @classificationBadge px-3 py-1 shadow-sm font-weight-bold">
+                                                <i class="fas @(resolvedCategory == EquipmentCategory.Equipment ? "fa-microchip" : resolvedCategory == EquipmentCategory.Utensil ? "fa-utensils" : "fa-cube") mr-1"></i> @subclassificationName
                                             </span>
                                         </td>
                                         <td class="v-middle">
@@ -134,7 +206,7 @@
                                             <small class="text-muted italic">@(item.Model ?? "-")</small>
                                         </td>
                                         <td class="text-center">
-                                            <span class="badge badge-pill @(item.Category == EquipmentCategory.Equipment ? "badge-info" : item.Category == EquipmentCategory.Utensil ? "badge-success" : "badge-secondary") px-3 py-1 text-white border-0 shadow-sm font-weight-bold">
+                                            <span class="badge badge-pill @classificationBadge px-3 py-1 text-white border-0 shadow-sm font-weight-bold">
                                                 <i class="fas fa-cubes mr-1" style="font-size: 0.65rem;"></i> @(item.Units?.Count ?? 0) Und.
                                             </span>
                                         </td>
@@ -158,26 +230,26 @@
                     </table>
                 </div>
 
-                @if (Model.Equipment.TotalPages > 1)
+                @if (Model.Equipment!.TotalPages > 1)
                 {
                     <nav aria-label="Paginación">
                         <ul class="pagination justify-content-center">
                             @if (Model.Equipment.HasPreviousPage)
                             {
                                 <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Equipment.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory">Anterior</a>
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Equipment.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory" asp-route-SelectedEquipmentTypeClassification="@Model.SelectedEquipmentTypeClassification" asp-route-SelectedUtensilType="@Model.SelectedUtensilType" asp-route-SelectedReviewStatus="@Model.SelectedReviewStatus">Anterior</a>
                                 </li>
                             }
                             @for (var i = 1; i <= Model.Equipment.TotalPages; i++)
                             {
                                 <li class="page-item @(i == Model.Equipment.PageIndex ? "active" : "")">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory">@i</a>
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory" asp-route-SelectedEquipmentTypeClassification="@Model.SelectedEquipmentTypeClassification" asp-route-SelectedUtensilType="@Model.SelectedUtensilType" asp-route-SelectedReviewStatus="@Model.SelectedReviewStatus">@i</a>
                                 </li>
                             }
                             @if (Model.Equipment.HasNextPage)
                             {
                                 <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Equipment.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory">Siguiente</a>
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Equipment.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-SelectedLaboratoryId="@Model.SelectedLaboratoryId" asp-route-SelectedCategory="@Model.SelectedCategory" asp-route-SelectedEquipmentTypeClassification="@Model.SelectedEquipmentTypeClassification" asp-route-SelectedUtensilType="@Model.SelectedUtensilType" asp-route-SelectedReviewStatus="@Model.SelectedReviewStatus">Siguiente</a>
                                 </li>
                             }
                         </ul>
@@ -199,10 +271,6 @@
             letter-spacing: 0.5px;
         }
 
-        .drop-shadow {
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05));
-        }
-
         .italic {
             font-style: italic;
         }
@@ -217,7 +285,42 @@
     <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
     <script>
         $(function () {
-             $('[data-toggle="tooltip"]').tooltip();
+            $('[data-toggle="tooltip"]').tooltip();
+
+            var equipmentCategory = '@((int)EquipmentCategory.Equipment)';
+            var utensilCategory = '@((int)EquipmentCategory.Utensil)';
+            var $category = $('#SelectedCategory');
+            var $subclassificationColumn = $('#subclassificationColumn');
+            var $equipmentContainer = $('#equipmentSubclassificationContainer');
+            var $utensilContainer = $('#utensilSubclassificationContainer');
+            var $equipmentSelect = $('#SelectedEquipmentTypeClassification');
+            var $utensilSelect = $('#SelectedUtensilType');
+
+            function synchronizeSubclassification(resetInactiveValues) {
+                var selectedCategory = $category.val();
+                var showEquipment = selectedCategory === equipmentCategory;
+                var showUtensil = selectedCategory === utensilCategory;
+
+                $subclassificationColumn.toggleClass('d-none', !showEquipment && !showUtensil);
+                $equipmentContainer.toggleClass('d-none', !showEquipment);
+                $utensilContainer.toggleClass('d-none', !showUtensil);
+                $equipmentSelect.prop('disabled', !showEquipment);
+                $utensilSelect.prop('disabled', !showUtensil);
+
+                if (resetInactiveValues && !showEquipment) {
+                    $equipmentSelect.val('');
+                }
+
+                if (resetInactiveValues && !showUtensil) {
+                    $utensilSelect.val('');
+                }
+            }
+
+            $category.on('change', function () {
+                synchronizeSubclassification(true);
+            });
+
+            synchronizeSubclassification(false);
         });
     </script>
 }

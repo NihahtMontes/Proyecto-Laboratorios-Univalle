@@ -2,6 +2,10 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
+@{
+    var hasActiveFilters = Model.FilterLaboratoryId.HasValue;
+}
+
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm border-0">
@@ -23,23 +27,27 @@
                     </div>
                 </div>
 
-                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
-                    <form method="get">
-                        <div class="row align-items-end">
-                            <div class="col-md-6">
-                                <label class="small font-weight-bold text-muted uppercase">Laboratorio / Ambiente</label>
-                                <select asp-for="FilterLaboratoryId" class="form-control custom-select drop-shadow" asp-items="Model.LaboratoryList">
-                                    <option value="">-- Seleccione un laboratorio --</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4 text-right mt-2 mt-md-0">
-                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
-                                    <i class="fas fa-filter mr-1"></i> Filtrar
-                                </button>
-                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
-                                    <i class="fas fa-sync-alt"></i>
+                <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                    <form method="get" data-live-filter-form>
+                        <div class="d-flex flex-wrap align-items-center">
+                            <select asp-for="FilterLaboratoryId"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                                    asp-items="Model.LaboratoryList"
+                                    aria-label="Laboratorio o ambiente"
+                                    data-live-filter-control>
+                                <option value="">Laboratorio o ambiente</option>
+                            </select>
+
+                            @if (hasActiveFilters)
+                            {
+                                <a asp-page="./Index" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                    <i class="fas fa-times mr-1"></i> Limpiar filtros
                                 </a>
-                            </div>
+                            }
+
+                            <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                <strong class="text-dark">@(Model.Sessions?.TotalCount ?? 0)</strong> sesión(es)
+                            </span>
                         </div>
                     </form>
                 </div>

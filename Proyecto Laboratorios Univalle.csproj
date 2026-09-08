@@ -10,31 +10,29 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="EFCore.NamingConventions" Version="9.0.0" />
-    <PackageReference Include="EPPlus" Version="7.5.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid.EntityFrameworkAdapter" Version="9.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="9.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.12" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.12">
+    <PackageReference Include="EPPlus" Version="7.5.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid.EntityFrameworkAdapter" Version="9.0.19" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.19" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.19" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.19">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="9.0.12" />
-    <PackageReference Include="QuestPDF" Version="2025.12.3" />
+    <PackageReference Include="QuestPDF" Version="2025.12.4" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Tools\**\*.cs" />
     <Compile Remove="tmp\**\*.cs" />
     <Compile Remove="tmp/**" />
-    <Content Remove="Gastro\**;Gastro/**;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
+    <Content Remove="Tools\**;Gastro\**;Gastro/**;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
     <Content Remove="tmp\**" />
     <Content Remove="tmp/**" />
-    <EmbeddedResource Remove="tmp\**" />
+    <EmbeddedResource Remove="Tools\**;tmp\**" />
     <EmbeddedResource Remove="tmp/**" />
-    <None Remove="Gastro\**;Gastro/**;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
+    <None Remove="Tools\**;Gastro\**;Gastro/**;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
     <None Remove="tmp\**" />
     <None Remove="tmp/**" />
   </ItemGroup>

@@ -17,11 +17,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly ILogger<EditModel> _logger;
 
-        public EditModel(ApplicationDbContext context, UserManager<User> userManager)
+        public EditModel(
+            ApplicationDbContext context,
+            UserManager<User> userManager,
+            ILogger<EditModel> logger)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger;
         }
 
         [BindProperty]
@@ -39,11 +44,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
             [Required(ErrorMessage = "La unidad física es obligatoria")]
             [Display(Name = "Unidad Física")]
-            public int EquipmentUnitId { get; set; }
+            public int? EquipmentUnitId { get; set; }
 
             [Required(ErrorMessage = "El responsable es obligatorio")]
             [Display(Name = "Responsable / Solicitante")]
-            public int BorrowerId { get; set; }
+            public int? BorrowerId { get; set; }
 
             [Required(ErrorMessage = "El tipo de salida es obligatorio")]
             [Display(Name = "Tipo de Salida")]
@@ -58,10 +63,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             [DataType(DataType.Date)]
             public DateTime DepartureDate { get; set; }
 
-            [Required(ErrorMessage = "La fecha estimada de devolución es obligatoria")]
             [Display(Name = "Fecha Estimada de Devolución")]
             [DataType(DataType.Date)]
-            public DateTime EstimatedReturnDate { get; set; }
+            public DateTime? EstimatedReturnDate { get; set; }
 
             [Display(Name = "Fecha Real de Devolución")]
             [DataType(DataType.DateTime)]
@@ -81,8 +85,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             {
                 public int? Id { get; set; }
                 public int? EquipmentUnitId { get; set; }
-                public string ProductName { get; set; } = string.Empty;
-                public int Quantity { get; set; } = 1;
+                public string? ProductName { get; set; }
+                public int? Quantity { get; set; }
                 public string UnitOfMeasure { get; set; } = "UNIDAD";
                 public string? Observations { get; set; }
             }
@@ -130,7 +134,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     EquipmentUnitId = item.EquipmentUnitId,
                     ProductName = item.ProductName,
                     Quantity = item.Quantity,
-                    UnitOfMeasure = item.UnitOfMeasure,
+                    UnitOfMeasure = item.UnitOfMeasure ?? "UNIDAD",
                     Observations = item.Observations
                 });
             }
@@ -189,7 +193,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             departureDB.ReturnObservations = Input.ReturnObservations?.Trim();
 
             var existingItems = departureDB.Items.ToList();
-            var inputItemIds = Input.Items?.Where(i => i.Id.HasValue && i.Id > 0).Select(i => i.Id.Value).ToList() ?? new List<int>();
+            var inputItemIds = Input.Items?
+                .Where(i => i.Id.GetValueOrDefault() > 0)
+                .Select(i => i.Id.GetValueOrDefault())
+                .ToList() ?? new List<int>();
 
             foreach (var existing in existingItems)
             {
@@ -201,14 +208,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
             if (Input.Items != null)
             {
-                foreach (var itemInput in Input.Items.Where(i => !string.IsNullOrWhiteSpace(i.ProductName)))
+                foreach (var itemInput in Input.Items.Where(i => i.Id.GetValueOrDefault() > 0 || !string.IsNullOrWhiteSpace(i.ProductName)))
                 {
                     if (itemInput.Id.HasValue && itemInput.Id > 0)
                     {
                         var existingItem = existingItems.FirstOrDefault(e => e.Id == itemInput.Id);
                         if (existingItem != null)
                         {
-                            existingItem.ProductName = itemInput.ProductName.Trim();
+                            existingItem.ProductName = string.IsNullOrWhiteSpace(itemInput.ProductName)
+                                ? null
+                                : itemInput.ProductName.Trim();
                             existingItem.Quantity = itemInput.Quantity;
                             existingItem.UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD";
                             existingItem.Observations = itemInput.Observations?.Trim();
@@ -220,7 +229,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                         {
                             DepartureId = departureDB.Id,
                             EquipmentUnitId = itemInput.EquipmentUnitId ?? Input.EquipmentUnitId,
-                            ProductName = itemInput.ProductName.Trim(),
+                            ProductName = itemInput.ProductName!.Trim(),
                             Quantity = itemInput.Quantity,
                             UnitOfMeasure = itemInput.UnitOfMeasure?.Trim() ?? "UNIDAD",
                             Observations = itemInput.Observations?.Trim()
@@ -247,7 +256,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al guardar: {ex.Message}");
+                _logger.LogError(ex, "No se pudo actualizar la salida {DepartureId}.", Input.Id);
+                TempData.Error("No se pudo guardar la salida. Intente nuevamente.");
                 var departureForError = await _context.Departures.Include(m => m.EquipmentUnit).ThenInclude(eu => eu!.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
                 int facultyId = departureForError?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
                 int labId = departureForError?.EquipmentUnit?.LaboratoryId ?? 0;
@@ -256,7 +266,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             }
         }
 
-        private void CargarListas(int facultyId = 0, int laboratoryId = 0, int equipmentUnitId = 0)
+        private void CargarListas(int facultyId = 0, int laboratoryId = 0, int? equipmentUnitId = null)
         {
             ViewData["FacultyId"] = new SelectList(_context.Faculties.Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name), "Id", "Name", facultyId);
             
@@ -277,7 +287,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 })
                 .ToList();
 
-            ViewData["EquipmentUnitId"] = new SelectList(equipos, "Id", "DisplayName", Input.EquipmentUnitId);
+            ViewData["EquipmentUnitId"] = new SelectList(equipos, "Id", "DisplayName", equipmentUnitId);
 
             var people = _context.People
                 .Where(p => p.Status == GeneralStatus.Activo)

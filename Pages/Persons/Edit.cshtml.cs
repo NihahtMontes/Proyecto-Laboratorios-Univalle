@@ -15,11 +15,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly ILogger<EditModel> _logger;
 
-        public EditModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public EditModel(
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            UserManager<User> userManager,
+            ILogger<EditModel> logger)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger;
         }
 
         public class EditInputModel
@@ -130,7 +135,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al actualizar: {ex.Message}");
+                _logger.LogError(ex, "No se pudo actualizar la persona {PersonId}.", Input.Id);
+                TempData.Error("No se pudo actualizar la persona. Intente nuevamente.");
                 return Page();
             }
         }

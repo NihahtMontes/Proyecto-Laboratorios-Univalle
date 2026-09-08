@@ -5,9 +5,8 @@
 ## Lectura Obligatoria
 
 - `../context.md`.
-- `../.agent/context/areas/database-ef.md`.
-- `../.agent/skills/database/SKILL.md`.
-- Modulo especifico si el modelo pertenece al wizard.
+- `../.agents/skills/database/SKILL.md`.
+- Pages y Services consumidores si el modelo pertenece al wizard.
 
 ## Reglas Criticas
 

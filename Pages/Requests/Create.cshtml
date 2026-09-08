@@ -138,9 +138,8 @@
                                 </button>
                             </div>
 
-                            @if (ViewData["EquipmentNotes"] != null && ((List<string>)ViewData["EquipmentNotes"]).Any())
+                            @if (ViewData["EquipmentNotes"] is List<string> notes && notes.Count > 0)
                             {
-                                var notes = (List<string>)ViewData["EquipmentNotes"];
                                 <div class="form-group mb-4 pl-3 bg-light p-3 rounded shadow-sm" style="border-left: 4px solid #007bff;">
                                     <h6 class="font-weight-bold text-primary mb-2">
                                         <i class="fas fa-sticky-note mr-2"></i> Notas del Fabricante / Prevención
@@ -237,6 +236,7 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/js/equipment-kardex-sidebar.js" asp-append-version="true"></script>
     <script>
         $(function() {
             $(".select2").select2({ width: '100%' });
@@ -245,9 +245,10 @@
                 let id = $(this).val();
                 if (!id) return;
                 $.get('?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
-                    let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
-                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
-                    $('#laboratorySelect').html(opts).prop('disabled', false).trigger('change');
+                    const $laboratory = $('#laboratorySelect');
+                    $laboratory.empty().append(new Option('-- Seleccionar Laboratorio --', ''));
+                    $.each(data, function(i, item) { $laboratory.append(new Option(item.name || '', item.id)); });
+                    $laboratory.prop('disabled', false).trigger('change');
                 });
             });
 
@@ -255,9 +256,10 @@
                 let id = $(this).val();
                 if (!id) return;
                 $.get('?handler=UnitsByLab', { laboratoryId: id }, function(data) {
-                    let opts = '<option value="">-- Seleccionar Unidad Física --</option>';
-                    $.each(data, function(i, item) { opts += `<option value="${item.id}">${item.name}</option>`; });
-                    $('#equipmentUnitSelect').html(opts).prop('disabled', false).trigger('change');
+                    const $unit = $('#equipmentUnitSelect');
+                    $unit.empty().append(new Option('-- Seleccionar Unidad Física --', ''));
+                    $.each(data, function(i, item) { $unit.append(new Option(item.name || '', item.id)); });
+                    $unit.prop('disabled', false).trigger('change');
                 });
             });
 
@@ -306,13 +308,6 @@
             });
 
             // ─── Kardex Sidebar ───
-            function escHtml(str) {
-                if (!str) return '';
-                const div = document.createElement('div');
-                div.textContent = str;
-                return div.innerHTML;
-            }
-
             async function openKardex(id) {
                 const sidebar = document.getElementById('kardexSidebar');
                 const overlay = document.getElementById('sidebarOverlay');
@@ -329,29 +324,7 @@
                     if (!response.ok) throw new Error('Error en red');
                     const data = await response.json();
 
-                    content.innerHTML = `
-                        <div class="bg-light p-4 rounded-4 mb-4">
-                            <h5 class="fw-bold text-dark mb-1">${escHtml(data.name)}</h5>
-                            <code class="text-primary font-weight-bold">${escHtml(data.inventoryNumber)}</code>
-                        </div>
-                        <div class="mb-4">
-                            <label class="text-xs-premium text-muted d-block mb-1">Estado Actual</label>
-                            <span class="badge badge-pill badge-info px-3">${escHtml(data.currentStatus)}</span>
-                        </div>
-                        <div class="mb-4 border-bottom pb-3">
-                            <label class="text-xs-premium text-muted d-block mb-1">Última Intervención</label>
-                            <p class="font-weight-bold mb-0 text-dark">${escHtml(data.lastDate)}</p>
-                        </div>
-                        <div class="mb-2">
-                            <label class="text-xs-premium text-muted d-block mb-1">Observaciones / Motivo</label>
-                            <p class="text-muted small">${escHtml(data.reason)}</p>
-                        </div>
-                        <div class="mt-5">
-                            <a href="/EquipmentUnits/Kardex/${id}" target="_blank" class="btn btn-outline-info btn-block rounded-pill font-weight-bold">
-                                <i class="fas fa-history mr-1"></i> Ver Kardex Completo
-                            </a>
-                        </div>
-                    `;
+                    content.innerHTML = window.EquipmentKardexSidebar.render(data, id);
                 } catch (err) {
                     content.innerHTML = '<div class="alert alert-danger">No se pudo cargar el detalle del equipo. Intente de nuevo.</div>';
                 }

@@ -38,9 +38,20 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Condición Física Detectada")]
         public PhysicalCondition PhysicalCondition { get; set; } = PhysicalCondition.Excellent;
 
+        [Display(Name = "Estado operativo observado")]
+        public EquipmentStatus? ObservedEquipmentStatus { get; set; }
+
         [Required]
         [Display(Name = "Estado de la Verificación")]
         public VerificationStatus Status { get; set; } = VerificationStatus.Draft;
+
+        [StringLength(200)]
+        public string? HistoricalSourceKey { get; set; }
+
+        public int? ImportBatchId { get; set; }
+
+        [Display(Name = "Responsable de la Verificación")]
+        public int? ResponsiblePersonId { get; set; }
 
         // ========================================
         // AUDIT
@@ -57,6 +68,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Última Modificación")]
         public DateTime? LastModifiedDate { get; set; }
 
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = [];
+
         // ========================================
         // NAVIGATION
         // ========================================
@@ -72,11 +86,17 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
 
+        [ForeignKey(nameof(ResponsiblePersonId))]
+        public virtual Person? ResponsiblePerson { get; set; }
+
         /// <summary>Resultados individuales de cada punto de control.</summary>
         public virtual ICollection<VerificationCheckResult> CheckResults { get; set; } = [];
 
         /// <summary>Lista de fallas dinámicas detectadas en L6.</summary>
         public virtual ICollection<VerificationFault>? Faults { get; set; }
+
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
 
         // ========================================
         // CALCULATED PROPERTIES

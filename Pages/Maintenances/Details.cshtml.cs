@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
@@ -20,6 +21,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         }
 
         public Maintenance Maintenance { get; set; } = default!;
+        public List<Request> RelatedRequests { get; set; } = new();
         public int? ManagementPlanId { get; set; }
 
         [BindProperty(SupportsGet = true)]
@@ -59,10 +61,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         .ThenInclude(eu => eu!.Laboratory)
                     .Include(m => m.Technician)
                     .Include(m => m.Request)
+                        .ThenInclude(r => r!.RequestedBy)
+                    .Include(m => m.Request)
+                        .ThenInclude(r => r!.RequestedByPerson)
                     .Include(m => m.CreatedBy)
                     .Include(m => m.ModifiedBy)
                     .Include(m => m.CostDetails)
+                        .ThenInclude(detail => detail.ProviderPerson)
                     .Include(m => m.Tasks)
+                    .Include(m => m.Participants)
+                        .ThenInclude(p => p.Person)
+                    .Include(m => m.RequestLinks)
+                        .ThenInclude(link => link.Request)
+                            .ThenInclude(r => r!.RequestedBy)
+                    .Include(m => m.RequestLinks)
+                        .ThenInclude(link => link.Request)
+                            .ThenInclude(r => r!.RequestedByPerson)
                     .FirstOrDefaultAsync(m => m.Id == id);
 
                 if (maintenance == null)
@@ -71,6 +85,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 }
 
                 Maintenance = maintenance;
+                RelatedRequests = maintenance.RequestLinks
+                    .Where(link => link.IsActive && link.Request != null)
+                    .Select(link => link.Request!)
+                    .Concat(maintenance.Request == null ? [] : [maintenance.Request])
+                    .GroupBy(request => request.Id)
+                    .Select(group => group.First())
+                    .OrderByDescending(request => request.RequestDate ?? request.CreatedDate)
+                    .ToList();
 
                 ManagementPlanId = await _context.ManagementPlans
                     .IgnoreQueryFilters()
@@ -89,6 +111,33 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 return RedirectToError(id.Value.ToString(), "Se produjo una excepcion al abrir el mantenimiento L-8.");
             }
         }
+
+        public static string GetMaintenanceStatusBadge(MaintenanceStatus status) => status switch
+        {
+            MaintenanceStatus.Completed => "badge-success",
+            MaintenanceStatus.InProgress => "badge-warning",
+            MaintenanceStatus.Scheduled => "badge-info",
+            MaintenanceStatus.Pending => "badge-secondary",
+            MaintenanceStatus.Cancelled => "badge-danger",
+            _ => "badge-secondary"
+        };
+
+        public static string GetRequestStatusBadge(RequestStatus status) => status switch
+        {
+            RequestStatus.Completed => "badge-success",
+            RequestStatus.Scheduled or RequestStatus.InProgress or RequestStatus.Approved => "badge-info",
+            RequestStatus.Pending => "badge-warning",
+            RequestStatus.Rejected or RequestStatus.Cancelled => "badge-danger",
+            _ => "badge-secondary"
+        };
+
+        public static string FormatServiceType(ServiceType serviceType) =>
+            serviceType == ServiceType.External ? "Externo" : "Interno";
+
+        public static string FormatRequester(Request request) =>
+            request.RequestedByPerson?.FullName
+            ?? request.RequestedBy?.FullName
+            ?? "Sin solicitante identificado";
 
         private IActionResult RedirectToError(string entityId, string message)
         {

@@ -3,7 +3,7 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Proyecto_Laboratorios_Univalle.Helpers
 @{
-    ViewData["Title"] = "Kardex Histórico del Equipo";
+    ViewData["Title"] = "Kardex integral del activo";
 }
 
 <div class="row">
@@ -16,13 +16,17 @@
                             <i class="fas fa-history fa-lg"></i>
                         </div>
                         <div>
-                            <h3 class="card-title text-dark font-weight-bold mb-0">Kardex Histórico de Mantenimiento</h3>
+                            <h3 class="card-title text-dark font-weight-bold mb-0">Kardex integral del activo</h3>
                             <h6 class="card-subtitle text-muted mt-1">
                                 @Model.Unit.Equipment?.Name
                                 <span class="badge badge-light border ml-2">Inv: @Model.Unit.InventoryNumber</span>
-                                @if (!string.IsNullOrEmpty(Model.Unit.Equipment?.Brand))
+                                @if (!string.IsNullOrWhiteSpace(Model.Unit.Equipment?.Brand))
                                 {
-                                    <span class="badge badge-light border ml-1">@Model.Unit.Equipment?.Brand</span>
+                                    <span class="badge badge-light border ml-1">@Model.Unit.Equipment.Brand</span>
+                                }
+                                @if (Model.Unit.Laboratory != null)
+                                {
+                                    <span class="badge badge-light border ml-1">@Model.Unit.Laboratory.Name</span>
                                 }
                             </h6>
                         </div>
@@ -43,124 +47,186 @@
                     </div>
                 </div>
 
-                @if (!Model.History.Any())
-                {
-                    <div class="text-center py-5">
-                        <i class="fas fa-clipboard-list fa-4x text-muted mb-3 opacity-2 d-block"></i>
-                        <h5 class="text-muted font-weight-bold">Sin registros históricos</h5>
-                        <p class="text-muted small">Este equipo aún no ha pasado por un proceso de mantenimiento formal.</p>
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-2 mb-md-0">
+                        <div class="border rounded p-3 h-100">
+                            <span class="small text-uppercase text-muted font-weight-bold d-block mb-2">Estado actual</span>
+                            <span class="badge badge-pill @KardexModel.GetEquipmentStatusBadge(Model.Unit.CurrentStatus) px-3 py-1">
+                                @EnumHelper.GetDisplayName(Model.Unit.CurrentStatus)
+                            </span>
+                        </div>
                     </div>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover v-middle mb-0">
-                            <thead class="bg-light">
-                                <tr class="small text-uppercase font-weight-bold">
-                                    <th class="border-top-0">Fecha</th>
-                                    <th class="border-top-0">Descripción de Trabajos Realizados</th>
-                                    <th class="border-top-0">Servicio Efectuado Por</th>
-                                    <th class="border-top-0">Próx. Mantenimiento</th>
-                                    <th class="border-top-0">Importe (Bs)</th>
-                                    <th class="border-top-0">Satisfacción</th>
-                                    <th class="border-top-0">Observaciones</th>
-                                    <th class="border-top-0" style="width:120px;">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            @foreach (var m in Model.History)
-                            {
-                                var totalCost = m.ActualCost ?? m.CalculatedTotal;
-                                var maintDate = m.EndDate ?? m.ScheduledDate ?? m.CreatedDate;
-                                <tr>
-                                    <td class="font-weight-bold small">
-                                        @maintDate.ToString("dd/MM/yyyy")
-                                        <div class="mt-1">
-                                            @{
-                                                var badgeClass = m.Status switch
-                                                {
-                                                    MaintenanceStatus.Completed => "badge-success",
-                                                    MaintenanceStatus.InProgress => "badge-info",
-                                                    MaintenanceStatus.Pending => "badge-warning",
-                                                    MaintenanceStatus.Cancelled => "badge-secondary",
-                                                    _ => "badge-light"
-                                                };
-                                            }
-                                            <span class="badge @badgeClass px-2 py-1 small">@EnumHelper.GetDisplayName(m.Status)</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <p class="mb-1 small text-dark" style="max-width: 250px;">@(m.Description ?? "—")</p>
-                                        <span class="text-muted small">@EnumHelper.GetDisplayName(m.MaintenanceType)</span>
-                                        @{
-                                            var activeTasks = m.Tasks?.Where(t => !t.IsDeleted).OrderBy(t => t.Id).ToList() ?? new List<Proyecto_Laboratorios_Univalle.Models.MaintenanceTask>();
-                                        }
-                                        @if (activeTasks.Any())
-                                        {
-                                            <div class="mt-2 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                                                <div class="small font-weight-bold text-info text-uppercase mb-1">Tareas L-48</div>
-                                                @foreach (var task in activeTasks)
-                                                {
-                                                    <div class="small d-flex align-items-center mb-1">
-                                                        <i class="@(task.IsCompleted ? "fas fa-check-circle text-success" : "far fa-circle text-muted") mr-1"></i>
-                                                        <span class="@(task.IsCompleted ? "text-dark" : "text-muted")">@task.Description</span>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                    </td>
-                                    <td class="small">@(m.Technician?.FullName ?? m.TechnicianName ?? "—")</td>
-                                    <td class="small text-center">
-                                        @(m.SuggestedNextMaintenanceDate?.ToString("dd/MM/yyyy") ?? "—")
-                                    </td>
-                                    <td class="text-center">
-                                        @if (totalCost > 0)
-                                        {
-                                            <span class="font-weight-bold text-success small">@totalCost.ToString("N2")</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted small">—</span>
-                                        }
-                                        @if (m.CostDetails != null && m.CostDetails.Count > 0)
-                                        {
-                                            <div class="small text-muted">@m.CostDetails.Count ítem(s)</div>
-                                        }
-                                    </td>
-                                    <td class="text-center small">
-                                        @if (m.SatisfactionLevel.HasValue)
-                                        {
-                                            var satClass = m.SatisfactionLevel.Value switch
-                                            {
-                                                MaintenanceSatisfaction.VerySatisfied => "text-success",
-                                                MaintenanceSatisfaction.Satisfied => "text-info",
-                                                MaintenanceSatisfaction.Ok => "text-primary",
-                                                MaintenanceSatisfaction.Dissatisfied => "text-warning",
-                                                MaintenanceSatisfaction.Unacceptable => "text-danger",
-                                                _ => "text-muted"
-                                            };
-                                            <span class="font-weight-bold @satClass">@EnumHelper.GetDisplayName(m.SatisfactionLevel.Value)</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">—</span>
-                                        }
-                                    </td>
-                                    <td class="small text-muted" style="max-width: 180px;">@(m.Recommendations ?? m.Observations ?? "—")</td>
-                                    <td class="text-center">
-                                        <a asp-page="/Maintenances/Details" asp-route-id="@m.Id"
-                                           class="btn btn-sm btn-outline-info btn-rounded font-weight-bold px-3 shadow-sm"
-                                           title="Ver ficha técnica del mantenimiento">
-                                            <i class="fas fa-eye mr-1"></i> Detalles
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                            </tbody>
-                        </table>
+                    <div class="col-md-4 mb-2 mb-md-0">
+                        <div class="border rounded p-3 h-100">
+                            <span class="small text-uppercase text-muted font-weight-bold d-block">Cambios de estado</span>
+                            <strong class="h4 text-dark mb-0">@Model.StateHistory.Count</strong>
+                            <span class="small text-muted d-block">Eventos operativos registrados</span>
+                        </div>
                     </div>
-                }
+                    <div class="col-md-4">
+                        <div class="border rounded p-3 h-100">
+                            <span class="small text-uppercase text-muted font-weight-bold d-block">Mantenimientos formales</span>
+                            <strong class="h4 text-dark mb-0">@Model.History.Count</strong>
+                            <span class="small text-muted d-block">Servicios con ficha técnica propia</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-light border small mb-4">
+                    <i class="fas fa-info-circle text-info mr-2"></i>
+                    Un cambio de estado no equivale a un mantenimiento. Ambos historiales se muestran separados para evitar confundir una novedad operativa con una intervención técnica formal.
+                </div>
+
+                <ul class="nav nav-tabs" id="kardexTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active font-weight-bold" id="state-history-tab" data-toggle="tab" href="#state-history" role="tab" aria-controls="state-history" aria-selected="true">
+                            <i class="fas fa-exchange-alt mr-2"></i> Historial de estados
+                            <span class="badge badge-light border ml-1">@Model.StateHistory.Count</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link font-weight-bold" id="maintenance-history-tab" data-toggle="tab" href="#maintenance-history" role="tab" aria-controls="maintenance-history" aria-selected="false">
+                            <i class="fas fa-tools mr-2"></i> Mantenimientos
+                            <span class="badge badge-light border ml-1">@Model.History.Count</span>
+                        </a>
+                    </li>
+                </ul>
+
+                <div class="tab-content border border-top-0" id="kardexTabContent">
+                    <div class="tab-pane fade show active" id="state-history" role="tabpanel" aria-labelledby="state-history-tab">
+                        @if (!Model.StateHistory.Any())
+                        {
+                            <div class="text-center py-5 px-3">
+                                <i class="fas fa-exchange-alt fa-3x text-muted mb-3 d-block"></i>
+                                <h5 class="text-muted font-weight-bold">Sin cambios de estado</h5>
+                                <p class="text-muted small mb-0">No existen novedades operativas registradas para esta unidad.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover v-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr class="small text-uppercase font-weight-bold">
+                                            <th class="border-top-0">Inicio</th>
+                                            <th class="border-top-0">Fin</th>
+                                            <th class="border-top-0">Estado detectado</th>
+                                            <th class="border-top-0">Motivo del cambio</th>
+                                            <th class="border-top-0">Registro</th>
+                                            <th class="border-top-0 text-center">Duración</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var state in Model.StateHistory)
+                                        {
+                                            <tr>
+                                                <td class="small font-weight-bold">@state.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                                <td class="small">
+                                                    @if (state.EndDate.HasValue)
+                                                    {
+                                                        @state.EndDate.Value.ToString("dd/MM/yyyy HH:mm")
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge badge-light border">Vigente</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-pill @KardexModel.GetEquipmentStatusBadge(state.Status) px-3 py-1">
+                                                        @EnumHelper.GetDisplayName(state.Status)
+                                                    </span>
+                                                </td>
+                                                <td class="small text-muted">@(string.IsNullOrWhiteSpace(state.Reason) ? "Sin motivo registrado" : state.Reason)</td>
+                                                <td class="small">
+                                                    <span class="font-weight-bold text-dark d-block">@(state.CreatedBy?.FullName ?? "Sistema")</span>
+                                                    <span class="text-muted">@state.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                                                    @if (state.LastModifiedDate.HasValue)
+                                                    {
+                                                        <span class="text-muted d-block">Actualizado: @state.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                                    }
+                                                </td>
+                                                <td class="small text-center">@(state.DurationDays.HasValue && state.DurationDays.Value >= 0 ? $"{state.DurationDays} día(s)" : "—")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="tab-pane fade" id="maintenance-history" role="tabpanel" aria-labelledby="maintenance-history-tab">
+                        @if (!Model.History.Any())
+                        {
+                            <div class="text-center py-5 px-3">
+                                <i class="fas fa-tools fa-3x text-muted mb-3 d-block"></i>
+                                <h5 class="text-muted font-weight-bold">Sin mantenimientos formales</h5>
+                                <p class="text-muted small mb-0">Esta unidad tiene historial de estados, pero todavía no posee una ficha de mantenimiento asociada.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover v-middle mb-0">
+                                    <thead class="bg-light">
+                                        <tr class="small text-uppercase font-weight-bold">
+                                            <th class="border-top-0">Fecha y estado</th>
+                                            <th class="border-top-0">Gestión</th>
+                                            <th class="border-top-0">Tipo y servicio</th>
+                                            <th class="border-top-0">Trabajo realizado</th>
+                                            <th class="border-top-0">Técnico</th>
+                                            <th class="border-top-0 text-center">Contenido</th>
+                                            <th class="border-top-0 text-right">Costo</th>
+                                            <th class="border-top-0 text-center">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var maintenance in Model.History)
+                                        {
+                                            var maintenanceDate = maintenance.EndDate ?? maintenance.StartDate ?? maintenance.ScheduledDate ?? maintenance.CreatedDate;
+                                            var activeTaskCount = maintenance.Tasks.Count(task => !task.IsDeleted);
+                                            var totalCost = maintenance.ActualCost ?? maintenance.CalculatedTotal;
+                                            <tr>
+                                                <td class="small">
+                                                    <span class="font-weight-bold text-dark d-block">@maintenanceDate.ToString("dd/MM/yyyy")</span>
+                                                    <span class="badge badge-pill @KardexModel.GetMaintenanceStatusBadge(maintenance.Status) px-2 py-1 mt-1">
+                                                        @EnumHelper.GetDisplayName(maintenance.Status)
+                                                    </span>
+                                                </td>
+                                                <td class="small font-weight-bold">@KardexModel.FormatManagement(maintenance.Management)</td>
+                                                <td class="small">
+                                                    <span class="font-weight-bold text-dark d-block">@EnumHelper.GetDisplayName(maintenance.MaintenanceType)</span>
+                                                    <span class="text-muted">@(maintenance.ServiceType == ServiceType.External ? "Externo" : "Interno")</span>
+                                                </td>
+                                                <td class="small text-muted">@(string.IsNullOrWhiteSpace(maintenance.Description) ? "Sin descripción registrada" : maintenance.Description)</td>
+                                                <td class="small">@(maintenance.Technician?.FullName ?? maintenance.TechnicianName ?? "Sin asignar")</td>
+                                                <td class="small text-center">
+                                                    <span class="badge badge-light border d-block mb-1">@activeTaskCount tarea(s)</span>
+                                                    <span class="badge badge-light border d-block">@maintenance.CostDetails.Count costo(s)</span>
+                                                </td>
+                                                <td class="small text-right font-weight-bold">@(totalCost > 0 ? $"Bs {totalCost:N2}" : "—")</td>
+                                                <td class="text-center">
+                                                    <a asp-page="/Maintenances/Details" asp-route-id="@maintenance.Id"
+                                                       class="btn btn-sm btn-outline-info btn-rounded font-weight-bold px-3"
+                                                       title="Ver ficha técnica completa del mantenimiento">
+                                                        <i class="fas fa-eye mr-1"></i> Ver detalle
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .tab-content > .tab-pane { min-height: 240px; }
+    </style>
+}

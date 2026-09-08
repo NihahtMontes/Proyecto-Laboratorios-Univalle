@@ -10,6 +10,7 @@ using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
 using System.ComponentModel.DataAnnotations;
+using System.Data;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 {
@@ -20,17 +21,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
         private readonly IManagementActivationService _managementActivation;
+        private readonly ILogger<EditModel> _logger;
 
         public EditModel(
             ApplicationDbContext context,
             UserManager<User> userManager,
             IManagementContextService managementContext,
-            IManagementActivationService managementActivation)
+            IManagementActivationService managementActivation,
+            ILogger<EditModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
             _managementActivation = managementActivation;
+            _logger = logger;
         }
 
         [BindProperty]
@@ -55,6 +59,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             public int Semester { get; set; }
 
             [Display(Name = "Descripción general")]
+            [StringLength(1000)]
             public string? Description { get; set; }
 
             [Display(Name = "Fecha de Inicio")]
@@ -116,6 +121,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
         public async Task<IActionResult> OnPostAsync()
         {
+            if (!Enum.IsDefined(typeof(ManagementStatus), Input.Status) ||
+                Input.Status == ManagementStatus.Deleted)
+            {
+                ModelState.AddModelError("Input.Status",
+                    "Use la acción de baja lógica para eliminar una gestión.");
+            }
+
+            if (Input.StartDate.HasValue && Input.PlannedEndDate.HasValue &&
+                Input.PlannedEndDate.Value.Date < Input.StartDate.Value.Date)
+            {
+                ModelState.AddModelError("Input.PlannedEndDate",
+                    "La fecha de cierre planificada no puede ser anterior a la fecha de inicio.");
+            }
+
             if (!ModelState.IsValid)
             {
                 await LoadManagementTypeAsync(Input.Id);
@@ -135,6 +154,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             ManagementType = management.Type;
 
+            if (management.Type == ManagementType.Corrective)
+            {
+                Input.Semester = 0;
+                ModelState.Remove("Input.Semester");
+            }
+            else if (Input.Semester is < 1 or > 2)
+            {
+                ModelState.AddModelError("Input.Semester",
+                    "La gestión preventiva debe usar el semestre 1 o 2.");
+            }
+
+            if (Input.FacultyId.HasValue)
+            {
+                var facultyExists = await _context.Faculties.AnyAsync(faculty =>
+                    faculty.Id == Input.FacultyId.Value && faculty.Status == GeneralStatus.Activo);
+                if (!facultyExists)
+                    ModelState.AddModelError("Input.FacultyId", "La facultad seleccionada no está disponible.");
+            }
+
+            var duplicateExists = await _context.Managements.AnyAsync(candidate =>
+                candidate.Id != management.Id &&
+                candidate.Type == management.Type &&
+                candidate.Year == Input.Year &&
+                candidate.Semester == Input.Semester &&
+                candidate.Status != ManagementStatus.Deleted);
+
+            if (duplicateExists)
+                ModelState.AddModelError(string.Empty, "Ya existe otra gestión para el mismo tipo y periodo.");
+
+            if (!ModelState.IsValid)
+            {
+                LoadFaculties();
+                return Page();
+            }
+
             var shouldActivate = Input.Status == ManagementStatus.Active;
 
             var currentUser = await _userManager.GetUserAsync(User);
@@ -142,7 +196,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             management.Year = Input.Year;
             management.Semester = Input.Semester;
             management.Code = BuildManagementCode(management.Type, Input.Year, Input.Semester);
-            management.Description = Input.Description;
+            management.Description = Input.Description?.Clean();
             management.StartDate = Input.StartDate;
             management.PlannedEndDate = Input.PlannedEndDate;
             management.Status = Input.Status;
@@ -150,38 +204,39 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             management.ModifiedById = currentUser?.Id;
             management.LastModifiedDate = DateTime.UtcNow;
 
-            var closedCount = 0;
-            if (shouldActivate)
-            {
-                var activationResult = await _managementActivation.ActivateAsync(management);
-                closedCount = activationResult.ClosedCount;
-            }
-
             try
             {
-                await _context.SaveChangesAsync();
-                _managementContext.InvalidateCache();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ManagementExists(management.Id))
+                await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+                var closedCount = 0;
+                if (shouldActivate)
                 {
-                    return NotFound();
+                    var activationResult = await _managementActivation.ActivateAsync(management);
+                    closedCount = activationResult.ClosedCount;
+                }
+                else if (Input.Status == ManagementStatus.Completed)
+                {
+                    management.ActualClosedDate ??= DateTime.UtcNow;
                 }
 
-                throw;
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                _managementContext.InvalidateCache();
+
+                var handoffMessage = closedCount > 0
+                    ? $" Se cerró {closedCount} gestión activa anterior del mismo tipo."
+                    : string.Empty;
+                TempData.Success($"Gestión actualizada correctamente.{handoffMessage}");
             }
-
-            var handoffMessage = closedCount > 0
-                ? $" Se cerró {closedCount} gestión activa anterior del mismo tipo."
-                : string.Empty;
-            TempData.Success($"Gestión actualizada correctamente.{handoffMessage}");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "No se pudo actualizar la gestión {ManagementId}.", management.Id);
+                ModelState.AddModelError(string.Empty,
+                    "No se pudo actualizar la gestión. Intente nuevamente o contacte al administrador.");
+                LoadFaculties();
+                return Page();
+            }
             return RedirectToPage("./Details", new { id = management.Id, ActiveTab = "dashboard" });
-        }
-
-        private bool ManagementExists(int id)
-        {
-            return _context.Managements.Any(e => e.Id == id);
         }
 
         private async Task LoadManagementTypeAsync(int id)

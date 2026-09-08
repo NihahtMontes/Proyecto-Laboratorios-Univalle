@@ -54,6 +54,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     .Include(r => r.Management)
                     .Include(r => r.ModifiedBy)
                     .Include(r => r.RequestedBy)
+                    .Include(r => r.RequestedByPerson)
                     .Include(r => r.CostDetails)
                     .FirstOrDefaultAsync(m => m.Id == id);
 

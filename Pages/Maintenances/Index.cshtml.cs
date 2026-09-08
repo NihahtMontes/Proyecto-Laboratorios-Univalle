@@ -49,7 +49,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .Include(m => m.EquipmentUnit)
                     .ThenInclude(eu => eu!.Equipment)
                 .Include(m => m.EquipmentUnit)
-                    .ThenInclude(eu => eu.Laboratory)
+                    .ThenInclude(eu => eu!.Laboratory)
                 .Include(m => m.ModifiedBy)
                 .Include(m => m.Technician)
                 .AsQueryable();

@@ -29,6 +29,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
         public async Task<ManagementActivationResult> ActivateAsync(Management management)
         {
             management.Status = ManagementStatus.Active;
+            management.ActualClosedDate = null;
 
             var activeOthers = await _context.Managements
                 .AsTracking()

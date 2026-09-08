@@ -45,7 +45,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                query = query.Where(p => p.Email.Contains(term) || p.Id.ToString() == term);
+                query = query.Where(p => (p.Email ?? string.Empty).Contains(term) || p.Id.ToString() == term);
             }
 
             // Status Filter

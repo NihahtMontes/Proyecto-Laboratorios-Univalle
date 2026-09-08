@@ -3,50 +3,51 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
     ViewData["Title"] = "Cronograma de Intervenciones (L-48)";
+    var hasActiveFilters = Model.LabFilterId.HasValue
+        || Model.CategoryFilterId.HasValue
+        || Model.TechFilterId.HasValue
+        || !string.IsNullOrWhiteSpace(Model.StatusFilter);
 }
 
 <div class="row mb-4">
     <div class="col-12">
         <div class="card shadow-sm border-0">
             <div class="card-body">
-                <h4 class="card-title font-weight-bold">Filtros Avanzados</h4>
-                <form method="get" class="row">
-                    <div class="col-md-3">
-                        <label>Laboratorio</label>
-                        <select asp-for="LabFilterId" asp-items="Model.LabFList" class="form-control">
-                            <option value="">-- Todos --</option>
+                <h4 class="card-title font-weight-bold mb-3">Filtros del cronograma</h4>
+                <form method="get" data-live-filter-form>
+                    <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                        <select asp-for="LabFilterId" asp-items="Model.LabFList" class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2" aria-label="Laboratorio" data-live-filter-control>
+                            <option value="">Laboratorio</option>
                         </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label>Categoría Equipo</label>
-                        <select asp-for="CategoryFilterId" asp-items="Model.CategoryFList" class="form-control">
-                            <option value="">-- Todas --</option>
+                        <select asp-for="CategoryFilterId" asp-items="Model.CategoryFList" class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2" aria-label="Categoría de equipo" data-live-filter-control>
+                            <option value="">Categoría de equipo</option>
                         </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label>Técnico (Interno)</label>
-                        <select asp-for="TechFilterId" asp-items="Model.TechFList" class="form-control">
-                            <option value="">-- Todos --</option>
+                        <select asp-for="TechFilterId" asp-items="Model.TechFList" class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2" aria-label="Técnico interno" data-live-filter-control>
+                            <option value="">Técnico interno</option>
                         </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label>Estado / Proveedor</label>
-                        <select asp-for="StatusFilter" class="form-control">
-                            <option value="">-- Todos --</option>
+                        <select asp-for="StatusFilter" class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2" aria-label="Estado o proveedor" data-live-filter-control>
+                            <option value="">Estado o proveedor</option>
                             <optgroup label="Tipo">
-                                <option value="Externo">Solo Proveedor Externo</option>
+                                <option value="Externo">Solo proveedor externo</option>
                             </optgroup>
                             <optgroup label="Estados">
                                 <option value="Pending">Pendiente</option>
-                                <option value="InProgress">En Proceso</option>
+                                <option value="InProgress">En proceso</option>
                                 <option value="Completed">Terminado</option>
                                 <option value="Canceled">Cancelado</option>
                             </optgroup>
                         </select>
-                    </div>
-                    <div class="col-md-12 mt-3 text-right">
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrar</button>
-                        <a asp-page="./Index" class="btn btn-outline-secondary">Limpiar</a>
+
+                        @if (hasActiveFilters)
+                        {
+                            <a asp-page="./Index" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                <i class="fas fa-times mr-1"></i> Limpiar filtros
+                            </a>
+                        }
+
+                        <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                            <strong class="text-dark">@Model.ManagementPlans.Count</strong> intervención(es)
+                        </span>
                     </div>
                 </form>
             </div>

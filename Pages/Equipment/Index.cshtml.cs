@@ -35,8 +35,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         [BindProperty(SupportsGet = true)]
         public EquipmentCategory? SelectedCategory { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public EquipmentTypeClassification? SelectedEquipmentTypeClassification { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public UtensilType? SelectedUtensilType { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public EquipmentClassificationReviewStatus? SelectedReviewStatus { get; set; }
+
+        public List<SelectListItem> EquipmentTypeClassificationOptions { get; set; } = new();
+
+        public List<SelectListItem> UtensilTypeOptions { get; set; } = new();
+
         public async Task OnGetAsync(int? pageIndex)
         {
+            var validEquipmentClassifications = EquipmentClassificationRules.EquipmentSubclassifications.ToArray();
+            var validUtensilTypes = EquipmentClassificationRules.UtensilSubclassifications.ToArray();
+
             var equipmentQuery = _context.Equipments
                 .Include(e => e.City)
                 .Include(e => e.Country)
@@ -53,6 +69,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 .ToListAsync();
             LaboratoriesList = new SelectList(LaboratoryDisplayHelper.ToSelectItems(labs), "Id", "DisplayName");
 
+            await LoadSubclassificationOptionsAsync();
+
+            NormalizeHierarchicalFilters();
+
             // Lógica de Búsqueda 
             if (!string.IsNullOrEmpty(SearchTerm))
             {
@@ -68,10 +88,46 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                          (u.Career != null && u.Career.Name.ToLower().Contains(term)))));
             }
 
-            // Filtro por Categoría (Enum)
-            if (SelectedCategory.HasValue)
+            // Filtro jerárquico: tipo de recurso y subclasificación aplicable.
+            if (SelectedCategory == EquipmentCategory.Equipment)
             {
-                equipmentQuery = equipmentQuery.Where(e => e.Category == SelectedCategory.Value);
+                equipmentQuery = equipmentQuery.Where(e =>
+                    e.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                    e.Category == EquipmentCategory.Equipment &&
+                    e.TypeClassification.HasValue &&
+                    validEquipmentClassifications.Contains(e.TypeClassification.Value));
+
+                if (SelectedEquipmentTypeClassification.HasValue)
+                {
+                    equipmentQuery = equipmentQuery.Where(e =>
+                        e.TypeClassification == SelectedEquipmentTypeClassification.Value);
+                }
+            }
+            else if (SelectedCategory == EquipmentCategory.Utensil)
+            {
+                equipmentQuery = equipmentQuery.Where(e =>
+                    e.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                    e.Category == EquipmentCategory.Utensil &&
+                    e.UtensilType.HasValue &&
+                    validUtensilTypes.Contains(e.UtensilType.Value));
+
+                if (SelectedUtensilType.HasValue)
+                {
+                    equipmentQuery = equipmentQuery.Where(e =>
+                        e.UtensilType == SelectedUtensilType.Value);
+                }
+            }
+            else if (SelectedCategory == EquipmentCategory.Other)
+            {
+                equipmentQuery = equipmentQuery.Where(e =>
+                    e.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                    e.Category == EquipmentCategory.Other);
+            }
+
+            if (SelectedReviewStatus.HasValue)
+            {
+                equipmentQuery = equipmentQuery.Where(e =>
+                    e.ClassificationReviewStatus == SelectedReviewStatus.Value);
             }
 
             // B) APLICAR EL FILTRO POR AMBIENTE (LABORATORIO)
@@ -84,6 +140,83 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             // C) ORDENAR ALFABÉTICAMENTE POR NOMBRE
             Equipment = await PaginatedList<Proyecto_Laboratorios_Univalle.Models.Equipment>.CreateAsync(equipmentQuery.OrderBy(e => e.Name), pageIndex ?? 1, 20);
+        }
+
+        private async Task LoadSubclassificationOptionsAsync()
+        {
+            var equipmentClassifications = await _context.Equipments
+                .Where(e => e.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed
+                    && e.Category == EquipmentCategory.Equipment
+                    && e.TypeClassification.HasValue)
+                .Select(e => e.TypeClassification)
+                .Distinct()
+                .ToListAsync();
+
+            EquipmentTypeClassificationOptions = equipmentClassifications
+                .Where(value => value.HasValue && EquipmentClassificationRules.IsValidEquipmentSubclassification(value.Value))
+                .Select(value => new SelectListItem
+                {
+                    Value = ((int)value!.Value).ToString(),
+                    Text = EnumHelper.GetDisplayName(value.Value)
+                })
+                .OrderBy(option => option.Text)
+                .ToList();
+
+            var utensilTypes = await _context.Equipments
+                .Where(e => e.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed
+                    && e.Category == EquipmentCategory.Utensil
+                    && e.UtensilType.HasValue)
+                .Select(e => e.UtensilType)
+                .Distinct()
+                .ToListAsync();
+
+            UtensilTypeOptions = utensilTypes
+                .Where(value => value.HasValue && EquipmentClassificationRules.IsValidUtensilSubclassification(value.Value))
+                .Select(value => new SelectListItem
+                {
+                    Value = ((int)value!.Value).ToString(),
+                    Text = EnumHelper.GetDisplayName(value.Value)
+                })
+                .OrderBy(option => option.Text)
+                .ToList();
+        }
+
+        private void NormalizeHierarchicalFilters()
+        {
+            if (SelectedCategory.HasValue &&
+                !Enum.IsDefined(typeof(EquipmentCategory), SelectedCategory.Value))
+            {
+                SelectedCategory = null;
+            }
+
+            if (SelectedCategory == EquipmentCategory.Equipment)
+            {
+                SelectedUtensilType = null;
+
+                if (SelectedEquipmentTypeClassification.HasValue &&
+                    !EquipmentClassificationRules.IsValidEquipmentSubclassification(SelectedEquipmentTypeClassification.Value))
+                {
+                    SelectedEquipmentTypeClassification = null;
+                }
+
+                return;
+            }
+
+            if (SelectedCategory == EquipmentCategory.Utensil)
+            {
+                SelectedEquipmentTypeClassification = null;
+
+                if (SelectedUtensilType.HasValue &&
+                    !EquipmentClassificationRules.IsValidUtensilSubclassification(SelectedUtensilType.Value))
+                {
+                    SelectedUtensilType = null;
+                }
+
+                return;
+            }
+
+            SelectedEquipmentTypeClassification = null;
+            SelectedUtensilType = null;
         }
     }
 }

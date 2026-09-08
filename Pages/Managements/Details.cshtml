@@ -13,6 +13,11 @@
     var isCorrective = Model.Management.Type == ManagementType.Corrective;
     var globalProgressJs = Model.GlobalProgress.ToString(System.Globalization.CultureInfo.InvariantCulture);
     var remainingProgressJs = Math.Max(0, 100 - Model.GlobalProgress).ToString(System.Globalization.CultureInfo.InvariantCulture);
+    var hasHealthyAssetFilters = Model.LabFilterId.HasValue;
+    var hasScheduleFilters = Model.LabFilterId.HasValue
+        || Model.TechFilterId.HasValue
+        || !string.IsNullOrWhiteSpace(Model.CategoryFilter)
+        || (!string.IsNullOrWhiteSpace(Model.StatusFilter) && Model.StatusFilter != "Todos");
 }
 
 @section Styles {
@@ -342,16 +347,28 @@
     @if (Model.ActiveTab == "sanos")
     {
         <!-- Filtro de Laboratorio para Activos Sanos -->
-        <div class="d-flex flex-wrap align-items-center gap-3 mb-4 p-3 bg-light rounded border">
-            <form method="get" class="d-flex flex-wrap gap-2 w-100 align-items-center">
+        <div class="mb-4 p-3 bg-light rounded border-left border-info">
+            <form method="get" class="w-100" data-live-filter-form>
                 <input type="hidden" name="id" value="@Model.Management.Id" />
                 <input type="hidden" name="ActiveTab" value="sanos" />
 
                 <select name="LabFilterId" asp-items="Model.LabFList"
-                        class="form-control form-control-sm shadow-sm" style="width:150px;"
-                        onchange="this.form.submit()">
+                        class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                        aria-label="Laboratorio"
+                        data-live-filter-control>
                     <option value="">Laboratorio</option>
                 </select>
+
+                @if (hasHealthyAssetFilters)
+                {
+                    <a href="?id=@Model.Management.Id&ActiveTab=sanos" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                        <i class="fas fa-times mr-1"></i> Limpiar filtros
+                    </a>
+                }
+
+                <span class="small text-muted float-md-right mb-2" aria-live="polite">
+                    <strong class="text-dark">@Model.ManagementPlans.Count</strong> activo(s)
+                </span>
             </form>
         </div>
 
@@ -405,55 +422,61 @@
     @if (Model.ActiveTab == "l48" || Model.ActiveTab == "")
     {
         <!-- Filtros -->
-        <div class="d-flex flex-wrap align-items-center gap-3 mb-4 p-3 bg-light rounded border">
-            <form method="get" class="d-flex flex-wrap gap-2 w-100 align-items-center">
+        <div class="mb-4 p-3 bg-light rounded border-left border-info">
+            <form method="get" class="d-flex flex-wrap w-100 align-items-center" data-live-filter-form>
                 <input type="hidden" name="id" value="@Model.Management.Id" />
                 <input type="hidden" name="ActiveTab" value="l48" />
 
                 <select name="LabFilterId" asp-items="Model.LabFList"
-                        class="form-control form-control-sm shadow-sm" style="width:150px;"
-                        onchange="this.form.submit()">
+                        class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                        aria-label="Laboratorio"
+                        data-live-filter-control>
                     <option value="">Laboratorio</option>
                 </select>
 
                 <select name="TechFilterId" asp-items="Model.TechFList"
-                        class="form-control form-control-sm shadow-sm" style="width:150px;"
-                        onchange="this.form.submit()">
+                        class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                        aria-label="Técnico"
+                        data-live-filter-control>
                     <option value="">Técnico</option>
                 </select>
 
-                <select name="CategoryFilter" class="form-control form-control-sm shadow-sm" style="width:180px;"
-                        onchange="this.form.submit()">
+                <select asp-for="CategoryFilter"
+                        class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                        aria-label="Categoría"
+                        data-live-filter-control>
                     <option value="">Categoría</option>
-                    <option value="Electronico"  selected="@(Model.CategoryFilter == "Electronico")">Electrónico / Eléctrico</option>
-                    <option value="Manual"       selected="@(Model.CategoryFilter == "Manual")">Manual / Mecánico</option>
-                    <option value="Mobiliario"   selected="@(Model.CategoryFilter == "Mobiliario")">Mobiliario</option>
-                    <option value="Medicion"     selected="@(Model.CategoryFilter == "Medicion")">Instrumental de Medición</option>
-                    <option value="Vidrio"       selected="@(Model.CategoryFilter == "Vidrio")">Material de Vidrio</option>
-                    <option value="Informatico"  selected="@(Model.CategoryFilter == "Informatico")">Informático</option>
-                    <option value="Utensilio"    selected="@(Model.CategoryFilter == "Utensilio")">Utensilio</option>
+                    <option value="Electronico">Electrónico / Eléctrico</option>
+                    <option value="Manual">Manual / Mecánico</option>
+                    <option value="Mobiliario">Mobiliario</option>
+                    <option value="Medicion">Instrumental de Medición</option>
+                    <option value="Vidrio">Material de Vidrio</option>
+                    <option value="Informatico">Informático</option>
+                    <option value="Utensilio">Utensilio</option>
                 </select>
 
-                @foreach (var s in new[] { "Todos", "Planeado", "InProgress", "Completed", "Externo", "Delay" })
+                <select asp-for="StatusFilter"
+                        class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                        aria-label="Estado"
+                        data-live-filter-control>
+                    <option value="">Estado</option>
+                    <option value="Planeado">Planeado</option>
+                    <option value="InProgress">En progreso</option>
+                    <option value="Completed">Ejecutado</option>
+                    <option value="Externo">Externo</option>
+                    <option value="Delay" class="text-danger">● Vencidos</option>
+                </select>
+
+                @if (hasScheduleFilters)
                 {
-                    var label = s switch {
-                        "Todos"      => "Todos",
-                        "Planeado"   => "Planeado",
-                        "InProgress" => "En Progreso",
-                        "Completed"  => "Ejecutado",
-                        "Externo"    => "Externo",
-                        "Delay"      => "Vencidos",
-                        _            => s
-                    };
-                    var btnClass = s == "Delay"
-                        ? (Model.StatusFilter == s ? "btn-danger" : "btn-outline-danger")
-                        : (Model.StatusFilter == s || (s == "Todos" && string.IsNullOrEmpty(Model.StatusFilter)) ? "btn-primary" : "btn-outline-secondary");
-                    <a href="?id=@Model.Management.Id&ActiveTab=l48&StatusFilter=@s&LabFilterId=@Model.LabFilterId&TechFilterId=@Model.TechFilterId&CategoryFilter=@Model.CategoryFilter"
-                       class="btn btn-sm @btnClass rounded-pill px-3">
-                        @if (s == "Delay") { <i class="fas fa-exclamation-triangle mr-1"></i> }
-                        @label
+                    <a href="?id=@Model.Management.Id&ActiveTab=l48" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                        <i class="fas fa-times mr-1"></i> Limpiar filtros
                     </a>
                 }
+
+                <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                    <strong class="text-dark">@Model.ManagementPlans.Count</strong> activo(s)
+                </span>
             </form>
         </div>
 
@@ -658,37 +681,6 @@
 
     <script src="~/assets/extra-libs/sweetalert2/sweetalert2.all.min.js"></script>
     <script>
-        function confirmRedoPhase(planId, targetPhase, targetPhaseName, currentPhase) {
-            Swal.fire({
-                title: '¿Rehacer Fase?',
-                html: 'Está intentando retroceder el equipo a la fase <b>' + targetPhaseName + '</b>.<br>Se borrarán los registros posteriores al paso ' + targetPhase + '.',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Sí, rehacer y limpiar',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result && (result.isConfirmed === true || result.value === true)) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = '/Index?handler=RedoPhase';
-                    
-                    const p1 = document.createElement('input'); p1.type = 'hidden'; p1.name = 'planId'; p1.value = planId;
-                    const p2 = document.createElement('input'); p2.type = 'hidden'; p2.name = 'targetPhase'; p2.value = targetPhase;
-                    
-                    // Necesitamos el RequestVerificationToken
-                    const token = document.querySelector('input[name="__RequestVerificationToken"]');
-                    if(token) form.appendChild(token.cloneNode(true));
-
-                    form.appendChild(p1);
-                    form.appendChild(p2);
-                    document.body.appendChild(form);
-                    form.submit();
-                }
-            });
-        }
-
         async function toggleWeek(planId, weekNumber, type) {
             const formData = new FormData();
             formData.append('planId', planId);
@@ -964,6 +956,10 @@
                 });
 
                 // ============ PANEL DE DÍA ============
+                function escapeHtml(value) {
+                    return $('<div/>').text(value == null ? '' : String(value)).html();
+                }
+
                 function openDayPanel(dateStr, events) {
                     var dayEvents = events.filter(function (e) { return e.Start === dateStr; });
                     var dateLabel = moment(dateStr).format('dddd D [de] MMMM, YYYY');
@@ -979,21 +975,27 @@
                     } else {
                         dayEvents.forEach(function (ev) {
                             var statusClass = ev.ClassName === 'ev-completed' ? 'st-completed' : ev.ClassName === 'ev-corrective' ? 'st-progress' : 'st-planned';
-                            var detailUrl = ev.MaintenanceId ? '/Maintenances/Details/' + ev.MaintenanceId : '/Managements/Details?id=' + mgmtId + '&ActiveTab=l48';
-                            var editUrl   = ev.MaintenanceId ? '/Maintenances/Edit?id=' + ev.MaintenanceId : null;
+                            var maintenanceId = Number.parseInt(ev.MaintenanceId, 10);
+                            maintenanceId = Number.isInteger(maintenanceId) && maintenanceId > 0 ? maintenanceId : null;
+                            var detailUrl = maintenanceId ? '/Maintenances/Details/' + maintenanceId : '/Managements/Details?id=' + mgmtId + '&ActiveTab=l48';
+                            var editUrl   = maintenanceId ? '/Maintenances/Edit?id=' + maintenanceId : null;
 
                             var html = '<div class="day-detail-item">';
                             html += '<span class="day-detail-status ' + statusClass + '"></span>';
                             html += '<div style="flex:1;min-width:0;">';
-                            html += '<div class="font-weight-bold text-truncate" style="font-size:0.88rem;">' + ev.Title + '</div>';
-                            html += '<div class="text-muted" style="font-size:0.75rem;">Inv: ' + ev.InventoryNumber + ' · ' + ev.LabName + ' · ' + ev.TechnicianName + '</div>';
+                            html += '<div class="font-weight-bold text-truncate" style="font-size:0.88rem;">' + escapeHtml(ev.Title) + '</div>';
+                            html += '<div class="text-muted" style="font-size:0.75rem;">Inv: ' + escapeHtml(ev.InventoryNumber) + ' · ' + escapeHtml(ev.LabName) + ' · ' + escapeHtml(ev.TechnicianName) + '</div>';
                             html += '</div>';
                             html += '<div class="day-detail-actions ml-2 d-flex">';
                             html += '<a href="' + detailUrl + '" class="btn btn-outline-primary btn-sm mr-1" title="Ver detalle"><i class="fas fa-eye"></i></a>';
                             if (editUrl) {
                                 html += '<a href="' + editUrl + '" class="btn btn-outline-warning btn-sm mr-1" title="Editar"><i class="fas fa-edit"></i></a>';
                                 if (ev._raw && ev._raw.CurrentPhaseInt > 3) {
-                                    html += '<button type="button" class="btn btn-outline-danger btn-sm" title="Rehacer Mantenimiento" onclick="confirmRedoPhase(' + ev._raw.PlanId + ', 3, \'L-8 Mantenimiento\', ' + ev._raw.CurrentPhaseInt + ')"><i class="fas fa-undo"></i></button>';
+                                    var planId = Number.parseInt(ev._raw.PlanId, 10);
+                                    var currentPhase = Number.parseInt(ev._raw.CurrentPhaseInt, 10);
+                                    if (Number.isInteger(planId) && planId > 0 && Number.isInteger(currentPhase)) {
+                                        html += '<button type="button" class="btn btn-outline-danger btn-sm" title="Rehacer Mantenimiento" onclick="confirmRedoPhase(' + planId + ', 3, \'L-8 Mantenimiento\', ' + currentPhase + ')"><i class="fas fa-undo"></i></button>';
+                                    }
                                 }
                             }
                             html += '</div></div>';

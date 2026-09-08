@@ -120,7 +120,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al cerrar gestion {ManagementId}", id);
-                return RedirectToManagementError(id, ex.Message, type);
+                return RedirectToManagementError(id, "No se pudo cerrar la gestión. Intente nuevamente.", type);
             }
         }
 
@@ -154,7 +154,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al activar gestion {ManagementId}", id);
-                return RedirectToManagementError(id, ex.Message, type);
+                return RedirectToManagementError(id, "No se pudo activar la gestión. Intente nuevamente.", type);
             }
         }
 
@@ -195,7 +195,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al eliminar logicamente gestion {ManagementId}", id);
-                return RedirectToManagementError(id, ex.Message, type);
+                return RedirectToManagementError(id, "No se pudo dar de baja la gestión. Intente nuevamente.", type);
             }
         }
 
@@ -234,7 +234,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al abrir planificacion desde sincronizar gestion {ManagementId}", id);
-                return RedirectToManagementError(id, ex.Message, type);
+                return RedirectToManagementError(id, "No se pudo abrir la planificación de la gestión. Intente nuevamente.", type);
             }
         }
 

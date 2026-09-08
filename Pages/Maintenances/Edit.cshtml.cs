@@ -16,11 +16,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly ILogger<EditModel> _logger;
 
-        public EditModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public EditModel(
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            UserManager<User> userManager,
+            ILogger<EditModel> logger)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger;
         }
 
         [BindProperty]
@@ -128,7 +133,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 StartDate = maintenance.StartDate,
                 EndDate = maintenance.EndDate,
                 Status = maintenance.Status,
-                Description = maintenance.Description,
+                Description = maintenance.Description ?? string.Empty,
                 SatisfactionLevel = maintenance.SatisfactionLevel,
                 Recommendations = maintenance.Recommendations,
                 Observations = maintenance.Observations,
@@ -218,7 +223,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             if (!ModelState.IsValid)
             {
-                var maintenance = await _context.Maintenances.Include(m => m.EquipmentUnit).ThenInclude(eu => eu.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
+                var maintenance = await _context.Maintenances.Include(m => m.EquipmentUnit).ThenInclude(eu => eu!.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
                 int facultyId = maintenance?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
                 int labId = maintenance?.EquipmentUnit?.LaboratoryId ?? 0;
                 CargarListas(facultyId, labId, Input.EquipmentUnitId);
@@ -346,8 +351,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             }
             catch (Exception ex)
             {
-                TempData.Error(NotificationHelper.Maintenances.SaveError(ex.Message));
-                var maintenance = await _context.Maintenances.Include(m => m.EquipmentUnit).ThenInclude(eu => eu.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
+                _logger.LogError(ex, "No se pudo actualizar el mantenimiento {MaintenanceId}.", Input.Id);
+                TempData.Error(NotificationHelper.Maintenances.SaveError("Intente nuevamente o contacte al administrador."));
+                var maintenance = await _context.Maintenances.Include(m => m.EquipmentUnit).ThenInclude(eu => eu!.Laboratory).FirstOrDefaultAsync(m => m.Id == Input.Id);
                 int facultyId = maintenance?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
                 int labId = maintenance?.EquipmentUnit?.LaboratoryId ?? 0;
                 CargarListas(facultyId, labId, Input.EquipmentUnitId);
@@ -494,7 +500,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al guardar borrador: {ex.Message}");
+                _logger.LogError(ex, "No se pudo guardar el borrador del mantenimiento {MaintenanceId}.", Input.Id);
+                TempData.Error("No se pudo guardar el borrador. Intente nuevamente.");
                 CargarListas(maintenanceDB.EquipmentUnit?.Laboratory?.FacultyId ?? 0, maintenanceDB.EquipmentUnit?.LaboratoryId ?? 0, Input.EquipmentUnitId);
                 return Page();
             }

@@ -14,11 +14,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly IReportService _reportService;
+        private readonly ILogger<IndexModel> _logger;
 
-        public IndexModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, IReportService reportService)
+        public IndexModel(
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            IReportService reportService,
+            ILogger<IndexModel> logger)
         {
             _context = context;
             _reportService = reportService;
+            _logger = logger;
         }
 
         public IList<Request> Requests { get; set; } = default!;
@@ -45,6 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 .Include(r => r.EquipmentUnit)
                     .ThenInclude(eu => eu != null ? eu.Laboratory : null)
                 .Include(r => r.RequestedBy)
+                .Include(r => r.RequestedByPerson)
                 .Include(r => r.ApprovedBy)
                 .Include(r => r.CreatedBy)
                 .Include(r => r.ModifiedBy)
@@ -65,7 +71,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             if (PriorityFilter.HasValue) query = query.Where(r => r.Priority == PriorityFilter.Value);
             if (FilterLaboratoryId.HasValue) query = query.Where(r => r.LaboratoryId == FilterLaboratoryId.Value);
 
-            Requests = await query.OrderByDescending(r => r.CreatedDate).ToListAsync();
+            Requests = await query.OrderByDescending(r => r.RequestDate ?? r.CreatedDate).ToListAsync();
 
             var labs = await _context.Laboratories
                 .Where(l => l.Status == GeneralStatus.Activo)
@@ -85,7 +91,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             }
             catch (Exception ex)
             {
-                TempData.Error("Error al generar reporte: " + ex.Message);
+                _logger.LogError(ex, "No se pudo generar el reporte de adquisicion {RequestId}.", id);
+                TempData.Error("No se pudo generar el reporte. Intente nuevamente.");
                 return RedirectToPage();
             }
         }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
@@ -23,23 +24,13 @@ builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
     .SetApplicationName("ProyectoLaboratoriosUnivalle");
 
-// DIAGNÓSTICO: Capturador de crash global a nivel OS
-AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
-{
-    try
-    {
-        var ex = e.ExceptionObject as Exception;
-        var message = $"{DateTime.Now:O}: {ex?.GetType().Name} - {ex?.Message}\n{ex?.StackTrace}\n\n";
-        File.WriteAllText($"crash_{DateTime.Now:yyyyMMdd_HHmmss}.log", message);
-    }
-    catch { }
-};
-
-// DEBUG: SameSite=None Fix
-Console.WriteLine(">>> CARGANDO CONFIGURACIÓN 'SAME-SITE: NONE' (ULTRA COMPATIBLE) <<<");
-
 // Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "No se configuró ConnectionStrings:DefaultConnection. Use User Secrets en desarrollo o variables de entorno en despliegue.");
+}
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString, sqlServerOptions =>
@@ -49,26 +40,31 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     })
     .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-
 builder.Services.AddIdentity<User, IdentityRole<int>>(options => {
     options.SignIn.RequireConfirmedAccount = false;
-    // RELAXED PASSWORD POLICY
-    options.Password.RequireDigit = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequiredLength = 4;
+    options.User.RequireUniqueEmail = true;
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 12;
+    options.Password.RequiredUniqueChars = 4;
+    options.Lockout.AllowedForNewUsers = true;
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
-// ESTRATEGIA DEFINITIVA: SameSite=None + Secure=Always
+var cookieSecurePolicy = builder.Environment.IsDevelopment()
+    ? CookieSecurePolicy.SameAsRequest
+    : CookieSecurePolicy.Always;
+
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {
     options.CheckConsentNeeded = context => false;
-    options.MinimumSameSitePolicy = SameSiteMode.Lax; // Lax es ideal para funcionar sin SSL localmente
-    options.Secure = CookieSecurePolicy.SameAsRequest; // Usa Secure en HTTPS, no usa Secure en HTTP
+    options.MinimumSameSitePolicy = SameSiteMode.Lax;
+    options.Secure = cookieSecurePolicy;
 });
 
 builder.Services.ConfigureApplicationCookie(options =>
@@ -76,17 +72,24 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.Name = ".ProyectoUnivalle.Auth.vUniversal";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SecurePolicy = cookieSecurePolicy;
     options.LoginPath = "/Login";
+    options.AccessDeniedPath = "/Error";
     options.SlidingExpiration = true;
-    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+});
+
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromMinutes(5);
 });
 
 builder.Services.AddAntiforgery(options =>
 {
     options.Cookie.Name = ".ProyectoUnivalle.Antiforgery.vUniversal";
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SecurePolicy = cookieSecurePolicy;
+    options.HeaderName = "RequestVerificationToken";
 });
 
 // AÑADIDO: Configuración de Sesiones para el Wizard (Módulo TX-1)
@@ -98,7 +101,8 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
     options.Cookie.Name = ".ProyectoUnivalle.WizardSession";
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // <-- Añadido para asegurar compatibilidad de sesión
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = cookieSecurePolicy;
 });
 
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, UserClaimsPrincipalFactory>();
@@ -110,7 +114,16 @@ builder.Services.AddScoped<IDashboardReadService, DashboardReadService>();
 builder.Services.AddScoped<IManagementContextService, ManagementContextService>();
 builder.Services.AddScoped<IManagementActivationService, ManagementActivationService>();
 builder.Services.AddScoped<IManagementPlanExclusionService, ManagementPlanExclusionService>();
+builder.Services.AddScoped<IEquipmentClassificationDecisionService, EquipmentClassificationDecisionService>();
+builder.Services.AddScoped<ICatalogClassificationBatchService, CatalogClassificationBatchService>();
 builder.Services.AddScoped<DatabaseErrorHandler>();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 builder.WebHost.UseSetting("BrowserLink:Enabled", "false");
@@ -129,20 +142,27 @@ builder.Services.AddRazorPages(options =>
 // ==============================================================
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (!app.Environment.IsDevelopment())
 {
-    app.UseMigrationsEndPoint();
-}
-else
-{
-    // COMENTADO: HSTS obliga al navegador a usar HTTPS estricto. Se desactiva para permitir HTTP puro.
-    // app.UseHsts(); 
+    app.UseHsts();
 }
 
 app.UseExceptionHandler("/Error");
+app.UseHttpsRedirection();
 
-// COMENTADO: Redirección HTTPS desactivada. Si entra por HTTP, se queda en HTTP.
-// app.UseHttpsRedirection(); 
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
 
 app.UseStaticFiles();
 app.UseSession();
@@ -170,6 +190,12 @@ using (var scope = app.Services.CreateScope())
 
         if (autoMigrate)
         {
+            if (!app.Environment.IsDevelopment())
+            {
+                throw new InvalidOperationException(
+                    "La aplicacion automatica de migraciones solo puede habilitarse en Development.");
+            }
+
             Console.WriteLine(">>> APLICANDO MIGRACIONES DE EF <<<");
             await db.Database.MigrateAsync();
         }
@@ -180,6 +206,11 @@ using (var scope = app.Services.CreateScope())
 
         if (runSeed)
         {
+            if (!app.Environment.IsDevelopment())
+            {
+                throw new InvalidOperationException("La semilla de demostración solo puede ejecutarse en Development.");
+            }
+
             Console.WriteLine(">>> INICIANDO SEMILLA DE BASE DE DATOS <<<");
             await DbInitializer.SeedAsync(services);
             Console.WriteLine(">>> SEMILLA DE BASE DE DATOS COMPLETADA CON ÉXITO <<<");
@@ -193,7 +224,7 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Ocurrió un error al aplicar migraciones o sembrar la base de datos.");
-        Console.WriteLine($">>> ERROR CRÍTICO EN MIGRACIONES/SEMILLA: {ex.Message} <<<");
+        throw;
     }
 }
 

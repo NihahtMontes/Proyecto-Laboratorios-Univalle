@@ -4,6 +4,15 @@
 
 @{
     ViewData["Title"] = "Planificar activos";
+    var showEquipmentSubclassification = Model.Category == EquipmentCategory.Equipment
+        || (!Model.Category.HasValue && Model.TypeClassification.HasValue);
+    var showUtensilSubclassification = Model.Category == EquipmentCategory.Utensil
+        || (!Model.Category.HasValue && Model.UtensilType.HasValue);
+    var hasActiveFilters = Model.LaboratoryId.HasValue
+        || Model.Category.HasValue
+        || Model.TypeClassification.HasValue
+        || Model.UtensilType.HasValue
+        || !string.IsNullOrWhiteSpace(Model.SearchTerm);
 }
 
 @section Styles {
@@ -93,44 +102,78 @@
                     </div>
                 </div>
 
-                <form method="get" class="bg-light border rounded p-3 mb-4">
-                    <input type="hidden" name="id" value="@Model.Management.Id" />
-                    <div class="row">
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <label class="small font-weight-bold text-muted text-uppercase">Ambiente</label>
-                            <select asp-for="LaboratoryId" asp-items="Model.LaboratoryList" class="form-control custom-select">
-                                <option value="">Todos</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-2 col-md-6 mb-3">
-                            <label class="small font-weight-bold text-muted text-uppercase">Categoria</label>
-                            <select asp-for="Category" asp-items="Model.CategoryList" class="form-control custom-select">
-                                <option value="">Todas</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-3 col-md-6 mb-3">
-                            <label class="small font-weight-bold text-muted text-uppercase">Clasificacion tecnica</label>
-                            <select asp-for="TypeClassification" asp-items="Model.TypeClassificationList" class="form-control custom-select">
-                                <option value="">Todas</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-2 col-md-6 mb-3">
-                            <label class="small font-weight-bold text-muted text-uppercase">Utensilio</label>
-                            <select asp-for="UtensilType" asp-items="Model.UtensilTypeList" class="form-control custom-select">
-                                <option value="">Todos</option>
-                            </select>
-                        </div>
-                        <div class="col-lg-2 col-md-6 mb-3">
-                            <label class="small font-weight-bold text-muted text-uppercase">Buscar</label>
-                            <input asp-for="SearchTerm" class="form-control" placeholder="Inventario o nombre" />
-                        </div>
+                @if (Model.BlockedByClassificationCount > 0)
+                {
+                    <div class="alert alert-warning border-0 shadow-sm" role="status">
+                        <i class="fas fa-lock mr-2"></i>
+                        <strong>@Model.BlockedByClassificationCount unidad(es)</strong> permanecen visibles en sus historiales,
+                        pero no pueden incorporarse a nuevas planificaciones hasta confirmar su clasificación.
                     </div>
-                    <button type="submit" class="btn btn-primary btn-rounded px-4 font-weight-bold">
-                        <i class="fas fa-filter mr-1"></i> Filtrar
-                    </button>
-                    <a asp-page="./PlanAssets" asp-route-id="@Model.Management.Id" class="btn btn-light border btn-rounded px-4 font-weight-bold ml-2">
-                        <i class="fas fa-undo mr-1"></i> Limpiar
-                    </a>
+                }
+
+                <form method="get" class="bg-light border rounded border-left border-info p-3 mb-4" data-live-filter-form>
+                    <input type="hidden" name="id" value="@Model.Management.Id" />
+                    <label asp-for="SearchTerm" class="sr-only">Buscar activo para planificar</label>
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                        </div>
+                        <input type="search" asp-for="SearchTerm"
+                               class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                               placeholder="Buscar por nombre, inventario o serie"
+                               autocomplete="off"
+                               data-live-filter-search />
+                    </div>
+
+                    <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                        <select asp-for="Category"
+                                asp-items="Model.CategoryList"
+                                class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.Category.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                aria-label="Tipo de recurso"
+                                data-plan-asset-category
+                                data-live-filter-control>
+                            <option value="">Tipo de recurso</option>
+                        </select>
+
+                        <select asp-for="TypeClassification"
+                                asp-items="Model.TypeClassificationList"
+                                class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.TypeClassification.HasValue ? "border-info text-info font-weight-bold" : "") @(showEquipmentSubclassification ? "" : "d-none")"
+                                aria-label="Subclasificación de equipo"
+                                data-plan-equipment-subclassification
+                                data-live-filter-control
+                                disabled="@(!showEquipmentSubclassification)">
+                            <option value="">Subclasificación</option>
+                        </select>
+
+                        <select asp-for="UtensilType"
+                                asp-items="Model.UtensilTypeList"
+                                class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.UtensilType.HasValue ? "border-info text-info font-weight-bold" : "") @(showUtensilSubclassification ? "" : "d-none")"
+                                aria-label="Subclasificación de utensilio"
+                                data-plan-utensil-subclassification
+                                data-live-filter-control
+                                disabled="@(!showUtensilSubclassification)">
+                            <option value="">Subclasificación</option>
+                        </select>
+
+                        <select asp-for="LaboratoryId"
+                                asp-items="Model.LaboratoryList"
+                                class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.LaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                aria-label="Ambiente"
+                                data-live-filter-control>
+                            <option value="">Ambiente</option>
+                        </select>
+
+                        @if (hasActiveFilters)
+                        {
+                            <a asp-page="./PlanAssets" asp-route-id="@Model.Management.Id" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                <i class="fas fa-times mr-1"></i> Limpiar filtros
+                            </a>
+                        }
+
+                        <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                            <strong class="text-dark">@Model.TotalMatching</strong> activo(s)
+                        </span>
+                    </div>
                 </form>
 
                 <form method="post" asp-page-handler="ApplySelection" id="planSelectionForm">
@@ -316,6 +359,24 @@
 @section Scripts {
     <script>
         $(function () {
+            var equipmentCategory = '@EquipmentCategory.Equipment';
+            var utensilCategory = '@EquipmentCategory.Utensil';
+            var $category = $('[data-plan-asset-category]');
+            var $equipmentSubclassification = $('[data-plan-equipment-subclassification]');
+            var $utensilSubclassification = $('[data-plan-utensil-subclassification]');
+
+            $category.on('change', function () {
+                var selectedCategory = $category.val();
+
+                if (selectedCategory !== equipmentCategory) {
+                    $equipmentSubclassification.val('').prop('disabled', true);
+                }
+
+                if (selectedCategory !== utensilCategory) {
+                    $utensilSubclassification.val('').prop('disabled', true);
+                }
+            });
+
             $('#selectAllCandidates').on('change', function () {
                 $('.candidate-check').prop('checked', this.checked);
             });

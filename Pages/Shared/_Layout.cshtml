@@ -1,9 +1,14 @@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+@{
+    var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+}
 <!DOCTYPE html>
 <html dir="ltr" lang="es">
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="request-verification-token" content="@antiforgeryToken">
     <title>@ViewData["Title"] - Laboratorios Univalle</title>
     <link rel="icon" type="image/png" sizes="16x16" href="~/assets/images/favicon.png">
     
@@ -237,6 +242,7 @@
                             });
                     </script>
 
+                    <script src="~/js/site.js" asp-append-version="true"></script>
                     @await RenderSectionAsync("Scripts", required: false)
 
                     @if (showBell)

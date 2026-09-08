@@ -18,14 +18,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
+        private readonly ILogger<CreateModel> _logger;
 
         public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, 
             UserManager<User> userManager,
-            IManagementContextService managementContext)
+            IManagementContextService managementContext,
+            ILogger<CreateModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
+            _logger = logger;
         }
 
         public async Task<IActionResult> OnGetAsync(int? equipmentUnitId = null, bool isWizard = false, int? managementPlanId = null)
@@ -518,7 +521,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al guardar el registro: {ex.Message}");
+                _logger.LogError(ex, "No se pudo guardar el mantenimiento para la unidad {EquipmentUnitId}.", Input.EquipmentUnitId);
+                TempData.Error("No se pudo guardar el mantenimiento. Intente nuevamente.");
                 LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId, Input.TechnicianId, Input.RequestId);
                 return Page();
             }
@@ -828,24 +832,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public async Task<JsonResult> OnGetKardexDetailAsync(int equipmentId)
         {
-            var unit = await _context.EquipmentUnits
-                .Include(u => u.Equipment)
-                .Include(u => u.StateHistory)
-                .FirstOrDefaultAsync(u => u.Id == equipmentId);
-
-            if (unit == null) return new JsonResult(new { error = "No encontrado" });
-
-            var lastHistory = unit.StateHistory?
-                .OrderByDescending(h => h.StartDate)
-                .FirstOrDefault();
-
-            return new JsonResult(new {
-                name = unit.Equipment?.Name ?? "Sin nombre",
-                inventoryNumber = unit.InventoryNumber,
-                currentStatus = unit.CurrentStatus.ToString(),
-                lastDate = lastHistory?.StartDate.ToString("dd 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-ES")) ?? "Sin registros",
-                reason = lastHistory?.Reason ?? "—"
-            });
+            var summary = await EquipmentKardexSummaryBuilder.BuildAsync(_context, equipmentId, HttpContext.RequestAborted);
+            return summary == null
+                ? new JsonResult(new { error = "No encontrado" }) { StatusCode = StatusCodes.Status404NotFound }
+                : new JsonResult(summary);
         }
     }
 }

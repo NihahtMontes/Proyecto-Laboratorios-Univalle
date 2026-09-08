@@ -183,11 +183,11 @@
 
                 
                 $.get('?handler=LaboratoriesByFaculty', { facultyId: id }, function(data) {
-                    let opts = '<option value="">-- Seleccionar Laboratorio --</option>';
+                    $lab.empty().append(new Option('-- Seleccionar Laboratorio --', ''));
                     $.each(data, function(i, item) {
-                        opts += `<option value="${item.id}">${item.name}</option>`;
+                        $lab.append(new Option(item.name || '', item.id));
                     });
-                    $lab.html(opts).prop('disabled', false).trigger('change');
+                    $lab.prop('disabled', false).trigger('change');
                 });
             });
         });

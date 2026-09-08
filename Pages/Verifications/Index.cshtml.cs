@@ -75,7 +75,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     TotalEquipments = g.Count(),
                     BadCount = g.Count(v => v.PhysicalCondition == PhysicalCondition.Bad),
                     InspectorName = g.First().CreatedBy != null
-                        ? $"{g.First().CreatedBy.FirstName} {g.First().CreatedBy.LastName}"
+                        ? $"{g.First().CreatedBy!.FirstName} {g.First().CreatedBy!.LastName}"
                         : "Sistema"
                 })
                 .OrderByDescending(s => s.Date)

@@ -160,19 +160,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             TopEquipmentTypes = allPlans
                 .Where(p => p.EquipmentUnit?.Equipment != null)
                 .GroupBy(p =>
-                    p.EquipmentUnit!.Equipment!.Category == EquipmentCategory.Utensil
-                        ? "Utensilio"
-                        : p.EquipmentUnit!.Equipment!.TypeClassification switch
-                        {
-                            EquipmentTypeClassification.Electronico => "Electrónico / Eléctrico",
-                            EquipmentTypeClassification.Manual      => "Manual / Mecánico",
-                            EquipmentTypeClassification.Mobiliario  => "Mobiliario",
-                            EquipmentTypeClassification.Medicion    => "Instrumental de Medición",
-                            EquipmentTypeClassification.Vidrio      => "Material de Vidrio",
-                            EquipmentTypeClassification.Reactivo    => "Reactivo / Químico",
-                            EquipmentTypeClassification.Informatico => "Informático",
-                            _                                       => "Otro"
-                        })
+                    p.EquipmentUnit!.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.PendingClient
+                        ? "Pendiente de cliente"
+                        : p.EquipmentUnit.Equipment.ClassificationReviewStatus == EquipmentClassificationReviewStatus.LegacyInferred
+                            ? "Inferido legado"
+                            : p.EquipmentUnit.Equipment.Category == EquipmentCategory.Equipment && p.EquipmentUnit.Equipment.TypeClassification.HasValue
+                                ? EnumHelper.GetDisplayName(p.EquipmentUnit.Equipment.TypeClassification.Value)
+                                : p.EquipmentUnit.Equipment.Category == EquipmentCategory.Utensil && p.EquipmentUnit.Equipment.UtensilType.HasValue
+                                    ? EnumHelper.GetDisplayName(p.EquipmentUnit.Equipment.UtensilType.Value)
+                                    : p.EquipmentUnit.Equipment.OtherClassificationDetail ?? "Otro confirmado")
                 .OrderByDescending(g => g.Count())
                 .ToDictionary(g => g.Key, g => g.Count());
 
@@ -188,12 +184,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 .ToList();
 
             // Listas para filtros del Cronograma L-48
-            var labs = await _context.Laboratories.OrderBy(l => l.Code).ThenBy(l => l.Name).ToListAsync();
+            var labs = await _context.Laboratories
+                .Where(l => l.Status == GeneralStatus.Activo)
+                .OrderBy(l => l.Code)
+                .ThenBy(l => l.Name)
+                .ToListAsync();
             LabFList  = new SelectList(LaboratoryDisplayHelper.ToSelectItems(labs), "Id", "DisplayName", LabFilterId);
             
             // Fix: OrderBy in-memory since FullName is [NotMapped]
             var techsList = await _context.People
-                .Where(p => p.Category == PersonCategory.Tecnico)
+                .Where(p => p.Category == PersonCategory.Tecnico && p.Status == GeneralStatus.Activo)
                 .ToListAsync();
             var techs = techsList.OrderBy(t => t.FullName).ToList();
             TechFList = new SelectList(techs, "Id", "FullName", TechFilterId);
@@ -277,9 +277,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             if (!string.IsNullOrEmpty(CategoryFilter))
             {
                 if (CategoryFilter == "Utensilio")
-                    query = query.Where(p => p.EquipmentUnit!.Equipment!.Category == EquipmentCategory.Utensil);
+                    query = query.Where(p => p.EquipmentUnit!.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed
+                        && p.EquipmentUnit.Equipment.Category == EquipmentCategory.Utensil);
                 else if (Enum.TryParse<EquipmentTypeClassification>(CategoryFilter, out var cat))
-                    query = query.Where(p => p.EquipmentUnit!.Equipment!.TypeClassification == cat);
+                    query = query.Where(p => p.EquipmentUnit!.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed
+                        && p.EquipmentUnit.Equipment.TypeClassification == cat);
             }
             if (TechFilterId.HasValue)
                 query = query.Where(p => p.Maintenance!.TechnicianId == TechFilterId);

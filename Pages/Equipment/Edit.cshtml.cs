@@ -18,12 +18,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IWebHostEnvironment _environment;
+        private readonly ILogger<EditModel> _logger;
 
-        public EditModel(ApplicationDbContext context, UserManager<User> userManager, IWebHostEnvironment environment)
+        public EditModel(
+            ApplicationDbContext context,
+            UserManager<User> userManager,
+            IWebHostEnvironment environment,
+            ILogger<EditModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _environment = environment;
+            _logger = logger;
         }
 
         [BindProperty]
@@ -39,11 +45,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             // AÑADIDO: Soporte para el Enum de material/utensilio
             [Display(Name = "Tipo de Material")]
-            public UtensilType UtensilType { get; set; }
+            public UtensilType? UtensilType { get; set; }
 
-            [Required(ErrorMessage = "La clasificación técnica es obligatoria")]
             [Display(Name = "Clasificación de Tipo")]
-            public EquipmentTypeClassification TypeClassification { get; set; } = EquipmentTypeClassification.Otro;
+            public EquipmentTypeClassification? TypeClassification { get; set; }
 
             // ELIMINADO: EquipmentTypeId ya no se utiliza
 
@@ -62,15 +67,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             public string Name { get; set; } = string.Empty;
 
             [Display(Name = "Marca")]
+            [StringLength(100)]
             public string? Brand { get; set; }
 
             [Display(Name = "Modelo")]
+            [StringLength(100)]
             public string? Model { get; set; }
 
             [Display(Name = "Vida Útil Estimada (Años)")]
+            [Range(0, 100)]
             public int? UsefulLifeYears { get; set; }
 
             [Display(Name = "Descripción / Especificaciones")]
+            [StringLength(2000)]
             public string? Description { get; set; }
 
             [Display(Name = "Notas del Fabricante")]
@@ -134,6 +143,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
         public async Task<IActionResult> OnPostAsync()
         {
+            if (!Enum.IsDefined(typeof(EquipmentCategory), Input.Category))
+                ModelState.AddModelError("Input.Category", "Seleccione una categoría válida.");
+
+            var imageValidationError = await SafeImageUpload.ValidateAsync(
+                Input.ImageUpload,
+                HttpContext.RequestAborted);
+
+            if (imageValidationError != null)
+                ModelState.AddModelError("Input.ImageUpload", imageValidationError);
+
+            ValidateNotes();
+
+            if (!ModelState.IsValid)
+            {
+                await ReloadDisplayData(Input.Id);
+                LoadLists();
+                return Page();
+            }
+
+            await ValidateLocationAsync();
             if (!ModelState.IsValid)
             {
                 await ReloadDisplayData(Input.Id);
@@ -148,56 +177,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
 
             if (equipment == null) return NotFound();
 
-            // Image Upload Handling
-            if (Input.ImageUpload != null)
-            {
-                string uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "equipment");
-                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-                string uniqueFileName = Guid.NewGuid().ToString() + "_" + Input.ImageUpload.FileName;
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await Input.ImageUpload.CopyToAsync(fileStream);
-                }
-
-                equipment.ImageUrl = uniqueFileName;
-            }
+            Input.ExistingImageUrl = equipment.ImageUrl;
 
             // Update Fields (Manteniendo tu lógica de .Clean())
             equipment.Name = Input.Name.Clean();
-            equipment.Category = Input.Category;
-            if (Input.Category == EquipmentCategory.Equipment && !IsValidEquipmentClassificationForEdit(Input.TypeClassification, equipment.TypeClassification))
+
+            var normalizedName = Input.Name.Clean();
+            var normalizedModel = Input.Model?.Clean();
+            var duplicateExists = await _context.Equipments.AnyAsync(candidate =>
+                candidate.Id != equipment.Id &&
+                candidate.Name.ToLower() == normalizedName.ToLower() &&
+                (string.IsNullOrEmpty(normalizedModel) ||
+                    (candidate.Model != null && candidate.Model.ToLower() == normalizedModel.ToLower())));
+
+            if (duplicateExists)
             {
-                ModelState.AddModelError("Input.TypeClassification", "Seleccione una clasificacion tecnica valida para equipo.");
+                ModelState.AddModelError("Input.Name", "Ya existe otro equipo registrado con este nombre y modelo.");
                 await ReloadDisplayData(Input.Id);
                 LoadLists();
                 return Page();
             }
 
-            if (Input.Category == EquipmentCategory.Utensil && !IsValidUtensilTypeForEdit(Input.UtensilType, equipment.UtensilType))
-            {
-                ModelState.AddModelError("Input.UtensilType", "Seleccione una subclasificacion de utensilio.");
-                await ReloadDisplayData(Input.Id);
-                LoadLists();
-                return Page();
-            }
-
-            if (Input.Category == EquipmentCategory.Other)
-            {
-                Input.UtensilType = UtensilType.NoAplica;
-                Input.TypeClassification = EquipmentTypeClassification.Otro;
-            }
-            else if (Input.Category == EquipmentCategory.Equipment)
-            {
-                Input.UtensilType = UtensilType.NoAplica;
-            }
-            else if (Input.Category == EquipmentCategory.Utensil)
-            {
-                Input.TypeClassification = EquipmentTypeClassification.Otro;
-            }
-            equipment.UtensilType = Input.UtensilType; // Actualizamos el Enum
-            equipment.TypeClassification = Input.TypeClassification;
+            equipment.Name = normalizedName;
+            // La clasificación se conserva: solo el servicio auditable puede modificarla.
 
             equipment.CountryId = Input.CountryId;
             equipment.CityId = Input.CityId;
@@ -213,26 +215,63 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 equipment.ModifiedById = currentUser.Id;
             }
 
+            var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "equipment");
+            var oldImageUrl = equipment.ImageUrl;
+            string? newImageUrl = null;
+            string? newImagePath = null;
+
             try
             {
+                if (Input.ImageUpload is { Length: > 0 })
+                {
+                    newImageUrl = await SafeImageUpload.SaveAsync(
+                        Input.ImageUpload,
+                        uploadsFolder,
+                        HttpContext.RequestAborted);
+                    newImagePath = Path.Combine(uploadsFolder, newImageUrl);
+                    equipment.ImageUrl = newImageUrl;
+                }
+
                 await using var tx = await _context.Database.BeginTransactionAsync();
 
                 await _context.SaveChangesAsync();
 
-                var oldNotes = await _context.EquipmentNotes.Where(n => n.EquipmentId == equipment.Id).ToListAsync();
+                var oldNotes = await _context.EquipmentNotes
+                    .AsTracking()
+                    .Where(n => n.EquipmentId == equipment.Id)
+                    .ToListAsync();
                 _context.EquipmentNotes.RemoveRange(oldNotes);
-                if (Input.Notes != null)
+
+                foreach (var note in Input.Notes.Where(note => !string.IsNullOrWhiteSpace(note)))
                 {
-                    foreach (var note in Input.Notes.Where(n => !string.IsNullOrWhiteSpace(n)))
-                        _context.EquipmentNotes.Add(new EquipmentNote { EquipmentId = equipment.Id, Note = note.Trim() });
-                    await _context.SaveChangesAsync();
+                    _context.EquipmentNotes.Add(new EquipmentNote
+                    {
+                        EquipmentId = equipment.Id,
+                        Note = note.Clean()
+                    });
                 }
 
+                await _context.SaveChangesAsync();
+
                 await tx.CommitAsync();
+
+                if (newImageUrl != null && !string.IsNullOrWhiteSpace(oldImageUrl))
+                {
+                    try
+                    {
+                        SafeImageUpload.DeleteStoredFile(uploadsFolder, oldImageUrl);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        _logger.LogWarning(ex, "No se pudo retirar la imagen anterior del equipo {EquipmentId}.", equipment.Id);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al guardar los cambios: {ex.Message}");
+                SafeImageUpload.DeleteIfExists(newImagePath);
+                _logger.LogError(ex, "No se pudo actualizar el equipo {EquipmentId}.", equipment.Id);
+                TempData.Error("No se pudieron guardar los cambios del equipo. Revise los datos e intente nuevamente.");
                 await ReloadDisplayData(Input.Id);
                 LoadLists();
                 return Page();
@@ -250,6 +289,44 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 .Include(e => e.ModifiedBy)
                 .Include(e => e.Units)
                 .FirstOrDefaultAsync(e => e.Id == id) ?? new Models.Equipment();
+            Input.ExistingImageUrl = ExistingEquipmentDisplay.ImageUrl;
+        }
+
+        private async Task ValidateLocationAsync()
+        {
+            if (!Input.CountryId.HasValue)
+            {
+                if (Input.CityId.HasValue)
+                    ModelState.AddModelError("Input.CityId", "Seleccione el país correspondiente a la ciudad.");
+                return;
+            }
+
+            var countryExists = await _context.Countries.AnyAsync(country =>
+                country.Id == Input.CountryId.Value && country.Status == GeneralStatus.Activo);
+
+            if (!countryExists)
+                ModelState.AddModelError("Input.CountryId", "El país seleccionado no está disponible.");
+
+            if (Input.CityId.HasValue)
+            {
+                var cityMatchesCountry = await _context.Cities.AnyAsync(city =>
+                    city.Id == Input.CityId.Value &&
+                    city.CountryId == Input.CountryId.Value &&
+                    city.Status == GeneralStatus.Activo);
+
+                if (!cityMatchesCountry)
+                    ModelState.AddModelError("Input.CityId", "La ciudad no pertenece al país seleccionado.");
+            }
+        }
+
+        private void ValidateNotes()
+        {
+            Input.Notes ??= new List<string>();
+            if (Input.Notes.Count > 50)
+                ModelState.AddModelError("Input.Notes", "No se permiten más de 50 notas por equipo.");
+
+            if (Input.Notes.Any(note => note?.Length > 500))
+                ModelState.AddModelError("Input.Notes", "Cada nota puede tener como máximo 500 caracteres.");
         }
 
         private void LoadLists()
@@ -279,27 +356,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             EquipmentTypeClassificationOptions = GetEquipmentTypeClassificationOptions(Input.TypeClassification);
         }
 
-        private static List<SelectListItem> GetUtensilTypeOptions(UtensilType selected)
+        private static List<SelectListItem> GetUtensilTypeOptions(UtensilType? selected)
         {
-            var options = new List<UtensilType>
-            {
-                UtensilType.NoAplica,
-                UtensilType.MenajeCocina,
-                UtensilType.BartendingBarismo,
-                UtensilType.PanaderiaReposteriaPasteleria,
-                UtensilType.Servicio,
-                UtensilType.Manteleria,
-                UtensilType.VajillaGeneral,
-                UtensilType.Otros
-            };
-
-            if (selected is UtensilType.Vidrio or UtensilType.Plastico or UtensilType.Metal or UtensilType.Porcelana)
-            {
-                options.Add(selected);
-            }
-
-            return options
-                .Distinct()
+            return EquipmentClassificationRules.UtensilSubclassifications
                 .Select(value => new SelectListItem
                 {
                     Value = ((int)value).ToString(),
@@ -309,16 +368,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 .ToList();
         }
 
-        private static List<SelectListItem> GetEquipmentTypeClassificationOptions(EquipmentTypeClassification selected)
+        private static List<SelectListItem> GetEquipmentTypeClassificationOptions(EquipmentTypeClassification? selected)
         {
-            var options = GetValidEquipmentClassifications().ToList();
-            if (!options.Contains(selected))
-            {
-                options.Add(selected);
-            }
-
-            return options
-                .Distinct()
+            return GetValidEquipmentClassifications()
                 .Select(value => new SelectListItem
                 {
                     Value = ((int)value).ToString(),
@@ -328,40 +380,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 .ToList();
         }
 
-        private static bool IsValidEquipmentClassificationForEdit(EquipmentTypeClassification posted, EquipmentTypeClassification original)
-            => GetValidEquipmentClassifications().Contains(posted) || posted == original;
+        private static bool IsValidEquipmentClassification(EquipmentTypeClassification classification)
+            => EquipmentClassificationRules.IsValidEquipmentSubclassification(classification);
 
-        private static bool IsValidUtensilTypeForEdit(UtensilType posted, UtensilType original)
-            => IsValidNewUtensilType(posted) || (IsLegacyUtensilType(posted) && posted == original);
+        private static bool IsValidUtensilType(UtensilType utensilType)
+            => EquipmentClassificationRules.IsValidUtensilSubclassification(utensilType);
 
-        private static bool IsValidNewUtensilType(UtensilType utensilType)
-            => utensilType is UtensilType.MenajeCocina
-                or UtensilType.BartendingBarismo
-                or UtensilType.PanaderiaReposteriaPasteleria
-                or UtensilType.Servicio
-                or UtensilType.Manteleria
-                or UtensilType.VajillaGeneral
-                or UtensilType.Otros;
-
-        private static bool IsLegacyUtensilType(UtensilType utensilType)
-            => utensilType is UtensilType.Vidrio
-                or UtensilType.Plastico
-                or UtensilType.Metal
-                or UtensilType.Porcelana;
-
-        private static EquipmentTypeClassification[] GetValidEquipmentClassifications() => new[]
-        {
-            EquipmentTypeClassification.Calor,
-            EquipmentTypeClassification.Frio,
-            EquipmentTypeClassification.Congelacion,
-            EquipmentTypeClassification.Ultracongelacion,
-            EquipmentTypeClassification.MaquinasRotativas,
-            EquipmentTypeClassification.Electronico,
-            EquipmentTypeClassification.SeguridadIndustrial,
-            EquipmentTypeClassification.Medicion,
-            EquipmentTypeClassification.Audiovisuales,
-            EquipmentTypeClassification.Electricos,
-            EquipmentTypeClassification.Otro
-        };
+        private static EquipmentTypeClassification[] GetValidEquipmentClassifications() =>
+            EquipmentClassificationRules.EquipmentSubclassifications.ToArray();
     }
 }

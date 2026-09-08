@@ -15,11 +15,11 @@
 Antes de tocar archivos:
 
 1. Leer `context.md`.
-2. Leer `.agent/context/00-router.md`.
-3. Leer `.agent/context/01-global-rules.md`.
-4. Leer el contexto de area o modulo segun la tarea.
-5. Leer el `AGENTS.md` local si existe.
-6. Leer la skill correspondiente en `.agent/skills/`.
+2. Leer `docs/COORDINACION_MULTI_CHAT.md` si el trabajo afecta datos,
+   modelos, QA, navegacion o planificacion de sprints.
+3. Leer el `AGENTS.md` local mas cercano si existe.
+4. Leer la skill correspondiente en `.agents/skills/`.
+5. Inspeccionar solo los archivos y documentacion del modulo afectado.
 
 Si la tarea toca mas de 5 archivos, proponer plan antes de editar.
 
@@ -29,22 +29,19 @@ No hacer commit sin aprobacion explicita del usuario.
 
 | Capa/Tarea | Contexto | Manifesto | Skill |
 |---|---|---|---|
-| UI Razor, `.cshtml`, JS, SweetAlert2 | `.agent/context/areas/ui.md` | `Pages/AGENTS.md` | `.agent/skills/ui_premium/SKILL.md` |
-| PageModels, handlers, InputModel | `.agent/context/areas/backend-page-models.md` | `Pages/AGENTS.md` | `.agent/skills/backend_methods/SKILL.md` |
-| Modelos, EF, migraciones | `.agent/context/areas/database-ef.md` | `Models/AGENTS.md` | `.agent/skills/database/SKILL.md` |
-| Reportes Excel/PDF | `.agent/context/areas/reporting.md` | `Services/AGENTS.md` | `.agent/skills/reporting/SKILL.md` |
-| Infraestructura/build/despliegue | `.agent/context/areas/infrastructure.md` | `AGENTS_SETUP.md` si existe | segun archivos tocados |
-| Wizard | `.agent/context/modules/wizard.md` | `Pages/AGENTS.md` | backend/ui segun cambio |
-| Dashboard, navegacion y notificaciones | `.agent/context/modules/dashboard-navigation.md` | `Pages/AGENTS.md` | backend/ui |
-| Borradores | `.agent/context/modules/drafts.md` | `Pages/AGENTS.md` | backend/database |
-| Correctivo | `.agent/context/modules/corrective.md` | `Pages/AGENTS.md` | backend |
+| UI Razor, `.cshtml`, JS, SweetAlert2 | `context.md` | `Pages/AGENTS.md` | `.agents/skills/ui-premium/SKILL.md` |
+| PageModels, handlers, InputModel | `context.md` | `Pages/AGENTS.md` | `.agents/skills/backend-methods/SKILL.md` |
+| Modelos, EF, migraciones | `context.md` | `Models/AGENTS.md` | `.agents/skills/database/SKILL.md` |
+| Reportes Excel/PDF | `context.md` | `Services/AGENTS.md` | `.agents/skills/reporting/SKILL.md` |
+| Infraestructura/build/despliegue | `context.md` | `AGENTS_SETUP.md` si existe | segun archivos tocados |
+| Wizard | `context.md` y flujo real en `Pages/` | `Pages/AGENTS.md` | backend/ui segun cambio |
+| Dashboard, navegacion y notificaciones | `context.md` y archivos afectados | `Pages/AGENTS.md` | backend/ui |
+| Borradores | `context.md` y archivos afectados | `Pages/AGENTS.md` | backend/database |
+| Correctivo | `context.md` y archivos afectados | `Pages/AGENTS.md` | backend |
 
 ## Modulos Especificos
 
-- L-6: `.agent/context/modules/l6-verifications.md`.
-- L-3: `.agent/context/modules/l3-departures.md`.
-- Kardex/L-48: `.agent/context/modules/kardex-l48.md`.
-- L-12: `.agent/context/modules/acquisitions-l12.md`.
+- L-6, L-3, Kardex/L-48 y L-12: partir de `context.md`, ubicar el flujo real con busqueda dirigida y leer solo sus Pages, Services y modelos relacionados.
 
 ## Reglas Criticas Cortas
 
@@ -57,16 +54,38 @@ No hacer commit sin aprobacion explicita del usuario.
 - Migraciones existentes son intocables.
 - No revertir cambios ajenos.
 
+## Politica De Bajo Consumo De Recursos
+
+- Ejecutar un solo build, prueba, importador o proceso pesado a la vez; para
+  .NET usar `dotnet build -m:1` y evitar servidores en segundo plano.
+- Antes de una operacion de datos o una prueba amplia, comprobar memoria:
+  detenerse si quedan menos de 2 GB libres o si el uso supera 85%.
+- Procesar escrituras EF/SQL en lotes de hasta 100 filas, limpiar el
+  `ChangeTracker` entre lotes y limitar la conexion a un maximo de 10
+  conexiones cuando la herramienta controle el pool.
+- Las pruebas de estres son opt-in, exigen al menos 6 GB libres y autorizacion
+  explicita. No cambiar automaticamente la memoria global de SQL Server.
+- No iniciar la aplicacion web, browser ni servicios persistentes salvo pedido
+  expreso. Todo proceso temporal debe cerrarse y verificarse al finalizar.
+
 ## Orquestacion Multiagente
 
-Codex actua como orquestador principal: define alcance, reparte tareas, integra resultados, resuelve conflictos y verifica build. No delegar cambios solapados sobre los mismos archivos.
+Codex actua como orquestador principal: define alcance, reparte tareas independientes, integra resultados, resuelve conflictos y verifica build. No delegar por rutina ni permitir cambios solapados sobre los mismos archivos.
 
-- Agente UI/UX tipo Kimi K2.6: propietario de `.cshtml`, SweetAlert2, textos visibles, botones, confirmaciones y consistencia NiceAdmin/Bootstrap 4.
-- Agente Backend/Data tipo DeepSeek V4 Pro: propietario de `.cshtml.cs`, `InputModel`, EF tracking, soft-delete, redirects, `TempData` y validaciones servidor.
-- Codex: mantiene reglas de datos, evita hard-delete, actualiza contexto operativo y ejecuta verificacion final.
+La coordinacion persistente entre tareas de Codex se define en
+`docs/COORDINACION_MULTI_CHAT.md`. Antes de actuar, cada tarea declara rol, ID,
+archivos/superficies, dependencias y si realizara lectura, escritura local o
+escritura externa. El coordinador de datos mantiene el estado canonico; QA y
+Sprint entregan handoffs y no modifican simultaneamente ese documento.
+
+- `ui_ux`: propietario de `.cshtml`, SweetAlert2, textos visibles, botones, confirmaciones y consistencia NiceAdmin/Bootstrap 4.
+- `backend_data`: propietario de `.cshtml.cs`, `InputModel`, EF tracking, soft-delete, redirects, `TempData` y validaciones servidor.
+- `reviewer`: revision independiente y read-only de correccion, seguridad, regresiones y pruebas.
+- El agente principal conserva decisiones, integracion, reglas de datos y verificacion final.
 
 ## Documentacion
 
-- `.agent/`: contexto operativo para IA/desarrollo.
+- `.codex/agents/`: agentes especializados del proyecto.
+- `.agents/skills/`: procedimientos especializados cargados bajo demanda.
 - `docs/`: documentacion humana y despliegue sin secretos.
-- `.agent/archive/`: material historico u obsoleto.
+- `docs/GUIA_IMPORTACION_HISTORICA.md`: guia viva de importacion de datos historicos (Excel -> SQL Server), mapa modelo<->hoja y vulnerabilidades abiertas.

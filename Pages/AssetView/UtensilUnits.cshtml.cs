@@ -32,9 +32,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
 
         public PaginatedList<EquipmentUnit> Units { get; set; } = new(new List<EquipmentUnit>(), 0, 1, PageSize);
 
-        public async Task OnGetAsync()
+        public async Task<IActionResult> OnGetAsync()
         {
+            if (!EquipmentClassificationRules.IsValidUtensilSubclassification(UtensilType))
+                return RedirectToPage("./OtherUnits");
+
             await LoadUnitsAsync(PageIndex ?? 1);
+            return Page();
         }
 
         public async Task<IActionResult> OnPostDeleteUnitAsync(int id)
@@ -60,14 +64,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
 
         private async Task LoadUnitsAsync(int pageIndex)
         {
-            var allowedTypes = GetAllowedTypes(UtensilType);
-
             var query = _context.EquipmentUnits
                 .Include(u => u.Equipment)
                 .Include(u => u.Laboratory)
                 .Where(u => u.Equipment != null &&
+                            u.Equipment.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
                             u.Equipment.Category == EquipmentCategory.Utensil &&
-                            allowedTypes.Contains(u.Equipment.UtensilType));
+                            u.Equipment.UtensilType == UtensilType);
 
             if (!string.IsNullOrWhiteSpace(SearchTerm))
             {
@@ -84,21 +87,5 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 PageSize);
         }
 
-        private static UtensilType[] GetAllowedTypes(UtensilType utensilType)
-        {
-            if (utensilType == UtensilType.Otros)
-            {
-                return new[]
-                {
-                    UtensilType.Otros,
-                    UtensilType.Vidrio,
-                    UtensilType.Plastico,
-                    UtensilType.Metal,
-                    UtensilType.Porcelana
-                };
-            }
-
-            return new[] { utensilType };
-        }
     }
 }

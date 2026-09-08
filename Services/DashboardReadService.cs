@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
@@ -170,11 +171,16 @@ namespace Proyecto_Laboratorios_Univalle.Services
         {
             var equipmentStats = await _context.ManagementPlans
                 .AsNoTracking()
-                .Where(p => p.ManagementId == managementId && p.EquipmentUnit != null && p.EquipmentUnit.Equipment != null)
+                .Where(p => p.ManagementId == managementId
+                    && p.EquipmentUnit != null
+                    && p.EquipmentUnit.Equipment != null
+                    && p.EquipmentUnit.Equipment.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed)
                 .Select(p => new
                 {
                     Category = p.EquipmentUnit!.Equipment!.Category,
                     TypeClass = p.EquipmentUnit!.Equipment!.TypeClassification,
+                    UtensilType = p.EquipmentUnit!.Equipment!.UtensilType,
+                    OtherDetail = p.EquipmentUnit!.Equipment!.OtherClassificationDetail,
                     LabName = p.EquipmentUnit!.Laboratory != null
                         ? ((p.EquipmentUnit.Laboratory.Code ?? "") + " - " + p.EquipmentUnit.Laboratory.Name)
                         : "N/A"
@@ -183,24 +189,16 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
             result.TopEquipmentTypes = equipmentStats
                 .GroupBy(p =>
-                    p.Category == EquipmentCategory.Utensil
-                        ? "Utensilio"
-                        : p.TypeClass switch
-                        {
-                            EquipmentTypeClassification.Electronico => "Electronico / Electrico",
-                            EquipmentTypeClassification.Manual => "Manual / Mecanico",
-                            EquipmentTypeClassification.Mobiliario => "Mobiliario",
-                            EquipmentTypeClassification.Medicion => "Instrumental de Medicion",
-                            EquipmentTypeClassification.Vidrio => "Material de Vidrio",
-                            EquipmentTypeClassification.Reactivo => "Reactivo / Quimico",
-                            EquipmentTypeClassification.Informatico => "Informatico",
-                            _ => "Otro"
-                        })
+                    p.Category == EquipmentCategory.Equipment && p.TypeClass.HasValue
+                        ? EnumHelper.GetDisplayName(p.TypeClass.Value)
+                        : p.Category == EquipmentCategory.Utensil && p.UtensilType.HasValue
+                            ? EnumHelper.GetDisplayName(p.UtensilType.Value)
+                            : p.OtherDetail ?? "Otro confirmado")
                 .OrderByDescending(g => g.Count())
                 .ToDictionary(g => g.Key, g => g.Count());
 
             result.TopGroups = equipmentStats
-                .GroupBy(p => p.TypeClass.ToString())
+                .GroupBy(p => EnumHelper.GetDisplayName(p.Category))
                 .OrderByDescending(g => g.Count())
                 .ToDictionary(g => g.Key, g => g.Count());
 
@@ -299,7 +297,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             if (!string.IsNullOrWhiteSpace(filter.SerialNumber))
             {
                 var serial = filter.SerialNumber.Trim();
-                wizardQuery = wizardQuery.Where(p => p.EquipmentUnit!.SerialNumber.Contains(serial));
+                wizardQuery = wizardQuery.Where(p => (p.EquipmentUnit!.SerialNumber ?? string.Empty).Contains(serial));
             }
 
             if (!string.IsNullOrWhiteSpace(filter.InventoryNumber))

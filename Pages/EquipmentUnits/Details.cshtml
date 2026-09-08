@@ -5,6 +5,10 @@
 @{
     ViewData["Title"] = "Detalles de Unidad Física";
     var showMaintenancesTab = HttpContext.Request.Query.Keys.Any(k => k.StartsWith("Maintenance"));
+    var hasMaintenanceFilters = Model.MaintenanceManagementId.HasValue
+        || Model.MaintenanceManagementType.HasValue
+        || Model.MaintenanceSatisfactionFilter.HasValue
+        || !string.IsNullOrWhiteSpace(Model.MaintenanceSearchTerm);
 }
 
 <div class="row">
@@ -101,11 +105,15 @@
                     <span class="text-dark font-weight-bold">
                         @if (Model.EquipmentUnit.Equipment?.Category == Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentCategory.Utensil)
                         {
-                            @(Model.EquipmentUnit.Equipment != null ? EnumHelper.GetDisplayName(Model.EquipmentUnit.Equipment.UtensilType) : "Sin dato")
+                            @(Model.EquipmentUnit.Equipment?.UtensilType.HasValue == true
+                                ? EnumHelper.GetDisplayName(Model.EquipmentUnit.Equipment.UtensilType.Value)
+                                : "Sin clasificación confirmada")
                         }
                         else
                         {
-                            @(Model.EquipmentUnit.Equipment != null ? EnumHelper.GetDisplayName(Model.EquipmentUnit.Equipment.TypeClassification) : "Sin dato")
+                            @(Model.EquipmentUnit.Equipment?.TypeClassification.HasValue == true
+                                ? EnumHelper.GetDisplayName(Model.EquipmentUnit.Equipment.TypeClassification.Value)
+                                : "Sin clasificación confirmada")
                         }
                     </span>
                 </div>
@@ -199,38 +207,53 @@
 
                     <div class="tab-pane fade @(showMaintenancesTab ? "show active" : "")" id="maintenances" role="tabpanel" aria-labelledby="pills-maintenances-tab">
                         <div class="bg-light p-3 rounded border-left border-info mb-3">
-                            <form method="get" asp-page="./Details">
+                            <form method="get" asp-page="./Details" data-live-filter-form>
                                 <input type="hidden" name="id" value="@Model.EquipmentUnit.Id" />
-                                <div class="row align-items-end">
-                                    <div class="col-lg-2 col-md-6 mb-2">
-                                        <label class="small font-weight-bold text-muted uppercase">Gestion</label>
-                                        <select asp-for="MaintenanceManagementId" class="form-control custom-select" asp-items="Model.ManagementOptions">
-                                            <option value="">Todas las gestiones</option>
-                                        </select>
+                                <label asp-for="MaintenanceSearchTerm" class="sr-only">Buscar por técnico o descripción</label>
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                                     </div>
-                                    <div class="col-lg-2 col-md-6 mb-2">
-                                        <label class="small font-weight-bold text-muted uppercase">Tipo de gestion</label>
-                                        <select asp-for="MaintenanceManagementType" class="form-control custom-select" asp-items="Html.GetEnumSelectList<ManagementType>()">
-                                            <option value="">Todos</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-lg-2 col-md-6 mb-2">
-                                        <label class="small font-weight-bold text-muted uppercase">Satisfaccion</label>
-                                        <select asp-for="MaintenanceSatisfactionFilter" class="form-control custom-select" asp-items="Html.GetEnumSelectList<MaintenanceSatisfaction>()">
-                                            <option value="">Todas</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-lg-3 col-md-6 mb-2">
-                                        <label class="small font-weight-bold text-muted uppercase">Busqueda</label>
-                                        <input asp-for="MaintenanceSearchTerm" class="form-control" placeholder="Tecnico o descripcion..." />
-                                    </div>
-                                    <div class="col-lg-3 col-md-12 mb-2">
-                                        <label class="small font-weight-bold text-muted uppercase d-block">&nbsp;</label>
-                                        <div class="d-flex justify-content-lg-end">
-                                            <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm mr-2"><i class="fas fa-filter mr-1"></i> Filtrar</button>
-                                            <a asp-page="./Details" asp-route-id="@Model.EquipmentUnit.Id" asp-route-MaintenanceManagementId="" class="btn btn-outline-secondary btn-rounded px-3" title="Limpiar filtros"><i class="fas fa-sync-alt"></i></a>
-                                        </div>
-                                    </div>
+                                    <input type="search" asp-for="MaintenanceSearchTerm"
+                                           class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.MaintenanceSearchTerm) ? "border-info" : "")"
+                                           placeholder="Buscar por técnico o descripción"
+                                           autocomplete="off"
+                                           data-live-filter-search />
+                                </div>
+
+                                <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                                    <select asp-for="MaintenanceManagementId"
+                                            class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                                            asp-items="Model.ManagementOptions"
+                                            aria-label="Gestión"
+                                            data-live-filter-control>
+                                        <option value="">Gestión</option>
+                                    </select>
+                                    <select asp-for="MaintenanceManagementType"
+                                            class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                                            asp-items="Html.GetEnumSelectList<ManagementType>()"
+                                            aria-label="Tipo de gestión"
+                                            data-live-filter-control>
+                                        <option value="">Tipo de gestión</option>
+                                    </select>
+                                    <select asp-for="MaintenanceSatisfactionFilter"
+                                            class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                                            asp-items="Html.GetEnumSelectList<MaintenanceSatisfaction>()"
+                                            aria-label="Satisfacción"
+                                            data-live-filter-control>
+                                        <option value="">Satisfacción</option>
+                                    </select>
+
+                                    @if (hasMaintenanceFilters)
+                                    {
+                                        <a asp-page="./Details" asp-route-id="@Model.EquipmentUnit.Id" asp-route-MaintenanceManagementId="" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                            <i class="fas fa-times mr-1"></i> Limpiar filtros
+                                        </a>
+                                    }
+
+                                    <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                        <strong class="text-dark">@Model.MaintenanceHistory.TotalCount</strong> mantenimiento(s)
+                                    </span>
                                 </div>
                             </form>
                         </div>

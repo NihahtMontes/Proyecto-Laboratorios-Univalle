@@ -23,7 +23,7 @@
             <div class="card shadow-sm border-top-info">
                 <div class="card-header bg-white">
                     <h4 class="m-b-0 text-dark font-weight-bold"><i class="fas fa-magic text-info"></i> Apertura de Gestión de Mantenimiento</h4>
-                    <p class="text-muted mb-0 font-12">Defina el periodo anual y semestral para agrupar los planes L-48.</p>
+                    <p class="text-muted mb-0 font-12">Defina el periodo que agrupará los planes y actividades de mantenimiento.</p>
                 </div>
                 <div class="card-body">
                     <form method="post">
@@ -34,7 +34,7 @@
                         @if (Model.Input.Type == ManagementType.Corrective)
                         {
                             <div class="alert alert-danger" role="alert">
-                                <i class="fas fa-exclamation-triangle"></i> Está creando una <strong>Gestión Correctiva semestral</strong>. No sincronizará equipos automáticamente; solo agrupará las fallas reportadas por L-7 en este semestre.
+                                <i class="fas fa-exclamation-triangle"></i> Está creando una <strong>Gestión Correctiva anual</strong>. No sincronizará equipos automáticamente; agrupará las fallas reportadas por L-7 durante el año.
                             </div>
                         }
                         else
@@ -53,10 +53,18 @@
 
                             <div class="col-md-6 mb-3">
                                 <label asp-for="Input.Semester" class="control-label font-weight-bold"></label>
-                                <select asp-for="Input.Semester" class="form-control custom-select">
-                                    <option value="1">Semestre 1 (Junio - Julio)</option>
-                                    <option value="2">Semestre 2 (Diciembre - Enero)</option>
-                                </select>
+                                @if (Model.Input.Type == ManagementType.Corrective)
+                                {
+                                    <input type="hidden" asp-for="Input.Semester" value="0" />
+                                    <input class="form-control" value="Anual (sin semestre)" readonly />
+                                }
+                                else
+                                {
+                                    <select asp-for="Input.Semester" class="form-control custom-select">
+                                        <option value="1">Semestre 1 (Enero - Junio)</option>
+                                        <option value="2">Semestre 2 (Julio - Diciembre)</option>
+                                    </select>
+                                }
                                 <span asp-validation-for="Input.Semester" class="text-danger"></span>
                             </div>
                         </div>

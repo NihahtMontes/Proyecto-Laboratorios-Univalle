@@ -45,11 +45,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Schedules
         public async Task OnGetAsync()
         {
             // Cargar Listas para Filtros
-            var labs = await _context.Laboratories.OrderBy(l => l.Name).ToListAsync();
+            var labs = await _context.Laboratories
+                .Where(l => l.Status == GeneralStatus.Activo)
+                .OrderBy(l => l.Name)
+                .ToListAsync();
             LabFList = new SelectList(labs, "Id", "Name");
 
             var techs = await _context.People
-                .Where(p => p.Category == PersonCategory.Tecnico)
+                .Where(p => p.Category == PersonCategory.Tecnico && p.Status == GeneralStatus.Activo)
                 .ToListAsync();
             TechFList = new SelectList(techs.OrderBy(t => t.FullName), "Id", "FullName");
 

@@ -14,11 +14,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly ILogger<DeleteModel> _logger;
 
-        public DeleteModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public DeleteModel(
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            UserManager<User> userManager,
+            ILogger<DeleteModel> logger)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger;
         }
 
         /// <summary>
@@ -45,6 +50,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             {
                 return NotFound();
             }
+
+            if (user.Role == UserRole.SuperAdmin &&
+                !base.User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+            {
+                return Forbid();
+            }
             
             AppUser = user;
             return Page();
@@ -64,6 +75,34 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 return NotFound();
             }
 
+            var currentUser = await _userManager.GetUserAsync(base.User);
+            if (currentUser?.Id == user.Id)
+            {
+                TempData.Error("No puede dar de baja su propia cuenta.");
+                return RedirectToPage("./Index");
+            }
+
+            if (user.Role == UserRole.SuperAdmin &&
+                !base.User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+            {
+                return Forbid();
+            }
+
+            if (user.Role == UserRole.SuperAdmin)
+            {
+                var hasAnotherActiveSuperAdmin = await _context.Users
+                    .IgnoreQueryFilters()
+                    .AnyAsync(candidate => candidate.Id != user.Id &&
+                        candidate.Role == UserRole.SuperAdmin &&
+                        candidate.Status == GeneralStatus.Activo);
+
+                if (!hasAnotherActiveSuperAdmin)
+                {
+                    TempData.Error("Debe existir al menos un superadministrador activo.");
+                    return RedirectToPage("./Index");
+                }
+            }
+
             // Check if the user is already deleted
             if (user.Status == GeneralStatus.Eliminado)
             {
@@ -75,8 +114,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             user.Status = GeneralStatus.Eliminado;
             user.LastModifiedDate = DateTime.UtcNow;
 
-            // Get current user for audit tracking - Use base.User to refer to ClaimsPrincipal
-            var currentUser = await _userManager.GetUserAsync(base.User);
             if (currentUser != null)
             {
                 user.ModifiedById = currentUser.Id;
@@ -84,13 +121,30 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             try
             {
-                _context.Users.Update(user);
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                var lockoutResult = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
+                if (!lockoutResult.Succeeded)
+                {
+                    TempData.Error("No se pudo revocar el acceso del usuario.");
+                    return RedirectToPage("./Delete", new { id });
+                }
+
+                var stampResult = await _userManager.UpdateSecurityStampAsync(user);
+                if (!stampResult.Succeeded)
+                {
+                    TempData.Error("No se pudo invalidar la sesion del usuario.");
+                    return RedirectToPage("./Delete", new { id });
+                }
+
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
                 TempData.Success($"El acceso para '{user.FullName}' ha sido revocado correctamente.");
             }
             catch (Exception ex)
             {
-                TempData.Error($"Hubo un error al intentar procesar la baja: {ex.Message}");
+                _logger.LogError(ex, "No se pudo dar de baja al usuario {UserId}.", id);
+                TempData.Error("No se pudo procesar la baja del usuario. Intente nuevamente.");
                 return RedirectToPage("./Delete", new { id });
             }
 

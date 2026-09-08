@@ -10,6 +10,7 @@ using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
 using System.ComponentModel.DataAnnotations;
+using System.Data;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 {
@@ -44,12 +45,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         public IActionResult OnGet(string? type = null)
         {
             Input.Year = DateTime.Now.Year;
-            Input.Semester = DateTime.Now.Month <= 6 ? 1 : 2;
 
-            if (!string.IsNullOrEmpty(type) && Enum.TryParse<ManagementType>(type, out var typeEnum))
+            if (!string.IsNullOrEmpty(type) &&
+                Enum.TryParse<ManagementType>(type, ignoreCase: true, out var typeEnum) &&
+                Enum.IsDefined(typeof(ManagementType), typeEnum))
             {
                 Input.Type = typeEnum;
             }
+
+            Input.Semester = Input.Type == ManagementType.Corrective
+                ? 0
+                : DateTime.Now.Month <= 6 ? 1 : 2;
 
             LoadFaculties();
             return Page();
@@ -70,11 +76,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             public int Year { get; set; }
 
             [Required(ErrorMessage = "El semestre es obligatorio")]
-            [Range(1, 2, ErrorMessage = "El semestre debe ser 1 o 2")]
-            [Display(Name = "Semestre (1 o 2)")]
+            [Range(0, 2, ErrorMessage = "El semestre debe ser 0, 1 o 2")]
+            [Display(Name = "Semestre")]
             public int Semester { get; set; }
 
             [Display(Name = "Descripcion general")]
+            [StringLength(1000)]
             public string? Description { get; set; }
 
             [Display(Name = "Fecha de Inicio")]
@@ -99,6 +106,40 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
         public async Task<IActionResult> OnPostAsync()
         {
+            if (!Enum.IsDefined(typeof(ManagementType), Input.Type))
+                ModelState.AddModelError("Input.Type", "Seleccione un tipo de gestión válido.");
+
+            if (!Enum.IsDefined(typeof(ManagementStatus), Input.Status) ||
+                Input.Status == ManagementStatus.Deleted)
+            {
+                ModelState.AddModelError("Input.Status", "Seleccione un estado inicial válido.");
+            }
+
+            if (Input.Type == ManagementType.Corrective)
+            {
+                Input.Semester = 0;
+                ModelState.Remove("Input.Semester");
+            }
+            else if (Input.Semester is < 1 or > 2)
+            {
+                ModelState.AddModelError("Input.Semester", "La gestión preventiva debe usar el semestre 1 o 2.");
+            }
+
+            if (Input.StartDate.HasValue && Input.PlannedEndDate.HasValue &&
+                Input.PlannedEndDate.Value.Date < Input.StartDate.Value.Date)
+            {
+                ModelState.AddModelError("Input.PlannedEndDate",
+                    "La fecha de cierre planificada no puede ser anterior a la fecha de inicio.");
+            }
+
+            if (Input.FacultyId.HasValue)
+            {
+                var facultyExists = await _context.Faculties.AnyAsync(faculty =>
+                    faculty.Id == Input.FacultyId.Value && faculty.Status == GeneralStatus.Activo);
+                if (!facultyExists)
+                    ModelState.AddModelError("Input.FacultyId", "La facultad seleccionada no está disponible.");
+            }
+
             if (!ModelState.IsValid)
             {
                 LoadFaculties();
@@ -108,11 +149,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             if (Input.Year > DateTime.Now.Year + 1)
             {
                 ModelState.AddModelError("Input.Year", "No se puede registrar una gestion para un anio tan lejano en el futuro.");
+                LoadFaculties();
                 return Page();
             }
 
             try
             {
+                await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
                 var code = BuildManagementCode(Input.Type, Input.Year, Input.Semester);
                 var exists = await _context.Managements.AnyAsync(m =>
                     m.Year == Input.Year &&
@@ -123,6 +167,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 if (exists)
                 {
                     ModelState.AddModelError(string.Empty, $"Ya existe una gestion registrada para {code}.");
+                    LoadFaculties();
                     return Page();
                 }
 
@@ -132,13 +177,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     Year = Input.Year,
                     Semester = Input.Semester,
                     Code = code,
-                    Description = Input.Description,
+                    Description = Input.Description?.Clean(),
                     StartDate = Input.StartDate,
                     PlannedEndDate = Input.PlannedEndDate,
                     Status = Input.Status,
                     Type = Input.Type,
                     FacultyId = Input.FacultyId,
-                    Responsible = currentUser?.FullName ?? User.Identity?.Name ?? "Sistema"
+                    Responsible = currentUser?.FullName ?? User.Identity?.Name ?? "Sistema",
+                    CreatedById = currentUser?.Id,
+                    CreatedDate = DateTime.UtcNow
                 };
 
                 _context.Managements.Add(management);
@@ -151,6 +198,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 }
 
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
                 _managementContext.InvalidateCache();
 
                 var handoffMessage = closedCount > 0
@@ -169,14 +217,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al crear gestion {ManagementType} {Year}-{Semester}", Input.Type, Input.Year, Input.Semester);
-                return RedirectToPage("/Error", new
-                {
-                    module = "Gestion L-48",
-                    entityId = $"{Input.Type} {Input.Year}-{Input.Semester}",
-                    message = ex.Message,
-                    returnUrl = Url.Page("./Create", new { type = Input.Type.ToString() }),
-                    listUrl = Url.Page("./Index", new { Type = Input.Type.ToString() })
-                });
+                ModelState.AddModelError(string.Empty,
+                    "No se pudo crear la gestión. Intente nuevamente o contacte al administrador.");
+                LoadFaculties();
+                return Page();
             }
         }
 

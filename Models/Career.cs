@@ -13,6 +13,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
+        [StringLength(30)]
+        [Display(Name = "Código de Carrera")]
+        public string? Code { get; set; }
+
         [Required(ErrorMessage = "El nombre de la carrera es obligatorio")]
         [StringLength(200)]
         [Display(Name = "Nombre de la Carrera")]

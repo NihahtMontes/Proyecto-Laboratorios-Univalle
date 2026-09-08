@@ -1,9 +1,9 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Users.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
-
-
-
+@{
+    var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter.HasValue;
+}
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm border-0">
@@ -40,33 +40,39 @@
                         </div>
 
                         <!-- 🔍 Smart Index Zone -->
-                        <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
-                            <form method="get">
-                                <div class="row align-items-end">
-                                    <div class="col-md-5">
-                                        <label class="small font-weight-bold text-muted uppercase">Búsqueda Técnica</label>
-                                        <div class="input-group drop-shadow">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
-                                            </div>
-                                            <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, Usuario o C.I..." />
-                                        </div>
+                        <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                            <form method="get" data-live-filter-form>
+                                <label asp-for="SearchTerm" class="sr-only">Buscar usuario</label>
+                                <div class="input-group mb-3">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                                     </div>
-                                    <div class="col-md-3">
-                                        <label class="small font-weight-bold text-muted uppercase">Estatus General</label>
-                                        <select asp-for="StatusFilter" class="form-control custom-select" 
-                                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()">
-                                            <option value="">-- Todos --</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4 text-right mt-2 mt-md-0">
-                                        <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
-                                            <i class="fas fa-filter mr-1"></i> Filtrar
-                                        </button>
-                                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1">
-                                            <i class="fas fa-sync-alt"></i>
+                                    <input type="search" asp-for="SearchTerm"
+                                           class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                                           placeholder="Buscar por nombre, usuario o C.I."
+                                           autocomplete="off"
+                                           data-live-filter-search />
+                                </div>
+
+                                <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                                    <select asp-for="StatusFilter"
+                                            class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.StatusFilter.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                            asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
+                                            aria-label="Estado"
+                                            data-live-filter-control>
+                                        <option value="">Estado</option>
+                                    </select>
+
+                                    @if (hasActiveFilters)
+                                    {
+                                        <a asp-page="./Index" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                            <i class="fas fa-times mr-1"></i> Limpiar filtros
                                         </a>
-                                    </div>
+                                    }
+
+                                    <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                        <strong class="text-dark">@Model.UserList.TotalCount</strong> cuenta(s)
+                                    </span>
                                 </div>
                             </form>
                         </div>
@@ -157,7 +163,7 @@
                             </table>
                         </div>
 
-                        @if (Model.UserList.TotalPages > 1)
+                        @if (Model.UserList!.TotalPages > 1)
                         {
                             <nav aria-label="Paginación Usuarios">
                                 <ul class="pagination justify-content-center">
@@ -218,7 +224,7 @@
                             </div>
                         }
 
-                        @if (Model.PersonsList.TotalPages > 1)
+                        @if (Model.PersonsList!.TotalPages > 1)
                         {
                             <nav aria-label="Paginación Personas">
                                 <ul class="pagination justify-content-center">
@@ -272,7 +278,6 @@
         .border-3 { border-left-width: 3px !important; }
     </style>
 }
-
 @section Scripts {
     <script>
         $(function () {

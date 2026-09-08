@@ -85,6 +85,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Última Modificación")]
         public DateTime? LastModifiedDate { get; set; }
 
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = [];
+
         // ========================================
         // NAVEGACIÓN
         // ========================================
@@ -99,6 +102,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         // Todas las entradas del plan para este periodo
         public virtual ICollection<ManagementPlan> ManagementPlans { get; set; } = new List<ManagementPlan>();
+        public virtual ICollection<MaintenancePlan> HistoricalMaintenancePlans { get; set; } = [];
 
         // ========================================
         // PROPIEDADES CALCULADAS

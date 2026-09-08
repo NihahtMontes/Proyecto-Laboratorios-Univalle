@@ -14,11 +14,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly ILogger<DeleteModel> _logger;
 
-        public DeleteModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public DeleteModel(
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            UserManager<User> userManager,
+            ILogger<DeleteModel> logger)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger;
         }
 
         [BindProperty]
@@ -86,7 +91,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             }
             catch (Exception ex)
             {
-                TempData.Error($"Hubo un error al intentar procesar la baja: {ex.Message}");
+                _logger.LogError(ex, "No se pudo dar de baja a la persona {PersonId}.", id);
+                TempData.Error("No se pudo procesar la baja. Intente nuevamente.");
                 return RedirectToPage("./Delete", new { id });
             }
 

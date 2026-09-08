@@ -3,63 +3,11 @@ using System.Text;
 using OfficeOpenXml;
 
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
-var defaultWorkbook = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-    "Downloads",
-    "PLANTILLA_CARGA_DATOS_v3 1 (1) 1 1.xlsx");
-
-var seedMode = args.Any(a => a.Equals("--seed", StringComparison.OrdinalIgnoreCase));
-var positionalArgs = args.Where(a => !a.StartsWith("--", StringComparison.OrdinalIgnoreCase)).ToArray();
-var workbookPath = positionalArgs.Length > 0 ? positionalArgs[0] : defaultWorkbook;
-var outputDir = positionalArgs.Length > 1
-    ? positionalArgs[1]
-    : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tmp", seedMode ? "seed-data" : "data-audit"));
-
-if (!File.Exists(workbookPath))
-{
-    Console.Error.WriteLine($"Workbook not found: {workbookPath}");
-    Console.Error.WriteLine("Usage: dotnet run --project Tools/HistoricalDataImport -- \"path-to.xlsx\" [output-dir] [--seed]");
-    return 2;
-}
-
-Directory.CreateDirectory(outputDir);
-
-var analyzer = new HistoricalDataAnalyzer(workbookPath);
-var result = analyzer.Analyze();
-
-if (seedMode)
-{
-    var seed = new SeedDataBuilder(result).Build();
-    var seedWriter = new SeedOutputWriter(outputDir, seed);
-    seedWriter.WriteAll();
-
-    Console.WriteLine("Historical seed data completed.");
-    Console.WriteLine($"Workbook: {workbookPath}");
-    Console.WriteLine($"Output:   {outputDir}");
-    Console.WriteLine($"Chains:   {seed.Chains.Count}");
-    Console.WriteLine($"Origins:  {seed.Origins.Count}");
-    Console.WriteLine($"Rejects:  {seed.Rejects.Count}");
-    Console.WriteLine($"SQL:      {Path.Combine(outputDir, "load-seed.sql")}");
-    return 0;
-}
-
-var writer = new OutputWriter(outputDir, result);
-writer.WriteAll();
-
-Console.WriteLine("Historical data audit completed.");
-Console.WriteLine($"Workbook: {workbookPath}");
-Console.WriteLine($"Output:   {outputDir}");
-Console.WriteLine($"Issues:   {result.Issues.Count}");
-Console.WriteLine($"Rejects:  {result.Rejects.Count}");
-Console.WriteLine($"SQL:      {Path.Combine(outputDir, "load.sql")}");
-return 0;
+return HistoricalImportApplication.Run(args);
 
 internal sealed class HistoricalDataAnalyzer
 {
     private const string OfficialGastronomyFaculty = "Facultad de Gastronomia y Turismo - Carrera de Gastronom\u00eda";
-    private const int CreatedById = 1;
-
     private readonly string _workbookPath;
     private readonly AnalysisResult _result = new();
     private readonly Dictionary<string, EquipmentRecord> _equipmentByKey = new(StringComparer.OrdinalIgnoreCase);
@@ -73,7 +21,7 @@ internal sealed class HistoricalDataAnalyzer
     private ExcelWorksheet _careers = null!;
     private ExcelWorksheet _catalogs = null!;
     private ExcelWorksheet _laboratories = null!;
-    private ExcelWorksheet _inventory = null!;
+    private ExcelWorksheet? _inventory;
     private ExcelWorksheet _verifications = null!;
     private ExcelWorksheet _requests = null!;
     private ExcelWorksheet _kardex = null!;
@@ -99,6 +47,7 @@ internal sealed class HistoricalDataAnalyzer
         ReadManagements();
         ReadCatalogsAndUnits();
         ReadInventoryOverrides();
+        RecordPendingLocations();
         ReadVerifications();
         ReadRequests();
         ReadKardex();
@@ -122,7 +71,11 @@ internal sealed class HistoricalDataAnalyzer
         _careers = workbook.Worksheets["0b \u00b7 Carreras"] ?? workbook.Worksheets[2];
         _catalogs = workbook.Worksheets["1 \u00b7 Cat\u00e1logos"] ?? workbook.Worksheets[3];
         _laboratories = workbook.Worksheets["0c \u00b7 Laboratorios"] ?? workbook.Worksheets[4];
-        _inventory = workbook.Worksheets["2 \u00b7 IInventario"] ?? workbook.Worksheets[6];
+        // Optional sheet: the real template keeps physical units only in "Catalogos".
+        _inventory = workbook.Worksheets["2 \u00b7 IInventario"]
+            ?? workbook.Worksheets["2 \u00b7 Inventario"]
+            ?? workbook.Worksheets["Inventario"]
+            ?? workbook.Worksheets.FirstOrDefault(w => w.Name.Contains("Inventario", StringComparison.OrdinalIgnoreCase));
         _verifications = workbook.Worksheets["3 \u00b7 Verificaciones"] ?? workbook.Worksheets[7];
         _requests = workbook.Worksheets["4 \u00b7 Solicitudes"] ?? workbook.Worksheets[8];
         _kardex = workbook.Worksheets["5 \u00b7 Kardex Mantenimiento"] ?? workbook.Worksheets[9];
@@ -225,10 +178,9 @@ internal sealed class HistoricalDataAnalyzer
     {
         foreach (var row in DataRows(_plans, 9))
         {
-            var code = Text(row, 1);
-            if (!TryParseManagement(code, out var year, out var semester))
+            if (!TryResolvePlanManagement(row, out var year, out var semester, out var code))
             {
-                Issue("ERROR", _plans, row, "A", $"Invalid management value '{code}'. Expected YYYY-S.");
+                Issue("ERROR", _plans, row, "A", $"Cannot resolve management (Gestion='{Text(row, 1)}', Fecha='{Text(row, 8)}').");
                 continue;
             }
 
@@ -290,12 +242,18 @@ internal sealed class HistoricalDataAnalyzer
 
     private void ReadInventoryOverrides()
     {
-        foreach (var row in DataRows(_inventory, 11))
+        // The inventory sheet is optional. When it is absent (real template), skip silently.
+        if (_inventory is not { } inventorySheet)
+        {
+            return;
+        }
+
+        foreach (var row in DataRows(inventorySheet, 11))
         {
             var inventory = NormalizeInventory(Text(row, 1));
             if (string.IsNullOrWhiteSpace(inventory))
             {
-                Reject(_inventory, row, "Inventory row lacks inventory number.");
+                Reject(inventorySheet, row, "Inventory row lacks inventory number.");
                 continue;
             }
 
@@ -304,14 +262,14 @@ internal sealed class HistoricalDataAnalyzer
                 var equipmentName = Text(row, 2);
                 if (string.IsNullOrWhiteSpace(equipmentName))
                 {
-                    Reject(_inventory, row, $"Inventory '{inventory}' does not exist in catalogs and has no equipment name.");
+                    Reject(inventorySheet, row, $"Inventory '{inventory}' does not exist in catalogs and has no equipment name.");
                     continue;
                 }
 
-                var equipment = AddEquipment(equipmentName, null, null, null, 0, 7, null, _inventory.Name, row);
-                unit = new UnitRecord(inventory, equipment.Key, null, null, null, null, null, null, 0, null, null, _inventory.Name, row);
+                var equipment = AddEquipment(equipmentName, null, null, null, 0, 7, null, inventorySheet.Name, row);
+                unit = new UnitRecord(inventory, equipment.Key, null, null, null, null, null, null, 0, null, null, inventorySheet.Name, row);
                 _unitsByInventory[inventory] = unit;
-                Issue("WARN", _inventory, row, "A", $"Inventory '{inventory}' was created from sheet 2 because it was not present in sheet 1.");
+                Issue("WARN", inventorySheet, row, "A", $"Inventory '{inventory}' was created from sheet 2 because it was not present in sheet 1.");
             }
 
             unit.SerialNumber = Coalesce(Text(row, 3), unit.SerialNumber);
@@ -325,9 +283,24 @@ internal sealed class HistoricalDataAnalyzer
 
             if (!string.IsNullOrWhiteSpace(unit.LaboratoryCode) && !LabExists(unit.LaboratoryCode))
             {
-                Issue("ERROR", _inventory, row, "D", $"Unknown laboratory code '{unit.LaboratoryCode}'.");
+                Issue("ERROR", inventorySheet, row, "D", $"Unknown laboratory code '{unit.LaboratoryCode}'.");
             }
         }
+    }
+
+    private void RecordPendingLocations()
+    {
+        var unitsWithoutLaboratory = _unitsByInventory.Values
+            .Where(unit => string.IsNullOrWhiteSpace(unit.LaboratoryCode))
+            .ToList();
+
+        if (unitsWithoutLaboratory.Count == 0)
+        {
+            return;
+        }
+
+        _result.KnownFindings.Add(
+            $"{unitsWithoutLaboratory.Count} unidades sin laboratorio expl\u00edcito se conservar\u00e1n con LaboratoryId NULL y LocationResolutionStatus=Pending.");
     }
 
     private void ReadVerifications()
@@ -335,24 +308,35 @@ internal sealed class HistoricalDataAnalyzer
         foreach (var row in DataRows(_verifications, 7))
         {
             var inventory = NormalizeInventory(Text(row, 1));
+            var equipmentName = Text(row, 5);
             if (string.IsNullOrWhiteSpace(inventory))
             {
+                _result.UnresolvedVerifications.Add(new UnresolvedVerificationRecord(
+                    $"UNRES_VER_R{row}", Text(row, 1), Text(row, 2), Text(row, 3), Text(row, 4), equipmentName,
+                    Text(row, 6), Text(row, 7), "No inventory number (only equipment name).", _verifications.Name, row));
                 Reject(_verifications, row, "Verification has no inventory number. It will not be inserted.");
                 continue;
             }
 
             if (!_unitsByInventory.ContainsKey(inventory))
             {
+                _result.UnresolvedVerifications.Add(new UnresolvedVerificationRecord(
+                    $"UNRES_VER_R{row}", inventory, Text(row, 2), Text(row, 3), Text(row, 4), equipmentName,
+                    Text(row, 6), Text(row, 7), "Inventory not found among known units.", _verifications.Name, row));
                 Issue("ERROR", _verifications, row, "A", $"Verification references '{inventory}', which is not a known inventory number.");
                 Reject(_verifications, row, $"Unknown inventory '{inventory}' in verification.");
                 continue;
             }
 
+            var verificationDate = ParseDate(Text(row, 2)) ?? DateTime.Today;
+            var verificationGestion = ResolveGestion(verificationDate);
+            AddManagement(verificationGestion.Year, verificationGestion.Semester, verificationGestion.Code, row);
+
             var verification = new VerificationRecord(
                 $"VER_R{row}",
                 inventory,
-                GetDefaultManagementCode(),
-                ParseDate(Text(row, 2)) ?? DateTime.Today,
+                verificationGestion.Code,
+                verificationDate,
                 MapPhysicalCondition(Text(row, 3)),
                 1,
                 JoinText(Text(row, 4), Text(row, 5), Text(row, 7)),
@@ -410,9 +394,7 @@ internal sealed class HistoricalDataAnalyzer
 
                 if (string.IsNullOrWhiteSpace(unit.LaboratoryCode))
                 {
-                    Issue("ERROR", _requests, row, "A", $"Request inventory '{inventory}' has no laboratory. Request cannot be inserted.");
-                    Reject(_requests, row, $"Inventory '{inventory}' has no laboratory for request.");
-                    continue;
+                    Issue("WARN", _requests, row, "A", $"Request inventory '{inventory}' has no laboratory; it will remain pending without inventing a location.");
                 }
 
                 var description = Text(row, 4);
@@ -422,17 +404,21 @@ internal sealed class HistoricalDataAnalyzer
                     continue;
                 }
 
+                var requestDate = ParseDate(Text(row, 2)) ?? DateTime.Today;
+                var requestGestion = ResolveGestion(requestDate);
+                AddManagement(requestGestion.Year, requestGestion.Semester, requestGestion.Code, row);
+
                 var key = $"REQ_R{row}_{SanitizeKey(inventory)}";
                 _requestsByKey[key] = new RequestRecord(
                     key,
                     inventory,
                     unit.LaboratoryCode,
                     unit.EquipmentKey,
-                    GetDefaultManagementCode(),
+                    requestGestion.Code,
                     1,
                     0,
                     1,
-                    ParseDate(Text(row, 2)) ?? DateTime.Today,
+                    requestDate,
                     TruncateRequired(description, 1000),
                     Truncate(JoinText(Text(row, 5), PrefixIfAny("Solicitado por", Text(row, 8))), 500),
                     Truncate(Text(row, 6), 100),
@@ -468,32 +454,44 @@ internal sealed class HistoricalDataAnalyzer
                 AddPerson(technicianName, "Externo", true, 5, null, null, "Sin dato", _kardex.Name, row, warnIfAutoCreated: true);
             }
 
+            var maintenanceDate = ParseDate(Text(row, 2))
+                ?? ParseDate(Text(row, 3))
+                ?? ParseDate(Text(row, 4))
+                ?? DateTime.Today;
+            var maintenanceGestion = ResolveGestion(maintenanceDate);
+            AddManagement(maintenanceGestion.Year, maintenanceGestion.Semester, maintenanceGestion.Code, row);
+
             var key = $"MNT_R{row}_{SanitizeKey(inventory)}";
+            var scheduledDate = ParseDate(Text(row, 2));
+            var startDate = ParseDate(Text(row, 3));
+            var endDate = ParseDate(Text(row, 4));
+            if (scheduledDate.HasValue && endDate.HasValue && scheduledDate > endDate)
+            {
+                Issue("WARN", _kardex, row, "B", "La fecha programada es posterior a la finalizaci\u00f3n; se importa como NULL sin reinterpretarla.");
+                scheduledDate = null;
+            }
+
             var maintenance = new MaintenanceRecord(
                 key,
                 inventory,
-                GetDefaultManagementCode(),
+                maintenanceGestion.Code,
                 MapMaintenanceType(Text(row, 5)),
                 MapServiceType(Text(row, 6)),
                 technicianName,
                 null,
-                ParseDate(Text(row, 2)),
-                ParseDate(Text(row, 3)),
-                ParseDate(Text(row, 4)),
+                scheduledDate,
+                startDate,
+                endDate,
                 Truncate(Text(row, 8), 2000),
                 string.IsNullOrWhiteSpace(Text(row, 4)) ? 1 : 2,
-                ParseDecimal(Text(row, 13)),
-                MapSatisfaction(Text(row, 14)),
-                Truncate(Text(row, 15), 1000),
-                ParseDate(Text(row, 16)),
+                ParseDecimal(Text(row, 9)),   // Column I "Costo Total Bs (opcional)"
+                MapSatisfaction(Text(row, 10)),   // Column J "Nivel de Satisfaccion"
+                Truncate(Text(row, 11), 1000),   // Column K "Recomendaciones Post-Servicio"
+                ParseDate(Text(row, 12)),   // Column L "Fecha Proximo Mantenimiento"
                 _kardex.Name,
                 row);
             _maintenanceByKey[key] = maintenance;
 
-            if (!string.IsNullOrWhiteSpace(maintenance.Description))
-            {
-                _result.MaintenanceTasks.Add(new MaintenanceTaskRecord(key, TruncateRequired(maintenance.Description, 255), maintenance.Status == 2, _kardex.Name, row));
-            }
         }
     }
 
@@ -529,9 +527,9 @@ internal sealed class HistoricalDataAnalyzer
             else if (type.Equals("Desembolso", StringComparison.OrdinalIgnoreCase))
             {
                 var lab = Coalesce(Text(row, 4), unit.LaboratoryCode);
-                if (string.IsNullOrWhiteSpace(lab) || !LabExists(lab))
+                if (!string.IsNullOrWhiteSpace(lab) && !LabExists(lab))
                 {
-                    Reject(_costs, row, $"Disbursement cost for inventory '{inventory}' has no valid laboratory.");
+                    Reject(_costs, row, $"Disbursement cost for inventory '{inventory}' references an unknown laboratory.");
                     continue;
                 }
 
@@ -648,7 +646,6 @@ internal sealed class HistoricalDataAnalyzer
     {
         foreach (var row in DataRows(_plans, 9))
         {
-            var managementCode = Text(row, 1);
             var inventory = NormalizeInventory(Text(row, 2));
             if (string.IsNullOrWhiteSpace(inventory))
             {
@@ -662,9 +659,9 @@ internal sealed class HistoricalDataAnalyzer
                 continue;
             }
 
-            if (!TryParseManagement(managementCode, out var year, out var semester))
+            if (!TryResolvePlanManagement(row, out var year, out var semester, out var managementCode))
             {
-                Reject(_plans, row, $"Invalid management code '{managementCode}'.");
+                Reject(_plans, row, $"Invalid management (Gestion='{Text(row, 1)}', Fecha='{Text(row, 8)}').");
                 continue;
             }
 
@@ -746,6 +743,50 @@ internal sealed class HistoricalDataAnalyzer
         }
 
         _managementByCode[code] = new ManagementRecord(code, year, semester, $"Gestion historica {code}", sourceRow);
+    }
+
+    // Resolves the management (year + semester) for a Plan (L-48) row.
+    // The real template stores only a bare year in col 1 ("Gestion") and the actual date in col 8
+    // ("Fecha Ejecucion"), so the execution date drives the semester when available.
+    private bool TryResolvePlanManagement(SheetRow row, out int year, out int semester, out string code)
+    {
+        var executionDate = ParseDate(Text(row, 8));
+        if (executionDate.HasValue)
+        {
+            var gestion = ResolveGestion(executionDate.Value);
+            year = gestion.Year;
+            semester = gestion.Semester;
+            code = gestion.Code;
+            return true;
+        }
+
+        var raw = Text(row, 1).Trim();
+        if (TryParseManagement(raw, out year, out semester))
+        {
+            code = raw;
+            return true;
+        }
+
+        // A bare year (e.g. "2025") is the documented format for this column; default to semester 1.
+        if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var bareYear)
+            && bareYear >= 1900 && bareYear <= 2999)
+        {
+            year = bareYear;
+            semester = 1;
+            code = $"{bareYear}-1";
+            return true;
+        }
+
+        // Last resort: a formatted/serial date in the Gestion column.
+        if (TryResolveManagement(raw, out year, out semester, out code))
+        {
+            return true;
+        }
+
+        year = 0;
+        semester = 0;
+        code = string.Empty;
+        return false;
     }
 
     private string GetDefaultManagementCode()
@@ -853,7 +894,13 @@ internal sealed class HistoricalDataAnalyzer
 
     private static string NormalizeInventory(string value)
     {
-        return value.Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        // Strip surrounding whitespace and leading noise such as ':' so keys like ":34179" match their unit.
+        return value.Trim().TrimStart(':', ' ', '\t').Trim();
     }
 
     private InventorySplit SplitInventoryTokens(string value)
@@ -1022,6 +1069,64 @@ internal sealed class HistoricalDataAnalyzer
         return true;
     }
 
+    // Derives the management (gestion) code from a date: semester 1 = Jan-Jun, semester 2 = Jul-Dec.
+    private static (int Year, int Semester, string Code) ResolveGestion(DateTime fecha)
+    {
+        var year = fecha.Year;
+        var semester = fecha.Month <= 6 ? 1 : 2;
+        return (year, semester, $"{year}-{semester}");
+    }
+
+    // Resolves a "Gestion" cell that may hold either a literal YYYY-S code or an Excel serial/formatted date.
+    private static bool TryResolveManagement(string value, out int year, out int semester, out string code)
+    {
+        if (TryParseManagement(value, out year, out semester))
+        {
+            code = value.Trim();
+            return true;
+        }
+
+        var date = ParseManagementDate(value);
+        if (date.HasValue)
+        {
+            var gestion = ResolveGestion(date.Value);
+            year = gestion.Year;
+            semester = gestion.Semester;
+            code = gestion.Code;
+            return true;
+        }
+
+        year = 0;
+        semester = 0;
+        code = string.Empty;
+        return false;
+    }
+
+    private static DateTime? ParseManagementDate(string value)
+    {
+        var parsed = ParseDate(value);
+        if (parsed.HasValue)
+        {
+            return parsed;
+        }
+
+        // Excel serial date (numeric cell): 60 ~ 1900-03-01, upper bound guards against unrelated large numbers.
+        if (double.TryParse(value.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out var serial)
+            && serial > 59 && serial < 100000)
+        {
+            try
+            {
+                return DateTime.FromOADate(serial).Date;
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
     private static bool IsYes(string value)
     {
         var normalized = RemoveDiacritics(value).Trim();
@@ -1166,7 +1271,6 @@ internal sealed class HistoricalDataAnalyzer
 
 internal sealed class OutputWriter
 {
-    private const int CreatedById = 1;
     private readonly string _outputDir;
     private readonly AnalysisResult _result;
 
@@ -1176,13 +1280,16 @@ internal sealed class OutputWriter
         _result = result;
     }
 
-    public void WriteAll()
+    public void WriteAll(bool includeSql = true)
     {
         WriteAudit();
         WriteIssues();
         WriteRejects();
         WritePreview();
-        WriteSql();
+        if (includeSql)
+        {
+            WriteSql();
+        }
     }
 
     private void WriteAudit()
@@ -1314,7 +1421,6 @@ internal sealed class SqlScriptBuilder
         InsertUnits();
         InsertRequests();
         InsertMaintenances();
-        InsertMaintenanceTasks();
         InsertCostDetails();
         InsertDepartures();
         InsertDepartureItems();
@@ -1325,10 +1431,21 @@ internal sealed class SqlScriptBuilder
 
     private void Header()
     {
+        _sql.AppendLine("SET ANSI_NULLS ON;");
+        _sql.AppendLine("SET ANSI_PADDING ON;");
+        _sql.AppendLine("SET ANSI_WARNINGS ON;");
+        _sql.AppendLine("SET ARITHABORT ON;");
+        _sql.AppendLine("SET CONCAT_NULL_YIELDS_NULL ON;");
+        _sql.AppendLine("SET QUOTED_IDENTIFIER ON;");
+        _sql.AppendLine("SET NUMERIC_ROUNDABORT OFF;");
+        _sql.AppendLine("SET NOCOUNT ON;");
         _sql.AppendLine("SET XACT_ABORT ON;");
+        _sql.AppendLine("IF OBJECT_ID(N'dbo.__EFMigrationsHistory', N'U') IS NULL");
+        _sql.AppendLine("    THROW 51000, 'La base destino no contiene el esquema EF Core esperado.', 1;");
+        _sql.AppendLine("BEGIN TRY");
         _sql.AppendLine("BEGIN TRANSACTION;");
         _sql.AppendLine();
-        _sql.AppendLine("DECLARE @CreatedById int = 1;");
+        _sql.AppendLine("DECLARE @CreatedById int = NULL;");
         _sql.AppendLine("DECLARE @Today datetime2 = SYSUTCDATETIME();");
         _sql.AppendLine();
     }
@@ -1428,6 +1545,8 @@ internal sealed class SqlScriptBuilder
                 _sql.AppendLine($"    INSERT INTO Interns (Id, Name, InternStatus) VALUES (@PersonId, {S(p.Name)}, 0);");
             }
             _sql.AppendLine("END");
+            _sql.AppendLine($"IF OBJECT_ID(N'PersonAliases', N'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM PersonAliases WHERE PersonId = @PersonId AND IsPreferred = 1) INSERT INTO PersonAliases (PersonId, Alias, NormalizedAlias, IsPreferred, Source) VALUES (@PersonId, {S(p.Name)}, UPPER(LTRIM(RTRIM(REPLACE(REPLACE({S(p.Name)}, CHAR(13), N' '), CHAR(10), N' ')))), 1, N'Plantilla_Original.xlsx');");
+            _sql.AppendLine($"IF OBJECT_ID(N'PersonRoleAssignments', N'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM PersonRoleAssignments WHERE PersonId = @PersonId AND IsActive = 1) INSERT INTO PersonRoleAssignments (PersonId, Role, IsActive, ValidFrom) VALUES (@PersonId, {(p.Category == 1 ? 1 : p.Category == 5 ? 3 : 99)}, 1, @Today);");
             _sql.AppendLine($"INSERT INTO @PersonMap ([Key], Id) VALUES ({S(p.Name)}, @PersonId);");
             _sql.AppendLine();
         }
@@ -1442,7 +1561,7 @@ internal sealed class SqlScriptBuilder
             _sql.AppendLine($"SELECT @ManagementId = Id FROM Managements WHERE Year = {m.Year} AND Semester = {m.Semester} AND Type = 0;");
             _sql.AppendLine("IF @ManagementId IS NULL");
             _sql.AppendLine("BEGIN");
-            _sql.AppendLine($"    INSERT INTO Managements (Year, Semester, Code, Description, Status, Responsible, Type, CreatedDate, CreatedById) VALUES ({m.Year}, {m.Semester}, {S(m.Code)}, {S(m.Description)}, 0, N'Carga historica', 0, @Today, @CreatedById);");
+            _sql.AppendLine($"    INSERT INTO Managements (Year, Semester, Code, Description, Status, Responsible, Type, CreatedDate, CreatedById) VALUES ({m.Year}, {m.Semester}, {S(m.Code)}, {S(m.Description)}, 2, N'Carga historica', 0, @Today, @CreatedById);");
             _sql.AppendLine("    SET @ManagementId = CONVERT(int, SCOPE_IDENTITY());");
             _sql.AppendLine("END");
             _sql.AppendLine($"INSERT INTO @ManagementMap ([Key], Id) VALUES ({S(m.Code)}, @ManagementId);");
@@ -1490,7 +1609,7 @@ internal sealed class SqlScriptBuilder
             _sql.AppendLine($"SELECT @UnitId = Id FROM EquipmentUnits WHERE InventoryNumber = {S(u.InventoryNumber)};");
             _sql.AppendLine("IF @UnitId IS NULL");
             _sql.AppendLine("BEGIN");
-            _sql.AppendLine($"    INSERT INTO EquipmentUnits (ManagementId, EquipmentId, LaboratoryId, InventoryNumber, SerialNumber, CareerId, AcquisitionDate, ManufacturingDate, AcquisitionValue, CurrentStatus, PhysicalCondition, Notes, CreatedDate, CreatedById) VALUES (@UnitManagementId, @UnitEquipmentId, @UnitLabId, {S(u.InventoryNumber)}, {S(u.SerialNumber)}, @UnitCareerId, {D(u.AcquisitionDate)}, {D(u.ManufacturingDate)}, {N(u.AcquisitionValue)}, {u.Status}, {N(u.PhysicalCondition)}, {S(u.Notes)}, @Today, @CreatedById);");
+            _sql.AppendLine($"    INSERT INTO EquipmentUnits (ManagementId, EquipmentId, LaboratoryId, LocationResolutionStatus, InventoryNumber, SerialNumber, CareerId, AcquisitionDate, ManufacturingDate, AcquisitionValue, CurrentStatus, PhysicalCondition, Notes, CreatedDate, CreatedById) VALUES (@UnitManagementId, @UnitEquipmentId, @UnitLabId, CASE WHEN @UnitLabId IS NULL THEN 0 ELSE 1 END, {S(u.InventoryNumber)}, {S(u.SerialNumber)}, @UnitCareerId, {D(u.AcquisitionDate)}, {D(u.ManufacturingDate)}, {N(u.AcquisitionValue)}, {u.Status}, {N(u.PhysicalCondition)}, {S(u.Notes)}, @Today, @CreatedById);");
             _sql.AppendLine("    SET @UnitId = CONVERT(int, SCOPE_IDENTITY());");
             _sql.AppendLine("END");
             _sql.AppendLine($"INSERT INTO @UnitMap ([Key], Id, EquipmentId, LaboratoryId) VALUES ({S(u.InventoryNumber)}, @UnitId, @UnitEquipmentId, @UnitLabId);");
@@ -1510,7 +1629,7 @@ internal sealed class SqlScriptBuilder
             _sql.AppendLine("DECLARE @RequestManagementId int;");
             _sql.AppendLine($"SELECT @RequestUnitId = Id, @RequestEquipmentId = EquipmentId, @RequestLabId = LaboratoryId FROM @UnitMap WHERE [Key] = {S(r.InventoryNumber)};");
             _sql.AppendLine($"SELECT @RequestManagementId = Id FROM @ManagementMap WHERE [Key] = {S(r.ManagementCode)};");
-            _sql.AppendLine($"INSERT INTO Requests (LaboratoryId, EquipmentId, EquipmentUnitId, ManagementId, Description, Priority, Observations, EstimatedRepairTime, Status, Type, InvestmentCode, CostCenter, CreatedDate, CreatedById) VALUES (@RequestLabId, @RequestEquipmentId, @RequestUnitId, @RequestManagementId, {S(r.Description)}, {r.Priority}, {S(r.Observations)}, {S(r.EstimatedRepairTime)}, {r.Status}, {r.Type}, {S(r.InvestmentCode)}, {S(r.CostCenter)}, {D(r.CreatedDate)}, @CreatedById);");
+            _sql.AppendLine($"INSERT INTO Requests (LaboratoryId, LocationResolutionStatus, EquipmentId, EquipmentUnitId, ManagementId, Description, Priority, Observations, EstimatedRepairTime, Status, Type, InvestmentCode, CostCenter, CreatedDate, CreatedById) VALUES (@RequestLabId, CASE WHEN @RequestLabId IS NULL THEN 0 ELSE 1 END, @RequestEquipmentId, @RequestUnitId, @RequestManagementId, {S(r.Description)}, {r.Priority}, {S(r.Observations)}, {S(r.EstimatedRepairTime)}, {r.Status}, {r.Type}, {S(r.InvestmentCode)}, {S(r.CostCenter)}, {D(r.CreatedDate)}, @CreatedById);");
             _sql.AppendLine("SET @RequestId = CONVERT(int, SCOPE_IDENTITY());");
             _sql.AppendLine($"INSERT INTO @RequestMap ([Key], Id) VALUES ({S(r.Key)}, @RequestId);");
             _sql.AppendLine();
@@ -1534,18 +1653,8 @@ internal sealed class SqlScriptBuilder
             }
             _sql.AppendLine($"INSERT INTO Maintenances (EquipmentUnitId, MaintenanceType, ManagementId, ServiceType, TechnicianId, ScheduledDate, StartDate, EndDate, Description, Status, CompletionPercentage, Step1_Cleaning, Step2_Calibration, Step3_Testing, Step4_FinalReview, ActualCost, SatisfactionLevel, Recommendations, SuggestedNextMaintenanceDate, CreatedDate, CreatedById) VALUES (@MaintenanceUnitId, {m.MaintenanceType}, @MaintenanceManagementId, {m.ServiceType}, @TechnicianId, {D(m.ScheduledDate)}, {D(m.StartDate)}, {D(m.EndDate)}, {S(m.Description)}, {m.Status}, {(m.Status == 2 ? 100 : 0)}, 0, 0, 0, 0, {N(m.ActualCost)}, {N(m.SatisfactionLevel)}, {S(m.Recommendations)}, {D(m.NextMaintenanceDate)}, @Today, @CreatedById);");
             _sql.AppendLine("SET @MaintenanceId = CONVERT(int, SCOPE_IDENTITY());");
+            _sql.AppendLine("IF @TechnicianId IS NOT NULL INSERT INTO MaintenanceParticipants (MaintenanceId, PersonId, Role, IsPrimary, IsActive, AssignedAt) VALUES (@MaintenanceId, @TechnicianId, 1, 1, 1, @Today);");
             _sql.AppendLine($"INSERT INTO @MaintenanceMap ([Key], Id) VALUES ({S(m.Key)}, @MaintenanceId);");
-            _sql.AppendLine();
-        }
-    }
-
-    private void InsertMaintenanceTasks()
-    {
-        foreach (var t in _result.MaintenanceTasks)
-        {
-            _sql.AppendLine("DECLARE @TaskMaintenanceId int;");
-            _sql.AppendLine($"SELECT @TaskMaintenanceId = Id FROM @MaintenanceMap WHERE [Key] = {S(t.MaintenanceKey)};");
-            _sql.AppendLine($"IF @TaskMaintenanceId IS NOT NULL INSERT INTO MaintenanceTasks (MaintenanceId, Description, IsCompleted, IsDeleted) VALUES (@TaskMaintenanceId, {S(t.Description)}, {Bit(t.IsCompleted)}, 0);");
             _sql.AppendLine();
         }
     }
@@ -1619,6 +1728,11 @@ internal sealed class SqlScriptBuilder
     private void Footer()
     {
         _sql.AppendLine("COMMIT TRANSACTION;");
+        _sql.AppendLine("END TRY");
+        _sql.AppendLine("BEGIN CATCH");
+        _sql.AppendLine("    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;");
+        _sql.AppendLine("    THROW;");
+        _sql.AppendLine("END CATCH;");
     }
 
     private static string S(string? value)
@@ -1675,11 +1789,29 @@ internal sealed class SeedDataBuilder
 
         foreach (var f in _source.Faculties) Origin("Faculty", f.Name, "Excel", f.SourceSheet, f.SourceRow, "Maestro tomado del Excel.");
         foreach (var c in _source.Careers) Origin("Career", c.Name, "Excel", c.SourceSheet, c.SourceRow, "Maestro tomado del Excel.");
-        foreach (var l in _source.Laboratories) Origin("Laboratory", l.Code, "Excel", l.SourceSheet, l.SourceRow, "Maestro tomado del Excel.");
+        foreach (var l in _source.Laboratories)
+        {
+            var origin = l.SourceSheet.Equals("Inferido", StringComparison.OrdinalIgnoreCase) ? "Inferido" : "Excel";
+            var notes = origin == "Inferido"
+                ? "Ubicacion tecnica creada para conservar FK obligatorias sin inventar una ubicacion fisica."
+                : "Maestro tomado del Excel.";
+            Origin("Laboratory", l.Code, origin, l.SourceSheet, l.SourceRow, notes);
+        }
         foreach (var p in _source.People) Origin("Person", p.Name, "Excel", p.SourceSheet, p.SourceRow, "Persona/proveedor tomado del Excel o referencia real normalizada.");
         foreach (var m in _source.Managements) Origin("Management", m.Code, "Excel", "8 - Plan", m.SourceRow, "Gestion tomada del Excel.");
         foreach (var e in _source.Equipments) Origin("Equipment", e.Key, "Excel", e.SourceSheet, e.SourceRow, "Equipo derivado del catalogo real.");
-        foreach (var u in _source.Units) Origin("EquipmentUnit", u.InventoryNumber, "Excel", u.SourceSheet, u.SourceRow, "Unidad derivada del inventario real.");
+        foreach (var u in _source.Units)
+        {
+            Origin(
+                "EquipmentUnit",
+                u.InventoryNumber,
+                "Excel",
+                u.SourceSheet,
+                u.SourceRow,
+                string.IsNullOrWhiteSpace(u.LaboratoryCode)
+                    ? "Unidad derivada del inventario real; ubicacion fisica pendiente por ausencia de hoja 2 en la plantilla."
+                    : "Unidad derivada del inventario real.");
+        }
     }
 
     private void CopyTransactionalData()
@@ -1688,16 +1820,15 @@ internal sealed class SeedDataBuilder
         _seed.VerificationFaults.AddRange(_source.VerificationFaults);
         _seed.Requests.AddRange(_source.Requests);
         _seed.Maintenances.AddRange(_source.Maintenances);
-        _seed.MaintenanceTasks.AddRange(_source.MaintenanceTasks);
         _seed.CostDetails.AddRange(_source.CostDetails);
         _seed.Departures.AddRange(_source.Departures);
         _seed.DepartureItems.AddRange(_source.DepartureItems);
+        _seed.UnresolvedVerifications.AddRange(_source.UnresolvedVerifications);
 
         foreach (var v in _source.Verifications) Origin("Verification", v.Key, "Excel", v.SourceSheet, v.SourceRow, "Verificacion con inventario real.");
         foreach (var f in _source.VerificationFaults) Origin("VerificationFault", f.VerificationKey, "Excel", f.SourceSheet, f.SourceRow, "Falla tomada del Excel.");
         foreach (var r in _source.Requests) Origin("Request", r.Key, "Excel", r.SourceSheet, r.SourceRow, r.Type == 2 ? "Solicitud de adquisicion tomada del Excel." : "Solicitud tecnica tomada del Excel.");
         foreach (var m in _source.Maintenances) Origin("Maintenance", m.Key, "Excel", m.SourceSheet, m.SourceRow, "Mantenimiento/Kardex tomado del Excel.");
-        foreach (var t in _source.MaintenanceTasks) Origin("MaintenanceTask", t.MaintenanceKey, "Excel", t.SourceSheet, t.SourceRow, "Tarea derivada del mantenimiento real.");
         foreach (var c in _source.CostDetails) Origin("CostDetail", c.TargetKey, "Excel", c.SourceSheet, c.SourceRow, "Costo tomado del Excel.");
         foreach (var d in _source.Departures) Origin("Departure", d.Key, "Excel", d.SourceSheet, d.SourceRow, "Salida L-3 tomada del Excel.");
         foreach (var i in _source.DepartureItems) Origin("DepartureItem", i.DepartureKey, "Excel", i.SourceSheet, i.SourceRow, "Item L-3 tomado del Excel.");
@@ -1715,10 +1846,10 @@ internal sealed class SeedDataBuilder
             AddChain(maintenance.InventoryNumber, maintenance.ManagementCode).Maintenances.Add(maintenance);
         }
 
-        foreach (var departure in _seed.Departures)
-        {
-            AddChain(departure.InventoryNumber, departure.ManagementCode).Departures.Add(departure);
-        }
+        // Departures (Salidas / L-3) are intentionally excluded from the seed lifecycle:
+        // they are not fed into chains, so ManagementPlan.DepartureId stays null and no
+        // Departure inserts are emitted (departure SQL is only produced per linked chain).
+        // The reader still runs for the audit mode; only seed chain wiring skips them.
 
         foreach (var plan in _source.ManagementPlans)
         {
@@ -1747,12 +1878,6 @@ internal sealed class SeedDataBuilder
             if (!_units.TryGetValue(chain.InventoryNumber, out var unit))
             {
                 Reject("Chain", chain.InventoryNumber, $"No se genero cadena porque el inventario '{chain.InventoryNumber}' no existe en catalogo/unidades.");
-                continue;
-            }
-
-            if (string.IsNullOrWhiteSpace(unit.LaboratoryCode) && chain.Requests.Any(r => r.Type == 1))
-            {
-                Reject("Chain", chain.InventoryNumber, $"No se completo cadena porque el inventario '{chain.InventoryNumber}' no tiene laboratorio.");
                 continue;
             }
 
@@ -1822,12 +1947,6 @@ internal sealed class SeedDataBuilder
 
         if (!chain.Maintenances.Any() && !chain.Departures.Any(d => IsMaintenanceDeparture(d)) && !chain.OriginalPlans.Any() && !chain.Requests.Any(r => r.Type == 2))
         {
-            return null;
-        }
-
-        if (string.IsNullOrWhiteSpace(unit.LaboratoryCode))
-        {
-            Reject("Request", chain.InventoryNumber, $"No se infirio L7 porque el inventario '{chain.InventoryNumber}' no tiene laboratorio.");
             return null;
         }
 
@@ -1904,9 +2023,7 @@ internal sealed class SeedDataBuilder
             0);
         _seed.Maintenances.Add(maintenance);
         chain.Maintenances.Add(maintenance);
-        _seed.MaintenanceTasks.Add(new MaintenanceTaskRecord(key, completed ? "Revision tecnica general del equipo" : "Programacion de revision tecnica", completed, "Inferido", 0));
         Origin("Maintenance", key, "Inferido", "chain", 0, "L8 inferido para enlazar solicitud, salida, Kardex o desembolso.");
-        Origin("MaintenanceTask", key, "Inferido", "chain", 0, "Tarea L-48 inferida para completar avance del mantenimiento.");
         return key;
     }
 
@@ -2034,7 +2151,7 @@ internal sealed class SeedDataBuilder
             var maintenance = _seed.Maintenances.FirstOrDefault(m => m.Key.Equals(chain.MaintenanceKey, StringComparison.OrdinalIgnoreCase));
             chain.CurrentPhase = maintenance?.Status == 2 ? 4 : 3;
             chain.CurrentState = maintenance?.Status == 2 ? 6 : 5;
-            chain.PlanStatus = maintenance?.Status == 2 ? 1 : 1;
+            chain.PlanStatus = maintenance?.Status == 2 ? 2 : 1;
         }
         else if (chain.TechnicalRequestKey != null)
         {
@@ -2217,6 +2334,7 @@ internal sealed class SeedOutputWriter
         File.WriteAllText(Path.Combine(_outputDir, "02-preventive-chains.sql"), script.PreventiveChains, Encoding.UTF8);
         File.WriteAllText(Path.Combine(_outputDir, "03-corrective-chains.sql"), script.CorrectiveChains, Encoding.UTF8);
         File.WriteAllText(Path.Combine(_outputDir, "04-acquisitions-costs.sql"), script.AcquisitionsAndCosts, Encoding.UTF8);
+        File.WriteAllText(Path.Combine(_outputDir, "05-verification-quarantine.sql"), script.VerificationQuarantine, Encoding.UTF8);
         WriteSummary();
         WriteOrigin();
         WriteRejects();
@@ -2253,6 +2371,15 @@ internal sealed class SeedOutputWriter
         foreach (var finding in _seed.Findings)
         {
             builder.AppendLine($"- {finding}");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("## Verificaciones sin inventario (no enlazadas)");
+        builder.AppendLine($"- Total unresolved verifications: {_seed.UnresolvedVerifications.Count}");
+        builder.AppendLine("- These L-6 rows could NOT be linked to an EquipmentUnit (no inventory COD or unknown COD). They are preserved in HistoricalVerificationQuarantines, NOT inserted into the operational Verifications table, and NOT fabricated. Name-based linkage is a deferred decision.");
+        foreach (var uv in _seed.UnresolvedVerifications)
+        {
+            builder.AppendLine($"  - Row {uv.SourceRow} [{uv.SourceSheet}] COD='{uv.InventoryRaw}' Name='{uv.EquipmentName}' ({uv.Reason})");
         }
 
         builder.AppendLine();
@@ -2498,6 +2625,7 @@ internal sealed class SeedSqlScriptBuilder
     private readonly StringBuilder _corrective = new();
     private readonly StringBuilder _acquisitions = new();
     private readonly StringBuilder _plans = new();
+    private readonly StringBuilder _quarantine = new();
 
     public SeedSqlScriptBuilder(SeedResult seed)
     {
@@ -2507,31 +2635,54 @@ internal sealed class SeedSqlScriptBuilder
     public SeedScript Build()
     {
         BuildMasterData();
+        BuildVerificationQuarantine();
         BuildEquipment();
         BuildChains(_seed.Chains.Where(c => !c.IsCorrective), _preventive, "PREVENTIVO");
         BuildChains(_seed.Chains.Where(c => c.IsCorrective), _corrective, "CORRECTIVO");
+        BuildUnlinkedHistory();
         BuildAcquisitionsAndCosts();
         BuildPlans();
 
         var full = new StringBuilder();
         full.Append(Header());
         full.Append(_master);
+        full.Append(_quarantine);
         full.Append(_equipment);
         full.Append(_preventive);
         full.Append(_corrective);
         full.Append(_acquisitions);
         full.Append(_plans);
         full.AppendLine("COMMIT TRANSACTION;");
-        return new SeedScript(full.ToString(), _master.ToString(), _equipment.ToString(), _preventive.ToString(), _corrective.ToString(), _acquisitions.ToString());
+        full.AppendLine("END TRY");
+        full.AppendLine("BEGIN CATCH");
+        full.AppendLine("    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;");
+        full.AppendLine("    THROW;");
+        full.AppendLine("END CATCH;");
+        return new SeedScript(full.ToString(), _master.ToString(), _equipment.ToString(), _preventive.ToString(), _corrective.ToString(), _acquisitions.ToString(), BuildStandaloneQuarantineScript());
     }
 
     private string Header()
     {
         var builder = new StringBuilder();
+        builder.AppendLine("SET ANSI_NULLS ON;");
+        builder.AppendLine("SET ANSI_PADDING ON;");
+        builder.AppendLine("SET ANSI_WARNINGS ON;");
+        builder.AppendLine("SET ARITHABORT ON;");
+        builder.AppendLine("SET CONCAT_NULL_YIELDS_NULL ON;");
+        builder.AppendLine("SET QUOTED_IDENTIFIER ON;");
+        builder.AppendLine("SET NUMERIC_ROUNDABORT OFF;");
+        builder.AppendLine("SET NOCOUNT ON;");
         builder.AppendLine("SET XACT_ABORT ON;");
+        builder.AppendLine("IF OBJECT_ID(N'dbo.__EFMigrationsHistory', N'U') IS NULL");
+        builder.AppendLine("    THROW 51000, 'La base destino no contiene el esquema EF Core esperado.', 1;");
+        builder.AppendLine("IF OBJECT_ID(N'dbo.EquipmentUnits', N'U') IS NULL OR OBJECT_ID(N'dbo.Requests', N'U') IS NULL");
+        builder.AppendLine("    THROW 51001, 'La base destino no contiene las tablas funcionales esperadas.', 1;");
+        builder.AppendLine("IF OBJECT_ID(N'dbo.HistoricalVerificationQuarantines', N'U') IS NULL");
+        builder.AppendLine("    THROW 51002, 'La base destino no contiene la tabla de cuarentena historica esperada.', 1;");
+        builder.AppendLine("BEGIN TRY");
         builder.AppendLine("BEGIN TRANSACTION;");
         builder.AppendLine();
-        builder.AppendLine("DECLARE @CreatedById int = 1;");
+        builder.AppendLine("DECLARE @CreatedById int = NULL;");
         builder.AppendLine("DECLARE @Today datetime2 = SYSUTCDATETIME();");
         builder.AppendLine("DECLARE @EntityId int = NULL;");
         builder.AppendLine("DECLARE @RelatedId int = NULL;");
@@ -2624,6 +2775,8 @@ internal sealed class SeedSqlScriptBuilder
                 _master.AppendLine($"    INSERT INTO Interns (Id, Name, InternStatus) VALUES (@EntityId, {S(p.Name)}, 0);");
             }
             _master.AppendLine("END");
+            _master.AppendLine($"IF OBJECT_ID(N'PersonAliases', N'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM PersonAliases WHERE PersonId = @EntityId AND IsPreferred = 1) INSERT INTO PersonAliases (PersonId, Alias, NormalizedAlias, IsPreferred, Source) VALUES (@EntityId, {S(p.Name)}, UPPER(LTRIM(RTRIM(REPLACE(REPLACE({S(p.Name)}, CHAR(13), N' '), CHAR(10), N' ')))), 1, N'Plantilla_Original.xlsx');");
+            _master.AppendLine($"IF OBJECT_ID(N'PersonRoleAssignments', N'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM PersonRoleAssignments WHERE PersonId = @EntityId AND IsActive = 1) INSERT INTO PersonRoleAssignments (PersonId, Role, IsActive, ValidFrom) VALUES (@EntityId, {(p.Category == 1 ? 1 : p.Category == 5 ? 3 : 99)}, 1, @Today);");
             _master.AppendLine($"IF NOT EXISTS (SELECT 1 FROM @PersonMap WHERE [Key] = {S(p.Name)}) INSERT INTO @PersonMap ([Key], Id) VALUES ({S(p.Name)}, @EntityId);");
             _master.AppendLine();
         }
@@ -2632,13 +2785,53 @@ internal sealed class SeedSqlScriptBuilder
         {
             _master.AppendLine($"-- Management: {Comment(m.Code)}");
             _master.AppendLine("SET @EntityId = NULL;");
-            _master.AppendLine($"MERGE Managements AS target USING (SELECT {m.Year} AS [Year], {m.Semester} AS Semester, {S(m.Code)} AS Code) AS source ON target.[Year] = source.[Year] AND target.Semester = source.Semester AND target.Type = 0 WHEN MATCHED THEN UPDATE SET Code = source.Code WHEN NOT MATCHED THEN INSERT ([Year], Semester, Code, Description, Status, Responsible, Type, CreatedDate, CreatedById) VALUES (source.[Year], source.Semester, source.Code, {S(m.Description)}, 0, N'Carga historica seed', 0, @Today, @CreatedById);");
+            _master.AppendLine($"MERGE Managements AS target USING (SELECT {m.Year} AS [Year], {m.Semester} AS Semester, {S(m.Code)} AS Code) AS source ON target.[Year] = source.[Year] AND target.Semester = source.Semester AND target.Type = 0 WHEN MATCHED THEN UPDATE SET Code = source.Code WHEN NOT MATCHED THEN INSERT ([Year], Semester, Code, Description, Status, Responsible, Type, CreatedDate, CreatedById) VALUES (source.[Year], source.Semester, source.Code, {S(m.Description)}, 2, N'Carga historica seed', 0, @Today, @CreatedById);");
             _master.AppendLine($"SELECT @EntityId = Id FROM Managements WHERE [Year] = {m.Year} AND Semester = {m.Semester} AND Type = 0;");
             _master.AppendLine($"IF NOT EXISTS (SELECT 1 FROM @ManagementMap WHERE [Key] = {S(m.Code)}) INSERT INTO @ManagementMap ([Key], Id) VALUES ({S(m.Code)}, @EntityId);");
             _master.AppendLine();
         }
 
         AppendOriginCount(_master, "00 MASTER DATA", ["Faculty", "Career", "Laboratory", "Person", "Management"]);
+    }
+
+    private void BuildVerificationQuarantine()
+    {
+        _quarantine.AppendLine("-- ============================================================");
+        _quarantine.AppendLine("-- 00B UNRESOLVED L-6 VERIFICATION QUARANTINE");
+        _quarantine.AppendLine("-- ============================================================");
+        foreach (var row in _seed.UnresolvedVerifications.OrderBy(row => row.SourceRow))
+        {
+            _quarantine.AppendLine($"MERGE HistoricalVerificationQuarantines AS target USING (SELECT {S(row.Key)} AS SourceKey, {S(row.SourceSheet)} AS SourceSheet, {row.SourceRow} AS SourceRow, {S(row.InventoryRaw)} AS InventoryRaw, {S(row.DateRaw)} AS DateRaw, {S(row.PhysicalConditionRaw)} AS PhysicalConditionRaw, {S(row.FindingRaw)} AS FindingRaw, {S(row.EquipmentName)} AS EquipmentNameRaw, {S(row.Column6Raw)} AS Column6Raw, {S(row.Column7Raw)} AS Column7Raw, {S(row.Reason)} AS Reason) AS source ON target.SourceKey = source.SourceKey WHEN MATCHED THEN UPDATE SET SourceSheet = source.SourceSheet, SourceRow = source.SourceRow, InventoryRaw = source.InventoryRaw, DateRaw = source.DateRaw, PhysicalConditionRaw = source.PhysicalConditionRaw, FindingRaw = source.FindingRaw, EquipmentNameRaw = source.EquipmentNameRaw, Column6Raw = source.Column6Raw, Column7Raw = source.Column7Raw, Reason = source.Reason WHEN NOT MATCHED THEN INSERT (SourceKey, SourceSheet, SourceRow, InventoryRaw, DateRaw, PhysicalConditionRaw, FindingRaw, EquipmentNameRaw, Column6Raw, Column7Raw, Reason, ImportedAt) VALUES (source.SourceKey, source.SourceSheet, source.SourceRow, source.InventoryRaw, source.DateRaw, source.PhysicalConditionRaw, source.FindingRaw, source.EquipmentNameRaw, source.Column6Raw, source.Column7Raw, source.Reason, @Today);");
+        }
+        _quarantine.AppendLine($"-- Quarantined unresolved verifications: {_seed.UnresolvedVerifications.Count}");
+        _quarantine.AppendLine();
+    }
+
+    private string BuildStandaloneQuarantineScript()
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("SET ANSI_NULLS ON;");
+        builder.AppendLine("SET ANSI_PADDING ON;");
+        builder.AppendLine("SET ANSI_WARNINGS ON;");
+        builder.AppendLine("SET ARITHABORT ON;");
+        builder.AppendLine("SET CONCAT_NULL_YIELDS_NULL ON;");
+        builder.AppendLine("SET QUOTED_IDENTIFIER ON;");
+        builder.AppendLine("SET NUMERIC_ROUNDABORT OFF;");
+        builder.AppendLine("SET NOCOUNT ON;");
+        builder.AppendLine("SET XACT_ABORT ON;");
+        builder.AppendLine("IF OBJECT_ID(N'dbo.HistoricalVerificationQuarantines', N'U') IS NULL");
+        builder.AppendLine("    THROW 51002, 'La base destino no contiene la tabla de cuarentena historica esperada.', 1;");
+        builder.AppendLine("BEGIN TRY");
+        builder.AppendLine("BEGIN TRANSACTION;");
+        builder.AppendLine("DECLARE @Today datetime2 = SYSUTCDATETIME();");
+        builder.Append(_quarantine);
+        builder.AppendLine("COMMIT TRANSACTION;");
+        builder.AppendLine("END TRY");
+        builder.AppendLine("BEGIN CATCH");
+        builder.AppendLine("    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;");
+        builder.AppendLine("    THROW;");
+        builder.AppendLine("END CATCH;");
+        return builder.ToString();
     }
 
     private void BuildEquipment()
@@ -2670,7 +2863,7 @@ internal sealed class SeedSqlScriptBuilder
                 _equipment.AppendLine($"SELECT @RelatedId = Id FROM @CareerMap WHERE [Key] = {S(u.CareerName)};");
             }
             _equipment.AppendLine($"SELECT TOP 1 @ManagementId = Id FROM @ManagementMap WHERE [Key] = {S(_seed.DefaultManagementCode)};");
-            _equipment.AppendLine($"MERGE EquipmentUnits AS target USING (SELECT {S(u.InventoryNumber)} AS InventoryNumber) AS source ON target.InventoryNumber = source.InventoryNumber WHEN MATCHED THEN UPDATE SET EquipmentId = COALESCE(target.EquipmentId, @EquipmentId), LaboratoryId = COALESCE(target.LaboratoryId, @LabId), CareerId = COALESCE(target.CareerId, @RelatedId) WHEN NOT MATCHED THEN INSERT (ManagementId, EquipmentId, LaboratoryId, InventoryNumber, SerialNumber, CareerId, AcquisitionDate, ManufacturingDate, AcquisitionValue, CurrentStatus, PhysicalCondition, Notes, CreatedDate, CreatedById) VALUES (@ManagementId, @EquipmentId, @LabId, source.InventoryNumber, {S(u.SerialNumber)}, @RelatedId, {D(u.AcquisitionDate)}, {D(u.ManufacturingDate)}, {N(u.AcquisitionValue)}, {u.Status}, {N(u.PhysicalCondition)}, {S(u.Notes)}, @Today, @CreatedById);");
+            _equipment.AppendLine($"MERGE EquipmentUnits AS target USING (SELECT {S(u.InventoryNumber)} AS InventoryNumber) AS source ON target.InventoryNumber = source.InventoryNumber WHEN MATCHED THEN UPDATE SET EquipmentId = COALESCE(target.EquipmentId, @EquipmentId), LaboratoryId = COALESCE(target.LaboratoryId, @LabId), LocationResolutionStatus = CASE WHEN COALESCE(target.LaboratoryId, @LabId) IS NULL THEN 0 ELSE 1 END, CareerId = COALESCE(target.CareerId, @RelatedId) WHEN NOT MATCHED THEN INSERT (ManagementId, EquipmentId, LaboratoryId, LocationResolutionStatus, InventoryNumber, SerialNumber, CareerId, AcquisitionDate, ManufacturingDate, AcquisitionValue, CurrentStatus, PhysicalCondition, Notes, CreatedDate, CreatedById) VALUES (@ManagementId, @EquipmentId, @LabId, CASE WHEN @LabId IS NULL THEN 0 ELSE 1 END, source.InventoryNumber, {S(u.SerialNumber)}, @RelatedId, {D(u.AcquisitionDate)}, {D(u.ManufacturingDate)}, {N(u.AcquisitionValue)}, {u.Status}, {N(u.PhysicalCondition)}, {S(u.Notes)}, @Today, @CreatedById);");
             _equipment.AppendLine($"SELECT @EntityId = Id FROM EquipmentUnits WHERE InventoryNumber = {S(u.InventoryNumber)};");
             _equipment.AppendLine($"IF NOT EXISTS (SELECT 1 FROM @UnitMap WHERE [Key] = {S(u.InventoryNumber)}) INSERT INTO @UnitMap ([Key], Id, EquipmentId, LaboratoryId) VALUES ({S(u.InventoryNumber)}, @EntityId, @EquipmentId, @LabId);");
             _equipment.AppendLine();
@@ -2703,10 +2896,6 @@ internal sealed class SeedSqlScriptBuilder
             {
                 var maintenance = _seed.Maintenances.First(m => m.Key == chain.MaintenanceKey);
                 AppendMaintenance(builder, maintenance, chain.TechnicalRequestKey);
-                foreach (var task in _seed.MaintenanceTasks.Where(t => t.MaintenanceKey == chain.MaintenanceKey))
-                {
-                    AppendMaintenanceTask(builder, task);
-                }
             }
 
             if (chain.LinkedDepartureKey != null)
@@ -2729,8 +2918,8 @@ internal sealed class SeedSqlScriptBuilder
         }
 
         AppendOriginCount(builder, $"{label} CHAINS", label == "PREVENTIVO"
-            ? ["Verification", "VerificationFault", "Request", "Maintenance", "MaintenanceTask", "Departure", "DepartureItem", "EquipmentStateHistory"]
-            : ["Request", "Maintenance", "MaintenanceTask", "Departure", "DepartureItem", "EquipmentStateHistory"]);
+            ? ["Verification", "VerificationFault", "Request", "Maintenance", "Departure", "DepartureItem", "EquipmentStateHistory"]
+            : ["Request", "Maintenance", "Departure", "DepartureItem", "EquipmentStateHistory"]);
     }
 
     private void BuildAcquisitionsAndCosts()
@@ -2749,6 +2938,71 @@ internal sealed class SeedSqlScriptBuilder
         }
 
         AppendOriginCount(_acquisitions, "04 ACQUISITIONS AND COSTS", ["Request", "CostDetail"]);
+    }
+
+    private void BuildUnlinkedHistory()
+    {
+        _corrective.AppendLine("-- ============================================================");
+        _corrective.AppendLine("-- HISTORICAL RECORDS NOT SELECTED AS THE ACTIVE PLAN LINK");
+        _corrective.AppendLine("-- ============================================================");
+
+        var linkedVerificationKeys = _seed.Chains
+            .Where(c => c.VerificationKey != null)
+            .Select(c => c.VerificationKey!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var verification in _seed.Verifications.Where(v => !linkedVerificationKeys.Contains(v.Key)).OrderBy(v => v.Key))
+        {
+            AppendVerification(_corrective, verification);
+        }
+
+        var linkedRequestKeys = _seed.Chains
+            .Where(c => c.TechnicalRequestKey != null)
+            .Select(c => c.TechnicalRequestKey!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var request in _seed.Requests.Where(r => r.Type != 2 && !linkedRequestKeys.Contains(r.Key)).OrderBy(r => r.Key))
+        {
+            AppendRequest(_corrective, request);
+        }
+
+        var linkedMaintenanceKeys = _seed.Chains
+            .Where(c => c.MaintenanceKey != null)
+            .Select(c => c.MaintenanceKey!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var requestKeysAlreadyAssigned = _seed.Chains
+            .Where(c => c.MaintenanceKey != null && c.TechnicalRequestKey != null)
+            .Select(c => c.TechnicalRequestKey!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var maintenance in _seed.Maintenances.Where(m => !linkedMaintenanceKeys.Contains(m.Key)).OrderBy(m => m.Key))
+        {
+            var requestKey = !string.IsNullOrWhiteSpace(maintenance.RequestKey) && requestKeysAlreadyAssigned.Add(maintenance.RequestKey)
+                ? maintenance.RequestKey
+                : null;
+            AppendMaintenance(_corrective, maintenance, requestKey);
+        }
+
+        var linkedDepartureKeys = _seed.Chains
+            .Where(c => c.LinkedDepartureKey != null)
+            .Select(c => c.LinkedDepartureKey!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var departure in _seed.Departures.Where(d => !linkedDepartureKeys.Contains(d.Key)).OrderBy(d => d.Key))
+        {
+            AppendDeparture(_corrective, departure);
+            foreach (var item in _seed.DepartureItems.Where(i => i.DepartureKey == departure.Key))
+            {
+                AppendDepartureItem(_corrective, item);
+            }
+        }
+
+        var linkedHistoryKeys = _seed.Chains
+            .Where(c => c.KardexHistoryKey != null)
+            .Select(c => c.KardexHistoryKey!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var history in _seed.KardexHistories.Where(h => !linkedHistoryKeys.Contains(h.Key)).OrderBy(h => h.Key))
+        {
+            AppendKardexHistory(_corrective, history);
+        }
+
+        AppendOriginCount(_corrective, "UNLINKED HISTORY", ["Verification", "VerificationFault", "Request", "Maintenance", "Departure", "DepartureItem", "EquipmentStateHistory"]);
     }
 
     private void BuildPlans()
@@ -2781,14 +3035,13 @@ internal sealed class SeedSqlScriptBuilder
         builder.AppendLine("SET @VerificationId = NULL; SET @UnitId = NULL; SET @ManagementId = NULL;");
         builder.AppendLine($"SELECT @UnitId = Id FROM @UnitMap WHERE [Key] = {S(v.InventoryNumber)};");
         builder.AppendLine($"SELECT @ManagementId = Id FROM @ManagementMap WHERE [Key] = {S(v.ManagementCode)};");
-        builder.AppendLine($"MERGE Verifications AS target USING (SELECT @UnitId AS EquipmentUnitId, @ManagementId AS ManagementId, {D(v.Date)} AS [Date]) AS source ON target.EquipmentUnitId = source.EquipmentUnitId AND target.ManagementId = source.ManagementId AND CONVERT(date, target.[Date]) = CONVERT(date, source.[Date]) WHEN MATCHED THEN UPDATE SET Observations = COALESCE(target.Observations, {S(v.Observations)}), Status = CASE WHEN target.Status = 0 THEN {v.Status} ELSE target.Status END WHEN NOT MATCHED THEN INSERT (EquipmentUnitId, ManagementId, [Date], Observations, PhysicalCondition, Status, CreatedDate, CreatedById) VALUES (@UnitId, @ManagementId, source.[Date], {S(v.Observations)}, {v.PhysicalCondition}, {v.Status}, @Today, @CreatedById);");
-        builder.AppendLine($"SELECT TOP 1 @VerificationId = Id FROM Verifications WHERE EquipmentUnitId = @UnitId AND ManagementId = @ManagementId AND CONVERT(date, [Date]) = CONVERT(date, {D(v.Date)});");
+        builder.AppendLine($"MERGE Verifications AS target USING (SELECT @UnitId AS EquipmentUnitId, @ManagementId AS ManagementId, {D(v.Date)} AS [Date], {v.PhysicalCondition} AS PhysicalCondition, {S(v.Observations)} AS Observations, {S(v.Key)} AS HistoricalSourceKey) AS source ON target.HistoricalSourceKey = source.HistoricalSourceKey OR (target.HistoricalSourceKey IS NULL AND target.EquipmentUnitId = source.EquipmentUnitId AND target.ManagementId = source.ManagementId AND CONVERT(date, target.[Date]) = CONVERT(date, source.[Date]) AND target.PhysicalCondition = source.PhysicalCondition AND ISNULL(target.Observations, N'') = ISNULL(source.Observations, N'')) WHEN MATCHED THEN UPDATE SET HistoricalSourceKey = COALESCE(target.HistoricalSourceKey, source.HistoricalSourceKey), Status = CASE WHEN target.Status = 0 THEN {v.Status} ELSE target.Status END WHEN NOT MATCHED THEN INSERT (EquipmentUnitId, ManagementId, [Date], Observations, PhysicalCondition, Status, HistoricalSourceKey, CreatedDate, CreatedById) VALUES (@UnitId, @ManagementId, source.[Date], source.Observations, source.PhysicalCondition, {v.Status}, source.HistoricalSourceKey, @Today, @CreatedById);");
+        builder.AppendLine($"SELECT @VerificationId = Id FROM Verifications WHERE HistoricalSourceKey = {S(v.Key)};");
         builder.AppendLine($"IF NOT EXISTS (SELECT 1 FROM @VerificationMap WHERE [Key] = {S(v.Key)}) INSERT INTO @VerificationMap ([Key], Id) VALUES ({S(v.Key)}, @VerificationId);");
         foreach (var fault in _seed.VerificationFaults.Where(f => f.VerificationKey == v.Key))
         {
             builder.AppendLine($"MERGE VerificationFaults AS target USING (SELECT @VerificationId AS VerificationId, {S(fault.Description)} AS Description) AS source ON target.VerificationId = source.VerificationId AND target.Description = source.Description WHEN NOT MATCHED THEN INSERT (VerificationId, Description, IsDeleted, CreatedDate, CreatedById) VALUES (source.VerificationId, source.Description, 0, @Today, @CreatedById);");
         }
-        builder.AppendLine("INSERT INTO VerificationCheckResults (VerificationId, CheckItemId, Result) SELECT @VerificationId, i.Id, 1 FROM VerificationCheckItems i WHERE i.IsActive = 1 AND NOT EXISTS (SELECT 1 FROM VerificationCheckResults r WHERE r.VerificationId = @VerificationId AND r.CheckItemId = i.Id);");
         builder.AppendLine();
     }
 
@@ -2798,8 +3051,8 @@ internal sealed class SeedSqlScriptBuilder
         builder.AppendLine("SET @RequestId = NULL; SET @UnitId = NULL; SET @EquipmentId = NULL; SET @LabId = NULL; SET @ManagementId = NULL;");
         builder.AppendLine($"SELECT @UnitId = Id, @EquipmentId = EquipmentId, @LabId = LaboratoryId FROM @UnitMap WHERE [Key] = {S(r.InventoryNumber)};");
         builder.AppendLine($"SELECT @ManagementId = Id FROM @ManagementMap WHERE [Key] = {S(r.ManagementCode)};");
-        builder.AppendLine($"MERGE Requests AS target USING (SELECT @LabId AS LaboratoryId, @EquipmentId AS EquipmentId, @UnitId AS EquipmentUnitId, @ManagementId AS ManagementId, {r.Type} AS [Type], {S(r.Description)} AS Description, {S(r.InvestmentCode)} AS InvestmentCode) AS source ON target.ManagementId = source.ManagementId AND target.EquipmentUnitId = source.EquipmentUnitId AND target.[Type] = source.[Type] AND target.Description = source.Description AND ISNULL(target.InvestmentCode, N'') = ISNULL(source.InvestmentCode, N'') WHEN MATCHED THEN UPDATE SET Status = CASE WHEN target.Status < {r.Status} THEN {r.Status} ELSE target.Status END, Priority = {r.Priority} WHEN NOT MATCHED THEN INSERT (LaboratoryId, EquipmentId, EquipmentUnitId, ManagementId, Description, Priority, Observations, EstimatedRepairTime, Status, Type, InvestmentCode, CostCenter, CreatedDate, CreatedById) VALUES (@LabId, @EquipmentId, @UnitId, @ManagementId, source.Description, {r.Priority}, {S(r.Observations)}, {S(r.EstimatedRepairTime)}, {r.Status}, {r.Type}, source.InvestmentCode, {S(r.CostCenter)}, {D(r.CreatedDate)}, @CreatedById);");
-        builder.AppendLine($"SELECT TOP 1 @RequestId = Id FROM Requests WHERE ManagementId = @ManagementId AND EquipmentUnitId = @UnitId AND [Type] = {r.Type} AND Description = {S(r.Description)} AND ISNULL(InvestmentCode, N'') = ISNULL({S(r.InvestmentCode)}, N'');");
+        builder.AppendLine($"MERGE Requests AS target USING (SELECT @LabId AS LaboratoryId, @EquipmentId AS EquipmentId, @UnitId AS EquipmentUnitId, @ManagementId AS ManagementId, {r.Type} AS [Type], {S(r.Description)} AS Description, {S(r.InvestmentCode)} AS InvestmentCode, {D(r.CreatedDate)} AS CreatedDate, {S(r.Key)} AS HistoricalSourceKey) AS source ON target.HistoricalSourceKey = source.HistoricalSourceKey OR (target.HistoricalSourceKey IS NULL AND target.ManagementId = source.ManagementId AND target.EquipmentUnitId = source.EquipmentUnitId AND target.[Type] = source.[Type] AND target.Description = source.Description AND ISNULL(target.InvestmentCode, N'') = ISNULL(source.InvestmentCode, N'') AND CONVERT(date, target.CreatedDate) = CONVERT(date, source.CreatedDate)) WHEN MATCHED THEN UPDATE SET HistoricalSourceKey = COALESCE(target.HistoricalSourceKey, source.HistoricalSourceKey), LaboratoryId = COALESCE(target.LaboratoryId, source.LaboratoryId), LocationResolutionStatus = CASE WHEN COALESCE(target.LaboratoryId, source.LaboratoryId) IS NULL THEN 0 ELSE 1 END, Status = CASE WHEN target.Status < {r.Status} THEN {r.Status} ELSE target.Status END, Priority = {r.Priority} WHEN NOT MATCHED THEN INSERT (LaboratoryId, LocationResolutionStatus, EquipmentId, EquipmentUnitId, ManagementId, Description, Priority, Observations, EstimatedRepairTime, Status, Type, InvestmentCode, CostCenter, HistoricalSourceKey, CreatedDate, CreatedById) VALUES (@LabId, CASE WHEN @LabId IS NULL THEN 0 ELSE 1 END, @EquipmentId, @UnitId, @ManagementId, source.Description, {r.Priority}, {S(r.Observations)}, {S(r.EstimatedRepairTime)}, {r.Status}, {r.Type}, source.InvestmentCode, {S(r.CostCenter)}, source.HistoricalSourceKey, source.CreatedDate, @CreatedById);");
+        builder.AppendLine($"SELECT @RequestId = Id FROM Requests WHERE HistoricalSourceKey = {S(r.Key)};");
         builder.AppendLine($"IF NOT EXISTS (SELECT 1 FROM @RequestMap WHERE [Key] = {S(r.Key)}) INSERT INTO @RequestMap ([Key], Id) VALUES ({S(r.Key)}, @RequestId);");
         builder.AppendLine();
     }
@@ -2812,17 +3065,10 @@ internal sealed class SeedSqlScriptBuilder
         builder.AppendLine($"SELECT @ManagementId = Id FROM @ManagementMap WHERE [Key] = {S(m.ManagementCode)};");
         if (!string.IsNullOrWhiteSpace(m.TechnicianName)) builder.AppendLine($"SELECT @RelatedId = Id FROM @PersonMap WHERE [Key] = {S(m.TechnicianName)};");
         if (!string.IsNullOrWhiteSpace(requestKey)) builder.AppendLine($"SELECT @RequestId = Id FROM @RequestMap WHERE [Key] = {S(requestKey)};");
-        builder.AppendLine($"MERGE Maintenances AS target USING (SELECT @UnitId AS EquipmentUnitId, @ManagementId AS ManagementId, {m.MaintenanceType} AS MaintenanceType, {S(m.Description)} AS Description) AS source ON target.EquipmentUnitId = source.EquipmentUnitId AND target.ManagementId = source.ManagementId AND target.MaintenanceType = source.MaintenanceType AND ISNULL(target.Description, N'') = ISNULL(source.Description, N'') WHEN MATCHED THEN UPDATE SET RequestId = COALESCE(target.RequestId, @RequestId), TechnicianId = COALESCE(target.TechnicianId, @RelatedId), Status = CASE WHEN target.Status < {m.Status} THEN {m.Status} ELSE target.Status END, ActualCost = COALESCE(target.ActualCost, {N(m.ActualCost)}) WHEN NOT MATCHED THEN INSERT (EquipmentUnitId, MaintenanceType, ManagementId, ServiceType, TechnicianId, RequestId, ScheduledDate, StartDate, EndDate, Description, Status, CompletionPercentage, Step1_Cleaning, Step2_Calibration, Step3_Testing, Step4_FinalReview, ActualCost, SatisfactionLevel, Recommendations, SuggestedNextMaintenanceDate, CreatedDate, CreatedById) VALUES (@UnitId, {m.MaintenanceType}, @ManagementId, {m.ServiceType}, @RelatedId, @RequestId, {D(m.ScheduledDate)}, {D(m.StartDate)}, {D(m.EndDate)}, {S(m.Description)}, {m.Status}, {(m.Status == 2 ? 100 : 0)}, {(m.Status == 2 ? 1 : 0)}, {(m.Status == 2 ? 1 : 0)}, {(m.Status == 2 ? 1 : 0)}, {(m.Status == 2 ? 1 : 0)}, {N(m.ActualCost)}, {N(m.SatisfactionLevel)}, {S(m.Recommendations)}, {D(m.NextMaintenanceDate)}, @Today, @CreatedById);");
-        builder.AppendLine($"SELECT TOP 1 @MaintenanceId = Id FROM Maintenances WHERE EquipmentUnitId = @UnitId AND ManagementId = @ManagementId AND MaintenanceType = {m.MaintenanceType} AND ISNULL(Description, N'') = ISNULL({S(m.Description)}, N'');");
+        builder.AppendLine($"MERGE Maintenances AS target USING (SELECT @UnitId AS EquipmentUnitId, @ManagementId AS ManagementId, {m.MaintenanceType} AS MaintenanceType, {m.ServiceType} AS ServiceType, {D(m.ScheduledDate)} AS ScheduledDate, {D(m.StartDate)} AS StartDate, {D(m.EndDate)} AS EndDate, {S(m.Description)} AS Description, {S(m.Key)} AS HistoricalSourceKey) AS source ON target.HistoricalSourceKey = source.HistoricalSourceKey OR (target.HistoricalSourceKey IS NULL AND target.EquipmentUnitId = source.EquipmentUnitId AND target.ManagementId = source.ManagementId AND target.MaintenanceType = source.MaintenanceType AND target.ServiceType = source.ServiceType AND (CONVERT(date, target.ScheduledDate) = CONVERT(date, source.ScheduledDate) OR (target.ScheduledDate IS NULL AND source.ScheduledDate IS NULL)) AND (CONVERT(date, target.StartDate) = CONVERT(date, source.StartDate) OR (target.StartDate IS NULL AND source.StartDate IS NULL)) AND (CONVERT(date, target.EndDate) = CONVERT(date, source.EndDate) OR (target.EndDate IS NULL AND source.EndDate IS NULL)) AND ISNULL(target.Description, N'') = ISNULL(source.Description, N'')) WHEN MATCHED THEN UPDATE SET HistoricalSourceKey = COALESCE(target.HistoricalSourceKey, source.HistoricalSourceKey), RequestId = COALESCE(target.RequestId, @RequestId), TechnicianId = COALESCE(target.TechnicianId, @RelatedId), Status = CASE WHEN target.Status < {m.Status} THEN {m.Status} ELSE target.Status END, ActualCost = COALESCE(target.ActualCost, {N(m.ActualCost)}) WHEN NOT MATCHED THEN INSERT (EquipmentUnitId, MaintenanceType, ManagementId, ServiceType, TechnicianId, RequestId, ScheduledDate, StartDate, EndDate, Description, Status, CompletionPercentage, Step1_Cleaning, Step2_Calibration, Step3_Testing, Step4_FinalReview, ActualCost, SatisfactionLevel, Recommendations, SuggestedNextMaintenanceDate, HistoricalSourceKey, CreatedDate, CreatedById) VALUES (@UnitId, source.MaintenanceType, @ManagementId, source.ServiceType, @RelatedId, @RequestId, source.ScheduledDate, source.StartDate, source.EndDate, source.Description, {m.Status}, {(m.Status == 2 ? 100 : 0)}, {(m.Status == 2 ? 1 : 0)}, {(m.Status == 2 ? 1 : 0)}, {(m.Status == 2 ? 1 : 0)}, {(m.Status == 2 ? 1 : 0)}, {N(m.ActualCost)}, {N(m.SatisfactionLevel)}, {S(m.Recommendations)}, {D(m.NextMaintenanceDate)}, source.HistoricalSourceKey, @Today, @CreatedById);");
+        builder.AppendLine($"SELECT @MaintenanceId = Id FROM Maintenances WHERE HistoricalSourceKey = {S(m.Key)};");
+        builder.AppendLine("IF @RelatedId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM MaintenanceParticipants WHERE MaintenanceId = @MaintenanceId AND IsPrimary = 1 AND IsActive = 1) INSERT INTO MaintenanceParticipants (MaintenanceId, PersonId, Role, IsPrimary, IsActive, AssignedAt) VALUES (@MaintenanceId, @RelatedId, 1, 1, 1, @Today);");
         builder.AppendLine($"IF NOT EXISTS (SELECT 1 FROM @MaintenanceMap WHERE [Key] = {S(m.Key)}) INSERT INTO @MaintenanceMap ([Key], Id) VALUES ({S(m.Key)}, @MaintenanceId);");
-        builder.AppendLine();
-    }
-
-    private void AppendMaintenanceTask(StringBuilder builder, MaintenanceTaskRecord t)
-    {
-        builder.AppendLine("SET @MaintenanceId = NULL;");
-        builder.AppendLine($"SELECT @MaintenanceId = Id FROM @MaintenanceMap WHERE [Key] = {S(t.MaintenanceKey)};");
-        builder.AppendLine($"MERGE MaintenanceTasks AS target USING (SELECT @MaintenanceId AS MaintenanceId, {S(t.Description)} AS Description) AS source ON target.MaintenanceId = source.MaintenanceId AND target.Description = source.Description WHEN MATCHED THEN UPDATE SET IsCompleted = CASE WHEN target.IsCompleted = 1 THEN 1 ELSE {Bit(t.IsCompleted)} END, IsDeleted = 0 WHEN NOT MATCHED THEN INSERT (MaintenanceId, Description, IsCompleted, IsDeleted) VALUES (source.MaintenanceId, source.Description, {Bit(t.IsCompleted)}, 0);");
         builder.AppendLine();
     }
 
@@ -2892,7 +3138,7 @@ internal sealed class SeedSqlScriptBuilder
     private static string Comment(string value) => value.Replace("\r", " ").Replace("\n", " ").Replace("--", "-");
 }
 
-internal sealed record SeedScript(string FullScript, string MasterData, string Equipment, string PreventiveChains, string CorrectiveChains, string AcquisitionsAndCosts);
+internal sealed record SeedScript(string FullScript, string MasterData, string Equipment, string PreventiveChains, string CorrectiveChains, string AcquisitionsAndCosts, string VerificationQuarantine);
 
 internal sealed record SeedResult
 {
@@ -2911,11 +3157,11 @@ internal sealed record SeedResult
     public List<VerificationFaultRecord> VerificationFaults { get; } = [];
     public List<RequestRecord> Requests { get; } = [];
     public List<MaintenanceRecord> Maintenances { get; } = [];
-    public List<MaintenanceTaskRecord> MaintenanceTasks { get; } = [];
     public List<CostDetailRecord> CostDetails { get; } = [];
     public List<DepartureRecord> Departures { get; } = [];
     public List<DepartureItemRecord> DepartureItems { get; } = [];
     public List<KardexHistoryRecord> KardexHistories { get; } = [];
+    public List<UnresolvedVerificationRecord> UnresolvedVerifications { get; } = [];
     public string DefaultManagementCode => Managements.OrderByDescending(m => m.Year).ThenByDescending(m => m.Semester).FirstOrDefault()?.Code ?? $"{DateTime.Now.Year}-1";
 }
 
@@ -2952,6 +3198,18 @@ internal sealed class SeedChainRecord
 
 internal sealed record SeedOriginRecord(string Entity, string Key, string Origin, string SourceSheet, int SourceRow, string Notes);
 internal sealed record SeedRejectRecord(string Entity, string Key, string Reason);
+internal sealed record UnresolvedVerificationRecord(
+    string Key,
+    string InventoryRaw,
+    string DateRaw,
+    string PhysicalConditionRaw,
+    string FindingRaw,
+    string EquipmentName,
+    string Column6Raw,
+    string Column7Raw,
+    string Reason,
+    string SourceSheet,
+    int SourceRow);
 internal sealed record KardexHistoryRecord(string Key, string InventoryNumber, int Status, DateTime StartDate, string Reason, string SourceSheet, int SourceRow);
 
 internal sealed record AnalysisResult
@@ -2971,11 +3229,11 @@ internal sealed record AnalysisResult
     public List<VerificationFaultRecord> VerificationFaults { get; } = [];
     public List<RequestRecord> Requests { get; } = [];
     public List<MaintenanceRecord> Maintenances { get; } = [];
-    public List<MaintenanceTaskRecord> MaintenanceTasks { get; } = [];
     public List<CostDetailRecord> CostDetails { get; } = [];
     public List<DepartureRecord> Departures { get; } = [];
     public List<DepartureItemRecord> DepartureItems { get; } = [];
     public List<ManagementPlanRecord> ManagementPlans { get; } = [];
+    public List<UnresolvedVerificationRecord> UnresolvedVerifications { get; } = [];
     public string DefaultManagementCode => Managements.OrderByDescending(m => m.Year).ThenByDescending(m => m.Semester).FirstOrDefault()?.Code ?? $"{DateTime.Now.Year}-1";
 }
 
@@ -3058,9 +3316,8 @@ internal sealed class UnitRecord
 
 internal sealed record VerificationRecord(string Key, string InventoryNumber, string ManagementCode, DateTime Date, int PhysicalCondition, int Status, string? Observations, string SourceSheet, int SourceRow);
 internal sealed record VerificationFaultRecord(string VerificationKey, string Description, string SourceSheet, int SourceRow);
-internal sealed record RequestRecord(string Key, string InventoryNumber, string LaboratoryCode, string EquipmentKey, string ManagementCode, int Priority, int Status, int Type, DateTime CreatedDate, string Description, string? Observations, string? EstimatedRepairTime, string? InvestmentCode, string? CostCenter, string SourceSheet, int SourceRow);
+internal sealed record RequestRecord(string Key, string InventoryNumber, string? LaboratoryCode, string EquipmentKey, string ManagementCode, int Priority, int Status, int Type, DateTime CreatedDate, string Description, string? Observations, string? EstimatedRepairTime, string? InvestmentCode, string? CostCenter, string SourceSheet, int SourceRow);
 internal sealed record MaintenanceRecord(string Key, string InventoryNumber, string ManagementCode, int MaintenanceType, int ServiceType, string? TechnicianName, string? RequestKey, DateTime? ScheduledDate, DateTime? StartDate, DateTime? EndDate, string? Description, int Status, decimal? ActualCost, int? SatisfactionLevel, string? Recommendations, DateTime? NextMaintenanceDate, string SourceSheet, int SourceRow);
-internal sealed record MaintenanceTaskRecord(string MaintenanceKey, string Description, bool IsCompleted, string SourceSheet, int SourceRow);
 internal sealed record CostDetailRecord(string TargetKind, string TargetKey, string Concept, string? Description, decimal Quantity, string? UnitOfMeasure, decimal UnitPrice, int Category, string? Provider, string? InvoiceNumber, string SourceSheet, int SourceRow);
 internal sealed record DepartureRecord(string Key, string InventoryNumber, string ManagementCode, string BorrowerName, int Type, DateTime DepartureDate, DateTime EstimatedReturnDate, string? Observations, string SourceSheet, int SourceRow);
 internal sealed record DepartureItemRecord(string DepartureKey, string InventoryNumber, string ProductName, int Quantity, string? UnitOfMeasure, string? Observations, string SourceSheet, int SourceRow);

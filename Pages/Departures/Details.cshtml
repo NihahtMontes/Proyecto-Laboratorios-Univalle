@@ -38,7 +38,7 @@
                     </div>
                     <div class="col-sm-3 mb-3 mb-sm-0">
                         <small class="uppercase text-muted font-weight-bold d-block mb-1">Retorno Estimado</small>
-                        <span class="font-weight-bold text-dark h6"><i class="far fa-calendar-check mr-2 text-danger"></i>@d.EstimatedReturnDate.ToString("dd/MM/yyyy")</span>
+                        <span class="font-weight-bold text-dark h6"><i class="far fa-calendar-check mr-2 text-danger"></i>@(d.EstimatedReturnDate?.ToString("dd/MM/yyyy") ?? "Pendiente por evidencia")</span>
                     </div>
                     <div class="col-sm-3 mb-3 mb-sm-0">
                         <small class="uppercase text-muted font-weight-bold d-block mb-1">Retorno Real</small>
@@ -129,15 +129,15 @@
                                         @foreach (var item in d.Items)
                                         {
                                             <tr>
-                                                <td class="font-weight-bold">@item.ProductName</td>
-                                                <td class="text-center">@item.Quantity</td>
+                                                <td class="font-weight-bold">@(item.ProductName ?? "Pendiente por evidencia")</td>
+                                                <td class="text-center">@(item.Quantity?.ToString() ?? "Pendiente")</td>
                                                 <td class="text-center">@item.UnitOfMeasure</td>
                                                 <td class="text-center">@(item.ReturnedQuantity?.ToString() ?? "0")</td>
                                                 <td class="text-center">
                                                     @{
                                                         var saldo = item.Balance;
-                                                        var badgeClass = saldo == 0 ? "badge-success" : (saldo > 0 ? "badge-warning" : "badge-danger");
-                                                        var saldoText = saldo == 0 ? "Saldoado" : saldo.ToString();
+                                                        var badgeClass = !saldo.HasValue ? "badge-secondary" : (saldo == 0 ? "badge-success" : (saldo > 0 ? "badge-warning" : "badge-danger"));
+                                                        var saldoText = !saldo.HasValue ? "Pendiente" : (saldo == 0 ? "Saldado" : saldo.ToString());
                                                     }
                                                     <span class="badge @badgeClass font-weight-bold">@saldoText</span>
                                                 </td>

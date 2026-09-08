@@ -13,15 +13,19 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "El laboratorio es obligatorio")]
         [Display(Name = "Laboratorio")]
-        public int LaboratoryId { get; set; }
+        public int? LaboratoryId { get; set; }
+
+        [Required]
+        [Display(Name = "Estado de confirmación de ubicación")]
+        public LocationResolutionStatus LocationResolutionStatus { get; set; } = LocationResolutionStatus.Confirmed;
+
+        public int? ImportBatchId { get; set; }
 
         // For purchasing, this defines the Type of equipment we want.
         // For technical support, this defines the Type of the broken unit (redundant with EquipmentUnit but good for filtering).
-        [Required(ErrorMessage = "El equipamiento (Modelo/Tipo) es obligatorio")]
         [Display(Name = "Modelo/Tipo de Equipamiento")]
-        public int EquipmentId { get; set; }
+        public int? EquipmentId { get; set; }
 
         [Display(Name = "Unidad Específica (Inventario)")]
         public int? EquipmentUnitId { get; set; }
@@ -32,6 +36,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [Display(Name = "Solicitado Por")]
         public int? RequestedById { get; set; }
+
+        [Display(Name = "Actor Solicitante Histórico")]
+        public int? RequestedByPersonId { get; set; }
 
         [Required(ErrorMessage = "La descripción es obligatoria")]
         [StringLength(1000)]
@@ -44,6 +51,14 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(500)]
         [Display(Name = "Observaciones del Solicitante")]
         public string? Observations { get; set; }
+
+        [StringLength(2000)]
+        [Display(Name = "Sugerencia de solución")]
+        public string? Suggestion { get; set; }
+
+        [Display(Name = "Fecha de solicitud")]
+        [DataType(DataType.Date)]
+        public DateTime? RequestDate { get; set; }
 
         [StringLength(100)]
         [Display(Name = "Tiempo Estimado de Reparación")]
@@ -79,6 +94,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Última Modificación")]
         public DateTime? LastModifiedDate { get; set; }
 
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = [];
+
         // ========================================
         // NAVIGATION
         // ========================================
@@ -92,6 +110,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(100)]
         [Display(Name = "Centro de Costos")]
         public string? CostCenter { get; set; }
+
+        [StringLength(200)]
+        public string? HistoricalSourceKey { get; set; }
 
         // ========================================
         // NAVIGATION
@@ -108,6 +129,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("RequestedById")]
         public virtual User? RequestedBy { get; set; }
 
+        [ForeignKey(nameof(RequestedByPersonId))]
+        public virtual Person? RequestedByPerson { get; set; }
+
         [ForeignKey("ApprovedById")]
         public virtual User? ApprovedBy { get; set; }
 
@@ -120,8 +144,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("ManagementId")]
         public virtual Management? Management { get; set; }
 
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
+
         // RELATIONSHIPS
         public virtual Maintenance? Maintenance { get; set; }
         public virtual ICollection<CostDetail> CostDetails { get; set; } = new List<CostDetail>();
+        public virtual ICollection<RequestEquipmentUnit> EquipmentUnitLinks { get; set; } = [];
+        public virtual ICollection<MaintenanceRequest> MaintenanceLinks { get; set; } = [];
     }
 }

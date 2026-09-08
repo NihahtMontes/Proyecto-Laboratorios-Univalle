@@ -29,6 +29,7 @@
                             <div class="form-group mb-3">
                                 <label asp-for="Input.Category" class="control-label font-weight-bold small uppercase text-muted">Tipo de Recurso <span class="text-danger">*</span></label>
                                 <select asp-for="Input.Category" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<EquipmentCategory>()" id="categorySelect" required>
+                                    <option value="">-- Seleccione --</option>
                                 </select>
                                 <span asp-validation-for="Input.Category" class="text-danger small"></span>
                             </div>
@@ -36,6 +37,7 @@
                             <div class="form-group mb-3" id="utensilContainer" style="display:none;">
                                 <label asp-for="Input.UtensilType" class="control-label font-weight-bold small uppercase text-muted">Subclasificacion de Utensilio <span class="text-danger">*</span></label>
                                 <select asp-for="Input.UtensilType" class="form-control custom-select border-info" asp-items="Model.UtensilTypeOptions" id="utensilSelect">
+                                    <option value="">-- Seleccione subtipo --</option>
                                 </select>
                                 <span asp-validation-for="Input.UtensilType" class="text-danger small"></span>
                             </div>
@@ -43,14 +45,34 @@
                             <div class="form-group mb-3" id="classificationContainer">
                                 <label asp-for="Input.TypeClassification" class="control-label font-weight-bold small uppercase text-muted">Clasificacion Tecnica <span class="text-danger">*</span></label>
                                 <select asp-for="Input.TypeClassification" class="form-control custom-select border-info" asp-items="Model.EquipmentTypeClassificationOptions" id="classificationSelect">
+                                    <option value="">-- Seleccione clasificación --</option>
                                 </select>
                                 <span asp-validation-for="Input.TypeClassification" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.CatalogCode" class="control-label font-weight-bold small uppercase text-muted">Código de catálogo <span class="text-danger">*</span></label>
+                                <input asp-for="Input.CatalogCode" class="form-control text-uppercase" placeholder="CAT-0108" required />
+                                <span asp-validation-for="Input.CatalogCode" class="text-danger small"></span>
                             </div>
 
                             <div class="form-group mb-3">
                                 <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Activo / Recurso <span class="text-danger">*</span></label>
                                 <input asp-for="Input.Name" class="form-control" placeholder="Ej: Espectrofotómetro" required />
                                 <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3" id="otherDetailContainer" style="display:none;">
+                                <label asp-for="Input.OtherClassificationDetail" class="control-label font-weight-bold small uppercase text-muted">Detalle de “Otro” <span class="text-danger">*</span></label>
+                                <textarea asp-for="Input.OtherClassificationDetail" class="form-control border-warning" rows="2" placeholder="Describa la clasificación institucional confirmada"></textarea>
+                                <span asp-validation-for="Input.OtherClassificationDetail" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label asp-for="Input.EvidenceReference" class="control-label font-weight-bold small uppercase text-muted">Evidencia de clasificación <span class="text-danger">*</span></label>
+                                <textarea asp-for="Input.EvidenceReference" class="form-control" rows="2" placeholder="Documento, acta o confirmación de la responsable de inventario" required></textarea>
+                                <span asp-validation-for="Input.EvidenceReference" class="text-danger small"></span>
+                                <small class="form-text text-muted">La clasificación quedará confirmada y registrada en el historial auditable.</small>
                             </div>
 
                             <div class="row mt-4 pt-2 border-top">
@@ -150,7 +172,7 @@
             // Label de archivo
             $(".custom-file-input").on("change", function () {
                 var fileName = $(this).val().split("\\").pop();
-                $(this).siblings(".custom-file-label").addClass("selected").html(fileName);
+                $(this).siblings(".custom-file-label").addClass("selected").text(fileName);
             });
 
             // --- NOTAS DEL FABRICANTE ---
@@ -169,20 +191,30 @@
                 var category = $('#categorySelect').val();
                 if (category == '1') {
                     $('#utensilContainer').fadeIn();
-                    $('#classificationSelect').val('7');
+                    $('#classificationSelect').val('');
                     $('#classificationContainer').fadeOut();
                 } else {
                     $('#utensilContainer').fadeOut();
-                    $('#utensilSelect').val('0');
+                    $('#utensilSelect').val('');
                     $('#classificationContainer').fadeIn();
                     if (category == '2') {
-                        $('#classificationSelect').val('7');
+                        $('#classificationSelect').val('');
                         $('#classificationContainer').fadeOut();
                     }
                 }
+                toggleOtherDetail();
+            }
+
+            function toggleOtherDetail() {
+                var requiresDetail = $('#categorySelect').val() == '2'
+                    || $('#classificationSelect').val() == '7'
+                    || $('#utensilSelect').val() == '11';
+                $('#otherDetailContainer').toggle(requiresDetail);
+                $('#Input_OtherClassificationDetail').prop('required', requiresDetail);
             }
 
             $('#categorySelect').on('change', toggleType);
+            $('#classificationSelect, #utensilSelect').on('change', toggleOtherDetail);
             toggleType();
         });
     </script>

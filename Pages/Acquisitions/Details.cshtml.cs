@@ -13,11 +13,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly IReportService _reportService;
+        private readonly ILogger<DetailsModel> _logger;
 
-        public DetailsModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, IReportService reportService)
+        public DetailsModel(
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            IReportService reportService,
+            ILogger<DetailsModel> logger)
         {
             _context = context;
             _reportService = reportService;
+            _logger = logger;
         }
 
         public Request AcquisitionRequest { get; set; } = default!;
@@ -32,6 +37,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 .Include(r => r.Equipment)
                 .Include(r => r.ModifiedBy)
                 .Include(r => r.RequestedBy)
+                .Include(r => r.RequestedByPerson)
                 .Include(r => r.Laboratory)
                 .Include(r => r.EquipmentUnit)
                 .Include(r => r.CostDetails)
@@ -53,7 +59,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             }
             catch (Exception ex)
             {
-                TempData.Error("No se pudo generar el Excel: " + ex.Message);
+                _logger.LogError(ex, "No se pudo generar el Excel de adquisicion {RequestId}.", id);
+                TempData.Error("No se pudo generar el Excel. Intente nuevamente.");
                 return RedirectToPage(new { id = id });
             }
         }

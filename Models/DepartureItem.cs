@@ -16,15 +16,16 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Unidad Física")]
         public int? EquipmentUnitId { get; set; }
 
-        [Required(ErrorMessage = "El nombre del producto es obligatorio")]
+        [Display(Name = "Artículo / Consumible")]
+        public int? ArticleId { get; set; }
+
         [StringLength(200)]
         [Display(Name = "Producto")]
-        public string ProductName { get; set; } = string.Empty;
+        public string? ProductName { get; set; }
 
-        [Required]
         [Display(Name = "Cantidad")]
         [Range(1, 9999, ErrorMessage = "La cantidad debe ser mayor a 0")]
-        public int Quantity { get; set; } = 1;
+        public int? Quantity { get; set; }
 
         [StringLength(50)]
         [Display(Name = "Unidad de Medida")]
@@ -58,6 +59,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("EquipmentUnitId")]
         public virtual EquipmentUnit? EquipmentUnit { get; set; }
 
+        [ForeignKey(nameof(ArticleId))]
+        public virtual Article? Article { get; set; }
+
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }
 
@@ -66,6 +70,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [NotMapped]
         [Display(Name = "Saldo")]
-        public int Balance => Quantity - (ReturnedQuantity ?? 0);
+        public int? Balance => Quantity.HasValue ? Quantity.Value - (ReturnedQuantity ?? 0) : null;
     }
 }

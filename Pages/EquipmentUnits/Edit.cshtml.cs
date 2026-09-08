@@ -29,7 +29,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             public int Id { get; set; }
             public int? CreatedById { get; set; }
             public DateTime CreatedDate { get; set; }
-            public int ManagementId { get; set; }
+            public int? ManagementId { get; set; }
 
             [Required(ErrorMessage = "El modelo de equipo es obligatorio")]
             [Display(Name = "Catálogo / Modelo")]
@@ -58,7 +58,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             public EquipmentStatus CurrentStatus { get; set; } = EquipmentStatus.Operational;
 
             [Display(Name = "Condición Física")]
-            public PhysicalCondition PhysicalCondition { get; set; } = PhysicalCondition.Excellent;
+            public PhysicalCondition? PhysicalCondition { get; set; }
 
             [DataType(DataType.Date)]
             [Display(Name = "Fecha de Adquisición")]
@@ -92,7 +92,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 SerialNumber = equipmentunit.SerialNumber,
                 Notes = equipmentunit.Notes,
                 CurrentStatus = equipmentunit.CurrentStatus,
-                PhysicalCondition = equipmentunit.PhysicalCondition ?? PhysicalCondition.Excellent,
+                PhysicalCondition = equipmentunit.PhysicalCondition,
                 AcquisitionDate = equipmentunit.AcquisitionDate,
                 ManufacturingDate = equipmentunit.ManufacturingDate,
                 AcquisitionValue = equipmentunit.AcquisitionValue
@@ -138,7 +138,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             if (dbUnit.CurrentStatus != EquipmentUnit.CurrentStatus || dbUnit.PhysicalCondition != EquipmentUnit.PhysicalCondition)
             {
                 stateChanged = true;
-                stateChangeMessage = $"Estado: {dbUnit.CurrentStatus} -> {EquipmentUnit.CurrentStatus}. Físico: {dbUnit.PhysicalCondition} -> {EquipmentUnit.PhysicalCondition}";
+                var previousCondition = dbUnit.PhysicalCondition?.ToString() ?? "Sin confirmar";
+                var newCondition = EquipmentUnit.PhysicalCondition?.ToString() ?? "Sin confirmar";
+                stateChangeMessage = $"Estado: {dbUnit.CurrentStatus} -> {EquipmentUnit.CurrentStatus}. Físico: {previousCondition} -> {newCondition}";
 
                 var lastHistory = await _context.EquipmentStateHistories
                     .Where(h => h.EquipmentUnitId == dbUnit.Id && h.EndDate == null)
@@ -164,6 +166,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
 
             dbUnit.EquipmentId = EquipmentUnit.EquipmentId!.Value;
             dbUnit.LaboratoryId = EquipmentUnit.LaboratoryId;
+            dbUnit.LocationResolutionStatus = EquipmentUnit.LaboratoryId.HasValue
+                ? LocationResolutionStatus.Confirmed
+                : LocationResolutionStatus.Pending;
             dbUnit.CareerId = EquipmentUnit.CareerId;
             dbUnit.InventoryNumber = EquipmentUnit.InventoryNumber;
             dbUnit.SerialNumber = EquipmentUnit.SerialNumber;
@@ -205,7 +210,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             var labs = _context.Laboratories
                 .Include(l => l.Faculty)
                 .Where(l => l.Status == GeneralStatus.Activo || l.Id == EquipmentUnit.LaboratoryId)
-                .OrderBy(l => l.Faculty.Name)
+                .OrderBy(l => l.Faculty != null ? l.Faculty.Name : string.Empty)
                 .ThenBy(l => l.Name);
             ViewData["LaboratoryId"] = new SelectList(labs, "Id", "Name", EquipmentUnit.LaboratoryId, "Faculty.Name");
             ViewData["CareerId"] = new SelectList(_context.Careers.OrderBy(c => c.Name), "Id", "Name", EquipmentUnit.CareerId);

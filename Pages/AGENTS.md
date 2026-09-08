@@ -5,11 +5,9 @@
 ## Lectura Obligatoria
 
 - `../context.md`.
-- `../.agent/context/00-router.md`.
-- `../.agent/context/areas/ui.md` si tocas vistas.
-- `../.agent/context/areas/backend-page-models.md` si tocas PageModels.
-- Modulo especifico en `../.agent/context/modules/` si aplica.
-- Skills: `ui_premium` y/o `backend_methods`.
+- `../.agents/skills/ui-premium/SKILL.md` si tocas vistas.
+- `../.agents/skills/backend-methods/SKILL.md` si tocas PageModels.
+- Archivos del modulo y consumidores reales; evitar cargar documentacion no relacionada.
 
 ## Reglas Criticas
 

@@ -153,3 +153,121 @@
 .smart-index-actions .btn {
     box-shadow: none;
 }
+
+/* Selector desplegable compacto construido sobre los tokens Bootstrap/NiceAdmin. */
+.live-filter-native {
+    height: 1px !important;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: absolute !important;
+    width: 1px !important;
+}
+
+.live-filter-pill-wrap {
+    display: inline-flex;
+    max-width: 100%;
+    position: relative;
+}
+
+.live-filter-pill {
+    align-items: center;
+    background-color: var(--white);
+    border-color: var(--secondary);
+    color: var(--secondary);
+    display: inline-flex;
+    font-weight: 600;
+    gap: .5rem;
+    justify-content: space-between;
+    max-width: 100%;
+    min-height: 38px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    text-align: left;
+}
+
+.live-filter-pill:hover,
+.live-filter-pill:focus,
+.live-filter-pill.is-active {
+    background-color: var(--white);
+    border-color: var(--info);
+    color: var(--info);
+}
+
+.live-filter-pill:focus {
+    box-shadow: none;
+    outline: 2px solid var(--info);
+    outline-offset: 2px;
+}
+
+.live-filter-pill-icon {
+    flex: 0 0 auto;
+}
+
+.live-filter-pill-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.live-filter-pill-chevron {
+    flex: 0 0 auto;
+    font-size: .7em;
+    transition: transform .15s ease-in-out;
+}
+
+.live-filter-pill-wrap.show .live-filter-pill-chevron {
+    transform: rotate(180deg);
+}
+
+.live-filter-menu {
+    background-color: var(--white);
+    border-color: var(--light);
+    left: 0;
+    margin-top: .35rem;
+    max-height: 16rem;
+    min-width: 100%;
+    overflow-y: auto;
+    right: auto;
+    top: 100%;
+    z-index: 1050;
+}
+
+.live-filter-option {
+    align-items: center;
+    display: flex;
+    gap: .55rem;
+    white-space: normal;
+}
+
+.live-filter-option:hover,
+.live-filter-option:focus,
+.live-filter-option.is-selected {
+    background-color: var(--light);
+    color: var(--info);
+}
+
+.live-filter-option:focus {
+    outline: 2px solid var(--info);
+    outline-offset: -2px;
+}
+
+.live-filter-status-dot {
+    flex: 0 0 auto;
+    font-size: .55rem;
+}
+
+@media (max-width: 575.98px) {
+    .live-filter-pill-wrap {
+        flex: 1 1 auto;
+        min-width: 10rem;
+    }
+
+    .live-filter-pill {
+        width: 100%;
+    }
+
+    .live-filter-menu {
+        width: 100%;
+    }
+}

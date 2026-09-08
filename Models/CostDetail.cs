@@ -65,6 +65,16 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Proveedor Sugerido")]
         public string? Provider { get; set; }
 
+        [Display(Name = "Proveedor Normalizado")]
+        public int? ProviderPersonId { get; set; }
+
+        [Display(Name = "Fecha del Costo")]
+        [DataType(DataType.Date)]
+        public DateTime? CostDate { get; set; }
+
+        [StringLength(200)]
+        public string? HistoricalSourceKey { get; set; }
+
         [StringLength(100)]
         [Display(Name = "N° Factura/Recibo")]
         public string? InvoiceNumber { get; set; }
@@ -84,6 +94,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Última Modificación")]
         public DateTime? LastModifiedDate { get; set; }
 
+        public int? ImportBatchId { get; set; }
+
         // ========================================
         // NAVIGATION
         // ========================================
@@ -93,11 +105,17 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("MaintenanceId")]
         public virtual Maintenance? Maintenance { get; set; }
 
+        [ForeignKey(nameof(ProviderPersonId))]
+        public virtual Person? ProviderPerson { get; set; }
+
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }
 
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
+
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
 
         // ========================================
         // CALCULATIONS

@@ -85,7 +85,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 AjustarAlturaFila(worksheet, 12, labName.ToString());
 
                 // Fecha (celda D12)
-                worksheet.Cells["D12"].Value = request.CreatedDate.ToString("M/d/yyyy");
+                worksheet.Cells["D12"].Value = (request.RequestDate ?? request.CreatedDate).ToString("M/d/yyyy");
                 worksheet.Cells["D12"].Style.Font.Bold = true;
 
                 // Responsable (celda B13) - BORRADO por solicitud de usuario

@@ -7,6 +7,17 @@
     var equipmentName = Model.Maintenance.EquipmentUnit?.Equipment?.Name ?? "Equipo historico no disponible";
     var inventoryNumber = Model.Maintenance.EquipmentUnit?.InventoryNumber ?? "Sin inventario";
     var laboratoryName = Model.Maintenance.EquipmentUnit?.Laboratory?.Name ?? "Sin ambiente vigente";
+    var activeTasks = Model.Maintenance.Tasks
+        .Where(task => !task.IsDeleted)
+        .OrderBy(task => task.Id)
+        .ToList();
+    var activeParticipants = Model.Maintenance.Participants
+        .Where(participant => participant.IsActive)
+        .OrderByDescending(participant => participant.IsPrimary)
+        .ThenBy(participant => participant.Role)
+        .ToList();
+    var costDetailTotal = Model.Maintenance.CalculatedTotal;
+    var completionPercentage = Math.Clamp(Model.Maintenance.CompletionPercentage, 0, 100);
 }
 
 @if (TempData["Error"] != null)
@@ -45,14 +56,19 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Gestion</label>
+                            <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Gestión</label>
                             <p class="text-dark font-weight-bold mb-1">@Model.FormatManagement(Model.Maintenance.Management)</p>
                             <span class="text-muted small">@(Model.Maintenance.Management?.Type == ManagementType.Corrective ? "Correctiva" : "Preventiva")</span>
                         </div>
 
                         <div class="mb-3">
                             <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Tipo de Mantenimiento</label>
-                            <p class="text-dark">@EnumHelper.GetDisplayName(Model.Maintenance.MaintenanceType)</p>
+                            <p class="text-dark font-weight-bold mb-1">@EnumHelper.GetDisplayName(Model.Maintenance.MaintenanceType)</p>
+                            <span class="badge badge-light border mr-1">Servicio @DetailsModel.FormatServiceType(Model.Maintenance.ServiceType)</span>
+                            @if (!string.IsNullOrWhiteSpace(Model.Maintenance.InstitutionalCode))
+                            {
+                                <span class="badge badge-light border">Código: @Model.Maintenance.InstitutionalCode</span>
+                            }
                         </div>
 
                         <div class="mb-3">
@@ -68,7 +84,17 @@
                             <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Técnico Responsable</label>
                             <div class="d-flex align-items-center">
                                 <i class="fas fa-user-cog text-info mr-2"></i>
-                                <p class="text-dark font-weight-bold mb-0">@(Model.Maintenance.Technician?.FullName ?? "No asignado")</p>
+                                <p class="text-dark font-weight-bold mb-0">@(Model.Maintenance.Technician?.FullName ?? Model.Maintenance.TechnicianName ?? "No asignado")</p>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="small text-muted font-weight-bold mb-0 uppercase">Avance registrado</label>
+                                <span class="small font-weight-bold text-dark">@completionPercentage%</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: @completionPercentage%;" aria-valuenow="@completionPercentage" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                         </div>
 
@@ -84,6 +110,13 @@
                             <div class="col-6 mb-3">
                                 <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Finalización</label>
                                 <p class="text-dark small"><i class="fas fa-check-double mr-1 text-info"></i> @(Model.Maintenance.EndDate?.ToString("dd/MM/yyyy") ?? "-")</p>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Duración real</label>
+                                <p class="text-dark small">
+                                    <i class="fas fa-hourglass-half mr-1"></i>
+                                    @(Model.Maintenance.DurationHours.HasValue ? $"{Model.Maintenance.DurationHours.Value:N1} hora(s)" : "No disponible")
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -104,21 +137,46 @@
                         </p>
                     </div>
                     <div class="col-md-4">
-                        <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Recomendaciones Técnicas</label>
-                        <p class="text-dark small italic">@(Model.Maintenance.Recommendations ?? "N/A")</p>
+                        <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Próximo mantenimiento sugerido</label>
+                        <p class="text-dark font-weight-bold">@(Model.Maintenance.SuggestedNextMaintenanceDate?.ToString("dd/MM/yyyy") ?? "No definido")</p>
                     </div>
                     <div class="col-md-4">
-                        <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Observaciones Finales</label>
-                        <p class="text-dark small">@(Model.Maintenance.Observations ?? "Sin observaciones.")</p>
+                        <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Costos</label>
+                        <p class="text-dark mb-0"><span class="text-muted small">Estimado:</span> <strong>@(Model.Maintenance.EstimatedCost.HasValue ? $"Bs {Model.Maintenance.EstimatedCost.Value:N2}" : "No registrado")</strong></p>
+                        <p class="text-dark mb-0"><span class="text-muted small">Real declarado:</span> <strong>@(Model.Maintenance.ActualCost.HasValue ? $"Bs {Model.Maintenance.ActualCost.Value:N2}" : "No registrado")</strong></p>
+                        <p class="text-dark"><span class="text-muted small">Suma de ítems:</span> <strong>@(costDetailTotal > 0 ? $"Bs {costDetailTotal:N2}" : "Sin ítems")</strong></p>
                     </div>
                 </div>
 
-                @{
-                    var activeTasks = Model.Maintenance.Tasks?
-                        .Where(t => !t.IsDeleted)
-                        .OrderBy(t => t.Id)
-                        .ToList() ?? new List<Proyecto_Laboratorios_Univalle.Models.MaintenanceTask>();
-                }
+                <div class="row pt-3 border-top">
+                    <div class="col-md-6">
+                        <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Recomendaciones Técnicas</label>
+                        <p class="text-dark small italic">@(Model.Maintenance.Recommendations ?? "Sin recomendaciones registradas.")</p>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Observaciones Finales</label>
+                        <p class="text-dark small">@(Model.Maintenance.Observations ?? "Sin observaciones registradas.")</p>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-top">
+                    <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-clipboard-check mr-2 text-info"></i> Lista de control L-48</h5>
+                    <div class="row">
+                        <div class="col-sm-6 mb-2">
+                            <span class="small"><i class="@(Model.Maintenance.Step1_Cleaning ? "fas fa-check-circle text-success" : "far fa-circle text-muted") mr-2"></i>Limpieza y desinfección</span>
+                        </div>
+                        <div class="col-sm-6 mb-2">
+                            <span class="small"><i class="@(Model.Maintenance.Step2_Calibration ? "fas fa-check-circle text-success" : "far fa-circle text-muted") mr-2"></i>Calibración del sistema</span>
+                        </div>
+                        <div class="col-sm-6 mb-2">
+                            <span class="small"><i class="@(Model.Maintenance.Step3_Testing ? "fas fa-check-circle text-success" : "far fa-circle text-muted") mr-2"></i>Pruebas de esfuerzo o carga</span>
+                        </div>
+                        <div class="col-sm-6 mb-2">
+                            <span class="small"><i class="@(Model.Maintenance.Step4_FinalReview ? "fas fa-check-circle text-success" : "far fa-circle text-muted") mr-2"></i>Revisión final de seguridad</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mt-4 pt-4 border-top">
                     <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-tasks mr-2 text-info"></i> Tareas L-48 Ejecutadas</h5>
                     @if (activeTasks.Any())
@@ -155,6 +213,97 @@
                     }
                 </div>
 
+                <div class="mt-4 pt-4 border-top">
+                    <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-users mr-2 text-info"></i> Personal participante</h5>
+                    @if (activeParticipants.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover border">
+                                <thead class="bg-light">
+                                    <tr class="small uppercase font-weight-bold">
+                                        <th>Persona</th>
+                                        <th>Rol</th>
+                                        <th class="text-center">Responsabilidad</th>
+                                        <th>Asignación</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var participant in activeParticipants)
+                                    {
+                                        <tr>
+                                            <td class="small font-weight-bold">@(participant.Person?.FullName ?? "Persona no disponible")</td>
+                                            <td class="small">@EnumHelper.GetDisplayName(participant.Role)</td>
+                                            <td class="small text-center">
+                                                @if (participant.IsPrimary)
+                                                {
+                                                    <span class="badge badge-info">Responsable principal</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge badge-light border">Participante</span>
+                                                }
+                                            </td>
+                                            <td class="small">@participant.AssignedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-light border shadow-none small">
+                            <i class="fas fa-info-circle mr-2"></i> No hay participantes adicionales; se conserva el técnico responsable mostrado en la cabecera.
+                        </div>
+                    }
+                </div>
+
+                <div class="mt-4 pt-4 border-top">
+                    <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-file-alt mr-2 text-info"></i> Solicitudes relacionadas</h5>
+                    @if (Model.RelatedRequests.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover border">
+                                <thead class="bg-light">
+                                    <tr class="small uppercase font-weight-bold">
+                                        <th>Solicitud</th>
+                                        <th>Fecha</th>
+                                        <th>Solicitante</th>
+                                        <th>Prioridad</th>
+                                        <th>Estado</th>
+                                        <th>Descripción</th>
+                                        <th class="text-center">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var request in Model.RelatedRequests)
+                                    {
+                                        <tr>
+                                            <td class="small font-weight-bold">#SOL-@request.Id.ToString("D5")</td>
+                                            <td class="small">@(request.RequestDate?.ToString("dd/MM/yyyy") ?? request.CreatedDate.ToString("dd/MM/yyyy"))</td>
+                                            <td class="small">@DetailsModel.FormatRequester(request)</td>
+                                            <td class="small">@EnumHelper.GetDisplayName(request.Priority)</td>
+                                            <td class="small"><span class="badge badge-pill @DetailsModel.GetRequestStatusBadge(request.Status)">@EnumHelper.GetDisplayName(request.Status)</span></td>
+                                            <td class="small text-muted">@request.Description</td>
+                                            <td class="text-center">
+                                                <a asp-page="/Requests/Details" asp-route-id="@request.Id" class="btn btn-sm btn-outline-info btn-rounded" title="Ver solicitud">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-light border shadow-none small">
+                            <i class="fas fa-info-circle mr-2"></i> Este mantenimiento no tiene una solicitud asociada.
+                        </div>
+                    }
+                </div>
+
                 @if (Model.Maintenance.CostDetails != null && Model.Maintenance.CostDetails.Any())
                 {
                     <div class="mt-4 pt-4 border-top">
@@ -163,8 +312,11 @@
                             <table class="table table-sm table-hover border">
                                 <thead class="bg-light">
                                     <tr class="small uppercase font-weight-bold">
-                                        <th>Concepto</th>
-                                        <th class="text-right">Cant.</th>
+                                        <th>Ítem y detalle</th>
+                                        <th>Categoría</th>
+                                        <th>Proveedor / comprobante</th>
+                                        <th>Fecha</th>
+                                        <th class="text-right">Cantidad</th>
                                         <th class="text-right">Unitario</th>
                                         <th class="text-right">Subtotal</th>
                                     </tr>
@@ -173,8 +325,23 @@
                                     @foreach (var item in Model.Maintenance.CostDetails)
                                     {
                                         <tr>
-                                            <td class="small font-weight-bold">@item.Concept</td>
-                                            <td class="small text-right">@item.Quantity</td>
+                                            <td class="small">
+                                                <span class="font-weight-bold text-dark d-block">@item.Concept</span>
+                                                @if (!string.IsNullOrWhiteSpace(item.Description))
+                                                {
+                                                    <span class="text-muted">@item.Description</span>
+                                                }
+                                            </td>
+                                            <td class="small">@EnumHelper.GetDisplayName(item.Category)</td>
+                                            <td class="small">
+                                                <span class="d-block">@(item.ProviderPerson?.FullName ?? item.Provider ?? "Sin proveedor")</span>
+                                                @if (!string.IsNullOrWhiteSpace(item.InvoiceNumber))
+                                                {
+                                                    <span class="text-muted">Comp.: @item.InvoiceNumber</span>
+                                                }
+                                            </td>
+                                            <td class="small">@(item.CostDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                            <td class="small text-right">@item.Quantity @item.UnitOfMeasure</td>
                                             <td class="small text-right">Bs @item.UnitPrice.ToString("N2")</td>
                                             <td class="small text-right font-weight-bold">Bs @item.Subtotal.ToString("N2")</td>
                                         </tr>
@@ -182,14 +349,28 @@
                                 </tbody>
                                 <tfoot class="bg-light">
                                     <tr>
-                                        <td colspan="3" class="text-right font-weight-bold uppercase small">Costo Total Ejecutado:</td>
+                                        <td colspan="6" class="text-right font-weight-bold uppercase small">Total de ítems:</td>
                                         <td class="text-right font-weight-bold text-success" style="font-size: 1rem;">
-                                            Bs @Model.Maintenance.ActualCost?.ToString("N2")
+                                            Bs @costDetailTotal.ToString("N2")
                                         </td>
                                     </tr>
+                                    @if (Model.Maintenance.ActualCost.HasValue)
+                                    {
+                                        <tr>
+                                            <td colspan="6" class="text-right font-weight-bold uppercase small">Costo real declarado:</td>
+                                            <td class="text-right font-weight-bold">Bs @Model.Maintenance.ActualCost.Value.ToString("N2")</td>
+                                        </tr>
+                                    }
                                 </tfoot>
                             </table>
                         </div>
+                        @if (Model.Maintenance.ActualCost.HasValue && Model.Maintenance.ActualCost.Value != costDetailTotal)
+                        {
+                            <div class="alert alert-warning border small mb-0">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                El costo real declarado no coincide con la suma de los ítems. Se muestran ambos valores sin alterar el registro.
+                            </div>
+                        }
                     </div>
                 }
                 else
@@ -203,9 +384,9 @@
     </div>
 
     <div class="col-lg-4 d-print-none">
-        <div class="card shadow-sm border-0 mb-4 border-left border-3" style="background: #f5f3ff; border-color: #7c3aed !important;">
+        <div class="card shadow-sm border-0 mb-4 border-left border-info border-left-3 bg-light">
             <div class="card-body">
-                <h5 class="font-weight-bold small uppercase mb-3" style="color: #7c3aed;"><i class="fas fa-shield-alt mr-2"></i> Estado de Mantenimiento</h5>
+                <h5 class="font-weight-bold small uppercase mb-3 text-info"><i class="fas fa-shield-alt mr-2"></i> Estado de Mantenimiento</h5>
                 <hr class="mb-4" />
                 
                 <div class="mb-3">
@@ -215,17 +396,21 @@
 
                 <div class="mb-0">
                     <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estatus Actual</label>
-                    @{
-                        var sBadge = Model.Maintenance.Status switch {
-                            MaintenanceStatus.Completed => "badge-success",
-                            MaintenanceStatus.InProgress => "badge-warning",
-                            MaintenanceStatus.Scheduled => "badge-info",
-                            MaintenanceStatus.Pending => "badge-warning",
-                            MaintenanceStatus.Cancelled => "badge-danger",
-                            _ => "badge-secondary"
-                        };
+                    <span class="badge badge-pill @DetailsModel.GetMaintenanceStatusBadge(Model.Maintenance.Status) px-3 py-1 font-weight-bold">@EnumHelper.GetDisplayName(Model.Maintenance.Status)</span>
+                </div>
+
+                <div class="mt-3 pt-3 border-top">
+                    <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Cumplimiento de fecha</label>
+                    @if (Model.Maintenance.CompletedOnTime.HasValue)
+                    {
+                        <span class="badge @(Model.Maintenance.CompletedOnTime.Value ? "badge-success" : "badge-warning")">
+                            @(Model.Maintenance.CompletedOnTime.Value ? "Finalizado a tiempo" : "Finalizado fuera de fecha")
+                        </span>
                     }
-                    <span class="badge badge-pill @sBadge px-3 py-1 font-weight-bold">@Html.DisplayFor(m => m.Maintenance.Status)</span>
+                    else
+                    {
+                        <span class="text-muted small">No evaluable con las fechas registradas</span>
+                    }
                 </div>
             </div>
         </div>
@@ -299,15 +484,10 @@
 
 @section Styles {
     <style>
-        .bg-light-success { background-color: rgba(40, 167, 69, 0.05); }
-        .bg-light-danger { background-color: rgba(220, 53, 69, 0.05); }
-        .bg-light-warning { background-color: rgba(255, 193, 7, 0.05); }
         .border-left-3 { border-left-width: 4px !important; }
         .italic { font-style: italic; }
         .opacity-5 { opacity: 0.15; }
         .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
         .audit-log label { letter-spacing: 0.5px; }
-        .v-middle td { vertical-align: middle !important; }
-        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
     </style>
 }

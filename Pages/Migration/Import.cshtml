@@ -4,47 +4,101 @@
     ViewData["Title"] = "Migración de Datos";
 }
 
-<div class="container mt-5">
-    <div class="card shadow-lg border-0 rounded-4">
-        <div class="card-header bg-primary text-white p-4 rounded-top-4">
-            <h2 class="mb-0"><i class="bi bi-database-up me-2"></i>Migración de Datos (Excel a SQL Server)</h2>
+<div class="container-fluid py-4 px-lg-5">
+    <div class="card shadow border-0 rounded-4 overflow-hidden mb-4">
+        <div class="card-header migration-hero text-white p-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center">
+                <div>
+                    <div class="text-uppercase small font-weight-bold mb-2 opacity-85">Gobierno de datos históricos</div>
+                    <h2 class="mb-2"><i class="fas fa-database mr-2"></i>Excel normalizado a SQL Server</h2>
+                    <p class="mb-0 opacity-90">Validación, conciliación y staging auditable sin sobrescribir la evidencia.</p>
+                </div>
+                <span class="badge badge-light text-danger px-3 py-2 mt-3 mt-lg-0">
+                    <i class="fas fa-shield-alt mr-1"></i> Solo SuperAdmin
+                </span>
+            </div>
         </div>
-        <div class="card-body p-5">
-            <p class="lead">Este proceso importará los datos limpios desde el archivo JSON generado previamente a partir de los Excel de Gastronomía.</p>
-            
-            <div class="alert alert-info border-0 shadow-sm">
-                <strong>Archivos procesados:</strong>
-                <ul class="mb-0">
-                    <li>Inventario equipos.xlsb</li>
-                    <li>inventario utensilios.xlsx</li>
-                    <li>tipos de utensilios v.xlsx</li>
-                </ul>
+        <div class="card-body p-4 p-lg-5">
+            <div class="alert alert-warning border-0 shadow-sm mb-4" role="alert">
+                <div class="d-flex">
+                    <i class="fas fa-exclamation-triangle fa-2x mr-3 mt-1"></i>
+                    <div>
+                        <h5 class="alert-heading font-weight-bold">La aplicación no ejecuta importaciones ni migraciones</h5>
+                        <p class="mb-0">Esta pantalla documenta el flujo. La generación y revisión se realizan fuera de la aplicación; la base oficial requiere respaldo y autorización explícita.</p>
+                    </div>
+                </div>
             </div>
 
-            @if (!string.IsNullOrEmpty(Model.Message))
-            {
-                <div class="alert @(Model.Message.Contains("Error") ? "alert-danger" : "alert-success") border-0 shadow-sm animate__animated animate__fadeIn">
-                    <i class="bi @(Model.Message.Contains("Error") ? "bi-exclamation-triangle" : "bi-check-circle") me-2"></i>
-                    @Model.Message
-                </div>
-            }
+            <div class="alert alert-info border-0 shadow-sm mb-4" role="alert">
+                <strong><i class="fas fa-info-circle mr-1"></i> Alcance actual:</strong>
+                <code>stage-v2-delta.sql</code> registra el lote, las filas fuente y las incidencias. La carga de entidades de negocio requiere un adaptador transaccional de claves foráneas probado en QA.
+            </div>
 
-            <form method="post" class="mt-4">
-                <button type="submit" class="btn btn-primary btn-lg px-5 py-3 shadow-sm rounded-pill transition-all hover-scale">
-                    <i class="bi bi-rocket-takeoff me-2"></i>Iniciar Migración ahora
-                </button>
-            </form>
+            <div class="row">
+                <div class="col-xl-7 mb-4 mb-xl-0">
+                    <h4 class="font-weight-bold text-dark mb-3">Flujo obligatorio</h4>
+                    <div class="timeline-step">
+                        <span class="step-number">1</span>
+                        <div><strong>Entregar la planilla guiada.</strong><br><span class="text-muted">La cliente completa solo celdas amarillas y conserva códigos y filas.</span></div>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="step-number">2</span>
+                        <div><strong>Validar contrato y evidencia.</strong><br><span class="text-muted">Registrar hash, revisar encabezados, claves, duplicados y campos obligatorios.</span></div>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="step-number">3</span>
+                        <div><strong>Conciliar Excel contra la base.</strong><br><span class="text-muted">Clasificar coincidencias, altas, conflictos, registros legados y pendientes.</span></div>
+                    </div>
+                    <div class="timeline-step">
+                        <span class="step-number">4</span>
+                        <div><strong>Probar staging y adaptador en QA.</strong><br><span class="text-muted">Ejecutar únicamente artefactos aprobados y comprobar integridad, trazabilidad y reejecución.</span></div>
+                    </div>
+                    <div class="timeline-step mb-0">
+                        <span class="step-number">5</span>
+                        <div><strong>Promover con autorización.</strong><br><span class="text-muted">Restaurar el respaldo de prueba y recién después ejecutar en la base oficial.</span></div>
+                    </div>
+                </div>
+
+                <div class="col-xl-5">
+                    <h4 class="font-weight-bold text-dark mb-3">Prioridad de resolución</h4>
+                    <div class="priority-card priority-p0 mb-3">
+                        <span class="priority-label">P0 · CRÍTICA</span>
+                        <div>Inventario, catálogo, laboratorio y claves inexistentes.</div>
+                        <small>Toda P0, incluso en cuarentena, bloquea la carga técnica.</small>
+                    </div>
+                    <div class="priority-card priority-p1 mb-3">
+                        <span class="priority-label">P1 · ALTA</span>
+                        <div>Responsable patrimonial, ubicación interna, condición y actores.</div>
+                        <small>Debe resolverse o justificarse en la primera ronda.</small>
+                    </div>
+                    <div class="priority-card priority-p2">
+                        <span class="priority-label">P2 · PROGRAMADA</span>
+                        <div>Históricos ambiguos y movimientos L-3 no estructurados.</div>
+                        <small>Se mantienen en cuarentena hasta contar con evidencia.</small>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-footer bg-light p-3 text-muted text-center rounded-bottom-4">
-            Asegúrese de que el archivo <code>tmp/migration_data.json</code> exista antes de comenzar.
+        <div class="card-footer bg-light p-3 text-muted text-center">
+            Consulte <code>docs/GUIA_ENTREGA_PLANILLA_CLIENTE.md</code>, <code>docs/PLAN_NORMALIZACION_HISTORICA_V2.md</code> y <code>docs/GUIA_IMPORTACION_HISTORICA.md</code> antes de generar o aplicar datos.
         </div>
     </div>
 </div>
 
 <style>
-    .transition-all { transition: all 0.3s ease; }
-    .hover-scale:hover { transform: scale(1.02); }
+    .migration-hero { background: linear-gradient(135deg, #9f1239 0%, #be123c 55%, #7f1d1d 100%); }
+    .opacity-85 { opacity: .85; }
+    .opacity-90 { opacity: .90; }
     .rounded-4 { border-radius: 1rem !important; }
-    .rounded-top-4 { border-top-left-radius: 1rem !important; border-top-right-radius: 1rem !important; }
-    .rounded-bottom-4 { border-bottom-left-radius: 1rem !important; border-bottom-right-radius: 1rem !important; }
+    .timeline-step { display: flex; align-items: flex-start; margin-bottom: 1.35rem; }
+    .step-number { flex: 0 0 2rem; height: 2rem; border-radius: 50%; background: #9f1239; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; margin-right: 1rem; box-shadow: 0 .25rem .75rem rgba(159, 18, 57, .22); }
+    .priority-card { border-left: .35rem solid; border-radius: .65rem; padding: 1rem 1.1rem; background: #fff; box-shadow: 0 .2rem .8rem rgba(15, 23, 42, .08); }
+    .priority-card small { display: block; color: #6c757d; margin-top: .35rem; }
+    .priority-label { display: inline-block; font-size: .75rem; font-weight: 800; letter-spacing: .04em; margin-bottom: .35rem; }
+    .priority-p0 { border-color: #b91c1c; background: #fff5f5; }
+    .priority-p0 .priority-label { color: #991b1b; }
+    .priority-p1 { border-color: #d97706; background: #fffbeb; }
+    .priority-p1 .priority-label { color: #92400e; }
+    .priority-p2 { border-color: #2563eb; background: #eff6ff; }
+    .priority-p2 .priority-label { color: #1e40af; }
 </style>

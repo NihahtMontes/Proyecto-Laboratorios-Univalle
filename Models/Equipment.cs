@@ -21,10 +21,18 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         // Añadimos el Enum de Tipo de Utensilio (Material)
         [Display(Name = "Tipo de Material / Utensilio")]
-        public UtensilType UtensilType { get; set; } = UtensilType.NoAplica;
+        public UtensilType? UtensilType { get; set; }
 
         [Display(Name = "Clasificación de Tipo")]
-        public EquipmentTypeClassification TypeClassification { get; set; } = EquipmentTypeClassification.Otro;
+        public EquipmentTypeClassification? TypeClassification { get; set; }
+
+        [Display(Name = "Estado de revisión de clasificación")]
+        public EquipmentClassificationReviewStatus ClassificationReviewStatus { get; set; }
+            = EquipmentClassificationReviewStatus.LegacyInferred;
+
+        [StringLength(1000)]
+        [Display(Name = "Detalle de clasificación Otro")]
+        public string? OtherClassificationDetail { get; set; }
 
         // ========================================
         // ESTADO
@@ -32,6 +40,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [Display(Name = "Estado")]
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
+
+        [StringLength(30)]
+        [Display(Name = "Código de Catálogo")]
+        public string? CatalogCode { get; set; }
 
         // ========================================
         // IDENTIFICACIÓN Y ORIGEN
@@ -87,6 +99,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Última Modificación")]
         public DateTime? LastModifiedDate { get; set; }
 
+        public int? ImportBatchId { get; set; }
+
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = [];
+
         // ========================================
         // PROPIEDADES DE NAVEGACIÓN
         // ========================================
@@ -103,5 +120,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual ICollection<EquipmentUnit>? Units { get; set; }
 
         public virtual ICollection<EquipmentNote>? Notes { get; set; }
+
+        public virtual ICollection<EquipmentClassificationDecision> ClassificationDecisions { get; set; } = [];
+
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
     }
 }

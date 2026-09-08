@@ -84,7 +84,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             Request = (await _context.Requests
                 .Include(r => r.Equipment)
                 .Include(r => r.EquipmentUnit)
-                    .ThenInclude(eu => eu.Laboratory)
+                    .ThenInclude(eu => eu!.Laboratory)
                 .Include(r => r.CostDetails)
                 .FirstOrDefaultAsync(m => m.Id == id))!;
 
@@ -135,7 +135,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             {
                 var request = await _context.Requests
                     .Include(r => r.EquipmentUnit)
-                        .ThenInclude(eu => eu.Laboratory)
+                        .ThenInclude(eu => eu!.Laboratory)
                     .FirstOrDefaultAsync(m => m.Id == Input.Id);
                     
                 int facultyId = request?.EquipmentUnit?.Laboratory?.FacultyId ?? 0;

@@ -33,12 +33,15 @@
                             <div class="form-group mb-4">
                                 <label asp-for="Input.Semester" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Semestre <span class="text-danger">*</span></label>
                                 <select asp-for="Input.Semester" class="form-control custom-select">
-                                    @if (Model.ManagementType == ManagementType.Corrective && Model.Input.Semester == 0)
+                                    @if (Model.ManagementType == ManagementType.Corrective)
                                     {
                                         <option value="0">Correctivo general (sin semestre)</option>
                                     }
-                                    <option value="1">Semestre 1 (Enero - Junio)</option>
-                                    <option value="2">Semestre 2 (Julio - Diciembre)</option>
+                                    else
+                                    {
+                                        <option value="1">Semestre 1 (Enero - Junio)</option>
+                                        <option value="2">Semestre 2 (Julio - Diciembre)</option>
+                                    }
                                 </select>
                                 <span asp-validation-for="Input.Semester" class="text-danger small font-weight-bold"></span>
                             </div>
@@ -65,7 +68,7 @@
                             <div class="form-group mb-4">
                                 <label asp-for="Input.Status" class="control-label font-weight-bold small text-info text-uppercase mb-1">Estado Administrativo Actual</label>
                                 <select asp-for="Input.Status" class="form-control custom-select font-weight-bold border-info" 
-                                        asp-items="Html.GetEnumSelectList<ManagementStatus>()">
+                                        asp-items="Html.GetEnumSelectList<ManagementStatus>().Where(item => item.Value != ((int)ManagementStatus.Deleted).ToString())">
                                 </select>
                                 <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold"></span>
                                 <small class="form-text text-muted italic mt-1 font-12"><i class="fas fa-exclamation-triangle mr-1 text-warning"></i> Solo una gestión puede estar "Activa" a la vez.</small>

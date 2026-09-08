@@ -1,0 +1,52 @@
+strict_tdd: false
+context: |
+  Proyecto-Laboratorios-Univalle is a Node.js/TypeScript, Python project.
+  Detected markers: GitHub Actions.
+  Additional evidence: Test-like files detected (3); examples: Pages\niceadmin\js\pages\c3-chart\c3_test.csv, Pages\niceadmin\js\pages\c3-chart\c3_test.json, bin\Debug\net9.0\Pages\niceadmin\js\pages\c3-chart\c3_test.json.
+  No reliable test runner was detected; verify testing manually before enabling strict TDD.
+  Unit tests: none.
+  Integration tests: none.
+  E2E tests: none.
+rules:
+  proposal:
+    require_problem_statement: true
+  spec:
+    require_acceptance_criteria: true
+  design:
+    require_tradeoffs: true
+  tasks:
+    protect_review_workload: true
+  apply:
+    test_command: ""
+  verify:
+    test_command: ""
+testing:
+  detected: "2026-07-05"
+  runner:
+    command: ""
+    framework: ""
+  layers:
+    unit: ""
+    integration: ""
+    e2e: ""
+  commands:
+    unit:
+      []
+    integration:
+      []
+    e2e:
+      []
+  coverage:
+    command: ""
+    commands:
+      []
+quality:
+  lint: ""
+  lint_commands:
+    []
+  typecheck: ""
+  typecheck_commands:
+    []
+  format: ""
+  format_commands:
+    []

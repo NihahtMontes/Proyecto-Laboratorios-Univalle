@@ -34,7 +34,7 @@
                                 <i class="fas fa-cube mr-2 text-success"></i> @(Model.AcquisitionRequest.Equipment?.Name ?? "Item Especial de Manual")
                                 <span class="text-muted font-weight-normal small ml-1 italic">(@(Model.AcquisitionRequest.EquipmentUnit?.InventoryNumber ?? "Nuevo Activo / Sin Inv."))</span>
                             </span>
-                            <span class="badge badge-success font-weight-bold px-3">@Html.DisplayFor(m => m.AcquisitionRequest.Equipment.Category)</span>
+                            <span class="badge badge-success font-weight-bold px-3">@(Model.AcquisitionRequest.Equipment?.Category.ToString() ?? "No aplica")</span>
                         </div>
                     </div>
                 </div>
@@ -193,8 +193,8 @@
                 <div class="audit-log small">
                     <div class="mb-3">
                         <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Origen de Solicitud</label>
-                        <span class="font-weight-bold text-dark d-block">@(Model.AcquisitionRequest.RequestedBy?.FullName ?? "Solicitante Externo")</span>
-                        <div class="text-muted pt-1 small italic"><i class="far fa-clock mr-1"></i> @Model.AcquisitionRequest.CreatedDate.ToString("dd-MM-yyyy HH:mm")</div>
+                        <span class="font-weight-bold text-dark d-block">@(Model.AcquisitionRequest.RequestedBy?.FullName ?? Model.AcquisitionRequest.RequestedByPerson?.FullName ?? "Solicitante externo")</span>
+                        <div class="text-muted pt-1 small italic"><i class="far fa-clock mr-1"></i> Solicitud: @((Model.AcquisitionRequest.RequestDate ?? Model.AcquisitionRequest.CreatedDate).ToString("dd-MM-yyyy"))</div>
                     </div>
                 </div>
             </div>

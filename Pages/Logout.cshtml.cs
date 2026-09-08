@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 
 namespace Proyecto_Laboratorios_Univalle.Pages
 {
-    [AllowAnonymous]
+    [Authorize]
     public class LogoutModel : PageModel
     {
         private readonly SignInManager<User> _signInManager;
@@ -17,9 +17,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             _signInManager = signInManager;
         }
 
-        public async Task<IActionResult> OnGet()
+        public IActionResult OnGet()
         {
-            return await PerformLogout();
+            return RedirectToPage("/Login");
         }
 
         public async Task<IActionResult> OnPost(string? returnUrl = null)

@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
 
@@ -8,6 +10,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class ReportsController : ControllerBase
     {
         private readonly IReportService _reportService;
@@ -58,8 +61,9 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "CRASH en GenerateL6. ManagementId={ManagementId}; LabId={LabId}", managementId, labId);
-                return StatusCode(500, $"Error: {ex.GetType().Name} - {ex.Message}\n{ex.StackTrace}");
+                _logger.LogError(ex, "No se pudo generar L-6. ManagementId={ManagementId}; LabId={LabId}", managementId, labId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte L-6. Intente nuevamente o contacte al administrador.");
             }
         }
 
@@ -96,7 +100,11 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error generando L3: {ex.Message}");
+                _logger.LogError(ex,
+                    "No se pudo generar L-3. DepartureId={DepartureId}; UnitId={UnitId}; ManagementId={ManagementId}",
+                    departureId, unitId, managementId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte L-3. Intente nuevamente o contacte al administrador.");
             }
         }
 
@@ -114,7 +122,11 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error generando L8: {ex.Message}");
+                _logger.LogError(ex,
+                    "No se pudo generar L-8. ManagementPlanId={ManagementPlanId}; UnitId={UnitId}; ManagementId={ManagementId}",
+                    managementPlanId, unitId, managementId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte L-8. Intente nuevamente o contacte al administrador.");
             }
         }
 
@@ -132,105 +144,117 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error generando L48: {ex.Message}");
+                _logger.LogError(ex, "No se pudo generar L-48. ManagementId={ManagementId}; LabId={LabId}", managementId, labId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte L-48. Intente nuevamente o contacte al administrador.");
             }
         }
 
         [HttpGet("download/l7")]
         public async Task<IActionResult> DownloadL7(int? requestId, int? unitId, int? managementId)
         {
-            var requestQuery = _context.Requests
-                .AsNoTracking()
-                .Include(r => r.Laboratory)
-                .Include(r => r.Equipment)
-                    .ThenInclude(e => e!.City)
-                .Include(r => r.Equipment)
-                    .ThenInclude(e => e!.Country)
-                .Include(r => r.RequestedBy)
-                .Include(r => r.EquipmentUnit)
-                    .ThenInclude(eu => eu!.Laboratory)
-                .Where(r => r.Type == RequestType.Technical);
-
-            if (requestId.HasValue)
-            {
-                requestQuery = requestQuery.Where(r => r.Id == requestId.Value);
-            }
-            else if (unitId.HasValue)
-            {
-                requestQuery = requestQuery.Where(r => r.EquipmentUnitId == unitId.Value);
-                if (managementId.HasValue)
-                {
-                    requestQuery = requestQuery.Where(r => r.ManagementId == managementId.Value);
-                }
-            }
-            else
-            {
-                return BadRequest("Debe indicar requestId para L-7.");
-            }
-
-            var request = await requestQuery
-                .OrderByDescending(r => r.CreatedDate)
-                .FirstOrDefaultAsync();
-
-            if (request == null)
-                return NotFound("Este equipo no tiene solicitudes L-7 registradas en la gestión seleccionada.");
-
             try
             {
+                var requestQuery = _context.Requests
+                    .AsNoTracking()
+                    .Include(r => r.Laboratory)
+                    .Include(r => r.Equipment)
+                        .ThenInclude(e => e!.City)
+                    .Include(r => r.Equipment)
+                        .ThenInclude(e => e!.Country)
+                    .Include(r => r.RequestedBy)
+                    .Include(r => r.RequestedByPerson)
+                    .Include(r => r.EquipmentUnit)
+                        .ThenInclude(eu => eu!.Laboratory)
+                    .Where(r => r.Type == RequestType.Technical);
+
+                if (requestId.HasValue)
+                {
+                    requestQuery = requestQuery.Where(r => r.Id == requestId.Value);
+                }
+                else if (unitId.HasValue)
+                {
+                    requestQuery = requestQuery.Where(r => r.EquipmentUnitId == unitId.Value);
+                    if (managementId.HasValue)
+                    {
+                        requestQuery = requestQuery.Where(r => r.ManagementId == managementId.Value);
+                    }
+                }
+                else
+                {
+                    return BadRequest("Debe indicar requestId o unitId para L-7.");
+                }
+
+                var request = await requestQuery
+                    .OrderByDescending(r => r.RequestDate ?? r.CreatedDate)
+                    .FirstOrDefaultAsync();
+
+                if (request == null)
+                    return NotFound("Este equipo no tiene solicitudes L-7 registradas en la gestión seleccionada.");
+
                 var bytes = await _reportService.GenerateSolicitudMantenimientoExcel(request);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     $"Solicitud_L7_{request.Id}.xlsx");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error generando L7: {ex.Message}");
+                _logger.LogError(ex,
+                    "No se pudo generar L-7. RequestId={RequestId}; UnitId={UnitId}; ManagementId={ManagementId}",
+                    requestId, unitId, managementId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte L-7. Intente nuevamente o contacte al administrador.");
             }
         }
 
         [HttpGet("download/adquisicion")]
         public async Task<IActionResult> DownloadAdquisicion(int? requestId, int? unitId, int? managementId)
         {
-            var requestQuery = _context.Requests
-                .AsNoTracking()
-                .Include(r => r.Laboratory)
-                    .ThenInclude(l => l!.Faculty)
-                .Include(r => r.RequestedBy)
-                .Include(r => r.CostDetails)
-                .Where(r => r.Type == RequestType.Purchasing);
-
-            if (requestId.HasValue)
-            {
-                requestQuery = requestQuery.Where(r => r.Id == requestId.Value);
-            }
-            else if (unitId.HasValue)
-            {
-                requestQuery = requestQuery.Where(r => r.EquipmentUnitId == unitId.Value);
-                if (managementId.HasValue)
-                {
-                    requestQuery = requestQuery.Where(r => r.ManagementId == managementId.Value);
-                }
-            }
-            else
-            {
-                return BadRequest("Debe indicar requestId para L-12.");
-            }
-
-            var request = await requestQuery
-                .OrderByDescending(r => r.CreatedDate)
-                .FirstOrDefaultAsync();
-
-            if (request == null)
-                return NotFound("Este equipo no tiene solicitudes de adquisición en la gestión seleccionada.");
-
             try
             {
+                var requestQuery = _context.Requests
+                    .AsNoTracking()
+                    .Include(r => r.Laboratory)
+                        .ThenInclude(l => l!.Faculty)
+                    .Include(r => r.RequestedBy)
+                    .Include(r => r.RequestedByPerson)
+                    .Include(r => r.CostDetails)
+                    .Where(r => r.Type == RequestType.Purchasing);
+
+                if (requestId.HasValue)
+                {
+                    requestQuery = requestQuery.Where(r => r.Id == requestId.Value);
+                }
+                else if (unitId.HasValue)
+                {
+                    requestQuery = requestQuery.Where(r => r.EquipmentUnitId == unitId.Value);
+                    if (managementId.HasValue)
+                    {
+                        requestQuery = requestQuery.Where(r => r.ManagementId == managementId.Value);
+                    }
+                }
+                else
+                {
+                    return BadRequest("Debe indicar requestId o unitId para L-12.");
+                }
+
+                var request = await requestQuery
+                    .OrderByDescending(r => r.RequestDate ?? r.CreatedDate)
+                    .FirstOrDefaultAsync();
+
+                if (request == null)
+                    return NotFound("Este equipo no tiene solicitudes de adquisición en la gestión seleccionada.");
+
                 var bytes = await _reportService.GenerateSolicitudAdquisicionExcel(request);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     $"Adquisicion_{request.Id}.xlsx");
             }
             catch (Exception ex)
             {
-                return BadRequest($"Error generando Adquisición: {ex.Message}");
+                _logger.LogError(ex,
+                    "No se pudo generar L-12. RequestId={RequestId}; UnitId={UnitId}; ManagementId={ManagementId}",
+                    requestId, unitId, managementId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    "No se pudo generar el reporte L-12. Intente nuevamente o contacte al administrador.");
             }
         }
     }

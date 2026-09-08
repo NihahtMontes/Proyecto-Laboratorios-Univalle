@@ -133,8 +133,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         {
             var units = await _context.EquipmentUnits
                 .Include(u => u.Equipment)
-                .Where(u => u.LaboratoryId == laboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
-                .Select(u => new { id = u.Id, name = u.Equipment.Name + " (" + u.InventoryNumber + ")" })
+                .Where(u => u.LaboratoryId == laboratoryId
+                    && u.CurrentStatus != EquipmentStatus.Deleted
+                    && u.Equipment != null)
+                .Select(u => new { id = u.Id, name = u.Equipment!.Name + " (" + u.InventoryNumber + ")" })
                 .ToListAsync();
             return new JsonResult(units);
         }

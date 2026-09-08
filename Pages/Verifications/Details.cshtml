@@ -161,12 +161,20 @@ else if (Model.Verification != null)
                                             @{
                                                 var condClass = Model.Verification.PhysicalCondition == PhysicalCondition.Bad ? "text-danger" : (Model.Verification.PhysicalCondition == PhysicalCondition.Regular ? "text-warning" : "text-success");
                                             }
-                                            <span class="@condClass font-weight-bold">@Html.DisplayFor(m => m.Verification.PhysicalCondition)</span>
+                                            <span class="@condClass font-weight-bold">@Model.Verification.PhysicalCondition</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-muted small uppercase pl-3">Estado observado</th>
+                                        <td class="font-weight-bold text-dark">
+                                            @(Model.Verification.ObservedEquipmentStatus.HasValue
+                                                ? EnumHelper.GetDisplayName(Model.Verification.ObservedEquipmentStatus.Value)
+                                                : "Pendiente por evidencia")
                                         </td>
                                     </tr>
                                     <tr>
                                         <th class="text-muted small uppercase pl-3 pb-2">Inspector</th>
-                                        <td class="font-weight-bold pb-2 text-dark">@(Model.Verification.CreatedBy?.FullName ?? "Administrador Sistema")</td>
+                                        <td class="font-weight-bold pb-2 text-dark">@(Model.Verification.ResponsiblePerson?.FullName ?? Model.Verification.CreatedBy?.FullName ?? "Sistema")</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -197,7 +205,7 @@ else if (Model.Verification != null)
 
                     <div class="mb-0">
                         <label class="text-muted uppercase font-weight-bold d-block" style="font-size: 0.65rem;">Estatus de Registro</label>
-                        <span class="badge badge-pill badge-info px-3 py-1 font-weight-bold">@Html.DisplayFor(m => m.Verification.Status)</span>
+                        <span class="badge badge-pill badge-info px-3 py-1 font-weight-bold">@Model.Verification.Status</span>
                     </div>
                 </div>
             </div>

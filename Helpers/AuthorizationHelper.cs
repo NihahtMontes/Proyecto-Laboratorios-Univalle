@@ -17,6 +17,24 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         public const string ManagementRoles = "Supervisor,Administrator,SuperAdmin";
         public const string AllRoles = "Supervisor,Administrator,SuperAdmin";
 
+        public static readonly string[] ManagedIdentityRoles =
+        {
+            RoleSupervisor,
+            RoleAdministrator,
+            RoleSuperAdmin
+        };
+
+        public static string ToIdentityRole(UserRole role)
+        {
+            return role switch
+            {
+                UserRole.Administrador => RoleAdministrator,
+                UserRole.Supervisor => RoleSupervisor,
+                UserRole.SuperAdmin => RoleSuperAdmin,
+                _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Rol de usuario no soportado.")
+            };
+        }
+
         /// <summary>
         /// Checks if a user role has administrative privileges
         /// </summary>

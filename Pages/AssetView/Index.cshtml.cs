@@ -22,6 +22,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
         public int EquipmentUnitsCount { get; set; }
         public int UtensilUnitsCount { get; set; }
         public int OtherUnitsCount { get; set; }
+        public int PendingClassificationUnitsCount { get; set; }
+        public int LegacyInferredUnitsCount { get; set; }
         public int EnvironmentsCount { get; set; }
         public int EnvironmentsWithUnitsCount { get; set; }
         public int UnitsWithoutEnvironmentCount { get; set; }
@@ -44,6 +46,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
 
         public async Task OnGetAsync()
         {
+            var validEquipmentClassifications = EquipmentClassificationRules.EquipmentSubclassifications.ToArray();
+            var validUtensilTypes = EquipmentClassificationRules.UtensilSubclassifications.ToArray();
+
             var activeUnits = _context.EquipmentUnits
                 .AsNoTracking()
                 .Include(u => u.Equipment)
@@ -53,9 +58,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                     && u.Equipment!.Status != GeneralStatus.Eliminado);
 
             TotalUnitsCount = await activeUnits.CountAsync();
-            EquipmentUnitsCount = await activeUnits.CountAsync(u => u.Equipment!.Category == EquipmentCategory.Equipment);
-            UtensilUnitsCount = await activeUnits.CountAsync(u => u.Equipment!.Category == EquipmentCategory.Utensil);
-            OtherUnitsCount = await activeUnits.CountAsync(u => u.Equipment!.Category == EquipmentCategory.Other);
+            EquipmentUnitsCount = await activeUnits.CountAsync(u =>
+                u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                u.Equipment!.Category == EquipmentCategory.Equipment &&
+                u.Equipment.TypeClassification.HasValue &&
+                validEquipmentClassifications.Contains(u.Equipment.TypeClassification.Value));
+            UtensilUnitsCount = await activeUnits.CountAsync(u =>
+                u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                u.Equipment!.Category == EquipmentCategory.Utensil &&
+                u.Equipment.UtensilType.HasValue &&
+                validUtensilTypes.Contains(u.Equipment.UtensilType.Value));
+            OtherUnitsCount = await activeUnits.CountAsync(u =>
+                u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                u.Equipment.Category == EquipmentCategory.Other);
+            PendingClassificationUnitsCount = await activeUnits.CountAsync(u =>
+                u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.PendingClient);
+            LegacyInferredUnitsCount = await activeUnits.CountAsync(u =>
+                u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.LegacyInferred);
             EnvironmentsCount = await _context.Laboratories.AsNoTracking().CountAsync(l => l.Status == GeneralStatus.Activo);
             EnvironmentsWithUnitsCount = await activeUnits
                 .Where(u => u.LaboratoryId.HasValue)
@@ -64,17 +83,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 .CountAsync();
             UnitsWithoutEnvironmentCount = await activeUnits.CountAsync(u => !u.LaboratoryId.HasValue);
             UnitsWithoutSerialCount = await activeUnits.CountAsync(u => u.SerialNumber == null || u.SerialNumber == "");
-            UnitsWithoutSpecificClassificationCount = await activeUnits.CountAsync(u =>
-                (u.Equipment!.Category == EquipmentCategory.Equipment && u.Equipment.TypeClassification == EquipmentTypeClassification.Otro) ||
-                (u.Equipment.Category == EquipmentCategory.Utensil && u.Equipment.UtensilType == UtensilType.NoAplica) ||
-                u.Equipment.Category == EquipmentCategory.Other);
+            UnitsWithoutSpecificClassificationCount = PendingClassificationUnitsCount + LegacyInferredUnitsCount;
             ClassificationQualityPercent = TotalUnitsCount == 0
                 ? 0
                 : (int)Math.Round(((decimal)(TotalUnitsCount - UnitsWithoutSpecificClassificationCount) / TotalUnitsCount) * 100m);
 
-            CategoryDataJson = SerializeDonut(await LoadCategoryDataAsync(activeUnits));
-            EquipmentSubClassJson = SerializeBar(await LoadEquipmentClassificationDataAsync(activeUnits));
-            UtensilSubClassJson = SerializeBar(await LoadUtensilClassificationDataAsync(activeUnits));
+            CategoryDataJson = SerializeDonut(await LoadCategoryDataAsync(
+                activeUnits,
+                validEquipmentClassifications,
+                validUtensilTypes));
+            EquipmentSubClassJson = SerializeBar(await LoadEquipmentClassificationDataAsync(
+                activeUnits,
+                validEquipmentClassifications));
+            UtensilSubClassJson = SerializeBar(await LoadUtensilClassificationDataAsync(
+                activeUnits,
+                validUtensilTypes));
             OtherSubClassJson = SerializeBar(await LoadOtherClassificationDataAsync(activeUnits));
             StatusDataJson = SerializeDonut(await LoadStatusDataAsync(activeUnits));
             ConditionDataJson = SerializeBar(await LoadConditionDataAsync(activeUnits));
@@ -111,10 +134,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
             return string.IsNullOrWhiteSpace(code) ? name : $"{code} - {name}";
         }
 
-        private static async Task<List<ChartPoint>> LoadCategoryDataAsync(IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> activeUnits)
+        private static async Task<List<ChartPoint>> LoadCategoryDataAsync(
+            IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> activeUnits,
+            EquipmentTypeClassification[] validEquipmentClassifications,
+            UtensilType[] validUtensilTypes)
         {
             var data = await activeUnits
-                .GroupBy(u => u.Equipment!.Category)
+                .Where(u => u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed)
+                .GroupBy(u =>
+                    u.Equipment!.Category == EquipmentCategory.Equipment &&
+                    u.Equipment.TypeClassification.HasValue &&
+                    validEquipmentClassifications.Contains(u.Equipment.TypeClassification.Value)
+                        ? EquipmentCategory.Equipment
+                        : u.Equipment.Category == EquipmentCategory.Utensil &&
+                          u.Equipment.UtensilType.HasValue &&
+                          validUtensilTypes.Contains(u.Equipment.UtensilType.Value)
+                            ? EquipmentCategory.Utensil
+                            : EquipmentCategory.Other)
                 .Select(g => new { Label = g.Key, Count = g.Count() })
                 .OrderBy(g => g.Label)
                 .ToListAsync();
@@ -122,43 +158,55 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
             return data.Select(g => new ChartPoint(Display(g.Label), g.Count)).ToList();
         }
 
-        private static async Task<List<ChartPoint>> LoadEquipmentClassificationDataAsync(IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> activeUnits)
+        private static async Task<List<ChartPoint>> LoadEquipmentClassificationDataAsync(
+            IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> activeUnits,
+            EquipmentTypeClassification[] validClassifications)
         {
             var data = await activeUnits
-                .Where(u => u.Equipment!.Category == EquipmentCategory.Equipment)
+                .Where(u => u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                            u.Equipment.Category == EquipmentCategory.Equipment &&
+                            u.Equipment.TypeClassification.HasValue &&
+                            validClassifications.Contains(u.Equipment.TypeClassification.Value))
                 .GroupBy(u => u.Equipment!.TypeClassification)
                 .Select(g => new { Label = g.Key, Count = g.Count() })
                 .OrderByDescending(g => g.Count)
                 .ThenBy(g => g.Label)
                 .ToListAsync();
 
-            return data.Select(g => new ChartPoint(Display(g.Label), g.Count)).ToList();
+            return data.Select(g => new ChartPoint(Display(g.Label!.Value), g.Count)).ToList();
         }
 
-        private static async Task<List<ChartPoint>> LoadUtensilClassificationDataAsync(IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> activeUnits)
+        private static async Task<List<ChartPoint>> LoadUtensilClassificationDataAsync(
+            IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> activeUnits,
+            UtensilType[] validUtensilTypes)
         {
             var data = await activeUnits
-                .Where(u => u.Equipment!.Category == EquipmentCategory.Utensil && u.Equipment.UtensilType != UtensilType.NoAplica)
+                .Where(u => u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                            u.Equipment.Category == EquipmentCategory.Utensil &&
+                            u.Equipment.UtensilType.HasValue &&
+                            validUtensilTypes.Contains(u.Equipment.UtensilType.Value))
                 .GroupBy(u => u.Equipment!.UtensilType)
                 .Select(g => new { Label = g.Key, Count = g.Count() })
                 .OrderByDescending(g => g.Count)
                 .ThenBy(g => g.Label)
                 .ToListAsync();
 
-            return data.Select(g => new ChartPoint(Display(g.Label), g.Count)).ToList();
+            return data.Select(g => new ChartPoint(Display(g.Label!.Value), g.Count)).ToList();
         }
 
-        private static async Task<List<ChartPoint>> LoadOtherClassificationDataAsync(IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> activeUnits)
+        private static async Task<List<ChartPoint>> LoadOtherClassificationDataAsync(
+            IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> activeUnits)
         {
             var data = await activeUnits
-                .Where(u => u.Equipment!.Category == EquipmentCategory.Other)
-                .GroupBy(u => u.Equipment!.TypeClassification)
+                .Where(u => u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                            u.Equipment.Category == EquipmentCategory.Other)
+                .GroupBy(u => u.Equipment!.OtherClassificationDetail)
                 .Select(g => new { Label = g.Key, Count = g.Count() })
                 .OrderByDescending(g => g.Count)
                 .ThenBy(g => g.Label)
                 .ToListAsync();
 
-            return data.Select(g => new ChartPoint(Display(g.Label), g.Count)).ToList();
+            return data.Select(g => new ChartPoint(g.Label ?? "Otro confirmado", g.Count)).ToList();
         }
 
         private static async Task<List<ChartPoint>> LoadStatusDataAsync(IQueryable<Proyecto_Laboratorios_Univalle.Models.EquipmentUnit> activeUnits)

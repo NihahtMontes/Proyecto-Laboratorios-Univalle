@@ -4,6 +4,10 @@
 
 @{
     ViewData["Title"] = "Control de Salidas de Equipos (L-3)";
+    var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
+        || Model.FilterType.HasValue
+        || Model.FilterStatus.HasValue
+        || Model.FilterLaboratoryId.HasValue;
 }
 
 @if (TempData["Error"] != null)
@@ -33,44 +37,53 @@
                 </div>
 
                 <!-- FILTROS -->
-                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
-                    <form method="get">
-                        <div class="row align-items-end">
-                            <div class="col-md-3">
-                                <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
-                                <div class="input-group drop-shadow">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
-                                    </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo, inventario o responsable..." />
-                                </div>
+                <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                    <form method="get" data-live-filter-form>
+                        <label asp-for="SearchTerm" class="sr-only">Buscar salida</label>
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                             </div>
-                            <div class="col-md-3 mt-3 mt-md-0">
-                                <label class="small font-weight-bold text-muted uppercase">Tipo de Salida</label>
-                                <select asp-for="FilterType" class="form-control custom-select drop-shadow" asp-items="Html.GetEnumSelectList<DepartureType>()">
-                                    <option value="">-- Todos los Tipos --</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2 mt-3 mt-md-0">
-                                <label class="small font-weight-bold text-muted uppercase">Estado</label>
-                                <select asp-for="FilterStatus" class="form-control custom-select drop-shadow" asp-items="Html.GetEnumSelectList<LoanStatus>()">
-                                    <option value="">-- Todos --</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2 mt-3 mt-md-0">
-                                <label class="small font-weight-bold text-muted uppercase">Laboratorio</label>
-                                <select asp-for="FilterLaboratoryId" class="form-control custom-select drop-shadow" asp-items="Model.LaboratoriesList">
-                                    <option value="">-- Todos --</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2 text-right mt-3 mt-md-0">
-                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
-                                    <i class="fas fa-filter mr-1"></i> Filtrar
-                                </button>
-                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
-                                    <i class="fas fa-sync-alt"></i>
+                            <input type="search" asp-for="SearchTerm"
+                                   class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                                   placeholder="Buscar por equipo, inventario o responsable"
+                                   autocomplete="off"
+                                   data-live-filter-search />
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                            <select asp-for="FilterType"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.FilterType.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="Html.GetEnumSelectList<DepartureType>()"
+                                    aria-label="Tipo de salida"
+                                    data-live-filter-control>
+                                <option value="">Tipo de salida</option>
+                            </select>
+                            <select asp-for="FilterStatus"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.FilterStatus.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="Html.GetEnumSelectList<LoanStatus>()"
+                                    aria-label="Estado"
+                                    data-live-filter-control>
+                                <option value="">Estado</option>
+                            </select>
+                            <select asp-for="FilterLaboratoryId"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.FilterLaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="Model.LaboratoriesList"
+                                    aria-label="Ambiente"
+                                    data-live-filter-control>
+                                <option value="">Ambiente</option>
+                            </select>
+
+                            @if (hasActiveFilters)
+                            {
+                                <a asp-page="./Index" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                    <i class="fas fa-times mr-1"></i> Limpiar filtros
                                 </a>
-                            </div>
+                            }
+
+                            <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                <strong class="text-dark">@Model.Departures.TotalCount</strong> salida(s)
+                            </span>
                         </div>
                     </form>
                 </div>
@@ -133,7 +146,7 @@
                                             <div class="text-dark">@item.DepartureDate.ToString("dd/MM/yyyy")</div>
                                         </td>
                                         <td class="text-center v-middle">
-                                            <div class="text-danger font-weight-bold">@item.EstimatedReturnDate.ToString("dd/MM/yyyy")</div>
+                                            <div class="text-danger font-weight-bold">@(item.EstimatedReturnDate?.ToString("dd/MM/yyyy") ?? "Pendiente por evidencia")</div>
                                         </td>
                                         <td class="text-center v-middle">
                                             @{

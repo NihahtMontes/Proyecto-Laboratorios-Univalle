@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages
@@ -12,10 +13,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages
     public class LoginModel : PageModel
     {
         private readonly SignInManager<User> _signInManager;
+        private readonly UserManager<User> _userManager;
 
-        public LoginModel(SignInManager<User> signInManager)
+        public LoginModel(SignInManager<User> signInManager, UserManager<User> userManager)
         {
             _signInManager = signInManager;
+            _userManager = userManager;
         }
 
         [BindProperty]
@@ -58,9 +61,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
             if (ModelState.IsValid)
             {
-                // No cuenta intentos fallidos hacia el bloqueo de cuenta.
-                // Para habilitar bloqueo por intentos fallidos, usar lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(Input.UserName, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                var login = Input.UserName.Trim();
+                var user = await _userManager.FindByNameAsync(login)
+                    ?? await _userManager.FindByEmailAsync(login);
+
+                if (user == null || user.Status != GeneralStatus.Activo)
+                {
+                    ModelState.AddModelError(string.Empty, "Intento de inicio de sesión no válido.");
+                    return Page();
+                }
+
+                var result = await _signInManager.PasswordSignInAsync(
+                    user,
+                    Input.Password,
+                    Input.RememberMe,
+                    lockoutOnFailure: true);
 
                 if (result.Succeeded)
                 {

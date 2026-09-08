@@ -20,12 +20,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
 
         public async Task OnGetAsync()
         {
+            var validClassifications = EquipmentClassificationRules.EquipmentSubclassifications.ToArray();
+
             var counts = await _context.EquipmentUnits
                 .Include(u => u.Equipment)
-                .Where(u => u.Equipment != null && u.Equipment.Category == EquipmentCategory.Equipment)
+                .Where(u => u.Equipment != null &&
+                            u.CurrentStatus != EquipmentStatus.Deleted &&
+                            u.Equipment.Status != GeneralStatus.Eliminado &&
+                            u.Equipment.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
+                            u.Equipment.Category == EquipmentCategory.Equipment &&
+                            u.Equipment.TypeClassification.HasValue &&
+                            validClassifications.Contains(u.Equipment.TypeClassification.Value))
                 .GroupBy(u => u.Equipment!.TypeClassification)
                 .Select(g => new { Classification = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Classification, x => x.Count);
+                .ToDictionaryAsync(x => x.Classification!.Value, x => x.Count);
 
             Cards = GetCards()
                 .Select(card =>
@@ -48,7 +56,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
             new("Equipos de medicion PCC", EquipmentTypeClassification.Medicion, "bg-info", "fas fa-tachometer-alt"),
             new("Equipos audiovisuales", EquipmentTypeClassification.Audiovisuales, "bg-primary", "fas fa-video"),
             new("Equipos electricos", EquipmentTypeClassification.Electricos, "bg-warning", "fas fa-bolt"),
-            new("Otros", EquipmentTypeClassification.Otro, "bg-secondary", "fas fa-layer-group")
+            new("Mobiliario", EquipmentTypeClassification.Mobiliario, "bg-secondary", "fas fa-chair")
         };
 
         public class ClassificationCard

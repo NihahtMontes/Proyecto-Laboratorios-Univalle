@@ -21,6 +21,22 @@
     if (!string.IsNullOrEmpty(Model.SerialNumberFilter)) { completedBaseUrl += $"&SerialNumberFilter={Uri.EscapeDataString(Model.SerialNumberFilter)}"; }
     if (!string.IsNullOrEmpty(Model.InventoryNumberFilter)) { completedBaseUrl += $"&InventoryNumberFilter={Uri.EscapeDataString(Model.InventoryNumberFilter)}"; }
     var completedTotalPages = (int)Math.Ceiling((double)Model.CompletedTotalItems / 5.0);
+    var hasWizardFilters = Model.SelectedLabId.HasValue
+        || !string.IsNullOrWhiteSpace(Model.SearchTerm)
+        || !string.IsNullOrWhiteSpace(Model.SerialNumberFilter)
+        || !string.IsNullOrWhiteSpace(Model.InventoryNumberFilter);
+    var wizardResultCount = Model.Step switch
+    {
+        0 => Model.ActiveTotalItems,
+        1 => Model.Step1TotalItems,
+        2 => Model.Step2TotalItems,
+        3 => Model.Step3TotalItems,
+        4 => Model.Step4TotalItems,
+        5 => Model.Step5TotalItems,
+        6 => Model.Step6TotalItems,
+        7 => Model.CompletedTotalItems,
+        _ => 0
+    };
     var focusedPhaseLabel = Model.FocusedPlan?.CurrentPhase switch
     {
         WizardPhase.Verification => "L-6 Verificacion",
@@ -594,43 +610,68 @@
                     <div class="card-body p-0">
                         <!-- Wizard Filter Panel -->
                         <div class="wizard-filter-panel p-3 mb-0 border-bottom">
-                            <form method="get" class="d-flex flex-wrap align-items-center">
+                            <form method="get" data-live-filter-form>
                                 <input type="hidden" name="ShowWizard" value="true" />
                                 <input type="hidden" name="Step" value="@Model.Step" />
                                 <input type="hidden" name="ManagementId" value="@ViewData["ManagementId"]" />
                                 @if (Model.FocusPlanId.HasValue) { <input type="hidden" name="FocusPlanId" value="@Model.FocusPlanId" /> }
 
-                                <div class="input-group mr-2 mb-0" style="width: 220px;">
+                                <label for="wizardSearchTerm" class="sr-only">Buscar por nombre, marca o código</label>
+                                <div class="input-group mb-3">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                                     </div>
-                                    <input type="text" name="SearchTerm" value="@Model.SearchTerm" class="form-control border-left-0" placeholder="Buscar equipo..." />
+                                    <input id="wizardSearchTerm" type="search" name="SearchTerm" value="@Model.SearchTerm"
+                                           class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                                           placeholder="Buscar por nombre, marca o código"
+                                           autocomplete="off"
+                                           data-live-filter-search />
                                 </div>
 
-                                <div class="input-group mr-2 mb-0" style="width: 160px;">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-fingerprint text-muted"></i></span>
+                                <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                                    <div class="input-group mr-2 mb-2" style="max-width: 190px;">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-fingerprint text-muted"></i></span>
+                                        </div>
+                                        <input type="search" name="SerialNumberFilter" value="@Model.SerialNumberFilter"
+                                               class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SerialNumberFilter) ? "border-info" : "")"
+                                               aria-label="Número de serie"
+                                               placeholder="N° de serie"
+                                               autocomplete="off"
+                                               data-live-filter-search />
                                     </div>
-                                    <input type="text" name="SerialNumberFilter" value="@Model.SerialNumberFilter" class="form-control border-left-0" placeholder="N° Serie" />
-                                </div>
 
-                                <div class="input-group mr-2 mb-0" style="width: 160px;">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-barcode text-muted"></i></span>
+                                    <div class="input-group mr-2 mb-2" style="max-width: 190px;">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-barcode text-muted"></i></span>
+                                        </div>
+                                        <input type="search" name="InventoryNumberFilter" value="@Model.InventoryNumberFilter"
+                                               class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.InventoryNumberFilter) ? "border-info" : "")"
+                                               aria-label="Número de inventario"
+                                               placeholder="N° de inventario"
+                                               autocomplete="off"
+                                               data-live-filter-search />
                                     </div>
-                                    <input type="text" name="InventoryNumberFilter" value="@Model.InventoryNumberFilter" class="form-control border-left-0" placeholder="N° Inventario" />
+
+                                    <select name="SelectedLabId"
+                                            asp-items="Model.LaboratoriesList"
+                                            class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
+                                            aria-label="Laboratorio"
+                                            data-live-filter-control>
+                                        <option value="">Laboratorio</option>
+                                    </select>
+
+                                    @if (hasWizardFilters)
+                                    {
+                                        <a href="?ShowWizard=true&Step=@Model.Step&ManagementId=@ViewData["ManagementId"]@(Model.FocusPlanId.HasValue ? $"&FocusPlanId={Model.FocusPlanId}" : "")" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                            <i class="fas fa-times mr-1"></i> Limpiar filtros
+                                        </a>
+                                    }
+
+                                    <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                        <strong class="text-dark">@wizardResultCount</strong> activo(s)
+                                    </span>
                                 </div>
-
-                                <select name="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control mr-2" style="width: 200px;">
-                                    <option value="">Todos los laboratorios</option>
-                                </select>
-
-                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm mr-2">
-                                    <i class="fas fa-filter mr-2"></i>Filtrar
-                                </button>
-                                <a href="?ShowWizard=true&Step=@Model.Step&ManagementId=@ViewData["ManagementId"]@(Model.FocusPlanId.HasValue ? $"&FocusPlanId={Model.FocusPlanId}" : "")" class="btn btn-outline-secondary btn-rounded px-3" title="Limpiar Filtros">
-                                    <i class="fas fa-times"></i>
-                                </a>
                             </form>
                         </div>
 
@@ -1235,6 +1276,7 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="~/js/equipment-kardex-sidebar.js" asp-append-version="true"></script>
 
     <script>
         // ─── 1. DATOS SERIALIZADOS DESDE RAZOR (sin bloques if dentro de JS) ───
@@ -1370,13 +1412,6 @@
         }
 
         // ─── 4. UTILIDADES ───
-        function escHtml(str) {
-            if (!str) return '—';
-            const div = document.createElement('div');
-            div.textContent = str;
-            return div.innerHTML;
-        }
-
         async function openKardex(id) {
             const sidebar = document.getElementById('kardexSidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -1393,27 +1428,7 @@
                 if (!response.ok) throw new Error('Error en red');
                 const data = await response.json();
 
-                content.innerHTML = `
-                    <div class="bg-light p-4 rounded-4 mb-4">
-                        <h5 class="fw-bold text-dark mb-1">${escHtml(data.name)}</h5>
-                        <code class="text-primary font-weight-bold">${escHtml(data.inventoryNumber)}</code>
-                    </div>
-                    <div class="mb-4">
-                        <label class="text-xs-premium text-muted d-block mb-1">Estado Actual</label>
-                        <span class="badge badge-pill badge-info px-3">${escHtml(data.currentStatus)}</span>
-                    </div>
-                    <div class="mb-4 border-bottom pb-3">
-                        <label class="text-xs-premium text-muted d-block mb-1">Última Intervención</label>
-                        <p class="font-weight-bold mb-0 text-dark">${escHtml(data.lastDate)}</p>
-                    </div>
-                    <div class="mb-2">
-                        <label class="text-xs-premium text-muted d-block mb-1">Observaciones / Motivo</label>
-                        <p class="text-muted small">${escHtml(data.reason)}</p>
-                    </div>
-                    <div class="mt-5">
-                        <a href="/Equipments/Details/${id}" class="btn btn-outline-primary btn-block rounded-pill font-weight-bold">Ver Ficha Completa</a>
-                    </div>
-                `;
+                content.innerHTML = window.EquipmentKardexSidebar.render(data, id);
             } catch (err) {
                 content.innerHTML = '<div class="alert alert-danger">No se pudo cargar el detalle del equipo. Intente de nuevo.</div>';
             }

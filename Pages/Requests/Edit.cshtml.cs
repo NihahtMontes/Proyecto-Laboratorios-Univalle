@@ -102,6 +102,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             var request = await _context.Requests
                 .Include(r => r.Equipment)
                 .Include(r => r.RequestedBy)
+                .Include(r => r.RequestedByPerson)
                 .Include(r => r.ModifiedBy)
                 .Include(r => r.CreatedBy)
                 .Include(r => r.CostDetails)

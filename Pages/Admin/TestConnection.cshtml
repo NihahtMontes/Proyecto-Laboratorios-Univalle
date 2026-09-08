@@ -63,18 +63,13 @@
                                 <h5>Sugerencias para resolver el problema:</h5>
                                 <ul>
                                     <li>Verifica que el servidor de base de datos esté en línea</li>
-                                    <li>Confirma que las credenciales en <code>appsettings.json</code> sean correctas</li>
+                                    <li>Confirma que la conexion configurada mediante secretos sea correcta</li>
                                     <li>Asegúrate de que el firewall permita conexiones al puerto 1433</li>
-                                    <li>Revisa el archivo de log en <code>logs/connection_errors.txt</code></li>
+                                    <li>Revisa los logs protegidos del servidor</li>
                                 </ul>
                             </div>
                         }
                     }
-
-                    <div class="mt-4">
-                        <h5>Cadena de Conexión Actual:</h5>
-                        <pre class="bg-light p-3 rounded"><code>@Model.ConnectionString</code></pre>
-                    </div>
 
                 </div>
             </div>

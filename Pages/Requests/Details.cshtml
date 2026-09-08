@@ -224,7 +224,12 @@
                 <hr />
                 <div class="audit-log">
                     <div class="mb-3">
-                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Origen de Solicitud</label>
+                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Fecha y solicitante</label>
+                        <span class="font-weight-bold text-dark d-block">@((Model.Request.RequestDate ?? Model.Request.CreatedDate).ToString("dd-MM-yyyy"))</span>
+                        <span class="text-muted small">@(Model.Request.RequestedBy?.FullName ?? Model.Request.RequestedByPerson?.FullName ?? "Sin asignar")</span>
+                    </div>
+                    <div class="mb-3 border-top pt-3">
+                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold" style="font-size: 0.65rem;">Registro creado</label>
                         <span class="font-weight-bold text-dark d-block">@(Model.Request.CreatedBy?.FullName ?? "Sesión de Usuario")</span>
                         <span class="text-muted small">@Model.Request.CreatedDate.ToString("dd-MM-yyyy HH:mm")</span>
                     </div>

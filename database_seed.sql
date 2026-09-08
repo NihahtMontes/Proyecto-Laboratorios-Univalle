@@ -6,6 +6,17 @@ GO
 -- Ejecuta este script SÓLO después de haber aplicado las migraciones (Update-Database).
 -- =========================================================================================
 
+-- Proteccion contra ejecucion accidental. Cambie a 1 solo sobre una base desechable y respaldada.
+DECLARE @ConfirmDestructive BIT = 0;
+IF DB_NAME() <> N'DB_Laboratorios_Univalle_NN'
+    THROW 51000, 'Base incorrecta: este script solo admite DB_Laboratorios_Univalle_NN.', 1;
+IF @ConfirmDestructive <> 1
+    THROW 51001, 'Ejecucion detenida. Establezca @ConfirmDestructive = 1 despues de verificar un respaldo.', 1;
+
+SET XACT_ABORT ON;
+BEGIN TRY
+    BEGIN TRANSACTION;
+
 PRINT '>>> LIMPIANDO BASE DE DATOS (RESETEANDO TABLAS)... <<<';
 -- 0. Deshabilitar temporalmente las validaciones de claves foráneas
 EXEC sp_MSForEachTable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL';
@@ -288,4 +299,11 @@ SET IDENTITY_INSERT [ManagementPlans] OFF;
 -- =========================================================================================
 -- FIN DEL SCRIPT DE SEMILLA
 -- =========================================================================================
+    COMMIT TRANSACTION;
 PRINT '>>> SEMILLA DE DATOS DEMO APLICADA CON ÉXITO <<<';
+END TRY
+BEGIN CATCH
+    IF XACT_STATE() <> 0
+        ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;

@@ -6,6 +6,9 @@
         ? "Seleccione una gestión para exportar reportes oficiales."
         : $"Gestión {Model.SelectedManagement.Code} - {(Model.IsCorrective ? "Correctivo" : "Preventivo")}";
     var labLabel = Model.SelectedLaboratory?.Name ?? "Todos los laboratorios";
+    var hasActiveFilters = Model.SelectedLabId.HasValue
+        || !string.IsNullOrWhiteSpace(Model.SearchTerm)
+        || (!string.IsNullOrWhiteSpace(Model.ReportFilter) && Model.ReportFilter != "all");
 }
 
 <div class="row">
@@ -33,49 +36,56 @@
                     </div>
                 </div>
 
-                <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
-                    <form method="get">
+                <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                    <form method="get" data-live-filter-form>
                         <input type="hidden" asp-for="ManagementId" />
-                        <div class="row align-items-end">
-                            <div class="col-md-3">
-                                <label class="small font-weight-bold text-muted uppercase">Laboratorio</label>
-                                <select asp-for="SelectedLabId" asp-items="Model.LaboratoriesList" class="form-control custom-select drop-shadow">
-                                    <option value="">-- Todos --</option>
-                                </select>
+                        <label asp-for="SearchTerm" class="sr-only">Buscar equipo para reporte</label>
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
                             </div>
-                            <div class="col-md-4">
-                                <label class="small font-weight-bold text-muted uppercase">Búsqueda rápida</label>
-                                <div class="input-group drop-shadow">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
-                                    </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Equipo, inventario, marca o modelo..." />
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="small font-weight-bold text-muted uppercase">Disponibilidad</label>
-                                <select asp-for="ReportFilter" class="form-control custom-select">
-                                    <option value="all">Todos los equipos</option>
-                                    <option value="available">Con reportes</option>
-                                    <option value="missing">Sin reportes</option>
-                                    @if (!Model.IsCorrective)
-                                    {
-                                        <option value="l6">Con L-6</option>
-                                    }
-                                    <option value="l7">Con L-7</option>
-                                    <option value="l8">Con L-8</option>
-                                    <option value="l3">Con L-3</option>
-                                    <option value="l12">Con L-12/Insumos</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2 text-right mt-2 mt-md-0">
-                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
-                                    <i class="fas fa-filter mr-1"></i> Filtrar
-                                </button>
-                                <a asp-page="./Index" asp-route-managementId="@Model.ManagementId" class="btn btn-outline-secondary btn-rounded ml-1" title="Limpiar Filtros">
-                                    <i class="fas fa-sync-alt"></i>
+                            <input type="search" asp-for="SearchTerm"
+                                   class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                                   placeholder="Buscar por equipo, inventario, marca o modelo"
+                                   autocomplete="off"
+                                   data-live-filter-search />
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                            <select asp-for="ReportFilter"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @((!string.IsNullOrWhiteSpace(Model.ReportFilter) && Model.ReportFilter != "all") ? "border-info text-info font-weight-bold" : "")"
+                                    aria-label="Disponibilidad de reportes"
+                                    data-live-filter-control>
+                                <option value="all">Disponibilidad</option>
+                                <option value="available">Con reportes</option>
+                                <option value="missing">Sin reportes</option>
+                                @if (!Model.IsCorrective)
+                                {
+                                    <option value="l6">Con L-6</option>
+                                }
+                                <option value="l7">Con L-7</option>
+                                <option value="l8">Con L-8</option>
+                                <option value="l3">Con L-3</option>
+                                <option value="l12">Con L-12/Insumos</option>
+                            </select>
+                            <select asp-for="SelectedLabId"
+                                    asp-items="Model.LaboratoriesList"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.SelectedLabId.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    aria-label="Ambiente"
+                                    data-live-filter-control>
+                                <option value="">Ambiente</option>
+                            </select>
+
+                            @if (hasActiveFilters)
+                            {
+                                <a asp-page="./Index" asp-route-managementId="@Model.ManagementId" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                    <i class="fas fa-times mr-1"></i> Limpiar filtros
                                 </a>
-                            </div>
+                            }
+
+                            <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                <strong class="text-dark">@Model.EquipmentStatuses.Count</strong> activo(s)
+                            </span>
                         </div>
                     </form>
                 </div>

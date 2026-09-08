@@ -62,6 +62,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Responsable del Mantenimiento")]
         public string? Responsible { get; set; }
 
+        [Display(Name = "Responsable Normalizado")]
+        public int? ResponsiblePersonId { get; set; }
+
         [Display(Name = "Semana Planeada (S1-S8)")]
         public int? PlannedWeek { get; set; }
 
@@ -112,6 +115,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Última Modificación")]
         public DateTime? LastModifiedDate { get; set; }
 
+        public int? ImportBatchId { get; set; }
+
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = [];
+
         // ========================================
         // NAVIGATION PROPERTIES
         // ========================================
@@ -144,6 +152,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("ModifiedById")]
         public virtual User? ModifiedBy { get; set; }
+
+        [ForeignKey(nameof(ResponsiblePersonId))]
+        public virtual Person? ResponsiblePerson { get; set; }
+
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
 
         // ========================================
         // CALCULATED PROPERTIES

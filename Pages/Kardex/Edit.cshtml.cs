@@ -15,10 +15,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
     public class EditModel : PageModel
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<EditModel> _logger;
 
-        public EditModel(ApplicationDbContext context)
+        public EditModel(ApplicationDbContext context, ILogger<EditModel> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [BindProperty]
@@ -203,7 +205,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             }
             catch (Exception ex)
             {
-                TempData.Error($"Error al actualizar: {ex.Message}");
+                _logger.LogError(ex, "No se pudo actualizar el Kardex {HistoryId}.", Input.Id);
+                TempData.Error("No se pudo actualizar el Kardex. Intente nuevamente.");
                 var history = await _context.EquipmentStateHistories
                     .Include(h => h.EquipmentUnit)
                         .ThenInclude(eu => eu!.Laboratory)

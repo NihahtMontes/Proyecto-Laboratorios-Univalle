@@ -48,6 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         public int AlreadyPlanned { get; set; }
         public int AvailableMatching { get; set; }
         public int WithHistory { get; set; }
+        public int BlockedByClassificationCount { get; set; }
         public int CurrentPage { get; set; } = 1;
         public int TotalPages { get; set; }
         public bool HasPreviousPage => CurrentPage > 1;
@@ -98,7 +99,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al abrir planificacion de activos para gestion {ManagementId}", Id);
-                return RedirectToManagementError(ex.Message);
+                return RedirectToManagementError("No se pudo abrir la planificación de activos. Intente nuevamente.");
             }
         }
 
@@ -117,6 +118,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     return RedirectToPage("./Details", new { id = Id, ActiveTab = "dashboard" });
                 }
 
+                await LoadCandidatesAsync();
                 var pageUnitIds = PageUnitIds.Distinct().ToList();
                 if (!pageUnitIds.Any())
                 {
@@ -187,7 +189,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al aplicar planificacion de activos para gestion {ManagementId}", Id);
-                return RedirectToManagementError(ex.Message);
+                return RedirectToManagementError("No se pudo actualizar la planificación de activos. Intente nuevamente.");
             }
         }
 
@@ -252,6 +254,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 baseQuery = baseQuery.Where(u => u.Laboratory != null && u.Laboratory.FacultyId == Management.FacultyId.Value);
             }
 
+            BlockedByClassificationCount = await baseQuery.CountAsync(u =>
+                u.Equipment!.ClassificationReviewStatus != EquipmentClassificationReviewStatus.Confirmed);
+
+            baseQuery = baseQuery.Where(u =>
+                u.Equipment!.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed);
+
             var query = ApplyFilters(baseQuery);
 
             TotalMatching = await query.CountAsync();
@@ -271,9 +279,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     UnitId = u.Id,
                     InventoryNumber = u.InventoryNumber,
                     EquipmentName = u.Equipment!.Name,
-                    CategoryName = u.Equipment.Category == EquipmentCategory.Utensil
-                        ? EnumHelper.GetDisplayName(u.Equipment.UtensilType)
-                        : EnumHelper.GetDisplayName(u.Equipment.TypeClassification),
+                    CategoryName = u.Equipment.Category == EquipmentCategory.Utensil && u.Equipment.UtensilType.HasValue
+                        ? EnumHelper.GetDisplayName(u.Equipment.UtensilType.Value)
+                        : u.Equipment.Category == EquipmentCategory.Equipment && u.Equipment.TypeClassification.HasValue
+                            ? EnumHelper.GetDisplayName(u.Equipment.TypeClassification.Value)
+                            : u.Equipment.OtherClassificationDetail ?? "Otro confirmado",
                     LaboratoryName = u.Laboratory == null
                         ? "Sin ambiente"
                         : (string.IsNullOrWhiteSpace(u.Laboratory.Code) ? u.Laboratory.Name : u.Laboratory.Code + " - " + u.Laboratory.Name)

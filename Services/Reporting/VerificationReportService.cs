@@ -63,7 +63,7 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                                 c.Item().Text("NRO. INVENTARIO:").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
                                 c.Item().Text(verification.EquipmentUnit?.InventoryNumber ?? "N/A").FontSize(11).Bold();
                                 c.Item().PaddingTop(5).Text("RESPONSABLE:").FontSize(8).SemiBold().FontColor(Colors.Grey.Medium);
-                                c.Item().Text(verification.CreatedBy?.FullName ?? "N/A").FontSize(10);
+                                c.Item().Text(verification.ResponsiblePerson?.FullName ?? verification.CreatedBy?.FullName ?? "N/A").FontSize(10);
                             });
                         });
 

@@ -123,23 +123,29 @@
                         </div>
                     </div>
 
-                    <div class="bg-light p-3 mb-4 rounded border-left border-info shadow-sm">
-                        <form method="get">
-                            <div class="row align-items-end">
-                                <div class="col-md-7">
-                                    <label class="small font-weight-bold text-muted uppercase">Búsqueda Rápida</label>
-                                    <div class="input-group drop-shadow">
-                                        <div class="input-group-prepend">
-                                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
-                                        </div>
-                                        <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Buscar por N° Inventario o Serie..." />
+                    <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                        <form method="get" data-live-filter-form>
+                            <label asp-for="SearchTerm" class="sr-only">Buscar por número de inventario o serie</label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                                </div>
+                                <input type="search" asp-for="SearchTerm"
+                                       class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                                       placeholder="Buscar por número de inventario o serie"
+                                       autocomplete="off"
+                                       data-live-filter-search />
+                                @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+                                {
+                                    <div class="input-group-append">
+                                        <a asp-page="./Details" asp-route-id="@Model.Equipment.Id" class="btn btn-link text-muted" title="Limpiar filtros">
+                                            <i class="fas fa-times mr-1"></i> Limpiar
+                                        </a>
                                     </div>
-                                </div>
-                                <div class="col-md-5 text-right">
-                                    <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm font-weight-bold">
-                                        <i class="fas fa-filter mr-1"></i> Filtrar Unidades
-                                    </button>
-                                </div>
+                                }
+                            </div>
+                            <div class="small text-muted text-right mt-2" aria-live="polite">
+                                <strong class="text-dark">@(Model.Equipment.Units?.Count ?? 0)</strong> unidad(es)
                             </div>
                         </form>
                     </div>

@@ -14,13 +14,23 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Gestión Institucional")]
         public int ManagementId { get; set; }
 
-        [Required]
         [Display(Name = "Unidad de Equipamiento")]
-        public int EquipmentUnitId { get; set; }
+        public int? EquipmentUnitId { get; set; }
 
-        [Required]
         [Display(Name = "Solicitante / Responsable")]
-        public int BorrowerId { get; set; }
+        public int? BorrowerId { get; set; }
+
+        [Display(Name = "Laboratorio de Origen")]
+        public int? OriginLaboratoryId { get; set; }
+
+        [StringLength(200)]
+        [Display(Name = "Destino")]
+        public string? Destination { get; set; }
+
+        [StringLength(200)]
+        public string? HistoricalSourceKey { get; set; }
+
+        public int? ImportBatchId { get; set; }
 
         [Required]
         [Display(Name = "Tipo de Salida")]
@@ -31,10 +41,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [DataType(DataType.Date)]
         public DateTime DepartureDate { get; set; } = DateTime.UtcNow;
 
-        [Required]
         [Display(Name = "Fecha Estimada de Devolución")]
         [DataType(DataType.Date)]
-        public DateTime EstimatedReturnDate { get; set; }
+        public DateTime? EstimatedReturnDate { get; set; }
 
         [Display(Name = "Fecha Real de Devolución")]
         [DataType(DataType.DateTime)]
@@ -76,6 +85,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("BorrowerId")]
         public virtual Person? Borrower { get; set; }
 
+        [ForeignKey(nameof(OriginLaboratoryId))]
+        public virtual Laboratory? OriginLaboratory { get; set; }
+
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }
 
@@ -84,6 +96,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("ManagementId")]
         public virtual Management Management { get; set; } = null!;
+
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
 
         public virtual ICollection<DepartureItem> Items { get; set; } = new List<DepartureItem>();
     }

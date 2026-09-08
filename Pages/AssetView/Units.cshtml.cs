@@ -32,9 +32,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
 
         public PaginatedList<EquipmentUnit> Units { get; set; } = new(new List<EquipmentUnit>(), 0, 1, PageSize);
 
-        public async Task OnGetAsync()
+        public async Task<IActionResult> OnGetAsync()
         {
+            if (!EquipmentClassificationRules.IsValidEquipmentSubclassification(Classification))
+                return RedirectToPage("./OtherUnits");
+
             await LoadUnitsAsync(PageIndex ?? 1);
+            return Page();
         }
 
         public async Task<IActionResult> OnPostDeleteUnitAsync(int id)
@@ -64,6 +68,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 .Include(u => u.Equipment)
                 .Include(u => u.Laboratory)
                 .Where(u => u.Equipment != null &&
+                            u.Equipment.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
                             u.Equipment.Category == EquipmentCategory.Equipment &&
                             u.Equipment.TypeClassification == Classification);
 

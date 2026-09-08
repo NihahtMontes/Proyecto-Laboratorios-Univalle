@@ -14,9 +14,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
-        [Display(Name = "Gestión Institucional")]
-        public int ManagementId { get; set; }
+        [Display(Name = "Gestión de Registro Técnico")]
+        public int? ManagementId { get; set; }
 
         [Required]
         public int EquipmentId { get; set; }
@@ -26,6 +25,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         [Display(Name = "Laboratorio Asignado")]
         public int? LaboratoryId { get; set; } 
+
+        [Required]
+        [Display(Name = "Estado de confirmación de ubicación")]
+        public LocationResolutionStatus LocationResolutionStatus { get; set; } = LocationResolutionStatus.Confirmed;
+
+        public int? ImportBatchId { get; set; }
 
 
         // ========================================
@@ -85,6 +90,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int? ModifiedById { get; set; }
         public DateTime? LastModifiedDate { get; set; }
 
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = [];
+
         // ========================================
         // NAVIGATION PROPERTIES
         // ========================================
@@ -104,7 +112,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual User? ModifiedBy { get; set; }
 
         [ForeignKey("ManagementId")]
-        public virtual Management Management { get; set; } = null!;
+        public virtual Management? Management { get; set; }
+
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
 
         // INVERSE RELATIONSHIPS
         public virtual ICollection<EquipmentStateHistory>? StateHistory { get; set; }
@@ -112,6 +123,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual ICollection<Verification>? Verifications { get; set; }
         public virtual ICollection<MaintenancePlan>? MaintenancePlans { get; set; }
         public virtual ICollection<Departure>? Departures { get; set; }
+        public virtual ICollection<RequestEquipmentUnit> RequestLinks { get; set; } = [];
 
         // Calculated Properties
         [NotMapped]

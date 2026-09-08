@@ -1,0 +1,263 @@
+@page "/Prototype/UtensilPlanning"
+@{
+    ViewData["Title"] = "Prototipo - Planificacion de utensilios";
+}
+
+@section Styles {
+    <style>
+        .prototype-shell { --brand: #bb1e2d; --brand-dark: #85131f; --ink: #263238; --muted: #6b7280; }
+        .prototype-hero { background: linear-gradient(120deg, #8d1723 0%, #bb1e2d 58%, #d84b58 100%); border-radius: 12px; color: #fff; overflow: hidden; position: relative; }
+        .prototype-hero:after { content: ""; position: absolute; width: 230px; height: 230px; border-radius: 50%; right: -65px; top: -110px; background: rgba(255,255,255,.10); }
+        .prototype-hero .hero-icon { width: 58px; height: 58px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,.16); font-size: 26px; }
+        .demo-ribbon { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; border-radius: 8px; }
+        .prototype-nav { gap: 8px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+        .prototype-nav .nav-link { border: 1px solid #e5e7eb; background: #fff; color: #4b5563; border-radius: 24px; font-weight: 700; white-space: nowrap; padding: .65rem 1rem; }
+        .prototype-nav .nav-link.active { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: 0 7px 16px rgba(187,30,45,.22); }
+        .prototype-view { display: none; }
+        .prototype-view.active { display: block; animation: prototypeFade .18s ease-out; }
+        @@keyframes prototypeFade { from { opacity: .35; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        .metric-card { border: 0; border-radius: 10px; box-shadow: 0 8px 22px rgba(15,23,42,.07); height: 100%; }
+        .metric-icon { width: 42px; height: 42px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; }
+        .bg-soft-red { background: #feecef; color: #bb1e2d; }
+        .bg-soft-green { background: #e8f8f1; color: #087f5b; }
+        .bg-soft-amber { background: #fff6dc; color: #b7791f; }
+        .bg-soft-blue { background: #e8f2ff; color: #2962ff; }
+        .surface-card { border: 0; border-radius: 10px; box-shadow: 0 8px 22px rgba(15,23,42,.06); }
+        .section-kicker { color: var(--brand); letter-spacing: .08em; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+        .practice-row { border-left: 4px solid #d1d5db; transition: .15s ease; }
+        .practice-row:hover { border-left-color: var(--brand); background: #fffafa; }
+        .status-dot { width: 9px; height: 9px; display: inline-block; border-radius: 50%; margin-right: 6px; }
+        .step-track { display: flex; align-items: flex-start; justify-content: space-between; position: relative; }
+        .step-track:before { content: ""; position: absolute; height: 3px; background: #e5e7eb; left: 7%; right: 7%; top: 19px; }
+        .flow-step { width: 18%; text-align: center; position: relative; z-index: 1; color: #9ca3af; }
+        .flow-step .circle { width: 40px; height: 40px; border-radius: 50%; background: #fff; border: 3px solid #e5e7eb; display: flex; align-items: center; justify-content: center; margin: 0 auto 7px; }
+        .flow-step.done, .flow-step.current { color: #374151; font-weight: 700; }
+        .flow-step.done .circle { border-color: #0f9d72; color: #0f9d72; }
+        .flow-step.current .circle { border-color: var(--brand); background: var(--brand); color: #fff; box-shadow: 0 0 0 5px #feecef; }
+        .availability-bar { height: 7px; border-radius: 6px; background: #edf0f3; overflow: hidden; min-width: 90px; }
+        .availability-bar span { display: block; height: 100%; border-radius: 6px; }
+        .phone-hint { display: none; }
+        .data-contract { border-left: 4px solid #2962ff; background: #f4f8ff; }
+        .clickable-card { cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+        .clickable-card:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(15,23,42,.10); }
+        @@media (max-width: 767.98px) {
+            .prototype-hero h2 { font-size: 1.35rem; }
+            .step-track { overflow-x: auto; justify-content: flex-start; gap: 22px; padding-bottom: 10px; }
+            .step-track:before { display: none; }
+            .flow-step { min-width: 100px; }
+            .phone-hint { display: block; }
+        }
+    </style>
+}
+
+<div class="prototype-shell">
+    <div class="prototype-hero shadow-sm p-4 p-md-5 mb-3">
+        <div class="row align-items-center position-relative" style="z-index:1;">
+            <div class="col-lg-8 d-flex align-items-start">
+                <div class="hero-icon mr-3 d-none d-sm-flex"><i class="fas fa-flask"></i></div>
+                <div>
+                    <div class="small font-weight-bold text-uppercase mb-1" style="letter-spacing:.12em; opacity:.82;">MOD-UTEN-001 · Prototipo académico</div>
+                    <h2 class="font-weight-bold mb-2">Planificación y control de utensilios</h2>
+                    <p class="mb-0" style="opacity:.9;">De la programación de la práctica a la devolución, con disponibilidad, alertas y trazabilidad L-3/L-5.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 text-lg-right mt-3 mt-lg-0">
+                <button type="button" class="btn btn-light btn-rounded px-4 font-weight-bold" data-go="planificacion">
+                    <i class="fas fa-calendar-plus mr-1 text-danger"></i> Planificar práctica
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-ribbon px-3 py-2 mb-3 small d-flex align-items-start">
+        <i class="fas fa-info-circle mt-1 mr-2"></i>
+        <div><strong>Modo demostración:</strong> datos ficticios e interacciones locales. El contrato de datos, las entidades y las reglas definitivas requieren validación funcional y de Datos antes de integrarse.</div>
+    </div>
+
+    <ul class="nav prototype-nav mb-4" role="tablist" aria-label="Navegación del prototipo">
+        <li class="nav-item"><a href="#resumen" class="nav-link active" data-view="resumen"><i class="fas fa-home mr-1"></i> Resumen</a></li>
+        <li class="nav-item"><a href="#planificacion" class="nav-link" data-view="planificacion"><i class="far fa-calendar-alt mr-1"></i> Planificación</a></li>
+        <li class="nav-item"><a href="#requerimientos" class="nav-link" data-view="requerimientos"><i class="fas fa-clipboard-list mr-1"></i> Requerimientos</a></li>
+        <li class="nav-item"><a href="#disponibilidad" class="nav-link" data-view="disponibilidad"><i class="fas fa-boxes mr-1"></i> Disponibilidad</a></li>
+        <li class="nav-item"><a href="#operacion" class="nav-link" data-view="operacion"><i class="fas fa-people-carry mr-1"></i> L-3 y devolución</a></li>
+        <li class="nav-item"><a href="#incidentes" class="nav-link" data-view="incidentes"><i class="fas fa-exclamation-triangle mr-1"></i> Incidentes L-5</a></li>
+        <li class="nav-item"><a href="#analitica" class="nav-link" data-view="analitica"><i class="fas fa-chart-line mr-1"></i> Demanda</a></li>
+    </ul>
+
+    <div id="view-resumen" class="prototype-view active">
+        <div class="row">
+            <div class="col-sm-6 col-xl-3 mb-3"><div class="card metric-card"><div class="card-body"><div class="d-flex"><div class="metric-icon bg-soft-blue"><i class="fas fa-chalkboard-teacher"></i></div><span class="badge badge-light ml-auto align-self-start">Semana 8</span></div><h3 class="font-weight-bold mt-3 mb-0">12</h3><span class="text-muted small">Prácticas programadas</span></div></div></div>
+            <div class="col-sm-6 col-xl-3 mb-3"><div class="card metric-card"><div class="card-body"><div class="d-flex"><div class="metric-icon bg-soft-green"><i class="fas fa-check-circle"></i></div><span class="small text-success ml-auto font-weight-bold">+8%</span></div><h3 class="font-weight-bold mt-3 mb-0">9</h3><span class="text-muted small">Listas para preparar</span></div></div></div>
+            <div class="col-sm-6 col-xl-3 mb-3"><div class="card metric-card"><div class="card-body"><div class="d-flex"><div class="metric-icon bg-soft-amber"><i class="fas fa-exclamation-circle"></i></div><span class="badge badge-warning ml-auto">Atención</span></div><h3 class="font-weight-bold mt-3 mb-0">3</h3><span class="text-muted small">Conflictos por resolver</span></div></div></div>
+            <div class="col-sm-6 col-xl-3 mb-3"><div class="card metric-card"><div class="card-body"><div class="d-flex"><div class="metric-icon bg-soft-red"><i class="fas fa-undo-alt"></i></div><span class="small text-muted ml-auto">Hoy</span></div><h3 class="font-weight-bold mt-3 mb-0">2</h3><span class="text-muted small">Devoluciones pendientes</span></div></div></div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8 mb-3">
+                <div class="card surface-card h-100"><div class="card-body">
+                    <div class="d-flex align-items-center mb-3"><div><div class="section-kicker">Operación semanal</div><h4 class="font-weight-bold mb-0">Próximas prácticas</h4></div><button class="btn btn-sm btn-outline-danger btn-rounded ml-auto" data-go="planificacion">Ver agenda</button></div>
+                    <div class="table-responsive"><table class="table table-hover mb-0"><thead class="bg-light"><tr><th>Fecha / hora</th><th>Asignatura y práctica</th><th>Laboratorio</th><th>Estado</th></tr></thead><tbody>
+                        <tr class="practice-row"><td><strong>Lun 08:00</strong><br><small class="text-muted">7 sep.</small></td><td><strong>Química General</strong><br><small class="text-muted">P-08: Titulación ácido-base · Grupo A</small></td><td>LAB-Q-01</td><td><span class="badge badge-success">Lista</span></td></tr>
+                        <tr class="practice-row"><td><strong>Mar 10:00</strong><br><small class="text-muted">8 sep.</small></td><td><strong>Microbiología</strong><br><small class="text-muted">P-05: Cultivo y tinción · Grupo B</small></td><td>LAB-M-02</td><td><span class="badge badge-warning">Faltan 4</span></td></tr>
+                        <tr class="practice-row"><td><strong>Mié 14:00</strong><br><small class="text-muted">9 sep.</small></td><td><strong>Física I</strong><br><small class="text-muted">P-07: Movimiento uniforme · Grupo C</small></td><td>LAB-F-01</td><td><span class="badge badge-danger">Conflicto</span></td></tr>
+                    </tbody></table></div>
+                </div></div>
+            </div>
+            <div class="col-lg-4 mb-3">
+                <div class="card surface-card h-100"><div class="card-body">
+                    <div class="section-kicker">Prioridad operativa</div><h4 class="font-weight-bold">Alertas</h4>
+                    <div class="alert alert-danger border-0"><strong>Solapamiento</strong><div class="small mt-1">2 prácticas requieren simultáneamente 12 matraces de 250 ml.</div><button class="btn btn-sm btn-link text-danger font-weight-bold p-0 mt-2" data-go="disponibilidad">Resolver ahora →</button></div>
+                    <div class="alert alert-warning border-0"><strong>Unidad no disponible</strong><div class="small mt-1">El agitador INV-00418 está en mantenimiento.</div></div>
+                    <div class="alert alert-info border-0 mb-0"><strong>Devolución</strong><div class="small mt-1">L3-2026-0087 vence hoy a las 17:00.</div></div>
+                </div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-planificacion" class="prototype-view">
+        <div class="card surface-card"><div class="card-body p-4">
+            <div class="d-md-flex align-items-center mb-4"><div><div class="section-kicker">Paso 1</div><h4 class="font-weight-bold mb-1">Programar práctica académica</h4><p class="text-muted mb-0">Define cuándo, dónde y para qué grupo se reservarán utensilios.</p></div><span class="badge badge-light-info text-info ml-md-auto mt-2 mt-md-0 px-3 py-2">Borrador local</span></div>
+            <form id="practiceForm" novalidate>
+                <div class="row">
+                    <div class="col-md-4"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Gestión *</label><select class="form-control"><option>2026-II</option></select></div></div>
+                    <div class="col-md-4"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Asignatura *</label><select class="form-control"><option value="">Seleccione...</option><option>Química General</option><option>Microbiología</option><option>Física I</option></select></div></div>
+                    <div class="col-md-4"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Grupo *</label><select class="form-control"><option>Grupo A</option><option>Grupo B</option><option>Grupo C</option></select></div></div>
+                    <div class="col-md-6"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Práctica *</label><input class="form-control" value="P-08 · Titulación ácido-base" /></div></div>
+                    <div class="col-md-3"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Fecha *</label><input type="date" class="form-control" value="2026-09-07" /></div></div>
+                    <div class="col-md-3"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Horario *</label><select class="form-control"><option>08:00 - 10:00</option><option>10:00 - 12:00</option><option>14:00 - 16:00</option></select></div></div>
+                    <div class="col-md-6"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Laboratorio *</label><select class="form-control"><option>LAB-Q-01 · Química General</option><option>LAB-Q-02 · Química Analítica</option></select><small class="form-text text-muted">El laboratorio determina el inventario prioritario, no limita préstamos autorizados.</small></div></div>
+                    <div class="col-md-3"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Estudiantes</label><input type="number" class="form-control" value="24" min="1" /></div></div>
+                    <div class="col-md-3"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Responsable</label><input class="form-control" value="Dra. Laura Rojas" /></div></div>
+                </div>
+                <div class="text-right"><button type="button" class="btn btn-outline-secondary btn-rounded mr-2" data-demo="save-draft"><i class="far fa-save mr-1"></i> Guardar borrador</button><button type="button" class="btn btn-danger btn-rounded px-4 font-weight-bold" data-go="requerimientos"><i class="fas fa-arrow-right mr-1"></i> Definir utensilios</button></div>
+            </form>
+        </div></div>
+    </div>
+
+    <div id="view-requerimientos" class="prototype-view">
+        <div class="card surface-card"><div class="card-body p-4">
+            <div class="d-md-flex align-items-start mb-3"><div><div class="section-kicker">Paso 2</div><h4 class="font-weight-bold mb-1">Utensilios requeridos</h4><p class="text-muted mb-0">P-08 · Titulación ácido-base · 24 estudiantes</p></div><button class="btn btn-danger btn-rounded ml-md-auto mt-3 mt-md-0" data-demo="add-item"><i class="fas fa-plus mr-1"></i> Agregar utensilio</button></div>
+            <div class="table-responsive"><table class="table table-hover"><thead class="bg-light"><tr><th>Catálogo / especificación</th><th style="width:135px">Cantidad</th><th>Disponible</th><th>Uso</th><th></th></tr></thead><tbody id="requirementsBody">
+                <tr><td><strong>MAT-250 · Matraz Erlenmeyer</strong><br><small class="text-muted">Vidrio borosilicato, 250 ml</small></td><td><input type="number" class="form-control form-control-sm" value="12" min="1" /></td><td><span class="text-success font-weight-bold">18 unidades</span></td><td><span class="badge badge-light-info text-info">1 por pareja</span></td><td><button class="btn btn-sm btn-light text-danger" data-demo="remove-row"><i class="fas fa-trash"></i></button></td></tr>
+                <tr><td><strong>PIP-010 · Pipeta graduada</strong><br><small class="text-muted">Vidrio, 10 ml</small></td><td><input type="number" class="form-control form-control-sm" value="12" min="1" /></td><td><span class="text-warning font-weight-bold">10 unidades</span></td><td><span class="badge badge-light-info text-info">1 por pareja</span></td><td><button class="btn btn-sm btn-light text-danger" data-demo="remove-row"><i class="fas fa-trash"></i></button></td></tr>
+                <tr><td><strong>BUR-050 · Bureta</strong><br><small class="text-muted">Clase A, 50 ml</small></td><td><input type="number" class="form-control form-control-sm" value="6" min="1" /></td><td><span class="text-success font-weight-bold">8 unidades</span></td><td><span class="badge badge-light-info text-info">1 por mesa</span></td><td><button class="btn btn-sm btn-light text-danger" data-demo="remove-row"><i class="fas fa-trash"></i></button></td></tr>
+            </tbody></table></div>
+            <div class="alert alert-warning border-0"><i class="fas fa-exclamation-triangle mr-2"></i><strong>Brecha detectada:</strong> faltan 2 pipetas en el laboratorio asignado. Puede solicitar préstamo a LAB-Q-02 o ajustar la cantidad.</div>
+            <div class="text-right"><button class="btn btn-danger btn-rounded px-4" data-go="disponibilidad">Validar disponibilidad <i class="fas fa-arrow-right ml-1"></i></button></div>
+        </div></div>
+    </div>
+
+    <div id="view-disponibilidad" class="prototype-view">
+        <div class="row">
+            <div class="col-lg-8 mb-3"><div class="card surface-card"><div class="card-body p-4">
+                <div class="section-kicker">Paso 3</div><h4 class="font-weight-bold">Disponibilidad y conflictos</h4><p class="text-muted">Comparación por horario, ubicación y estado operativo.</p>
+                <div class="table-responsive"><table class="table"><thead class="bg-light"><tr><th>Utensilio</th><th>Requerido</th><th>LAB-Q-01</th><th>Alternativa</th><th>Resultado</th></tr></thead><tbody>
+                    <tr><td><strong>Matraz 250 ml</strong></td><td>12</td><td><div>18 libres</div><div class="availability-bar"><span class="bg-success" style="width:100%"></span></div></td><td>-</td><td><span class="badge badge-success">Cubierto</span></td></tr>
+                    <tr><td><strong>Pipeta 10 ml</strong></td><td>12</td><td><div>10 libres</div><div class="availability-bar"><span class="bg-warning" style="width:83%"></span></div></td><td>LAB-Q-02: 6</td><td><span class="badge badge-warning">Préstamo</span></td></tr>
+                    <tr><td><strong>Bureta 50 ml</strong></td><td>6</td><td><div>8 libres</div><div class="availability-bar"><span class="bg-success" style="width:100%"></span></div></td><td>-</td><td><span class="badge badge-success">Cubierto</span></td></tr>
+                    <tr><td><strong>Agitador magnético</strong></td><td>1</td><td><div>0 libres</div><div class="availability-bar"><span class="bg-danger" style="width:8%"></span></div></td><td>En mantenimiento</td><td><span class="badge badge-danger">Bloqueo</span></td></tr>
+                </tbody></table></div>
+                <div class="text-right"><button class="btn btn-outline-danger btn-rounded mr-2" data-demo="resolve-conflict">Resolver préstamo</button><button class="btn btn-danger btn-rounded px-4" data-demo="approve-reservation">Aprobar reserva</button></div>
+            </div></div></div>
+            <div class="col-lg-4 mb-3"><div class="card surface-card h-100"><div class="card-body p-4"><div class="section-kicker">Reglas simuladas</div><h5 class="font-weight-bold">Qué se valida</h5><ul class="pl-3 text-muted"><li class="mb-2">Mismo intervalo de fecha y hora.</li><li class="mb-2">Unidad operativa y ubicación confirmada.</li><li class="mb-2">Préstamos ya aprobados o pendientes.</li><li class="mb-2">Mantenimiento y salidas sin retorno.</li><li>Clasificación confirmada del catálogo.</li></ul><div class="data-contract rounded p-3 mt-4 small"><strong>Dependencia P0:</strong><br>catálogos, unidades y laboratorios normalizados antes de habilitar reservas reales.</div></div></div></div>
+        </div>
+    </div>
+
+    <div id="view-operacion" class="prototype-view">
+        <div class="card surface-card mb-3"><div class="card-body p-4">
+            <div class="section-kicker">Paso 4</div><h4 class="font-weight-bold">Preparación, entrega y devolución L-3</h4><p class="text-muted">Seguimiento operativo del lote reservado para la práctica.</p>
+            <div class="step-track my-4">
+                <div class="flow-step done"><div class="circle"><i class="fas fa-check"></i></div><small>Reservado</small></div>
+                <div class="flow-step done"><div class="circle"><i class="fas fa-check"></i></div><small>Preparado</small></div>
+                <div class="flow-step current"><div class="circle">3</div><small>Entregado</small></div>
+                <div class="flow-step"><div class="circle">4</div><small>Devuelto</small></div>
+                <div class="flow-step"><div class="circle">5</div><small>Cerrado</small></div>
+            </div>
+            <div class="row"><div class="col-md-7"><div class="table-responsive"><table class="table table-sm"><thead><tr><th>Ítem</th><th class="text-center">Entregado</th><th class="text-center">Devuelto</th><th>Estado</th></tr></thead><tbody>
+                <tr><td>Matraz 250 ml</td><td class="text-center">12</td><td class="text-center"><input class="form-control form-control-sm mx-auto return-count" style="width:75px" type="number" value="12" /></td><td><span class="badge badge-success">Completo</span></td></tr>
+                <tr><td>Pipeta 10 ml</td><td class="text-center">12</td><td class="text-center"><input class="form-control form-control-sm mx-auto return-count" style="width:75px" type="number" value="11" /></td><td><span class="badge badge-warning">Revisar 1</span></td></tr>
+                <tr><td>Bureta 50 ml</td><td class="text-center">6</td><td class="text-center"><input class="form-control form-control-sm mx-auto return-count" style="width:75px" type="number" value="6" /></td><td><span class="badge badge-success">Completo</span></td></tr>
+            </tbody></table></div></div><div class="col-md-5"><div class="bg-light rounded p-3"><div class="small text-uppercase text-muted font-weight-bold">Documento operativo</div><h5 class="font-weight-bold mt-1">L3-2026-0087</h5><div class="small mb-2"><i class="far fa-user mr-2"></i>Dra. Laura Rojas</div><div class="small mb-2"><i class="far fa-clock mr-2"></i>7 sep. · 08:00 a 10:00</div><div class="small"><i class="fas fa-map-marker-alt mr-2"></i>LAB-Q-01</div><hr><button class="btn btn-outline-secondary btn-sm btn-block" data-demo="print-l3"><i class="fas fa-print mr-1"></i> Vista previa L-3</button></div></div></div>
+            <div class="text-right mt-3"><button class="btn btn-warning btn-rounded mr-2" data-go="incidentes"><i class="fas fa-exclamation-triangle mr-1"></i> Registrar novedad</button><button class="btn btn-success btn-rounded px-4" data-demo="close-return"><i class="fas fa-check mr-1"></i> Confirmar devolución</button></div>
+        </div></div>
+    </div>
+
+    <div id="view-incidentes" class="prototype-view">
+        <div class="row"><div class="col-lg-7 mb-3"><div class="card surface-card"><div class="card-body p-4"><div class="section-kicker">Excepción operativa</div><h4 class="font-weight-bold">Registrar daño, pérdida o faltante</h4><p class="text-muted">El incidente conserva la relación con la práctica, L-3 y responsables.</p>
+            <div class="row"><div class="col-md-6"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Documento L-3</label><input class="form-control" value="L3-2026-0087" readonly /></div></div><div class="col-md-6"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Tipo de novedad *</label><select class="form-control"><option>Daño</option><option>Pérdida</option><option>Faltante en devolución</option></select></div></div><div class="col-md-6"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Ítem *</label><select class="form-control"><option>PIP-010 · Pipeta 10 ml</option></select></div></div><div class="col-md-6"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Responsabilidad inicial</label><select class="form-control"><option>Por investigar</option><option>Docente</option><option>Estudiante / grupo</option><option>Institucional</option></select></div></div><div class="col-12"><div class="form-group"><label class="font-weight-bold small text-uppercase text-muted">Descripción y evidencia *</label><textarea class="form-control" rows="3" placeholder="Describa lo ocurrido y adjunte evidencia en la versión funcional...">Pipeta devuelta con fisura visible.</textarea></div></div></div>
+            <div class="text-right"><button class="btn btn-danger btn-rounded px-4" data-demo="create-l5">Generar borrador L-5</button></div>
+        </div></div></div><div class="col-lg-5 mb-3"><div class="card surface-card h-100"><div class="card-body p-4"><div class="metric-icon bg-soft-red mb-3"><i class="fas fa-file-medical-alt"></i></div><h5 class="font-weight-bold">Flujo L-5 propuesto</h5><ol class="pl-3 text-muted"><li class="mb-2">Registrar evidencia y estado de la unidad.</li><li class="mb-2">Asignar investigación y responsable funcional.</li><li class="mb-2">Definir reparación, reposición o baja.</li><li>Actualizar inventario sin borrar el historial.</li></ol><div class="alert alert-light border mt-4 small mb-0">La responsabilidad definitiva requiere aprobación; el prototipo no la infiere.</div></div></div></div></div>
+    </div>
+
+    <div id="view-analitica" class="prototype-view">
+        <div class="row"><div class="col-lg-8 mb-3"><div class="card surface-card"><div class="card-body p-4"><div class="section-kicker">Planificación futura</div><h4 class="font-weight-bold">Brechas recurrentes de demanda</h4><p class="text-muted">Datos demostrativos calculados a partir de prácticas programadas.</p>
+            <div class="table-responsive"><table class="table"><thead class="bg-light"><tr><th>Catálogo</th><th>Demanda pico</th><th>Disponibles</th><th>Brecha</th><th>Recomendación</th></tr></thead><tbody><tr><td><strong>Pipeta 10 ml</strong></td><td>28</td><td>20</td><td class="text-danger font-weight-bold">-8</td><td><span class="badge badge-danger">Compra prioritaria</span></td></tr><tr><td><strong>Matraz 250 ml</strong></td><td>24</td><td>30</td><td class="text-success font-weight-bold">+6</td><td><span class="badge badge-success">Suficiente</span></td></tr><tr><td><strong>Agitador magnético</strong></td><td>5</td><td>4</td><td class="text-warning font-weight-bold">-1</td><td><span class="badge badge-warning">Revisar mantenimiento</span></td></tr></tbody></table></div>
+        </div></div></div><div class="col-lg-4 mb-3"><div class="card surface-card h-100 clickable-card" data-demo="purchase-proposal"><div class="card-body p-4"><div class="metric-icon bg-soft-blue mb-3"><i class="fas fa-shopping-cart"></i></div><div class="section-kicker">Escenario sugerido</div><h4 class="font-weight-bold">8 pipetas</h4><p class="text-muted">Cubren el pico de demanda estimado para 2026-II.</p><hr><div class="d-flex"><span class="text-muted">Prácticas afectadas</span><strong class="ml-auto">6</strong></div><div class="d-flex mt-2"><span class="text-muted">Prioridad</span><strong class="ml-auto text-danger">Alta</strong></div><button class="btn btn-outline-danger btn-block btn-rounded mt-4">Ver propuesta</button></div></div></div></div>
+    </div>
+
+    <div class="data-contract rounded p-3 mt-3 small">
+        <strong><i class="fas fa-database mr-1"></i> Límite del prototipo:</strong> las pantallas representan el contrato funcional propuesto. No crean tablas, no alteran la base y no confirman entidades como Práctica, Grupo Académico, Reserva, Préstamo o Incidente.
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            function openView(name, updateHash) {
+                var target = document.getElementById('view-' + name);
+                if (!target) return;
+                document.querySelectorAll('.prototype-view').forEach(function (item) { item.classList.remove('active'); });
+                document.querySelectorAll('.prototype-nav .nav-link').forEach(function (item) { item.classList.toggle('active', item.getAttribute('data-view') === name); });
+                target.classList.add('active');
+                if (updateHash !== false && history.replaceState) history.replaceState(null, '', '#' + name);
+                window.scrollTo({ top: Math.max(0, document.querySelector('.prototype-shell').offsetTop - 80), behavior: 'smooth' });
+            }
+
+            document.querySelectorAll('[data-view], [data-go]').forEach(function (link) {
+                link.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    openView(link.getAttribute('data-view') || link.getAttribute('data-go'));
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                var action = event.target.closest('[data-demo]');
+                if (!action) return;
+                var type = action.getAttribute('data-demo');
+                if (type === 'remove-row') {
+                    action.closest('tr').remove();
+                    return;
+                }
+                if (type === 'add-item') {
+                    Swal.fire({ type: 'info', title: 'Selector de catálogo', text: 'En la versión funcional se consultarán únicamente catálogos confirmados y unidades disponibles.', confirmButtonColor: '#bb1e2d' });
+                    return;
+                }
+                if (type === 'resolve-conflict') {
+                    Swal.fire({ type: 'question', title: 'Solicitar préstamo interno', text: 'Se reservarán 2 pipetas de LAB-Q-02 para este horario.', showCancelButton: true, confirmButtonText: 'Simular préstamo', cancelButtonText: 'Cancelar', confirmButtonColor: '#bb1e2d' }).then(function (result) {
+                        if (result.value || result.isConfirmed) Swal.fire({ type: 'success', title: 'Préstamo simulado', text: 'La brecha queda cubierta en el prototipo.' });
+                    });
+                    return;
+                }
+                if (type === 'approve-reservation') {
+                    Swal.fire({ type: 'success', title: 'Reserva simulada', text: 'La práctica pasó a la cola semanal de preparación L-3.' }).then(function () { openView('operacion'); });
+                    return;
+                }
+                if (type === 'close-return') {
+                    Swal.fire({ type: 'warning', title: 'Existe una diferencia', text: 'Se devolvieron 11 de 12 pipetas. Registre la novedad antes de cerrar.', showCancelButton: true, confirmButtonText: 'Registrar novedad', cancelButtonText: 'Volver', confirmButtonColor: '#bb1e2d' }).then(function (result) { if (result.value || result.isConfirmed) openView('incidentes'); });
+                    return;
+                }
+                var messages = {
+                    'save-draft': ['Borrador guardado', 'La simulación conserva los datos mientras permanezca en esta página.'],
+                    'print-l3': ['Vista previa L-3', 'El PDF operativo se generará cuando el contrato definitivo sea aprobado.'],
+                    'create-l5': ['Borrador L-5 generado', 'La novedad quedó vinculada a L3-2026-0087 en esta demostración.'],
+                    'purchase-proposal': ['Propuesta de compra', 'La recomendación debe revisarse con Inventario y no crea una adquisición automáticamente.']
+                };
+                var message = messages[type] || ['Acción demostrativa', 'Esta interacción no modifica datos reales.'];
+                Swal.fire({ type: 'success', title: message[0], text: message[1], confirmButtonColor: '#bb1e2d' });
+            });
+
+            var initial = (window.location.hash || '#resumen').substring(1);
+            openView(document.getElementById('view-' + initial) ? initial : 'resumen', false);
+        })();
+    </script>
+}

@@ -19,15 +19,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
+        private readonly ILogger<MassCreateModel> _logger;
 
         public MassCreateModel(
             ApplicationDbContext context,
             UserManager<User> userManager,
-            IManagementContextService managementContext)
+            IManagementContextService managementContext,
+            ILogger<MassCreateModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
+            _logger = logger;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -123,7 +126,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 hasTechnician = p.Maintenance?.TechnicianId != null,
                 hasLaboratory = p.EquipmentUnit?.LaboratoryId != null,
                 departureDate = p.Departure?.DepartureDate.ToString("yyyy-MM-dd"),
-                estimatedReturnDate = p.Departure?.EstimatedReturnDate.ToString("yyyy-MM-dd"),
+                estimatedReturnDate = p.Departure?.EstimatedReturnDate?.ToString("yyyy-MM-dd"),
                 isDraft = p.IsDraft && p.DraftPhase == WizardPhase.Exit
             });
 
@@ -280,8 +283,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             catch (Exception ex)
             {
                 await tx.RollbackAsync();
-                var detail = ex.InnerException?.Message ?? ex.Message;
-                TempData.Error($"Error al registrar salidas: {detail}");
+                _logger.LogError(
+                    ex,
+                    "Error al registrar salidas masivas para gestion {ManagementId} y laboratorio {LaboratoryId}.",
+                    ManagementId,
+                    LabId);
+                TempData.Error("No se pudieron registrar las salidas. Intente nuevamente.");
                 await LoadLabList();
                 return Page();
             }
@@ -289,7 +296,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             if (created == 0)
             {
                 var attemptedRows = string.Join("; ", includedRows.Select((r, i) => $"#{i}: PlanId={r.PlanId}, EquipmentUnitId={r.EquipmentUnitId}"));
-                TempData.Error($"No se registró ninguna salida. Omitidos: {skipped}. Filas procesadas: {attemptedRows}. Verifique que los equipos seleccionados tengan técnico L-8 y plan válido.");
+                _logger.LogWarning(
+                    "No se registraron salidas masivas. Omitidos: {Skipped}. Filas: {AttemptedRows}.",
+                    skipped,
+                    attemptedRows);
+                TempData.Error("No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico L-8 y un plan válido.");
                 await LoadLabList();
                 return Page();
             }

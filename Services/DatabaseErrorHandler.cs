@@ -1,6 +1,5 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using System.Text;
 
 namespace Proyecto_Laboratorios_Univalle.Services
 {
@@ -14,41 +13,11 @@ namespace Proyecto_Laboratorios_Univalle.Services
         }
 
         /// <summary>
-        /// Registra un error de conexion en un archivo de texto local para diagnostico.
+        /// Registra un error de conexion en el proveedor de logging configurado.
         /// </summary>
         public void LogConnectionError(Exception ex, string additionalContext = "")
         {
-            try
-            {
-                var logFilePath = Path.Combine(Directory.GetCurrentDirectory(), "logs", "connection_errors.txt");
-                var logDirectory = Path.GetDirectoryName(logFilePath);
-
-                if (!Directory.Exists(logDirectory))
-                {
-                    Directory.CreateDirectory(logDirectory!);
-                }
-
-                var errorMessage = new StringBuilder();
-                errorMessage.AppendLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] ERROR DE CONEXION A BASE DE DATOS");
-                errorMessage.AppendLine($"Contexto: {additionalContext}");
-                errorMessage.AppendLine($"Mensaje: {ex.Message}");
-                errorMessage.AppendLine($"Tipo: {ex.GetType().Name}");
-
-                if (ex.InnerException != null)
-                {
-                    errorMessage.AppendLine($"Excepcion Interna: {ex.InnerException.Message}");
-                }
-
-                errorMessage.AppendLine($"Stack Trace: {ex.StackTrace}");
-                errorMessage.AppendLine(new string('-', 80));
-
-                File.AppendAllText(logFilePath, errorMessage.ToString());
-                _logger.LogError(ex, "Error de conexion a base de datos: {Context}", additionalContext);
-            }
-            catch (Exception logEx)
-            {
-                _logger.LogError(logEx, "Error al intentar registrar error de base de datos");
-            }
+            _logger.LogError(ex, "Error de conexion a base de datos: {Context}", additionalContext);
         }
 
         /// <summary>
@@ -70,7 +39,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
             catch (Exception ex)
             {
                 LogConnectionError(ex, "Prueba de conexion a base de datos");
-                return (false, $"Error inesperado: {ex.Message}");
+                return (false, "No se pudo comprobar la conexion. Revise los logs del servidor.");
             }
         }
 
@@ -118,7 +87,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 4060 => "No se puede abrir la base de datos solicitada. Verifica el nombre de la base de datos.",
                 53 or 233 or 10054 or 10060 => "No se pudo conectar al servidor SQL Server. Verifica que el servidor este accesible.",
                 -2 => "La conexion a SQL Server tardo demasiado tiempo.",
-                _ => $"Error SQL Server #{sqlEx.Number}: {sqlEx.Message}"
+                _ => "SQL Server rechazo o interrumpio la conexion. Revise los logs del servidor."
             };
         }
     }

@@ -19,12 +19,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementService;
+        private readonly ILogger<CreateModel> _logger;
 
-        public CreateModel(ApplicationDbContext context, UserManager<User> userManager, IManagementContextService managementService)
+        public CreateModel(
+            ApplicationDbContext context,
+            UserManager<User> userManager,
+            IManagementContextService managementService,
+            ILogger<CreateModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _managementService = managementService;
+            _logger = logger;
         }
 
         [BindProperty]
@@ -477,8 +483,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             }
             catch (Exception ex)
             {
-                var detail = ex.InnerException?.Message ?? ex.Message;
-                TempData.Error($"Error al guardar L-3: {detail}");
+                _logger.LogError(
+                    ex,
+                    "Error al guardar L-3 para unidad {EquipmentUnitId} y plan {ManagementPlanId}.",
+                    Input.EquipmentUnitId,
+                    ManagementPlanId);
+                TempData.Error("No se pudo guardar el registro L-3. Intente nuevamente.");
                 await LoadLists();
                 return Page();
             }

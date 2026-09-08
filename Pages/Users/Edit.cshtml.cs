@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
@@ -14,23 +14,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
     [Authorize(Roles = AuthorizationHelper.AdminRoles)]
     public class EditModel : PageModel
     {
-        private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
         private readonly IWebHostEnvironment _environment;
         private readonly ILogger<EditModel> _logger;
 
-        private const long MaxProfilePictureBytes = 5 * 1024 * 1024;
-        private static readonly HashSet<string> AllowedImageExtensions = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".jpg",
-            ".jpeg",
-            ".png",
-            ".webp"
-        };
-
         public EditModel(
-            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            ApplicationDbContext context,
             UserManager<User> userManager,
             SignInManager<User> signInManager,
             IWebHostEnvironment environment,
@@ -51,17 +42,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
         public class UserInputModel
         {
             [Required(ErrorMessage = "Los nombres son obligatorios")]
+            [StringLength(100)]
             [Display(Name = "Nombres")]
             public string FirstName { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "El primer apellido es obligatorio")]
+            [StringLength(100)]
             [Display(Name = "Apellido Paterno")]
             public string LastName { get; set; } = string.Empty;
 
+            [StringLength(100)]
             [Display(Name = "Apellido Materno")]
             public string? SecondLastName { get; set; }
 
             [Required(ErrorMessage = "El documento de identidad es obligatorio")]
+            [StringLength(10)]
+            [RegularExpression(@"^[0-9A-Z-]*$", ErrorMessage = "Formato de cédula inválido")]
             [Display(Name = "C.I.")]
             public string IdentityCard { get; set; } = string.Empty;
 
@@ -72,29 +68,32 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             [Required]
             public GeneralStatus Status { get; set; }
 
+            [StringLength(100)]
             [Display(Name = "Cargo")]
             public string? Position { get; set; }
 
+            [StringLength(100)]
             [Display(Name = "Departamento")]
             public string? Department { get; set; }
 
             [Display(Name = "Fecha de Alta")]
             public DateTime? HireDate { get; set; }
 
-            [Phone(ErrorMessage = "Formato de telefono invalido")]
-            [Display(Name = "Telefono")]
+            [Phone(ErrorMessage = "Formato de teléfono inválido")]
+            [Display(Name = "Teléfono")]
             public string? PhoneNumber { get; set; }
 
             [Required(ErrorMessage = "El correo institucional es obligatorio")]
-            [EmailAddress(ErrorMessage = "Correo electronico invalido")]
+            [EmailAddress(ErrorMessage = "Correo electrónico inválido")]
+            [StringLength(256)]
             public string Email { get; set; } = string.Empty;
 
             [Display(Name = "Usuario")]
             public string? UserName { get; set; }
 
             [DataType(DataType.Password)]
-            [StringLength(100, ErrorMessage = "La contrasena debe tener al menos 8 caracteres.", MinimumLength = 8)]
-            [Display(Name = "Nueva Contrasena")]
+            [StringLength(100, ErrorMessage = "La contraseña debe tener al menos 8 caracteres.", MinimumLength = 8)]
+            [Display(Name = "Nueva Contraseña")]
             public string? NewPassword { get; set; }
 
             [Display(Name = "Foto de Perfil")]
@@ -105,17 +104,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
-            if (id == null) return NotFound();
+            if (id == null)
+                return NotFound();
 
             var user = await _context.Users
                 .AsNoTracking()
-                .FirstOrDefaultAsync(m => m.Id == id);
+                .FirstOrDefaultAsync(candidate => candidate.Id == id);
 
-            if (user == null) return NotFound();
+            if (user == null)
+                return NotFound();
+
+            if (user.Role == UserRole.SuperAdmin &&
+                !User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+            {
+                return Forbid();
+            }
 
             Id = user.Id;
             Input = MapToInput(user);
-
             ViewData["ReturnUrl"] = HttpContext.Request.Query["returnUrl"].ToString();
             LoadRoles();
             return Page();
@@ -131,7 +137,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 ModelState.Remove("Input.NewPassword");
             }
 
-            ValidateProfilePicture(Input.ProfilePictureUpload);
+            if (!Enum.IsDefined(typeof(UserRole), Input.Role))
+                ModelState.AddModelError("Input.Role", "Seleccione un rol válido.");
+
+            if (!Enum.IsDefined(typeof(GeneralStatus), Input.Status))
+                ModelState.AddModelError("Input.Status", "Seleccione un estado válido.");
+
+            if (Input.Role == UserRole.SuperAdmin &&
+                !User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+            {
+                ModelState.AddModelError("Input.Role", "Solo un superadministrador puede asignar este rol.");
+            }
+
+            var imageValidationError = await SafeImageUpload.ValidateAsync(
+                Input.ProfilePictureUpload,
+                HttpContext.RequestAborted);
+
+            if (imageValidationError != null)
+                ModelState.AddModelError("Input.ProfilePictureUpload", imageValidationError);
 
             if (!ModelState.IsValid)
             {
@@ -139,26 +162,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 return Page();
             }
 
-            var normalizedEmail = Input.Email.Trim();
-            var normalizedIdentityCard = Input.IdentityCard.Trim();
+            var normalizedEmail = Input.Email.Trim().ToLowerInvariant();
+            var normalizedIdentityCard = Input.IdentityCard.Trim().ToUpperInvariant();
 
             var ciExists = await _context.Users
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.IdentityCard == normalizedIdentityCard && u.Id != id && u.Status != GeneralStatus.Eliminado);
+                .AnyAsync(user => user.IdentityCard == normalizedIdentityCard &&
+                    user.Id != id && user.Status != GeneralStatus.Eliminado);
 
             if (ciExists)
-            {
-                ModelState.AddModelError("Input.IdentityCard", "Este C.I. ya esta asignado a otro usuario.");
-            }
+                ModelState.AddModelError("Input.IdentityCard", "Este C.I. ya está asignado a otro usuario.");
 
             var emailExists = await _context.Users
                 .IgnoreQueryFilters()
-                .AnyAsync(u => u.Email == normalizedEmail && u.Id != id && u.Status != GeneralStatus.Eliminado);
+                .AnyAsync(user => user.Email != null && user.Email.ToLower() == normalizedEmail && user.Id != id);
 
             if (emailExists)
-            {
-                ModelState.AddModelError("Input.Email", "Este correo electronico ya se encuentra registrado.");
-            }
+                ModelState.AddModelError("Input.Email", "Este correo electrónico ya se encuentra registrado.");
 
             if (!ModelState.IsValid)
             {
@@ -167,19 +187,45 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             }
 
             var userToUpdate = await _context.Users
+                .IgnoreQueryFilters()
                 .AsTracking()
-                .FirstOrDefaultAsync(u => u.Id == id);
+                .FirstOrDefaultAsync(user => user.Id == id);
 
             if (userToUpdate == null)
+                return NotFound();
+
+            if (userToUpdate.Role == UserRole.SuperAdmin &&
+                !User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
             {
-                return RedirectToPage("/Error", new
+                return Forbid();
+            }
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser?.Id == userToUpdate.Id &&
+                (Input.Role != userToUpdate.Role || Input.Status != GeneralStatus.Activo))
+            {
+                ModelState.AddModelError(string.Empty,
+                    "No puede cambiar su propio rol ni desactivar su propia cuenta.");
+                LoadRoles();
+                return Page();
+            }
+
+            if (userToUpdate.Role == UserRole.SuperAdmin &&
+                (Input.Role != UserRole.SuperAdmin || Input.Status != GeneralStatus.Activo))
+            {
+                var hasAnotherActiveSuperAdmin = await _context.Users
+                    .IgnoreQueryFilters()
+                    .AnyAsync(user => user.Id != id &&
+                        user.Role == UserRole.SuperAdmin &&
+                        user.Status == GeneralStatus.Activo);
+
+                if (!hasAnotherActiveSuperAdmin)
                 {
-                    module = "Usuarios",
-                    entityId = id.ToString(),
-                    message = "No se encontro el usuario solicitado para modificar.",
-                    returnUrl = Url.Page("./Index"),
-                    listUrl = Url.Page("./Index")
-                });
+                    ModelState.AddModelError(string.Empty,
+                        "Debe existir al menos un superadministrador activo.");
+                    LoadRoles();
+                    return Page();
+                }
             }
 
             var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "users");
@@ -189,79 +235,126 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             try
             {
-                ApplyInput(userToUpdate, normalizedEmail, normalizedIdentityCard);
-
                 if (Input.ProfilePictureUpload is { Length: > 0 })
                 {
-                    Directory.CreateDirectory(uploadsFolder);
-                    newProfilePictureUrl = BuildProfilePictureFileName(Input.ProfilePictureUpload);
+                    newProfilePictureUrl = await SafeImageUpload.SaveAsync(
+                        Input.ProfilePictureUpload,
+                        uploadsFolder,
+                        HttpContext.RequestAborted);
                     newProfilePicturePath = Path.Combine(uploadsFolder, newProfilePictureUrl);
+                }
 
-                    await using var fileStream = new FileStream(newProfilePicturePath, FileMode.CreateNew);
-                    await Input.ProfilePictureUpload.CopyToAsync(fileStream);
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                var previousStatus = userToUpdate.Status;
+                ApplyInput(userToUpdate, normalizedEmail, normalizedIdentityCard);
+
+                if (newProfilePictureUrl != null)
                     userToUpdate.ProfilePictureUrl = newProfilePictureUrl;
+
+                var roleResult = await _userManager.SynchronizeManagedRoleAsync(userToUpdate, Input.Role);
+                if (!roleResult.Succeeded)
+                {
+                    AddIdentityErrors(roleResult, string.Empty);
+                    await transaction.RollbackAsync();
+                    SafeImageUpload.DeleteIfExists(newProfilePicturePath);
+                    Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
+                    LoadRoles();
+                    return Page();
                 }
 
                 if (!string.IsNullOrWhiteSpace(Input.NewPassword))
                 {
                     var token = await _userManager.GeneratePasswordResetTokenAsync(userToUpdate);
-                    var result = await _userManager.ResetPasswordAsync(userToUpdate, token, Input.NewPassword);
-                    if (!result.Succeeded)
+                    var passwordResult = await _userManager.ResetPasswordAsync(userToUpdate, token, Input.NewPassword);
+                    if (!passwordResult.Succeeded)
                     {
-                        foreach (var error in result.Errors)
-                        {
-                            ModelState.AddModelError("Input.NewPassword", error.Description);
-                        }
-
-                        DeleteUploadedFile(newProfilePicturePath);
+                        AddIdentityErrors(passwordResult, "Input.NewPassword");
+                        await transaction.RollbackAsync();
+                        SafeImageUpload.DeleteIfExists(newProfilePicturePath);
                         Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
                         LoadRoles();
                         return Page();
                     }
                 }
 
-                var currentUser = await _userManager.GetUserAsync(User);
-                if (currentUser != null)
+                if (Input.Status != GeneralStatus.Activo)
                 {
-                    userToUpdate.ModifiedById = currentUser.Id;
-                    userToUpdate.LastModifiedDate = DateTime.UtcNow;
+                    var lockResult = await _userManager.SetLockoutEndDateAsync(userToUpdate, DateTimeOffset.MaxValue);
+                    if (!lockResult.Succeeded)
+                    {
+                        AddIdentityErrors(lockResult, string.Empty);
+                        await transaction.RollbackAsync();
+                        SafeImageUpload.DeleteIfExists(newProfilePicturePath);
+                        Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
+                        LoadRoles();
+                        return Page();
+                    }
+                }
+                else if (previousStatus != GeneralStatus.Activo)
+                {
+                    var unlockResult = await _userManager.SetLockoutEndDateAsync(userToUpdate, null);
+                    if (!unlockResult.Succeeded)
+                    {
+                        AddIdentityErrors(unlockResult, string.Empty);
+                        await transaction.RollbackAsync();
+                        SafeImageUpload.DeleteIfExists(newProfilePicturePath);
+                        Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
+                        LoadRoles();
+                        return Page();
+                    }
+
+                    await _userManager.ResetAccessFailedCountAsync(userToUpdate);
                 }
 
+                var securityStampResult = await _userManager.UpdateSecurityStampAsync(userToUpdate);
+                if (!securityStampResult.Succeeded)
+                {
+                    AddIdentityErrors(securityStampResult, string.Empty);
+                    await transaction.RollbackAsync();
+                    SafeImageUpload.DeleteIfExists(newProfilePicturePath);
+                    Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
+                    LoadRoles();
+                    return Page();
+                }
+
+                userToUpdate.ModifiedById = currentUser?.Id;
+                userToUpdate.LastModifiedDate = DateTime.UtcNow;
+
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 if (newProfilePictureUrl != null && !string.IsNullOrWhiteSpace(oldProfilePictureUrl))
                 {
-                    DeleteStoredProfilePicture(uploadsFolder, oldProfilePictureUrl);
+                    try
+                    {
+                        SafeImageUpload.DeleteStoredFile(uploadsFolder, oldProfilePictureUrl);
+                    }
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        _logger.LogWarning(ex, "No se pudo retirar la foto anterior del usuario {UserId}.", id);
+                    }
                 }
-
-                if (currentUser?.Id == userToUpdate.Id)
-                {
-                    await _signInManager.RefreshSignInAsync(userToUpdate);
-                }
-
-                TempData.Success($"Datos de la cuenta '{userToUpdate.FullName}' actualizados correctamente.");
             }
-            catch (DbUpdateConcurrencyException)
+            catch (Exception ex)
             {
-                DeleteUploadedFile(newProfilePicturePath);
-                if (!UserExists(id)) return NotFound();
-                throw;
-            }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is DbUpdateException)
-            {
-                DeleteUploadedFile(newProfilePicturePath);
+                SafeImageUpload.DeleteIfExists(newProfilePicturePath);
                 _logger.LogError(ex, "No se pudo actualizar el usuario {UserId}.", id);
                 Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
-                TempData.Error("No se pudo guardar la foto de perfil o los datos del usuario. Revise el archivo e intente nuevamente.");
+                TempData.Error("No se pudieron guardar los datos del usuario. Revise la información e intente nuevamente.");
                 LoadRoles();
                 return Page();
             }
 
-            var returnUrlPost = HttpContext.Request.Query["returnUrl"].ToString();
-            if (returnUrlPost == "Details")
-                return RedirectToPage("./Details", new { id = userToUpdate.Id });
+            if (currentUser?.Id == userToUpdate.Id)
+                await _signInManager.RefreshSignInAsync(userToUpdate);
 
-            return RedirectToPage("./Index");
+            TempData.Success($"Datos de la cuenta '{userToUpdate.FullName}' actualizados correctamente.");
+
+            var returnUrl = HttpContext.Request.Query["returnUrl"].ToString();
+            return returnUrl == "Details"
+                ? RedirectToPage("./Details", new { id = userToUpdate.Id })
+                : RedirectToPage("./Index");
         }
 
         private static UserInputModel MapToInput(User user)
@@ -284,96 +377,48 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             };
         }
 
-        private void ApplyInput(User userToUpdate, string normalizedEmail, string normalizedIdentityCard)
+        private void ApplyInput(User user, string normalizedEmail, string normalizedIdentityCard)
         {
-            userToUpdate.FirstName = Input.FirstName.Clean();
-            userToUpdate.LastName = Input.LastName.Clean();
-            userToUpdate.SecondLastName = Input.SecondLastName?.Clean();
-            userToUpdate.IdentityCard = normalizedIdentityCard;
-            userToUpdate.Role = Input.Role;
-            userToUpdate.Status = Input.Status;
-            userToUpdate.Position = Input.Position?.Clean();
-            userToUpdate.Department = Input.Department?.Clean();
-            userToUpdate.HireDate = Input.HireDate;
-            userToUpdate.PhoneNumber = Input.PhoneNumber?.Trim();
-            userToUpdate.Email = normalizedEmail;
-            userToUpdate.NormalizedEmail = _userManager.NormalizeEmail(normalizedEmail);
-        }
-
-        private bool UserExists(int id)
-        {
-            return _context.Users.Any(e => e.Id == id);
+            user.FirstName = Input.FirstName.Clean();
+            user.LastName = Input.LastName.Clean();
+            user.SecondLastName = Input.SecondLastName?.Clean();
+            user.IdentityCard = normalizedIdentityCard;
+            user.Role = Input.Role;
+            user.Status = Input.Status;
+            user.Position = Input.Position?.Clean();
+            user.Department = Input.Department?.Clean();
+            user.HireDate = Input.HireDate;
+            user.PhoneNumber = Input.PhoneNumber?.Trim();
+            user.Email = normalizedEmail;
+            user.NormalizedEmail = _userManager.NormalizeEmail(normalizedEmail);
         }
 
         private async Task<string?> GetExistingProfilePictureUrlAsync(int id)
         {
             return await _context.Users
                 .IgnoreQueryFilters()
-                .Where(u => u.Id == id)
-                .Select(u => u.ProfilePictureUrl)
+                .Where(user => user.Id == id)
+                .Select(user => user.ProfilePictureUrl)
                 .FirstOrDefaultAsync();
         }
 
-        private void ValidateProfilePicture(IFormFile? file)
+        private void AddIdentityErrors(IdentityResult result, string key)
         {
-            if (file == null || file.Length == 0)
+            foreach (var error in result.Errors)
             {
-                return;
-            }
-
-            var extension = Path.GetExtension(file.FileName);
-            if (!AllowedImageExtensions.Contains(extension))
-            {
-                ModelState.AddModelError("Input.ProfilePictureUpload", "La foto debe ser JPG, PNG o WEBP.");
-            }
-
-            if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            {
-                ModelState.AddModelError("Input.ProfilePictureUpload", "El archivo seleccionado no es una imagen valida.");
-            }
-
-            if (file.Length > MaxProfilePictureBytes)
-            {
-                ModelState.AddModelError("Input.ProfilePictureUpload", "La foto no puede superar los 5 MB.");
-            }
-        }
-
-        private static string BuildProfilePictureFileName(IFormFile file)
-        {
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-            var baseName = Path.GetFileNameWithoutExtension(file.FileName);
-
-            foreach (var invalidChar in Path.GetInvalidFileNameChars())
-            {
-                baseName = baseName.Replace(invalidChar, '-');
-            }
-
-            baseName = string.IsNullOrWhiteSpace(baseName) ? "perfil" : baseName.Trim();
-            return $"{Guid.NewGuid():N}_{baseName}{extension}";
-        }
-
-        private static void DeleteUploadedFile(string? filePath)
-        {
-            if (!string.IsNullOrWhiteSpace(filePath) && System.IO.File.Exists(filePath))
-            {
-                System.IO.File.Delete(filePath);
-            }
-        }
-
-        private static void DeleteStoredProfilePicture(string uploadsFolder, string fileName)
-        {
-            var safeFileName = Path.GetFileName(fileName);
-            var oldFilePath = Path.Combine(uploadsFolder, safeFileName);
-
-            if (System.IO.File.Exists(oldFilePath))
-            {
-                System.IO.File.Delete(oldFilePath);
+                ModelState.AddModelError(key, error.Description);
             }
         }
 
         private void LoadRoles()
         {
-            ViewData["UserRole"] = EnumHelper.ToSelectList<UserRole>();
+            var roles = EnumHelper.ToSelectList<UserRole>();
+            if (!User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+            {
+                roles.RemoveAll(item => item.Value == ((int)UserRole.SuperAdmin).ToString());
+            }
+
+            ViewData["UserRole"] = roles;
         }
     }
 }

@@ -9,6 +9,16 @@ GO
 SET QUOTED_IDENTIFIER ON;
 GO
 
+-- Proteccion contra ejecucion accidental. Cambie a 1 unicamente sobre una base desechable.
+DECLARE @ConfirmDestructive BIT = 0;
+IF DB_NAME() <> N'DB_Laboratorios_Univalle_NH'
+    THROW 51000, 'Base incorrecta: este script solo admite DB_Laboratorios_Univalle_NH.', 1;
+IF @ConfirmDestructive <> 1
+    THROW 51001, 'Ejecucion detenida. Establezca @ConfirmDestructive = 1 despues de verificar un respaldo.', 1;
+
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+
 PRINT '>>> 1. Limpiando Base de Datos (Reverse Order)...';
 
 DELETE FROM Notifications;
@@ -68,7 +78,7 @@ INSERT INTO Interns (Id, Name, InternStatus) VALUES (@PersonId, 'Ing. Juan Técn
 
 -- Gestión (2026-I)
 INSERT INTO Managements (Year, Semester, Code, Description, StartDate, PlannedEndDate, Status, CreatedDate) 
-VALUES (2026, 1, '2026-1', 'Gestión Académica I-2026 (Demo)', '2026-02-01', '2026-07-31', 1, GETDATE());
+VALUES (2026, 1, '2026-1', 'Gestión Académica I-2026 (Demo)', '2026-02-01', '2026-07-31', 0, GETDATE());
 SET @ManagementId = SCOPE_IDENTITY();
 
 -- Catálogo de Equipos
@@ -103,11 +113,11 @@ PRINT '>>> 3. Insertando Datos del Wizard...';
 -- ESCENARIO A: EQUIPO '005' (MANTENIMIENTO EN PROGRESO)
 -- ==============================================================
 INSERT INTO Verifications (EquipmentUnitId, Date, Status, CreatedDate, ManagementId, PhysicalCondition) 
-VALUES (@Unit1Id, '2026-04-20', 1, GETDATE(), @ManagementId, 1); 
+VALUES (@Unit1Id, '2026-04-20', 1, GETDATE(), @ManagementId, 2);
 SET @Verification1Id = SCOPE_IDENTITY();
 
 INSERT INTO VerificationCheckResults (VerificationId, CheckItemId, Result)
-SELECT @Verification1Id, Id, CASE WHEN Id = 10 THEN 2 ELSE 1 END FROM VerificationCheckItems;
+SELECT @Verification1Id, Id, CASE WHEN Id = 10 THEN 0 ELSE 1 END FROM VerificationCheckItems;
 
 INSERT INTO VerificationFaults (VerificationId, Description, IsDeleted, CreatedDate) 
 VALUES (@Verification1Id, 'El ventilador interno hace ruido metálico.', 0, GETDATE());
@@ -121,13 +131,13 @@ VALUES (@Unit1Id, 1, 0, @PersonId, @Request1Id, '2026-04-29', '2026-04-29', 1, 5
 SET @Maintenance1Id = SCOPE_IDENTITY();
 
 INSERT INTO ManagementPlans (ManagementId, EquipmentUnitId, VerificationId, RequestId, MaintenanceId, CurrentPhase, CurrentState, PlannedDate, PlanStatus, CreatedDate)
-VALUES (@ManagementId, @Unit1Id, @Verification1Id, @Request1Id, @Maintenance1Id, 3, 3, '2026-04-29', 1, GETDATE()); 
+VALUES (@ManagementId, @Unit1Id, @Verification1Id, @Request1Id, @Maintenance1Id, 3, 5, '2026-04-29', 1, GETDATE());
 
 -- ==============================================================
 -- ESCENARIO B: EQUIPO '006' (PLANIFICADO)
 -- ==============================================================
 INSERT INTO ManagementPlans (ManagementId, EquipmentUnitId, CurrentPhase, CurrentState, PlannedDate, PlanStatus, CreatedDate)
-VALUES (@ManagementId, @Unit2Id, 0, 0, '2026-05-15', 0, GETDATE()); 
+VALUES (@ManagementId, @Unit2Id, 1, 1, '2026-05-15', 0, GETDATE());
 
 -- ==============================================================
 -- ESCENARIO C: EQUIPO '007' (COMPLETADO)
@@ -137,15 +147,15 @@ VALUES (@Unit3Id, '2026-04-10', 1, GETDATE(), @ManagementId, 1);
 SET @Verification2Id = SCOPE_IDENTITY();
 
 INSERT INTO Requests (LaboratoryId, EquipmentId, EquipmentUnitId, Description, Priority, Status, CreatedDate, Type, ManagementId) 
-VALUES (@LabId, @Equipment3Id, @Unit3Id, 'Mantenimiento Preventivo', 0, 1, GETDATE(), 0, @ManagementId);
+VALUES (@LabId, @Equipment3Id, @Unit3Id, 'Mantenimiento Preventivo', 0, 1, GETDATE(), 1, @ManagementId);
 SET @Request2Id = SCOPE_IDENTITY();
 
 INSERT INTO Maintenances (EquipmentUnitId, MaintenanceType, ServiceType, TechnicianId, RequestId, ScheduledDate, StartDate, EndDate, Status, CompletionPercentage, CreatedDate, ManagementId, Step1_Cleaning, Step2_Calibration, Step3_Testing, Step4_FinalReview)
-VALUES (@Unit3Id, 0, 0, @PersonId, @Request2Id, '2026-04-28', '2026-04-28', '2026-04-28', 2, 100, GETDATE(), @ManagementId, 1, 1, 1, 1); 
+VALUES (@Unit3Id, 1, 0, @PersonId, @Request2Id, '2026-04-28', '2026-04-28', '2026-04-28', 2, 100, GETDATE(), @ManagementId, 1, 1, 1, 1);
 SET @Maintenance2Id = SCOPE_IDENTITY();
 
 INSERT INTO ManagementPlans (ManagementId, EquipmentUnitId, VerificationId, RequestId, MaintenanceId, CurrentPhase, CurrentState, PlannedDate, PlanStatus, CreatedDate)
-VALUES (@ManagementId, @Unit3Id, @Verification2Id, @Request2Id, @Maintenance2Id, 3, 4, '2026-04-28', 2, GETDATE()); 
+VALUES (@ManagementId, @Unit3Id, @Verification2Id, @Request2Id, @Maintenance2Id, 4, 6, '2026-04-28', 1, GETDATE());
 
 PRINT '>>> 4. Insertando Notificaciones (Admin Id=1)...';
 
@@ -163,4 +173,5 @@ BEGIN
 END
 
 PRINT '✅ === PROCESO COMPLETADO SATISFACTORIAMENTE ===';
+COMMIT TRANSACTION;
 GO

@@ -167,7 +167,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 LabFList = new SelectList(LaboratoryDisplayHelper.ToSelectItems(labs), "Id", "DisplayName");
 
                 var techsList = await _context.People
-                    .Where(p => p.Category == PersonCategory.Tecnico)
+                    .Where(p => p.Category == PersonCategory.Tecnico && p.Status == GeneralStatus.Activo)
                     .ToListAsync();
                 
                 var techs = techsList.OrderBy(t => t.FullName).ToList();
@@ -461,7 +461,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         {
             if (planId.HasValue)
             {
-                var plan = await _context.ManagementPlans.FindAsync(planId.Value);
+                var plan = await _context.ManagementPlans
+                    .AsTracking()
+                    .Include(candidate => candidate.Management)
+                    .FirstOrDefaultAsync(candidate => candidate.Id == planId.Value &&
+                        (!ManagementId.HasValue || candidate.ManagementId == ManagementId.Value));
+
+                if (plan?.IsReadOnly == true)
+                {
+                    TempData.Error("La gestión está cerrada y no admite cambios.");
+                    return RedirectToPage(new { ShowWizard = true, Step = 1, ManagementId = plan.ManagementId, FocusPlanId });
+                }
+
                 if (plan != null && plan.CurrentPhase == WizardPhase.Verification)
                 {
                     plan.CurrentPhase = WizardPhase.TechnicalRequest;
@@ -504,38 +515,73 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 var plan = await _context.ManagementPlans
                     .Include(p => p.EquipmentUnit)
                     .Include(p => p.Maintenance)
+                    .Include(p => p.Management)
                     .AsTracking()
                     .FirstOrDefaultAsync(p => p.Id == planId);
 
-                if (plan != null)
+                if (plan == null)
                 {
-                    redirectManagementId = plan.ManagementId;
-                    var kardexEntry = new EquipmentStateHistory
-                    {
-                        EquipmentUnitId = plan.EquipmentUnitId ?? 0,
-                        Status = EquipmentStatus.Operational,
-                        StartDate = DateTime.UtcNow,
-                        Reason = $"Kardex: Mantenimiento #{plan.MaintenanceId} finalizado en Gestión #{plan.ManagementId}."
-                    };
-                    _context.EquipmentStateHistories.Add(kardexEntry);
-
-                    if (plan.EquipmentUnit != null)
-                    {
-                        plan.EquipmentUnit.CurrentStatus = EquipmentStatus.Operational;
-                        _context.EquipmentUnits.Update(plan.EquipmentUnit);
-                    }
-
-                    plan.CurrentPhase = WizardPhase.Disbursement;
-                    plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
-                    plan.PlanStatus = ManagementPlanStatus.InProgress;
-
-                    await _context.SaveChangesAsync();
-                    TempData.Success("Kardex actualizado. El equipo está marcado como Operativo.");
+                    TempData.Error("No se encontró el plan solicitado.");
+                    return RedirectToPage(new { ShowWizard = true, Step = 5, ManagementId, FocusPlanId });
                 }
+
+                redirectManagementId = plan.ManagementId;
+
+                if (plan.IsReadOnly)
+                {
+                    TempData.Error("La gestión está cerrada y no admite cambios.");
+                    return RedirectToPage(new { ShowWizard = true, Step = 5, ManagementId = plan.ManagementId, FocusPlanId });
+                }
+
+                if (plan.CurrentPhase != WizardPhase.Kardex || plan.EquipmentUnit == null)
+                {
+                    TempData.Error("El equipo no está listo para confirmar su Kardex.");
+                    return RedirectToPage(new { ShowWizard = true, Step = (int)plan.CurrentPhase, ManagementId = plan.ManagementId, FocusPlanId });
+                }
+
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                var historyDate = DateTime.UtcNow;
+
+                var previousOpenHistory = await _context.EquipmentStateHistories
+                    .AsTracking()
+                    .Where(history => history.EquipmentUnitId == plan.EquipmentUnit.Id && history.EndDate == null)
+                    .OrderByDescending(history => history.StartDate)
+                    .FirstOrDefaultAsync();
+
+                if (previousOpenHistory != null)
+                    previousOpenHistory.EndDate = historyDate;
+
+                var kardexEntry = new EquipmentStateHistory
+                {
+                    EquipmentUnitId = plan.EquipmentUnit.Id,
+                    Status = EquipmentStatus.Operational,
+                    StartDate = historyDate,
+                    Reason = $"Kardex: Mantenimiento #{plan.MaintenanceId} finalizado en Gestión #{plan.ManagementId}.",
+                    CreatedDate = historyDate
+                };
+                _context.EquipmentStateHistories.Add(kardexEntry);
+
+                plan.EquipmentUnit.CurrentStatus = EquipmentStatus.Operational;
+
+                await _context.SaveChangesAsync();
+
+                plan.KardexHistoryId = kardexEntry.Id;
+                plan.CurrentPhase = WizardPhase.Disbursement;
+                plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
+                plan.PlanStatus = ManagementPlanStatus.InProgress;
+                plan.IsDraft = false;
+                plan.DraftPhase = null;
+                plan.DraftSavedAt = null;
+                plan.DraftSummary = null;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                TempData.Success("Kardex actualizado. El equipo está marcado como Operativo.");
             }
             catch (Exception ex) 
             {
-                TempData.Error("Error al actualizar Kardex: " + ex.Message);
+                _logger.LogError(ex, "No se pudo confirmar el Kardex del plan {PlanId}.", planId);
+                TempData.Error("No se pudo actualizar el Kardex. Intente nuevamente.");
             }
 
             return RedirectToPage(new { ShowWizard = true, Step = 6, SelectedLabId = SelectedLabId, ManagementId = redirectManagementId, FocusPlanId });
@@ -609,27 +655,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                    !IsCompletedPlan(planStatus, currentState);
         }
 
-        // B-2: Handler para detalle del Kardex (Sidebar) con ordenamiento en memoria
         public async Task<JsonResult> OnGetKardexDetailAsync(int equipmentId)
         {
-            var unit = await _context.EquipmentUnits
-                .Include(u => u.Equipment)
-                .Include(u => u.StateHistory) // Nombre real en el modelo
-                .FirstOrDefaultAsync(u => u.Id == equipmentId);
-
-            if (unit == null) return new JsonResult(new { error = "No encontrado" });
-
-            var lastHistory = unit.StateHistory?
-                .OrderByDescending(h => h.StartDate)
-                .FirstOrDefault();
-
-            return new JsonResult(new {
-                name = unit.Equipment?.Name ?? "Sin nombre",
-                inventoryNumber = unit.InventoryNumber,
-                currentStatus = unit.CurrentStatus.ToString(),
-                lastDate = lastHistory?.StartDate.ToString("dd 'de' MMMM, yyyy", new System.Globalization.CultureInfo("es-ES")) ?? "Sin registros",
-                reason = lastHistory?.Reason ?? "—"
-            });
+            var summary = await EquipmentKardexSummaryBuilder.BuildAsync(_context, equipmentId, HttpContext.RequestAborted);
+            return summary == null
+                ? new JsonResult(new { error = "No encontrado" }) { StatusCode = StatusCodes.Status404NotFound }
+                : new JsonResult(summary);
         }
     }
 

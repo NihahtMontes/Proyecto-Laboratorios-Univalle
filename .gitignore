@@ -20,7 +20,21 @@ test_*.xlsx
 
 appsettings.Development.json
 appsettings.Production.json
+appsettings.Local.json
+.env
+.env.*
+!.env.example
 
 # No ignorar archivos fuente ni migraciones EF.
 !**/*.cs
 !**/Migrations/**
+# Local Pi runtime state
+.atl/
+
+# Artefactos locales de QA, importacion y compilaciones auxiliares
+tmp/
+outputs/
+*.bak
+*.bacpac
+*.mdf
+*.ldf

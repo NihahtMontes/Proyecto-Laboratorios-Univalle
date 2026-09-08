@@ -20,6 +20,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
+            ChangeTracker.DetectChanges();
+            SynchronizeLocationResolutionStatuses();
+            await SynchronizePrimaryMaintenanceParticipantsAsync(cancellationToken);
+            await SynchronizeNormalizedHistoricalRelationsAsync(cancellationToken);
+
             var userId = _currentUserService.UserId;
             var now = DateTime.UtcNow;
 
@@ -57,6 +62,244 @@ namespace Proyecto_Laboratorios_Univalle.Data
             return await base.SaveChangesAsync(cancellationToken);
         }
 
+        private void SynchronizeLocationResolutionStatuses()
+        {
+            foreach (var entry in ChangeTracker.Entries<EquipmentUnit>()
+                .Where(entry => entry.State is EntityState.Added or EntityState.Modified))
+            {
+                entry.Entity.LocationResolutionStatus = entry.Entity.LaboratoryId.HasValue
+                    ? LocationResolutionStatus.Confirmed
+                    : LocationResolutionStatus.Pending;
+            }
+
+            foreach (var entry in ChangeTracker.Entries<Request>()
+                .Where(entry => entry.State is EntityState.Added or EntityState.Modified))
+            {
+                entry.Entity.LocationResolutionStatus = entry.Entity.LaboratoryId.HasValue
+                    ? LocationResolutionStatus.Confirmed
+                    : LocationResolutionStatus.Pending;
+            }
+        }
+
+        private async Task SynchronizePrimaryMaintenanceParticipantsAsync(CancellationToken cancellationToken)
+        {
+            var maintenanceEntries = ChangeTracker.Entries<Maintenance>()
+                .Where(entry => entry.State == EntityState.Added
+                    || (entry.State == EntityState.Modified
+                        && entry.Property(m => m.TechnicianId).IsModified))
+                .ToList();
+
+            foreach (var entry in maintenanceEntries)
+            {
+                var maintenance = entry.Entity;
+                if (entry.State == EntityState.Added)
+                {
+                    if (maintenance.TechnicianId.HasValue)
+                    {
+                        maintenance.Participants.Add(new MaintenanceParticipant
+                        {
+                            PersonId = maintenance.TechnicianId.Value,
+                            Role = MaintenanceParticipantRole.Technician,
+                            IsPrimary = true,
+                            IsActive = true,
+                            AssignedAt = DateTime.UtcNow
+                        });
+                    }
+
+                    continue;
+                }
+
+                var activePrimaryParticipants = await MaintenanceParticipants
+                    .IgnoreQueryFilters()
+                    .AsTracking()
+                    .Where(participant => participant.MaintenanceId == maintenance.Id
+                        && participant.IsActive
+                        && participant.IsPrimary)
+                    .ToListAsync(cancellationToken);
+
+                if (maintenance.TechnicianId.HasValue
+                    && activePrimaryParticipants.Count == 1
+                    && activePrimaryParticipants[0].PersonId == maintenance.TechnicianId.Value)
+                {
+                    continue;
+                }
+
+                var now = DateTime.UtcNow;
+                foreach (var participant in activePrimaryParticipants)
+                {
+                    participant.IsPrimary = false;
+                    participant.IsActive = false;
+                    participant.UnassignedAt = now;
+                }
+
+                if (maintenance.TechnicianId.HasValue)
+                {
+                    MaintenanceParticipants.Add(new MaintenanceParticipant
+                    {
+                        MaintenanceId = maintenance.Id,
+                        PersonId = maintenance.TechnicianId.Value,
+                        Role = MaintenanceParticipantRole.Technician,
+                        IsPrimary = true,
+                        IsActive = true,
+                        AssignedAt = now
+                    });
+                }
+            }
+        }
+
+        private async Task SynchronizeNormalizedHistoricalRelationsAsync(CancellationToken cancellationToken)
+        {
+            var requestEntries = ChangeTracker.Entries<Request>()
+                .Where(entry => entry.State == EntityState.Added
+                    || (entry.State == EntityState.Modified
+                        && entry.Property(request => request.EquipmentUnitId).IsModified))
+                .ToList();
+
+            foreach (var entry in requestEntries)
+            {
+                var request = entry.Entity;
+                if (entry.State == EntityState.Added)
+                {
+                    if (request.EquipmentUnitId.HasValue
+                        && !request.EquipmentUnitLinks.Any(link => link.EquipmentUnitId == request.EquipmentUnitId.Value && link.IsActive))
+                    {
+                        request.EquipmentUnitLinks.Add(new RequestEquipmentUnit
+                        {
+                            EquipmentUnitId = request.EquipmentUnitId.Value,
+                            IsLegacyPrimary = true,
+                            IsActive = true
+                        });
+                    }
+
+                    continue;
+                }
+
+                var persistedLinks = await RequestEquipmentUnits
+                    .IgnoreQueryFilters()
+                    .AsTracking()
+                    .Where(link => link.RequestId == request.Id)
+                    .ToListAsync(cancellationToken);
+                persistedLinks = persistedLinks
+                    .Concat(ChangeTracker.Entries<RequestEquipmentUnit>()
+                        .Where(linkEntry => linkEntry.State != EntityState.Deleted
+                            && (linkEntry.Entity.RequestId == request.Id || linkEntry.Entity.Request == request))
+                        .Select(linkEntry => linkEntry.Entity))
+                    .Distinct()
+                    .ToList();
+
+                foreach (var legacyLink in persistedLinks.Where(link => link.IsLegacyPrimary))
+                {
+                    if (request.EquipmentUnitId.HasValue
+                        && legacyLink.EquipmentUnitId == request.EquipmentUnitId.Value)
+                    {
+                        legacyLink.IsActive = true;
+                        legacyLink.DeactivatedDate = null;
+                        continue;
+                    }
+
+                    legacyLink.IsLegacyPrimary = false;
+                    legacyLink.IsActive = false;
+                    legacyLink.DeactivatedDate = DateTime.UtcNow;
+                }
+
+                if (request.EquipmentUnitId.HasValue)
+                {
+                    var currentLink = persistedLinks.FirstOrDefault(link => link.EquipmentUnitId == request.EquipmentUnitId.Value);
+                    if (currentLink == null)
+                    {
+                        RequestEquipmentUnits.Add(new RequestEquipmentUnit
+                        {
+                            RequestId = request.Id,
+                            EquipmentUnitId = request.EquipmentUnitId.Value,
+                            IsLegacyPrimary = true,
+                            IsActive = true
+                        });
+                    }
+                    else
+                    {
+                        currentLink.IsLegacyPrimary = true;
+                        currentLink.IsActive = true;
+                        currentLink.DeactivatedDate = null;
+                    }
+                }
+            }
+
+            var maintenanceEntries = ChangeTracker.Entries<Maintenance>()
+                .Where(entry => entry.State == EntityState.Added
+                    || (entry.State == EntityState.Modified
+                        && entry.Property(maintenance => maintenance.RequestId).IsModified))
+                .ToList();
+
+            foreach (var entry in maintenanceEntries)
+            {
+                var maintenance = entry.Entity;
+                if (entry.State == EntityState.Added)
+                {
+                    if (maintenance.RequestId.HasValue
+                        && !maintenance.RequestLinks.Any(link => link.RequestId == maintenance.RequestId.Value && link.IsActive))
+                    {
+                        maintenance.RequestLinks.Add(new MaintenanceRequest
+                        {
+                            RequestId = maintenance.RequestId.Value,
+                            IsLegacyPrimary = true,
+                            IsActive = true
+                        });
+                    }
+
+                    continue;
+                }
+
+                var persistedLinks = await MaintenanceRequests
+                    .IgnoreQueryFilters()
+                    .AsTracking()
+                    .Where(link => link.MaintenanceId == maintenance.Id)
+                    .ToListAsync(cancellationToken);
+                persistedLinks = persistedLinks
+                    .Concat(ChangeTracker.Entries<MaintenanceRequest>()
+                        .Where(linkEntry => linkEntry.State != EntityState.Deleted
+                            && (linkEntry.Entity.MaintenanceId == maintenance.Id || linkEntry.Entity.Maintenance == maintenance))
+                        .Select(linkEntry => linkEntry.Entity))
+                    .Distinct()
+                    .ToList();
+
+                foreach (var legacyLink in persistedLinks.Where(link => link.IsLegacyPrimary))
+                {
+                    if (maintenance.RequestId.HasValue
+                        && legacyLink.RequestId == maintenance.RequestId.Value)
+                    {
+                        legacyLink.IsActive = true;
+                        legacyLink.DeactivatedDate = null;
+                        continue;
+                    }
+
+                    legacyLink.IsLegacyPrimary = false;
+                    legacyLink.IsActive = false;
+                    legacyLink.DeactivatedDate = DateTime.UtcNow;
+                }
+
+                if (maintenance.RequestId.HasValue)
+                {
+                    var currentLink = persistedLinks.FirstOrDefault(link => link.RequestId == maintenance.RequestId.Value);
+                    if (currentLink == null)
+                    {
+                        MaintenanceRequests.Add(new MaintenanceRequest
+                        {
+                            MaintenanceId = maintenance.Id,
+                            RequestId = maintenance.RequestId.Value,
+                            IsLegacyPrimary = true,
+                            IsActive = true
+                        });
+                    }
+                    else
+                    {
+                        currentLink.IsLegacyPrimary = true;
+                        currentLink.IsActive = true;
+                        currentLink.DeactivatedDate = null;
+                    }
+                }
+            }
+        }
+
         public new DbSet<User> Users { get; set; } = null!;
         public DbSet<VerificationFault> VerificationFaults { get; set; } = null!;
         public DbSet<Person> People { get; set; } = null!;
@@ -85,6 +328,17 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<Management> Managements { get; set; } = null!;
         public DbSet<ManagementPlan> ManagementPlans { get; set; } = null!;
         public DbSet<MaintenanceTask> MaintenanceTasks { get; set; } = null!;
+        public DbSet<HistoricalVerificationQuarantine> HistoricalVerificationQuarantines { get; set; } = null!;
+        public DbSet<ImportBatch> ImportBatches { get; set; } = null!;
+        public DbSet<DataQualityIssue> DataQualityIssues { get; set; } = null!;
+        public DbSet<MaintenanceParticipant> MaintenanceParticipants { get; set; } = null!;
+        public DbSet<PersonAlias> PersonAliases { get; set; } = null!;
+        public DbSet<PersonRoleAssignment> PersonRoleAssignments { get; set; } = null!;
+        public DbSet<Article> Articles { get; set; } = null!;
+        public DbSet<RequestEquipmentUnit> RequestEquipmentUnits { get; set; } = null!;
+        public DbSet<MaintenanceRequest> MaintenanceRequests { get; set; } = null!;
+        public DbSet<ImportSourceRow> ImportSourceRows { get; set; } = null!;
+        public DbSet<EquipmentClassificationDecision> EquipmentClassificationDecisions { get; set; } = null!;
         
 
 
@@ -111,6 +365,32 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<User>().HasIndex(u => u.IdentityCard).IsUnique().HasFilter("[Status] <> 2");
             modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("[CurrentStatus] <> 99");
             modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("[Status] <> 2");
+            modelBuilder.Entity<ImportBatch>().HasIndex(batch => batch.Code).IsUnique();
+            modelBuilder.Entity<Management>().HasIndex(m => m.Code).IsUnique().HasFilter("[Status] <> 99");
+            modelBuilder.Entity<Management>().HasIndex(m => m.Status).IsUnique().HasFilter("[Status] = 0");
+            modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.ManagementId, p.EquipmentUnitId }).IsUnique().HasFilter("[EquipmentUnitId] IS NOT NULL");
+            modelBuilder.Entity<VerificationCheckResult>().HasIndex(r => new { r.VerificationId, r.CheckItemId }).IsUnique();
+            modelBuilder.Entity<MaintenanceParticipant>().HasIndex(p => new { p.MaintenanceId, p.PersonId, p.Role }).IsUnique().HasFilter("[IsActive] = 1");
+            modelBuilder.Entity<MaintenanceParticipant>().HasIndex(p => p.MaintenanceId).IsUnique().HasFilter("[IsPrimary] = 1 AND [IsActive] = 1");
+            modelBuilder.Entity<PersonAlias>().HasIndex(a => new { a.PersonId, a.NormalizedAlias }).IsUnique();
+            modelBuilder.Entity<PersonAlias>().HasIndex(a => a.PersonId).IsUnique().HasFilter("[IsPreferred] = 1");
+            modelBuilder.Entity<PersonRoleAssignment>().HasIndex(r => new { r.PersonId, r.Role }).IsUnique().HasFilter("[IsActive] = 1");
+            modelBuilder.Entity<DataQualityIssue>().HasIndex(issue => new { issue.ImportBatchId, issue.IssueCode, issue.EntityName });
+            modelBuilder.Entity<Equipment>().HasIndex(e => e.CatalogCode).IsUnique().HasFilter("[CatalogCode] IS NOT NULL");
+            modelBuilder.Entity<Equipment>().HasIndex(e => new { e.ClassificationReviewStatus, e.Category });
+            modelBuilder.Entity<EquipmentClassificationDecision>().HasIndex(d => d.DecisionKey).IsUnique();
+            modelBuilder.Entity<EquipmentClassificationDecision>().HasIndex(d => d.EquipmentId).IsUnique().HasFilter("[EffectiveTo] IS NULL");
+            modelBuilder.Entity<EquipmentClassificationDecision>().HasIndex(d => d.ImportBatchId);
+            modelBuilder.Entity<EquipmentClassificationDecision>().HasIndex(d => d.ImportSourceRowId);
+            modelBuilder.Entity<Career>().HasIndex(c => c.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            modelBuilder.Entity<Person>().HasIndex(p => p.ActorCode).IsUnique().HasFilter("[ActorCode] IS NOT NULL");
+            modelBuilder.Entity<Article>().HasIndex(a => a.Code).IsUnique();
+            modelBuilder.Entity<RequestEquipmentUnit>().HasIndex(link => new { link.RequestId, link.EquipmentUnitId }).IsUnique();
+            modelBuilder.Entity<MaintenanceRequest>().HasIndex(link => new { link.MaintenanceId, link.RequestId }).IsUnique();
+            modelBuilder.Entity<ImportSourceRow>().HasIndex(row => new { row.ImportBatchId, row.SourceRowKey, row.TargetEntityName }).IsUnique();
+            modelBuilder.Entity<DataQualityIssue>().HasIndex(issue => new { issue.ImportBatchId, issue.SourceSheet, issue.SourceRowNumber });
+            modelBuilder.Entity<MaintenancePlan>().HasIndex(plan => plan.PlanCode).IsUnique().HasFilter("[PlanCode] IS NOT NULL");
+            modelBuilder.Entity<MaintenancePlan>().HasIndex(plan => plan.HistoricalSourceKey).IsUnique().HasFilter("[HistoricalSourceKey] IS NOT NULL");
 
             // Bloque 5A: Índices de Performance
             modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.CurrentStatus);
@@ -131,6 +411,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Verification>().Property(v => v.Status).HasDefaultValue(VerificationStatus.Draft);
             modelBuilder.Entity<Career>().Property(c => c.Status).HasDefaultValue(GeneralStatus.Activo);
             modelBuilder.Entity<Equipment>().Property(e => e.Status).HasDefaultValue(GeneralStatus.Activo);
+            modelBuilder.Entity<Equipment>().Property(e => e.ClassificationReviewStatus)
+                .HasDefaultValue(EquipmentClassificationReviewStatus.LegacyInferred);
+            modelBuilder.Entity<Article>().Property(a => a.Status).HasDefaultValue(GeneralStatus.Activo);
+            modelBuilder.Entity<ImportBatch>().Property(batch => batch.ContractVersion).HasDefaultValue("legacy-v1");
+            modelBuilder.Entity<RequestEquipmentUnit>().Property(link => link.IsActive).HasDefaultValue(true);
+            modelBuilder.Entity<MaintenanceRequest>().Property(link => link.IsActive).HasDefaultValue(true);
 
             modelBuilder.Entity<User>().HasQueryFilter(u => u.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<Faculty>().HasQueryFilter(f => f.Status != GeneralStatus.Eliminado);
@@ -138,25 +424,32 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Country>().HasQueryFilter(p => p.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<City>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<Equipment>().HasQueryFilter(e => e.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<Article>().HasQueryFilter(a => a.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<RequestEquipmentUnit>().HasQueryFilter(link => link.IsActive
+                && link.Request!.Status != RequestStatus.Cancelled
+                && link.EquipmentUnit!.CurrentStatus != EquipmentStatus.Deleted);
+            modelBuilder.Entity<MaintenanceRequest>().HasQueryFilter(link => link.IsActive
+                && link.Maintenance!.Status != MaintenanceStatus.Cancelled
+                && link.Request!.Status != RequestStatus.Cancelled);
+            modelBuilder.Entity<Person>().HasQueryFilter(p => p.Status != GeneralStatus.Eliminado);
             modelBuilder.Entity<EquipmentUnit>().HasQueryFilter(e => e.CurrentStatus != EquipmentStatus.Deleted);
             modelBuilder.Entity<Maintenance>().HasQueryFilter(m => m.Status != MaintenanceStatus.Cancelled);
             modelBuilder.Entity<Request>().HasQueryFilter(s => s.Status != RequestStatus.Cancelled);
             modelBuilder.Entity<Verification>().HasQueryFilter(v => v.Status != VerificationStatus.Annulled);
-            // REMOVIDO: filtro por navegación causaba INNER JOIN extra en CADA query → crash 0xffffffff
-            // VerificationCheckResult ya queda filtrado automáticamente por el filtro de Verification (al hacer Include)
-            // modelBuilder.Entity<VerificationCheckResult>().HasQueryFilter(r => r.Verification!.Status != VerificationStatus.Annulled);
+            modelBuilder.Entity<VerificationCheckResult>().HasQueryFilter(r => r.Verification!.Status != VerificationStatus.Annulled);
             modelBuilder.Entity<Management>().HasQueryFilter(m => m.Status != ManagementStatus.Deleted);
-            // REMOVIDO: ManagementPlan filtraba por p.Management!.Status (navegación) forzando INNER JOIN
-            // Management ya tiene su propio filtro. Al hacer .Where(p => p.ManagementId == X), 
-            // solo se obtienen planes de gestiones que ya pasaron el filtro de Management.
-            // modelBuilder.Entity<ManagementPlan>().HasQueryFilter(p => p.Management!.Status != ManagementStatus.Deleted);
+            modelBuilder.Entity<ManagementPlan>().HasQueryFilter(p => p.Management!.Status != ManagementStatus.Deleted);
 
             modelBuilder.Entity<Departure>().HasQueryFilter(l => l.Status != LoanStatus.Cancelled);
             modelBuilder.Entity<DepartureItem>().HasQueryFilter(i => !i.IsRemoved);
             modelBuilder.Entity<Career>().HasQueryFilter(c => c.Status != GeneralStatus.Eliminado);
-            // REMOVIDO: filtro por navegación t.Maintenance!.Status causaba JOIN extra
-            // MaintenanceTask ya queda filtrado por el filtro de Maintenance
-            // modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => t.Maintenance!.Status != MaintenanceStatus.Cancelled);
+            modelBuilder.Entity<MaintenanceTask>().HasQueryFilter(t => !t.IsDeleted && t.Maintenance!.Status != MaintenanceStatus.Cancelled);
+            modelBuilder.Entity<EquipmentNote>().HasQueryFilter(n => n.Equipment!.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<MaintenanceParticipant>().HasQueryFilter(p => p.IsActive
+                && p.Maintenance!.Status != MaintenanceStatus.Cancelled
+                && p.Person!.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<PersonAlias>().HasQueryFilter(a => a.Person!.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<PersonRoleAssignment>().HasQueryFilter(r => r.IsActive && r.Person!.Status != GeneralStatus.Eliminado);
 
             // Management Relationships
             modelBuilder.Entity<Management>().HasOne(m => m.Faculty).WithMany().HasForeignKey(m => m.FacultyId).OnDelete(DeleteBehavior.SetNull);
@@ -178,6 +471,31 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             modelBuilder.Entity<Equipment>().HasOne(e => e.Country).WithMany(c => c.Equipments).HasForeignKey(e => e.CountryId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Equipment>().HasOne(e => e.City).WithMany(c => c.Equipments).HasForeignKey(e => e.CityId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EquipmentClassificationDecision>()
+                .HasOne(d => d.Equipment)
+                .WithMany(e => e.ClassificationDecisions)
+                .HasForeignKey(d => d.EquipmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EquipmentClassificationDecision>()
+                .HasOne(d => d.ResponsiblePerson)
+                .WithMany()
+                .HasForeignKey(d => d.ResponsiblePersonId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EquipmentClassificationDecision>()
+                .HasOne(d => d.ImportBatch)
+                .WithMany(batch => batch.EquipmentClassificationDecisions)
+                .HasForeignKey(d => d.ImportBatchId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EquipmentClassificationDecision>()
+                .HasOne(d => d.ImportSourceRow)
+                .WithMany(row => row.EquipmentClassificationDecisions)
+                .HasForeignKey(d => d.ImportSourceRowId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EquipmentClassificationDecision>()
+                .HasOne(d => d.RecordedByUser)
+                .WithMany()
+                .HasForeignKey(d => d.RecordedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<EquipmentUnit>().HasOne(u => u.Laboratory).WithMany(l => l.EquipmentUnits).HasForeignKey(u => u.LaboratoryId).OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<EquipmentStateHistory>().HasOne(ee => ee.EquipmentUnit).WithMany(e => e.StateHistory).HasForeignKey(ee => ee.EquipmentUnitId).OnDelete(DeleteBehavior.SetNull);
@@ -189,13 +507,60 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Request>().HasOne(s => s.Equipment).WithMany().OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Verification>().HasOne(v => v.EquipmentUnit).WithMany(e => e.Verifications).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<MaintenancePlan>().HasOne(p => p.EquipmentUnit).WithMany(e => e.MaintenancePlans).HasForeignKey(p => p.EquipmentUnitId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<MaintenancePlan>().HasOne(p => p.Laboratory).WithMany(l => l.MaintenancePlans).HasForeignKey(p => p.LaboratoryId).OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<MaintenancePlan>().HasOne(p => p.Management).WithMany(m => m.HistoricalMaintenancePlans).HasForeignKey(p => p.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<MaintenancePlan>().HasOne(p => p.ResponsiblePerson).WithMany(person => person.ResponsibleMaintenancePlans).HasForeignKey(p => p.ResponsiblePersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<MaintenancePlan>().HasOne(p => p.ImportBatch).WithMany(batch => batch.MaintenancePlans).HasForeignKey(p => p.ImportBatchId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<MaintenanceTask>().HasOne(t => t.Maintenance).WithMany(m => m.Tasks).HasForeignKey(t => t.MaintenanceId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<MaintenanceParticipant>().HasOne(p => p.Maintenance).WithMany(m => m.Participants).HasForeignKey(p => p.MaintenanceId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<MaintenanceParticipant>().HasOne(p => p.Person).WithMany(p => p.MaintenanceParticipations).HasForeignKey(p => p.PersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PersonAlias>().HasOne(a => a.Person).WithMany(p => p.Aliases).HasForeignKey(a => a.PersonId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PersonRoleAssignment>().HasOne(r => r.Person).WithMany(p => p.RoleAssignments).HasForeignKey(r => r.PersonId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<DataQualityIssue>().HasOne(i => i.ImportBatch).WithMany(b => b.DataQualityIssues).HasForeignKey(i => i.ImportBatchId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DataQualityIssue>().HasOne(i => i.ResolvedByUser).WithMany().HasForeignKey(i => i.ResolvedByUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Article>().HasOne(a => a.ImportBatch).WithMany().HasForeignKey(a => a.ImportBatchId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<RequestEquipmentUnit>().HasOne(link => link.Request).WithMany(r => r.EquipmentUnitLinks).HasForeignKey(link => link.RequestId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<RequestEquipmentUnit>().HasOne(link => link.EquipmentUnit).WithMany(u => u.RequestLinks).HasForeignKey(link => link.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<MaintenanceRequest>().HasOne(link => link.Maintenance).WithMany(m => m.RequestLinks).HasForeignKey(link => link.MaintenanceId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<MaintenanceRequest>().HasOne(link => link.Request).WithMany(r => r.MaintenanceLinks).HasForeignKey(link => link.RequestId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Request>().HasOne(r => r.RequestedByPerson).WithMany(p => p.RequestedRequests).HasForeignKey(r => r.RequestedByPersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Verification>().HasOne(v => v.ResponsiblePerson).WithMany(p => p.ResponsibleVerifications).HasForeignKey(v => v.ResponsiblePersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CostDetail>().HasOne(c => c.ProviderPerson).WithMany(p => p.ProvidedCostDetails).HasForeignKey(c => c.ProviderPersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ManagementPlan>().HasOne(p => p.ResponsiblePerson).WithMany(person => person.ResponsibleManagementPlans).HasForeignKey(p => p.ResponsiblePersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ImportSourceRow>().HasOne(row => row.ImportBatch).WithMany(batch => batch.SourceRows).HasForeignKey(row => row.ImportBatchId).OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Verification>()
+                .HasIndex(v => v.HistoricalSourceKey)
+                .IsUnique()
+                .HasFilter("[HistoricalSourceKey] IS NOT NULL");
+            modelBuilder.Entity<Request>()
+                .HasIndex(r => r.HistoricalSourceKey)
+                .IsUnique()
+                .HasFilter("[HistoricalSourceKey] IS NOT NULL");
+            modelBuilder.Entity<Maintenance>()
+                .HasIndex(m => m.HistoricalSourceKey)
+                .IsUnique()
+                .HasFilter("[HistoricalSourceKey] IS NOT NULL");
+            modelBuilder.Entity<CostDetail>()
+                .HasIndex(c => c.HistoricalSourceKey)
+                .IsUnique()
+                .HasFilter("[HistoricalSourceKey] IS NOT NULL");
+            modelBuilder.Entity<Departure>()
+                .HasIndex(d => d.HistoricalSourceKey)
+                .IsUnique()
+                .HasFilter("[HistoricalSourceKey] IS NOT NULL");
+            modelBuilder.Entity<HistoricalVerificationQuarantine>()
+                .HasIndex(row => row.SourceKey)
+                .IsUnique();
 
             modelBuilder.Entity<Departure>().HasOne(l => l.EquipmentUnit).WithMany(u => u.Departures).HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Departure>().HasOne(l => l.Borrower).WithMany(p => p.Departures).HasForeignKey(l => l.BorrowerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Departure>().HasOne(d => d.OriginLaboratory).WithMany().HasForeignKey(d => d.OriginLaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Departure>().HasOne(d => d.ImportBatch).WithMany().HasForeignKey(d => d.ImportBatchId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DepartureItem>().HasOne(item => item.Article).WithMany(article => article.DepartureItems).HasForeignKey(item => item.ArticleId).OnDelete(DeleteBehavior.Restrict);
 
             // Sprint 3B: Soft Delete para fallas
-            modelBuilder.Entity<VerificationFault>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<VerificationFault>().HasQueryFilter(e => !e.IsDeleted && e.Verification!.Status != VerificationStatus.Annulled);
 
             // ManagementPlan KardexHistory relationship
             modelBuilder.Entity<ManagementPlan>()
@@ -224,6 +589,174 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Person>().ToTable("People");
             modelBuilder.Entity<Intern>().ToTable("Interns");
             modelBuilder.Entity<Extern>().ToTable("Externs");
+
+            modelBuilder.Entity<EquipmentUnit>().ToTable(table => table.HasCheckConstraint(
+                "CK_EquipmentUnits_LocationResolution",
+                "([LaboratoryId] IS NULL AND [LocationResolutionStatus] = 0) OR ([LaboratoryId] IS NOT NULL AND [LocationResolutionStatus] = 1)"));
+            modelBuilder.Entity<EquipmentUnit>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_EquipmentUnits_CurrentStatus", "[CurrentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 99)");
+                table.HasCheckConstraint("CK_EquipmentUnits_PhysicalCondition", "[PhysicalCondition] IS NULL OR [PhysicalCondition] BETWEEN 1 AND 5");
+                table.HasCheckConstraint("CK_EquipmentUnits_AcquisitionValue", "[AcquisitionValue] IS NULL OR [AcquisitionValue] >= 0");
+            });
+            modelBuilder.Entity<Request>().ToTable(table => table.HasCheckConstraint(
+                "CK_Requests_LocationResolution",
+                "([LaboratoryId] IS NULL AND [LocationResolutionStatus] = 0) OR ([LaboratoryId] IS NOT NULL AND [LocationResolutionStatus] = 1)"));
+            modelBuilder.Entity<Request>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Requests_Priority", "[Priority] BETWEEN 0 AND 3");
+                table.HasCheckConstraint("CK_Requests_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 99)");
+                table.HasCheckConstraint("CK_Requests_Type", "[Type] IN (1, 2, 3)");
+            });
+            modelBuilder.Entity<CostDetail>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_CostDetails_ExactlyOneParent", "CASE WHEN [RequestId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [MaintenanceId] IS NULL THEN 0 ELSE 1 END = 1");
+                table.HasCheckConstraint("CK_CostDetails_PositiveValues", "[Quantity] > 0 AND [UnitPrice] >= 0");
+                table.HasCheckConstraint("CK_CostDetails_Category", "[Category] IN (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 99)");
+            });
+            modelBuilder.Entity<Maintenance>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Maintenances_CompletionPercentage", "[CompletionPercentage] BETWEEN 0 AND 100");
+                table.HasCheckConstraint("CK_Maintenances_NonNegativeCosts", "([EstimatedCost] IS NULL OR [EstimatedCost] >= 0) AND ([ActualCost] IS NULL OR [ActualCost] >= 0)");
+                table.HasCheckConstraint("CK_Maintenances_ExecutionDates", "[StartDate] IS NULL OR [EndDate] IS NULL OR [EndDate] >= [StartDate]");
+                table.HasCheckConstraint("CK_Maintenances_Type", "[MaintenanceType] IN (1, 2, 3, 4, 5, 99)");
+                table.HasCheckConstraint("CK_Maintenances_ServiceType", "[ServiceType] IN (0, 1)");
+                table.HasCheckConstraint("CK_Maintenances_Status", "[Status] IN (0, 1, 2, 3, 99)");
+                table.HasCheckConstraint("CK_Maintenances_Satisfaction", "[SatisfactionLevel] IS NULL OR [SatisfactionLevel] BETWEEN 1 AND 5");
+            });
+            modelBuilder.Entity<Management>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Managements_Year", "[Year] BETWEEN 2000 AND 2100");
+                table.HasCheckConstraint("CK_Managements_Semester", "[Semester] IN (0, 1, 2)");
+                table.HasCheckConstraint("CK_Managements_Status", "[Status] IN (0, 1, 2, 99)");
+                table.HasCheckConstraint("CK_Managements_Type", "[Type] IN (0, 1)");
+            });
+            modelBuilder.Entity<ManagementPlan>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_ManagementPlans_Weeks", "([PlannedWeek] IS NULL OR [PlannedWeek] BETWEEN 1 AND 8) AND ([ExecutedWeek] IS NULL OR [ExecutedWeek] BETWEEN 1 AND 8)");
+                table.HasCheckConstraint("CK_ManagementPlans_Phase", "[CurrentPhase] BETWEEN 1 AND 6");
+                table.HasCheckConstraint("CK_ManagementPlans_State", "[CurrentState] BETWEEN 1 AND 9");
+                table.HasCheckConstraint("CK_ManagementPlans_Status", "[PlanStatus] BETWEEN 0 AND 3");
+            });
+            modelBuilder.Entity<VerificationCheckResult>().ToTable(table => table.HasCheckConstraint(
+                "CK_VerificationCheckResults_Result", "[Result] IN (0, 1)"));
+            modelBuilder.Entity<Verification>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Verifications_PhysicalCondition", "[PhysicalCondition] BETWEEN 1 AND 5");
+                table.HasCheckConstraint("CK_Verifications_Status", "[Status] IN (0, 1, 2, 3, 99)");
+                table.HasCheckConstraint("CK_Verifications_ObservedEquipmentStatus", "[ObservedEquipmentStatus] IS NULL OR [ObservedEquipmentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 99)");
+            });
+            modelBuilder.Entity<Equipment>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Equipments_Category", "[Category] BETWEEN 0 AND 2");
+                table.HasCheckConstraint("CK_Equipments_UtensilType", "[UtensilType] IS NULL OR [UtensilType] BETWEEN 0 AND 11");
+                table.HasCheckConstraint("CK_Equipments_TypeClassification", "[TypeClassification] IS NULL OR [TypeClassification] BETWEEN 0 AND 15");
+                table.HasCheckConstraint("CK_Equipments_ClassificationReviewStatus", "[ClassificationReviewStatus] IN (0, 1, 2)");
+                table.HasCheckConstraint(
+                    "CK_Equipments_ConfirmedClassificationHierarchy",
+                    "[ClassificationReviewStatus] <> 2 OR " +
+                    "(([Category] = 0 AND [TypeClassification] IS NOT NULL AND [UtensilType] IS NULL " +
+                    "AND ([TypeClassification] <> 7 OR LEN(LTRIM(RTRIM(COALESCE([OtherClassificationDetail], '')))) > 0)) " +
+                    "OR ([Category] = 1 AND [TypeClassification] IS NULL AND [UtensilType] BETWEEN 1 AND 11 " +
+                    "AND ([UtensilType] <> 11 OR LEN(LTRIM(RTRIM(COALESCE([OtherClassificationDetail], '')))) > 0)) " +
+                    "OR ([Category] = 2 AND [TypeClassification] IS NULL AND [UtensilType] IS NULL " +
+                    "AND LEN(LTRIM(RTRIM(COALESCE([OtherClassificationDetail], '')))) > 0))");
+                table.HasCheckConstraint("CK_Equipments_Status", "[Status] BETWEEN 0 AND 2");
+                table.HasCheckConstraint("CK_Equipments_UsefulLife", "[UsefulLifeYears] IS NULL OR [UsefulLifeYears] >= 0");
+            });
+            modelBuilder.Entity<EquipmentClassificationDecision>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_EquipmentClassificationDecisions_Status", "[ReviewStatus] IN (0, 1, 2)");
+                table.HasCheckConstraint(
+                    "CK_EquipmentClassificationDecisions_Dates",
+                    "[EffectiveTo] IS NULL OR [EffectiveFrom] IS NULL OR [EffectiveTo] > [EffectiveFrom]");
+                table.HasCheckConstraint(
+                    "CK_EquipmentClassificationDecisions_Confirmed",
+                    "[ReviewStatus] <> 2 OR (" +
+                    "[GeneralStatus] IS NOT NULL AND [DecisionDate] IS NOT NULL " +
+                    "AND LEN(LTRIM(RTRIM(COALESCE([EvidenceReference], '')))) > 0 " +
+                    "AND LEN(LTRIM(RTRIM(COALESCE([ResponsibleSnapshot], '')))) > 0 " +
+                    "AND (([Category] = 0 AND [TypeClassification] IS NOT NULL AND [UtensilType] IS NULL " +
+                    "AND ([TypeClassification] <> 7 OR LEN(LTRIM(RTRIM(COALESCE([OtherDetail], '')))) > 0)) " +
+                    "OR ([Category] = 1 AND [TypeClassification] IS NULL AND [UtensilType] BETWEEN 1 AND 11 " +
+                    "AND ([UtensilType] <> 11 OR LEN(LTRIM(RTRIM(COALESCE([OtherDetail], '')))) > 0)) " +
+                    "OR ([Category] = 2 AND [TypeClassification] IS NULL AND [UtensilType] IS NULL " +
+                    "AND LEN(LTRIM(RTRIM(COALESCE([OtherDetail], '')))) > 0)))");
+            });
+            modelBuilder.Entity<User>().ToTable("Users", table =>
+            {
+                table.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 99)");
+                table.HasCheckConstraint("CK_Users_Status", "[Status] BETWEEN 0 AND 2");
+            });
+            modelBuilder.Entity<Person>().ToTable("People", table =>
+            {
+                table.HasCheckConstraint("CK_People_Status", "[Status] BETWEEN 0 AND 2");
+                table.HasCheckConstraint("CK_People_Category", "[Category] IN (1, 2, 3, 4, 5, 99)");
+            });
+            modelBuilder.Entity<Laboratory>().ToTable(table => table.HasCheckConstraint("CK_Laboratories_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<Faculty>().ToTable(table => table.HasCheckConstraint("CK_Faculties_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<Career>().ToTable(table => table.HasCheckConstraint("CK_Careers_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<Country>().ToTable(table => table.HasCheckConstraint("CK_Countries_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<City>().ToTable(table => table.HasCheckConstraint("CK_Cities_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<Intern>().ToTable("Interns", table => table.HasCheckConstraint("CK_Interns_Status", "[InternStatus] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<Extern>().ToTable("Externs", table => table.HasCheckConstraint("CK_Externs_Status", "[ExternStatus] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<Departure>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Departures_Type", "[Type] IN (1, 2, 3, 4, 5)");
+                table.HasCheckConstraint("CK_Departures_Status", "[Status] IN (0, 1, 2, 99)");
+            });
+            modelBuilder.Entity<DepartureItem>().ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_DepartureItems_ExactlyOneReference",
+                    "CASE WHEN [EquipmentUnitId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [ArticleId] IS NULL THEN 0 ELSE 1 END = 1");
+                table.HasCheckConstraint("CK_DepartureItems_Quantity", "[Quantity] IS NULL OR [Quantity] > 0");
+            });
+            modelBuilder.Entity<Article>().ToTable(table => table.HasCheckConstraint(
+                "CK_Articles_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<RequestEquipmentUnit>().ToTable(table => table.HasCheckConstraint(
+                "CK_RequestEquipmentUnits_Activation",
+                "(([IsActive] = 1 AND [DeactivatedDate] IS NULL) OR ([IsActive] = 0 AND [DeactivatedDate] IS NOT NULL)) AND ([IsLegacyPrimary] = 0 OR [IsActive] = 1)"));
+            modelBuilder.Entity<MaintenanceRequest>().ToTable(table => table.HasCheckConstraint(
+                "CK_MaintenanceRequests_Activation",
+                "(([IsActive] = 1 AND [DeactivatedDate] IS NULL) OR ([IsActive] = 0 AND [DeactivatedDate] IS NOT NULL)) AND ([IsLegacyPrimary] = 0 OR [IsActive] = 1)"));
+            modelBuilder.Entity<ImportSourceRow>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_ImportSourceRows_SourceRow", "[SourceRowNumber] > 0");
+                table.HasCheckConstraint("CK_ImportSourceRows_MigrationStatus", "[MigrationStatus] IN (0, 1, 2, 3, 99)");
+                table.HasCheckConstraint("CK_ImportSourceRows_ReconciliationStatus", "[ReconciliationStatus] BETWEEN 0 AND 6");
+            });
+            modelBuilder.Entity<EquipmentStateHistory>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_EquipmentStateHistories_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 6, 10, 99)");
+                table.HasCheckConstraint("CK_EquipmentStateHistories_Dates", "[EndDate] IS NULL OR [EndDate] >= [StartDate]");
+            });
+            modelBuilder.Entity<MaintenancePlan>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_MaintenancePlans_ServiceType", "[ServiceType] IS NULL OR [ServiceType] IN (0, 1)");
+                table.HasCheckConstraint("CK_MaintenancePlans_MaintenanceType", "[MaintenanceType] IS NULL OR [MaintenanceType] IN (1, 2, 3, 4, 5, 99)");
+                table.HasCheckConstraint("CK_MaintenancePlans_Status", "[Status] IS NULL OR [Status] IN (0, 1, 2, 3, 99)");
+                table.HasCheckConstraint("CK_MaintenancePlans_Times", "([EstimatedTime] IS NULL OR [EstimatedTime] >= 0) AND ([ActualTime] IS NULL OR [ActualTime] >= 0)");
+            });
+            modelBuilder.Entity<MaintenanceParticipant>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_MaintenanceParticipants_Role", "[Role] IN (1, 2, 3, 4)");
+                table.HasCheckConstraint("CK_MaintenanceParticipants_PrimaryRole", "[IsPrimary] = 0 OR [Role] = 1");
+                table.HasCheckConstraint("CK_MaintenanceParticipants_Dates", "[UnassignedAt] IS NULL OR [UnassignedAt] >= [AssignedAt]");
+            });
+            modelBuilder.Entity<PersonRoleAssignment>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_PersonRoleAssignments_Role", "[Role] IN (1, 2, 3, 4, 5, 6, 7, 99)");
+                table.HasCheckConstraint("CK_PersonRoleAssignments_Dates", "[ValidTo] IS NULL OR [ValidTo] >= [ValidFrom]");
+            });
+            modelBuilder.Entity<ImportBatch>().ToTable(table => table.HasCheckConstraint(
+                "CK_ImportBatches_Status", "[Status] IN (0, 1, 2, 99)"));
+            modelBuilder.Entity<DataQualityIssue>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_DataQualityIssues_Severity", "[Severity] BETWEEN 0 AND 3");
+                table.HasCheckConstraint("CK_DataQualityIssues_Status", "[Status] BETWEEN 0 AND 3");
+                table.HasCheckConstraint("CK_DataQualityIssues_SourceRow", "[SourceRowNumber] IS NULL OR [SourceRowNumber] > 0");
+            });
             
             modelBuilder.Entity<VerificationCheckResult>()
                 .HasOne(r => r.Verification).WithMany(v => v.CheckResults)

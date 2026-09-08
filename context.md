@@ -7,12 +7,11 @@ Este archivo es el punto de entrada rapido. No contiene todo el conocimiento del
 Antes de modificar codigo:
 
 1. Leer este archivo.
-2. Leer `.agent/context/00-router.md`.
-3. Leer el contexto especifico del area o modulo que vas a tocar.
-4. Leer el `AGENTS.md` local si existe en esa carpeta.
-5. Leer la skill correspondiente en `.agent/skills/`.
-
-El contexto historico completo anterior quedo archivado en `.agent/archive/context/context-legacy-2026-05-10.md`. Usarlo solo para auditoria o rastrear decisiones antiguas.
+2. Leer `docs/COORDINACION_MULTI_CHAT.md` cuando la tarea afecte datos,
+   modelos, QA, navegacion, arquitectura o planificacion de sprints.
+3. Leer el `AGENTS.md` local si existe en la carpeta afectada.
+4. Leer la skill correspondiente en `.agents/skills/`.
+5. Inspeccionar de forma dirigida el modulo y sus pruebas o consumidores reales.
 
 ## Stack Fijo
 
@@ -44,33 +43,36 @@ No agregar dependencias ni cambiar stack sin aprobacion explicita.
 - No usar `FullName` de `Person` en LINQ porque es `[NotMapped]`.
 - `Semester` en `Management` acepta `0` para correctivo, `1` y `2` para preventivo.
 - Si la tarea toca mas de 5 archivos, proponer plan antes de editar.
+- Bajo consumo obligatorio: un proceso pesado a la vez, builds con `-m:1`,
+  escrituras en lotes maximos de 100 y sin servidor web en segundo plano.
+- Detener operaciones amplias con menos de 2 GB de RAM libre o mas de 85% de
+  uso. El estres requiere 6 GB libres y autorizacion explicita; nunca ajustar
+  automaticamente la memoria global de SQL Server.
 
 ## Orquestacion De Agentes
 
-- Codex es el orquestador: lee contexto, divide trabajo, evita ediciones solapadas, integra resultados y verifica build.
-- Agente UI/UX tipo Kimi K2.6: revisar vistas `.cshtml`, SweetAlert2 v7, textos, botones, accesibilidad visual y consistencia NiceAdmin/Bootstrap 4.
-- Agente Backend/Data tipo DeepSeek V4 Pro: revisar PageModels `.cshtml.cs`, `InputModel`, EF Core tracking, soft-delete, redirects y `TempData`.
-- Para tareas de mas de 5 archivos, Codex debe entregar un plan y prompts de subagente antes de ejecutar.
+- Codex es el orquestador: lee contexto, divide solo trabajo independiente, evita ediciones solapadas, integra resultados y verifica build.
+- La coordinacion entre tareas/chats se rige por `docs/COORDINACION_MULTI_CHAT.md`.
+- Cada tarea declara rol, ID de trabajo, archivos, dependencias y tipo de escritura antes de actuar.
+- `ui_ux`: vistas `.cshtml`, SweetAlert2 v7, textos, botones, accesibilidad visual y consistencia NiceAdmin/Bootstrap 4.
+- `backend_data`: PageModels `.cshtml.cs`, `InputModel`, EF Core tracking, soft-delete, redirects y `TempData`.
+- `reviewer`: revision final read-only basada en evidencia.
+- Para tareas de mas de 5 archivos, Codex debe presentar un plan antes de editar.
 
 ## Mapa Rapido
 
 | Si vas a tocar | Lee primero |
 |---|---|
-| Vistas Razor, JS, botones, modales | `.agent/context/areas/ui.md` + `.agent/skills/ui_premium/SKILL.md` + `Pages/AGENTS.md` |
-| PageModels, handlers, InputModel | `.agent/context/areas/backend-page-models.md` + `.agent/skills/backend_methods/SKILL.md` |
-| Entidades, DbContext, migraciones | `.agent/context/areas/database-ef.md` + `.agent/skills/database/SKILL.md` + `Models/AGENTS.md` |
-| Excel, PDF, reportes | `.agent/context/areas/reporting.md` + `.agent/skills/reporting/SKILL.md` + `Services/AGENTS.md` |
-| Wizard preventivo/correctivo | `.agent/context/modules/wizard.md` + modulo especifico |
-| Dashboard, cards, navegacion, notificaciones | `.agent/context/modules/dashboard-navigation.md` |
-| Borradores | `.agent/context/modules/drafts.md` |
-| Correctivo | `.agent/context/modules/corrective.md` |
-| L-6 Verificaciones | `.agent/context/modules/l6-verifications.md` |
-| L-3 Salidas | `.agent/context/modules/l3-departures.md` |
-| Kardex/L-48 | `.agent/context/modules/kardex-l48.md` |
-| L-12 Adquisiciones | `.agent/context/modules/acquisitions-l12.md` |
-| Build, entorno, despliegue | `.agent/context/areas/infrastructure.md` |
-| Crash Excel/EPPlus | `.agent/context/troubleshooting/excel-crashes.md` |
-| Crash Visual Studio | `.agent/context/troubleshooting/visual-studio-crash.md` |
+| Vistas Razor, JS, botones, modales | `Pages/AGENTS.md` + `.agents/skills/ui-premium/SKILL.md` |
+| PageModels, handlers, InputModel | `Pages/AGENTS.md` + `.agents/skills/backend-methods/SKILL.md` |
+| Entidades, DbContext, migraciones | `Models/AGENTS.md` + `.agents/skills/database/SKILL.md` |
+| Excel, PDF, reportes | `Services/AGENTS.md` + `.agents/skills/reporting/SKILL.md` |
+| Wizard preventivo/correctivo | este archivo + Pages y Services del paso afectado |
+| Dashboard, cards, navegacion, notificaciones | `Pages/AGENTS.md` + archivos afectados |
+| Borradores o correctivo | este archivo + PageModels y modelos relacionados |
+| L-6, L-3, Kardex/L-48, L-12 | este archivo + busqueda dirigida del flujo real |
+| Build, entorno, despliegue | `AGENTS_SETUP.md` |
+| Crash Excel/EPPlus | `.agents/skills/reporting/SKILL.md` + evidencia del archivo/template |
 
 ## Estado Actual Critico
 
@@ -80,9 +82,16 @@ No agregar dependencias ni cambiar stack sin aprobacion explicita.
 - Completados es fase visual `Step = 7`, no un enum nuevo.
 - Borradores existen en L-6 masivo, L-7, L-8, L-3 masivo, Kardex y L-12.
 - Build verificado previamente con salida temporal y 0 errores; persisten warnings de nullability existentes.
+- `QA-DATA-001` completo `DB_Laboratorios_Univalle_SCENARIOS_QA`: conserva
+  107 catalogos y 556 unidades, agrega historicos sinteticos reproducibles,
+  aprobo integridad, transacciones, concurrencia, rendimiento y restauracion
+  de backup. No toca la base oficial ni MonsterASP. No levantar el servidor
+  hasta indicacion del usuario; ver `docs/QA_DATA_001_RESULTADO.md`.
 
 ## Documentacion Separada
 
-- Contexto operativo de IA: `.agent/`.
+- Agentes Codex del proyecto: `.codex/agents/`.
+- Skills del proyecto: `.agents/skills/`.
 - Documentacion de usuario y despliegue: `docs/`.
-- Material viejo o contradictorio: `.agent/archive/`.
+- Coordinacion de datos, QA y sprints: `docs/COORDINACION_MULTI_CHAT.md`.
+- Importacion de datos historicos (Excel -> SQL): `docs/GUIA_IMPORTACION_HISTORICA.md` (guia viva con vulnerabilidades abiertas).

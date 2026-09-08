@@ -358,8 +358,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                     d.ActualReturnDate == null &&
                     d.Status != LoanStatus.Returned &&
                     d.Status != LoanStatus.Cancelled &&
-                    d.EstimatedReturnDate.Date < today &&
-                    d.EstimatedReturnDate.Date >= today.AddDays(-30));
+                    d.EstimatedReturnDate.HasValue &&
+                    d.EstimatedReturnDate.Value.Date < today &&
+                    d.EstimatedReturnDate.Value.Date >= today.AddDays(-30));
 
             if (managementId.HasValue)
             {
@@ -373,7 +374,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
 
             items.AddRange(overdueDepartures.Select(d =>
             {
-                var returnDate = d.EstimatedReturnDate.Date;
+                var returnDate = d.EstimatedReturnDate!.Value.Date;
                 var unit = d.EquipmentUnit?.InventoryNumber ?? "S/N";
                 return new NotificationItem
                 {
@@ -397,8 +398,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                     d.ActualReturnDate == null &&
                     d.Status != LoanStatus.Returned &&
                     d.Status != LoanStatus.Cancelled &&
-                    d.EstimatedReturnDate.Date >= today &&
-                    d.EstimatedReturnDate.Date <= today.AddDays(7));
+                    d.EstimatedReturnDate.HasValue &&
+                    d.EstimatedReturnDate.Value.Date >= today &&
+                    d.EstimatedReturnDate.Value.Date <= today.AddDays(7));
 
             if (managementId.HasValue)
             {
@@ -412,7 +414,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
 
             items.AddRange(upcomingDepartures.Select(d =>
             {
-                var returnDate = d.EstimatedReturnDate.Date;
+                var returnDate = d.EstimatedReturnDate!.Value.Date;
                 var unit = d.EquipmentUnit?.InventoryNumber ?? "S/N";
                 return new NotificationItem
                 {
@@ -477,7 +479,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
                 .Where(r =>
                     r.Type == RequestType.Purchasing &&
                     r.Status == RequestStatus.Pending &&
-                    r.CreatedDate.Date <= today.AddDays(-14) &&
+                    (r.RequestDate ?? r.CreatedDate).Date <= today.AddDays(-14) &&
                     !plannedAcquisitionIds.Contains(r.Id));
 
             if (managementId.HasValue)
@@ -486,22 +488,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
             }
 
             var oldAcquisitions = await acquisitionQuery
-                .OrderBy(r => r.CreatedDate)
+                .OrderBy(r => r.RequestDate ?? r.CreatedDate)
                 .Take(5)
                 .ToListAsync();
 
-            items.AddRange(oldAcquisitions.Select(r => new NotificationItem
+            items.AddRange(oldAcquisitions.Select(r =>
             {
-                Id = -400000 - r.Id,
-                Title = "Adquisición requiere seguimiento",
-                Message = $"Solicitud #{r.Id}: pendiente desde el {r.CreatedDate:dd/MM/yyyy}.",
-                Url = $"/Requests/Details/{r.Id}?IsWizard=true&ManagementId={r.ManagementId}{typeQuery}&Step=6",
-                Icon = "fas fa-shopping-cart text-success",
-                SortDate = r.CreatedDate.Date,
-                Time = "Más de 2 semanas",
-                SyntheticKey = $"stale-{r.Id}",
-                Group = "adquisiciones",
-                Urgency = "success"
+                var requestDate = (r.RequestDate ?? r.CreatedDate).Date;
+                return new NotificationItem
+                {
+                    Id = -400000 - r.Id,
+                    Title = "Adquisición requiere seguimiento",
+                    Message = $"Solicitud #{r.Id}: pendiente desde el {requestDate:dd/MM/yyyy}.",
+                    Url = $"/Requests/Details/{r.Id}?IsWizard=true&ManagementId={r.ManagementId}{typeQuery}&Step=6",
+                    Icon = "fas fa-shopping-cart text-success",
+                    SortDate = requestDate,
+                    Time = "Más de 2 semanas",
+                    SyntheticKey = $"stale-{r.Id}",
+                    Group = "adquisiciones",
+                    Urgency = "success"
+                };
             }));
 
             return items

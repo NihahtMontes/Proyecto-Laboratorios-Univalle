@@ -59,6 +59,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 .Include(u => u.Equipment)
                 .Include(u => u.Laboratory)
                 .Where(u => u.Equipment != null &&
+                            u.Equipment.ClassificationReviewStatus == EquipmentClassificationReviewStatus.Confirmed &&
                             u.Equipment.Category == EquipmentCategory.Other);
 
             if (!string.IsNullOrWhiteSpace(SearchTerm))

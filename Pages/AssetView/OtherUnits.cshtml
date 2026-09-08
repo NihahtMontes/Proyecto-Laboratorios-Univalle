@@ -22,26 +22,25 @@
                     </div>
                 </div>
 
-                <div class="bg-light p-3 mb-4 rounded border-left border-warning shadow-sm">
-                    <form method="get">
-                        <div class="row align-items-end">
-                            <div class="col-md-8">
-                                <label class="small font-weight-bold text-muted uppercase">Busqueda por activo, inventario o serie</label>
-                                <div class="input-group drop-shadow">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
-                                    </div>
-                                    <input type="text" asp-for="SearchTerm" class="form-control border-left-0" placeholder="Nombre, numero de inventario o numero de serie..." />
+                <div class="bg-light p-3 mb-4 rounded border-left border-warning">
+                    <form method="get" data-live-filter-form>
+                        <label asp-for="SearchTerm" class="sr-only">Buscar por activo, inventario o serie</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                            </div>
+                            <input type="search" asp-for="SearchTerm" class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")" placeholder="Buscar por activo, inventario o serie" autocomplete="off" data-live-filter-search />
+                            @if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+                            {
+                                <div class="input-group-append">
+                                    <a asp-page="./OtherUnits" class="btn btn-link text-muted" title="Limpiar filtros">
+                                        <i class="fas fa-times mr-1"></i> Limpiar
+                                    </a>
                                 </div>
-                            </div>
-                            <div class="col-md-4 text-right mt-3 mt-md-0">
-                                <button type="submit" class="btn btn-dark btn-rounded px-4 shadow-sm">
-                                    <i class="fas fa-filter mr-1"></i> Filtrar
-                                </button>
-                                <a asp-page="./OtherUnits" class="btn btn-outline-secondary btn-rounded ml-1">
-                                    <i class="fas fa-sync-alt"></i>
-                                </a>
-                            </div>
+                            }
+                        </div>
+                        <div class="small text-muted text-right mt-2" aria-live="polite">
+                            <strong class="text-dark">@Model.Units.TotalCount</strong> unidad(es)
                         </div>
                     </form>
                 </div>

@@ -117,7 +117,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 
                 if(currentRow > headerRow + 30) break; // Limit to fit template
 
-                worksheet.Cells[currentRow, colProducto].Value = item.ProductName?.ToUpper();
+                worksheet.Cells[currentRow, colProducto].Value = item.ProductName?.ToUpper() ?? "PENDIENTE POR EVIDENCIA";
                 worksheet.Cells[currentRow, colCantidad].Value = item.Quantity;
                 worksheet.Cells[currentRow, colUnidad].Value = item.UnitOfMeasure ?? "UNIDAD";
                 worksheet.Cells[currentRow, colDevolucion].Value = item.ReturnedQuantity ?? 0;

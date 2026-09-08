@@ -13,6 +13,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
+        [StringLength(30)]
+        [Display(Name = "Código de Actor")]
+        public string? ActorCode { get; set; }
+
         [Required]
         [Display(Name = "Estado")]
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
@@ -55,10 +59,26 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Última Modificación")]
         public DateTime? LastModifiedDate { get; set; }
 
+        public int? ImportBatchId { get; set; }
+
+        [Timestamp]
+        public byte[] RowVersion { get; set; } = [];
+
         [NotMapped]
         [Display(Name = "Nombre / Razón Social")]
         public virtual string FullName => "Ficha de Persona";
 
         public virtual ICollection<Departure>? Departures { get; set; }
+        public virtual ICollection<PersonAlias> Aliases { get; set; } = [];
+        public virtual ICollection<PersonRoleAssignment> RoleAssignments { get; set; } = [];
+        public virtual ICollection<MaintenanceParticipant> MaintenanceParticipations { get; set; } = [];
+        public virtual ICollection<Request> RequestedRequests { get; set; } = [];
+        public virtual ICollection<Verification> ResponsibleVerifications { get; set; } = [];
+        public virtual ICollection<CostDetail> ProvidedCostDetails { get; set; } = [];
+        public virtual ICollection<ManagementPlan> ResponsibleManagementPlans { get; set; } = [];
+        public virtual ICollection<MaintenancePlan> ResponsibleMaintenancePlans { get; set; } = [];
+
+        [ForeignKey(nameof(ImportBatchId))]
+        public virtual ImportBatch? ImportBatch { get; set; }
     }
 }
