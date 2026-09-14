@@ -1,0 +1,40 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "orchestrator",
+  "subagent_depth": 1,
+  "share": "disabled",
+  "permission": {
+    "external_directory": {
+      "*": "deny",
+      "D:/proyectoSis/Excels/**": "allow"
+    },
+    "edit": {
+      "*": "ask",
+      "D:/proyectoSis/Excels/**": "deny"
+    },
+    "bash": {
+      "*": "ask",
+      "git status --short*": "allow",
+      "git diff --check": "allow",
+      "git diff --stat*": "allow",
+      "git diff --name-only*": "allow",
+      "Get-FileHash *": "allow",
+      "git add*": "deny",
+      "git commit*": "deny",
+      "git push*": "deny",
+      "git clean*": "deny",
+      "git reset --hard*": "deny",
+      "git checkout --*": "deny",
+      "git restore*": "deny",
+      "dotnet ef database update*": "deny",
+      "dotnet ef migrations*": "deny",
+      "Remove-Item *": "deny",
+      "Move-Item *": "deny",
+      "Rename-Item *": "deny",
+      "Clear-Content *": "deny",
+      "Set-Content *": "deny",
+      "Add-Content *": "deny",
+      "Out-File *": "deny"
+    }
+  }
+}

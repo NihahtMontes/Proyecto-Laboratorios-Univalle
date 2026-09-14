@@ -1,7 +1,7 @@
-# AGENTS.md - Orquestador Principal
+# AGENTS.md - Orquestador Principal Codex/OpenCode
 
 **Proyecto**: Laboratorios Univalle  
-**Rol**: enrutar contexto tecnico y evitar cambios amplios innecesarios.
+**Rol**: coordinar Codex u OpenCode, enrutar contexto tecnico y evitar cambios amplios innecesarios.
 
 ## Principios
 
@@ -70,13 +70,17 @@ No hacer commit sin aprobacion explicita del usuario.
 
 ## Orquestacion Multiagente
 
-Codex actua como orquestador principal: define alcance, reparte tareas independientes, integra resultados, resuelve conflictos y verifica build. No delegar por rutina ni permitir cambios solapados sobre los mismos archivos.
+El agente principal de Codex u OpenCode actua como orquestador: define alcance, reparte tareas independientes, integra resultados, resuelve conflictos y verifica evidencia. No delegar por rutina ni permitir cambios solapados sobre los mismos archivos.
 
 La coordinacion persistente entre tareas de Codex se define en
 `docs/COORDINACION_MULTI_CHAT.md`. Antes de actuar, cada tarea declara rol, ID,
 archivos/superficies, dependencias y si realizara lectura, escritura local o
 escritura externa. El coordinador de datos mantiene el estado canonico; QA y
 Sprint entregan handoffs y no modifican simultaneamente ese documento.
+
+La coordinacion dentro de una sesion OpenCode se define en
+`docs/AGENT_WORKFLOW.md`. La propiedad temporal es un protocolo del
+orquestador, no un bloqueo transaccional provisto por la herramienta.
 
 - `ui_ux`: propietario de `.cshtml`, SweetAlert2, textos visibles, botones, confirmaciones y consistencia NiceAdmin/Bootstrap 4.
 - `backend_data`: propietario de `.cshtml.cs`, `InputModel`, EF tracking, soft-delete, redirects, `TempData` y validaciones servidor.
@@ -86,6 +90,8 @@ Sprint entregan handoffs y no modifican simultaneamente ese documento.
 ## Documentacion
 
 - `.codex/agents/`: agentes especializados del proyecto.
+- `.opencode/agents/`: coordinador y subagentes especializados de OpenCode.
 - `.agents/skills/`: procedimientos especializados cargados bajo demanda.
 - `docs/`: documentacion humana y despliegue sin secretos.
+- `docs/AGENT_WORKFLOW.md`: permisos, propiedad temporal, handoffs y evidencia para OpenCode.
 - `docs/GUIA_IMPORTACION_HISTORICA.md`: guia viva de importacion de datos historicos (Excel -> SQL Server), mapa modelo<->hoja y vulnerabilidades abiertas.

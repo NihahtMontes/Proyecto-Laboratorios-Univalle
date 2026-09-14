@@ -21,8 +21,8 @@ Antes de modificar codigo:
 | ORM | Entity Framework Core 9.0 con SQL Server |
 | Frontend | Razor Pages, Bootstrap 4, NiceAdmin, jQuery, Select2 |
 | Alertas | SweetAlert2 v7.19.3 |
-| Excel | EPPlus 7.5.2 |
-| PDF | QuestPDF 2025.12.3 |
+| Excel | EPPlus 7.5.3 |
+| PDF | QuestPDF 2025.12.4 |
 | Auth | ASP.NET Core Identity |
 | Cache/Sesion | IMemoryCache + Session 4h |
 
@@ -51,13 +51,14 @@ No agregar dependencias ni cambiar stack sin aprobacion explicita.
 
 ## Orquestacion De Agentes
 
-- Codex es el orquestador: lee contexto, divide solo trabajo independiente, evita ediciones solapadas, integra resultados y verifica build.
+- El agente principal de Codex u OpenCode es el orquestador: lee contexto, divide solo trabajo independiente, evita ediciones solapadas, integra resultados y verifica evidencia.
 - La coordinacion entre tareas/chats se rige por `docs/COORDINACION_MULTI_CHAT.md`.
+- La propiedad temporal, los permisos y handoffs de OpenCode se rigen por `docs/AGENT_WORKFLOW.md`; no existe locking transaccional por archivo.
 - Cada tarea declara rol, ID de trabajo, archivos, dependencias y tipo de escritura antes de actuar.
 - `ui_ux`: vistas `.cshtml`, SweetAlert2 v7, textos, botones, accesibilidad visual y consistencia NiceAdmin/Bootstrap 4.
 - `backend_data`: PageModels `.cshtml.cs`, `InputModel`, EF Core tracking, soft-delete, redirects y `TempData`.
 - `reviewer`: revision final read-only basada en evidencia.
-- Para tareas de mas de 5 archivos, Codex debe presentar un plan antes de editar.
+- Para tareas de mas de 5 archivos, el orquestador debe presentar un plan antes de editar.
 
 ## Mapa Rapido
 
@@ -91,7 +92,9 @@ No agregar dependencias ni cambiar stack sin aprobacion explicita.
 ## Documentacion Separada
 
 - Agentes Codex del proyecto: `.codex/agents/`.
+- Agentes OpenCode del proyecto: `.opencode/agents/`.
 - Skills del proyecto: `.agents/skills/`.
 - Documentacion de usuario y despliegue: `docs/`.
 - Coordinacion de datos, QA y sprints: `docs/COORDINACION_MULTI_CHAT.md`.
+- Flujo multiagente OpenCode: `docs/AGENT_WORKFLOW.md`.
 - Importacion de datos historicos (Excel -> SQL): `docs/GUIA_IMPORTACION_HISTORICA.md` (guia viva con vulnerabilidades abiertas).

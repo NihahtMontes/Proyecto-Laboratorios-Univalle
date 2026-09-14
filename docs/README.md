@@ -6,7 +6,8 @@ Esta carpeta contiene documentacion para usuarios, despliegue y operacion humana
 
 - `user/`: guias para usuario final o capacitacion.
 - `deployment/`: publicacion, checklist y notas de configuracion.
-- `GENTLE_AI_ARCHITECTURE.md`: arquitectura operativa de agentes, SDD, OpenCode, Engram, CodeGraph, requisitos y plan de adopcion.
+- `AGENT_WORKFLOW.md`: flujo operativo vigente de OpenCode, permisos, propiedad temporal, handoffs y evidencia.
+- `GENTLE_AI_ARCHITECTURE.md`: referencia historica de Gentle AI, SDD, OpenCode, Engram y CodeGraph; no sustituye el flujo operativo vigente.
 - `README_CORRECCION_IMPORTACION_EXCEL.md`: guia de correccion manual del Excel historico y comparacion antes de importar.
 - `GUIA_IMPORTACION_HISTORICA.md`: contrato Excel-modelo, reglas de
   importacion y deudas de calidad de los datos historicos.

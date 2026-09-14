@@ -1,5 +1,7 @@
 # Arquitectura operativa Gentle AI
 
+> **Documento historico.** Conserva el diagnostico y la propuesta observados el 18 de agosto de 2026. Para la configuracion y operacion vigente de OpenCode en este repositorio, usar `opencode.json`, `.opencode/agents/` y `docs/AGENT_WORKFLOW.md`. Ante discrepancias, prevalecen el codigo, los contratos y la evidencia actual.
+
 Esta guía define cómo usar Gentle AI, OpenCode, SDD, Engram y CodeGraph alrededor de Proyecto Laboratorios Univalle. Gentle AI no forma parte del runtime ASP.NET: es la capa de ingeniería que organiza contexto, agentes, especificaciones, implementación, revisión y memoria.
 
 > Estado observado: 18 de agosto de 2026. La sección [Estado actual y brechas](#estado-actual-y-brechas) describe problemas reales de esta instalación; no representa el diseño objetivo.
