@@ -1,0 +1,45 @@
+@* Partial: _StepsBar.cshtml
+   Uso: @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", pasoActual)
+   pasoActual: 1=Planificación, 2=Requerimientos, 3=Disponibilidad, 4=L-3 Devolución, 5=Cerrado
+*@
+@model int
+
+@{
+    var pasos = new[] {
+        new { Num = 1, Nombre = "Planificación" },
+        new { Num = 2, Nombre = "Requerimientos" },
+        new { Num = 3, Nombre = "Disponibilidad" },
+        new { Num = 4, Nombre = "L-3 Devolución" },
+        new { Num = 5, Nombre = "Cerrado" },
+    };
+    double pct = Model <= 1 ? 0 : ((double)(Model - 1) / 4.0) * 100.0;
+}
+
+<div class="steps-bar-wrapper mb-4">
+    <div class="d-flex align-items-start justify-content-between position-relative px-3">
+        <!-- Fondo línea -->
+        <div class="position-absolute" style="top:16px;left:7%;width:86%;height:3px;background:#e0e0e0;z-index:0;"></div>
+        <!-- Progreso línea -->
+        <div class="position-absolute" style="top:16px;left:7%;width:@(pct.ToString("F0", System.Globalization.CultureInfo.InvariantCulture))%;max-width:86%;height:3px;background:#7460ee;z-index:1;transition:width .4s ease;"></div>
+
+        @foreach (var p in pasos)
+        {
+            bool completado = p.Num < Model;
+            bool activo     = p.Num == Model;
+            string bg    = completado ? "background:#7460ee;" : activo ? "background:#343a40;" : "background:#fff;border:2px solid #aaa;";
+            string color = (completado || activo) ? "color:#fff;" : "color:#888;";
+            string lbl   = (completado || activo) ? "font-weight:600;color:#333;" : "color:#999;";
+
+            <div class="text-center position-relative" style="z-index:2;flex:1;">
+                <div class="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-1"
+                     style="width:34px;height:34px;@bg @color box-shadow:0 2px 6px rgba(0,0,0,.15);">
+                    @if (completado)
+                    {<i class="mdi mdi-check" style="font-size:16px;"></i>}
+                    else
+                    {<span style="font-size:13px;font-weight:700;">@p.Num</span>}
+                </div>
+                <small style="font-size:11px;@lbl display:block;">@p.Nombre</small>
+            </div>
+        }
+    </div>
+</div>
