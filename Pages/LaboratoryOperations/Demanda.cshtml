@@ -1,0 +1,278 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.DemandaModel
+@{ ViewData["Title"] = "Demanda"; }
+
+<div class="page-breadcrumb">
+    <div class="row">
+        <div class="col-12">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PLANIFICACIÓN FUTURA</h4>
+            <h2 class="font-weight-bold text-dark">Demanda de Utensilios y Materiales</h2>
+            <div class="text-muted small">Análisis de uso real (Gestión 2-2026) — datos basados en salidas L-3 registradas.</div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body py-3">
+                    <form class="form-row align-items-end">
+                        <div class="col-md-3">
+                            <label class="small font-weight-bold">CATEGORÍA</label>
+                            <select class="custom-select" id="filtro-categoria" onchange="filtrarDemanda()">
+                                <option value="todos">Todos</option>
+                                <option value="Utensilio">Utensilios</option>
+                                <option value="Misceláneos">Misceláneos</option>
+                                <option value="Botiquín">Botiquín</option>
+                                <option value="Limpieza">Limpieza</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small font-weight-bold">DESDE</label>
+                            <input type="date" class="form-control" value="2026-02-01" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small font-weight-bold">HASTA</label>
+                            <input type="date" class="form-control" value="2026-09-14" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small font-weight-bold">ORDENAR POR</label>
+                            <select class="custom-select" id="filtro-orden" onchange="filtrarDemanda()">
+                                <option value="mas">Más usados</option>
+                                <option value="menos">Menos usados</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-primary btn-block" onclick="filtrarDemanda()">
+                                <i class="fas fa-filter mr-1"></i> Aplicar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Tabla -->
+        <div class="col-md-8">
+            <div class="card shadow-sm rounded-lg border-0">
+                <div class="card-body p-4">
+                    <h6 class="font-weight-bold text-primary mb-3">UTENSILIOS Y MATERIALES — Gestión 2-2026</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="tabla-demanda">
+                            <thead class="bg-dark text-white">
+                                <tr>
+                                    <th class="border-0">#</th>
+                                    <th class="border-0">MATERIAL / UTENSILIO</th>
+                                    <th class="border-0 text-center">UNIDAD</th>
+                                    <th class="border-0 text-center">CATEGORÍA</th>
+                                    <th class="border-0 text-center">TOTAL SALIDAS</th>
+                                    <th class="border-0 text-center">STOCK ACTUAL</th>
+                                    <th class="border-0 text-center">BALANCE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-demanda">
+                                <!-- Datos reales del Excel L3/L5 Gastronomía 2-2026 -->
+                                <tr data-cat="Utensilio" data-salidas="45">
+                                    <td class="text-muted small">1</td>
+                                    <td class="font-weight-bold">PLATO PLANO REDONDO</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-info">Utensilio</span></td>
+                                    <td class="text-center font-weight-bold">45</td>
+                                    <td class="text-center">30</td>
+                                    <td class="text-center text-danger font-weight-bold">-15</td>
+                                </tr>
+                                <tr data-cat="Utensilio" data-salidas="38">
+                                    <td class="text-muted small">2</td>
+                                    <td class="font-weight-bold">COPA MARTINI</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-info">Utensilio</span></td>
+                                    <td class="text-center font-weight-bold">38</td>
+                                    <td class="text-center">40</td>
+                                    <td class="text-center text-success font-weight-bold">+2</td>
+                                </tr>
+                                <tr data-cat="Misceláneos" data-salidas="36">
+                                    <td class="text-muted small">3</td>
+                                    <td class="font-weight-bold">PAPEL TOALLA SCOTT 116 PAÑOS</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-secondary">Misceláneos</span></td>
+                                    <td class="text-center font-weight-bold">36</td>
+                                    <td class="text-center">250</td>
+                                    <td class="text-center text-success font-weight-bold">+214</td>
+                                </tr>
+                                <tr data-cat="Utensilio" data-salidas="30">
+                                    <td class="text-muted small">4</td>
+                                    <td class="font-weight-bold">SHOT</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-info">Utensilio</span></td>
+                                    <td class="text-center font-weight-bold">30</td>
+                                    <td class="text-center">12</td>
+                                    <td class="text-center text-danger font-weight-bold">-18</td>
+                                </tr>
+                                <tr data-cat="Misceláneos" data-salidas="28">
+                                    <td class="text-muted small">5</td>
+                                    <td class="font-weight-bold">PAPEL FILM 1400 METROS</td>
+                                    <td class="text-center">Rollo</td>
+                                    <td class="text-center"><span class="badge badge-secondary">Misceláneos</span></td>
+                                    <td class="text-center font-weight-bold">28</td>
+                                    <td class="text-center">8</td>
+                                    <td class="text-center text-danger font-weight-bold">-20</td>
+                                </tr>
+                                <tr data-cat="Utensilio" data-salidas="25">
+                                    <td class="text-muted small">6</td>
+                                    <td class="font-weight-bold">MOLDE DE SILICONA</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-info">Utensilio</span></td>
+                                    <td class="text-center font-weight-bold">25</td>
+                                    <td class="text-center">8</td>
+                                    <td class="text-center text-danger font-weight-bold">-17</td>
+                                </tr>
+                                <tr data-cat="Botiquín" data-salidas="22">
+                                    <td class="text-muted small">7</td>
+                                    <td class="font-weight-bold">GUANTEX LATEX TALLA M</td>
+                                    <td class="text-center">Caja</td>
+                                    <td class="text-center"><span class="badge badge-warning text-white">Botiquín</span></td>
+                                    <td class="text-center font-weight-bold">22</td>
+                                    <td class="text-center">9</td>
+                                    <td class="text-center text-danger font-weight-bold">-13</td>
+                                </tr>
+                                <tr data-cat="Utensilio" data-salidas="18">
+                                    <td class="text-muted small">8</td>
+                                    <td class="font-weight-bold">TIMBAL REDONDO</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-info">Utensilio</span></td>
+                                    <td class="text-center font-weight-bold">18</td>
+                                    <td class="text-center">10</td>
+                                    <td class="text-center text-danger font-weight-bold">-8</td>
+                                </tr>
+                                <tr data-cat="Limpieza" data-salidas="15">
+                                    <td class="text-muted small">9</td>
+                                    <td class="font-weight-bold">DETERGENTE BLUE GLO 5L</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-primary">Limpieza</span></td>
+                                    <td class="text-center font-weight-bold">15</td>
+                                    <td class="text-center">5</td>
+                                    <td class="text-center text-danger font-weight-bold">-10</td>
+                                </tr>
+                                <tr data-cat="Utensilio" data-salidas="4">
+                                    <td class="text-muted small">10</td>
+                                    <td class="font-weight-bold">CAMPANA AHUMADOR</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-info">Utensilio</span></td>
+                                    <td class="text-center font-weight-bold">4</td>
+                                    <td class="text-center">1</td>
+                                    <td class="text-center text-danger font-weight-bold">-3</td>
+                                </tr>
+                                <tr data-cat="Utensilio" data-salidas="2">
+                                    <td class="text-muted small">11</td>
+                                    <td class="font-weight-bold">SOBREMANTEL PLOMO</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-info">Utensilio</span></td>
+                                    <td class="text-center font-weight-bold">2</td>
+                                    <td class="text-center">3</td>
+                                    <td class="text-center text-success font-weight-bold">+1</td>
+                                </tr>
+                                <tr data-cat="Utensilio" data-salidas="1">
+                                    <td class="text-muted small">12</td>
+                                    <td class="font-weight-bold">ESPEJO</td>
+                                    <td class="text-center">Unid.</td>
+                                    <td class="text-center"><span class="badge badge-info">Utensilio</span></td>
+                                    <td class="text-center font-weight-bold">1</td>
+                                    <td class="text-center">4</td>
+                                    <td class="text-center text-success font-weight-bold">+3</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel lateral -->
+        <div class="col-md-4">
+            <div class="card shadow-sm rounded-lg border-0 mb-3">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-light-danger text-danger d-flex align-items-center justify-content-center mr-3"
+                             style="width:36px;height:36px;"><i class="fas fa-exclamation"></i></div>
+                        <h6 class="font-weight-bold mb-0 text-danger">DÉFICIT CRÍTICO</h6>
+                    </div>
+                    <p class="text-muted small mb-3">Ítems con balance negativo que requieren reposición urgente.</p>
+                    <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                        <span class="small font-weight-bold">SHOT (x18)</span>
+                        <span class="badge badge-danger">Alta</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                        <span class="small font-weight-bold">PAPEL FILM (x20)</span>
+                        <span class="badge badge-danger">Alta</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+                        <span class="small font-weight-bold">MOLDE DE SILICONA (x17)</span>
+                        <span class="badge badge-warning text-white">Media</span>
+                    </div>
+                    <div class="d-flex justify-content-between pb-1">
+                        <span class="small font-weight-bold">PLATO PLANO REDONDO (x15)</span>
+                        <span class="badge badge-warning text-white">Media</span>
+                    </div>
+                    <hr />
+                    <button type="button" class="btn btn-dark btn-block font-weight-bold py-2">
+                        <i class="mdi mdi-file-chart mr-1"></i> Ver propuesta de compra
+                    </button>
+                </div>
+            </div>
+            <div class="card shadow-sm rounded-lg border-0">
+                <div class="card-body p-3">
+                    <h6 class="small font-weight-bold text-muted mb-2">RESUMEN GESTIÓN 2-2026</h6>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small text-muted">Total salidas registradas</span>
+                        <span class="font-weight-bold small">229</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="small text-muted">Ítems con déficit</span>
+                        <span class="font-weight-bold small text-danger">8</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="small text-muted">Ítems con superávit</span>
+                        <span class="font-weight-bold small text-success">4</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-light-danger { background-color: #fce8e6; }
+</style>
+
+@section Scripts {
+<script>
+function filtrarDemanda() {
+    var cat   = document.getElementById('filtro-categoria').value;
+    var orden = document.getElementById('filtro-orden').value;
+    var tbody = document.getElementById('tbody-demanda');
+    var rows  = Array.from(tbody.querySelectorAll('tr'));
+
+    // Filtrar por categoría
+    rows.forEach(function(row) {
+        var rowCat = row.dataset.cat;
+        row.style.display = (cat === 'todos' || rowCat === cat) ? '' : 'none';
+    });
+
+    // Ordenar por salidas
+    var visibles = rows.filter(function(r){ return r.style.display !== 'none'; });
+    visibles.sort(function(a, b) {
+        var sa = parseInt(a.dataset.salidas) || 0;
+        var sb = parseInt(b.dataset.salidas) || 0;
+        return orden === 'mas' ? sb - sa : sa - sb;
+    });
+    visibles.forEach(function(r, i) {
+        tbody.appendChild(r);
+        r.querySelector('td:first-child').textContent = i + 1;
+    });
+}
+</script>
+}

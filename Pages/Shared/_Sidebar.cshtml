@@ -19,6 +19,65 @@
                     </a>
                 </li>
 
+                <li class="sidebar-item">
+                    <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
+                        <i class="mdi mdi-flask-outline"></i>
+                        <span class="hide-menu">Operación de laboratorios</span>
+                    </a>
+                    <ul aria-expanded="false" class="collapse first-level">
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/Index" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-view-dashboard"></i>
+                                <span class="hide-menu">Resumen</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/Planificacion" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-clipboard-text-outline"></i>
+                                <span class="hide-menu">Paso 1 · Planificación</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/Requerimientos" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-format-list-checks"></i>
+                                <span class="hide-menu">Paso 2 · Requerimientos</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/Disponibilidad" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-check-circle-outline"></i>
+                                <span class="hide-menu">Paso 3 · Disponibilidad</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/L3" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-clipboard-arrow-left-outline"></i>
+                                <span class="hide-menu">Paso 4 · L-3 Devolución</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/L5" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-alert-outline"></i>
+                                <span class="hide-menu">Paso 5 · Incidentes L-5</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/Demanda" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-chart-bar"></i>
+                                <span class="hide-menu">Demanda</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/Calendario" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-calendar-range"></i>
+                                <span class="hide-menu">Calendarios</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+
+
+
                 <li class="nav-small-cap">
                     <i class="mdi mdi-dots-horizontal"></i>
                     <span class="hide-menu">Elementos</span>

@@ -1,0 +1,251 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.IndexModel
+@{ ViewData["Title"] = "Resumen — Operación de laboratorios"; }
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN SEMANAL</h4>
+            <h2 class="font-weight-bold text-dark">Resumen</h2>
+            <div class="text-muted small">Prioriza la preparación y salta directamente a los conflictos que necesitan decisión.</div>
+        </div>
+        <div class="col-md-4 text-right">
+            <a asp-page="/LaboratoryOperations/Planificacion" class="btn btn-primary font-weight-bold px-4 py-2">
+                <i class="mdi mdi-plus mr-1"></i> Nueva Planificación
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+
+    <!-- ── FILTROS DE PERÍODO ── -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted small font-weight-bold mr-3">VER:</span>
+                        <div class="btn-group btn-group-sm" id="filtro-periodo" role="group">
+                            <button type="button" class="btn btn-primary filtro-btn" data-filtro="hoy">Hoy</button>
+                            <button type="button" class="btn btn-outline-secondary filtro-btn" data-filtro="semana">Esta semana</button>
+                            <button type="button" class="btn btn-outline-secondary filtro-btn" data-filtro="mes">Este mes</button>
+                            <button type="button" class="btn btn-outline-secondary filtro-btn" data-filtro="todos">Todos</button>
+                        </div>
+                        <span class="ml-auto text-muted small" id="filtro-label">Mostrando: <strong>Hoy</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TARJETAS RESUMEN ── -->
+    <div class="row mb-4" id="cards-resumen">
+        <div class="col-md-3">
+            <div class="card shadow-sm rounded-lg border-0 h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded bg-light-primary text-primary p-3 mr-3">
+                        <i class="far fa-calendar-alt fa-2x"></i>
+                    </div>
+                    <div>
+                        <h2 class="mb-0 font-weight-bold text-dark resumen-practicas">4</h2>
+                        <span class="text-muted small">Prácticas programadas</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm rounded-lg border-0 h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded bg-light-success text-success p-3 mr-3">
+                        <i class="far fa-check-square fa-2x"></i>
+                    </div>
+                    <div>
+                        <h2 class="mb-0 font-weight-bold text-dark resumen-listas">3</h2>
+                        <span class="text-muted small">Listas para preparar</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm rounded-lg border-0 h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded bg-light-warning text-warning p-3 mr-3">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                    <div>
+                        <h2 class="mb-0 font-weight-bold text-dark resumen-conflictos">1</h2>
+                        <span class="text-muted small">Conflictos</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm rounded-lg border-0 h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="rounded bg-light-danger text-danger p-3 mr-3">
+                        <i class="fas fa-sync-alt fa-2x"></i>
+                    </div>
+                    <div>
+                        <h2 class="mb-0 font-weight-bold text-dark resumen-devoluciones">1</h2>
+                        <span class="text-muted small">Devoluciones hoy</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TABLA DE PRÁCTICAS ── -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm rounded-lg border-0">
+                <div class="card-body">
+                    <h5 class="font-weight-bold text-primary mb-3">PRÁCTICAS PLANIFICADAS</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="tabla-practicas">
+                            <thead class="bg-dark text-white">
+                                <tr>
+                                    <th class="border-0">ID</th>
+                                    <th class="border-0">MATERIA</th>
+                                    <th class="border-0">LABORATORIO</th>
+                                    <th class="border-0">FECHA</th>
+                                    <th class="border-0">ESTADO</th>
+                                    <th class="border-0"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- hoy -->
+                                <tr data-periodo="hoy semana mes todos">
+                                    <td class="align-middle small font-weight-bold">L3-2026-0091</td>
+                                    <td class="align-middle"><strong>Cocina Boliviana Contemporánea</strong><br><small class="text-muted">Chef Francisco Galindo</small></td>
+                                    <td class="align-middle text-muted">SAL 03</td>
+                                    <td class="align-middle small">Hoy 08:00</td>
+                                    <td class="align-middle"><span class="badge badge-success px-2 py-1 rounded-pill">Lista</span></td>
+                                    <td class="align-middle text-right">
+                                        <a asp-page="/LaboratoryOperations/L3" class="btn btn-sm btn-outline-primary">Ver L-3</a>
+                                    </td>
+                                </tr>
+                                <tr data-periodo="hoy semana mes todos">
+                                    <td class="align-middle small font-weight-bold">L3-2026-0092</td>
+                                    <td class="align-middle"><strong>Inv. Gastronómica 1</strong><br><small class="text-muted">Arq. Shohei Takahashi</small></td>
+                                    <td class="align-middle text-muted">SAL 05</td>
+                                    <td class="align-middle small">Hoy 10:00</td>
+                                    <td class="align-middle"><span class="badge badge-warning px-2 py-1 rounded-pill text-white">Conflicto</span></td>
+                                    <td class="align-middle text-right">
+                                        <a asp-page="/LaboratoryOperations/Disponibilidad" class="btn btn-sm btn-outline-warning">Resolver</a>
+                                    </td>
+                                </tr>
+                                <!-- semana -->
+                                <tr data-periodo="semana mes todos">
+                                    <td class="align-middle small font-weight-bold">L3-2026-0093</td>
+                                    <td class="align-middle"><strong>Coctelería</strong><br><small class="text-muted">Lic. Rodrigo Quiroga</small></td>
+                                    <td class="align-middle text-muted">SAL 07</td>
+                                    <td class="align-middle small">Mié 14:00</td>
+                                    <td class="align-middle"><span class="badge badge-info px-2 py-1 rounded-pill">En prep.</span></td>
+                                    <td class="align-middle text-right">
+                                        <a asp-page="/LaboratoryOperations/Requerimientos" class="btn btn-sm btn-outline-secondary">Reqs.</a>
+                                    </td>
+                                </tr>
+                                <!-- mes -->
+                                <tr data-periodo="mes todos">
+                                    <td class="align-middle small font-weight-bold">L3-2026-0094</td>
+                                    <td class="align-middle"><strong>Enología</strong><br><small class="text-muted">Lic. Rojas</small></td>
+                                    <td class="align-middle text-muted">SAL 02</td>
+                                    <td class="align-middle small">15 Sep 09:00</td>
+                                    <td class="align-middle"><span class="badge badge-secondary px-2 py-1 rounded-pill">Planificada</span></td>
+                                    <td class="align-middle text-right">
+                                        <a asp-page="/LaboratoryOperations/Planificacion" class="btn btn-sm btn-outline-secondary">Editar</a>
+                                    </td>
+                                </tr>
+                                <!-- todos -->
+                                <tr data-periodo="todos">
+                                    <td class="align-middle small font-weight-bold">L3-2026-0088</td>
+                                    <td class="align-middle"><strong>Técnica Dietoterapéutica</strong><br><small class="text-muted">Lic. Vania Vargas</small></td>
+                                    <td class="align-middle text-muted">SAL 01</td>
+                                    <td class="align-middle small">02 Sep 08:00</td>
+                                    <td class="align-middle"><span class="badge badge-dark px-2 py-1 rounded-pill">Cerrada</span></td>
+                                    <td class="align-middle text-right">
+                                        <a asp-page="/LaboratoryOperations/L3" class="btn btn-sm btn-outline-dark">Ver L-3</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── ALERTAS ── -->
+        <div class="col-md-4">
+            <div class="card shadow-sm rounded-lg border-0">
+                <div class="card-body">
+                    <h5 class="font-weight-bold text-primary mb-4">ALERTAS</h5>
+                    <div class="alert bg-light-danger border-0 rounded text-danger mb-3 py-3">
+                        <h6 class="font-weight-bold mb-1">Solapamiento</h6>
+                        <small>Copa Martini (10 uds) requerida por 2 clases a la misma hora en SAL 05.</small>
+                    </div>
+                    <div class="alert bg-light-warning border-0 rounded text-warning mb-3 py-3">
+                        <h6 class="font-weight-bold mb-1">Devolución pendiente</h6>
+                        <small>L3-2026-0091 · Molde de Silicona · vence a las 17:00.</small>
+                    </div>
+                    <div class="alert bg-light-info border-0 rounded text-info mb-0 py-3">
+                        <h6 class="font-weight-bold mb-1">Incidente abierto</h6>
+                        <small>L5-2026-0012 · Shot roto · pendiente de resolución.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-light-primary { background-color: #e8f0fe; }
+    .bg-light-success { background-color: #e6f4ea; }
+    .bg-light-warning { background-color: #fef7e0; }
+    .bg-light-danger  { background-color: #fce8e6; }
+    .bg-light-info    { background-color: #e3f2fd; }
+    .filtro-btn       { transition: all .2s; }
+</style>
+
+@section Scripts {
+<script>
+(function () {
+    // Datos por filtro
+    var datos = {
+        hoy:    { practicas: 4, listas: 3, conflictos: 1, devoluciones: 1 },
+        semana: { practicas: 12, listas: 9, conflictos: 2, devoluciones: 3 },
+        mes:    { practicas: 38, listas: 31, conflictos: 5, devoluciones: 8 },
+        todos:  { practicas: 94, listas: 80, conflictos: 12, devoluciones: 20 }
+    };
+
+    function aplicarFiltro(filtro) {
+        // Botones
+        document.querySelectorAll('.filtro-btn').forEach(function(b) {
+            b.classList.toggle('btn-primary', b.dataset.filtro === filtro);
+            b.classList.toggle('btn-outline-secondary', b.dataset.filtro !== filtro);
+        });
+        // Label
+        var labels = { hoy: 'Hoy', semana: 'Esta semana', mes: 'Este mes', todos: 'Todos' };
+        document.getElementById('filtro-label').innerHTML = 'Mostrando: <strong>' + labels[filtro] + '</strong>';
+        // Tarjetas
+        var d = datos[filtro];
+        document.querySelector('.resumen-practicas').textContent  = d.practicas;
+        document.querySelector('.resumen-listas').textContent     = d.listas;
+        document.querySelector('.resumen-conflictos').textContent = d.conflictos;
+        document.querySelector('.resumen-devoluciones').textContent = d.devoluciones;
+        // Filas tabla
+        document.querySelectorAll('#tabla-practicas tbody tr').forEach(function(row) {
+            var periodos = (row.dataset.periodo || '').split(' ');
+            row.style.display = periodos.includes(filtro) ? '' : 'none';
+        });
+    }
+
+    document.querySelectorAll('.filtro-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() { aplicarFiltro(this.dataset.filtro); });
+    });
+
+    // Iniciar con "hoy"
+    aplicarFiltro('hoy');
+})();
+</script>
+}
