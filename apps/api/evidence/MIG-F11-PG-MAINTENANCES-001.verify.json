@@ -1,0 +1,19 @@
+{
+  "artifact": "MIG-F11-PG-MAINTENANCES-001",
+  "migration": "apps/api/migrations/tenant/0009_maintenances.sql",
+  "scope": "L-8 maintenance, L-48 tasks, costs, satisfaction and plan transition",
+  "database": "PostgreSQL local tenant sandbox",
+  "assertions": [
+    "Maintenance is constrained to an active management plan and laboratory-resolved unit",
+    "Tasks preserve soft-deleted history and calculate completion percentage",
+    "Costs are normalized and calculated total is returned",
+    "Completion validates cost and satisfaction and advances the plan to L-3",
+    "Cancellation is logical and tenant isolation is preserved"
+  ],
+  "fixture": "Synthetic site, laboratory, equipment, unit, management and plan identifiers; all rows removed after verification.",
+  "verifiedAt": "2026-09-21",
+  "notes": [
+    "No SQL Server write, Excel import, commit or deployment was performed.",
+    "The .NET validation rule requiring actual cost and satisfaction on completion is preserved."
+  ]
+}

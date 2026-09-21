@@ -6,9 +6,12 @@ equivocada ni diseñar modulos sobre un contrato de datos desactualizado.
 
 ## Repositorio y fuentes oficiales
 
-- Repositorio vigente: `D:\proyectoSis\Proyecto-Laboratorios-Univalle`.
-- Las copias bajo OneDrive o `Desktop\Nihaht Peligro V2` son referencia
-  historica y no reciben cambios.
+- Repositorio vigente para la migracion React/NestJS/PostgreSQL, confirmado
+  por el usuario el 18 de septiembre de 2026:
+  `C:\Users\monte\OneDrive\Desktop\Refactor Base\Proyecto-Laboratorios-Univalle`.
+- La copia anterior bajo `D:\proyectoSis\Proyecto-Laboratorios-Univalle` y
+  `Desktop\Nihaht Peligro V2` quedan como referencia y no reciben cambios salvo
+  una autorizacion posterior que reasigne explicitamente la autoridad.
 - El Excel original, la V2 tecnica, la planilla de levantamiento y la base SQL
   son fuentes diferentes. Ninguna se reemplaza silenciosamente con otra.
 - Este archivo lo mantiene el chat coordinador de datos. Los otros chats

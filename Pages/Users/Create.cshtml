@@ -178,15 +178,47 @@
         });
 
         function generatePassword() {
-            var length = 10;
-            var charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&*";
-            var retVal = "";
-            for (var i = 0; i < length; ++i) {
-                retVal += charset.charAt(Math.floor(Math.random() * charset.length));
+            var length = 16;
+            var lower = "abcdefghijklmnopqrstuvwxyz";
+            var upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            var digits = "0123456789";
+            var special = "!#$%&*";
+            var all = lower + upper + digits + special;
+
+            function randomChar(set) {
+                var buffer = new Uint32Array(1);
+                var max = 0x100000000 - (0x100000000 % set.length);
+                do {
+                    crypto.getRandomValues(buffer);
+                } while (buffer[0] >= max);
+                return set.charAt(buffer[0] % set.length);
             }
-            retVal += Math.floor(Math.random() * 9);
+
+            var password = [
+                randomChar(lower),
+                randomChar(upper),
+                randomChar(digits),
+                randomChar(special)
+            ];
+
+            for (var i = password.length; i < length; i++) {
+                password.push(randomChar(all));
+            }
+
+            for (var i = password.length - 1; i > 0; i--) {
+                var jBuffer = new Uint32Array(1);
+                var maxJ = 0x100000000 - (0x100000000 % (i + 1));
+                do {
+                    crypto.getRandomValues(jBuffer);
+                } while (jBuffer[0] >= maxJ);
+                var j = jBuffer[0] % (i + 1);
+                var temp = password[i];
+                password[i] = password[j];
+                password[j] = temp;
+            }
+
             var input = document.getElementById("passwordInput");
-            input.value = retVal;
+            input.value = password.join("");
             input.type = "text";
             document.getElementById("togglePasswordBtn").innerHTML = '<i class="fas fa-eye-slash"></i>';
         }

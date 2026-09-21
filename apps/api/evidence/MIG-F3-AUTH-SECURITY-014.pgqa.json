@@ -1,0 +1,80 @@
+{
+  "workId": "MIG-F3-AUTH-SECURITY-014",
+  "generatedAt": "2026-09-20T00:47:14.599Z",
+  "target": {
+    "host": "localhost",
+    "port": 5432,
+    "database": "GastroExample",
+    "ssl": "disable"
+  },
+  "inputs": {
+    "migration": {
+      "path": "migrations/0002_create_auth_security_controls.sql",
+      "sha256": "335bd7b1ed75b557e1618283d2272c4353bb029ca2fd28ee626566d3d93ff336",
+      "bytes": 2727
+    },
+    "roleScript": {
+      "path": "database/roles/002_grant_auth_security_controls.sql",
+      "sha256": "24934ed1ff17a1aec4e28f98f931286935065674f26763d87baf56d452e8b4a2",
+      "bytes": 6284
+    }
+  },
+  "migration": {
+    "up": "PASS",
+    "verify": "PASS",
+    "upArtifact": "evidence/MIG-F3-AUTH-SECURITY-014.up.json",
+    "verifyArtifact": "evidence/MIG-F3-AUTH-SECURITY-014.verify.json"
+  },
+  "aclProvisioning": {
+    "runs": 2,
+    "results": ["PASS", "PASS"]
+  },
+  "pgqa": {
+    "suites": 2,
+    "tests": 9,
+    "passed": 9,
+    "failed": 0
+  },
+  "postconditions": {
+    "counts": {
+      "sites": 0,
+      "users": 0,
+      "memberships": 0,
+      "sessions": 0,
+      "rate_buckets": 0,
+      "security_events": 0
+    },
+    "rolesCompliant": 2,
+    "runtimeConnections": 0,
+    "acl": {
+      "public_rate_denied": true,
+      "public_audit_denied": true,
+      "audit_append_only": true
+    }
+  },
+  "rootGates": {
+    "format": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "jest": {
+      "executed": 288,
+      "passed": 288,
+      "skippedOptIn": 9
+    },
+    "vitest": {
+      "executed": 1,
+      "passed": 1
+    },
+    "smoke": "PASS",
+    "dotnetBuild": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "diffCheck": "PASS"
+  },
+  "independentReview": {
+    "executed": false,
+    "reason": "OpenCode Go provider unavailable; no independent verdict claimed"
+  }
+}

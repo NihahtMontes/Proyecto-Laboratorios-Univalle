@@ -1,0 +1,20 @@
+{
+  "artifact": "MIG-F16-PG-REPORTS-001",
+  "date": "2026-09-21",
+  "scope": "NestJS Excel generation over the six existing institutional templates",
+  "target": "local runtime fixture / no external database write",
+  "assertions": [
+    "The authenticated report manifest exposes L-6, L-7, L-8, L-3, L-48 and L-12.",
+    "L-7 smoke generation produced Solicitud_L7_7.xlsx from a controlled tenant row.",
+    "The generated file used the existing wwwroot/templates/L7.xlsx template and returned the official XLSX content type.",
+    "Report queries require the server-resolved SiteRequestContext and include site_id predicates.",
+    "No fixture row was inserted or changed by the smoke generation."
+  ],
+  "smoke": {
+    "kind": "l7",
+    "filename": "Solicitud_L7_7.xlsx",
+    "bytes": 62938,
+    "result": "PASS"
+  },
+  "remaining_gate": "File-to-file and visual comparison against ASP.NET output with identical approved data is still required before marking report parity Verificado."
+}

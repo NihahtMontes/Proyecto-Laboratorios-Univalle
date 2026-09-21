@@ -1,0 +1,60 @@
+{
+  "workId": "MIG-F3-AUTH-SECURITY-014",
+  "command": "up",
+  "file": "0002_create_auth_security_controls.sql",
+  "sha256": "335bd7b1ed75b557e1618283d2272c4353bb029ca2fd28ee626566d3d93ff336",
+  "bytes": 2727,
+  "style": "additive",
+  "startedAt": "2026-09-20T00:42:00.166Z",
+  "finishedAt": "2026-09-20T00:42:00.287Z",
+  "server": {
+    "database": "GastroExample",
+    "user": "postgres",
+    "version": "PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit"
+  },
+  "target": "localhost:5432/GastroExample [ssl=disable (cleartext)]",
+  "readOnly": false,
+  "executed": true,
+  "committed": true,
+  "verification": {
+    "passed": true,
+    "diffs": []
+  },
+  "inspection": {
+    "tables": [
+      {
+        "table": "lu_site",
+        "exists": true,
+        "columnCount": 6
+      },
+      {
+        "table": "lu_user",
+        "exists": true,
+        "columnCount": 9
+      },
+      {
+        "table": "lu_site_membership",
+        "exists": true,
+        "columnCount": 8
+      },
+      {
+        "table": "lu_session",
+        "exists": true,
+        "columnCount": 11
+      },
+      {
+        "table": "lu_auth_rate_limit",
+        "exists": true,
+        "columnCount": 6
+      },
+      {
+        "table": "lu_security_event",
+        "exists": true,
+        "columnCount": 8
+      }
+    ]
+  },
+  "preflight": {
+    "preexisting": []
+  }
+}

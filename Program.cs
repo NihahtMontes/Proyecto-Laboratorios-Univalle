@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Threading.RateLimiting;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Services;
@@ -20,9 +22,13 @@ builder.Logging.AddDebug();
 var dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys");
 Directory.CreateDirectory(dataProtectionKeysPath);
 
+// Protege las llaves en reposo en Windows; el key ring compartido multi-instancia se decide en la fase de despliegue.
+#pragma warning disable CA1416 // ProtectKeysWithDpapi es Windows-only y el despliegue actual es Windows.
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
-    .SetApplicationName("ProyectoLaboratoriosUnivalle");
+    .SetApplicationName("ProyectoLaboratoriosUnivalle")
+    .ProtectKeysWithDpapi();
+#pragma warning restore CA1416
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -81,7 +87,8 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
-    options.ValidationInterval = TimeSpan.FromMinutes(5);
+    // Define el SLA de revocacion (~1 minuto)
+    options.ValidationInterval = TimeSpan.FromMinutes(1);
 });
 
 builder.Services.AddAntiforgery(options =>
@@ -128,6 +135,29 @@ builder.Services.AddAuthorization(options =>
 ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 builder.WebHost.UseSetting("BrowserLink:Enabled", "false");
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy<string>("auth-login", httpContext =>
+    {
+        var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            clientIp,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.Headers["Retry-After"] = ((int)TimeSpan.FromMinutes(1).TotalSeconds).ToString();
+        await context.HttpContext.Response.WriteAsync("Demasiados intentos. Intente más tarde.", token);
+    };
+});
+
 builder.Services.AddControllers();
 builder.Services.AddRazorPages(options =>
 {
@@ -173,6 +203,7 @@ app.UseRouting();
 app.UseCookiePolicy();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapRazorPages();
 app.MapControllers();

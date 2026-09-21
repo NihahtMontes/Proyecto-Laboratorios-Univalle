@@ -1,0 +1,36 @@
+{
+  "name": "laboratorios-univalle-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=24.18.0 <25",
+    "pnpm": "12.4.2"
+  },
+  "scripts": {
+    "format": "prettier --check \"api/**/*.{js,json,ts,tsx}\" \"apps/**/*.{js,json,ts,tsx}\" \"packages/**/*.{js,json,md,ts}\" \"tests/**/*.{js,md}\" package.json pnpm-workspace.yaml tsconfig.base.json tsconfig.json tsconfig.vercel.json vercel.json eslint.config.js .prettierrc.json",
+    "format:fix": "prettier --write \"api/**/*.{js,json,ts,tsx}\" \"apps/**/*.{js,json,ts,tsx}\" \"packages/**/*.{js,json,md,ts}\" \"tests/**/*.{js,md}\" package.json pnpm-workspace.yaml tsconfig.base.json tsconfig.json tsconfig.vercel.json vercel.json eslint.config.js .prettierrc.json",
+    "lint": "eslint \"api/**/*.{js,ts,tsx}\" \"apps/**/*.{js,ts,tsx}\" \"packages/**/*.{js,ts,tsx}\" \"tests/**/*.{js,ts,tsx}\" eslint.config.js --max-warnings=0 --no-error-on-unmatched-pattern",
+    "typecheck": "corepack pnpm -r --workspace-concurrency=1 --if-present run typecheck && tsc --noEmit -p tsconfig.vercel.json",
+    "build": "corepack pnpm -r --workspace-concurrency=1 --if-present run build",
+    "test": "corepack pnpm -r --workspace-concurrency=1 --if-present run test",
+    "smoke": "corepack pnpm -r --workspace-concurrency=1 --if-present run smoke",
+    "start:local:api": "corepack pnpm --filter @lu/api run start:local",
+    "start:local:web": "corepack pnpm --filter @lu/web run start:local",
+    "verify": "corepack pnpm run format && corepack pnpm run lint && corepack pnpm run typecheck && corepack pnpm run build && corepack pnpm run test",
+    "e2e:deployed-auth": "node tests/e2e/deployed-auth.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.13.5",
+    "eslint": "10.10.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.12.0",
+    "prettier": "3.9.8",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0"
+  }
+}

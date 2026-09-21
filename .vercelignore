@@ -1,0 +1,56 @@
+# Local and orchestration state
+.agents/
+.codex/
+.config/
+.opencode/
+.vercel/
+.env*
+bin/
+node_modules/
+obj/
+tmp/
+DataProtectionKeys/
+
+# Legacy ASP.NET application is not part of the React/NestJS preview bundle
+Controllers/
+Data/
+Gastro/
+Helpers/
+Models/
+Pages/
+Properties/
+Scripts/
+Services/
+Tools/
+wwwroot/
+features/
+openspec/
+recursos/
+tests/
+
+# Documentation and local-only evidence
+docs/
+apps/api/database/
+apps/api/evidence/
+apps/api/migrations/
+apps/api/test/
+apps/web/evidence/
+
+# Legacy root utilities and configuration
+*.cs
+*.csproj
+*.csproj.user
+*.csx
+/*.html
+*.ps1
+*.py
+*.sln
+*.sql
+AGENTS*.md
+DOCS_*.md
+ERRORES_SOLUCIONES.md
+EXPLICACION_BOM.md
+MASTER_DEVELOPMENT_PLAN.md
+appsettings.json
+context.md
+opencode.json

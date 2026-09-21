@@ -29,10 +29,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
         private async Task<IActionResult> PerformLogout(string? returnUrl = null)
         {
-            // 1. Standard Identity SignOut
+            // 1. Clear wizard session data so it does not survive user change
+            HttpContext.Session.Clear();
+
+            // 2. Standard Identity SignOut
             await _signInManager.SignOutAsync();
 
-            // 2. Force Explicit Cookie Clearing (Fallback)
+            // 3. Force Explicit Cookie Clearing (Fallback)
             await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
 
             // 3. Redirect back to Login if no returnUrl

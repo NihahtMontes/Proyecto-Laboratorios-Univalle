@@ -1,0 +1,19 @@
+{
+  "artifact": "MIG-F12-PG-DEPARTURES-001",
+  "migration": "apps/api/migrations/tenant/0010_departures.sql",
+  "scope": "L-3 departures, mass creation, return and unit status transitions",
+  "database": "PostgreSQL local tenant sandbox",
+  "assertions": [
+    "Mass departure validates active Exit plans and laboratory-resolved units",
+    "Confirmed departure creates normalized items and moves the plan to Kardex/AwaitingKardex",
+    "Confirmed departure moves the unit to OnLoan",
+    "Return records actual return and restores the unit to Operational",
+    "Cancelled records remain logically preserved"
+  ],
+  "fixture": "Synthetic site, laboratory, equipment, unit, management and plan identifiers; all rows removed after verification.",
+  "verifiedAt": "2026-09-21",
+  "notes": [
+    "MassCreate semantics are represented by POST /api/v1/departures/mass.",
+    "No SQL Server write, Excel import, commit or deployment was performed."
+  ]
+}

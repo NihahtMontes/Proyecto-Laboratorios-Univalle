@@ -1,0 +1,22 @@
+{
+  "artifact": "MIG-F3-PG-ACADEMIC-001",
+  "generatedAt": "2026-09-21",
+  "target": "GastroExample local sandbox",
+  "controlPlaneMigration": "apps/api/migrations/control-plane/0004_academic_catalogs.sql",
+  "tenantMigration": "apps/api/migrations/tenant/0003_academic_laboratories.sql",
+  "checks": {
+    "facultyCrud": "PASS",
+    "careerCrud": "PASS",
+    "siteCareerAssignment": "PASS",
+    "laboratoryCrud": "PASS",
+    "controlTenantResolution": "PASS",
+    "softDelete": "PASS",
+    "fixtureCleanup": "PASS"
+  },
+  "notes": [
+    "Faculty, Career and SiteCareer are stored in the control plane; Laboratory is tenant-local.",
+    "The fixture used synthetic identifiers and was removed after verification.",
+    "No SQL Server, Neon or institutional Excel data was written.",
+    "0001-0003 remain unchanged. The academic control-plane migration is additive and must be registered by the deployment migration manifest before promotion."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "artifact": "MIG-F13-PG-KARDEX-001",
+  "scope": "Kardex/L-48 draft, technical closure, state history and transition to L-12",
+  "database": "PostgreSQL local tenant sandbox",
+  "assertions": [
+    "Kardex is restricted to a plan with maintenance and Exit/Kardex state",
+    "Draft saves preserve phase 5 and all technical task rows",
+    "Closure requires technician, return date, cost, satisfaction, observations and completed tasks",
+    "Closure creates operational equipment history, restores the unit and marks the departure returned",
+    "Closure advances the plan to phase 6 / AwaitingDisbursement"
+  ],
+  "fixture": "Synthetic site, laboratory, equipment, unit, management, maintenance, departure and plan identifiers; all rows removed after verification.",
+  "verifiedAt": "2026-09-21",
+  "notes": [
+    "The existing tenant state-history table is reused; no cross-database transaction is introduced.",
+    "No SQL Server write, Excel import, commit or deployment was performed."
+  ]
+}

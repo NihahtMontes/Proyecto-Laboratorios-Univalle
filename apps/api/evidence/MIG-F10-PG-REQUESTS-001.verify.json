@@ -1,0 +1,19 @@
+{
+  "artifact": "MIG-F10-PG-REQUESTS-001",
+  "migration": "apps/api/migrations/tenant/0008_requests.sql",
+  "scope": "L-7 requests, normalized request-unit links and management-plan transition",
+  "database": "PostgreSQL local tenant sandbox",
+  "assertions": [
+    "Draft request persists with active management and laboratory-resolved equipment unit",
+    "Completion advances the linked plan to L-8 (phase 3/state 4) without changing the tenant",
+    "List filters by management and preserves pagination contract",
+    "Duplicate active technical request is rejected by service and partial unique index",
+    "Cancellation is logical and request-unit history remains available"
+  ],
+  "fixture": "Synthetic site, laboratory, equipment, unit, management and plan identifiers; all rows removed after verification.",
+  "verifiedAt": "2026-09-21",
+  "notes": [
+    "No SQL Server write, Excel import, commit or deployment was performed.",
+    "Runtime connection uses the server-side tenant route and lu_auth_runtime role."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "artifact": "MIG-F2-PG-CATALOGS-001",
+  "generatedAt": "2026-09-21",
+  "target": "GastroExample local sandbox",
+  "migration": "apps/api/migrations/tenant/0002_catalogs.sql",
+  "checks": {
+    "tenantTables": "PASS",
+    "runtimeRolePrivileges": "PASS",
+    "countriesCrud": "PASS",
+    "citiesCrud": "PASS",
+    "duplicateValidation": "PASS",
+    "softDelete": "PASS",
+    "siteIsolation": "PASS",
+    "fixtureCleanup": "PASS"
+  },
+  "notes": [
+    "The fixture used synthetic site and user identifiers and was removed after verification.",
+    "No SQL Server, Neon or institutional Excel data was written.",
+    "The runtime pool resolved the tenant connection server-side and used lu_auth_runtime with a maximum pool size of two for the test."
+  ]
+}

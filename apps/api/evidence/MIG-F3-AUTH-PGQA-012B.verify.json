@@ -1,0 +1,77 @@
+{
+  "workId": "MIG-F3-AUTH-PGQA-012B",
+  "scope": "local-auth-control-plane-postgresql-qa",
+  "verifiedAt": "2026-09-19T22:02:12.500Z",
+  "target": {
+    "hostClass": "loopback",
+    "database": "GastroExample",
+    "serverVersion": "PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit",
+    "production": false
+  },
+  "roleProvisioning": {
+    "file": "apps/api/database/roles/001_provision_auth_runtime.sql",
+    "sha256": "0609ece4e134bb87649a08f50de21819833132a1d32cd7b86c4b5df2a82ec490",
+    "bytes": 12202,
+    "successfulRuns": 2,
+    "idempotent": true,
+    "loginRole": {
+      "name": "lu_auth_login",
+      "canLoginAfterVerification": false,
+      "inheritsPrivileges": false,
+      "passwordIsNull": true,
+      "residualConnections": 0
+    },
+    "runtimeRole": {
+      "name": "lu_auth_runtime",
+      "canLogin": false,
+      "inheritsPrivileges": false,
+      "passwordIsNull": true,
+      "maintainPrivilege": false
+    },
+    "publicSchemaCreate": false,
+    "publicDatabaseTemporary": false
+  },
+  "postgresIntegration": {
+    "enabledExplicitly": true,
+    "testFile": "apps/api/test/auth.postgres.integration.e2e-spec.ts",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "syntheticRowsRemaining": 0,
+    "rawTokensPersisted": false,
+    "verified": [
+      "AuthPgPool login-to-runtime role transition",
+      "fixed search_path",
+      "bcrypt login and opaque session hashing",
+      "active-site membership enforcement",
+      "security_version invalidation",
+      "restricted role privileges",
+      "row-lock serialization",
+      "transaction rollback",
+      "logout revocation"
+    ]
+  },
+  "rootGates": {
+    "format": "PASS",
+    "lint": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "unitAndContractTests": {
+      "jestPassed": 269,
+      "jestSkippedOptInPostgres": 7,
+      "vitestPassed": 1
+    },
+    "smoke": "PASS",
+    "gitDiffCheck": "PASS"
+  },
+  "independentReview": {
+    "status": "UNAVAILABLE",
+    "reason": "Luna Max provider had insufficient account funds; no independent verdict is claimed."
+  },
+  "limitations": [
+    "Evidence applies only to the local GastroExample sandbox.",
+    "The versioned login role remains disabled and passwordless after verification.",
+    "A deployment secret must enable the login principal outside the repository.",
+    "Distributed rate limiting and durable security-event auditing remain future production gates."
+  ]
+}

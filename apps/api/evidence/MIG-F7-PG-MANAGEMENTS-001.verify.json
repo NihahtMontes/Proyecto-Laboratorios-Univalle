@@ -1,0 +1,21 @@
+{
+  "artifact": "MIG-F7-PG-MANAGEMENTS-001",
+  "generatedAt": "2026-09-21",
+  "target": "GastroExample local sandbox",
+  "migration": "apps/api/migrations/tenant/0006_management_operations.sql",
+  "checks": {
+    "managementCrud": "PASS",
+    "activeByType": "PASS",
+    "preventiveCorrectiveCoexistence": "PASS",
+    "planAssetSync": "PASS",
+    "closeCommand": "PASS",
+    "softDelete": "PASS",
+    "fixtureCleanup": "PASS"
+  },
+  "notes": [
+    "The fixture used synthetic site, laboratory, equipment, unit and management identifiers and was removed after verification.",
+    "Preventive and corrective managements can be active simultaneously; activation closes only the previous active management of the same type.",
+    "Plan selection preserves ManagementId + EquipmentUnitId uniqueness and rejects units without a laboratory or confirmed equipment classification.",
+    "No SQL Server, Neon or institutional Excel data was written."
+  ]
+}

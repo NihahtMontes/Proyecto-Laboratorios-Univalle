@@ -1,0 +1,62 @@
+{
+  "workId": "MIG-F4-ROUTE-CATALOG-008",
+  "command": "verify",
+  "file": "0003_create_tenant_route_catalog.sql",
+  "sha256": "dfc0dc9a4cea47c584d5cc1f8705d30a3df9cc589f8702b9afeb15b43dd851f1",
+  "bytes": 1692,
+  "style": "additive",
+  "startedAt": "2026-09-21T18:55:57.147Z",
+  "finishedAt": "2026-09-21T18:55:57.320Z",
+  "server": {
+    "database": "GastroExample",
+    "user": "postgres",
+    "version": "PostgreSQL 18.6 on x86_64-windows, compiled by msvc-19.44.35228, 64-bit"
+  },
+  "target": "localhost:5432/GastroExample [ssl=disable (cleartext)]",
+  "readOnly": true,
+  "executed": false,
+  "committed": false,
+  "verification": {
+    "passed": true,
+    "diffs": []
+  },
+  "inspection": {
+    "tables": [
+      {
+        "table": "lu_site",
+        "exists": true,
+        "columnCount": 6
+      },
+      {
+        "table": "lu_user",
+        "exists": true,
+        "columnCount": 9
+      },
+      {
+        "table": "lu_site_membership",
+        "exists": true,
+        "columnCount": 8
+      },
+      {
+        "table": "lu_session",
+        "exists": true,
+        "columnCount": 11
+      },
+      {
+        "table": "lu_auth_rate_limit",
+        "exists": true,
+        "columnCount": 6
+      },
+      {
+        "table": "lu_security_event",
+        "exists": true,
+        "columnCount": 8
+      },
+      {
+        "table": "lu_tenant_route",
+        "exists": true,
+        "columnCount": 8
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "artifact": "MIG-F4-PG-PEOPLE-001",
+  "scope": "Tenant people/persons directory, internal/external records and soft delete",
+  "database": "PostgreSQL local tenant sandbox",
+  "assertions": [
+    "Internal and external persons preserve their type-specific fields",
+    "Actor codes are unique within the active site",
+    "Filters and tenant isolation are applied server-side",
+    "Baja lógica preserves the historical row"
+  ],
+  "fixture": "Synthetic site and person identifiers; all rows removed after verification.",
+  "verifiedAt": "2026-09-21",
+  "notes": [
+    "People are operational tenant records and are intentionally separate from control-plane login users.",
+    "No SQL Server write, Excel import, commit or deployment was performed."
+  ]
+}

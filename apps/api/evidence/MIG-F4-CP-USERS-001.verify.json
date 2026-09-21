@@ -1,0 +1,17 @@
+{
+  "artifact": "MIG-F4-CP-USERS-001",
+  "scope": "Control-plane user administration, site memberships and profile",
+  "database": "PostgreSQL local control-plane sandbox",
+  "assertions": [
+    "Accounts are created with a bcrypt hash and a site membership",
+    "Membership roles are updated without duplicating identity tables",
+    "Account status and security version changes invalidate old sessions",
+    "Profile changes update the current control-plane account"
+  ],
+  "fixture": "Synthetic site and user identifiers; all rows removed after verification.",
+  "verifiedAt": "2026-09-21",
+  "notes": [
+    "Migration 0005 is additive and grants runtime DML only; no DDL is available to the API runtime.",
+    "No SQL Server write, Excel import, commit or deployment was performed."
+  ]
+}

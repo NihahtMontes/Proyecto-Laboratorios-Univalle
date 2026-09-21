@@ -1,0 +1,22 @@
+{
+  "workId": "QA-F4-DEPLOY-AUTH-006",
+  "target": "https://laboratorios-univalle-preview.vercel.app",
+  "startedAt": "2026-09-20T12:57:55.389Z",
+  "finishedAt": "2026-09-20T12:58:00.756Z",
+  "checks": {
+    "csrf": "PASS",
+    "secureCookieAttributes": "PASS",
+    "login": "PASS",
+    "membership": "PASS",
+    "session": "PASS",
+    "siteContext": "PASS",
+    "logout": "PASS",
+    "revokedSessionRejected": "PASS"
+  },
+  "observed": {
+    "membershipCount": 1,
+    "role": "Administrador",
+    "activeSiteSelected": true
+  },
+  "containsSecrets": false
+}

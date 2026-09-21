@@ -1,0 +1,17 @@
+{
+  "artifact": "MIG-F14-PG-ACQUISITIONS-001",
+  "scope": "L-12 acquisition drafts, costs, confirmation and plan transition",
+  "database": "PostgreSQL local tenant sandbox",
+  "assertions": [
+    "Acquisitions require an active management plan in phase 6",
+    "Drafts persist request data and normalized cost rows",
+    "Confirmation preserves phase 6 and advances the plan to visual Step 7 / completed state",
+    "Acquisition listing is isolated by the active site"
+  ],
+  "fixture": "Synthetic site, laboratory, equipment, unit, management and phase-6 plan identifiers; all rows removed after verification.",
+  "verifiedAt": "2026-09-21",
+  "notes": [
+    "The request table is reused with type=2; acquisition costs are tenant-local child rows.",
+    "No SQL Server write, Excel import, commit or deployment was performed."
+  ]
+}

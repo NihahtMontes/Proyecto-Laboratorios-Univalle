@@ -1,8 +1,31 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "orchestrator",
+  "small_model": "opencode-go/qwen3.8-flash",
   "subagent_depth": 1,
   "share": "disabled",
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "tail_turns": 15
+  },
+  "tool_output": {
+    "max_lines": 800,
+    "max_bytes": 24000
+  },
+  "agent": {
+    "explore": {
+      "model": "opencode-go/deepseek-v4-pro",
+      "variant": "max",
+      "steps": 40,
+      "permission": {
+        "edit": "deny",
+        "bash": "deny",
+        "task": "deny",
+        "external_directory": "deny"
+      }
+    }
+  },
   "permission": {
     "external_directory": {
       "*": "deny",
@@ -28,6 +51,7 @@
       "git restore*": "deny",
       "dotnet ef database update*": "deny",
       "dotnet ef migrations*": "deny",
+      "*SyncCloudDb*": "deny",
       "Remove-Item *": "deny",
       "Move-Item *": "deny",
       "Rename-Item *": "deny",
@@ -35,6 +59,24 @@
       "Set-Content *": "deny",
       "Add-Content *": "deny",
       "Out-File *": "deny"
+    },
+    "task": {
+      "*": "deny",
+      "explore": "allow",
+      "architecture-admin": "allow",
+      "qa-security-admin": "allow",
+      "critical-reviewer": "allow",
+      "react-worker": "allow",
+      "nestjs-worker": "allow",
+      "database-worker": "allow",
+      "test-worker": "allow",
+      "reporting-worker": "allow",
+      "devops-worker": "allow",
+      "data-analyst": "allow",
+      "excel-auditor": "allow",
+      "reconciliation-auditor": "allow",
+      "documentation": "allow",
+      "dotnet-data-engineer": "allow"
     }
   }
 }

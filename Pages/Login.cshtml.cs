@@ -6,19 +6,37 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Proyecto_Laboratorios_Univalle.Pages
 {
     [AllowAnonymous]
+    [EnableRateLimiting("auth-login")]
     public class LoginModel : PageModel
     {
         private readonly SignInManager<User> _signInManager;
         private readonly UserManager<User> _userManager;
+        private static readonly User _dummyUser = CreateDummyUser();
 
         public LoginModel(SignInManager<User> signInManager, UserManager<User> userManager)
         {
             _signInManager = signInManager;
             _userManager = userManager;
+        }
+
+        private static User CreateDummyUser()
+        {
+            var dummy = new User
+            {
+                UserName = "dummy@univalle.local",
+                Email = "dummy@univalle.local",
+                PhoneNumber = "0000000000",
+                FirstName = "Dummy",
+                LastName = "User",
+                IdentityCard = "0000000000"
+            };
+            dummy.PasswordHash = new PasswordHasher<User>().HashPassword(dummy, "DummyPassword123!");
+            return dummy;
         }
 
         [BindProperty]
@@ -65,9 +83,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 var user = await _userManager.FindByNameAsync(login)
                     ?? await _userManager.FindByEmailAsync(login);
 
-                if (user == null || user.Status != GeneralStatus.Activo)
+                const string GenericLoginError = "Intento de inicio de sesión no válido.";
+
+                if (user == null)
                 {
-                    ModelState.AddModelError(string.Empty, "Intento de inicio de sesión no válido.");
+                    _ = _userManager.PasswordHasher.VerifyHashedPassword(_dummyUser, _dummyUser.PasswordHash!, Input.Password);
+                    ModelState.AddModelError(string.Empty, GenericLoginError);
+                    return Page();
+                }
+
+                if (user.Status != GeneralStatus.Activo)
+                {
+                    _ = _userManager.PasswordHasher.VerifyHashedPassword(user, user.PasswordHash ?? _dummyUser.PasswordHash!, Input.Password);
+                    ModelState.AddModelError(string.Empty, GenericLoginError);
                     return Page();
                 }
 
@@ -79,6 +107,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
                 if (result.Succeeded)
                 {
+                    HttpContext.Session.Clear();
                     return LocalRedirect(returnUrl);
                 }
                 if (result.RequiresTwoFactor)

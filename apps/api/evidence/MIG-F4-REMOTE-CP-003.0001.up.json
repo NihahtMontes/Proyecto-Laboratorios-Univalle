@@ -1,0 +1,60 @@
+{
+  "workId": "MIG-F3-PG-IDENTITY-001",
+  "command": "up",
+  "file": "0001_create_identity_control_plane.sql",
+  "sha256": "a7698ea53a443d42e87bf905ae9e0f7060923a26199bc06ad23f17401e1bc118",
+  "bytes": 4491,
+  "style": "bootstrap",
+  "startedAt": "2026-09-20T03:12:34.173Z",
+  "finishedAt": "2026-09-20T03:12:37.876Z",
+  "server": {
+    "database": "neondb",
+    "user": "neondb_owner",
+    "version": "PostgreSQL 18.6 (6569466) on aarch64-unknown-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit"
+  },
+  "target": "ep-lucky-boat-au1pjed3.c-10.us-east-1.aws.neon.tech:5432/neondb [ssl=prefer (verified TLS, OS trust store)]",
+  "readOnly": false,
+  "executed": true,
+  "committed": true,
+  "verification": {
+    "passed": true,
+    "diffs": []
+  },
+  "inspection": {
+    "tables": [
+      {
+        "table": "lu_site",
+        "exists": true,
+        "columnCount": 6
+      },
+      {
+        "table": "lu_user",
+        "exists": true,
+        "columnCount": 9
+      },
+      {
+        "table": "lu_site_membership",
+        "exists": true,
+        "columnCount": 8
+      },
+      {
+        "table": "lu_session",
+        "exists": true,
+        "columnCount": 11
+      },
+      {
+        "table": "lu_auth_rate_limit",
+        "exists": false,
+        "columnCount": 0
+      },
+      {
+        "table": "lu_security_event",
+        "exists": false,
+        "columnCount": 0
+      }
+    ]
+  },
+  "preflight": {
+    "preexisting": []
+  }
+}

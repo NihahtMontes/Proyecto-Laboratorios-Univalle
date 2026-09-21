@@ -1,0 +1,21 @@
+{
+  "artifact": "MIG-F6-PG-EQUIPMENT-UNITS-001",
+  "generatedAt": "2026-09-21",
+  "target": "GastroExample local sandbox",
+  "migration": "apps/api/migrations/tenant/0005_equipment_units_history.sql",
+  "checks": {
+    "equipmentUnitCrud": "PASS",
+    "laboratoryDerivedSite": "PASS",
+    "stateHistory": "PASS",
+    "searchFilter": "PASS",
+    "softDelete": "PASS",
+    "tenantRuntimePool": "PASS",
+    "fixtureCleanup": "PASS"
+  },
+  "notes": [
+    "The fixture used synthetic site, laboratory, equipment and unit identifiers and was removed after verification.",
+    "Normal inventory excludes legacy units without a laboratory; includeUnresolved is an explicit review filter and does not infer a site.",
+    "Career references are validated against the active SiteCareer in the control plane without a cross-database JOIN.",
+    "No SQL Server, Neon or institutional Excel data was written."
+  ]
+}

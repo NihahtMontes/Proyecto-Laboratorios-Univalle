@@ -8,6 +8,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using System.Data;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Users
 {
@@ -244,7 +245,38 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                     newProfilePicturePath = Path.Combine(uploadsFolder, newProfilePictureUrl);
                 }
 
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                // Serializable bloquea lecturas/escrituras sobre el rango de SuperAdmin activos,
+                // evitando que dos operaciones concurrentes degraden ambos al mismo tiempo.
+                await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+                // Re-verificación dentro de la transacción contra estado vigente de DB
+                // (query fresca; no se confía en el snapshot cargado antes) para cerrar la carrera.
+                var liveTarget = await _context.Users
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .Where(user => user.Id == id)
+                    .Select(user => new { user.Role, user.Status })
+                    .FirstOrDefaultAsync();
+
+                if (liveTarget?.Role == UserRole.SuperAdmin &&
+                    (Input.Role != UserRole.SuperAdmin || Input.Status != GeneralStatus.Activo))
+                {
+                    var hasAnotherActiveSuperAdmin = await _context.Users
+                        .IgnoreQueryFilters()
+                        .AnyAsync(user => user.Id != id &&
+                            user.Role == UserRole.SuperAdmin &&
+                            user.Status == GeneralStatus.Activo);
+
+                    if (!hasAnotherActiveSuperAdmin)
+                    {
+                        ModelState.AddModelError(string.Empty,
+                            "Debe existir al menos un superadministrador activo.");
+                        await transaction.RollbackAsync();
+                        Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
+                        LoadRoles();
+                        return Page();
+                    }
+                }
 
                 var previousStatus = userToUpdate.Status;
                 ApplyInput(userToUpdate, normalizedEmail, normalizedIdentityCard);

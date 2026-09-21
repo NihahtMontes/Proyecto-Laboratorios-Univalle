@@ -1,12 +1,17 @@
 ---
 description: Mantiene documentacion alineada con evidencia tecnica vigente
 mode: subagent
+model: opencode-go/glm-5.3-flash
+variant: high
+steps: 40
 permission:
   external_directory: deny
   edit:
     "*": deny
     "docs/*.md": allow
     "docs/**/*.md": allow
+    "docs/AGENT_WORKFLOW.md": deny
+    "docs/COORDINACION_MULTI_CHAT.md": deny
     "D:/proyectoSis/Excels/**": deny
   bash: deny
   task: deny

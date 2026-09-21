@@ -1,0 +1,47 @@
+{
+  "name": "@lu/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nest build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
+    "start:local": "corepack pnpm run build && node --env-file=.env.local dist/main.js",
+    "predb:migrate:plan": "corepack pnpm run build",
+    "db:migrate:plan": "node dist/database/migration-cli.js plan",
+    "predb:migrate:status": "corepack pnpm run build",
+    "db:migrate:status": "node dist/database/migration-cli.js status",
+    "predb:migrate:up": "corepack pnpm run build",
+    "db:migrate:up": "node dist/database/migration-cli.js up",
+    "predb:migrate:verify": "corepack pnpm run build",
+    "db:migrate:verify": "node dist/database/migration-cli.js verify",
+    "preauth:bootstrap": "corepack pnpm run build",
+    "auth:bootstrap": "node dist/auth/auth-bootstrap-cli.js",
+    "preauth:managed-role": "corepack pnpm run build",
+    "auth:managed-role": "node dist/auth/auth-managed-role-cli.js",
+    "presmoke": "corepack pnpm --filter @lu/contracts run build && corepack pnpm run build",
+    "smoke": "node dist/smoke.js"
+  },
+  "dependencies": {
+    "@lu/contracts": "workspace:*",
+    "@nestjs/common": "12.0.3",
+    "@nestjs/core": "12.0.3",
+    "@nestjs/platform-fastify": "12.0.3",
+    "bcryptjs": "3.0.3",
+    "exceljs": "4.4.0",
+    "pg": "8.23.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "12.0.3",
+    "@nestjs/testing": "12.0.3",
+    "@types/jest": "30.0.0",
+    "@types/node": "24.13.5",
+    "@types/pg": "8.23.1",
+    "jest": "30.5.2",
+    "ts-jest": "29.4.12",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,6 +1,9 @@
 ---
 description: Analiza relaciones, integridad y calidad de datos sin implementar cambios
 mode: subagent
+model: opencode-go/gpt-5.6-luna
+variant: max
+steps: 40
 permission:
   external_directory: deny
   edit: deny

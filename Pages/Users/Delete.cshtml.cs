@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using System.Data;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Users
 {
@@ -121,7 +122,37 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             try
             {
-                await using var transaction = await _context.Database.BeginTransactionAsync();
+                // Serializable evita que dos bajas concurrentes eliminen los últimos SuperAdmin.
+                await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+                // Re-verificación dentro de la transacción contra estado vigente de DB.
+                var liveTarget = await _context.Users
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .Where(u => u.Id == id)
+                    .Select(u => new { u.Role, u.Status })
+                    .FirstOrDefaultAsync();
+
+                if (liveTarget?.Status == GeneralStatus.Eliminado)
+                {
+                    TempData.Warning($"El usuario '{user.FullName}' ya se encuentra dado de baja.");
+                    return RedirectToPage("./Index");
+                }
+
+                if (liveTarget?.Role == UserRole.SuperAdmin)
+                {
+                    var hasAnotherActiveSuperAdmin = await _context.Users
+                        .IgnoreQueryFilters()
+                        .AnyAsync(candidate => candidate.Id != user.Id &&
+                            candidate.Role == UserRole.SuperAdmin &&
+                            candidate.Status == GeneralStatus.Activo);
+
+                    if (!hasAnotherActiveSuperAdmin)
+                    {
+                        TempData.Error("Debe existir al menos un superadministrador activo.");
+                        return RedirectToPage("./Index");
+                    }
+                }
 
                 var lockoutResult = await _userManager.SetLockoutEndDateAsync(user, DateTimeOffset.MaxValue);
                 if (!lockoutResult.Succeeded)

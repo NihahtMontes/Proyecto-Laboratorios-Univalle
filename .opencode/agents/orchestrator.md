@@ -1,6 +1,9 @@
 ---
 description: Coordina el analisis y mantenimiento controlado de Laboratorios Univalle
 mode: primary
+model: openai/gpt-5.6-sol
+variant: xhigh
+steps: 80
 permission:
   external_directory:
     "*": deny
@@ -24,6 +27,7 @@ permission:
     "git restore*": deny
     "dotnet ef database update*": deny
     "dotnet ef migrations*": deny
+    "*SyncCloudDb*": deny
     "Remove-Item *": deny
     "Move-Item *": deny
     "Rename-Item *": deny
@@ -33,6 +37,16 @@ permission:
     "Out-File *": deny
   task:
     "*": deny
+    explore: allow
+    architecture-admin: allow
+    qa-security-admin: allow
+    critical-reviewer: allow
+    react-worker: allow
+    nestjs-worker: allow
+    database-worker: allow
+    test-worker: allow
+    reporting-worker: allow
+    devops-worker: allow
     data-analyst: allow
     excel-auditor: allow
     reconciliation-auditor: allow
@@ -53,3 +67,11 @@ Delega en el especialista adecuado y conserva para ti el alcance, las decisiones
 Prioriza la evidencia asi: codigo y contratos ejecutables; self-checks y herramientas QA; manifiestos, snapshots y hashes de la ejecucion consultada; documentacion explicativa. No trates cifras historicas como estado actual sin verificar sus artefactos.
 
 Al cerrar, integra los handoffs, revisa el diff, informa archivos modificados, validaciones realmente ejecutadas y riesgos pendientes. No afirmes que una comprobacion paso si no se ejecuto.
+
+## Politica de modelos y consumo
+
+- Conserva para ti las decisiones, la integracion y las puertas de fase; no repitas el analisis detallado ya entregado por especialistas.
+- Usa trabajadores `opencode-go` para implementacion y administradores Luna read-only para revision independiente.
+- Invoca `critical-reviewer` solo en autenticacion, wizard, datos, reportes institucionales y cortes de produccion.
+- Entrega a cada subagente solo el contexto y las rutas de su tarea. Agrupa revisiones por vertical slice, no por archivo.
+- Mantiene `subagent_depth: 1`: los subagentes no coordinan ni delegan en otros subagentes.

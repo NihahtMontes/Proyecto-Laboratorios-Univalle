@@ -1,6 +1,8 @@
 ---
 description: Implementa cambios controlados en el pipeline historico .NET existente
 mode: subagent
+model: opencode-go/kimi-k2.7-code
+steps: 64
 permission:
   external_directory:
     "*": deny
@@ -26,6 +28,7 @@ permission:
     "git restore*": deny
     "dotnet ef database update*": deny
     "dotnet ef migrations*": deny
+    "*SyncCloudDb*": deny
     "Remove-Item *": deny
     "Move-Item *": deny
     "Rename-Item *": deny

@@ -23,16 +23,50 @@ Una cifra documentada no describe automáticamente el estado actual. Debe vincul
 
 ## Agentes
 
-| Agente | Modo | Responsabilidad | Escritura ordinaria |
-|---|---|---|---|
-| `orchestrator` | Primary | Alcance, asignación, integración y verificación | Requiere permiso |
-| `data-analyst` | Subagent | Relaciones, integridad y calidad de datos | Ninguna |
-| `excel-auditor` | Subagent | Libro Excel, EPPlus y correspondencia contractual | Ninguna |
-| `reconciliation-auditor` | Subagent | P0/P1/P2, conflictos y trazabilidad | Ninguna |
-| `documentation` | Subagent | Alineación documental basada en evidencia | Markdown asignado bajo `docs/` |
-| `dotnet-data-engineer` | Subagent | Implementación en el pipeline histórico | Directorios asignados de Import/Apply |
+### Coordinación y administración GPT
 
-`subagent_depth: 1` permite que el orquestador invoque especialistas sin habilitar otro nivel de delegación. `permission.task` limita la delegación automática a estos cinco perfiles. El usuario aún puede invocarlos directamente mediante `@`.
+| Agente | Modelo | Responsabilidad | Escritura ordinaria |
+|---|---|---|---|
+| `orchestrator` | GPT-5.6 Sol xhigh | Alcance, asignación, integración y verificación final | Requiere permiso |
+| `architecture-admin` | GPT-5.6 Luna high vía OpenCode Go | Revisión de arquitectura, contratos y convivencia | Ninguna |
+| `qa-security-admin` | GPT-5.6 Luna high vía OpenCode Go | Seguridad, autorización, regresiones y evidencia | Ninguna |
+| `critical-reviewer` | GPT-5.6 Luna max vía OpenCode Go | Puertas de autenticación, wizard, datos, reportes y cutover | Ninguna |
+
+### Trabajadores de implementación
+
+| Agente | Modelo | Responsabilidad | Escritura ordinaria |
+|---|---|---|---|
+| `react-worker` | Kimi K2.7 Code | React, Vite, TypeScript y UI | `apps/web/`, `packages/ui/` |
+| `nestjs-worker` | Kimi K2.7 Code vía OpenCode Go | APIs y servicios NestJS | `apps/api/` sin Prisma; contratos y cliente API |
+| `database-worker` | DeepSeek V4 Pro max | Esquema y artefactos PostgreSQL | Prisma, `database/`, scripts de migración |
+| `test-worker` | Qwen 3.8 Flash xhigh | Integración, contratos y E2E | `tests/` |
+| `reporting-worker` | Kimi K2.7 Code | Sustitución Node de reportes | worker y paquete de reportes; las pruebas pertenecen a `test-worker` |
+| `devops-worker` | Qwen 3.8 Flash xhigh | Monorepo, CI, contenedores y observabilidad | Infraestructura asignada; nunca despliega |
+
+### Especialistas de datos y legado
+
+| Agente | Modelo | Responsabilidad | Escritura ordinaria |
+|---|---|---|---|
+| `explore` | DeepSeek V4.1 Flash high | Exploración dirigida de solo lectura | Ninguna |
+| `data-analyst` | GPT-5.6 Luna max vía OpenCode Go | Relaciones, integridad y calidad de datos | Ninguna |
+| `excel-auditor` | GPT-5.6 Luna high vía OpenCode Go | Libro Excel, EPPlus y correspondencia contractual | Ninguna |
+| `reconciliation-auditor` | GPT-5.6 Luna max vía OpenCode Go | P0/P1/P2, conflictos y trazabilidad | Ninguna |
+| `documentation` | GLM 5.3 Flash high | Alineación documental basada en evidencia | Markdown asignado bajo `docs/` |
+| `dotnet-data-engineer` | Kimi K2.7 Code | Implementación temporal en el pipeline histórico | Directorios asignados de Import/Apply |
+
+`subagent_depth: 1` permite que el orquestador invoque especialistas sin habilitar delegación anidada. Los administradores Luna no lanzan trabajadores: Sol asigna primero al trabajador y después solicita la revisión independiente. `permission.task` limita la delegación a los perfiles anteriores. El usuario aún puede invocarlos directamente mediante `@`.
+
+### Política de consumo
+
+- `orchestrator` es la única excepción autorizada a usar `openai/*` mediante la suscripción GPT Plus del usuario. Todos los subagentes, administradores, auditores, trabajadores, `explore` y el modelo pequeño deben declarar explícitamente un modelo `opencode-go/*`.
+- Los trabajadores OpenCode Go realizan la implementación detallada.
+- Luna high revisa lotes o vertical slices terminados, no archivos individuales.
+- Luna max se reserva para autenticación, wizard, migración de datos, reportes institucionales y cutover.
+- Sol xhigh conserva decisiones e integración y evita repetir el análisis completo de los especialistas.
+- Los límites `steps` y la compactación automática reducen ciclos y contexto sin eliminar la revisión final.
+- No se ejecuta un perfil `mode: subagent` mediante `opencode run --agent`: la CLI puede caer al agente primario y consumir GPT Plus. Los subagentes se invocan mediante `task`; un smoke test CLI debe fijar expresamente `--model opencode-go/...`.
+- Los permisos `bash: ask` de los trabajadores no autorizan operaciones externas: dependencias, datos, migraciones y despliegues continúan requiriendo aprobación explícita del usuario. Los comandos destructivos o de promoción conocidos permanecen denegados.
+- `documentation` no puede modificar `AGENT_WORKFLOW.md` ni `COORDINACION_MULTI_CHAT.md`; esos documentos de gobierno quedan bajo integración directa del orquestador.
 
 ## Protocolo de propiedad temporal
 

@@ -1,0 +1,19 @@
+{
+  "artifact": "MIG-F9-PG-VERIFICATIONS-001",
+  "generatedAt": "2026-09-21",
+  "target": "GastroExample local sandbox",
+  "migration": "apps/api/migrations/tenant/0007_verifications.sql",
+  "checks": {
+    "verificationDraft": "PASS",
+    "individualFailureFlow": "PASS",
+    "massVerification": "PASS",
+    "checklistResults": "PASS",
+    "planTransitions": "PASS",
+    "tenantIsolationAndCleanup": "PASS"
+  },
+  "notes": [
+    "The fixture used synthetic site, laboratory, equipment, units, management and checklist identifiers and was removed after verification.",
+    "A draft remains on L-6; a completed verification with a fault advances its plan to L-7, while a good mass verification marks its unit verified.",
+    "No SQL Server, Neon or institutional Excel data was written."
+  ]
+}

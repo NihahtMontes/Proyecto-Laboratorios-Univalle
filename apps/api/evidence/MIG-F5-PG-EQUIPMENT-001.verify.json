@@ -1,0 +1,21 @@
+{
+  "artifact": "MIG-F5-PG-EQUIPMENT-001",
+  "generatedAt": "2026-09-21",
+  "target": "GastroExample local sandbox",
+  "migration": "apps/api/migrations/tenant/0004_equipment_notes.sql",
+  "checks": {
+    "equipmentCrud": "PASS",
+    "countryCityResolution": "PASS",
+    "notesReplacement": "PASS",
+    "searchFilter": "PASS",
+    "softDelete": "PASS",
+    "tenantRuntimePool": "PASS",
+    "fixtureCleanup": "PASS"
+  },
+  "notes": [
+    "The fixture used synthetic site, user, country, city and equipment identifiers and was removed after verification.",
+    "Equipment definitions are tenant-local; physical units and Kardex remain later slices.",
+    "The tenant runtime pool used lu_auth_runtime with a maximum size of two for the test.",
+    "No SQL Server, Neon or institutional Excel data was written."
+  ]
+}

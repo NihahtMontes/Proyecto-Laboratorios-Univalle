@@ -38,3 +38,17 @@ outputs/
 *.bacpac
 *.mdf
 *.ldf
+
+# Node.js / pnpm monorepo
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+*.tsbuildinfo
+test-results/
+playwright-report/
+.vite/
+.vercel/
+
+.env*
+!**/.env.example

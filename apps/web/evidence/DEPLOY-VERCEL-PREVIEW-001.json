@@ -1,0 +1,55 @@
+{
+  "workId": "DEPLOY-VERCEL-PREVIEW-001",
+  "deployedAt": "2026-09-20T01:28:54.973Z",
+  "provider": "Vercel",
+  "project": {
+    "id": "prj_AsObZajQe7SkrFH4pd53Mw01HQif",
+    "name": "laboratorios-univalle-preview"
+  },
+  "deployment": {
+    "id": "dpl_4R7AjnbULk83sL32twXD7WfkSLEM",
+    "target": "preview",
+    "readyState": "READY",
+    "url": "https://laboratorios-univalle-preview-n92ukbk1m.vercel.app",
+    "inspectUrl": "https://vercel.com/montesnihaht-2850s-projects/laboratorios-univalle-preview/4R7AjnbULk83sL32twXD7WfkSLEM"
+  },
+  "stableAlias": "https://laboratorios-univalle-preview.vercel.app",
+  "source": {
+    "kind": "prebuilt-static-dist",
+    "backendIncluded": false,
+    "databaseIncluded": false,
+    "environmentVariablesIncluded": false,
+    "files": [
+      {
+        "path": "index.html",
+        "sha256": "5a3acb105f48572eaba9d0e1d8233c652edb688bc89a7711ba69b1c55943af1d",
+        "bytes": 421
+      },
+      {
+        "path": "assets/index-BOSRDTMg.js",
+        "sha256": "613d1e3461803adc3dafbdcda331037241473c8e644087f678bc79ca3b11eada",
+        "bytes": 219982
+      }
+    ]
+  },
+  "validation": {
+    "viteBuild": "PASS",
+    "vitest": {
+      "executed": 1,
+      "passed": 1
+    },
+    "sensitivePatternScan": "PASS",
+    "anonymousHtmlFetch": "PASS",
+    "anonymousBundleFetch": "PASS",
+    "deploymentProtection": {
+      "sso": null,
+      "gitForkProtection": true
+    }
+  },
+  "notes": [
+    "The first deployment of the new Vercel project was automatically assigned to production by Vercel.",
+    "A subsequent preview carrying Git metadata was blocked by the account policy and is not the verified URL.",
+    "The verified preview was deployed with Git discovery disabled without changing git configuration.",
+    "This artifact proves only the static React scaffold deployment; it does not deploy or validate the NestJS API."
+  ]
+}

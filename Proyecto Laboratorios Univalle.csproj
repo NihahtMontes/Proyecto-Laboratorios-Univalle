@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Proyecto_Laboratorios_Univalle</RootNamespace>
-    <DefaultItemExcludes>$(DefaultItemExcludes);tmp\**;tmp\**\*;tmp/**;tmp/**/*</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tmp\**;tmp\**\*;tmp/**;tmp/**/*;apps\**;apps\**\*;apps/**;apps/**/*;packages\**;packages\**\*;packages/**;packages/**/*;tests\**;tests\**\*;tests/**;tests/**/*</DefaultItemExcludes>
     <UserSecretsId>e2ee0ec6-49ab-4006-8a26-76ab45a791b4</UserSecretsId>
   </PropertyGroup>
 

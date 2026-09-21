@@ -1,0 +1,49 @@
+# Workspace raíz del monorepo Laboratorios Univalle (Fase 2 del plan de migración).
+# apps/*: aplicaciones (web React + Vite, api NestJS + Fastify).
+# packages/*: paquetes compartidos (ui, contratos, cliente de API, reportes).
+# tests/*: suites de integración, contratos y E2E.
+# Los paquetes definen sus propias dependencias; el root solo porta gobernanza.
+packages:
+  - apps/*
+  - packages/*
+  - tests/*
+
+autoInstallPeers: true
+saveExact: true
+strictPeerDependencies: true
+
+allowBuilds:
+  '@parcel/watcher': false
+  esbuild: true
+  unrs-resolver: false
+
+minimumReleaseAgeExclude:
+  - '@jest/console@30.5.2'
+  - '@jest/core@30.5.2'
+  - '@jest/environment@30.5.2'
+  - '@jest/expect-utils@30.5.2'
+  - '@jest/expect@30.5.2'
+  - '@jest/fake-timers@30.5.2'
+  - '@jest/globals@30.5.2'
+  - '@jest/reporters@30.5.2'
+  - '@jest/source-map@30.5.2'
+  - '@jest/test-result@30.5.2'
+  - '@jest/test-sequencer@30.5.2'
+  - '@jest/transform@30.5.2'
+  - babel-jest@30.5.2
+  - expect@30.5.2
+  - jest-circus@30.5.2
+  - jest-cli@30.5.2
+  - jest-config@30.5.2
+  - jest-diff@30.5.2
+  - jest-each@30.5.2
+  - jest-environment-node@30.5.2
+  - jest-matcher-utils@30.5.2
+  - jest-mock@30.5.2
+  - jest-resolve-dependencies@30.5.2
+  - jest-runner@30.5.2
+  - jest-runtime@30.5.2
+  - jest-snapshot@30.5.2
+  - jest-watcher@30.5.2
+  - jest@30.5.2
+  - prettier@3.9.8
