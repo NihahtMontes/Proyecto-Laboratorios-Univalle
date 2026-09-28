@@ -18,6 +18,7 @@ import {
   TARGET_TABLES,
   analyzeMigrationSql,
   buildMigrationPlan,
+  canonicalByteLength,
   sanitizeSql,
   sha256Hex,
 } from '../src/database/migration-plan.js';
@@ -49,13 +50,15 @@ describe('migration-plan: the real 0001 file passes the policy', () => {
     expect(analyzeMigrationSql(REAL_SQL).violations.filter((v) => /UPDATE/i.test(v))).toEqual([]);
   });
 
-  it('buildMigrationPlan returns a stable SHA-256 over the exact bytes', () => {
+  it('buildMigrationPlan returns a stable SHA-256 over the canonical LF bytes', () => {
     const buffer = readFileSync(MIGRATION_PATH);
     const plan = buildMigrationPlan(MIGRATION_PATH, buffer);
     expect(plan.file).toBe(IDENTITY_MIGRATION_FILE);
     expect(plan.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(plan.sha256).toBe(sha256Hex(buffer));
-    expect(plan.byteLength).toBe(buffer.length);
+    // Canonical length == on-disk length after CRLF -> LF normalization.
+    expect(plan.byteLength).toBe(canonicalByteLength(buffer));
+    expect(plan.rawByteLength).toBe(buffer.length);
     expect(plan.tables).toEqual([...TARGET_TABLES]);
     // Same content twice -> same hash (reproducibility check).
     expect(buildMigrationPlan(MIGRATION_PATH, buffer.toString('utf8')).sha256).toBe(plan.sha256);
@@ -120,7 +123,7 @@ describe('migration-plan: destructive and out-of-scope SQL is rejected', () => {
     const extra = analyzeMigrationSql(
       REAL_SQL + '\nCREATE TABLE IF NOT EXISTS lu_audit_log (id uuid PRIMARY KEY);\n',
     ).violations;
-    expect(extra).toContain('creates table outside the allowlist: lu_audit_log');
+    expect(extra).toContain('creates table outside the touched allowlist: lu_audit_log');
 
     const partial = analyzeMigrationSql(
       'CREATE TABLE IF NOT EXISTS lu_site (id uuid PRIMARY KEY);',

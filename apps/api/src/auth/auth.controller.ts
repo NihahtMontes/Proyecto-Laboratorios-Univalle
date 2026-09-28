@@ -23,7 +23,7 @@ import { AuthService } from './auth.service.js';
 import { clearCookie, serializeCookie } from './auth.crypto.js';
 import { AuthForbiddenException, AuthValidationException } from './auth.exceptions.js';
 import { getSingleHeader, parseCookies } from './auth.types.js';
-import type { ActiveSiteSession, CsrfResponse } from './auth.types.js';
+import type { AuthSessionResponse } from './auth.types.js';
 
 function getRemoteAddress(request: FastifyRequest): string | undefined {
   return request.socket?.remoteAddress;
@@ -110,7 +110,7 @@ export class AuthController {
   csrf(
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): CsrfResponse {
+  ): { readonly csrfToken: string } {
     const response = this.authService.generateCsrf();
     reply.header(
       'Set-Cookie',
@@ -131,42 +131,105 @@ export class AuthController {
     @Body() body: unknown,
     @Req() request: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<{ success: true; data: ActiveSiteSession }> {
+  ): Promise<{
+    readonly success: true;
+    readonly data: AuthSessionResponse['session'];
+    readonly meta: {
+      readonly purpose: AuthSessionResponse['purpose'];
+      readonly mustChangePassword: boolean;
+    };
+    readonly eligibleSites: AuthSessionResponse['eligibleSites'];
+  }> {
     const ip = getRemoteAddress(request);
     const result = await this.authService.login(body, ip);
 
-    reply.header(
-      'Set-Cookie',
-      serializeCookie(SESSION_COOKIE, result.token, {
-        path: '/',
-        httpOnly: true,
-        secure: true,
-        sameSite: 'Lax',
-        ...(result.persistent ? { maxAge: this.config.absoluteTtlSeconds } : {}),
-      }),
-    );
+    reply.header('Set-Cookie', this.authService.sessionCookie(result.token, result.persistent));
 
-    return { success: true, data: result.session };
+    return {
+      success: true,
+      data: result.response.session,
+      meta: {
+        purpose: result.response.purpose,
+        mustChangePassword: result.response.mustChangePassword,
+      },
+      eligibleSites: result.response.eligibleSites,
+    };
   }
 
   @Get('session')
   @SkipCsrf()
-  async session(
-    @Req() request: FastifyRequest,
-  ): Promise<{ success: true; data: ActiveSiteSession }> {
+  async session(@Req() request: FastifyRequest): Promise<{
+    readonly success: true;
+    readonly data: AuthSessionResponse['session'];
+    readonly meta: {
+      readonly purpose: AuthSessionResponse['purpose'];
+      readonly mustChangePassword: boolean;
+    };
+    readonly eligibleSites: AuthSessionResponse['eligibleSites'];
+  }> {
     const sessionValue = readSessionCookie(request);
-    const data = await this.authService.getSession(sessionValue);
-    return { success: true, data };
+    const response = await this.authService.getSession(sessionValue);
+    return {
+      success: true,
+      data: response.session,
+      meta: { purpose: response.purpose, mustChangePassword: response.mustChangePassword },
+      eligibleSites: response.eligibleSites,
+    };
   }
 
   @Put('session/active-site')
   async setActiveSite(
     @Body() body: unknown,
     @Req() request: FastifyRequest,
-  ): Promise<{ success: true; data: ActiveSiteSession }> {
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<{
+    readonly success: true;
+    readonly data: AuthSessionResponse['session'];
+    readonly meta: {
+      readonly purpose: AuthSessionResponse['purpose'];
+      readonly mustChangePassword: boolean;
+    };
+    readonly eligibleSites: AuthSessionResponse['eligibleSites'];
+  }> {
     const sessionValue = readSessionCookie(request);
-    const data = await this.authService.setActiveSite(sessionValue, body);
-    return { success: true, data };
+    const { response, token } = await this.authService.setActiveSite(sessionValue, body);
+    if (token !== null) {
+      // The site_selection session was revoked and replaced by a normal session.
+      reply.header('Set-Cookie', this.authService.sessionCookie(token, false));
+    }
+    return {
+      success: true,
+      data: response.session,
+      meta: { purpose: response.purpose, mustChangePassword: response.mustChangePassword },
+      eligibleSites: response.eligibleSites,
+    };
+  }
+
+  @Post('password')
+  @HttpCode(200)
+  async changePassword(
+    @Body() body: unknown,
+    @Req() request: FastifyRequest,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<{
+    readonly success: true;
+    readonly data: AuthSessionResponse['session'];
+    readonly meta: {
+      readonly purpose: AuthSessionResponse['purpose'];
+      readonly mustChangePassword: boolean;
+    };
+    readonly eligibleSites: AuthSessionResponse['eligibleSites'];
+  }> {
+    const sessionValue = readSessionCookie(request);
+    const ip = getRemoteAddress(request);
+    const { response, token } = await this.authService.changePassword(sessionValue, body, ip);
+    reply.header('Set-Cookie', this.authService.sessionCookie(token, false));
+    return {
+      success: true,
+      data: response.session,
+      meta: { purpose: response.purpose, mustChangePassword: response.mustChangePassword },
+      eligibleSites: response.eligibleSites,
+    };
   }
 
   @Post('logout')

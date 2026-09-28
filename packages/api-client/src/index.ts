@@ -5,7 +5,6 @@ import {
   EQUIPMENT_ROUTES,
   CORE_ROUTES,
   DASHBOARD_ROUTES,
-  type ActiveSiteSession,
   type ApiFailure,
   type ApiResult,
   type CsrfResponse,
@@ -19,7 +18,11 @@ import {
   type DashboardNotification,
   type DashboardQuery,
   type DashboardSummary,
+  type AuthSessionEnvelope,
+  type AuthSessionResponse,
+  type ChangePasswordRequest,
   type LoginRequest,
+  type SessionPurpose,
   type SetActiveSiteRequest,
   type SiteRequestContext,
   type UpdateCityInput,
@@ -100,13 +103,25 @@ import {
   type PersonRecord,
   type UpdatePersonInput,
   USER_ROUTES,
+  PROFILE_PHOTO,
+  type AddMembershipInput,
+  type AdminResetPasswordInput,
+  type ChangeMembershipRoleInput,
+  type ChangeMembershipStatusInput,
+  type ChangeMembershipValidityInput,
   type CreateManagedUserInput,
   type ManagedUserPage,
   type ManagedUserQuery,
   type ManagedUserRecord,
+  type ProfilePhotoMimeType,
+  type ProfilePictureRef,
   type ProfileRecord,
-  type UpdateManagedUserInput,
+  type RestoreAccountInput,
+  type RestoreMembershipInput,
+  type SetAccountStatusInput,
   type UpdateProfileInput,
+  type UpdateUserGlobalFieldsInput,
+  type UpdateWorkProfileInput,
   REPORT_ROUTES,
   type ReportKind,
   type ReportManifestItem,
@@ -118,14 +133,115 @@ export interface ApiClientOptions {
   readonly fetch?: typeof globalThis.fetch;
 }
 
+/** Transport-level classification of a failed call, derived from the HTTP status. */
+export type ApiErrorKind =
+  | 'validation'
+  | 'authentication'
+  | 'authorization'
+  | 'not_found'
+  | 'conflict'
+  | 'payload_too_large'
+  | 'unsupported_media_type'
+  | 'rate_limited'
+  | 'unavailable'
+  | 'invalid_response'
+  | 'unexpected';
+
+export function apiErrorKind(status: number, code?: string): ApiErrorKind {
+  if (code === 'INVALID_API_RESPONSE') return 'invalid_response';
+  switch (status) {
+    case 400:
+      return 'validation';
+    case 401:
+      return 'authentication';
+    case 403:
+      return 'authorization';
+    case 404:
+      return 'not_found';
+    case 409:
+      return 'conflict';
+    case 413:
+      return 'payload_too_large';
+    case 415:
+      return 'unsupported_media_type';
+    case 429:
+      return 'rate_limited';
+    case 502:
+    case 503:
+    case 504:
+      return 'unavailable';
+    default:
+      return 'unexpected';
+  }
+}
+
 export class ApiClientError extends Error {
   constructor(
     public readonly status: number,
     public readonly failure: ApiFailure,
+    /** Seconds from the `Retry-After` header of a 429, when present. */
+    public readonly retryAfterSeconds: number | null = null,
   ) {
     super(failure.error.message);
     this.name = 'ApiClientError';
   }
+
+  get code(): string {
+    return this.failure.error.code;
+  }
+
+  get kind(): ApiErrorKind {
+    return apiErrorKind(this.status, this.failure.error.code);
+  }
+
+  get fieldErrors(): Readonly<Record<string, readonly string[]>> {
+    return this.failure.error.fieldErrors ?? {};
+  }
+
+  get correlationId(): string | undefined {
+    return this.failure.error.correlationId;
+  }
+}
+
+/** Raw profile picture upload; the server re-validates everything. */
+export interface ProfilePhotoUpload {
+  readonly data: Blob | ArrayBuffer | Uint8Array;
+  readonly fileName: string;
+  readonly contentType: ProfilePhotoMimeType;
+}
+
+const SESSION_PURPOSES: readonly SessionPurpose[] = ['normal', 'password_change', 'site_selection'];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Structural check of the auth session envelope; F5 routes on `purpose`. */
+function decodeAuthSession(body: unknown): AuthSessionResponse | null {
+  if (!isRecord(body) || body.success !== true) return null;
+  const { data, meta, eligibleSites } = body as Partial<Record<keyof AuthSessionEnvelope, unknown>>;
+  if (!isRecord(data) || typeof data.userId !== 'string' || !Array.isArray(data.memberships)) {
+    return null;
+  }
+  if (
+    !isRecord(meta) ||
+    !SESSION_PURPOSES.includes(meta.purpose as SessionPurpose) ||
+    typeof meta.mustChangePassword !== 'boolean' ||
+    !Array.isArray(eligibleSites) ||
+    !eligibleSites.every(
+      (site) =>
+        isRecord(site) && typeof site.siteId === 'string' && typeof site.siteName === 'string',
+    )
+  ) {
+    return null;
+  }
+  const envelope = body as unknown as AuthSessionEnvelope;
+  return {
+    session: envelope.data,
+    purpose: envelope.meta.purpose,
+    mustChangePassword: envelope.meta.mustChangePassword,
+    eligibleSites: envelope.eligibleSites,
+  };
 }
 
 function normalizeBaseUrl(value: string | undefined): string {
@@ -177,26 +293,53 @@ export class ApiClient {
     });
     const body = (await response.json()) as unknown;
     if (!response.ok || typeof body !== 'object' || body === null || !('csrfToken' in body)) {
-      throw this.toError(response.status, body);
+      throw this.toError(response, body);
     }
     const token = (body as { csrfToken?: unknown }).csrfToken;
     if (typeof token !== 'string' || token.length === 0) {
-      throw this.toError(response.status, body);
+      throw this.toError(response, body);
     }
     this.csrfToken = token;
     return { csrfToken: token };
   }
 
-  async login(input: LoginRequest): Promise<ActiveSiteSession> {
-    return this.mutate<ActiveSiteSession>(AUTH_ROUTES.login, 'POST', input);
+  /**
+   * `POST /auth/login` with `loginIdentifier` (username or email). The session
+   * cookie is set by the server; route the UI on the returned `purpose`.
+   */
+  async signIn(input: LoginRequest): Promise<AuthSessionResponse> {
+    const body: LoginRequest = {
+      loginIdentifier: input.loginIdentifier,
+      password: input.password,
+      ...(input.rememberMe === undefined ? {} : { rememberMe: input.rememberMe }),
+      ...(input.activeSiteId === undefined ? {} : { activeSiteId: input.activeSiteId }),
+    };
+    return this.authSession(AUTH_ROUTES.login, 'POST', body);
   }
 
-  async session(): Promise<ActiveSiteSession> {
-    return this.request<ActiveSiteSession>(AUTH_ROUTES.session, { method: 'GET' });
+  /** `GET /auth/session`: current session state, including restricted purposes. */
+  async currentSession(): Promise<AuthSessionResponse> {
+    return this.authSession(AUTH_ROUTES.session, 'GET');
   }
 
-  async setActiveSite(input: SetActiveSiteRequest): Promise<ActiveSiteSession> {
-    return this.mutate<ActiveSiteSession>(AUTH_ROUTES.activeSite, 'PUT', input);
+  /**
+   * `PUT /auth/session/active-site`. From a `site_selection` session the server
+   * replaces the cookie with a normal session.
+   */
+  async selectActiveSite(input: SetActiveSiteRequest): Promise<AuthSessionResponse> {
+    return this.authSession(AUTH_ROUTES.activeSite, 'PUT', { activeSiteId: input.activeSiteId });
+  }
+
+  /**
+   * `POST /auth/password`. Revokes every session of the account and returns the
+   * replacement session (new cookie). Policy failures are a 400 with
+   * `fieldErrors.newPassword`.
+   */
+  async changePassword(input: ChangePasswordRequest): Promise<AuthSessionResponse> {
+    return this.authSession(AUTH_ROUTES.password, 'POST', {
+      currentPassword: input.currentPassword,
+      newPassword: input.newPassword,
+    });
   }
 
   async logout(): Promise<void> {
@@ -208,7 +351,7 @@ export class ApiClient {
     });
     if (!response.ok) {
       const body = await this.readOptionalJson(response);
-      throw this.toError(response.status, body);
+      throw this.toError(response, body);
     }
     this.csrfToken = null;
   }
@@ -563,30 +706,107 @@ export class ApiClient {
     await this.mutate<null>(PERSON_ROUTES.person(id), 'DELETE', {});
   }
 
-  async users(query: ManagedUserQuery = {}): Promise<ManagedUserPage> {
+  // Users administration (global control-plane routes; normal session required).
+  async listUsers(query: ManagedUserQuery = {}): Promise<ManagedUserPage> {
     return this.request<ManagedUserPage>(this.withQuery(USER_ROUTES.users, query), {
       method: 'GET',
     });
   }
-  async user(id: string): Promise<ManagedUserRecord> {
-    return this.request<ManagedUserRecord>(USER_ROUTES.user(id), { method: 'GET' });
+  async userDetails(userId: string): Promise<ManagedUserRecord> {
+    return this.request<ManagedUserRecord>(USER_ROUTES.user(userId), { method: 'GET' });
   }
-  async createUser(input: CreateManagedUserInput): Promise<ManagedUserRecord> {
+  async createManagedUser(input: CreateManagedUserInput): Promise<ManagedUserRecord> {
     return this.mutate<ManagedUserRecord>(USER_ROUTES.users, 'POST', input);
   }
-  async updateUser(id: string, input: UpdateManagedUserInput): Promise<ManagedUserRecord> {
-    return this.mutate<ManagedUserRecord>(USER_ROUTES.user(id), 'PUT', input);
+  async updateUserGlobalFields(
+    userId: string,
+    input: UpdateUserGlobalFieldsInput,
+  ): Promise<ManagedUserRecord> {
+    return this.mutate<ManagedUserRecord>(USER_ROUTES.globalFields(userId), 'PUT', input);
   }
-  async deleteUser(id: string): Promise<void> {
-    await this.mutate<null>(USER_ROUTES.user(id), 'DELETE', {});
+  async adminResetPassword(userId: string, input: AdminResetPasswordInput): Promise<void> {
+    await this.command(USER_ROUTES.adminResetPassword(userId), 'POST', input);
   }
-  async profile(): Promise<ProfileRecord> {
+  async setAccountStatus(userId: string, input: SetAccountStatusInput): Promise<void> {
+    await this.command(USER_ROUTES.accountStatus(userId), 'PUT', input);
+  }
+  async restoreAccount(userId: string, input: RestoreAccountInput = {}): Promise<void> {
+    await this.command(USER_ROUTES.restore(userId), 'POST', input);
+  }
+  /** Global account deletion (204). */
+  async deleteAccount(userId: string): Promise<void> {
+    await this.command(USER_ROUTES.user(userId), 'DELETE');
+  }
+  async addMembership(userId: string, input: AddMembershipInput): Promise<void> {
+    await this.command(USER_ROUTES.memberships(userId), 'POST', input);
+  }
+  async changeMembershipRole(
+    userId: string,
+    siteId: string,
+    input: ChangeMembershipRoleInput,
+  ): Promise<void> {
+    await this.command(USER_ROUTES.membershipRole(userId, siteId), 'PUT', input);
+  }
+  async changeMembershipStatus(
+    userId: string,
+    siteId: string,
+    input: ChangeMembershipStatusInput,
+  ): Promise<void> {
+    await this.command(USER_ROUTES.membershipStatus(userId, siteId), 'PUT', input);
+  }
+  async changeMembershipValidity(
+    userId: string,
+    siteId: string,
+    input: ChangeMembershipValidityInput,
+  ): Promise<void> {
+    await this.command(USER_ROUTES.membershipValidity(userId, siteId), 'PUT', input);
+  }
+  async updateMembershipWorkProfile(
+    userId: string,
+    siteId: string,
+    input: UpdateWorkProfileInput,
+  ): Promise<void> {
+    await this.command(USER_ROUTES.membershipWorkProfile(userId, siteId), 'PUT', input);
+  }
+  /** Revokes the site membership (204); deletes the account when none remains. */
+  async revokeMembership(userId: string, siteId: string): Promise<void> {
+    await this.command(USER_ROUTES.membership(userId, siteId), 'DELETE');
+  }
+  async restoreMembership(
+    userId: string,
+    siteId: string,
+    input: RestoreMembershipInput = {},
+  ): Promise<void> {
+    await this.command(USER_ROUTES.membershipRestore(userId, siteId), 'POST', input);
+  }
+
+  // Self profile.
+  async ownProfile(): Promise<ProfileRecord> {
     return this.request<ProfileRecord>(USER_ROUTES.profile, { method: 'GET' });
   }
-  async updateProfile(input: UpdateProfileInput): Promise<ProfileRecord> {
+  async updateOwnProfile(input: UpdateProfileInput): Promise<ProfileRecord> {
     return this.mutate<ProfileRecord>(USER_ROUTES.profile, 'PUT', input);
   }
 
+  // Profile pictures: raw bytes in both directions, never JSON.
+  async userPhoto(userId: string): Promise<Blob> {
+    return this.readPhoto(USER_ROUTES.userPhoto(userId));
+  }
+  async uploadUserPhoto(userId: string, upload: ProfilePhotoUpload): Promise<ProfilePictureRef> {
+    return this.uploadPhoto(USER_ROUTES.userPhoto(userId), upload);
+  }
+  async deleteUserPhoto(userId: string): Promise<void> {
+    await this.command(USER_ROUTES.userPhoto(userId), 'DELETE');
+  }
+  async ownPhoto(): Promise<Blob> {
+    return this.readPhoto(USER_ROUTES.profilePhoto);
+  }
+  async uploadOwnPhoto(upload: ProfilePhotoUpload): Promise<ProfilePictureRef> {
+    return this.uploadPhoto(USER_ROUTES.profilePhoto, upload);
+  }
+  async deleteOwnPhoto(): Promise<void> {
+    await this.command(USER_ROUTES.profilePhoto, 'DELETE');
+  }
   async reportManifest(): Promise<readonly ReportManifestItem[]> {
     return this.request<readonly ReportManifestItem[]>(REPORT_ROUTES.manifest, { method: 'GET' });
   }
@@ -605,7 +825,7 @@ export class ApiClient {
     );
     if (!response.ok) {
       const body = await this.readOptionalJson(response);
-      throw this.toError(response.status, body);
+      throw this.toError(response, body);
     }
     return response.blob();
   }
@@ -624,20 +844,97 @@ export class ApiClient {
   }
 
   private async request<T>(path: string, init: RequestInit): Promise<T> {
-    const response = await this.fetcher(`${this.baseUrl}${path}`, {
+    const response = await this.send(path, init);
+    const body = await this.readOptionalJson(response);
+    if (!response.ok || typeof body !== 'object' || body === null) {
+      throw this.toError(response, body);
+    }
+    const result = body as Partial<ApiResult<T>>;
+    if (result.success !== true || !('data' in result)) {
+      throw this.toError(response, body);
+    }
+    return result.data as T;
+  }
+
+  private async send(path: string, init: RequestInit): Promise<Response> {
+    return this.fetcher(`${this.baseUrl}${path}`, {
       ...init,
       credentials: 'include',
       headers: { Accept: 'application/json', ...init.headers },
     });
+  }
+
+  private async authSession(
+    path: string,
+    method: 'GET' | 'POST' | 'PUT',
+    input?: unknown,
+  ): Promise<AuthSessionResponse> {
+    const init: RequestInit =
+      method === 'GET'
+        ? { method }
+        : {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': await this.ensureCsrf(),
+            },
+            body: JSON.stringify(input),
+          };
+    const response = await this.send(path, init);
     const body = await this.readOptionalJson(response);
-    if (!response.ok || typeof body !== 'object' || body === null) {
-      throw this.toError(response.status, body);
+    const decoded = response.ok ? decodeAuthSession(body) : null;
+    if (decoded === null) throw this.toError(response, body);
+    return decoded;
+  }
+
+  /**
+   * CSRF-protected command whose success carries no data: 204 (empty body) or a
+   * `{ success: true, data: null }` envelope.
+   */
+  private async command(
+    path: string,
+    method: 'DELETE' | 'POST' | 'PUT',
+    input?: unknown,
+  ): Promise<void> {
+    const token = await this.ensureCsrf();
+    const response = await this.send(path, {
+      method,
+      headers:
+        input === undefined
+          ? { 'X-CSRF-Token': token }
+          : { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
+      ...(input === undefined ? {} : { body: JSON.stringify(input) }),
+    });
+    const body = await this.readOptionalJson(response);
+    if (!response.ok) throw this.toError(response, body);
+    if (response.status === 204) return;
+    if (!isRecord(body) || body.success !== true) throw this.toError(response, body);
+  }
+
+  private async readPhoto(path: string): Promise<Blob> {
+    const response = await this.send(path, {
+      method: 'GET',
+      headers: { Accept: PROFILE_PHOTO.mimeTypes.join(', ') },
+    });
+    if (!response.ok) {
+      const body = await this.readOptionalJson(response);
+      throw this.toError(response, body);
     }
-    const result = body as Partial<ApiResult<T>>;
-    if (result.success !== true || !('data' in result)) {
-      throw this.toError(response.status, body);
-    }
-    return result.data as T;
+    return response.blob();
+  }
+
+  private async uploadPhoto(path: string, upload: ProfilePhotoUpload): Promise<ProfilePictureRef> {
+    const token = await this.ensureCsrf();
+    const data = upload.data instanceof Uint8Array ? new Uint8Array(upload.data) : upload.data;
+    return this.request<ProfilePictureRef>(path, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': upload.contentType,
+        [PROFILE_PHOTO.fileNameHeader]: encodeURIComponent(upload.fileName),
+        'X-CSRF-Token': token,
+      },
+      body: data,
+    });
   }
 
   private async ensureCsrf(): Promise<string> {
@@ -664,7 +961,7 @@ export class ApiClient {
     }
   }
 
-  private toError(status: number, body: unknown): ApiClientError {
+  private toError(response: Response, body: unknown): ApiClientError {
     const failure: ApiFailure = isApiFailure(body)
       ? body
       : {
@@ -674,6 +971,11 @@ export class ApiClient {
             message: 'The API returned an invalid response.',
           },
         };
-    return new ApiClientError(status, failure);
+    const retryAfter = Number(response.headers.get('Retry-After') ?? Number.NaN);
+    return new ApiClientError(
+      response.status,
+      failure,
+      Number.isFinite(retryAfter) && retryAfter >= 0 ? retryAfter : null,
+    );
   }
 }

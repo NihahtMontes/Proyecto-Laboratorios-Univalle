@@ -569,25 +569,30 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* UserProfile/Default.cshtml: .user-profile-avatar-sm/-lg, rounded-circle bg-info text-white. */
 .profile-avatar {
-  width: 32px;
-  height: 32px;
-  display: inline-grid;
+  width: 31px;
+  height: 31px;
+  min-width: 31px;
+  display: inline-flex;
   flex: 0 0 auto;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
   border-radius: 50%;
-  color: #17449e;
-  background: #fff;
-  font-size: 0.72rem;
-  font-weight: 800;
+  color: #fff;
+  background: #137eff;
+  box-shadow: 0 0.125rem 0.25rem rgb(0 0 0 / 7.5%);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .profile-avatar-lg {
   width: 50px;
   height: 50px;
-  color: #fff;
-  background: #2962ff;
-  font-size: 1rem;
+  min-width: 50px;
+  font-size: 1.1rem;
 }
 
 .app-shell .dropdown-menu.show {
@@ -1849,5 +1854,436 @@ button:disabled {
 
   .inventory-history li {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   MIG-001 F6 — Usuarios / Directorio de Personal / Mi Perfil.
+   Utilidades NiceAdmin que Pages/Users/* toma de dist/css/style.min.css o
+   declara en sus bloques <style>, ausentes en assets/css/style.min.css.
+   Valores copiados del legacy (reference/asp-final).
+   ========================================================================== */
+
+.btn-circle {
+  width: 40px;
+  height: 40px;
+  padding: 10px;
+  border-radius: 100%;
+}
+
+.btn-circle.btn-lg {
+  width: 50px;
+  height: 50px;
+  padding: 14px 15px;
+  font-size: 18px;
+  line-height: 23px;
+}
+
+.btn-rounded {
+  padding: 7px 18px;
+  border-radius: 60px;
+}
+
+.btn-group-sm > .btn-rounded.btn,
+.btn-rounded.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 12px;
+}
+
+/* Pages/Users/Index.cshtml @section Styles */
+.users-module .customtab .nav-link {
+  padding: 15px 20px;
+  border: none;
+  color: #747d8c;
+  background: transparent;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.users-module .customtab .nav-link.active {
+  color: #2962ff;
+  background: transparent;
+  border-bottom: 3px solid #2962ff !important;
+}
+
+.users-module .v-middle td {
+  vertical-align: middle !important;
+}
+
+.users-module .drop-shadow {
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 5%));
+}
+
+.users-module .uppercase {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.users-module .italic {
+  font-style: italic;
+}
+
+.users-module .opacity-2 {
+  opacity: 0.2;
+}
+
+/* Edit/Delete declaran 4px; Index declara 3px. */
+.users-module .border-3 {
+  border-left-width: 4px !important;
+}
+
+.users-index .border-3 {
+  border-left-width: 3px !important;
+}
+
+.users-module .border-dashed {
+  border-style: dashed !important;
+  border-width: 2px !important;
+}
+
+.users-module .control-label.required::after {
+  content: ' *';
+  color: #f62d51;
+}
+
+.users-module .table {
+  margin-bottom: 0;
+}
+
+.users-module .card-body > .alert:first-child {
+  margin-top: 0;
+}
+
+/* Pages/Users/Details.cshtml @section Styles */
+.user-detail-avatar {
+  width: 150px;
+  height: 150px;
+  min-width: 150px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+  border: 4px solid #e0f2fe;
+}
+
+.user-detail-initials {
+  font-size: 3.1rem;
+  line-height: 1;
+}
+
+.user-detail-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #a6b0bf;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.user-detail-value {
+  color: #1f2d3d;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.users-module .user-row-avatar {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+}
+
+.users-module .photo-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.users-module .photo-controls .btn-link {
+  padding: 0;
+  font-size: 0.75rem;
+}
+
+.users-module .photo-controls label:focus-within {
+  outline: 2px solid #137eff;
+  outline-offset: 2px;
+}
+
+.users-module .bg-dark .text-muted {
+  color: #a6b0bf !important;
+}
+
+/* Formularios de sesion restringida (cambio de contrasena) */
+.site-picker-card form {
+  margin: 1.5rem 0 1rem;
+  text-align: left;
+}
+
+@media (max-width: 767px) {
+  .users-module .border-right {
+    border-right: 0 !important;
+  }
+
+  .users-module .user-detail-avatar {
+    width: 110px;
+    height: 110px;
+    min-width: 110px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   MIG-001 F6 — Pages/Users/* render with the legacy _Layout stylesheet
+   (wwwroot/dist/css/style.min.css); the React app imports the other NiceAdmin
+   build (wwwroot/assets/css/style.min.css). These are the dist values that
+   differ, scoped to the migrated Users/Personas/Perfil surfaces only.
+   -------------------------------------------------------------------------- */
+.users-module {
+  color: #6a7a8c;
+  font-size: 0.875rem;
+  /* Rubik has no italic face: the legacy page relies on synthesized italics. */
+  font-synthesis: weight style;
+}
+
+.users-module .custom-select {
+  background-image: url('../../../wwwroot/assets/images/custom-select.png');
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: auto;
+}
+
+.users-module h2,
+.users-module h3,
+.users-module h4,
+.users-module h5,
+.users-module h6 {
+  color: inherit;
+}
+
+.users-module label {
+  font-weight: 500;
+}
+
+.users-module .card {
+  margin-bottom: 20px;
+  border: 0 solid transparent;
+  border-radius: 0;
+}
+
+.users-module .card .card-title {
+  position: relative;
+  margin-bottom: 10px;
+  font-weight: 400;
+}
+
+.users-module .card .card-subtitle {
+  margin-bottom: 10px;
+  color: #afb5c1;
+  font-weight: 300;
+}
+
+.users-module .text-muted {
+  color: #afb5c1 !important;
+}
+
+.users-module .text-dark {
+  color: #343a40 !important;
+}
+
+.users-module .text-danger {
+  color: #fa5838 !important;
+}
+
+.users-module .text-success {
+  color: #5ac146 !important;
+}
+
+.users-module .font-weight-bold {
+  font-weight: 700 !important;
+}
+
+.users-module .bg-light {
+  background-color: #f6f8f9 !important;
+}
+
+.users-module .bg-dark {
+  background-color: #343a40 !important;
+}
+
+.users-module .border,
+.users-module .border-left {
+  border-color: rgb(0 0 0 / 10%);
+}
+
+.users-module .border-danger {
+  border-color: #fa5838 !important;
+}
+
+.users-module .rounded,
+.users-module .alert,
+.users-module .img-thumbnail {
+  border-radius: 2px !important;
+}
+
+.users-module .img-thumbnail {
+  background-color: #f2f4f5;
+}
+
+.users-module .badge {
+  border-radius: 2px;
+  font-weight: 300;
+  line-height: normal;
+}
+
+.users-module .badge-pill {
+  padding-right: 0.2em;
+  padding-left: 0.2em;
+  border-radius: 10rem;
+}
+
+.users-module .badge-success {
+  background-color: #5ac146;
+}
+
+.users-module .badge-danger {
+  background-color: #fa5838;
+}
+
+.users-module .badge-dark {
+  background-color: #343a40;
+}
+
+.users-module .btn {
+  font-size: 0.875rem;
+}
+
+.users-module .btn-sm {
+  font-size: 0.76563rem;
+  border-radius: 1px;
+}
+
+.users-module .btn-rounded {
+  border-radius: 60px;
+}
+
+.users-module .btn-rounded.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 12px;
+}
+
+.users-module .btn-warning,
+.users-module .btn-outline-warning:hover {
+  color: #fff;
+}
+
+.users-module .btn-success {
+  border-color: #5ac146;
+  background-color: #5ac146;
+}
+
+.users-module .btn-outline-success {
+  border-color: #5ac146;
+  color: #5ac146;
+}
+
+.users-module .btn-outline-success:hover {
+  border-color: #5ac146;
+  color: #fff;
+  background-color: #5ac146;
+}
+
+.users-module .btn-danger,
+.users-module .btn-outline-danger:hover {
+  border-color: #fa5838;
+  color: #fff;
+  background-color: #fa5838;
+}
+
+.users-module .btn-outline-danger {
+  border-color: #fa5838;
+  color: #fa5838;
+}
+
+.users-module .btn-dark {
+  border-color: #343a40;
+  background-color: #343a40;
+}
+
+.users-module .form-control,
+.users-module .custom-select,
+.users-module .input-group-text,
+.users-module .custom-file-label {
+  border-color: #e9ecef;
+  border-radius: 2px;
+  font-size: 0.875rem;
+}
+
+.users-module input.form-control,
+.users-module select.form-control,
+.users-module .custom-select,
+.users-module .custom-file,
+.users-module .custom-file-input,
+.users-module .custom-file-label {
+  height: calc(2.0625rem + 2px);
+}
+
+.users-module .custom-select.btn-rounded {
+  border-radius: 60px;
+}
+
+.users-module .input-group-text {
+  background-color: #f6f8f9;
+}
+
+.users-module .table td,
+.users-module .table th {
+  padding: 1rem;
+}
+
+.users-module .table th {
+  font-weight: 500;
+}
+
+.users-module .table-hover tbody tr:hover {
+  background-color: #f6f8f9;
+}
+
+.users-module .page-item.active .page-link {
+  border-color: #2962ff;
+  background-color: #2962ff;
+}
+
+.users-module .page-item:first-child .page-link {
+  border-radius: 2px 0 0 2px;
+}
+
+.users-module .page-item:last-child .page-link {
+  border-radius: 0 2px 2px 0;
+}
+
+.users-module .alert-light {
+  border-color: #fcfdfd;
+  color: #808181;
+  background-color: #fdfefe;
+}
+
+.users-module .alert-danger {
+  border-color: #fed0c7;
+  color: #822e1d;
+  background-color: #feded7;
+}
+
+.users-module .alert-success {
+  border-color: #d1eecb;
+  color: #2f6424;
+  background-color: #def3da;
+}
+
+/* dist/css/style.min.css sets --breakpoint-xl to 1600px: col-xl-* only applies from 1600px. */
+@media (min-width: 1200px) and (max-width: 1599.98px) {
+  .users-module .col-xl-9 {
+    flex: 0 0 83.333333%;
+    max-width: 83.333333%;
   }
 }

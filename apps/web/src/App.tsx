@@ -20,6 +20,11 @@ import {
   type CreateCountryInput,
   type DashboardNotification,
   type DashboardSummary,
+  type AuthSessionResponse,
+  type ChangePasswordRequest,
+  type EligibleSite,
+  type ProfilePictureRef,
+  LOGIN_PASSWORD_MAX_BYTES,
   type LoginRequest,
   type SetActiveSiteRequest,
   type SiteRequestContext,
@@ -82,13 +87,6 @@ import {
   type PersonQuery,
   type CreatePersonInput,
   type UpdatePersonInput,
-  type ManagedUserPage,
-  type ManagedUserRecord,
-  type ManagedUserQuery,
-  type CreateManagedUserInput,
-  type UpdateManagedUserInput,
-  type ProfileRecord,
-  type UpdateProfileInput,
   type ReportKind,
   type ReportManifestItem,
 } from '@lu/contracts';
@@ -105,15 +103,31 @@ import { DeparturesPanel, type DepartureApi } from './DeparturesPanel';
 import { KardexPanel, type KardexApi } from './KardexPanel';
 import { AcquisitionsPanel, type AcquisitionsApi } from './AcquisitionsPanel';
 import { PeoplePanel, type PeopleApi } from './PeoplePanel';
-import { ProfilePanel, UsersPanel, type UsersApi } from './UsersPanel';
+import {
+  PasswordChangeForm,
+  ProfilePanel,
+  UsersModule,
+  type ProfileApi,
+  type UsersApi,
+  type UsersViewer,
+} from './UsersPanel';
+import { usePhotoUrl } from './photo';
+import { resolveUsersRoute } from './usersModel';
+import { describeApiError, isSessionFailure } from './apiErrors';
 import { OperationsPanel, type OperationsApi } from './OperationsPanel';
 import { WizardPanel, type WizardApi } from './WizardPanel';
 import { ReportsPanel, type ReportsApi } from './ReportsPanel';
 
-export interface AuthApi {
-  session(): Promise<ActiveSiteSession>;
-  login(input: LoginRequest): Promise<ActiveSiteSession>;
-  setActiveSite(input: SetActiveSiteRequest): Promise<ActiveSiteSession>;
+/**
+ * MIG-001 F5: the canonical F4 client surface. Auth calls return the decoded
+ * session state and the UI routes on `purpose` (never on mustChangePassword).
+ */
+export interface AuthApi
+  extends Partial<UsersApi>, Partial<Omit<ProfileApi, 'changePassword' | 'currentSession'>> {
+  currentSession(): Promise<AuthSessionResponse>;
+  signIn(input: LoginRequest): Promise<AuthSessionResponse>;
+  selectActiveSite(input: SetActiveSiteRequest): Promise<AuthSessionResponse>;
+  changePassword(input: ChangePasswordRequest): Promise<AuthSessionResponse>;
   siteContext(): Promise<SiteRequestContext>;
   logout(): Promise<void>;
   dashboard?(query?: { readonly currentPage?: number }): Promise<DashboardSummary>;
@@ -206,20 +220,13 @@ export interface AuthApi {
   createPerson?(input: CreatePersonInput): Promise<PersonRecord>;
   updatePerson?(id: number, input: UpdatePersonInput): Promise<PersonRecord>;
   deletePerson?(id: number): Promise<void>;
-  users?(query?: ManagedUserQuery): Promise<ManagedUserPage>;
-  user?(id: string): Promise<ManagedUserRecord>;
-  createUser?(input: CreateManagedUserInput): Promise<ManagedUserRecord>;
-  updateUser?(id: string, input: UpdateManagedUserInput): Promise<ManagedUserRecord>;
-  deleteUser?(id: string): Promise<void>;
-  profile?(): Promise<ProfileRecord>;
-  updateProfile?(input: UpdateProfileInput): Promise<ProfileRecord>;
   reportManifest?(): Promise<readonly ReportManifestItem[]>;
   downloadReport?(kind: ReportKind, query?: Record<string, number | undefined>): Promise<Blob>;
 }
 
 const defaultApi = new ApiClient({ baseUrl: import.meta.env.VITE_API_BASE_URL });
 
-type View = 'loading' | 'login' | 'site-picker' | 'workspace' | 'unavailable';
+type View = 'loading' | 'login' | 'site-picker' | 'password-change' | 'workspace' | 'unavailable';
 type Permission = 'authenticated' | 'admin';
 
 interface NavigationLink {
@@ -227,6 +234,8 @@ interface NavigationLink {
   readonly path: string;
   readonly icon: string;
   readonly permission: Permission;
+  /** Reachable without an active site (F1 §17 global Users control plane). */
+  readonly global?: boolean;
 }
 
 interface NavigationGroup {
@@ -419,12 +428,7 @@ const NAVIGATION: readonly NavigationSection[] = [
             path: '/Users/Index',
             icon: 'mdi mdi-account-multiple',
             permission: 'admin',
-          },
-          {
-            label: 'Personas',
-            path: '/Persons/Index',
-            icon: 'mdi mdi-account-group-outline',
-            permission: 'admin',
+            global: true,
           },
         ],
       },
@@ -448,10 +452,28 @@ function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiClientError && error.status === 401;
 }
 
-function isAdmin(session: ActiveSiteSession, context: SiteRequestContext | null): boolean {
-  return (
-    session.globalRole === GlobalRole.SuperAdmin || context?.siteRole === SiteRole.Administrador
-  );
+/** What the current session may reach; the server still authorizes every call. */
+interface Access {
+  /** Users control plane (F1-D018): SuperAdmin globally or site Administrador. */
+  readonly usersAdmin: boolean;
+  /** Tenant administration pages: require an active site. */
+  readonly tenantAdmin: boolean;
+  readonly hasSite: boolean;
+}
+
+function accessOf(session: ActiveSiteSession, context: SiteRequestContext | null): Access {
+  const superAdmin = session.globalRole === GlobalRole.SuperAdmin;
+  const siteAdmin = context?.siteRole === SiteRole.Administrador;
+  return {
+    usersAdmin: superAdmin || siteAdmin,
+    tenantAdmin: context !== null && (superAdmin || siteAdmin),
+    hasSite: context !== null,
+  };
+}
+
+function isLinkAllowed(link: NavigationLink, access: Access): boolean {
+  if (link.global) return link.permission === 'authenticated' || access.usersAdmin;
+  return access.hasSite && (link.permission === 'authenticated' || access.tenantAdmin);
 }
 
 function initials(name: string): string {
@@ -465,11 +487,30 @@ function initials(name: string): string {
   );
 }
 
+const BELL_PAGE_PREFIXES = [
+  '/Managements',
+  '/Acquisitions',
+  '/Requests',
+  '/Maintenances',
+  '/Departures',
+] as const;
+
+const USERS_TITLES = {
+  index: 'Usuarios',
+  create: 'Vincular Usuario',
+  details: 'Detalle de Usuario',
+  edit: 'Editar Usuario',
+  delete: 'Revocar Acceso',
+  profile: 'Mi Perfil',
+} as const;
+
 function findRouteTitle(route: string): string {
   const path = routePath(route);
   if (route.includes('ShowWizard=true')) return 'Wizard de gestión';
   if (route === '/') return 'Dashboard de Gestión';
-  if (route === '/Users/Details') return 'Mi Perfil';
+  const users = resolveUsersRoute(route);
+  if (users && 'route' in users) return USERS_TITLES[users.route.kind];
+  if (path.startsWith('/Persons/')) return 'Personas';
   for (const section of NAVIGATION) {
     for (const entry of section.entries) {
       if (isNavigationGroup(entry)) {
@@ -483,17 +524,84 @@ function findRouteTitle(route: string): string {
   return 'Dashboard de Gestión';
 }
 
-function isAllowedRoute(route: string, admin: boolean): boolean {
+function isAllowedRoute(route: string, access: Access): boolean {
   const path = routePath(route);
-  if (route === '/' || route === '/Users/Details' || route.includes('ShowWizard=true')) return true;
+  if (route === '/') return true;
+  const users = resolveUsersRoute(route);
+  if (users) return 'redirect' in users || users.route.kind === 'profile' || access.usersAdmin;
+  if (!access.hasSite) return false;
+  if (route.includes('ShowWizard=true')) return true;
+  if (path.startsWith('/Persons/')) return access.tenantAdmin;
   for (const section of NAVIGATION) {
     for (const entry of section.entries) {
       const links = isNavigationGroup(entry) ? entry.links : [entry];
       const match = links.find((link) => link.path === route || routePath(link.path) === path);
-      if (match) return match.permission === 'authenticated' || admin;
+      if (match) return isLinkAllowed(match, access);
     }
   }
   return false;
+}
+
+/** Auth-flow methods handle 401 themselves; every other 401 ends the session centrally. */
+const SELF_HANDLED_AUTH = new Set<PropertyKey>([
+  'currentSession',
+  'signIn',
+  'selectActiveSite',
+  'changePassword',
+  'logout',
+]);
+
+function withSessionGuard<T extends object>(api: T, onExpired: () => void): T {
+  return new Proxy(api, {
+    get(target, property, receiver) {
+      const value: unknown = Reflect.get(target, property, receiver);
+      if (typeof value !== 'function' || SELF_HANDLED_AUTH.has(property)) return value;
+      return (...args: unknown[]) => {
+        const result: unknown = (value as (...a: unknown[]) => unknown).apply(target, args);
+        if (!(result instanceof Promise)) return result;
+        return result.catch((error: unknown) => {
+          if (isSessionFailure(error)) onExpired();
+          throw error;
+        });
+      };
+    },
+  });
+}
+
+function SiteChoices({
+  sites,
+  busy,
+  onChoose,
+}: {
+  readonly sites: readonly EligibleSite[];
+  readonly busy: boolean;
+  readonly onChoose: (siteId: EligibleSite['siteId']) => void;
+}): ReactElement {
+  if (sites.length === 0) {
+    return <p className="text-muted">No hay sedes habilitadas para esta cuenta.</p>;
+  }
+  return (
+    <div className="site-grid">
+      {sites.map((site) => (
+        <button
+          className="site-card"
+          type="button"
+          key={site.siteId}
+          disabled={busy}
+          onClick={() => onChoose(site.siteId)}
+        >
+          <span className="site-icon" aria-hidden="true">
+            <i className="mdi mdi-map-marker" />
+          </span>
+          <span>
+            <strong>{site.siteName}</strong>
+            <small>{site.role}</small>
+          </span>
+          <i className="mdi mdi-chevron-right" aria-hidden="true" />
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function DashboardPanel({
@@ -1271,11 +1379,11 @@ function AcademicPanel({ api }: { readonly api: AuthApi }): ReactElement {
   );
 }
 
-export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElement {
+export function App({ api: rawApi = defaultApi }: { readonly api?: AuthApi }): ReactElement {
   const [view, setView] = useState<View>('loading');
-  const [session, setSession] = useState<ActiveSiteSession | null>(null);
+  const [auth, setAuth] = useState<AuthSessionResponse | null>(null);
   const [context, setContext] = useState<SiteRequestContext | null>(null);
-  const [email, setEmail] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1293,45 +1401,80 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [navigationSearch, setNavigationSearch] = useState('');
   const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(new Set());
+  const [avatar, setAvatar] = useState<ProfilePictureRef | null>(null);
+  const [identityVersion, setIdentityVersion] = useState(0);
+  const session = auth?.session ?? null;
 
-  const enterSession = useCallback(
-    async (current: ActiveSiteSession, cancelled = false): Promise<void> => {
-      setSession(current);
+  /** Clears every identity-derived value; HttpOnly cookies are the server's business. */
+  const resetIdentity = useCallback((nextMessage: string | null) => {
+    setAuth(null);
+    setContext(null);
+    setAvatar(null);
+    setDashboard(null);
+    setNotifications([]);
+    setPassword('');
+    setProfileOpen(false);
+    setSiteOpen(false);
+    setNotificationsOpen(false);
+    setMessage(nextMessage);
+    setView('login');
+  }, []);
+
+  const expireSession = useCallback(() => {
+    resetIdentity('Su sesión expiró o fue revocada. Inicie sesión nuevamente.');
+  }, [resetIdentity]);
+
+  const api = useMemo(() => withSessionGuard(rawApi, expireSession), [rawApi, expireSession]);
+
+  /** Routes strictly on `purpose`; the workspace renders only after context resolves. */
+  const enterAuth = useCallback(
+    async (current: AuthSessionResponse, isCancelled: () => boolean = () => false) => {
       setMessage(null);
-      if (current.activeSiteId === null) {
-        if (!cancelled) setView('site-picker');
+      if (current.purpose !== 'normal') {
+        setAuth(current);
+        setContext(null);
+        setView(current.purpose === 'site_selection' ? 'site-picker' : 'password-change');
+        return;
+      }
+      if (current.session.activeSiteId === null) {
+        // F1 §17: a SuperAdmin may hold a normal null-site session (global routes only).
+        setAuth(current);
+        setContext(null);
+        setView('workspace');
         return;
       }
       try {
-        const siteContext = await api.siteContext();
-        if (!cancelled) {
-          setContext(siteContext);
-          setView('workspace');
-        }
+        const siteContext = await rawApi.siteContext();
+        if (isCancelled()) return;
+        setAuth(current);
+        setContext(siteContext);
+        setView('workspace');
       } catch (error) {
-        if (!cancelled) setView(isUnauthorized(error) ? 'login' : 'unavailable');
+        if (isCancelled()) return;
+        if (isUnauthorized(error)) expireSession();
+        else setView('unavailable');
       }
     },
-    [api],
+    [rawApi, expireSession],
   );
 
   useEffect(() => {
     let cancelled = false;
-    void api
-      .session()
-      .then(async (current) => {
-        if (!cancelled) await enterSession(current, cancelled);
-      })
+    void rawApi
+      .currentSession()
+      .then((current) => enterAuth(current, () => cancelled))
       .catch((error: unknown) => {
         if (!cancelled) setView(isUnauthorized(error) ? 'login' : 'unavailable');
       });
     return () => {
       cancelled = true;
     };
-  }, [api, enterSession]);
+  }, [rawApi, enterAuth]);
 
   useEffect(() => {
-    if (view !== 'workspace' || route !== '/' || api.dashboard === undefined) return;
+    if (view !== 'workspace' || context === null || route !== '/' || api.dashboard === undefined) {
+      return;
+    }
     let cancelled = false;
     setDashboardLoading(true);
     setDashboardError(null);
@@ -1349,10 +1492,10 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
     return () => {
       cancelled = true;
     };
-  }, [api, route, view]);
+  }, [api, context, route, view]);
 
   useEffect(() => {
-    if (view !== 'workspace' || api.notifications === undefined) return;
+    if (view !== 'workspace' || context === null || api.notifications === undefined) return;
     let cancelled = false;
     void api
       .notifications({ unreadOnly: true })
@@ -1365,7 +1508,25 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
     return () => {
       cancelled = true;
     };
-  }, [api, view]);
+  }, [api, context, view]);
+
+  // Topbar avatar (B-06): the photo reference comes from the self profile.
+  useEffect(() => {
+    if (view !== 'workspace' || api.ownProfile === undefined) return;
+    let cancelled = false;
+    void api
+      .ownProfile()
+      .then((profile) => {
+        if (!cancelled) setAvatar(profile.profilePicture);
+      })
+      .catch(() => {
+        if (!cancelled) setAvatar(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [api, view, identityVersion]);
+  const avatarUrl = usePhotoUrl(avatar, api.ownPhoto ? () => api.ownPhoto!() : undefined);
 
   useEffect(() => {
     const onPopState = (): void => setRoute(currentLocation());
@@ -1373,11 +1534,17 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  const admin = session ? isAdmin(session, context) : false;
+  const access = useMemo<Access>(
+    () =>
+      session
+        ? accessOf(session, context)
+        : { usersAdmin: false, tenantAdmin: false, hasSite: false },
+    [session, context],
+  );
   const allowedSections = useMemo(() => {
     const query = navigationSearch.trim().toLocaleLowerCase('es');
     const allowed = (link: NavigationLink): boolean =>
-      (link.permission === 'authenticated' || admin) &&
+      isLinkAllowed(link, access) &&
       (query === '' || link.label.toLocaleLowerCase('es').includes(query));
     return NAVIGATION.map((section) => ({
       ...section,
@@ -1389,14 +1556,18 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
         })
         .filter((entry): entry is NavigationLink | NavigationGroup => entry !== null),
     })).filter((section) => section.entries.length > 0);
-  }, [admin, navigationSearch]);
+  }, [access, navigationSearch]);
 
   useEffect(() => {
-    if (view === 'workspace' && !isAllowedRoute(route, admin)) {
-      window.history.replaceState({}, '', '/');
-      setRoute('/');
+    if (view !== 'workspace') return;
+    const users = resolveUsersRoute(route);
+    const target =
+      users && 'redirect' in users ? users.redirect : isAllowedRoute(route, access) ? null : '/';
+    if (target !== null) {
+      window.history.replaceState({}, '', target);
+      setRoute(target);
     }
-  }, [admin, route, view]);
+  }, [access, route, view]);
 
   useEffect(() => {
     for (const section of allowedSections) {
@@ -1417,19 +1588,27 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
   async function submitLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (busy) return;
+    if (new TextEncoder().encode(password).length > LOGIN_PASSWORD_MAX_BYTES) {
+      setMessage('Usuario o contraseña incorrectos.');
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
-      const current = await api.login({ email, password, rememberMe });
+      const current = await rawApi.signIn({ loginIdentifier, password, rememberMe });
       setPassword('');
-      await enterSession(current);
+      await enterAuth(current);
     } catch (error) {
       setMessage(
-        error instanceof ApiClientError && error.status === 429
-          ? 'Demasiados intentos. Intente más tarde.'
+        error instanceof ApiClientError && error.kind === 'rate_limited'
+          ? describeApiError(error, '')
           : isUnauthorized(error)
             ? 'Usuario o contraseña incorrectos.'
-            : 'No fue posible conectar con el servicio. Intente nuevamente.',
+            : error instanceof ApiClientError && error.code === 'SITE_ACCESS_DENIED'
+              ? 'Su cuenta no tiene una sede habilitada. Contacte a un administrador.'
+              : error instanceof ApiClientError && error.kind === 'validation'
+                ? 'Revise el usuario o correo y la contraseña ingresados.'
+                : 'No fue posible conectar con el servicio. Intente nuevamente.',
       );
       setView('login');
     } finally {
@@ -1442,11 +1621,19 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
     setBusy(true);
     setMessage(null);
     try {
-      const current = await api.setActiveSite({ activeSiteId });
+      const current = await rawApi.selectActiveSite({ activeSiteId });
       setSiteOpen(false);
-      await enterSession(current);
-    } catch {
-      setMessage('No fue posible activar la sede seleccionada.');
+      await enterAuth(current);
+    } catch (error) {
+      if (isUnauthorized(error)) {
+        resetIdentity(
+          auth?.purpose === 'site_selection'
+            ? 'El tiempo para seleccionar la sede (15 minutos) expiró. Inicie sesión nuevamente.'
+            : 'Su sesión expiró o fue revocada. Inicie sesión nuevamente.',
+        );
+      } else {
+        setMessage(describeApiError(error, 'No fue posible activar la sede seleccionada.'));
+      }
     } finally {
       setBusy(false);
     }
@@ -1456,28 +1643,39 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
     if (busy) return;
     setBusy(true);
     try {
-      await api.logout();
+      await rawApi.logout();
+    } catch {
+      // The server session may already be gone; local identity is cleared regardless.
     } finally {
-      setSession(null);
-      setContext(null);
-      setEmail('');
-      setPassword('');
+      resetIdentity(null);
+      setLoginIdentifier('');
       setRememberMe(false);
-      setMessage(null);
-      setProfileOpen(false);
       setBusy(false);
-      setView('login');
       window.history.replaceState({}, '', '/');
       setRoute('/');
     }
   }
 
-  function navigateTo(path: string): void {
-    if (path !== route) window.history.pushState({}, '', path);
+  /** Re-reads the canonical session after self-service identity changes. */
+  const refreshIdentity = useCallback(() => {
+    setIdentityVersion((value) => value + 1);
+    void rawApi
+      .currentSession()
+      .then((current) => {
+        if (current.purpose !== 'normal') void enterAuth(current);
+        else setAuth(current);
+      })
+      .catch((error: unknown) => {
+        if (isUnauthorized(error)) expireSession();
+      });
+  }, [rawApi, enterAuth, expireSession]);
+
+  const navigateTo = useCallback((path: string): void => {
+    if (path !== currentLocation()) window.history.pushState({}, '', path);
     setRoute(path);
     setSidebarOpen(false);
     setProfileOpen(false);
-  }
+  }, []);
 
   function navigate(event: MouseEvent<HTMLAnchorElement>, path: string): void {
     event.preventDefault();
@@ -1547,7 +1745,7 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
                   {message}
                 </div>
               ) : null}
-              <label className="form-label-custom" htmlFor="login-email">
+              <label className="form-label-custom" htmlFor="login-identifier">
                 Usuario o Correo
               </label>
               <div className="input-group-custom">
@@ -1555,17 +1753,17 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
                   <i className="ti-user" />
                 </span>
                 <input
-                  id="login-email"
+                  id="login-identifier"
                   className="form-control"
-                  name="email"
+                  name="loginIdentifier"
                   type="text"
                   autoComplete="username"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  value={loginIdentifier}
+                  onChange={(event) => setLoginIdentifier(event.target.value)}
                   required
                   maxLength={254}
                   autoFocus
-                  placeholder="Ej: admin@univalle.edu"
+                  placeholder="Ej: admin"
                 />
               </div>
               <label className="form-label-custom" htmlFor="login-password">
@@ -1584,7 +1782,7 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   required
-                  maxLength={72}
+                  maxLength={LOGIN_PASSWORD_MAX_BYTES}
                   placeholder="••••••••"
                 />
               </div>
@@ -1611,48 +1809,112 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
     );
   }
 
-  if (view === 'site-picker' && session) {
+  if (view === 'site-picker' && auth) {
     return (
       <main className="site-picker-stage">
         <section className="site-picker-card">
           <img src={logoIcon} alt="Logo Univalle" />
           <span className="site-picker-eyebrow">Contexto de trabajo</span>
           <h1>Selecciona una sede</h1>
-          <p>Solo se muestran las membresías activas de tu cuenta.</p>
+          <p>
+            Solo se muestran las sedes habilitadas para tu cuenta. Tienes 15 minutos para elegir.
+          </p>
           {message ? (
             <div className="alert alert-danger" role="alert">
               {message}
             </div>
           ) : null}
-          <div className="site-grid">
-            {session.memberships.map((membership) => (
-              <button
-                className="site-card"
-                type="button"
-                key={membership.siteId}
-                disabled={busy}
-                onClick={() => void chooseSite(membership.siteId)}
-              >
-                <span className="site-icon" aria-hidden="true">
-                  <i className="mdi mdi-map-marker" />
-                </span>
-                <span>
-                  <strong>{membership.siteName}</strong>
-                  <small>{membership.role}</small>
-                </span>
-                <i className="mdi mdi-chevron-right" aria-hidden="true" />
-              </button>
-            ))}
-          </div>
+          <SiteChoices
+            sites={auth.eligibleSites}
+            busy={busy}
+            onChoose={(id) => void chooseSite(id)}
+          />
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-rounded px-4 mt-3 font-weight-bold"
+            disabled={busy}
+            onClick={() => void logout()}
+          >
+            Cerrar Sesión
+          </button>
         </section>
       </main>
     );
   }
 
-  if (!session || !context) return <main className="loading-stage">Validando contexto…</main>;
+  if (view === 'password-change' && auth) {
+    return (
+      <main className="site-picker-stage">
+        <section className="site-picker-card">
+          <img src={logoIcon} alt="Logo Univalle" />
+          <span className="site-picker-eyebrow">Seguridad de la cuenta</span>
+          <h1>Cambio de contraseña requerido</h1>
+          <p>
+            {auth.mustChangePassword
+              ? 'Debe establecer una nueva contraseña antes de continuar.'
+              : 'Su contraseña actual no cumple la política vigente. Establezca una nueva para continuar.'}
+          </p>
+          <PasswordChangeForm
+            api={rawApi}
+            title="Establecer nueva contraseña"
+            onChanged={(current) => void enterAuth(current)}
+            onExpired={expireSession}
+          />
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-rounded px-4 mt-3 font-weight-bold"
+            disabled={busy}
+            onClick={() => void logout()}
+          >
+            Cerrar Sesión
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  if (!auth || !session || (session.activeSiteId !== null && !context)) {
+    return <main className="loading-stage">Validando contexto…</main>;
+  }
 
   const title = findRouteTitle(route);
+  // _Layout.cshtml showBell: Dashboard and the operational process pages only (B-05).
+  const showBell =
+    routePath(route) === '/' ||
+    BELL_PAGE_PREFIXES.some((prefix) => routePath(route).startsWith(prefix));
   const displayName = session.displayName.trim() || session.email;
+  const siteName = context?.siteName ?? 'Sin sede activa';
+  const roleLabel = context?.siteRole ?? session.globalRole ?? '';
+  const usersRoute = resolveUsersRoute(route);
+  const viewer: UsersViewer = {
+    userId: session.userId,
+    isSuperAdmin: session.globalRole === GlobalRole.SuperAdmin,
+    activeSiteId: session.activeSiteId,
+    activeSiteName: context?.siteName ?? null,
+    siteRole: context?.siteRole ?? null,
+    eligibleSites: auth.eligibleSites,
+  };
+  const usersApi = api.listUsers ? (api as AuthApi & UsersApi) : null;
+  const peopleApi =
+    api.people && api.person && api.createPerson && api.updatePerson && api.deletePerson
+      ? (api as PeopleApi)
+      : null;
+  const profileApi =
+    api.ownProfile &&
+    api.updateOwnProfile &&
+    api.ownPhoto &&
+    api.uploadOwnPhoto &&
+    api.deleteOwnPhoto
+      ? (api as AuthApi & ProfileApi)
+      : null;
+  const avatarClass = (large: boolean): string =>
+    large ? 'profile-avatar profile-avatar-lg' : 'profile-avatar';
+  const avatarElement = (large = false): ReactElement =>
+    avatarUrl ? (
+      <img className={avatarClass(large)} src={avatarUrl} alt="" />
+    ) : (
+      <span className={avatarClass(large)}>{initials(displayName)}</span>
+    );
 
   return (
     <div
@@ -1743,94 +2005,101 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
                   }}
                 >
                   <i className="mdi mdi-map-marker" aria-hidden="true" />
-                  <span className="d-none d-sm-inline">{context.siteName}</span>
+                  <span className="d-none d-sm-inline">{siteName}</span>
                   <i className="mdi mdi-chevron-down" aria-hidden="true" />
                 </button>
                 {siteOpen ? (
                   <div className="dropdown-menu site-menu show">
                     <div className="dropdown-heading">Sede activa</div>
-                    {session.memberships.map((membership) => (
+                    {auth.eligibleSites.length === 0 ? (
+                      <p className="notifications-empty">Sin sedes habilitadas.</p>
+                    ) : null}
+                    {auth.eligibleSites.map((site) => (
                       <button
                         type="button"
-                        className={`dropdown-item${membership.siteId === session.activeSiteId ? ' active' : ''}`}
-                        key={membership.siteId}
-                        disabled={busy || membership.siteId === session.activeSiteId}
-                        onClick={() => void chooseSite(membership.siteId)}
+                        className={`dropdown-item${site.siteId === session.activeSiteId ? ' active' : ''}`}
+                        key={site.siteId}
+                        disabled={busy || site.siteId === session.activeSiteId}
+                        onClick={() => void chooseSite(site.siteId)}
                       >
                         <i className="mdi mdi-map-marker-outline" />
                         <span>
-                          <strong>{membership.siteName}</strong>
-                          <small>{membership.role}</small>
+                          <strong>{site.siteName}</strong>
+                          <small>{site.role}</small>
                         </span>
                       </button>
                     ))}
                   </div>
                 ) : null}
               </li>
-              <li className="nav-item">
-                <button
-                  className="nav-link notification-button"
-                  type="button"
-                  aria-label="Notificaciones"
-                  aria-expanded={notificationsOpen}
-                  onClick={() => {
-                    setNotificationsOpen((open) => !open);
-                    setSiteOpen(false);
-                    setProfileOpen(false);
-                  }}
-                >
-                  <i className="mdi mdi-bell font-24" />
-                  {notifications.length > 0 ? (
-                    <span className="notification-badge">{notifications.length}</span>
-                  ) : null}
-                </button>
-                {notificationsOpen ? (
-                  <div className="dropdown-menu notifications-menu show">
-                    <div className="dropdown-heading">
-                      <span>Notificaciones</span>
-                      {notifications.length > 0 && api.markAllNotificationsRead ? (
-                        <button
-                          type="button"
-                          className="notifications-clear"
-                          onClick={() => {
-                            void api.markAllNotificationsRead!().then(() => setNotifications([]));
-                          }}
-                        >
-                          Marcar todas
-                        </button>
-                      ) : null}
+              {showBell ? (
+                <li className="nav-item">
+                  <button
+                    className="nav-link notification-button"
+                    type="button"
+                    aria-label="Notificaciones"
+                    aria-expanded={notificationsOpen}
+                    onClick={() => {
+                      setNotificationsOpen((open) => !open);
+                      setSiteOpen(false);
+                      setProfileOpen(false);
+                    }}
+                  >
+                    <i className="mdi mdi-bell font-24" />
+                    {notifications.length > 0 ? (
+                      <span className="notification-badge">{notifications.length}</span>
+                    ) : null}
+                  </button>
+                  {notificationsOpen ? (
+                    <div className="dropdown-menu notifications-menu show">
+                      <div className="dropdown-heading">
+                        <span>Notificaciones</span>
+                        {notifications.length > 0 && api.markAllNotificationsRead ? (
+                          <button
+                            type="button"
+                            className="notifications-clear"
+                            onClick={() => {
+                              void api.markAllNotificationsRead!().then(() => setNotifications([]));
+                            }}
+                          >
+                            Marcar todas
+                          </button>
+                        ) : null}
+                      </div>
+                      {notifications.length === 0 ? (
+                        <p className="notifications-empty">No tienes notificaciones pendientes.</p>
+                      ) : (
+                        notifications.map((notification) => (
+                          <button
+                            type="button"
+                            className="notification-item"
+                            key={notification.id}
+                            onClick={() => {
+                              if (api.markNotificationRead) {
+                                void api
+                                  .markNotificationRead(notification.id)
+                                  .then(() =>
+                                    setNotifications((current) =>
+                                      current.filter((item) => item.id !== notification.id),
+                                    ),
+                                  );
+                              }
+                            }}
+                          >
+                            <i
+                              className={notification.iconClass ?? 'mdi mdi-information-outline'}
+                            />
+                            <span>
+                              <strong>{notification.title}</strong>
+                              <small>{notification.message}</small>
+                            </span>
+                          </button>
+                        ))
+                      )}
                     </div>
-                    {notifications.length === 0 ? (
-                      <p className="notifications-empty">No tienes notificaciones pendientes.</p>
-                    ) : (
-                      notifications.map((notification) => (
-                        <button
-                          type="button"
-                          className="notification-item"
-                          key={notification.id}
-                          onClick={() => {
-                            if (api.markNotificationRead) {
-                              void api
-                                .markNotificationRead(notification.id)
-                                .then(() =>
-                                  setNotifications((current) =>
-                                    current.filter((item) => item.id !== notification.id),
-                                  ),
-                                );
-                            }
-                          }}
-                        >
-                          <i className={notification.iconClass ?? 'mdi mdi-information-outline'} />
-                          <span>
-                            <strong>{notification.title}</strong>
-                            <small>{notification.message}</small>
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                ) : null}
-              </li>
+                  ) : null}
+                </li>
+              ) : null}
               <li className="nav-item profile-menu">
                 <button
                   className="nav-link profile-button"
@@ -1841,27 +2110,25 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
                     setSiteOpen(false);
                   }}
                 >
-                  <span className="profile-avatar">{initials(displayName)}</span>
+                  {avatarElement()}
                   <span className="profile-name d-none d-sm-inline">{displayName}</span>
                   <i className="mdi mdi-chevron-down" aria-hidden="true" />
                 </button>
                 {profileOpen ? (
                   <div className="dropdown-menu user-menu show">
                     <div className="user-summary">
-                      <span className="profile-avatar profile-avatar-lg">
-                        {initials(displayName)}
-                      </span>
+                      {avatarElement(true)}
                       <span>
                         <strong>{displayName}</strong>
                         <small>{session.email}</small>
-                        <small>{context.siteRole}</small>
+                        <small>{roleLabel}</small>
                       </span>
                     </div>
-                    {api.profile ? (
+                    {profileApi ? (
                       <a
                         className="dropdown-item"
-                        href="/Users/Details"
-                        onClick={(event) => navigate(event, '/Users/Details')}
+                        href="/Profile"
+                        onClick={(event) => navigate(event, '/Profile')}
                       >
                         <i className="ti-user" /> Mi Perfil
                       </a>
@@ -1958,26 +2225,12 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
         <div className="page-breadcrumb">
           <div>
             <h1 className="page-title">{title}</h1>
-            <nav aria-label="Migas de pan">
-              <ol className="breadcrumb">
-                <li className="breadcrumb-item">
-                  <a href="/" onClick={(event) => navigate(event, '/')}>
-                    Inicio
-                  </a>
-                </li>
-                {route !== '/' ? (
-                  <li className="breadcrumb-item active" aria-current="page">
-                    {title}
-                  </li>
-                ) : null}
-              </ol>
-            </nav>
           </div>
           <div className="active-site-chip">
             <i className="mdi mdi-map-marker" aria-hidden="true" />
             <span>
               <small>Sede activa</small>
-              <strong>{context.siteName}</strong>
+              <strong>{siteName}</strong>
             </span>
           </div>
         </div>
@@ -1989,7 +2242,23 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
           ) : null}
           {route.includes('ShowWizard=true') && api.managements && api.managementPlans ? (
             <WizardPanel api={api as WizardApi} location={route} onNavigate={navigateTo} />
-          ) : route === '/' ? (
+          ) : route === '/' && context === null ? (
+            <section className="session-welcome" aria-label="Sesión global">
+              <div>
+                <span className="welcome-kicker">Sesión global sin sede activa</span>
+                <h2>Bienvenido, {displayName.split(' ')[0]}</h2>
+                <p>
+                  Puede administrar Usuarios y Mi Perfil. Para acceder a datos operativos seleccione
+                  una sede habilitada.
+                </p>
+                <SiteChoices
+                  sites={auth.eligibleSites}
+                  busy={busy}
+                  onChoose={(id) => void chooseSite(id)}
+                />
+              </div>
+            </section>
+          ) : route === '/' && context !== null ? (
             api.dashboard ? (
               <DashboardPanel
                 summary={dashboard}
@@ -2099,17 +2368,22 @@ export function App({ api = defaultApi }: { readonly api?: AuthApi }): ReactElem
             api.updatePerson &&
             api.deletePerson ? (
             <PeoplePanel api={api as PeopleApi} />
-          ) : route === '/Users/Index' &&
-            api.users &&
-            api.user &&
-            api.createUser &&
-            api.updateUser &&
-            api.deleteUser &&
-            api.profile &&
-            api.updateProfile ? (
-            <UsersPanel api={api as UsersApi} />
-          ) : route === '/Users/Details' && api.profile && api.updateProfile ? (
-            <ProfilePanel api={api as UsersApi} />
+          ) : usersRoute && 'route' in usersRoute && usersRoute.route.kind === 'profile' ? (
+            profileApi ? (
+              <ProfilePanel
+                api={profileApi}
+                onSessionChanged={(current) => void enterAuth(current)}
+                onIdentityChanged={refreshIdentity}
+              />
+            ) : null
+          ) : usersRoute && 'route' in usersRoute && usersApi ? (
+            <UsersModule
+              api={usersApi}
+              peopleApi={peopleApi}
+              viewer={viewer}
+              route={usersRoute.route}
+              navigate={navigateTo}
+            />
           ) : route === '/Reports/Index' &&
             api.reportManifest &&
             api.downloadReport &&

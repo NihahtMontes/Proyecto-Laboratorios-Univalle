@@ -25,7 +25,7 @@ const MIGRATION_PATH = fileURLToPath(
 );
 const REAL_BYTES = readFileSync(MIGRATION_PATH);
 const REAL_SQL = REAL_BYTES.toString('utf8');
-const entry = MIGRATION_REGISTRY[0];
+const entry = MIGRATION_REGISTRY[0]!;
 
 function deriveOrThrow(sql: string) {
   return deriveCanonicalBootstrapSql(entry, sql);

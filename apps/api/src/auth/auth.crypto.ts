@@ -63,3 +63,22 @@ export function clearCookie(name: string, options: Omit<CookieOptions, 'maxAge'>
     maxAge: 0,
   });
 }
+
+/**
+ * Session cookie shared by every issuance path (login, site selection,
+ * password change, self-session renewal). `maxAgeSeconds` is set only for a
+ * remembered (persistent) session; otherwise the cookie is session-scoped.
+ */
+export function serializeSessionCookie(
+  cookieName: string,
+  token: string,
+  maxAgeSeconds?: number,
+): string {
+  return serializeCookie(cookieName, token, {
+    path: '/',
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Lax',
+    ...(maxAgeSeconds === undefined ? {} : { maxAge: maxAgeSeconds }),
+  });
+}

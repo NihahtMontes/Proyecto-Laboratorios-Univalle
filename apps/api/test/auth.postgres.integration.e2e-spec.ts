@@ -5,15 +5,23 @@
  *  - Lee admin/migrador SOLO de `ConnectionStrings__DefaultConnection` con el
  *    parser existente; el raw nunca se imprime (mensajes saneados con
  *    `redactSecrets`).
- *  - Requiere `lu_auth_login` y `lu_auth_runtime` aprovisionados por 012B.
- *    Activa el login con un secreto aleatorio solo durante esta suite y prueba
- *    el AuthPgPool real, que asume el rol runtime en cada transacción.
+ *  - Requiere `lu_auth_login` y `lu_auth_runtime` aprovisionados. Activa el
+ *    login con un secreto aleatorio solo durante esta suite y prueba el
+ *    AuthPgPool real, que asume el rol runtime en cada transacción.
  *  - Datos 100 % sintéticos (UUIDs y `example.invalid`): 2 sites active, 1 user
- *    active bcrypt cost 12, 2 memberships active. afterAll limpia por IDs
- *    estrictos en orden sessions -> memberships -> user -> sites, incluso si
- *    una prueba falla, y cierra pools/clients.
+ *    canonical active bcrypt cost 12, 2 memberships active. afterAll limpia por
+ *    IDs estrictos en orden lu_login_identifier -> lu_identity_audit_event ->
+ *    sessions -> lu_security_event -> lu_auth_rate_limit -> memberships ->
+ *    user -> sites, dentro de una transacción con
+ *    `SET LOCAL session_replication_role = replica` para saltar los triggers
+ *    de hard-delete (trg_lu_user_no_hard_delete /
+ *    trg_lu_site_membership_no_hard_delete /
+ *    trg_lu_identity_audit_event_no_delete) sin deshabilitarlos globalmente.
+ *  - La pasarela de destino acepta `GastroExample` (compatibilidad con el
+ *    sandbox histórico) o una base disposable con el patrón
+ *    `^f7_[0-9a-f]{8}_control$` creada por `tests/e2e/stack/run-f7.mjs`.
  *
- * Ejecución autorizada (sandbox migrado, p. ej. GastroExample):
+ * Ejecución autorizada (sandbox migrado, p. ej. GastroExample o f7_…_control):
  *   AUTH_PG_INTEGRATION=1 ConnectionStrings__DefaultConnection='<admin>' \
  *     pnpm --filter @lu/api test -- auth.postgres.integration
  */
@@ -33,7 +41,23 @@ import { AuthPgPool } from '../src/auth/auth.pg-pool.js';
 import { AuthRateLimitService } from '../src/auth/auth.rate-limit.js';
 import { AuthRepository } from '../src/auth/auth.repository.js';
 import { AuthService } from '../src/auth/auth.service.js';
-import type { ActiveSiteSession } from '../src/auth/auth.types.js';
+import type { ActiveSiteSession, AuthSessionResponse } from '../src/auth/auth.types.js';
+import type {
+  IdentityAuditWriter,
+  LegacyPasswordWindow,
+  PasswordHasher,
+  PasswordPolicy,
+  PasswordVerificationService,
+  SessionInvalidator,
+} from '../src/identity/identity.contracts.js';
+import { AspNetIdentityPasswordVerifier } from '../src/identity/password/aspnet-identity.verifier.js';
+import { BcryptPasswordHasher } from '../src/identity/password/bcrypt.hasher.js';
+import { BcryptPasswordVerifier } from '../src/identity/password/bcrypt.verifier.js';
+import { Utf8PasswordPolicy } from '../src/identity/password/password-policy.js';
+import { DefaultPasswordVerificationService } from '../src/identity/password/password-verification.service.js';
+import { PgIdentityAuditWriter } from '../src/identity/identity-audit.writer.js';
+import { PgLegacyPasswordWindow } from '../src/identity/legacy-password-window.js';
+import { PgSessionInvalidator } from '../src/identity/session-invalidator.js';
 import {
   CONNECTION_STRING_ENV_VAR,
   loadConnectionConfigFromEnv,
@@ -55,13 +79,20 @@ const SQLSTATE_LOCK_TIMEOUT = '55P03'; // lock_not_available
 const CLIENT_IP = '203.0.113.7';
 const RATE_LIMIT_CLIENT_IP = '203.0.113.8';
 
+/** Sandbox histórico (compatibilidad) o disposable f7_…_control de run-f7.mjs. */
+const ACCEPTED_TARGET_DBS: readonly RegExp[] = [/^GastroExample$/, /^f7_[0-9a-f]{8}_control$/];
+
+function isAcceptedTargetDatabase(database: string): boolean {
+  return ACCEPTED_TARGET_DBS.some((re) => re.test(database));
+}
+
 const TEST_AUTH_ENV: Record<string, string | undefined> = {
   AUTH_SESSION_IDLE_TTL_SECONDS: '1800',
   AUTH_SESSION_ABSOLUTE_TTL_SECONDS: '43200',
   AUTH_LOGIN_FLOOR_MS: '0',
   AUTH_BCRYPT_COST: '12',
-  // La rate limit no es el objeto de esta suite; se instancia nueva por prueba
-  // y además se eleva el techo para que nunca interfiera.
+  // La rate limit no es el objeto de esta suite; se eleva el techo para que
+  // las pruebas que no la cubren nunca choquen con el limitador.
   AUTH_RATE_LIMIT_MAX_ATTEMPTS: '50',
   AUTH_RATE_LIMIT_IP_MAX_ATTEMPTS: '100',
   AUTH_RATE_LIMIT_WINDOW_SECONDS: '60',
@@ -72,6 +103,7 @@ type Seed = {
   readonly siteAId: string;
   readonly siteBId: string;
   readonly userId: string;
+  readonly username: string;
   readonly email: string;
   readonly password: string;
   readonly passwordHash: string;
@@ -114,7 +146,7 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
   let admin: Client | null = null;
   let runtimePool: AuthPgPool | null = null;
   let seed: Seed | null = null;
-  let cleanupIds: Pick<Seed, 'siteAId' | 'siteBId' | 'userId' | 'email'> | null = null;
+  let cleanupIds: Pick<Seed, 'siteAId' | 'siteBId' | 'userId' | 'email' | 'username'> | null = null;
   let originalRuntimeConnection: string | undefined;
   let loginActivated = false;
   /** Fragmentos secretos que ningún mensaje de esta suite debe contener. */
@@ -190,11 +222,56 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
     throw new Error('SQL statement unexpectedly allowed for the runtime role.');
   }
 
+  function buildKernel(config: AuthConfig): {
+    verifier: PasswordVerificationService;
+    hasher: PasswordHasher;
+    policy: PasswordPolicy;
+    invalidator: SessionInvalidator;
+    audit: IdentityAuditWriter;
+    window: LegacyPasswordWindow;
+  } {
+    const verifier = new DefaultPasswordVerificationService(
+      [
+        new BcryptPasswordVerifier({
+          currentCost: config.bcryptCost,
+          minCost: Math.min(10, config.bcryptCost),
+          maxCost: 15,
+        }),
+        new AspNetIdentityPasswordVerifier('legacy_identity_v2'),
+        new AspNetIdentityPasswordVerifier('legacy_identity_v3'),
+      ],
+      config.dummyHash,
+    );
+    return {
+      verifier,
+      hasher: new BcryptPasswordHasher(config.bcryptCost),
+      policy: new Utf8PasswordPolicy(),
+      invalidator: new PgSessionInvalidator(),
+      audit: new PgIdentityAuditWriter(),
+      window: new PgLegacyPasswordWindow(),
+    };
+  }
+
   function makeServices(): { repository: AuthRepository; auth: AuthService } {
     const config = new AuthConfig(TEST_AUTH_ENV);
     const repository = new AuthRepository(needPool(), config);
     const rateLimit = new AuthRateLimitService(config, repository);
-    const auth = new AuthService(config, repository, rateLimit);
+    const kernel = buildKernel(config);
+    // F3 AuthService ctor (apps/api/src/auth/auth.service.ts:97-109):
+    //   config, verifier, hasher, policy, audit, invalidator, legacyWindow,
+    //   repository, rateLimit. Los nuevos proveedores Pg* ejercitan SQL real
+    //   bajo el rol runtime; el trigger path de rehash no se cubre aquí.
+    const auth = new AuthService(
+      config,
+      kernel.verifier,
+      kernel.hasher,
+      kernel.policy,
+      kernel.audit,
+      kernel.invalidator,
+      kernel.window,
+      repository,
+      rateLimit,
+    );
     return { repository, auth };
   }
 
@@ -203,11 +280,23 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
   }
 
   /** Login sintético nuevo por prueba: evita dependencias de orden y de sesión. */
-  async function loginFresh(
+  async function loginByEmailFresh(
     auth: AuthService,
-  ): Promise<{ token: string; session: ActiveSiteSession }> {
+  ): Promise<{ token: string; response: AuthSessionResponse }> {
     const s = needSeed();
-    return auth.login({ email: s.email, password: s.password }, CLIENT_IP);
+    const result = await auth.login({ loginIdentifier: s.email, password: s.password }, CLIENT_IP);
+    return { token: result.token, response: result.response };
+  }
+
+  async function loginByUsernameFresh(
+    auth: AuthService,
+  ): Promise<{ token: string; response: AuthSessionResponse }> {
+    const s = needSeed();
+    const result = await auth.login(
+      { loginIdentifier: s.username, password: s.password },
+      CLIENT_IP,
+    );
+    return { token: result.token, response: result.response };
   }
 
   async function fetchSessionRow(token: string): Promise<SessionRow> {
@@ -251,8 +340,10 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
       const connection = loadConnectionConfigFromEnv(process.env);
       secretSentinels.push(rawEnv ?? '', connection.password);
 
-      if (!isLoopback(connection.host) || connection.database !== 'GastroExample') {
-        throw new Error('Integration target must be loopback/GastroExample.');
+      if (!isLoopback(connection.host) || !isAcceptedTargetDatabase(connection.database)) {
+        throw new Error(
+          'Integration target must be loopback and one of GastroExample or f7_<8 hex>_control.',
+        );
       }
 
       admin = new Client({
@@ -273,8 +364,10 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
         `SELECT pg_catalog.current_database() AS database_name,
                 pg_catalog.inet_server_addr()::text AS server_addr`,
       );
-      if (target.rows[0]?.database_name !== 'GastroExample') {
-        throw new Error('Connected database is not the approved GastroExample sandbox.');
+      if (target.rows[0] === undefined || !isAcceptedTargetDatabase(target.rows[0].database_name)) {
+        throw new Error(
+          'Connected database is not an approved sandbox (GastroExample or f7_<8 hex>_control).',
+        );
       }
 
       // Ambos roles deben estar deshabilitados y con la membresía SET-only.
@@ -304,21 +397,27 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
         throw new Error('Auth login membership is not SET-only.');
       }
 
-      // Identificadores quedan disponibles para cleanup antes de escribir.
+      // Identificadores sintéticos: sufijos estables + UUIDs.
       const suffix = randomUUID().replace(/-/g, '').slice(0, 12);
       const siteAId = randomUUID();
       const siteBId = randomUUID();
       const userId = randomUUID();
-      const email = `lu-pgqa-${suffix}@example.invalid`;
+      const username = `pgqa-${suffix}`;
+      const email = `pgqa-${suffix}@example.invalid`;
+      // ^F1 §7: 12+ code points, mayúscula/minúscula/dígito/símbolo, <=72 bytes.
       const password = `Pgqa-${suffix}-Rotate#7`;
       const passwordHash = await bcrypt.hash(password, 12);
-      cleanupIds = { siteAId, siteBId, userId, email };
+      // ^[0-9A-Z-]{1,10}$ para identity_card; 11 dígitos para phone_number.
+      const identityCard = `P${suffix.slice(0, 8).toUpperCase()}`;
+      const phoneDigits = (suffix.match(/\d/g) ?? []).join('').padEnd(11, '0').slice(0, 11);
+      const phoneNumber = `+1${phoneDigits}`;
+      cleanupIds = { siteAId, siteBId, userId, email, username };
 
       await admin.query('BEGIN');
       try {
         await admin.query(
           `INSERT INTO public.lu_site (id, code, name, status)
-         VALUES ($1, $2, $3, 'active'), ($4, $5, $6, 'active')`,
+       VALUES ($1, $2, $3, 'active'), ($4, $5, $6, 'active')`,
           [
             siteAId,
             `PGQA.${suffix}.A`,
@@ -328,15 +427,27 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
             `PGQA Site B ${suffix}`,
           ],
         );
+        // F2 canonical (control-plane 0006): reconciliation_state='canonical' con
+        // username + first/last name + identity_card + phone_number NO nulos.
+        // full_name lo deriva el trigger trg_lu_user_full_name_sync; omitirlo es
+        // obligatorio para no chocar con la sobreescritura del trigger.
         await admin.query(
           `INSERT INTO public.lu_user
-             (id, email, full_name, password_hash, is_super_admin, status)
-         VALUES ($1, $2, $3, $4, false, 'active')`,
-          [userId, email, 'PGQA Integration User', passwordHash],
+             (id, email, username, first_name, last_name,
+              identity_card, phone_number,
+              password_hash, password_scheme, must_change_password,
+              is_super_admin, account_status, status, reconciliation_state,
+              security_version)
+         VALUES ($1, $2, $3, 'Pgqa', 'Integration',
+                 $4, $5,
+                 $6, 'bcrypt', false,
+                 false, 'active', 'active', 'canonical',
+                 0)`,
+          [userId, email, username, identityCard, phoneNumber, passwordHash],
         );
         await admin.query(
           `INSERT INTO public.lu_site_membership (user_id, site_id, role, status)
-         VALUES ($1, $2, 'Administrador', 'active'), ($1, $3, 'Supervisor', 'active')`,
+       VALUES ($1, $2, 'Administrador', 'active'), ($1, $3, 'Supervisor', 'active')`,
           [userId, siteAId, siteBId],
         );
         await admin.query('COMMIT');
@@ -349,6 +460,7 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
         siteAId,
         siteBId,
         userId,
+        username,
         email,
         password,
         passwordHash,
@@ -362,9 +474,11 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
       await admin.query(`ALTER ROLE ${LOGIN_ROLE} LOGIN PASSWORD '${runtimePassword}'`);
       loginActivated = true;
 
+      // El pool runtime debe conectar a LA MISMA base que la admin DSN; el
+      // hard-code histórico `Database=GastroExample` se reemplaza aquí.
       originalRuntimeConnection = process.env['ConnectionStrings__ControlPlaneRuntime'];
       process.env['ConnectionStrings__ControlPlaneRuntime'] =
-        `Host=${connection.host};Port=${connection.port};Database=GastroExample;` +
+        `Host=${connection.host};Port=${connection.port};Database=${connection.database};` +
         `Username=${LOGIN_ROLE};Password=${runtimePassword};SSL Mode=Disable`;
       runtimePool = new AuthPgPool(new AuthConfig(TEST_AUTH_ENV));
     } catch (error) {
@@ -390,21 +504,33 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
       if (admin !== null) {
         try {
           if (cleanupIds !== null) {
-            const subjectHash = identifierHash('subject', cleanupIds.email.toLowerCase());
+            // Hashes derivados iguales a los del auth slice (apps/api/src/auth/
+            // auth.rate-limit.ts:25-33) usando la misma HMAC key del seed.
+            const normalizedEmail = cleanupIds.email.trim().toLowerCase();
+            const normalizedUsername = cleanupIds.username.trim().toLowerCase();
+            const subjectHash = identifierHash('subject', normalizedEmail);
             const ipHashes = [CLIENT_IP, RATE_LIMIT_CLIENT_IP].map((ip) =>
               identifierHash('ip', ip),
             );
             const rateKeys = [
-              identifierHash('rate-email-ip', `${cleanupIds.email.toLowerCase()}|${CLIENT_IP}`),
-              identifierHash(
-                'rate-email-ip',
-                `${cleanupIds.email.toLowerCase()}|${RATE_LIMIT_CLIENT_IP}`,
-              ),
+              identifierHash('rate-identifier-ip', `${normalizedEmail}|${CLIENT_IP}`),
+              identifierHash('rate-identifier-ip', `${normalizedEmail}|${RATE_LIMIT_CLIENT_IP}`),
               identifierHash('rate-ip', CLIENT_IP),
               identifierHash('rate-ip', RATE_LIMIT_CLIENT_IP),
             ];
+            // SET LOCAL session_replication_role = replica deshabilita los triggers
+            // de BEFORE DELETE solo durante esta transacción (requiere superuser);
+            // así evitamos tocar ALTER TABLE … DISABLE TRIGGER de forma global.
             await admin.query('BEGIN');
             try {
+              await admin.query("SET LOCAL session_replication_role = 'replica'");
+              await admin.query('DELETE FROM public.lu_login_identifier WHERE user_id = $1', [
+                cleanupIds.userId,
+              ]);
+              await admin.query(
+                'DELETE FROM public.lu_identity_audit_event WHERE subject_user_id = $1',
+                [cleanupIds.userId],
+              );
               await admin.query('DELETE FROM public.lu_session WHERE user_id = $1', [
                 cleanupIds.userId,
               ]);
@@ -420,10 +546,10 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
               await admin.query('DELETE FROM public.lu_site_membership WHERE user_id = $1', [
                 cleanupIds.userId,
               ]);
-              await admin.query('DELETE FROM public.lu_user WHERE id = $1 AND email = $2', [
-                cleanupIds.userId,
-                cleanupIds.email,
-              ]);
+              await admin.query(
+                'DELETE FROM public.lu_user WHERE id = $1 AND lower(email) = $2 AND username = $3',
+                [cleanupIds.userId, normalizedEmail, cleanupIds.username],
+              );
               await admin.query('DELETE FROM public.lu_site WHERE id = ANY($1::uuid[])', [
                 [cleanupIds.siteAId, cleanupIds.siteBId],
               ]);
@@ -432,26 +558,35 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
               await admin.query('ROLLBACK');
               throw error;
             }
+            // El modo replica solo vive dentro de la transacción: el conteo se
+            // hace con triggers activos, lo que también valida que ningún dato
+            // del usuario sembrado sobrevivió.
             const residue = await admin.query<CountRow>(
               `SELECT (
-                   (SELECT count(*) FROM public.lu_session WHERE user_id = $1) +
-                  (SELECT count(*) FROM public.lu_security_event
-                   WHERE user_id = $1 OR subject_hash = $3 OR ip_hash = ANY($4::bpchar[])) +
-                  (SELECT count(*) FROM public.lu_auth_rate_limit
-                   WHERE key_hash = ANY($5::bpchar[])) +
-                  (SELECT count(*) FROM public.lu_site_membership WHERE user_id = $1) +
-                  (SELECT count(*) FROM public.lu_user WHERE id = $1) +
-                  (SELECT count(*) FROM public.lu_site WHERE id = ANY($2::uuid[]))
-                )::int AS c`,
+                 (SELECT count(*) FROM public.lu_login_identifier WHERE user_id = $1) +
+                 (SELECT count(*) FROM public.lu_identity_audit_event WHERE subject_user_id = $1) +
+                 (SELECT count(*) FROM public.lu_session WHERE user_id = $1) +
+                 (SELECT count(*) FROM public.lu_security_event
+                  WHERE user_id = $1 OR subject_hash = $3 OR ip_hash = ANY($4::bpchar[])) +
+                 (SELECT count(*) FROM public.lu_auth_rate_limit
+                  WHERE key_hash = ANY($5::bpchar[])) +
+                 (SELECT count(*) FROM public.lu_site_membership WHERE user_id = $1) +
+                 (SELECT count(*) FROM public.lu_user
+                  WHERE id = $1 OR lower(email) = $2 OR username = $6) +
+                 (SELECT count(*) FROM public.lu_site WHERE id = ANY($7::uuid[]))
+               )::int AS c`,
               [
                 cleanupIds.userId,
-                [cleanupIds.siteAId, cleanupIds.siteBId],
+                normalizedEmail,
                 subjectHash,
                 ipHashes,
                 rateKeys,
+                cleanupIds.username,
+                [cleanupIds.siteAId, cleanupIds.siteBId],
               ],
             );
             if ((residue.rows[0]?.c ?? -1) !== 0) failures.push('cleanup:residue');
+            void normalizedUsername;
           }
 
           if (loginActivated) {
@@ -516,30 +651,35 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
     });
   });
 
-  it('2) real login -> bcrypt -> session with sha256 hash -> wire -> setActiveSite -> logout 401', async () => {
+  it('2) login by email -> bcrypt -> session with sha256 hash -> wire -> setActiveSite -> logout 401', async () => {
     const s = needSeed();
     const { auth } = makeServices();
 
     const wrong = await capture(() =>
-      auth.login({ email: s.email, password: 'wrong-password-x' }, CLIENT_IP),
+      auth.login({ loginIdentifier: s.email, password: 'wrong-password-x' }, CLIENT_IP),
     );
     expect(wrong).toBeInstanceOf(AuthUnauthorizedException);
 
-    const { token, session } = await loginFresh(auth);
+    const { token, response } = await loginByEmailFresh(auth);
+    const session = response.session;
     expectWireContract(session);
     expect(session.userId).toBe(s.userId);
     expect(session.globalRole).toBeNull();
-    // Dos memberships elegibles sin activeSiteId -> sesión global hasta elegir sede.
+    // Dos memberships elegibles sin activeSiteId -> sesión site_selection
+    // (buildAuthSessionResponse en apps/api/src/auth/auth.types.ts: la wire
+    // restringida NO expone memberships/active site; los sitios elegibles van
+    // en response.eligibleSites).
+    expect(response.purpose).toBe('site_selection');
     expect(session.activeSiteId).toBeNull();
     expect(session.activeSiteName).toBeNull();
-    expect(session.memberships).toHaveLength(2);
-    expect([...session.memberships].map((m) => m.siteId).sort()).toEqual(
+    expect(session.memberships).toHaveLength(0);
+    expect([...response.eligibleSites].map((m) => m.siteId).sort()).toEqual(
       [s.siteAId, s.siteBId].sort(),
     );
-    expect(session.memberships.find((m) => m.siteId === s.siteAId)?.role).toBe('Administrador');
-    expect(session.memberships.find((m) => m.siteId === s.siteBId)?.role).toBe('Supervisor');
+    expect(response.eligibleSites.find((m) => m.siteId === s.siteAId)?.role).toBe('Administrador');
+    expect(response.eligibleSites.find((m) => m.siteId === s.siteBId)?.role).toBe('Supervisor');
     // El wire jamás expone el hash de clave.
-    expect(JSON.stringify(session)).not.toContain(s.passwordHash);
+    expect(JSON.stringify(response)).not.toContain(s.passwordHash);
 
     // El hash persistido es bcrypt cost 12 y valida la clave sintética.
     const hashRes = await needAdmin().query<{ password_hash: string }>(
@@ -568,24 +708,33 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
 
     // getSession real.
     const wire = await auth.getSession(token);
-    expectWireContract(wire);
-    expect(wire.userId).toBe(s.userId);
-    expect(wire.activeSiteId).toBeNull();
+    expectWireContract(wire.session);
+    expect(wire.session.userId).toBe(s.userId);
+    expect(wire.session.activeSiteId).toBeNull();
 
     // setActiveSite a la segunda membership (commit real bajo el wrapper runtime).
+    // Como el login inicial quedó en purpose='site_selection', el contrato
+    // (auth.service.ts setActiveSite) revoca la sesión previa y emite una
+    // sesión normal nueva: el token devuelto NO es null y la row del token
+    // antiguo queda marcada con revocation_reason='site_selection_resolved'.
     const after = await auth.setActiveSite(token, { activeSiteId: s.siteBId });
-    expect(after.activeSiteId).toBe(s.siteBId);
-    const siteBName = after.memberships.find((m) => m.siteId === s.siteBId)?.siteName;
+    expect(after.response.purpose).toBe('normal');
+    expect(after.response.session.activeSiteId).toBe(s.siteBId);
+    const siteBName = after.response.session.memberships.find(
+      (m) => m.siteId === s.siteBId,
+    )?.siteName;
     expect(siteBName).toBeDefined();
-    expect(after.activeSiteName).toBe(siteBName);
-    expect((await fetchSessionRow(token)).active_site_id).toBe(s.siteBId);
+    expect(after.response.session.activeSiteName).toBe(siteBName);
+    expect(after.token).not.toBeNull();
+    const activeToken = after.token as string;
+    expect((await fetchSessionRow(activeToken)).active_site_id).toBe(s.siteBId);
 
     // logout = UPDATE (no DELETE); la sesión revocada deja de autorizar (401).
-    await auth.logout(token);
-    const revoked = await fetchSessionRow(token);
+    await auth.logout(activeToken);
+    const revoked = await fetchSessionRow(activeToken);
     expect(revoked.revoked_at).not.toBeNull();
     expect(revoked.revocation_reason).toBe('logout');
-    await expect(auth.getSession(token)).rejects.toBeInstanceOf(AuthUnauthorizedException);
+    await expect(auth.getSession(activeToken)).rejects.toBeInstanceOf(AuthUnauthorizedException);
 
     const audit = await needAdmin().query<SecurityEventRow>(
       `SELECT event_type, subject_hash, ip_hash, metadata
@@ -594,8 +743,13 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
        ORDER BY occurred_at, event_type`,
       [s.userId],
     );
+    // lu_security_event solo lleva los eventos de autenticación. La transición
+    // site_selection -> normal va a lu_identity_audit_event con
+    // action='active_site_changed' (auth.service.ts setActiveSite); el código
+    // anterior del repositorio emitía active_site_changed a lu_security_event,
+    // pero el contrato vigente lo particiona por tabla.
     expect(audit.rows.map((row) => row.event_type).sort()).toEqual(
-      ['active_site_changed', 'login_failure', 'login_success', 'logout'].sort(),
+      ['login_failure', 'login_success', 'logout'].sort(),
     );
     const credentialEvents = audit.rows.filter((row) => row.event_type.startsWith('login_'));
     expect(credentialEvents).toHaveLength(2);
@@ -605,11 +759,40 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
       expect(JSON.stringify(event)).not.toContain(s.email);
       expect(JSON.stringify(event)).not.toContain(CLIENT_IP);
     }
+
+    const identityAudit = await needAdmin().query<{ action: string }>(
+      `SELECT action FROM public.lu_identity_audit_event
+       WHERE subject_user_id = $1 AND action = 'active_site_changed'`,
+      [s.userId],
+    );
+    expect(identityAudit.rows.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('2b) login by username succeeds with the same seeded identity', async () => {
+    const s = needSeed();
+    const { auth } = makeServices();
+
+    const { token, response } = await loginByUsernameFresh(auth);
+    const session = response.session;
+    expectWireContract(session);
+    expect(session.userId).toBe(s.userId);
+    expect(session.email).toBe(s.email);
+    // Restringida por buildAuthSessionResponse: memberships queda vacía y los
+    // sitios elegibles se exponen vía response.eligibleSites.
+    expect(response.purpose).toBe('site_selection');
+    expect(session.memberships).toHaveLength(0);
+    expect(response.eligibleSites.map((m) => m.siteId).sort()).toEqual(
+      [s.siteAId, s.siteBId].sort(),
+    );
+    expect(session.activeSiteId).toBeNull();
+    expect(token).toMatch(/^[A-Za-z0-9_-]{20,}$/);
+
+    await auth.logout(token);
   });
 
   it('3) setActiveSite to a foreign/no-membership site rolls back and keeps the session', async () => {
     const { auth } = makeServices();
-    const { token } = await loginFresh(auth);
+    const { token } = await loginByEmailFresh(auth);
     const before = await fetchSessionRow(token);
 
     // UUID canónico sin ninguna membership (ajena al usuario).
@@ -630,7 +813,7 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
   it('4) admin bumps security_version -> existing session is invalid; new sessions work', async () => {
     const s = needSeed();
     const { auth } = makeServices();
-    const { token } = await loginFresh(auth);
+    const { token } = await loginByEmailFresh(auth);
     await expect(auth.getSession(token)).resolves.toBeDefined();
 
     await needAdmin().query(
@@ -651,7 +834,7 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
     }
 
     // Con sesión nueva (helper por prueba) el contrato vuelve a aplicarse.
-    const fresh = await loginFresh(auth);
+    const fresh = await loginByEmailFresh(auth);
     await expect(auth.getSession(fresh.token)).resolves.toBeDefined();
     await auth.logout(fresh.token);
   });
@@ -679,25 +862,66 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
 
     // Negado: DELETE de sesiones (la revocación institucional es UPDATE soft).
     await expectDeniedByRuntime('DELETE FROM lu_session WHERE user_id = $1', [s.userId]);
-    // Negado: INSERT/UPDATE sobre lu_user (incluido status) y memberships.
+
+    // Negado: DELETE sobre las tablas de identidad con trigger de hard-delete
+    // (control-plane 0006 step 18 / step 15). El REVOKE de DELETE basta para
+    // disparar 42501 antes del trigger; el resultado es exactamente el mismo
+    // SQLSTATE que el resto de denegaciones por columna/privilegio.
+    await expectDeniedByRuntime('DELETE FROM lu_user WHERE id = $1', [s.userId]);
     await expectDeniedByRuntime(
-      `INSERT INTO lu_user (id, email, full_name, password_hash, is_super_admin, status, security_version)
-       VALUES ($1, $2, $3, $4, false, 'active', 0)`,
-      [randomUUID(), `evil-${randomUUID()}@example.invalid`, 'Evil', '$2b$12$not-a-real-hash'],
+      'DELETE FROM lu_site_membership WHERE user_id = $1 AND site_id = $2',
+      [s.userId, s.siteAId],
     );
-    await expectDeniedByRuntime("UPDATE lu_user SET status = 'disabled' WHERE id = $1", [s.userId]);
+
+    // Negado: INSERT/UPDATE en columnas no concedidas del runtime grant.
+    // reconciliation_state, username y row_version no están en la lista de
+    // INSERT/UPDATE column-level del GRANT de 0006 (lines 1301-1302, 1307-1308).
     await expectDeniedByRuntime(
-      "UPDATE lu_site_membership SET status = 'revoked' WHERE user_id = $1 AND site_id = $2",
+      `INSERT INTO lu_user
+         (id, email, username, first_name, last_name, identity_card, phone_number,
+          password_hash, password_scheme, must_change_password,
+          is_super_admin, account_status, status, reconciliation_state, security_version)
+       VALUES ($1, $2, $3, 'Pgqa', 'Integration', $4, $5,
+               $6, 'bcrypt', false,
+               false, 'active', 'active', 'canonical', 0)`,
+      [
+        randomUUID(),
+        `evil-${randomUUID()}@example.invalid`,
+        `evil-${randomUUID()}`,
+        'PEVIL0001',
+        '+15555550100',
+        '$2b$12$cwX8Zvuf1RsO.CYGKnnT5OiRQ/sGS6ptomphoUa2I1ReqXiiqGJ6i',
+      ],
+    );
+    await expectDeniedByRuntime('UPDATE lu_user SET reconciliation_state = $1 WHERE id = $2', [
+      'pending_reconciliation',
+      s.userId,
+    ]);
+    await expectDeniedByRuntime('UPDATE lu_user SET username = $1 WHERE id = $2', [
+      `mutated-${randomUUID()}`,
+      s.userId,
+    ]);
+    await expectDeniedByRuntime('UPDATE lu_user SET row_version = row_version + 1 WHERE id = $1', [
+      s.userId,
+    ]);
+    await expectDeniedByRuntime(
+      'UPDATE lu_site_membership SET created_at = now() WHERE user_id = $1 AND site_id = $2',
       [s.userId, s.siteAId],
     );
     await expectDeniedByRuntime(
-      "INSERT INTO lu_site_membership (user_id, site_id, role, status) VALUES ($1, $2, 'Supervisor', 'revoked')",
+      'UPDATE lu_site_membership SET user_id = user_id WHERE user_id = $1 AND site_id = $2',
+      [s.userId, s.siteAId],
+    );
+    await expectDeniedByRuntime(
+      "INSERT INTO lu_site_membership (user_id, site_id, role, status, created_at) VALUES ($1, $2, 'Supervisor', 'active', now())",
       [s.userId, s.siteAId],
     );
     await expectDeniedByRuntime("UPDATE lu_site SET status = 'disabled' WHERE id = $1", [
       s.siteAId,
     ]);
-    // Negado: DDL.
+
+    // Negado: DDL. El REVOKE CREATE del schema y la denegación TEMPORARY de la
+    // base dejan el comando CREATE TABLE / CREATE TEMP TABLE en 42501.
     await expectDeniedByRuntime(`CREATE TABLE lu_pgqa_probe_${suffixless()} (id int)`);
     await expectDeniedByRuntime(`CREATE TEMP TABLE lu_pgqa_temp_${suffixless()} (id int)`);
     const maintain = await pool.query<{ allowed: boolean }>(
@@ -706,6 +930,27 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
        ) AS allowed`,
     );
     expect(maintain.rows[0]?.allowed).toBe(false);
+
+    // Negado: append-only. lu_security_event y lu_identity_audit_event son
+    // append-only por contrato (0002 / 0006 step 15). El REVOKE previo al
+    // trigger es lo que materializa el 42501.
+    await expectDeniedByRuntime('SELECT * FROM public.lu_security_event');
+    await expectDeniedByRuntime(
+      `UPDATE public.lu_security_event SET metadata = '{}'::jsonb WHERE user_id = $1`,
+      [s.userId],
+    );
+    await expectDeniedByRuntime('DELETE FROM public.lu_security_event WHERE user_id = $1', [
+      s.userId,
+    ]);
+    await expectDeniedByRuntime(
+      `UPDATE public.lu_identity_audit_event SET metadata = '{}'::jsonb
+        WHERE subject_user_id = $1`,
+      [s.userId],
+    );
+    await expectDeniedByRuntime(
+      'DELETE FROM public.lu_identity_audit_event WHERE subject_user_id = $1',
+      [s.userId],
+    );
 
     // Permitido: las operaciones exactas de sesión del repositorio bajo el rol.
     const guard = new Error('auth-pgqa-session-rollback');
@@ -821,10 +1066,10 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
 
     // Rutas reales del repositorio bajo runtime: FOR UPDATE + GREATEST válidos.
     const { auth } = makeServices();
-    const { token } = await loginFresh(auth);
+    const { token } = await loginByEmailFresh(auth);
     await expect(auth.getSession(token)).resolves.toBeDefined();
     const set = await auth.setActiveSite(token, { activeSiteId: s.siteBId });
-    expect(set.activeSiteId).toBe(s.siteBId);
+    expect(set.response.session.activeSiteId).toBe(s.siteBId);
     await auth.logout(token);
     await expect(auth.getSession(token)).rejects.toBeInstanceOf(AuthUnauthorizedException);
   });
@@ -832,7 +1077,7 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
   it('7) rollback: ineligible site leaves the session row untouched', async () => {
     const s = needSeed();
     const { auth } = makeServices();
-    const { token } = await loginFresh(auth);
+    const { token } = await loginByEmailFresh(auth);
     const before = await fetchSessionRow(token);
 
     try {
@@ -869,37 +1114,66 @@ describePg('Auth PostgreSQL E2E (MIG-F3-AUTH-PGQA-012)', () => {
       AUTH_RATE_LIMIT_IP_MAX_ATTEMPTS: '3',
     });
     const repository = new AuthRepository(needPool(), config);
-    const auth = new AuthService(config, repository, new AuthRateLimitService(config, repository));
+    const kernel = buildKernel(config);
+    const auth = new AuthService(
+      config,
+      kernel.verifier,
+      kernel.hasher,
+      kernel.policy,
+      kernel.audit,
+      kernel.invalidator,
+      kernel.window,
+      repository,
+      new AuthRateLimitService(config, repository),
+    );
 
     await expect(
-      auth.login({ email: s.email, password: 'wrong-rate-password' }, RATE_LIMIT_CLIENT_IP),
+      auth.login(
+        { loginIdentifier: s.email, password: 'wrong-rate-password' },
+        RATE_LIMIT_CLIENT_IP,
+      ),
     ).rejects.toBeInstanceOf(AuthUnauthorizedException);
     await expect(
-      auth.login({ email: s.email, password: 'wrong-rate-password' }, RATE_LIMIT_CLIENT_IP),
+      auth.login(
+        { loginIdentifier: s.email, password: 'wrong-rate-password' },
+        RATE_LIMIT_CLIENT_IP,
+      ),
     ).rejects.toBeInstanceOf(AuthUnauthorizedException);
     await expect(
-      auth.login({ email: s.email, password: 'wrong-rate-password' }, RATE_LIMIT_CLIENT_IP),
+      auth.login(
+        { loginIdentifier: s.email, password: 'wrong-rate-password' },
+        RATE_LIMIT_CLIENT_IP,
+      ),
     ).rejects.toBeInstanceOf(AuthRateLimitException);
 
-    const emailIpKey = identifierHash(
-      'rate-email-ip',
-      `${s.email.toLowerCase()}|${RATE_LIMIT_CLIENT_IP}`,
+    // Derivaciones idénticas a apps/api/src/auth/auth.rate-limit.ts:25-33 con la
+    // HMAC key del seed. Los `scope` literales están fijados por la CHECK de
+    // 0002 ('email_ip', 'ip'); los `key_hash` usan `rate-identifier-ip` y
+    // `rate-ip` como en el slice actual.
+    const normalizedEmail = s.email.trim().toLowerCase();
+    const normalizedIp = RATE_LIMIT_CLIENT_IP;
+    const identifierIpKey = identifierHash(
+      'rate-identifier-ip',
+      `${normalizedEmail}|${normalizedIp}`,
     );
-    const ipKey = identifierHash('rate-ip', RATE_LIMIT_CLIENT_IP);
+    const ipKey = identifierHash('rate-ip', normalizedIp);
     const buckets = await needAdmin().query<{ scope: string; attempt_count: number }>(
       `SELECT scope, attempt_count
        FROM public.lu_auth_rate_limit
        WHERE key_hash = ANY($1::bpchar[])
        ORDER BY scope`,
-      [[emailIpKey, ipKey]],
+      [[identifierIpKey, ipKey]],
     );
     expect(buckets.rows).toEqual([
       { scope: 'email_ip', attempt_count: 3 },
       { scope: 'ip', attempt_count: 3 },
     ]);
 
-    const subjectHash = identifierHash('subject', s.email.toLowerCase());
-    const ipHash = identifierHash('ip', RATE_LIMIT_CLIENT_IP);
+    // Derivaciones idénticas a apps/api/src/auth/auth.service.ts:132-133 y
+    // auth.rate-limit.ts:25-26. El sujeto es el identifier normalizado y el IP
+    // se trimea antes de hashear.
+    const subjectHash = identifierHash('subject', normalizedEmail);
+    const ipHash = identifierHash('ip', normalizedIp);
     const events = await needAdmin().query<SecurityEventRow>(
       `SELECT event_type, subject_hash, ip_hash, metadata
        FROM public.lu_security_event

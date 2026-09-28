@@ -87,10 +87,14 @@ export class PersonRepository {
   async list(pool: IPgPool, siteId: string, query: PersonQuery): Promise<PersonPage> {
     const { page: currentPage, size, offset } = page(query);
     const params: unknown[] = [siteId];
-    const filters = ['site_id=$1', 'status<>2'];
+    const filters = ['site_id=$1'];
+    // F1 §15: the default list hides deleted persons (status 2); an explicit
+    // status filter, including 2, returns exactly that status.
     if (query.statusFilter !== undefined) {
       params.push(query.statusFilter);
       filters.push(`status=$${params.length}`);
+    } else {
+      filters.push('status<>2');
     }
     if (query.type !== undefined) {
       params.push(query.type);

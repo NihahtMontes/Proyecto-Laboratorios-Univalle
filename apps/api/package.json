@@ -20,6 +20,8 @@
     "auth:bootstrap": "node dist/auth/auth-bootstrap-cli.js",
     "preauth:managed-role": "corepack pnpm run build",
     "auth:managed-role": "node dist/auth/auth-managed-role-cli.js",
+    "preusers:superadmin": "corepack pnpm run build",
+    "users:superadmin": "node dist/users/superadmin-cli.js",
     "presmoke": "corepack pnpm --filter @lu/contracts run build && corepack pnpm run build",
     "smoke": "node dist/smoke.js"
   },

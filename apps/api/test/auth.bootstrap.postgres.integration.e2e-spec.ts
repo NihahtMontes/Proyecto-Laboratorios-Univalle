@@ -1,6 +1,23 @@
 /**
  * PostgreSQL opt-in for the one-time initial administrator bootstrap.
+ *
  * Uses only synthetic example.invalid data and restores an empty identity state.
+ *
+ * Migración 0006 (control-plane) impone el contrato canónico para filas con
+ * `reconciliation_state='canonical'`: username + email + first/last_name +
+ * identity_card (regex `^[0-9A-Z-]{1,10}$`) + phone_number (7..15 dígitos).
+ * `lu_user` y `lu_site_membership` tienen triggers de hard-delete prohibido
+ * (step 18 de 0006); la limpieza del admin usa `SET LOCAL
+ * session_replication_role = replica` dentro de la transacción para saltarlos
+ * sin tocar el catálogo globalmente. `lu_identity_audit_event` es append-only
+ * (step 15) y se borra en la misma ventana transaccional. Los claims
+ * `lu_login_identifier` los mantiene un trigger desde `lu_user` y se limpian
+ * también en el mismo scope.
+ *
+ * El destino acepta `GastroExample` (sandbox histórico) o la base disposable
+ * `f7_<8 hex>_control` que crea `tests/e2e/stack/run-f7.mjs`; el bucle de
+ * conexión y el chequeo `current_database()` post-connect comparten el mismo
+ * set de aceptados.
  */
 import bcrypt from 'bcryptjs';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -19,6 +36,13 @@ import {
 const PG_ENABLED = process.env['AUTH_PG_INTEGRATION'] === '1';
 const describePg = PG_ENABLED ? describe : describe.skip;
 const TEST_TIMEOUT = 60_000;
+
+/** Sandbox histórico o disposable f7_…_control creado por run-f7.mjs. */
+const ACCEPTED_TARGET_DBS: readonly RegExp[] = [/^GastroExample$/, /^f7_[0-9a-f]{8}_control$/];
+
+function isAcceptedTargetDatabase(database: string): boolean {
+  return ACCEPTED_TARGET_DBS.some((re) => re.test(database));
+}
 
 type CountRow = { readonly c: number };
 
@@ -39,17 +63,20 @@ describePg('Initial administrator bootstrap PostgreSQL E2E', () => {
     return input;
   }
 
+  function isLoopback(host: string): boolean {
+    const normalized = host.trim().toLowerCase();
+    return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1';
+  }
+
   beforeAll(async () => {
     try {
       const raw = process.env[CONNECTION_STRING_ENV_VAR];
       const connection = loadConnectionConfigFromEnv(process.env);
       secretSentinels.push(raw ?? '', connection.password);
-      const host = connection.host.trim().toLowerCase();
-      if (
-        !['localhost', '127.0.0.1', '::1'].includes(host) ||
-        connection.database !== 'GastroExample'
-      ) {
-        throw new Error('Bootstrap integration target must be loopback/GastroExample.');
+      if (!isLoopback(connection.host) || !isAcceptedTargetDatabase(connection.database)) {
+        throw new Error(
+          'Bootstrap integration target must be loopback and one of GastroExample or f7_<8 hex>_control.',
+        );
       }
 
       admin = new Client({
@@ -60,6 +87,16 @@ describePg('Initial administrator bootstrap PostgreSQL E2E', () => {
         statement_timeout: 15_000,
       });
       await admin.connect();
+
+      const target = await admin.query<{ database_name: string }>(
+        'SELECT pg_catalog.current_database() AS database_name',
+      );
+      const connected = target.rows[0]?.database_name ?? '';
+      if (!isAcceptedTargetDatabase(connected)) {
+        throw new Error(
+          'Bootstrap connected database is not an approved sandbox (GastroExample or f7_<8 hex>_control).',
+        );
+      }
 
       const counts = await admin.query<CountRow>(
         `SELECT (
@@ -73,15 +110,23 @@ describePg('Initial administrator bootstrap PostgreSQL E2E', () => {
       }
 
       const suffix = randomUUID().replace(/-/g, '').slice(0, 12);
+      // ^F1 §7 (Utf8PasswordPolicy): 12+ code points, mayúscula/minúscula/
+      // dígito/símbolo, <=72 bytes UTF-8. El bootstrap exige el policy real.
       const password = `Bootstrap-${randomBytes(12).toString('base64url')}#7aA`;
       const auditHmacKey = randomBytes(32).toString('hex');
       secretSentinels.push(password, auditHmacKey);
+      // ^Bootstrap canonical: identity_card `^[0-9A-Z-]{1,10}$`,
+      // phone_number `^[+]?[0-9 ().-]+$` con 7..15 dígitos.
       input = {
-        expectedDatabase: 'GastroExample',
+        expectedDatabase: connected,
         siteCode: `BOOT.${suffix}`,
         siteName: `Bootstrap Site ${suffix}`,
         adminEmail: `bootstrap-${suffix}@example.invalid`,
-        adminFullName: 'Bootstrap PGQA Administrator',
+        adminFirstName: 'Bootstrap',
+        adminLastName: 'PGQA Administrator',
+        adminIdentityCard: 'BS1234567',
+        adminPhoneNumber: '+15555550199',
+        adminUsername: `bootstrap-${suffix}`,
         adminPassword: password,
         bcryptCost: 12,
         auditHmacKey,
@@ -106,9 +151,22 @@ describePg('Initial administrator bootstrap PostgreSQL E2E', () => {
         if (createdUserId !== null && createdSiteId !== null) {
           await admin.query('BEGIN');
           try {
+            // SET LOCAL session_replication_role = replica deshabilita los
+            // triggers de BEFORE DELETE solo dentro de la transacción (requiere
+            // superuser): trg_lu_user_no_hard_delete,
+            // trg_lu_site_membership_no_hard_delete y
+            // trg_lu_identity_audit_event_no_delete.
+            await admin.query("SET LOCAL session_replication_role = 'replica'");
+            await admin.query('DELETE FROM public.lu_login_identifier WHERE user_id = $1', [
+              createdUserId,
+            ]);
             await admin.query('DELETE FROM public.lu_security_event WHERE user_id = $1', [
               createdUserId,
             ]);
+            await admin.query(
+              'DELETE FROM public.lu_identity_audit_event WHERE subject_user_id = $1',
+              [createdUserId],
+            );
             await admin.query(
               'DELETE FROM public.lu_site_membership WHERE user_id = $1 AND site_id = $2',
               [createdUserId, createdSiteId],
@@ -122,7 +180,9 @@ describePg('Initial administrator bootstrap PostgreSQL E2E', () => {
           }
           const residue = await admin.query<CountRow>(
             `SELECT (
+               (SELECT count(*) FROM public.lu_login_identifier WHERE user_id = $1) +
                (SELECT count(*) FROM public.lu_security_event WHERE user_id = $1) +
+               (SELECT count(*) FROM public.lu_identity_audit_event WHERE subject_user_id = $1) +
                (SELECT count(*) FROM public.lu_site_membership WHERE user_id = $1) +
                (SELECT count(*) FROM public.lu_user WHERE id = $1) +
                (SELECT count(*) FROM public.lu_site WHERE id = $2)
@@ -158,8 +218,12 @@ describePg('Initial administrator bootstrap PostgreSQL E2E', () => {
       event_type: string;
       subject_hash: string;
       metadata: Record<string, unknown>;
+      reconciliation_state: string;
+      password_scheme: string;
+      must_change_password: boolean;
     }>(
       `SELECT u.password_hash, u.is_super_admin, u.status AS user_status,
+              u.reconciliation_state, u.password_scheme, u.must_change_password,
               s.status AS site_status, m.role, m.status AS membership_status,
               e.event_type, e.subject_hash, e.metadata
        FROM public.lu_user u
@@ -185,6 +249,39 @@ describePg('Initial administrator bootstrap PostgreSQL E2E', () => {
     expect(state.rows[0]!.subject_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(JSON.stringify(state.rows[0])).not.toContain(bootstrapInput.adminEmail);
     expect(JSON.stringify(state.rows[0])).not.toContain(bootstrapInput.adminPassword);
+
+    // El contrato canónico de 0006 mantiene username + first/last + identity_card
+    // + phone_number para filas en reconciliation_state='canonical'. El trigger
+    // trg_lu_user_full_name_sync deriva full_name; no se debe insertar manualmente.
+    const canonical = await needAdmin().query<{
+      username: string;
+      email: string;
+      first_name: string;
+      last_name: string;
+      identity_card: string;
+      phone_number: string;
+      full_name: string;
+      password_scheme: string;
+      must_change_password: boolean;
+      reconciliation_state: string;
+    }>(
+      `SELECT username, email, first_name, last_name, identity_card, phone_number,
+              full_name, password_scheme, must_change_password, reconciliation_state
+       FROM public.lu_user WHERE id = $1`,
+      [first.userId],
+    );
+    expect(canonical.rows[0]).toMatchObject({
+      username: bootstrapInput.adminUsername,
+      email: bootstrapInput.adminEmail,
+      first_name: bootstrapInput.adminFirstName,
+      last_name: bootstrapInput.adminLastName,
+      identity_card: bootstrapInput.adminIdentityCard,
+      phone_number: bootstrapInput.adminPhoneNumber,
+      full_name: `${bootstrapInput.adminFirstName} ${bootstrapInput.adminLastName}`,
+      password_scheme: 'bcrypt',
+      must_change_password: true, // el bootstrap obliga al primer cambio
+      reconciliation_state: 'canonical',
+    });
 
     await expect(bootstrapInitialAdmin(needAdmin(), bootstrapInput)).resolves.toEqual({
       created: false,
