@@ -17,6 +17,22 @@ export interface ColumnSpec {
   readonly charMaxLength: number | null;
   readonly isNullable: boolean;
   readonly columnDefault: string | null;
+  /**
+   * Identity mode declared by `GENERATED <mode> AS IDENTITY`. When set, the
+   * verifier expects `information_schema.columns.column_default = NULL`
+   * (PG does not surface IDENTITY defaults in `column_default`), asserts
+   * `pg_attribute.attidentity = 'd'` (BY DEFAULT) on the owning column and
+   * accepts the supplemental ownership `pg_depend.deptype = 'i'`
+   * (internal/identity link from sequence -> column) in addition to the
+   * legacy `'a'` (auto/serial) link. Only `'BY DEFAULT'` is permitted by
+   * the contract; `ALWAYS` would require a separate expectation.
+   */
+  readonly identity?: IdentitySpec;
+}
+
+export interface IdentitySpec {
+  readonly generated: 'BY DEFAULT';
+  readonly sequence: string;
 }
 
 export interface PrimaryKeySpec {
@@ -85,7 +101,72 @@ function stripPublicSchema(value: string): string {
 }
 
 function stripTypeCasts(value: string): string {
-  return value.replace(/::\s*(?:text|bpchar|boolean|bigint|uuid)\b/g, '');
+  return value.replace(
+    /::\s*(?:text|bpchar|boolean|bigint|uuid|numeric|integer|int4|int8|smallint|decimal|real|double precision|date|time)\b/g,
+    '',
+  );
+}
+
+/**
+ * Strip PG-18 wrapper parens around an identifier that is about to be cast:
+ * `(column)::TYPE` -> `column::TYPE`. Only the `(id)::` cast shape is
+ * touched; function calls like `length(column)` are intentionally left
+ * alone so the expression remains semantically a function call. PG-18 emits
+ * CHECK expressions with explicit wrapper parens and an implicit cast
+ * around column references; this helper collapses that wrapper so the
+ * downstream `stripTypeCasts` and `canonicalizeAnyArrayToIn` steps can
+ * match the canonical form documented in the schema manifest. The match is
+ * anchored by a lookahead for `::` so the wrapper is only removed when the
+ * identifier is in a cast position; without the lookahead, `(col)` inside
+ * a function call would be wrongly stripped.
+ */
+function stripCastWrap(value: string): string {
+  let prev: string;
+  do {
+    prev = value;
+    value = value.replace(/\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)\s*(?=::)/g, '$1');
+  } while (value !== prev);
+  return value;
+}
+
+/**
+ * Strip redundant double quotes around identifiers that PostgreSQL quotes
+ * ONLY because they collide with a reserved keyword (e.g. `"position"`,
+ * `"length"`). A quoted identifier `"<id>"` is collapsed to bare `<id>`
+ * ONLY when its content is a simple, already-lowercase, ASCII identifier
+ * matching `[a-zA-Z_][a-zA-Z0-9_]*` — i.e. one that PG could legally
+ * write unquoted without changing meaning. The regex explicitly handles
+ * the doubled-quote escape form `"a""b"` by recognizing a single
+ * embedded `""` (and PRESERVING the whole token in that case so the
+ * outer pair does not get stripped around only the inner identifier).
+ *
+ * Preserved (NOT weakened):
+ *  - Case-sensitive identifiers: `"Position"`, `"MyColumn"`, `"ALL_CAPS"`.
+ *  - Identifiers with non-identifier characters: `"my column"`,
+ *    `"col-with-dash"`, `"col.with.dots"`, `"special$char"`.
+ *  - Escaped-quote identifiers: `"col""name"` — the optional inner
+ *    `""name` segment is captured; if present the whole match is
+ *    returned untouched so the escape structure is preserved.
+ *  - The empty string `""` (regex requires at least one identifier char).
+ *
+ * The stripper runs BEFORE `lowercase` so that a case-sensitive quoted
+ * identifier (which would be lowercased to its lowercase form) keeps its
+ * quotes intact, preserving the distinction between `position` (bare,
+ * case-insensitive, equals `"POSITION"`, `"Position"`, etc.) and
+ * `"Position"` (case-sensitive quoted — a different PG identifier).
+ */
+function stripRedundantDoubleQuotes(value: string): string {
+  return value.replace(
+    /"([a-zA-Z_][a-zA-Z0-9_]*)(?:""([a-zA-Z_][a-zA-Z0-9_]*))?"/g,
+    (match, id1: string, id2?: string) => {
+      if (id2 !== undefined) {
+        // Escaped-quote identifier: the outer pair is NOT keyword-quoting,
+        // it is structural. Preserve the whole match untouched.
+        return match;
+      }
+      return id1 === id1.toLowerCase() ? id1 : match;
+    },
+  );
 }
 
 function stripOuterParentheses(value: string): string {
@@ -177,6 +258,51 @@ function canonicalizeAnyArrayToIn(definition: string): string {
         .filter((item) => item !== '');
       return `${expr.toLowerCase()} in (${items.join(', ')})`;
     },
+  );
+}
+
+const VARCHAR_STRING_LITERAL = /^('(?:[^']|'')*')::character varying$/;
+
+/**
+ * For a varchar column, `col IN ('a', 'b')` is rendered by PG as
+ * `(col)::text = ANY ((ARRAY['a'::character varying, 'b'::character varying])::text[])`.
+ * Casting an array of varchar string literals to text[] only relabels each
+ * element (varchar -> text is binary-coercible), so the array is rewritten
+ * to `array['a', 'b']`, which `canonicalizeAnyArrayToIn` then folds into IN.
+ * The rewrite applies ONLY when every element is a plain string literal typed
+ * `character varying` and the array cast is exactly `::text[]`; any other
+ * element shape or cast target is left untouched (fail closed). The operator
+ * (`= any`, `<> all`, ...) is never touched here.
+ */
+function canonicalizeVarcharLiteralArray(definition: string): string {
+  return definition.replace(
+    /\(\s*array\s*\[([^\]]*)\]\s*\)::text\[\]/g,
+    (match, itemsRaw: string) => {
+      const items = splitTopLevel(itemsRaw, ',').map((item) => collapseWhitespace(item));
+      const literals: string[] = [];
+      for (const item of items) {
+        const literal = VARCHAR_STRING_LITERAL.exec(item);
+        if (literal === null) return match;
+        literals.push(literal[1]!);
+      }
+      return `array[${literals.join(', ')}]`;
+    },
+  );
+}
+
+/**
+ * For a varchar column, `COALESCE(col, '')` used in a text context is
+ * rendered by PG as `(coalesce(col, ''::character varying))::text`.
+ * varchar -> text is a binary-coercible relabel, so this equals
+ * `coalesce(col, ''::text)`. Only a bare identifier plus a single string
+ * literal typed `character varying` is rewritten; bpchar (which trims on
+ * cast), non-literal fallbacks and any other coalesce shape are left
+ * untouched. Shared by index-expression and CHECK normalization.
+ */
+function canonicalizeVarcharCoalesceLiteral(expression: string): string {
+  return expression.replace(
+    /\(\s*coalesce\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*,\s*('(?:[^']|'')*')::character varying\s*\)\s*\)::text\b/g,
+    'coalesce($1, $2::text)',
   );
 }
 
@@ -476,7 +602,17 @@ function normalizeBooleanExpression(definition: string): string {
 export function normalizeCheckDefinition(definition: string): string {
   let s = collapseWhitespace(definition);
   s = s.replace(/^CHECK\s+/i, '');
+  // Strip redundant keyword-quoting BEFORE lowercase so that
+  // case-sensitive quoted identifiers (e.g. `"Position"`) keep their
+  // quotes and remain distinguishable from bare `position` after the
+  // lowercase step. See stripRedundantDoubleQuotes for the full contract.
+  s = stripRedundantDoubleQuotes(s);
   s = lowercase(s);
+  // PG varchar renderings must be canonicalized before stripTypeCasts turns
+  // `::text[]` into a dangling `[]`.
+  s = canonicalizeVarcharLiteralArray(s);
+  s = canonicalizeVarcharCoalesceLiteral(s);
+  s = stripCastWrap(s);
   s = stripTypeCasts(s);
   s = canonicalizeAnyArrayToIn(s);
   s = normalizeBooleanExpression(s);
@@ -497,6 +633,35 @@ export function normalizeIndexDefinition(def: string): string {
   s = lowercase(s);
   s = stripPublicSchema(s);
   return s;
+}
+
+/**
+ * Normalize a single index expression so the verifier collapses PG-18's
+ * redundant `(col)::text` cast on bare column references into the bare
+ * identifier. PG-18 `pg_get_indexdef` emits `lower((name)::text)` for a
+ * declared `lower(name)` functional index, because `lower()` requires
+ * `text` and PG shows the implicit cast as an explicit one. The cast AND
+ * the redundant parentheses around the identifier are semantically a
+ * no-op for character-typed columns; other casts (e.g. `::int`, `::bool`)
+ * are preserved so the verifier stays fail-closed for genuinely
+ * different expressions.
+ *
+ * Only the pattern `(<simple_identifier>)::text` is collapsed; any other
+ * shape (function call with multiple args, array casts, arithmetic) is
+ * returned unchanged. The function is intentionally narrow: equivalence
+ * is claimed ONLY for the `(col)::text` -> `col` case (no parentheses,
+ * no cast).
+ *
+ * One further PG-rendered variant is canonicalized: for a varchar column,
+ * `lower(COALESCE(col, ''))` is emitted as
+ * `lower((coalesce(col, ''::character varying))::text)`; see
+ * `canonicalizeVarcharCoalesceLiteral` for the exact, narrow contract.
+ */
+export function normalizeIndexExpression(expression: string): string {
+  return canonicalizeVarcharCoalesceLiteral(expression).replace(
+    /\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\)::text\b/g,
+    '$1',
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1312,6 +1477,13 @@ interface ColumnRow extends Record<string, unknown> {
   character_maximum_length: number | null;
   is_nullable: string;
   column_default: string | null;
+  /**
+   * `pg_attribute.attidentity`: `'d'` (BY DEFAULT IDENTITY), `'a'` (ALWAYS
+   * IDENTITY) or empty string (non-identity). Always present as an empty
+   * string in the projected row, never NULL, so the verifier can rely on
+   * `=== 'd'` checks without nullability.
+   */
+  attidentity: string;
 }
 
 interface ConstraintRow extends Record<string, unknown> {
@@ -1366,14 +1538,22 @@ export async function verifySchema<TTable extends string>(
   const colRows = await queryRows<ColumnRow>(
     client,
     `SELECT c.table_name, c.column_name, c.data_type, c.udt_name,
-            c.character_maximum_length, c.is_nullable, c.column_default
+            c.character_maximum_length, c.is_nullable, c.column_default,
+            COALESCE(a.attidentity, '') AS attidentity
      FROM information_schema.columns c
+     JOIN pg_class cls ON cls.relname = c.table_name
+     JOIN pg_namespace n
+       ON n.oid = cls.relnamespace AND n.nspname = c.table_schema
+     JOIN pg_attribute a
+       ON a.attrelid = cls.oid AND a.attname = c.column_name
      WHERE c.table_schema = $1 AND c.table_name = ANY($2::text[])
+       AND a.attnum > 0 AND NOT a.attisdropped
      ORDER BY c.table_name, c.ordinal_position`,
     [manifest.schema, [...expectedTables]],
   );
 
   const actualColumns = buildMap<string, ColumnSpec>();
+  const actualIdentity = new Map<string, string>();
   for (const row of colRows) {
     pushToMap(actualColumns, row.table_name, {
       name: row.column_name,
@@ -1383,6 +1563,7 @@ export async function verifySchema<TTable extends string>(
       isNullable: row.is_nullable === 'YES',
       columnDefault: normalizeDefault(row.column_default),
     });
+    actualIdentity.set(`${row.table_name}.${row.column_name}`, row.attidentity);
   }
 
   for (const table of expectedTables) {
@@ -1417,7 +1598,25 @@ export async function verifySchema<TTable extends string>(
           `${table}.${expectedCol.name}: expected nullable ${expectedCol.isNullable}, got ${actualCol.isNullable}`,
         );
       }
-      if (actualCol.columnDefault !== expectedCol.columnDefault) {
+      // Identity columns: PG omits the nextval default from
+      // information_schema.columns.column_default; identity is encoded in
+      // pg_attribute.attidentity. When the manifest declares an identity
+      // column we MUST see columnDefault = NULL AND attidentity = 'd'
+      // (BY DEFAULT). For non-identity columns we still compare the
+      // columnDefault string as before.
+      if (expectedCol.identity !== undefined) {
+        if (actualCol.columnDefault !== null) {
+          diffs.push(
+            `${table}.${expectedCol.name}: expected identity column (default null), got column_default ${actualCol.columnDefault ?? 'null'}`,
+          );
+        }
+        const actualAttidentity = actualIdentity.get(`${table}.${expectedCol.name}`) ?? '';
+        if (actualAttidentity !== 'd') {
+          diffs.push(
+            `${table}.${expectedCol.name}: expected attidentity='d' (GENERATED BY DEFAULT AS IDENTITY), got '${actualAttidentity}'`,
+          );
+        }
+      } else if (actualCol.columnDefault !== expectedCol.columnDefault) {
         diffs.push(
           `${table}.${expectedCol.name}: expected default ${expectedCol.columnDefault ?? 'null'}, got ${actualCol.columnDefault ?? 'null'}`,
         );
@@ -1689,7 +1888,9 @@ export function parseIndexDef(def: string, table: string, name: string): IndexSp
   return {
     name: indexName,
     table: tableName,
-    columns: splitIndexColumns(columnsRaw).map((c) => collapseWhitespace(c).toLowerCase()),
+    columns: splitIndexColumns(columnsRaw).map((c) =>
+      normalizeIndexExpression(collapseWhitespace(c).toLowerCase()),
+    ),
     unique,
     where: whereRaw === null ? null : normalizeCheckDefinition(whereRaw),
   };

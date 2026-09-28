@@ -1,14 +1,19 @@
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Pool, type PoolConfig } from 'pg';
+import { assertCanonicalBytes, sha256Hex } from '../database/migration-plan.js';
 import {
   describeTarget,
   loadConnectionConfigFromEnv,
   redactSecrets,
   type PostgresConnectionConfig,
 } from '../database/connection-config.js';
+import {
+  assertProvisionAllowedBeforeControlPlaneFour,
+  type PreflightQuery,
+  type PreflightQueryRow,
+} from '../database/cutover-preflight.js';
 
 const ROLE_FILE = '003_provision_auth_runtime_managed.sql';
 const ROLE_FILE_SHA256 = '7fd48d7130140af8e5468d432e9831ae8a2885d3cad62c6a6e046e43e368e85a';
@@ -73,7 +78,11 @@ export function roleFilePath(cwd: string): string {
 }
 
 export function verifyRoleFile(content: Buffer): string {
-  const hash = createHash('sha256').update(content).digest('hex');
+  // Byte-level identity is computed against the CANONICAL LF bytes (CRLF →
+  // LF only; BOM and lone CR rejected). The pinned digest is invariant
+  // under Git's `text=auto` + `core.autocrlf=true` checkout on Windows.
+  assertCanonicalBytes(content, ROLE_FILE);
+  const hash = sha256Hex(content);
   if (hash !== ROLE_FILE_SHA256) {
     throw new Error(`Managed role SQL hash mismatch for ${ROLE_FILE}.`);
   }
@@ -120,9 +129,23 @@ async function verifyRoles(pool: Pool, expectedLogin: boolean): Promise<void> {
 async function provision(pool: Pool, cwd: string): Promise<string> {
   const content = readFileSync(roleFilePath(cwd));
   const hash = verifyRoleFile(content);
+  const query = poolQuery(pool);
+  await assertProvisionAllowedBeforeControlPlaneFour(query);
   await pool.query(content.toString('utf8'));
   await verifyRoles(pool, false);
   return hash;
+}
+
+function poolQuery(pool: Pool): PreflightQuery {
+  return async <Row extends PreflightQueryRow>(
+    sql: string,
+    values?: readonly unknown[],
+  ): Promise<readonly Row[]> => {
+    const result = values
+      ? await pool.query<Row>(sql, values as unknown[])
+      : await pool.query<Row>(sql);
+    return (result as { rows: readonly Row[] }).rows;
+  };
 }
 
 async function setLoginState(pool: Pool, password: string | null): Promise<void> {

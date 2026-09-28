@@ -1,0 +1,18 @@
+{
+  "name": "@lu/e2e",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "e2e:f7": "node stack/run-f7.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.13.5",
+    "@types/pg": "8.23.1",
+    "bcryptjs": "3.0.3",
+    "pg": "8.23.0",
+    "typescript": "5.9.3"
+  }
+}

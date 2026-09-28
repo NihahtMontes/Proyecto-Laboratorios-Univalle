@@ -5,7 +5,12 @@ import { AUTH_CONFIG, AUTH_PG_POOL } from '../src/auth/auth.constants.js';
 import { AuthConfig } from '../src/auth/auth.config.js';
 import { hashSessionToken } from '../src/auth/auth.crypto.js';
 import { AuthRepository } from '../src/auth/auth.repository.js';
-import type { Session, Site, User } from '../src/auth/auth.types.js';
+import type {
+  AuthSessionRecord,
+  IdentityMembership,
+  IdentitySite,
+  IdentityUser,
+} from '../src/auth/auth.types.js';
 import { createSession, FakeAuthRepository, FakePgPool } from './auth.fakes.js';
 
 export interface TestOverrides {
@@ -56,7 +61,7 @@ export const UNTRUSTED_ORIGIN = 'http://evil.example';
 export function parseCookies(header: string | string[] | undefined): Record<string, string> {
   const result: Record<string, string> = {};
   if (header === undefined) return result;
-  const raw = Array.isArray(header) ? header.join('; ') : header;
+  const raw = Array.isArray(header) ? (header.join('; ') as string) : header;
   for (const segment of raw.split(';')) {
     const separatorIndex = segment.indexOf('=');
     if (separatorIndex < 0) continue;
@@ -88,17 +93,39 @@ export function expectCookieFlags(setCookie: string): void {
   expect(setCookie).not.toMatch(/Domain=/i);
 }
 
+/**
+ * Seed an active normal session in the fake repository with the identity
+ * shape F3 expects.
+ */
 export function createAuthenticatedSession(
   repository: FakeAuthRepository,
-  user: User,
-  site?: Site,
-): { rawToken: string; tokenHash: string; session: Session } {
-  const rawToken = `raw-token-${user.id}`;
+  identity: IdentityUser,
+  site?: IdentitySite,
+  memberships?: IdentityMembership[],
+): { rawToken: string; tokenHash: string; session: AuthSessionRecord } {
+  const rawToken = `raw-token-${identity.id}`;
   const tokenHash = hashSessionToken(rawToken);
-  const session = createSession(user, {
+  const session = createSession(identity, {
     tokenHash,
     activeSiteId: site?.id ?? null,
   });
+  repository.identities.set(identity.id, identity);
   repository.sessions.set(tokenHash, session);
+  if (site !== undefined && memberships === undefined && !repository.memberships.has(identity.id)) {
+    repository.memberships.set(identity.id, [
+      {
+        userId: identity.id,
+        siteId: site.id,
+        role: 'Administrador',
+        status: 'active',
+        validFrom: null,
+        validUntil: null,
+        site,
+      },
+    ]);
+  }
+  if (memberships !== undefined) {
+    repository.memberships.set(identity.id, memberships);
+  }
   return { rawToken, tokenHash, session };
 }

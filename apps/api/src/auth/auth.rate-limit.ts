@@ -12,24 +12,34 @@ export class AuthRateLimitService {
     private readonly repository: AuthRepository,
   ) {}
 
-  async consume(email: string, ip: string | undefined, now = Date.now()): Promise<void> {
+  /**
+   * Login rate limit keyed by the NORMALIZED login identifier (username OR
+   * email) plus the socket IP. The transport-bound identifier is reduced to
+   * its NFKC + locale-independent lowercase canonical form so case-only or
+   * unicode-normalization variations collide on the same bucket.
+   */
+  async consume(identifier: string, ip: string | undefined, now = Date.now()): Promise<void> {
     this.config.validate();
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedIdentifier = identifier.trim().normalize('NFKC').toLowerCase();
     const normalizedIp = ip?.trim() || 'unknown';
-    const subjectHash = hashAuthIdentifier(this.config.auditHmacKey, 'subject', normalizedEmail);
+    const subjectHash = hashAuthIdentifier(
+      this.config.auditHmacKey,
+      'subject',
+      normalizedIdentifier,
+    );
     const ipHash = hashAuthIdentifier(this.config.auditHmacKey, 'ip', normalizedIp);
     const retryAfterSeconds = await this.repository.consumeLoginRateLimit({
-      emailIpKeyHash: hashAuthIdentifier(
+      identifierIpKeyHash: hashAuthIdentifier(
         this.config.auditHmacKey,
-        'rate-email-ip',
-        `${normalizedEmail}|${normalizedIp}`,
+        'rate-identifier-ip',
+        `${normalizedIdentifier}|${normalizedIp}`,
       ),
       ipKeyHash: hashAuthIdentifier(this.config.auditHmacKey, 'rate-ip', normalizedIp),
       subjectHash,
       ipHash,
       now: new Date(now),
       windowSeconds: this.config.rateLimitWindowSeconds,
-      emailIpMaxAttempts: this.config.rateLimitMaxAttempts,
+      identifierIpMaxAttempts: this.config.rateLimitMaxAttempts,
       ipMaxAttempts: this.config.rateLimitIpMaxAttempts,
     });
     if (retryAfterSeconds !== null) {

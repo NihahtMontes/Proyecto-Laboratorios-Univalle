@@ -51,3 +51,23 @@ export class AuthServiceUnavailableException extends AuthException {
     super(503, 'SERVICE_UNAVAILABLE', 'Authentication service is temporarily unavailable.');
   }
 }
+
+/** Authenticated caller is not permitted to perform the operation (403). */
+export class AuthAccessDeniedException extends AuthException {
+  constructor(message = 'Operation not permitted.') {
+    super(403, 'ACCESS_DENIED', message);
+  }
+}
+
+export class AuthNotFoundException extends AuthException {
+  constructor(message = 'Resource not found.') {
+    super(404, 'NOT_FOUND', message);
+  }
+}
+
+/** Uniqueness/state conflict that reveals no other account data (409). */
+export class AuthConflictException extends AuthException {
+  constructor(message = 'A conflicting record already exists.') {
+    super(409, 'CONFLICT', message);
+  }
+}

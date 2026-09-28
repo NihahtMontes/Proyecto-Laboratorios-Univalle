@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import type { ApiFailure, ApiSuccess, SiteRequestContext } from '@lu/contracts';
 import { SESSION_COOKIE } from '../src/auth/auth.constants.js';
-import { createMembership, createSite, createUser, FakeAuthRepository } from './auth.fakes.js';
+import { createIdentity, createMembership, createSite, FakeAuthRepository } from './auth.fakes.js';
 import {
   createAuthenticatedSession,
   createAuthTestApp,
@@ -25,10 +25,10 @@ describe('Core site request context (e2e)', () => {
   });
 
   function seedActiveContext(role: 'Administrador' | 'Supervisor' = 'Administrador') {
-    const user = createUser();
+    const user = createIdentity();
     const site = createSite();
-    repository.users.set(user.id, user);
-    repository.memberships.set(user.id, [createMembership(site, { role })]);
+    repository.identities.set(user.id, user);
+    repository.memberships.set(user.id, [createMembership(site, { role, userId: user.id })]);
     const auth = createAuthenticatedSession(repository, user, site);
     return { user, site, auth };
   }
@@ -82,8 +82,8 @@ describe('Core site request context (e2e)', () => {
   });
 
   it('rejects a global SuperAdmin session until an eligible active site is selected', async () => {
-    const user = createUser({ isSuperAdmin: true });
-    repository.users.set(user.id, user);
+    const user = createIdentity({ isSuperAdmin: true });
+    repository.identities.set(user.id, user);
     const auth = createAuthenticatedSession(repository, user);
 
     const response = await app.inject({
@@ -118,7 +118,7 @@ describe('Core site request context (e2e)', () => {
 
   it('preserves Administrator as a site role independently from global role', async () => {
     const { user, auth } = seedActiveContext('Administrador');
-    repository.users.set(user.id, { ...user, isSuperAdmin: true });
+    repository.identities.set(user.id, { ...user, isSuperAdmin: true });
 
     const response = await app.inject({
       method: 'GET',

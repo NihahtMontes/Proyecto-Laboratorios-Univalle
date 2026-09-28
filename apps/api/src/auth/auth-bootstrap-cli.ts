@@ -6,7 +6,8 @@ import {
   loadConnectionConfigFromEnv,
   redactSecrets,
 } from '../database/connection-config.js';
-import { bootstrapInitialAdmin } from './auth-bootstrap.js';
+import { bootstrapInitialAdmin, createDefaultPasswordPolicy } from './auth-bootstrap.js';
+import type { PasswordPolicy } from '../identity/identity.contracts.js';
 
 const CONFIRMATION = 'CREATE_INITIAL_ADMIN';
 
@@ -24,6 +25,18 @@ function parseBcryptCost(): number {
   return Number(raw);
 }
 
+function loadCanonicalPasswordPolicy() {
+  // Lazily import so the CLI surface does not force the identity kernel into
+  // the build graph when tests stub the policy. The kernel ships a
+  // `Utf8PasswordPolicy` whose constructor takes no arguments and enforces
+  // F1 §7 (12 code points, 72 UTF-8 bytes, upper/lower/digit/symbol,
+  // 4 distinct code points).
+  const modulePath = new URL('../identity/password/password-policy.js', import.meta.url).href;
+  return import(modulePath) as Promise<{
+    Utf8PasswordPolicy?: new () => PasswordPolicy;
+  }>;
+}
+
 export async function runBootstrapCli(): Promise<void> {
   if (requiredEnv('AUTH_BOOTSTRAP_CONFIRM') !== CONFIRMATION) {
     throw new Error(`AUTH_BOOTSTRAP_CONFIRM must equal ${CONFIRMATION}.`);
@@ -35,11 +48,20 @@ export async function runBootstrapCli(): Promise<void> {
     siteCode: requiredEnv('AUTH_BOOTSTRAP_SITE_CODE'),
     siteName: requiredEnv('AUTH_BOOTSTRAP_SITE_NAME'),
     adminEmail: requiredEnv('AUTH_BOOTSTRAP_ADMIN_EMAIL'),
-    adminFullName: requiredEnv('AUTH_BOOTSTRAP_ADMIN_FULL_NAME'),
+    adminFirstName: requiredEnv('AUTH_BOOTSTRAP_ADMIN_FIRST_NAME'),
+    adminLastName: requiredEnv('AUTH_BOOTSTRAP_ADMIN_LAST_NAME'),
+    adminIdentityCard: requiredEnv('AUTH_BOOTSTRAP_ADMIN_IDENTITY_CARD'),
+    adminPhoneNumber: requiredEnv('AUTH_BOOTSTRAP_ADMIN_PHONE_NUMBER'),
+    adminUsername: requiredEnv('AUTH_BOOTSTRAP_ADMIN_USERNAME'),
     adminPassword: requiredEnv('AUTH_BOOTSTRAP_ADMIN_PASSWORD'),
     bcryptCost: parseBcryptCost(),
     auditHmacKey: requiredEnv('AUTH_AUDIT_HMAC_KEY'),
   };
+
+  const kernel = await loadCanonicalPasswordPolicy();
+  const policy = kernel.Utf8PasswordPolicy
+    ? new kernel.Utf8PasswordPolicy()
+    : createDefaultPasswordPolicy();
 
   const client = new Client({
     ...connection,
@@ -53,7 +75,7 @@ export async function runBootstrapCli(): Promise<void> {
   try {
     await client.connect();
     connected = true;
-    const result = await bootstrapInitialAdmin(client, input);
+    const result = await bootstrapInitialAdmin(client, input, policy);
     console.log(`Initial administrator bootstrap target: ${describeTarget(connection)}`);
     console.log(`result: ${result.created ? 'CREATED' : 'ALREADY_PRESENT'}`);
     console.log(`siteId: ${result.siteId}`);

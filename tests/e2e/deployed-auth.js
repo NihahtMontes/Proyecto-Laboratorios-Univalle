@@ -2,12 +2,15 @@ import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 
 const target = process.env.E2E_TARGET_URL?.trim();
-const email = process.env.E2E_ADMIN_EMAIL?.trim();
+// Username or email (F1-D004). E2E_ADMIN_EMAIL remains accepted as the previous variable name.
+const loginIdentifier = (process.env.E2E_ADMIN_LOGIN ?? process.env.E2E_ADMIN_EMAIL)?.trim();
 const password = process.env.E2E_ADMIN_PASSWORD ?? '';
 const evidencePath = process.env.E2E_EVIDENCE_OUT?.trim();
 
-if (target === undefined || email === undefined || password === '') {
-  throw new Error('E2E_TARGET_URL, E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD are required.');
+if (target === undefined || !loginIdentifier || password === '') {
+  throw new Error(
+    'E2E_TARGET_URL, E2E_ADMIN_LOGIN (or E2E_ADMIN_EMAIL) and E2E_ADMIN_PASSWORD are required.',
+  );
 }
 
 const origin = new URL(target);
@@ -75,7 +78,7 @@ const loginResponse = await request('/api/v1/auth/login', {
     'Content-Type': 'application/json',
     'X-CSRF-Token': csrfBody.csrfToken,
   },
-  body: JSON.stringify({ email, password, activeSiteId: null }),
+  body: JSON.stringify({ loginIdentifier, password, activeSiteId: null }),
 });
 assert.equal(loginResponse.status, 200, 'Login must respond 200.');
 const sessionCookie = loginResponse.headers
@@ -88,6 +91,7 @@ assert.match(sessionCookie, /; SameSite=Lax/i);
 assert.match(sessionCookie, /; Path=\//i);
 const loginBody = await loginResponse.json();
 assert.equal(loginBody.success, true);
+assert.equal(loginBody.meta?.purpose, 'normal', 'Login must produce a normal session.');
 assert.equal(loginBody.data.globalRole, 'SuperAdmin');
 assert.equal(loginBody.data.memberships.length, 1);
 assert.equal(loginBody.data.memberships[0].role, 'Administrador');

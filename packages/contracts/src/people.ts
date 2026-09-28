@@ -20,6 +20,14 @@ export interface PersonRecord {
   readonly updatedAt: string | null;
 }
 
+/**
+ * `GET /people` query. People are tenant data: every route (reads included)
+ * requires a normal session whose active site is eligible and whose role there
+ * is Administrador; otherwise 403 `SITE_ACCESS_DENIED`. Deleted persons
+ * (status 2) are hidden unless `statusFilter` requests a status explicitly
+ * (including 2). `DELETE /people/:id` soft-deletes (status 2) and returns
+ * `data: null`; data conflicts are reported as 400 with `fieldErrors`.
+ */
 export interface PersonQuery {
   readonly currentPage?: number;
   readonly statusFilter?: PersonStatus;

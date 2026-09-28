@@ -1,7 +1,36 @@
-# Pruebas E2E — explícitamente diferidas a la Fase 5
+# Pruebas E2E
+
+## Estado actual — MIG-001 F7 (26-09-2026): ACTIVO, opt-in, solo local
+
+El paquete `@lu/e2e` contiene la suite Playwright del modulo Users/Auth/Profile/People
+(ver `docs/migration/users/07-HANDOFF.md`). Recorre el stack real
+navegador → React (Vite) → `@lu/api-client` → NestJS → PostgreSQL.
+
+- **Runner**: `node tests/e2e/stack/run-f7.mjs --phase=e2e|integration|all [-- <args de Playwright>]`.
+  Nunca se ejecuta por defecto (`pnpm test` no la invoca).
+- **Datos**: crea bases desechables `f7_<run>_control`, `f7_<run>_tenant_a`,
+  `f7_<run>_tenant_b` (duenas `lu_auth_migrator`), aplica las migraciones con el CLI
+  real mediante un login ejecutor temporal, aplica `apps/api/database/roles/003_*`
+  (pin SHA-256 verificado; solo se redirige el nombre de base en memoria), siembra
+  datos sinteticos por prueba y **borra todo** al final (residuo verificado = 0).
+- **Credenciales**: requiere `E2E_ADMIN_DSN` (admin loopback) solo para bootstrap y
+  teardown; opcional `E2E_ADMIN_WINDOW_MODULE` (ventana de acceso local fuera del
+  repo) y `E2E_RECOVERY_FILE` (fuera del repo). `lu_auth_login` recibe una clave
+  aleatoria por corrida (verificador SCRAM calculado localmente) y se restaura
+  exactamente a su estado previo. Nada secreto se imprime ni se escribe en el repo.
+- **Navegador**: Chrome instalado (`channel: 'chrome'`), sin descargar binarios.
+- **Fase `integration`**: corre las suites opt-in `auth.postgres.integration` y
+  `auth.bootstrap.postgres.integration` sobre el control plane desechable recien
+  migrado, con `lu_auth_login` en `NOLOGIN PASSWORD NULL` como precondicion.
+
+Las secciones siguientes son el registro historico de MIG-F2-TEST-001.
+
+---
+
+## Historico — explícitamente diferidas a la Fase 5 (MIG-F2-TEST-001)
 
 **Trabajo**: MIG-F2-TEST-001 · **Propietario**: `test-worker` · **Fecha**: 18-09-2026
-**Estado**: `DIFERIDO — no activo`. Este directorio esta reservado por
+**Estado (historico, reemplazado por MIG-001 F7)**: `DIFERIDO — no activo`. Este directorio esta reservado por
 documentacion; **no contiene** configuracion de Playwright, ni browsers, ni
 pruebas, ni `package.json`, ni dependencias. Que este README exista no habilita
 nada: E2E solo se escribe y ejecuta cuando se cumplen los criterios de la
@@ -118,6 +147,7 @@ verifica).
 
 ## 6. Registro
 
-| Fecha      | Cambio                                                                                                                                                                               | Autor                           |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- |
-| 2026-09-18 | Creacion: E2E diferido formalmente a Fase 5; criterios CA-1..CA-6; sin Playwright, browsers, puertos ni servidores; prohibiciones de directorio inactivo. Sin ejecucion de comandos. | `test-worker` (MIG-F2-TEST-001) |
+| Fecha      | Cambio                                                                                                                                                                               | Autor                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| 2026-09-18 | Creacion: E2E diferido formalmente a Fase 5; criterios CA-1..CA-6; sin Playwright, browsers, puertos ni servidores; prohibiciones de directorio inactivo. Sin ejecucion de comandos. | `test-worker` (MIG-F2-TEST-001)        |
+| 2026-09-26 | MIG-001 F7: suite Playwright activa (opt-in, local), runner de bases desechables `stack/run-f7.mjs`, fase `integration` para las suites PostgreSQL opt-in.                           | Claude (orquestador) + workers MiniMax |
