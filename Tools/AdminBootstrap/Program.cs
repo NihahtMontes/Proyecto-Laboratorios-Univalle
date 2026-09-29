@@ -31,9 +31,36 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 var connection = new SqlConnectionStringBuilder(connectionString);
-if (!string.Equals(connection.InitialCatalog, "DB_Laboratorios_Univalle", StringComparison.OrdinalIgnoreCase))
+var hasExpectedServer = arguments.TryGetValue("expected-server", out var expectedServer);
+var hasExpectedDatabase = arguments.TryGetValue("expected-database", out var expectedDatabase);
+if (hasExpectedServer != hasExpectedDatabase)
 {
-    Console.Error.WriteLine("SEGURIDAD: el bootstrap solo puede ejecutarse contra DB_Laboratorios_Univalle.");
+    Console.Error.WriteLine("SEGURIDAD: indique --expected-server y --expected-database juntos.");
+    return 3;
+}
+
+// El destino local oficial sigue siendo el unico permitido por defecto. Una base
+// remota exige que el operador declare ambos identificadores antes de conectar.
+if (!hasExpectedServer)
+{
+    if (!string.Equals(connection.DataSource, "localhost", StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(connection.DataSource, ".", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.Error.WriteLine("SEGURIDAD: un servidor remoto requiere --expected-server y --expected-database.");
+        return 3;
+    }
+
+    expectedServer = connection.DataSource;
+    expectedDatabase = "DB_Laboratorios_Univalle";
+}
+
+if (string.IsNullOrWhiteSpace(expectedServer) || string.IsNullOrWhiteSpace(expectedDatabase) ||
+    string.IsNullOrWhiteSpace(connection.DataSource) || string.IsNullOrWhiteSpace(connection.InitialCatalog) ||
+    new[] { "master", "model", "msdb", "tempdb" }.Contains(expectedDatabase, StringComparer.OrdinalIgnoreCase) ||
+    !string.Equals(connection.DataSource, expectedServer.Trim(), StringComparison.OrdinalIgnoreCase) ||
+    !string.Equals(connection.InitialCatalog, expectedDatabase.Trim(), StringComparison.OrdinalIgnoreCase))
+{
+    Console.Error.WriteLine("SEGURIDAD: el servidor y la base de la conexión no coinciden con el destino declarado (o el destino es una base del sistema).");
     return 3;
 }
 
@@ -229,7 +256,8 @@ static string FormatErrors(IdentityResult result) =>
 static void PrintUsage()
 {
     Console.WriteLine("dotnet run --project Tools/AdminBootstrap -- --username admin --email correo --first-name Nombre --last-name Apellido --identity-card CI --phone Telefono");
-    Console.WriteLine("Use --check para validar la inicialización sin crear ni modificar usuarios.");
+    Console.WriteLine("Para un servidor no local añada --expected-server SERVIDOR --expected-database BASE (ambos deben coincidir exactamente con DefaultConnection).");
+    Console.WriteLine("Use --check para validar la conexión/esquema sin crear ni modificar usuarios (sí conecta a la base).");
     Console.WriteLine("La contraseña se solicita de forma interactiva y no se muestra.");
 }
 

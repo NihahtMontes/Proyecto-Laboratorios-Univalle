@@ -27,12 +27,12 @@
     <Compile Remove="Tools\**\*.cs" />
     <Compile Remove="tmp\**\*.cs" />
     <Compile Remove="tmp/**" />
-    <Content Remove="Tools\**;Gastro\**;Gastro/**;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
+    <Content Remove="Tools\**;Gastro\**;Gastro/**;opencode.json;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
     <Content Remove="tmp\**" />
     <Content Remove="tmp/**" />
     <EmbeddedResource Remove="Tools\**;tmp\**" />
     <EmbeddedResource Remove="tmp/**" />
-    <None Remove="Tools\**;Gastro\**;Gastro/**;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
+    <None Remove="Tools\**;Gastro\**;Gastro/**;opencode.json;wwwroot\css\tailwind-dashboard.css;dashboard.html;database_seed.sql;migration_equipment_softdelete.sql;fix_script.py;fix-encoding.ps1;read_excel.py;CleanTemplates.csx" />
     <None Remove="tmp\**" />
     <None Remove="tmp/**" />
   </ItemGroup>
