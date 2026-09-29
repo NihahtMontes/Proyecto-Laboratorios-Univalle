@@ -1,0 +1,146 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.CalendarioModel
+@{ ViewData["Title"] = "Calendarios — Operación de laboratorios"; }
+
+<div class="page-breadcrumb">
+    <div class="row">
+        <div class="col-12">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">DISPONIBILIDAD</h4>
+            <h2 class="font-weight-bold text-dark">Calendario de Laboratorios</h2>
+            <div class="text-muted small">Vista interactiva de todas las prácticas planificadas. Gestión 2-2026.</div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    <!-- Filtros -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body py-2 px-3">
+                    <div class="form-row align-items-center">
+                        <div class="col-auto">
+                            <label class="small font-weight-bold mb-0 mr-2">LABORATORIO:</label>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="custom-select custom-select-sm" id="filtro-lab" onchange="aplicarFiltroCalendario()">
+                                <option value="">Todos los laboratorios</option>
+                                <option value="SAL 01">SAL 01 — Cocina Fría</option>
+                                <option value="SAL 02">SAL 02 — Cocina Caliente</option>
+                                <option value="SAL 03">SAL 03 — Pastelería</option>
+                                <option value="SAL 04">SAL 04 — Coctelería</option>
+                                <option value="SAL 05">SAL 05 — Enología</option>
+                                <option value="SAL 06">SAL 06 — Dietética</option>
+                                <option value="SAL 07">SAL 07 — Panadería</option>
+                                <option value="SAL 08">SAL 08 — Multipropósito</option>
+                                <option value="SAL 09">SAL 09 — Inv. Gastronómica</option>
+                                <option value="SAL 10">SAL 10 — Sala de Eventos</option>
+                                <option value="SAL 11">SAL 11 — Sala de Catas</option>
+                            </select>
+                        </div>
+                        <div class="col-auto ml-3">
+                            <label class="small font-weight-bold mb-0 mr-2">VISTA:</label>
+                        </div>
+                        <div class="col-auto">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" onclick="cambiarVista('dayGridMonth')">Mes</button>
+                                <button class="btn btn-primary" onclick="cambiarVista('timeGridWeek')">Semana</button>
+                                <button class="btn btn-outline-secondary" onclick="cambiarVista('timeGridDay')">Día</button>
+                                <button class="btn btn-outline-secondary" onclick="cambiarVista('listWeek')">Lista</button>
+                            </div>
+                        </div>
+                        <div class="col-auto ml-auto">
+                            <!-- Leyenda -->
+                            <span class="badge badge-pill px-3 py-1 mr-1" style="background:#28a745;color:#fff;">Confirmado</span>
+                            <span class="badge badge-pill px-3 py-1 mr-1" style="background:#ffc107;color:#fff;">Pendiente</span>
+                            <span class="badge badge-pill px-3 py-1 mr-1" style="background:#dc3545;color:#fff;">Mantenimiento</span>
+                            <span class="badge badge-pill px-3 py-1" style="background:#17a2b8;color:#fff;">Examen</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendario -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm rounded-lg border-0">
+                <div class="card-body">
+                    <div id="lab-calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FullCalendar v5 -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.min.js'></script>
+
+@section Scripts {
+<script>
+var calendar;
+
+// Eventos simulados con datos reales de los docentes y SALs del Excel
+var todosLosEventos = [
+    { title:'Cocina Boliviana · SAL 03', start: offset(0,'08:00'), end: offset(0,'11:00'), color:'#28a745', extendedProps:{ lab:'SAL 03', docente:'Chef Francisco Galindo', estado:'Confirmado', id:'L3-2026-0091' }},
+    { title:'Inv. Gastronómica · SAL 09', start: offset(0,'10:00'), end: offset(0,'13:00'), color:'#ffc107', extendedProps:{ lab:'SAL 09', docente:'Arq. Shohei Takahashi', estado:'Pendiente', id:'L3-2026-0092' }},
+    { title:'Coctelería · SAL 04', start: offset(1,'14:00'), end: offset(1,'17:00'), color:'#28a745', extendedProps:{ lab:'SAL 04', docente:'Lic. Rodrigo Quiroga', estado:'Confirmado', id:'L3-2026-0093' }},
+    { title:'Enología · SAL 05', start: offset(2,'09:00'), end: offset(2,'12:00'), color:'#28a745', extendedProps:{ lab:'SAL 05', docente:'Lic. Rojas', estado:'Confirmado', id:'L3-2026-0094' }},
+    { title:'Técnica Dietoterapéutica · SAL 06', start: offset(3,'08:00'), end: offset(3,'11:00'), color:'#ffc107', extendedProps:{ lab:'SAL 06', docente:'Lic. Vania Vargas', estado:'Pendiente', id:'L3-2026-0095' }},
+    { title:'Cocina Internacional 1 · SAL 02', start: offset(3,'14:00'), end: offset(3,'17:00'), color:'#17a2b8', extendedProps:{ lab:'SAL 02', docente:'Chef Francisco Galindo', estado:'Examen', id:'L3-2026-0096' }},
+    { title:'Diseño y Manejo de Menú · SAL 08', start: offset(4,'09:00'), end: offset(4,'12:00'), color:'#28a745', extendedProps:{ lab:'SAL 08', docente:'Lic. Ana Cardozo', estado:'Confirmado', id:'L3-2026-0097' }},
+    { title:'MANTENIMIENTO · SAL 07', start: offset(5,'07:00'), end: offset(5,'18:00'), color:'#dc3545', extendedProps:{ lab:'SAL 07', docente:'—', estado:'Mantenimiento', id:'MANT-0042' }},
+    { title:'Alimentos y Bebidas 2 · SAL 11', start: offset(6,'10:00'), end: offset(6,'13:00'), color:'#ffc107', extendedProps:{ lab:'SAL 11', docente:'Chef. Martin', estado:'Pendiente', id:'L3-2026-0098' }},
+    { title:'TAG IV · SAL 01', start: offset(7,'08:00'), end: offset(7,'11:00'), color:'#28a745', extendedProps:{ lab:'SAL 01', docente:'Chef Lobo', estado:'Confirmado', id:'L3-2026-0099' }},
+    { title:'Cocina Boliviana · SAL 03', start: offset(8,'08:00'), end: offset(8,'11:00'), color:'#17a2b8', extendedProps:{ lab:'SAL 03', docente:'Chef Francisco Galindo', estado:'Examen', id:'L3-2026-0100' }},
+    { title:'Evento · SAL 10', start: offset(9,'15:00'), end: offset(9,'20:00'), color:'#28a745', extendedProps:{ lab:'SAL 10', docente:'Ing. Sara Perez', estado:'Confirmado', id:'L3-2026-0101' }},
+];
+
+function offset(dias, hora) {
+    var d = new Date();
+    d.setDate(d.getDate() + dias);
+    return d.toISOString().slice(0,10) + 'T' + hora + ':00';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    calendar = new FullCalendar.Calendar(document.getElementById('lab-calendar'), {
+        initialView: 'timeGridWeek',
+        locale: 'es',
+        height: 660,
+        headerToolbar: { left:'prev,next today', center:'title', right:'' },
+        buttonText: { today:'Hoy' },
+        events: todosLosEventos,
+        eventClick: function(info) {
+            var p = info.event.extendedProps;
+            alert('📋 ' + info.event.title
+                + '\nID: ' + p.id
+                + '\nLaboratorio: ' + p.lab
+                + '\nDocente: ' + p.docente
+                + '\nEstado: ' + p.estado);
+        }
+    });
+    calendar.render();
+});
+
+function cambiarVista(vista) {
+    if (calendar) calendar.changeView(vista);
+    document.querySelectorAll('.btn-group .btn').forEach(function(b){ b.classList.remove('btn-primary'); b.classList.add('btn-outline-secondary'); });
+    event.target.classList.remove('btn-outline-secondary');
+    event.target.classList.add('btn-primary');
+}
+
+function aplicarFiltroCalendario() {
+    var lab = document.getElementById('filtro-lab').value;
+    var filtrados = lab
+        ? todosLosEventos.filter(function(e){ return e.extendedProps.lab === lab; })
+        : todosLosEventos;
+    if (calendar) {
+        calendar.removeAllEvents();
+        calendar.addEventSource(filtrados);
+    }
+}
+</script>
+}

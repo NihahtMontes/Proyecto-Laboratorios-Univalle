@@ -1,0 +1,203 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.RequerimientosModel
+@{ ViewData["Title"] = "Requerimientos — Paso 2"; var sessionId = "L3-2026-0095"; }
+
+<div class="page-breadcrumb">
+    <div class="row">
+        <div class="col-12">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 2 · <span class="text-dark">@sessionId</span></h4>
+            <h2 class="font-weight-bold text-dark">Requerimientos de Utensilios</h2>
+            <div class="text-muted small">Selecciona el laboratorio y agrega los utensilios que se necesitan para la práctica.</div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 2)
+
+    <div class="row">
+        <!-- PANEL IZQUIERDO: SELECTOR -->
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0 rounded-lg mb-3">
+                <div class="card-body p-4">
+                    <h6 class="font-weight-bold text-primary mb-3">SELECCIÓN DE UTENSILIOS</h6>
+
+                    <!-- Combobox Laboratorio -->
+                    <div class="form-group">
+                        <label class="small font-weight-bold text-muted">LABORATORIO <span class="text-danger">*</span></label>
+                        <select class="custom-select" id="sel-lab" onchange="filtrarUtensilios(this.value)">
+                            <option value="">— Seleccionar sala —</option>
+                            <option value="SAL01" selected>SAL 01 — Lab. Cocina Fría</option>
+                            <option value="SAL02">SAL 02 — Lab. Cocina Caliente</option>
+                            <option value="SAL03">SAL 03 — Lab. Pastelería</option>
+                            <option value="SAL04">SAL 04 — Lab. Coctelería</option>
+                            <option value="SAL05">SAL 05 — Lab. Enología</option>
+                            <option value="SAL06">SAL 06 — Lab. Dietética</option>
+                            <option value="SAL07">SAL 07 — Lab. Panadería</option>
+                            <option value="SAL08">SAL 08 — Lab. Multipropósito</option>
+                            <option value="SAL09">SAL 09 — Lab. Inv. Gastronómica</option>
+                            <option value="SAL10">SAL 10 — Sala de Eventos</option>
+                            <option value="SAL11">SAL 11 — Sala de Catas</option>
+                        </select>
+                    </div>
+
+                    <!-- Búsqueda de utensilio -->
+                    <div class="form-group">
+                        <label class="small font-weight-bold text-muted">BUSCAR UTENSILIO (solo Gastronomía)</label>
+                        <select class="custom-select" id="sel-utensilio">
+                            <option value="">— Buscar utensilio —</option>
+                            <!-- Utensilios reales del Excel L3/L5 Gastronomía -->
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="12">SHOT</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="8">MOLDE DE SILICONA</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="5">SILPAT</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="3">MORTERO DE PALO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="6">TUTUMA</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="10">TIMBAL REDONDO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="4">ESPEJO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="2">LLAJUERO BARRO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="8">SALSERO DE JARRA PORCELANA</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="1">CAMPANA AHUMADOR</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="20">PLATO HONDO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="30">PLATO PLANO REDONDO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="25">PLATO PLANO CUADRADO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="15">PLATO OVALADO HONDO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="18">PLATO RECTANGULAR PLANO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="6">PLATO HONDO CUADRADO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="10">RAMEQUIN</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="50">COPA DE CHAMPÁN</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="40">COPA MARTINI</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="35">COPA WHISKY</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="20">COPA COLLINS</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="15">SALSERO BLANCO</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="4">SACACORCHOS</option>
+                            <option data-unidad="Unid." data-tipo="Utensilio" data-stock="3">SOBREMANTEL PLOMO</option>
+                            <option data-unidad="Unid." data-tipo="Misceláneos" data-stock="250">PAPEL TOALLA SCOTT 116 PAÑOS</option>
+                            <option data-unidad="Rollo" data-tipo="Misceláneos" data-stock="8">PAPEL FILM 1400 METROS</option>
+                            <option data-unidad="Unid." data-tipo="Misceláneos" data-stock="50">PAPEL ENCERADO ROLLO REYNOLDS</option>
+                            <option data-unidad="Unid." data-tipo="Misceláneos" data-stock="6">MANGAS DESECHABLES GRANDES</option>
+                            <option data-unidad="Unid." data-tipo="Misceláneos" data-stock="50">ESPADA COCTELERA</option>
+                            <option data-unidad="Caja" data-tipo="Misceláneos" data-stock="30">FOSFORO FLAT LUX</option>
+                            <option data-unidad="Unid." data-tipo="Misceláneos" data-stock="100">SERVILLETA X 500 UNID</option>
+                        </select>
+                    </div>
+
+                    <!-- Cantidad -->
+                    <div class="form-group">
+                        <label class="small font-weight-bold text-muted">CANTIDAD SOLICITADA <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="inp-cantidad" value="1" min="1" />
+                    </div>
+
+                    <button type="button" class="btn btn-primary btn-block font-weight-bold" onclick="agregarUtensilio()">
+                        <i class="mdi mdi-plus mr-1"></i> Agregar a la lista
+                    </button>
+                </div>
+            </div>
+
+            <!-- Info práctica -->
+            <div class="card border-0 bg-light shadow-sm rounded-lg">
+                <div class="card-body py-3 px-4">
+                    <small class="text-muted font-weight-bold d-block mb-1">SESIÓN ACTIVA</small>
+                    <span class="font-weight-bold">@sessionId</span><br>
+                    <small class="text-muted">SAL 01 · Cocina Boliviana Contemporánea · Chef Francisco Galindo</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL DERECHO: LISTA -->
+        <div class="col-md-7">
+            <div class="card shadow-sm border-0 rounded-lg">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="font-weight-bold text-primary mb-0">LISTA DE REQUERIMIENTOS</h6>
+                        <span class="badge badge-pill badge-primary px-3" id="badge-total">0 ítems</span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table" id="tabla-reqs">
+                            <thead class="bg-dark text-white">
+                                <tr>
+                                    <th class="border-0 small">UTENSILIO</th>
+                                    <th class="border-0 small text-center">UNIDAD</th>
+                                    <th class="border-0 small text-center">CANT. SOLICITADA</th>
+                                    <th class="border-0 small text-center">STOCK DISP.</th>
+                                    <th class="border-0 small text-center"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-reqs">
+                                <tr id="row-vacio">
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        <i class="mdi mdi-format-list-checks mdi-36px d-block mb-2"></i>
+                                        Agrega utensilios desde el panel izquierdo.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="d-flex justify-content-between mt-3">
+                <a asp-page="/LaboratoryOperations/Planificacion" class="btn btn-outline-secondary px-4 py-2">
+                    <i class="mdi mdi-arrow-left mr-1"></i> Atrás
+                </a>
+                <a asp-page="/LaboratoryOperations/Disponibilidad" class="btn btn-dark font-weight-bold px-5 py-2">
+                    Validar disponibilidad <i class="mdi mdi-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var items = [];
+
+function agregarUtensilio() {
+    var sel = document.getElementById('sel-utensilio');
+    var opt = sel.options[sel.selectedIndex];
+    var nombre = sel.value;
+    if (!nombre) { alert('Selecciona un utensilio primero.'); return; }
+    var cantidad = parseInt(document.getElementById('inp-cantidad').value) || 1;
+    var unidad  = opt.dataset.unidad || 'Unid.';
+    var stock   = parseInt(opt.dataset.stock) || 0;
+
+    // Verificar duplicado
+    var idx = items.findIndex(function(x){ return x.nombre === nombre; });
+    if (idx >= 0) { items[idx].cantidad += cantidad; }
+    else { items.push({ nombre: nombre, unidad: unidad, cantidad: cantidad, stock: stock }); }
+
+    renderLista();
+}
+
+function quitarItem(nombre) {
+    items = items.filter(function(x){ return x.nombre !== nombre; });
+    renderLista();
+}
+
+function renderLista() {
+    var tbody = document.getElementById('tbody-reqs');
+    tbody.innerHTML = '';
+    if (items.length === 0) {
+        tbody.innerHTML = '<tr id="row-vacio"><td colspan="5" class="text-center text-muted py-4"><i class="mdi mdi-format-list-checks mdi-36px d-block mb-2"></i>Agrega utensilios desde el panel izquierdo.</td></tr>';
+        document.getElementById('badge-total').textContent = '0 ítems';
+        return;
+    }
+    document.getElementById('badge-total').textContent = items.length + ' ítem' + (items.length > 1 ? 's' : '');
+    items.forEach(function(it) {
+        var ok = it.cantidad <= it.stock;
+        var estadoBadge = ok
+            ? '<span class="badge badge-success px-2">OK</span>'
+            : '<span class="badge badge-danger px-2">Déficit</span>';
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+            '<td class="align-middle font-weight-bold small">' + it.nombre + '</td>' +
+            '<td class="text-center align-middle small">' + it.unidad + '</td>' +
+            '<td class="text-center align-middle">' + it.cantidad + '</td>' +
+            '<td class="text-center align-middle">' + estadoBadge + ' ' + it.stock + '</td>' +
+            '<td class="text-center align-middle"><button class="btn btn-sm btn-outline-danger" onclick="quitarItem(\'' + it.nombre.replace(/'/g,"\\'")+'\')"><i class="mdi mdi-delete"></i></button></td>';
+        tbody.appendChild(tr);
+    });
+}
+</script>
+}

@@ -1,0 +1,175 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanificacionModel
+@{ ViewData["Title"] = "Planificación — Paso 1"; }
+
+@* Identificador de sesión (simulado) *@
+@{ var sessionId = "L3-2026-0095"; }
+
+<div class="page-breadcrumb">
+    <div class="row">
+        <div class="col-12">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 1 · <span class="text-dark">@sessionId</span></h4>
+            <h2 class="font-weight-bold text-dark">Planificación de Práctica</h2>
+            <div class="text-muted small">Registra los datos de la sesión de laboratorio que se va a realizar.</div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+
+    <!-- BARRA DE PASOS -->
+    @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 1)
+
+    <div class="card shadow-sm border-0 rounded-lg">
+        <div class="card-body p-4">
+            <h5 class="font-weight-bold mb-4 text-primary">Datos de la Sesión · <small class="text-muted font-weight-normal">@sessionId</small></h5>
+
+            <form id="form-planificacion">
+                <div class="form-row">
+                    <!-- Ciudad / Sede -->
+                    <div class="form-group col-md-3">
+                        <label class="small font-weight-bold text-muted">CIUDAD / SEDE <span class="text-danger">*</span></label>
+                        <select class="custom-select" required>
+                            <option selected>CBBA</option>
+                            <option>STA</option>
+                            <option>LPZ</option>
+                        </select>
+                    </div>
+                    <!-- Carrera -->
+                    <div class="form-group col-md-5">
+                        <label class="small font-weight-bold text-muted">CARRERA / DEPARTAMENTO <span class="text-danger">*</span></label>
+                        <select class="custom-select" required>
+                            <option value="">— Seleccionar —</option>
+                            <option selected>Gastronomía Comercial</option>
+                            <option>Nutrición y Dietética</option>
+                            <option>Hotelería y Turismo</option>
+                            <option>Diseño y Manejo de Menú</option>
+                        </select>
+                    </div>
+                    <!-- Laboratorio -->
+                    <div class="form-group col-md-4">
+                        <label class="small font-weight-bold text-muted">LABORATORIO <span class="text-danger">*</span></label>
+                        <select class="custom-select" id="sel-laboratorio" required>
+                            <option value="">— Seleccionar sala —</option>
+                            <option value="SAL01">SAL 01 — Lab. Cocina Fría</option>
+                            <option value="SAL02">SAL 02 — Lab. Cocina Caliente</option>
+                            <option value="SAL03">SAL 03 — Lab. Pastelería</option>
+                            <option value="SAL04">SAL 04 — Lab. Coctelería</option>
+                            <option value="SAL05">SAL 05 — Lab. Enología</option>
+                            <option value="SAL06">SAL 06 — Lab. Dietética</option>
+                            <option value="SAL07">SAL 07 — Lab. Panadería</option>
+                            <option value="SAL08">SAL 08 — Lab. Multipropósito</option>
+                            <option value="SAL09">SAL 09 — Lab. Inv. Gastronómica</option>
+                            <option value="SAL10">SAL 10 — Sala de Eventos</option>
+                            <option value="SAL11">SAL 11 — Sala de Catas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <!-- Docente -->
+                    <div class="form-group col-md-4">
+                        <label class="small font-weight-bold text-muted">DOCENTE RESPONSABLE <span class="text-danger">*</span></label>
+                        <select class="custom-select" required>
+                            <option value="">— Seleccionar —</option>
+                            <option>Arq. Shohei Takahashi</option>
+                            <option>Chef Francisco Galindo</option>
+                            <option>Chef Lobo</option>
+                            <option>Chef Lunario</option>
+                            <option>Chef. Martin</option>
+                            <option>Ing. Sara Perez</option>
+                            <option>Lic. Ana Cardozo</option>
+                            <option>Lic. Rodrigo Quiroga</option>
+                            <option>Lic. Rojas</option>
+                            <option>Lic. Vania Vargas</option>
+                        </select>
+                    </div>
+                    <!-- Materia -->
+                    <div class="form-group col-md-5">
+                        <label class="small font-weight-bold text-muted">MATERIA / ASIGNATURA <span class="text-danger">*</span></label>
+                        <select class="custom-select" required>
+                            <option value="">— Seleccionar —</option>
+                            <option>Inv. Gastronómica 1</option>
+                            <option>Cocina Boliviana Contemporánea</option>
+                            <option>Cocina Internacional 1</option>
+                            <option>Cocina Internacional 3</option>
+                            <option>Coctelería</option>
+                            <option>Diseño y Manejo de Menú</option>
+                            <option>Enología</option>
+                            <option>Alimentos y Bebidas 2</option>
+                            <option>TAG IV</option>
+                            <option>Técnica Dietoterapéutica</option>
+                            <option>Evento</option>
+                        </select>
+                    </div>
+                    <!-- Grupo / Paralelo -->
+                    <div class="form-group col-md-3">
+                        <label class="small font-weight-bold text-muted">GRUPO / PARALELO</label>
+                        <select class="custom-select">
+                            <option>A</option>
+                            <option>B</option>
+                            <option>B2</option>
+                            <option>C</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <!-- Fecha -->
+                    <div class="form-group col-md-3">
+                        <label class="small font-weight-bold text-muted">FECHA DE PRÁCTICA <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="fecha-practica" required />
+                    </div>
+                    <!-- Hora inicio -->
+                    <div class="form-group col-md-2">
+                        <label class="small font-weight-bold text-muted">HORA INICIO <span class="text-danger">*</span></label>
+                        <input type="time" class="form-control" value="08:00" required />
+                    </div>
+                    <!-- Hora fin -->
+                    <div class="form-group col-md-2">
+                        <label class="small font-weight-bold text-muted">HORA FIN <span class="text-danger">*</span></label>
+                        <input type="time" class="form-control" value="11:00" required />
+                    </div>
+                    <!-- Categoría de material -->
+                    <div class="form-group col-md-3">
+                        <label class="small font-weight-bold text-muted">CATEGORÍA MATERIAL</label>
+                        <select class="custom-select">
+                            <option>Gastronomía (Utensilios)</option>
+                            <option>Gastronomía (Misceláneos)</option>
+                            <option>Gastronomía (Botiquín)</option>
+                            <option>Limpieza</option>
+                        </select>
+                    </div>
+                    <!-- N° de práctica -->
+                    <div class="form-group col-md-2">
+                        <label class="small font-weight-bold text-muted">N° DE PRÁCTICA</label>
+                        <input type="number" class="form-control" value="1" min="1" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="small font-weight-bold text-muted">OBSERVACIONES GENERALES</label>
+                    <textarea class="form-control bg-light" rows="2" placeholder="Ej: Examen primer parcial. Grupo B2."></textarea>
+                </div>
+
+                <!-- Botones -->
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary px-4 py-2 mr-2"
+                                onclick="alert('Función de exportar Excel disponible próximamente.')">
+                            <i class="fas fa-file-excel mr-2 text-success"></i> Exportar Excel
+                        </button>
+                    </div>
+                    <div>
+                        <a asp-page="/LaboratoryOperations/Index" class="btn btn-outline-secondary px-4 py-2 mr-2">
+                            <i class="mdi mdi-arrow-left mr-1"></i> Cancelar
+                        </a>
+                        <a asp-page="/LaboratoryOperations/Requerimientos" class="btn btn-dark font-weight-bold px-5 py-2">
+                            Definir <i class="mdi mdi-arrow-right ml-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
