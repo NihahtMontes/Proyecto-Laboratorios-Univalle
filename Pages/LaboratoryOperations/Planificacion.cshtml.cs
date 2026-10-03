@@ -162,11 +162,16 @@ public class PlanificacionModel : PageModel
                 p.PracticeName,
                 Lab = p.Laboratory.Name,
                 Subject = p.Subject.Name,
-                Teacher = _context.Interns.Where(i => i.Id == p.TeacherPersonId).Select(i => i.Name).FirstOrDefault(),
+                p.TeacherPersonId,
                 p.ScheduledDate,
                 p.Status
             })
             .ToListAsync();
+
+        var teacherIds = plans.Where(p => p.TeacherPersonId.HasValue).Select(p => p.TeacherPersonId!.Value).Distinct().ToList();
+        var teachers = await _context.Interns.AsNoTracking()
+            .Where(i => teacherIds.Contains(i.Id))
+            .ToDictionaryAsync(i => i.Id, i => i.Name);
 
         return new JsonResult(plans.Select(p => new
         {
@@ -175,7 +180,7 @@ public class PlanificacionModel : PageModel
             p.PracticeName,
             p.Lab,
             p.Subject,
-            Teacher = p.Teacher ?? "—",
+            Teacher = p.TeacherPersonId.HasValue && teachers.TryGetValue(p.TeacherPersonId.Value, out var name) ? name : "—",
             Date = p.ScheduledDate.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture),
             p.Status
         }));

@@ -64,8 +64,13 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 .Select(e => e.Entity)
                 .ToList();
 
+            // Varias incidencias de la misma unidad en un mismo guardado abren un solo historial.
+            var processedUnits = new HashSet<int>();
             foreach(var incident in newL5Incidents)
             {
+                if (!processedUnits.Add(incident.EquipmentUnitId))
+                    continue;
+
                 // Un solo historial abierto por unidad: cerrar el vigente y alinear el estado actual.
                 var openHistories = await EquipmentStateHistories.AsTracking()
                     .Where(h => h.EquipmentUnitId == incident.EquipmentUnitId && h.EndDate == null)
