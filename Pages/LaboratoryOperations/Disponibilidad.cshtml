@@ -1,9 +1,21 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.DisponibilidadModel
-@{ ViewData["Title"] = "Disponibilidad de materiales"; }
+@{ ViewData["Title"] = "Disponibilidad — Paso 3"; }
 
 <div class="page-breadcrumb">
-    <div class="row"><div class="col-12"><h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 3 · @Model.Plan?.Code</h4><h2 class="font-weight-bold text-dark">Verificación de disponibilidad</h2><div class="text-muted small">Confirma que los requerimientos pueden atenderse antes de operar la práctica.</div></div></div>
+    <div class="row">
+        <div class="col-12">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 3 · @Model.Code</h4>
+            <h2 class="font-weight-bold text-dark">Verificación de disponibilidad</h2>
+            @if (Model.Plan != null)
+            {
+                <div class="text-muted small">
+                    @(Model.Plan.Laboratory?.Name) · @(Model.Plan.Subject?.Name) · @(Model.Plan.Group?.Name) ·
+                    @Model.Plan.ScheduledDate.ToString("dd/MM/yyyy HH:mm")
+                </div>
+            }
+        </div>
+    </div>
 </div>
 
 <div class="container-fluid mt-3">
@@ -11,36 +23,133 @@
 
     @if (Model.HasConflict)
     {
-        <div class="alert alert-danger border-0 rounded d-flex align-items-center"><i class="fas fa-exclamation-triangle fa-2x mr-3"></i><div><strong>Hay un conflicto de disponibilidad.</strong><br /><span>Reduce las cantidades o vuelve al paso anterior para corregirlas.</span></div></div>
+        <div class="alert alert-danger border-0 rounded d-flex align-items-center mb-4">
+            <i class="fas fa-exclamation-triangle fa-2x mr-3"></i>
+            <div>
+                <strong>Hay un conflicto de disponibilidad.</strong><br />
+                <span>Reduce las cantidades o vuelve al paso anterior para ajustarlas antes de continuar.</span>
+            </div>
+        </div>
     }
     else
     {
-        <div class="alert alert-success border-0 rounded d-flex align-items-center"><i class="fas fa-check-circle fa-2x mr-3"></i><div><strong>Todo está disponible.</strong><br /><span>La planificación puede aprobarse para iniciar la operación.</span></div></div>
+        <div class="alert alert-success border-0 rounded d-flex align-items-center mb-4">
+            <i class="fas fa-check-circle fa-2x mr-3"></i>
+            <div>
+                <strong>Todo está disponible.</strong><br />
+                <span>La planificación puede aprobarse para iniciar la operación.</span>
+            </div>
+        </div>
     }
 
     <div class="card border-0 shadow-sm rounded-lg">
         <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="font-weight-bold text-primary mb-0">DETALLE DE DISPONIBILIDAD</h5><span class="badge badge-light border">@Model.Rows.Count ítem(s)</span></div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="font-weight-bold text-primary mb-0">DETALLE DE DISPONIBILIDAD</h5>
+                <span class="badge badge-light border">@Model.Items.Count ítem(s)</span>
+            </div>
             <div class="table-responsive">
-                <table class="table table-hover mb-0"><thead class="bg-dark text-white"><tr><th>MATERIAL</th><th>UNIDAD</th><th class="text-center">SOLICITADO</th><th class="text-center">DISPONIBLE</th><th class="text-center">BALANCE</th><th>ESTADO</th></tr></thead><tbody>
-                @foreach (var row in Model.Rows)
-                {
-                    <tr class="@(row.Difference < 0 ? "table-danger" : "")"><td class="font-weight-bold">@row.Name</td><td>@row.Unit</td><td class="text-center">@row.Requested</td><td class="text-center">@row.Available</td><td class="text-center font-weight-bold @(row.Difference < 0 ? "text-danger" : "text-success")">@(row.Difference > 0 ? "+" : "")@row.Difference</td><td><span class="badge badge-@(row.Difference < 0 ? "danger" : "success") rounded-pill">@(row.Difference < 0 ? "Insuficiente" : "Disponible")</span></td></tr>
-                }
-                </tbody></table>
+                <table class="table table-hover mb-0">
+                    <thead class="bg-dark text-white">
+                        <tr>
+                            <th>MATERIAL</th>
+                            <th class="text-center">SOLICITADO</th>
+                            <th class="text-center">DISPONIBLE</th>
+                            <th class="text-center">BALANCE</th>
+                            <th>ESTADO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Items)
+                        {
+                            <tr class="@(row.Ok ? "" : "table-danger")">
+                                <td class="font-weight-bold">@row.EquipmentName</td>
+                                <td class="text-center">@row.Requested</td>
+                                <td class="text-center">@row.Available</td>
+                                <td class="text-center font-weight-bold @(row.Ok ? "text-success" : "text-danger")">
+                                    @(row.Difference > 0 ? "+" : "")@row.Difference
+                                </td>
+                                <td>
+                                    @if (row.Ok)
+                                    {
+                                        <span class="badge badge-success rounded-pill">Disponible</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-danger rounded-pill">Faltante</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
 
             <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                <a asp-page="./Requerimientos" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-rounded px-4"><i class="mdi mdi-arrow-left mr-1"></i> Ajustar requerimientos</a>
                 @if (Model.HasConflict)
                 {
-                    <button type="button" class="btn btn-secondary btn-rounded" disabled><i class="fas fa-lock mr-1"></i> Aprobar bloqueado</button>
+                    <a asp-page="./Requerimientos" asp-route-planId="@Model.PlanId" asp-route-conflict="true"
+                       class="btn btn-warning btn-rounded font-weight-bold px-4">
+                        <i class="mdi mdi-arrow-left mr-1"></i> Volver a requerimientos
+                    </a>
+                    <button type="button" class="btn btn-secondary btn-rounded" disabled>
+                        <i class="fas fa-lock mr-1"></i> Aprobar bloqueado
+                    </button>
+                }
+                else if (Model.IsApproved)
+                {
+                    <a asp-page="./Requerimientos" asp-route-planId="@Model.PlanId"
+                       class="btn btn-outline-secondary btn-rounded px-4">
+                        <i class="mdi mdi-arrow-left mr-1"></i> Atrás
+                    </a>
+                    <a asp-page="./L3" asp-route-id="@Model.PlanId"
+                       class="btn btn-primary btn-rounded font-weight-bold px-4">
+                        Continuar en L-3 <i class="mdi mdi-arrow-right ml-1"></i>
+                    </a>
                 }
                 else
                 {
-                    <form method="post" asp-page-handler="Approve" asp-route-id="@Model.Id"><button type="submit" class="btn btn-success btn-rounded font-weight-bold px-4"><i class="mdi mdi-check mr-1"></i> Aprobar y pasar a L-3</button></form>
+                    <a asp-page="./Requerimientos" asp-route-planId="@Model.PlanId"
+                       class="btn btn-outline-secondary btn-rounded px-4">
+                        <i class="mdi mdi-arrow-left mr-1"></i> Ajustar requerimientos
+                    </a>
+                    <form method="post" asp-page-handler="Approve" asp-route-planId="@Model.PlanId" class="d-inline" id="form-approve">
+                        <button type="submit" class="btn btn-success btn-rounded font-weight-bold px-4 js-approve-confirm">
+                            <i class="mdi mdi-check mr-1"></i> Aprobar y pasar a L-3
+                        </button>
+                    </form>
                 }
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var form = document.getElementById('form-approve');
+            if (!form) return;
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call(form);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Aprobar planificación?',
+                    text: 'Se confirmará la disponibilidad y la planificación pasará al paso L-3.',
+                    type: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, aprobar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
+        })();
+    </script>
+}

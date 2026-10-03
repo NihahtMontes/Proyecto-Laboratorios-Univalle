@@ -2,22 +2,23 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
-using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
+/// <summary>
+/// Resumen del flujo de Operación de Laboratorios (solo lectura).
+/// Las planificaciones vienen de L3Requests; las métricas se calculan en memoria
+/// a partir de detalles, incidentes y stock operativo.
+/// </summary>
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _context;
-    private readonly LaboratoryPlanningDemoService _demoService;
 
-    public IndexModel(ApplicationDbContext context, LaboratoryPlanningDemoService demoService)
+    public IndexModel(ApplicationDbContext context)
     {
         _context = context;
-        _demoService = demoService;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -34,134 +35,149 @@ public class IndexModel : PageModel
         await LoadPlansAsync();
     }
 
-    public async Task<IActionResult> OnPostDemoAsync()
-    {
-        var laboratory = await _context.Laboratories
-            .AsNoTracking()
-            .Where(item => item.Status == GeneralStatus.Activo)
-            .OrderBy(item => item.Name)
-            .FirstOrDefaultAsync();
-        var career = laboratory == null
-            ? null
-            : await _context.Careers
-                .AsNoTracking()
-                .Where(item => item.Status == GeneralStatus.Activo && item.FacultadId == laboratory.FacultyId)
-                .OrderBy(item => item.Name)
-                .FirstOrDefaultAsync();
-
-        if (laboratory == null || career == null)
-        {
-            TempData.Error("No existen catálogos suficientes para crear el ejemplo local.");
-            return RedirectToPage();
-        }
-
-        var number = _demoService.GetPlans().Count + 1;
-        var plan = new LaboratoryPlanningDemo
-        {
-            Id = Guid.NewGuid().ToString("N"),
-            Code = $"PLN-DEMO-{number:000}",
-            FacultyId = laboratory.FacultyId,
-            CareerId = career.Id,
-            LaboratoryId = laboratory.Id,
-            ResponsibleName = "Docente de demostración",
-            Subject = "Práctica demostrativa de laboratorio",
-            Group = "A",
-            PracticeDate = DateTime.Today,
-            StartTime = new TimeSpan(14, 0, 0),
-            EndTime = new TimeSpan(17, 0, 0),
-            MaterialCategory = "Gastronomía (Utensilios)",
-            PracticeNumber = 1,
-            Observations = "Registro creado desde el escenario demo local.",
-            Status = LaboratoryPlanningDemoStatus.Approved,
-            Requirements =
-            [
-                CreateRequirement("SHOT", 4),
-                CreateRequirement("COPA-MARTINI", 2)
-            ]
-        };
-
-        _demoService.Save(plan);
-        TempData.Success("Ejemplo de planificación cargado. Puedes editarlo o recorrer su flujo.");
-        return RedirectToPage(new { filter = "todos" });
-    }
-
     private async Task LoadPlansAsync()
     {
-        var source = _demoService.GetPlans()
-            .Where(plan => plan.Status != LaboratoryPlanningDemoStatus.Cancelled)
-            .Where(plan => MatchesFilter(plan.PracticeDate, Filter))
-            .OrderBy(plan => plan.PracticeDate)
-            .ThenBy(plan => plan.StartTime)
+        var today = DateTime.Today;
+        var periodQuery = _context.L3Requests.AsNoTracking()
+            .Where(r => r.Status != L3RequestStatus.Cancelled);
+
+        periodQuery = (Filter ?? "hoy").Trim().ToLowerInvariant() switch
+        {
+            "todos" => periodQuery,
+            "semana" => periodQuery.Where(r => r.ScheduledDate.Date >= StartOfWeek(today)
+                                              && r.ScheduledDate.Date < StartOfWeek(today).AddDays(7)),
+            "mes" => periodQuery.Where(r => r.ScheduledDate.Year == today.Year && r.ScheduledDate.Month == today.Month),
+            _ => periodQuery.Where(r => r.ScheduledDate.Date == today),
+        };
+
+        // Proyección plana para evitar N+1 al armar la tabla.
+        var rows = await periodQuery
+            .OrderBy(r => r.ScheduledDate)
+            .ThenBy(r => r.ScheduledEndDate ?? r.ScheduledDate.AddHours(1))
+            .Select(r => new PlanRowProjection
+            {
+                    Id = r.Id,
+                    SubjectName = r.Subject.Name,
+                    GroupName = r.Group.Name,
+                    TeacherPersonId = r.TeacherPersonId,
+                    LabCode = r.Laboratory.Code,
+                    LabName = r.Laboratory.Name,
+                    FacultyName = r.Laboratory.Faculty.Name,
+                    ScheduledDate = r.ScheduledDate,
+                    ScheduledEndDate = r.ScheduledEndDate,
+                    Status = r.Status
+                })
+            .ToListAsync();
+
+        if (rows.Count == 0)
+        {
+            Plans = [];
+            TotalPlans = 0;
+            ReadyPlans = 0;
+            ConflictPlans = 0;
+            ClosedPlans = 0;
+            return;
+        }
+
+        var planIds = rows.Select(r => r.Id).ToList();
+        var teacherIds = rows
+            .Where(r => r.TeacherPersonId.HasValue)
+            .Select(r => r.TeacherPersonId!.Value)
+            .Distinct()
             .ToList();
 
-        var laboratoryIds = source.Select(plan => plan.LaboratoryId).Distinct().ToList();
-        var careerIds = source.Select(plan => plan.CareerId).Distinct().ToList();
-        var laboratories = await _context.Laboratories
-            .AsNoTracking()
-            .Where(item => laboratoryIds.Contains(item.Id))
-            .ToDictionaryAsync(item => item.Id);
-        var careers = await _context.Careers
-            .AsNoTracking()
-            .Where(item => careerIds.Contains(item.Id))
-            .ToDictionaryAsync(item => item.Id);
+        var teachers = teacherIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await _context.Interns.AsNoTracking()
+                .Where(i => teacherIds.Contains(i.Id))
+                .Select(i => new { i.Id, i.Name })
+                .ToDictionaryAsync(i => i.Id, i => i.Name);
 
-        Plans = source.Select(plan => new PlanListItem
+        // Planes con al menos un L5Incident vinculado.
+        var incidentSet = (await _context.L5Incidents.AsNoTracking()
+            .Where(i => i.L3RequestId.HasValue && planIds.Contains(i.L3RequestId.Value))
+            .Select(i => i.L3RequestId!.Value)
+            .Distinct()
+            .ToListAsync()).ToHashSet();
+
+        // Detalles de planes Planificado: comparamos contra stock operativo del laboratorio de cada detalle.
+        var conflictByPlan = new HashSet<int>();
+        var plannedRows = await _context.L3RequestDetails.AsNoTracking()
+            .Where(d => planIds.Contains(d.L3RequestId)
+                        && d.EquipmentUnit.LaboratoryId.HasValue)
+            .Select(d => new
+            {
+                d.L3RequestId,
+                LabId = d.EquipmentUnit.LaboratoryId!.Value,
+                EquipmentId = d.EquipmentUnit.EquipmentId,
+                d.ExpectedQuantity,
+                PlanStatus = d.L3Request!.Status
+            })
+            .ToListAsync();
+
+        var plannedPairs = plannedRows
+            .Where(d => d.PlanStatus == L3RequestStatus.Planned)
+            .Select(d => (d.LabId, d.EquipmentId))
+            .Distinct()
+            .ToList();
+
+        if (plannedPairs.Count > 0)
         {
-            Id = plan.Id,
-            Code = plan.Code,
-            Subject = plan.Subject,
-            ResponsibleName = plan.ResponsibleName,
-            Group = plan.Group,
-            PracticeDate = plan.PracticeDate,
-            StartTime = plan.StartTime,
-            EndTime = plan.EndTime,
-            LaboratoryName = laboratories.TryGetValue(plan.LaboratoryId, out var lab)
-                ? $"{lab.Code} · {lab.Name}"
-                : "Laboratorio no disponible",
-            CareerName = careers.TryGetValue(plan.CareerId, out var career)
-                ? career.Name
-                : "Carrera no disponible",
-            StatusText = GetStatusText(plan.Status),
-            StatusCss = GetStatusCss(plan.Status),
-            HasConflict = HasAvailabilityConflict(plan),
-            HasIncident = plan.Incident != null
+            var labIds = plannedPairs.Select(p => p.LabId).Distinct().ToList();
+            var equipmentIds = plannedPairs.Select(p => p.EquipmentId).Distinct().ToList();
+
+            var stockMap = await _context.EquipmentUnits.AsNoTracking()
+                .Where(u => u.LaboratoryId.HasValue
+                            && labIds.Contains(u.LaboratoryId.Value)
+                            && equipmentIds.Contains(u.EquipmentId)
+                            && u.CurrentStatus == EquipmentStatus.Operational)
+                .GroupBy(u => new { u.LaboratoryId, u.EquipmentId })
+                .Select(g => new { LabId = g.Key.LaboratoryId!.Value, g.Key.EquipmentId, Count = g.Count() })
+                .ToDictionaryAsync(x => (x.LabId, x.EquipmentId), x => x.Count);
+
+            foreach (var d in plannedRows)
+            {
+                if (d.PlanStatus != L3RequestStatus.Planned) continue;
+                var key = (d.LabId, d.EquipmentId);
+                var stock = stockMap.TryGetValue(key, out var c) ? c : 0;
+                if (d.ExpectedQuantity > stock)
+                    conflictByPlan.Add(d.L3RequestId);
+            }
+        }
+
+        var items = rows.Select(r =>
+        {
+            var scheduled = r.ScheduledDate;
+            var scheduledEnd = r.ScheduledEndDate ?? r.ScheduledDate.AddHours(1);
+            var teacherName = r.TeacherPersonId.HasValue
+                              && teachers.TryGetValue(r.TeacherPersonId.Value, out var t)
+                ? t
+                : "Sin docente";
+
+            return new PlanListItem
+            {
+                Id = r.Id,
+                Code = L3Codes.Format(r.Id),
+                Subject = r.SubjectName,
+                ResponsibleName = teacherName,
+                Group = r.GroupName,
+                PracticeDate = scheduled.Date,
+                StartTime = scheduled.TimeOfDay,
+                EndTime = scheduledEnd.TimeOfDay,
+                LaboratoryName = $"{r.LabCode} · {r.LabName}",
+                FacultyName = r.FacultyName,
+                StatusText = GetStatusText(r.Status),
+                StatusCss = GetStatusCss(r.Status),
+                HasConflict = conflictByPlan.Contains(r.Id),
+                HasIncident = incidentSet.Contains(r.Id)
+            };
         }).ToList();
 
-        TotalPlans = Plans.Count;
-        ReadyPlans = Plans.Count(item => item.StatusText is "Aprobada" or "En operación");
-        ConflictPlans = Plans.Count(item => item.HasConflict);
-        ClosedPlans = Plans.Count(item => item.StatusText == "Cerrada");
-    }
-
-    private static LaboratoryPlanningDemoRequirement CreateRequirement(string code, int quantity)
-    {
-        var item = LaboratoryPlanningDemoCatalog.Find(code)
-            ?? throw new InvalidOperationException($"Catálogo demo inexistente: {code}");
-        return new LaboratoryPlanningDemoRequirement
-        {
-            Code = item.Code,
-            Name = item.Name,
-            Unit = item.Unit,
-            Category = item.Category,
-            RequestedQuantity = quantity,
-            AvailableQuantity = item.AvailableStock
-        };
-    }
-
-    private static bool HasAvailabilityConflict(LaboratoryPlanningDemo plan) =>
-        plan.Requirements.Any(item => item.RequestedQuantity > item.AvailableQuantity);
-
-    private static bool MatchesFilter(DateTime date, string? filter)
-    {
-        var value = (filter ?? "hoy").Trim().ToLowerInvariant();
-        var today = DateTime.Today;
-        return value switch
-        {
-            "todos" => true,
-            "semana" => date.Date >= StartOfWeek(today) && date.Date < StartOfWeek(today).AddDays(7),
-            "mes" => date.Year == today.Year && date.Month == today.Month,
-            _ => date.Date == today
-        };
+        Plans = items;
+        TotalPlans = items.Count;
+        ReadyPlans = items.Count(i => i.StatusText == "Aprobada");
+        ClosedPlans = items.Count(i => i.StatusText == "Finalizada");
+        ConflictPlans = items.Count(i => i.HasConflict);
     }
 
     private static DateTime StartOfWeek(DateTime date)
@@ -170,29 +186,41 @@ public class IndexModel : PageModel
         return date.Date.AddDays(-diff);
     }
 
-    private static string GetStatusText(LaboratoryPlanningDemoStatus status) => status switch
+    private static string GetStatusText(string status) => status switch
     {
-        LaboratoryPlanningDemoStatus.PendingAvailability => "Pendiente",
-        LaboratoryPlanningDemoStatus.Approved => "Aprobada",
-        LaboratoryPlanningDemoStatus.InProgress => "En operación",
-        LaboratoryPlanningDemoStatus.Completed => "Cerrada",
-        LaboratoryPlanningDemoStatus.Incident => "Incidencia L-5",
-        _ => "Borrador"
+        L3RequestStatus.Planned => "Planificada",
+        L3RequestStatus.Approved => "Aprobada",
+        L3RequestStatus.Finalized => "Finalizada",
+        L3RequestStatus.Cancelled => "Cancelada",
+        _ => status
     };
 
-    private static string GetStatusCss(LaboratoryPlanningDemoStatus status) => status switch
+    private static string GetStatusCss(string status) => status switch
     {
-        LaboratoryPlanningDemoStatus.Approved => "success",
-        LaboratoryPlanningDemoStatus.InProgress => "info",
-        LaboratoryPlanningDemoStatus.Completed => "dark",
-        LaboratoryPlanningDemoStatus.Incident => "danger",
-        LaboratoryPlanningDemoStatus.PendingAvailability => "warning",
+        L3RequestStatus.Planned => "warning",
+        L3RequestStatus.Approved => "success",
+        L3RequestStatus.Finalized => "dark",
+        L3RequestStatus.Cancelled => "secondary",
         _ => "secondary"
     };
 
+    private sealed class PlanRowProjection
+    {
+        public int Id { get; init; }
+        public string SubjectName { get; init; } = string.Empty;
+        public string GroupName { get; init; } = string.Empty;
+        public int? TeacherPersonId { get; init; }
+        public string LabCode { get; init; } = string.Empty;
+        public string LabName { get; init; } = string.Empty;
+        public string FacultyName { get; init; } = string.Empty;
+        public DateTime ScheduledDate { get; init; }
+        public DateTime? ScheduledEndDate { get; init; }
+        public string Status { get; init; } = string.Empty;
+    }
+
     public sealed class PlanListItem
     {
-        public string Id { get; init; } = string.Empty;
+        public int Id { get; init; }
         public string Code { get; init; } = string.Empty;
         public string Subject { get; init; } = string.Empty;
         public string ResponsibleName { get; init; } = string.Empty;
@@ -201,7 +229,7 @@ public class IndexModel : PageModel
         public TimeSpan StartTime { get; init; }
         public TimeSpan EndTime { get; init; }
         public string LaboratoryName { get; init; } = string.Empty;
-        public string CareerName { get; init; } = string.Empty;
+        public string FacultyName { get; init; } = string.Empty;
         public string StatusText { get; init; } = string.Empty;
         public string StatusCss { get; init; } = "secondary";
         public bool HasConflict { get; init; }

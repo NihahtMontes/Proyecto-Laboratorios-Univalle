@@ -1,35 +1,273 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.L3Model
-@{ ViewData["Title"] = "L-3 devolución"; }
+@{ ViewData["Title"] = "L-3 y devolución — Paso 4"; }
 
-<div class="page-breadcrumb"><div class="row"><div class="col-12"><h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 4 · @Model.Plan?.Code</h4><h2 class="font-weight-bold text-dark">L-3 y devolución</h2><div class="text-muted small">Registra cuánto material vuelve de la práctica. Un faltante abre el flujo L-5.</div></div></div></div>
+<div class="page-breadcrumb">
+    <div class="row">
+        <div class="col-12">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 4 · <span class="text-dark">@Model.Code</span></h4>
+            <h2 class="font-weight-bold text-dark">L-3 y Devolución</h2>
+            <div class="text-muted small">
+                @if (Model.Plan != null)
+                {
+                    <text>@Model.Plan.Laboratory?.Name · @Model.Plan.Subject?.Name · Grupo @Model.Plan.Group?.Name · @Model.Plan.ScheduledDate.ToString("dd/MM/yyyy HH:mm")</text>
+                }
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="container-fluid mt-3">
     @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 4)
-    <form method="post" asp-page-handler="Confirm" asp-route-id="@Model.Id">
-        <div class="card border-0 shadow-sm rounded-lg">
-            <div class="card-body p-4">
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
-                <div class="alert alert-light border small"><i class="fas fa-info-circle text-primary mr-1"></i> Los valores se validan contra las cantidades solicitadas; no se confía en datos ocultos del navegador.</div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0"><thead class="bg-dark text-white"><tr><th>MATERIAL</th><th class="text-center">SOLICITADO</th><th class="text-center">DEVUELTO</th><th class="text-center">FALTANTE</th></tr></thead><tbody>
-                    @for (var index = 0; index < Model.Items.Count; index++)
-                    {
-                        var item = Model.Items[index];
-                        <tr>
-                            <td class="font-weight-bold">@item.Name<input type="hidden" asp-for="Items[index].Code" /><input type="hidden" asp-for="Items[index].Name" /><input type="hidden" asp-for="Items[index].Requested" /></td>
-                            <td class="text-center">@item.Requested</td>
-                            <td class="text-center" style="max-width:150px"><input asp-for="Items[index].Returned" class="form-control text-center" min="0" max="@item.Requested" /></td>
-                            <td class="text-center text-muted">—</td>
-                        </tr>
-                    }
-                    </tbody></table>
-                </div>
-                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                    <a asp-page="./Disponibilidad" asp-route-id="@Model.Id" class="btn btn-outline-secondary btn-rounded px-4"><i class="mdi mdi-arrow-left mr-1"></i> Atrás</a>
-                    <button type="submit" class="btn btn-dark btn-rounded font-weight-bold px-4"><i class="mdi mdi-check mr-1"></i> Confirmar devolución</button>
-                </div>
+
+    @if (Model.IsFinalized)
+    {
+        <div class="alert alert-success border-0 rounded-lg d-flex align-items-center mb-4 shadow-sm">
+            <i class="mdi mdi-check-decagram mdi-36px mr-3"></i>
+            <div>
+                <strong>Planificación finalizada.</strong><br />
+                Esta planificación L-3 fue cerrada y ya no admite cambios. Los registros L-5 asociados se conservan como historial.
             </div>
         </div>
-    </form>
+    }
+    else if (Model.BlockFinalization)
+    {
+        <div class="alert alert-warning border-0 rounded-lg d-flex align-items-center mb-4 shadow-sm">
+            <i class="mdi mdi-lock-alert mdi-36px mr-3"></i>
+            <div>
+                <strong>Hay faltantes sin incidente L-5 registrado.</strong><br />
+                Registra cada faltante como L-5 antes de poder finalizar la planificación.
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light border rounded-lg d-flex align-items-center mb-4">
+            <i class="fas fa-info-circle text-primary mr-2"></i>
+            <div class="small">
+                Actualiza la cantidad devuelta por equipo. Una vez que todos los faltantes estén cubiertos por un L-5, podrás finalizar la planificación.
+            </div>
+        </div>
+    }
+
+    <div class="card shadow-sm border-0 rounded-lg">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="font-weight-bold text-primary mb-0">DETALLE DE PRÉSTAMO · DEVOLUCIÓN L-3</h6>
+                <span class="badge badge-pill badge-light border px-3">@Model.Items.Count ítem(s)</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="tabla-devolucion">
+                    <thead class="bg-dark text-white">
+                        <tr>
+                            <th class="border-0">EQUIPO / UTENSILIO</th>
+                            <th class="border-0 text-center">DEVUELTO</th>
+                            <th class="border-0 text-center">FALTANTE</th>
+                            <th class="border-0 text-center">ESTADO</th>
+                            <th class="border-0 text-center">ACCIÓN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Items.Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    <i class="mdi mdi-package-variant mdi-36px d-block mb-2"></i>
+                                    Esta planificación no tiene equipos registrados.
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var item in Model.Items)
+                        {
+                            var rowClass = item.Missing == 0 ? "table-success-l3" : (item.Uncovered == 0 ? "table-warning-l3" : "table-danger-l3");
+                            var rowStyle = item.Missing == 0 ? "opacity:.85;" : "";
+                            <tr class="@rowClass" style="@rowStyle">
+                                <td class="align-middle">
+                                    <div class="font-weight-bold">@item.EquipmentName</div>
+                                    <small class="text-muted">Unidad #@item.EquipmentUnitId</small>
+                                </td>
+                                <td class="align-middle text-center" style="width:160px;max-width:160px;">
+                                    @if (Model.IsEditable)
+                                    {
+                                        <form method="post" asp-page-handler="UpdateReturn" asp-route-id="@Model.Id" class="m-0">
+                                            <input type="hidden" name="detailId" value="@item.DetailId" />
+                                            <div class="input-group input-group-sm">
+                                                <input type="number" name="returnedQuantity" class="form-control text-center"
+                                                       min="0" max="@item.Delivered" value="@item.Returned" />
+                                                <div class="input-group-append">
+                                                    <button type="submit" class="btn btn-outline-success" title="Guardar devolución">
+                                                        <i class="mdi mdi-check"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Entregado: @item.Delivered</small>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="font-weight-bold">@item.Returned</span>
+                                        <small class="d-block text-muted">de @item.Delivered</small>
+                                    }
+                                </td>
+                                <td class="align-middle text-center">
+                                    @if (item.Missing == 0)
+                                    {
+                                        <span class="font-weight-bold text-success">0</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="font-weight-bold text-danger">@item.Missing</span>
+                                    }
+                                </td>
+                                <td class="align-middle text-center" style="width:160px;">
+                                    @if (item.Missing == 0)
+                                    {
+                                        <span class="badge badge-success px-3 py-1"><i class="mdi mdi-check-circle mr-1"></i> Completo</span>
+                                    }
+                                    else if (item.Uncovered == 0)
+                                    {
+                                        <span class="badge badge-warning px-3 py-1"><i class="mdi mdi-shield-check mr-1"></i> Cubierto por L-5</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-danger px-3 py-1"><i class="mdi mdi-alert mr-1"></i> Faltan @item.Missing</span>
+                                    }
+                                </td>
+                                <td class="align-middle text-center">
+                                    @if (Model.IsEditable && item.Uncovered > 0)
+                                    {
+                                        <a href="./L5?planId=@Model.Id&equipmentId=@item.EquipmentId"
+                                           class="btn btn-sm btn-danger font-weight-bold">
+                                            <i class="mdi mdi-alert-octagon mr-1"></i> Registrar L-5
+                                        </a>
+                                    }
+                                    else if (item.Missing == 0)
+                                    {
+                                        <span class="text-success small"><i class="mdi mdi-check-circle"></i> Cerrado</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small"><i class="mdi mdi-shield-check text-warning"></i> Cubierto</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                <a asp-page="./Disponibilidad" asp-route-planId="@Model.Id"
+                   class="btn btn-outline-secondary btn-rounded px-4">
+                    <i class="mdi mdi-arrow-left mr-1"></i> Atrás
+                </a>
+                @if (!Model.IsFinalized)
+                {
+                    <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0">
+                        <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2"
+                                @(Model.BlockFinalization ? "disabled" : "")
+                                title="@(Model.BlockFinalization ? "Hay faltantes sin incidente L-5" : "Cerrar la planificación L-3")">
+                            <i class="mdi mdi-check-all mr-1"></i> Finalizar L-3
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <span class="badge badge-success px-4 py-2"><i class="mdi mdi-check-decagram mr-1"></i> L-3 cerrado</span>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* ── LISTADO DE INCIDENTES L-5 ASOCIADOS ── *@
+    <div class="card shadow-sm border-0 rounded-lg mt-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="font-weight-bold text-danger mb-0">INCIDENTES L-5 REGISTRADOS</h6>
+                <span class="badge badge-pill badge-light border px-3">@Model.Incidents.Count registro(s)</span>
+            </div>
+
+            @if (!Model.Incidents.Any())
+            {
+                <div class="text-center text-muted py-4">
+                    <i class="mdi mdi-shield-off-outline mdi-36px d-block mb-2"></i>
+                    Aún no se registraron incidentes L-5 para esta planificación.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="bg-light text-dark">
+                            <tr>
+                                <th>EQUIPO</th>
+                                <th>INVENTARIO</th>
+                                <th>TIPO</th>
+                                <th class="text-center">CANT.</th>
+                                <th>RESPONSABLE</th>
+                                <th>ESTADO REPOSICIÓN</th>
+                                <th>FECHA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var inc in Model.Incidents)
+                            {
+                                <tr>
+                                    <td class="font-weight-bold">@inc.EquipmentName</td>
+                                    <td><span class="badge badge-secondary">@inc.InventoryNumber</span></td>
+                                    <td><span class="badge badge-danger">@inc.IncidentType</span></td>
+                                    <td class="text-center font-weight-bold">@inc.AffectedQuantity</td>
+                                    <td>@inc.ResponsibleName</td>
+                                    <td><span class="badge badge-warning">@inc.RepositionStatus</span></td>
+                                    <td class="small text-muted">@inc.RecordDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
 </div>
+
+@section Styles {
+<style>
+    .table-success-l3 td { background-color: rgba(40, 167, 69, .06) !important; }
+    .table-warning-l3 td { background-color: rgba(255, 193, 7, .08) !important; }
+    .table-danger-l3 td { background-color: rgba(220, 53, 69, .06) !important; }
+</style>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            const form = document.getElementById('formFinalizeL3');
+            if (!form) return;
+            form.addEventListener('submit', function (e) {
+                if (form.dataset.confirmed === '1') return true;
+                e.preventDefault();
+                if (typeof Swal === 'undefined') {
+                    form.dataset.confirmed = '1';
+                    HTMLFormElement.prototype.submit.call(form);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Finalizar L-3?',
+                    text: 'Se cerrará la planificación. Esta acción no se puede deshacer.',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#343a40',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, finalizar',
+                    cancelButtonText: 'Cancelar'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        form.dataset.confirmed = '1';
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
+        })();
+    </script>
+}

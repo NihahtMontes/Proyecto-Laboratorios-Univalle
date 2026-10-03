@@ -1,106 +1,143 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using Proyecto_Laboratorios_Univalle.Services;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
+/// <summary>
+/// Paso 5: incidente L-5 sobre una unidad concreta de un tipo de equipo prestado en la planificación.
+/// El historial y el estado de la unidad los actualiza ApplicationDbContext al guardar.
+/// </summary>
 public class L5Model : PageModel
 {
-    private readonly LaboratoryPlanningDemoService _demoService;
+    public static readonly string[] IncidentTypes = ["Daño", "Rotura", "Pérdida", "Faltante", "Otro"];
+    public static readonly string[] ResponsibleTypes = ["ESTUDIANTE", "DOCENTE"];
 
-    public L5Model(LaboratoryPlanningDemoService demoService)
+    private readonly ApplicationDbContext _context;
+
+    public L5Model(ApplicationDbContext context)
     {
-        _demoService = demoService;
+        _context = context;
     }
 
     [BindProperty(SupportsGet = true)]
-    public string? Id { get; set; }
+    public int PlanId { get; set; }
+
+    /// <summary>Tipo de equipo preseleccionado desde L-3 (opcional).</summary>
+    [BindProperty(SupportsGet = true)]
+    public int? EquipmentId { get; set; }
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
-    public LaboratoryPlanningDemo? Plan { get; private set; }
+    public L3Request? Plan { get; private set; }
+    public string Code => L3Codes.Format(PlanId);
+    public List<SelectListItem> UnitOptions { get; private set; } = [];
 
-    public IActionResult OnGet()
+    public async Task<IActionResult> OnGetAsync()
     {
-        return LoadPage();
-    }
-
-    public IActionResult OnPostSave(string id)
-    {
-        Id = id;
-        Plan = _demoService.Find(id);
-        if (Plan == null)
-            return MissingPlan();
-
-        if (Input.Quantity > Plan.Requirements.Sum(item => item.RequestedQuantity))
-            ModelState.AddModelError("Input.Quantity", "La cantidad afectada no puede superar la cantidad solicitada.");
-
-        if (string.IsNullOrWhiteSpace(Input.AffectedItem)
-            || !Plan.Requirements.Any(item => string.Equals(item.Name, Input.AffectedItem, StringComparison.OrdinalIgnoreCase)))
-        {
-            ModelState.AddModelError("Input.AffectedItem", "Selecciona un ítem incluido en los requerimientos.");
-        }
-
-        if (!ModelState.IsValid)
-            return Page();
-
-        Plan.Incident = new LaboratoryPlanningDemoIncident
-        {
-            Code = $"L5-{DateTime.Today:yyyyMMdd}-{_demoService.GetPlans().Count:000}",
-            Type = Input.Type,
-            AffectedItem = Input.AffectedItem,
-            Quantity = Input.Quantity,
-            Observations = Input.Observations.Trim(),
-            CreatedAt = DateTime.UtcNow
-        };
-        Plan.Status = LaboratoryPlanningDemoStatus.Incident;
-        _demoService.Save(Plan);
-        TempData.Success("Incidencia L-5 registrada en la sesión de demostración.");
-        return RedirectToPage("./Index", new { filter = "todos" });
-    }
-
-    private IActionResult LoadPage()
-    {
-        Plan = _demoService.Find(Id);
-        if (Plan == null)
-            return MissingPlan();
-
-        if (Plan.Incident != null)
-        {
-            Input = new InputModel
-            {
-                Type = Plan.Incident.Type,
-                AffectedItem = Plan.Incident.AffectedItem,
-                Quantity = Plan.Incident.Quantity,
-                Observations = Plan.Incident.Observations
-            };
-        }
-
+        var redirect = await LoadAsync();
+        if (redirect != null) return redirect;
         return Page();
     }
 
-    private IActionResult MissingPlan()
+    public async Task<IActionResult> OnPostAsync()
     {
-        TempData.Error("La planificación no existe o ya no está disponible en esta sesión.");
-        return RedirectToPage("./Index");
+        var redirect = await LoadAsync();
+        if (redirect != null) return redirect;
+
+        var allowedUnitIds = UnitOptions.Select(o => int.Parse(o.Value)).ToHashSet();
+        if (!allowedUnitIds.Contains(Input.EquipmentUnitId))
+            ModelState.AddModelError("Input.EquipmentUnitId", "La unidad no corresponde a los equipos prestados en esta planificación.");
+        if (!IncidentTypes.Contains(Input.IncidentType))
+            ModelState.AddModelError("Input.IncidentType", "Selecciona un tipo de incidente válido.");
+        if (!ResponsibleTypes.Contains(Input.ResponsibleType))
+            ModelState.AddModelError("Input.ResponsibleType", "Selecciona si el involucrado es estudiante o docente.");
+
+        if (!ModelState.IsValid) return Page();
+
+        _context.L5Incidents.Add(new L5Incident
+        {
+            L3RequestId = PlanId,
+            EquipmentUnitId = Input.EquipmentUnitId,
+            ResponsibleName = Input.ResponsibleName.Trim(),
+            ResponsibleType = Input.ResponsibleType,
+            IncidentType = Input.IncidentType,
+            DamageDescription = Input.DamageDescription.Trim(),
+            AffectedQuantity = Input.AffectedQuantity,
+            RepositionStatus = "Pendiente de Reposición",
+            RecordDate = DateTime.UtcNow
+        });
+        await _context.SaveChangesAsync();
+
+        TempData.Success("Incidente L-5 registrado. La unidad quedó marcada como averiada.");
+        return RedirectToPage("./L3", new { id = PlanId });
+    }
+
+    private async Task<IActionResult?> LoadAsync()
+    {
+        Plan = await _context.L3Requests.AsNoTracking()
+            .Include(r => r.Laboratory)
+            .Include(r => r.Subject)
+            .Include(r => r.Group)
+            .FirstOrDefaultAsync(r => r.Id == PlanId);
+        if (Plan == null)
+        {
+            TempData.Error("La planificación no existe.");
+            return RedirectToPage("./Index");
+        }
+        if (Plan.Status != L3RequestStatus.Approved)
+        {
+            TempData.Error("Solo se registran incidentes L-5 de una planificación aprobada y no finalizada.");
+            return RedirectToPage("./L3", new { id = PlanId });
+        }
+
+        // Unidades concretas de los tipos de equipo prestados, dentro del laboratorio del plan.
+        var lentEquipmentIds = await _context.L3RequestDetails.AsNoTracking()
+            .Where(d => d.L3RequestId == PlanId && d.DeliveredQuantity > 0)
+            .Select(d => d.EquipmentUnit.EquipmentId)
+            .Distinct()
+            .ToListAsync();
+
+        var units = await _context.EquipmentUnits.AsNoTracking()
+            .Where(u => u.LaboratoryId == Plan.LaboratoryId && lentEquipmentIds.Contains(u.EquipmentId)
+                && u.CurrentStatus != EquipmentStatus.Deleted)
+            .OrderBy(u => u.Equipment!.Name).ThenBy(u => u.InventoryNumber)
+            .Select(u => new { u.Id, u.EquipmentId, Name = u.Equipment!.Name, u.InventoryNumber })
+            .ToListAsync();
+
+        UnitOptions = units.Select(u => new SelectListItem(
+                $"{u.Name} (INV: {u.InventoryNumber})",
+                u.Id.ToString(),
+                u.Id == Input.EquipmentUnitId || (Input.EquipmentUnitId == 0 && EquipmentId == u.EquipmentId && u == units.First(x => x.EquipmentId == EquipmentId))))
+            .ToList();
+        return null;
     }
 
     public sealed class InputModel
     {
-        [Required(ErrorMessage = "Selecciona el tipo de novedad")]
-        public string Type { get; set; } = "Daño";
+        [Range(1, int.MaxValue, ErrorMessage = "Selecciona la unidad afectada")]
+        public int EquipmentUnitId { get; set; }
 
-        [Required(ErrorMessage = "Selecciona el ítem afectado")]
-        public string? AffectedItem { get; set; }
+        [Required(ErrorMessage = "Indica el nombre del involucrado"), StringLength(200)]
+        public string ResponsibleName { get; set; } = string.Empty;
 
-        [Range(1, 999, ErrorMessage = "La cantidad debe ser mayor a 0")]
-        public int Quantity { get; set; } = 1;
+        [Required, StringLength(50)]
+        public string ResponsibleType { get; set; } = "ESTUDIANTE";
 
-        [Required(ErrorMessage = "Describe la incidencia"), StringLength(1000)]
-        public string Observations { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Selecciona el tipo de incidente"), StringLength(100)]
+        public string IncidentType { get; set; } = "Daño";
+
+        [Required(ErrorMessage = "Describe el daño o la pérdida"), StringLength(2000)]
+        public string DamageDescription { get; set; } = string.Empty;
+
+        [Range(1, 999, ErrorMessage = "La cantidad afectada debe estar entre 1 y 999")]
+        public int AffectedQuantity { get; set; } = 1;
     }
 }

@@ -7,19 +7,20 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
-using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
+/// <summary>
+/// Calendario de planificaciones L-3 persistidas. Solo lectura.
+/// Enlaza cada evento con el siguiente paso del flujo según el estado del plan.
+/// </summary>
 public class CalendarioModel : PageModel
 {
     private readonly ApplicationDbContext _context;
-    private readonly LaboratoryPlanningDemoService _demoService;
 
-    public CalendarioModel(ApplicationDbContext context, LaboratoryPlanningDemoService demoService)
+    public CalendarioModel(ApplicationDbContext context)
     {
         _context = context;
-        _demoService = demoService;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -38,43 +39,113 @@ public class CalendarioModel : PageModel
         LaboratoryList = new SelectList(laboratories, "Id", "Name", LaboratoryId);
         var laboratoryNames = laboratories.ToDictionary(item => item.Id, item => $"{item.Code} · {item.Name}");
 
-        var events = _demoService.GetPlans()
-            .Where(plan => plan.Status != LaboratoryPlanningDemoStatus.Cancelled)
-            .Where(plan => !LaboratoryId.HasValue || plan.LaboratoryId == LaboratoryId.Value)
-            .Where(plan => laboratoryNames.ContainsKey(plan.LaboratoryId))
-            .Select(plan => new CalendarEvent
+        var query = _context.L3Requests.AsNoTracking()
+            .Where(plan => plan.Status != L3RequestStatus.Cancelled)
+            .Where(plan => !LaboratoryId.HasValue || plan.LaboratoryId == LaboratoryId.Value);
+
+        var plans = await query
+            .OrderBy(plan => plan.ScheduledDate)
+            .Select(plan => new CalendarProjection
             {
-                Title = $"{plan.Subject} · {laboratoryNames[plan.LaboratoryId]}",
-                Start = plan.PracticeDate.Date.Add(plan.StartTime).ToString("s", CultureInfo.InvariantCulture),
-                End = plan.PracticeDate.Date.Add(plan.EndTime).ToString("s", CultureInfo.InvariantCulture),
-                Color = GetColor(plan.Status),
-                Url = $"/LaboratoryOperations/Requerimientos?id={Uri.EscapeDataString(plan.Id)}",
-                Lab = laboratoryNames[plan.LaboratoryId],
-                Responsible = plan.ResponsibleName,
-                Status = GetStatusText(plan.Status)
+                Id = plan.Id,
+                SubjectName = plan.Subject.Name,
+                TeacherPersonId = plan.TeacherPersonId,
+                LabCode = plan.Laboratory.Code,
+                LabName = plan.Laboratory.Name,
+                LaboratoryId = plan.LaboratoryId,
+                ScheduledDate = plan.ScheduledDate,
+                ScheduledEndDate = plan.ScheduledEndDate,
+                Status = plan.Status,
+                HasDetails = plan.Details.Any()
+            })
+            .ToListAsync();
+
+        var teacherIds = plans
+            .Where(plan => plan.TeacherPersonId.HasValue)
+            .Select(plan => plan.TeacherPersonId!.Value)
+            .Distinct()
+            .ToList();
+
+        var teachers = teacherIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await _context.Interns.AsNoTracking()
+                .Where(item => teacherIds.Contains(item.Id))
+                .Select(item => new { item.Id, item.Name })
+                .ToDictionaryAsync(item => item.Id, item => item.Name);
+
+        var events = plans
+            .Where(plan => laboratoryNames.ContainsKey(plan.LaboratoryId))
+            .Select(plan =>
+            {
+                var endDate = plan.ScheduledEndDate ?? plan.ScheduledDate.AddHours(1);
+                var labName = laboratoryNames[plan.LaboratoryId];
+                var code = L3Codes.Format(plan.Id);
+                var teacherName = plan.TeacherPersonId.HasValue
+                                  && teachers.TryGetValue(plan.TeacherPersonId.Value, out var teacher)
+                    ? teacher
+                    : "Sin docente";
+
+                return new CalendarEvent
+                {
+                    Title = $"{code} · {plan.SubjectName} · {labName}",
+                    Start = plan.ScheduledDate.ToString("s", CultureInfo.InvariantCulture),
+                    End = endDate.ToString("s", CultureInfo.InvariantCulture),
+                    Color = GetColor(plan.Status),
+                    Url = GetNextStepUrl(plan.Status, plan.HasDetails, plan.Id),
+                    Lab = labName,
+                    Responsible = teacherName,
+                    Status = GetStatusText(plan.Status)
+                };
             })
             .ToList();
 
         EventsJson = JsonSerializer.Serialize(events, new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 
-    private static string GetColor(LaboratoryPlanningDemoStatus status) => status switch
+    /// <summary>
+    /// Siguiente paso: Planificado sin detalles -> Requerimientos;
+    /// Planificado con detalles -> Disponibilidad; Aprobado/Finalizado -> L3.
+    /// </summary>
+    private static string GetNextStepUrl(string status, bool hasDetails, int id) => status switch
     {
-        LaboratoryPlanningDemoStatus.Approved => "#28a745",
-        LaboratoryPlanningDemoStatus.Completed => "#343a40",
-        LaboratoryPlanningDemoStatus.Incident => "#dc3545",
-        LaboratoryPlanningDemoStatus.PendingAvailability => "#ffc107",
+        L3RequestStatus.Planned when !hasDetails => $"/LaboratoryOperations/Requerimientos?planId={id}",
+        L3RequestStatus.Planned => $"/LaboratoryOperations/Disponibilidad?planId={id}",
+        L3RequestStatus.Approved => $"/LaboratoryOperations/L3?id={id}",
+        L3RequestStatus.Finalized => $"/LaboratoryOperations/L3?id={id}",
+        _ => $"/LaboratoryOperations/Planificacion?id={id}"
+    };
+
+    private static string GetColor(string status) => status switch
+    {
+        L3RequestStatus.Approved => "#28a745",
+        L3RequestStatus.Finalized => "#343a40",
+        L3RequestStatus.Cancelled => "#6c757d",
+        L3RequestStatus.Planned => "#ffc107",
         _ => "#17a2b8"
     };
 
-    private static string GetStatusText(LaboratoryPlanningDemoStatus status) => status switch
+    private static string GetStatusText(string status) => status switch
     {
-        LaboratoryPlanningDemoStatus.Approved => "Aprobada",
-        LaboratoryPlanningDemoStatus.Completed => "Cerrada",
-        LaboratoryPlanningDemoStatus.Incident => "Incidencia L-5",
-        LaboratoryPlanningDemoStatus.PendingAvailability => "Pendiente",
-        _ => "Borrador"
+        L3RequestStatus.Planned => "Planificada",
+        L3RequestStatus.Approved => "Aprobada",
+        L3RequestStatus.Finalized => "Finalizada",
+        L3RequestStatus.Cancelled => "Cancelada",
+        _ => status
     };
+
+    private sealed class CalendarProjection
+    {
+        public int Id { get; init; }
+        public string SubjectName { get; init; } = string.Empty;
+        public int? TeacherPersonId { get; init; }
+        public string LabCode { get; init; } = string.Empty;
+        public string LabName { get; init; } = string.Empty;
+        public int LaboratoryId { get; init; }
+        public DateTime ScheduledDate { get; init; }
+        public DateTime? ScheduledEndDate { get; init; }
+        public string Status { get; init; } = string.Empty;
+        public bool HasDetails { get; init; }
+    }
 
     public sealed class CalendarEvent
     {

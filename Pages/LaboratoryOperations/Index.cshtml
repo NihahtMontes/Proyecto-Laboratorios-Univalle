@@ -27,10 +27,7 @@
                     }
                 </div>
                 <div class="ml-auto mt-2 mt-md-0">
-                    <form method="post" asp-page-handler="Demo" class="d-inline">
-                        <button type="submit" class="btn btn-sm btn-outline-info btn-rounded"><i class="fas fa-magic mr-1"></i> Cargar ejemplo local</button>
-                    </form>
-                    <a asp-page="./Calendario" class="btn btn-sm btn-outline-primary btn-rounded ml-1"><i class="far fa-calendar-alt mr-1"></i> Calendario</a>
+                    <a asp-page="./Calendario" class="btn btn-sm btn-outline-primary btn-rounded"><i class="far fa-calendar-alt mr-1"></i> Calendario</a>
                 </div>
             </div>
         </div>
@@ -72,12 +69,12 @@
                                     <tr>
                                         <td class="small font-weight-bold">@plan.Code</td>
                                         <td><strong>@plan.Subject</strong><br /><small class="text-muted">@plan.ResponsibleName · Grupo @plan.Group</small></td>
-                                        <td class="small text-muted">@plan.LaboratoryName<br /><small>@plan.CareerName</small></td>
+                                        <td class="small text-muted">@plan.LaboratoryName<br /><small>@plan.FacultyName</small></td>
                                         <td class="small">@plan.PracticeDate.ToString("dd/MM/yyyy")<br /><span class="text-muted">@plan.StartTime.ToString(@"hh\:mm")–@plan.EndTime.ToString(@"hh\:mm")</span></td>
                                         <td><span class="badge badge-@plan.StatusCss px-2 py-1 rounded-pill">@plan.StatusText</span>@if (plan.HasConflict) { <br /><small class="text-danger">Stock insuficiente</small> }</td>
                                         <td class="text-right text-nowrap">
                                             <a asp-page="./Planificacion" asp-route-id="@plan.Id" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a>
-                                            <a asp-page="./Requerimientos" asp-route-id="@plan.Id" class="btn btn-sm btn-outline-primary" title="Requerimientos"><i class="fas fa-list"></i></a>
+                                            <a asp-page="./Requerimientos" asp-route-planId="@plan.Id" class="btn btn-sm btn-outline-primary" title="Requerimientos"><i class="fas fa-list"></i></a>
                                         </td>
                                     </tr>
                                 }
@@ -100,7 +97,7 @@
                     <div class="d-flex"><span class="badge badge-danger mr-2">5</span><span>L-5 incidencia</span></div>
                 </div>
             </div>
-            <div class="alert alert-light border small mb-0"><i class="fas fa-shield-alt text-success mr-1"></i> Esta demo no modifica la base histórica: conserva el flujo en la sesión del navegador.</div>
+            <div class="alert alert-light border small mb-0"><i class="fas fa-shield-alt text-success mr-1"></i> Los datos provienen del flujo L-3 persistido en la base: planificación, requerimientos, disponibilidad, devolución e incidencias L-5.</div>
         </div>
     </div>
 </div>

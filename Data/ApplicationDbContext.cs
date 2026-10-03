@@ -59,6 +59,36 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 }
             }
 
+            var newL5Incidents = ChangeTracker.Entries<L5Incident>()
+                .Where(e => e.State == EntityState.Added)
+                .Select(e => e.Entity)
+                .ToList();
+
+            foreach(var incident in newL5Incidents)
+            {
+                // Un solo historial abierto por unidad: cerrar el vigente y alinear el estado actual.
+                var openHistories = await EquipmentStateHistories.AsTracking()
+                    .Where(h => h.EquipmentUnitId == incident.EquipmentUnitId && h.EndDate == null)
+                    .ToListAsync(cancellationToken);
+                foreach (var open in openHistories)
+                    open.EndDate = now;
+
+                var unit = await EquipmentUnits.AsTracking()
+                    .FirstOrDefaultAsync(u => u.Id == incident.EquipmentUnitId, cancellationToken);
+                if (unit != null)
+                    unit.CurrentStatus = Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Broken;
+
+                EquipmentStateHistories.Add(new EquipmentStateHistory
+                {
+                    EquipmentUnitId = incident.EquipmentUnitId,
+                    StartDate = now,
+                    Reason = $"INCIDENTE L5 REGISTRADO: {incident.IncidentType} - {incident.DamageDescription}. Estado: {incident.RepositionStatus}",
+                    Status = Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Broken,
+                    CreatedDate = now,
+                    CreatedById = userId
+                });
+            }
+
             return await base.SaveChangesAsync(cancellationToken);
         }
 
@@ -339,7 +369,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<MaintenanceRequest> MaintenanceRequests { get; set; } = null!;
         public DbSet<ImportSourceRow> ImportSourceRows { get; set; } = null!;
         public DbSet<EquipmentClassificationDecision> EquipmentClassificationDecisions { get; set; } = null!;
-        
+        public DbSet<Subject> Subjects { get; set; } = null!;
+        public DbSet<Group> Groups { get; set; } = null!;
+        public DbSet<L3Request> L3Requests { get; set; } = null!;
+        public DbSet<L3RequestDetail> L3RequestDetails { get; set; } = null!;
+        public DbSet<L5Incident> L5Incidents { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -683,6 +717,19 @@ namespace Proyecto_Laboratorios_Univalle.Data
                     "OR ([Category] = 2 AND [TypeClassification] IS NULL AND [UtensilType] IS NULL " +
                     "AND LEN(LTRIM(RTRIM(COALESCE([OtherDetail], '')))) > 0)))");
             });
+            // Operación de laboratorios (L-3/L-5): borrado lógico y sin cascadas sobre maestros ni equipos.
+            modelBuilder.Entity<L3Request>().HasQueryFilter(r => !r.IsDeleted);
+            modelBuilder.Entity<L5Incident>().HasQueryFilter(i => !i.IsDeleted);
+            modelBuilder.Entity<L3RequestDetail>().HasQueryFilter(d => !d.L3Request.IsDeleted);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.Subject).WithMany().HasForeignKey(r => r.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.Group).WithMany().HasForeignKey(r => r.GroupId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.Teacher).WithMany().HasForeignKey(r => r.TeacherId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.TeacherPerson).WithMany().HasForeignKey(r => r.TeacherPersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.Laboratory).WithMany().HasForeignKey(r => r.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3RequestDetail>().HasOne(d => d.EquipmentUnit).WithMany().HasForeignKey(d => d.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L5Incident>().HasOne(i => i.EquipmentUnit).WithMany().HasForeignKey(i => i.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L5Incident>().HasOne(i => i.L3Request).WithMany(r => r.Incidents).HasForeignKey(i => i.L3RequestId).OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<User>().ToTable("Users", table =>
             {
                 table.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 99)");
