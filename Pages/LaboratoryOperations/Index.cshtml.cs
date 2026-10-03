@@ -62,7 +62,7 @@ public class IndexModel : PageModel
                     TeacherPersonId = r.TeacherPersonId,
                     LabCode = r.Laboratory.Code,
                     LabName = r.Laboratory.Name,
-                    FacultyName = r.Laboratory.Faculty.Name,
+                    FacultyName = r.Laboratory.Faculty!.Name,
                     ScheduledDate = r.ScheduledDate,
                     ScheduledEndDate = r.ScheduledEndDate,
                     Status = r.Status
