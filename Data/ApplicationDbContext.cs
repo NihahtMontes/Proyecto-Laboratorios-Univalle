@@ -59,6 +59,24 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 }
             }
 
+            var newL5Incidents = ChangeTracker.Entries<L5Incident>()
+                .Where(e => e.State == EntityState.Added)
+                .Select(e => e.Entity)
+                .ToList();
+
+            foreach(var incident in newL5Incidents)
+            {
+                EquipmentStateHistories.Add(new EquipmentStateHistory
+                {
+                    EquipmentUnitId = incident.EquipmentUnitId,
+                    StartDate = now,
+                    Reason = $"INCIDENTE L5 REGISTRADO: {incident.IncidentType} - {incident.DamageDescription}. Estado: {incident.RepositionStatus}",
+                    Status = Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Broken,
+                    CreatedDate = now,
+                    CreatedById = userId
+                });
+            }
+
             return await base.SaveChangesAsync(cancellationToken);
         }
 
@@ -339,7 +357,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<MaintenanceRequest> MaintenanceRequests { get; set; } = null!;
         public DbSet<ImportSourceRow> ImportSourceRows { get; set; } = null!;
         public DbSet<EquipmentClassificationDecision> EquipmentClassificationDecisions { get; set; } = null!;
-        
+        public DbSet<Subject> Subjects { get; set; } = null!;
+        public DbSet<Group> Groups { get; set; } = null!;
+        public DbSet<L3Request> L3Requests { get; set; } = null!;
+        public DbSet<L3RequestDetail> L3RequestDetails { get; set; } = null!;
+        public DbSet<L5Incident> L5Incidents { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

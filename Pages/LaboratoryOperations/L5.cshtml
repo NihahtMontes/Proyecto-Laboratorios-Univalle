@@ -1,13 +1,13 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.L5Model
-@{ ViewData["Title"] = "Incidente L-5 — Paso 5"; var sessionId = "L3-2026-0095"; }
+@{ ViewData["Title"] = "Incidente L-5 — Paso 5"; }
 
 <div class="page-breadcrumb">
     <div class="row">
         <div class="col-12">
-            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 5 · <span class="text-dark">@sessionId</span></h4>
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 5 · <span class="text-dark">L3-@Model.PlanId</span></h4>
             <h2 class="font-weight-bold text-dark">Registro de Incidente L-5</h2>
-            <div class="text-muted small">Vinculado a: SAL 01 — Lab. Cocina Fría · Chef Francisco Galindo · Cocina Boliviana Contemporánea</div>
+            <div class="text-muted small">Reporte de daño, rotura o pérdida de equipos/utensilios.</div>
         </div>
     </div>
 </div>
@@ -16,150 +16,78 @@
     @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 5)
 
     <div class="row">
-        <!-- FORMULARIO -->
         <div class="col-md-8">
             <div class="card shadow-sm border-0 rounded-lg">
                 <div class="card-body p-4">
-                    <h6 class="font-weight-bold text-primary mb-1">FORMULARIO L-5 · <small class="text-muted font-weight-normal">Código: L5-2026-0013 (auto-generado)</small></h6>
-                    <p class="text-muted small mb-4">Gestión: 2-2026 · Vinculado a @sessionId</p>
+                    <h6 class="font-weight-bold text-primary mb-1">FORMULARIO L-5</h6>
 
-                    <form id="form-l5">
-                        <div class="form-row">
-                            <!-- Código L3 (readonly) -->
-                            <div class="form-group col-md-4">
-                                <label class="small font-weight-bold text-muted">DOCUMENTO L-3</label>
-                                <input type="text" class="form-control bg-light" value="@sessionId" readonly />
-                            </div>
-                            <!-- Gestión -->
-                            <div class="form-group col-md-4">
-                                <label class="small font-weight-bold text-muted">GESTIÓN</label>
-                                <input type="text" class="form-control bg-light" value="2-2026" readonly />
-                            </div>
-                            <!-- Fecha del incidente -->
-                            <div class="form-group col-md-4">
-                                <label class="small font-weight-bold text-muted">FECHA DEL INCIDENTE <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" required />
-                            </div>
+                    @if (!string.IsNullOrEmpty(Model.RelatedL3Name))
+                    {
+                        <div class="alert alert-info mt-2 mb-3">
+                            <strong>Práctica:</strong> @Model.RelatedL3Name ·
+                            <strong>Laboratorio:</strong> @Model.RelatedLabName
+                        </div>
+                    }
+
+                    <form method="post">
+                        <input type="hidden" asp-for="PlanId" />
+                        <input type="hidden" asp-for="Incident.L3RequestId" />
+
+                        @* ── EQUIPO AFECTADO (Solo los de esta práctica) ── *@
+                        <div class="form-group">
+                            <label class="small font-weight-bold text-muted">EQUIPO AFECTADO (De la Práctica Actual) <span class="text-danger">*</span></label>
+                            <select asp-for="Incident.EquipmentUnitId" asp-items="Model.EquiposPrestadosList" class="form-control" required>
+                                <option value="">Seleccione el utensilio dañado...</option>
+                            </select>
                         </div>
 
                         <div class="form-row">
-                            <!-- Materia -->
                             <div class="form-group col-md-6">
-                                <label class="small font-weight-bold text-muted">MATERIA / ASIGNATURA <span class="text-danger">*</span></label>
-                                <select class="custom-select" required>
-                                    <option selected>Cocina Boliviana Contemporánea</option>
-                                    <option>Inv. Gastronómica 1</option>
-                                    <option>Cocina Internacional 1</option>
-                                    <option>Coctelería</option>
-                                    <option>Diseño y Manejo de Menú</option>
-                                    <option>Enología</option>
-                                    <option>Técnica Dietoterapéutica</option>
-                                    <option>Evento</option>
+                                <label class="small font-weight-bold text-muted">TIPO DE INCIDENTE <span class="text-danger">*</span></label>
+                                <select asp-for="Incident.IncidentType" class="form-control" required>
+                                    <option value="">Seleccione...</option>
+                                    <option value="Daño">Daño</option>
+                                    <option value="Rotura">Rotura</option>
+                                    <option value="Pérdida">Pérdida</option>
+                                    <option value="Faltante">Faltante</option>
                                 </select>
                             </div>
-                            <!-- Docente -->
                             <div class="form-group col-md-6">
-                                <label class="small font-weight-bold text-muted">DOCENTE <span class="text-danger">*</span></label>
-                                <select class="custom-select" required>
-                                    <option selected>Chef Francisco Galindo</option>
-                                    <option>Arq. Shohei Takahashi</option>
-                                    <option>Chef Lobo</option>
-                                    <option>Ing. Sara Perez</option>
-                                    <option>Lic. Rodrigo Quiroga</option>
-                                    <option>Lic. Rojas</option>
-                                    <option>Lic. Vania Vargas</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <!-- Estudiante / Grupo -->
-                            <div class="form-group col-md-4">
-                                <label class="small font-weight-bold text-muted">ESTUDIANTE / GRUPO <span class="text-danger">*</span></label>
-                                <select class="custom-select" required>
-                                    <option>A</option>
-                                    <option>B</option>
-                                    <option selected>B2</option>
-                                    <option>C</option>
-                                    <option>BRUNO BORDA</option>
-                                    <option>SAID ANGHELO RUIZ</option>
-                                    <option>ALEJANDRO URQUIETA</option>
-                                    <option>MAYORI YAMILET VIZA</option>
-                                    <option>YEFERSON ZARATE</option>
-                                </select>
-                            </div>
-                            <!-- Tipo de novedad -->
-                            <div class="form-group col-md-4">
-                                <label class="small font-weight-bold text-muted">TIPO DE NOVEDAD <span class="text-danger">*</span></label>
-                                <select class="custom-select" required>
-                                    <option>Daño</option>
-                                    <option>Faltante</option>
-                                    <option selected>Rotura</option>
-                                    <option>Pérdida</option>
-                                </select>
-                            </div>
-                            <!-- Estado -->
-                            <div class="form-group col-md-4">
-                                <label class="small font-weight-bold text-muted">ESTADO DEL INCIDENTE</label>
-                                <select class="custom-select">
-                                    <option selected>Pendiente</option>
-                                    <option>En revisión</option>
-                                    <option>Resuelto</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <!-- Utensilio dañado -->
-                            <div class="form-group col-md-6">
-                                <label class="small font-weight-bold text-muted">UTENSILIO / ÍTEM AFECTADO <span class="text-danger">*</span></label>
-                                <select class="custom-select" required>
-                                    <option>SHOT</option>
-                                    <option>MOLDE DE SILICONA</option>
-                                    <option>SILPAT</option>
-                                    <option>MORTERO DE PALO</option>
-                                    <option>TUTUMA</option>
-                                    <option>TIMBAL REDONDO</option>
-                                    <option>COPA MARTINI</option>
-                                    <option>PLATO PLANO REDONDO</option>
-                                    <option>PLATO HONDO</option>
-                                    <option>CAMPANA AHUMADOR</option>
-                                    <option>SALSERO BLANCO</option>
-                                    <option>RESISTENCIA DE FERMENTADOR</option>
-                                    <option>COPA WHISKY</option>
-                                    <option>RAMEQUIN</option>
-                                    <option>SACACORCHOS</option>
-                                </select>
-                            </div>
-                            <!-- Cantidad afectada -->
-                            <div class="form-group col-md-3">
                                 <label class="small font-weight-bold text-muted">CANTIDAD AFECTADA <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" value="1" min="1" required />
+                                <input type="number" asp-for="Incident.AffectedQuantity" class="form-control" value="1" min="1" required />
                             </div>
-                            <!-- Costo repuesto -->
-                            <div class="form-group col-md-3">
-                                <label class="small font-weight-bold text-muted">COSTO REPUESTO (Bs)</label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend"><span class="input-group-text">Bs</span></div>
-                                    <input type="number" class="form-control" placeholder="0.00" step="0.01" min="0" />
-                                </div>
+                        </div>
+
+                        @* ── INVOLUCRADO (Texto libre según Excel L-5) ── *@
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label class="small font-weight-bold text-muted">TIPO INVOLUCRADO <span class="text-danger">*</span></label>
+                                <select asp-for="Incident.ResponsibleType" class="form-control" required>
+                                    <option value="ESTUDIANTE">ESTUDIANTE</option>
+                                    <option value="DOCENTE">DOCENTE</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-8">
+                                <label class="small font-weight-bold text-muted">NOMBRE DEL INVOLUCRADO <span class="text-danger">*</span></label>
+                                <input type="text" asp-for="Incident.ResponsibleName" class="form-control" required
+                                       placeholder="Ej: Juan Perez Mamani" />
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label class="small font-weight-bold text-muted">OBSERVACIONES / CONTEXTO DE LA PRÁCTICA <span class="text-danger">*</span></label>
-                            <textarea class="form-control bg-light" rows="3" required
-                                      placeholder="Ej: B2 EXAMEN PRIMER PARCIAL — Utensilio encontrado roto durante la revisión de devolución. Se fotografiará para el acta."></textarea>
+                            <label class="small font-weight-bold text-muted">DESCRIPCIÓN DEL DAÑO <span class="text-danger">*</span></label>
+                            <textarea asp-for="Incident.DamageDescription" class="form-control" rows="3" required
+                                      placeholder="Describe cómo ocurrió el daño o pérdida..."></textarea>
                         </div>
 
-                        <!-- Botones -->
-                        <div class="d-flex justify-content-between align-items-center mt-4">
-                            <a asp-page="/LaboratoryOperations/L3" class="btn btn-outline-secondary px-4 py-2">
-                                <i class="mdi mdi-arrow-left mr-1"></i> Volver a L-3
+                        <hr />
+                        <div class="d-flex justify-content-between">
+                            <a asp-page="/LaboratoryOperations/L3" asp-route-id="@Model.PlanId"
+                               class="btn btn-outline-secondary px-4">
+                                <i class="mdi mdi-arrow-left"></i> Volver al L-3
                             </a>
-                            <button type="button" class="btn btn-dark font-weight-bold px-5 py-2"
-                                    onclick="generarBorrador()">
-                                <i class="mdi mdi-file-document-outline mr-1"></i> Generar borrador L-5
+                            <button type="submit" class="btn btn-danger px-5 font-weight-bold">
+                                <i class="mdi mdi-content-save"></i> Registrar Incidente L-5
                             </button>
                         </div>
                     </form>
@@ -167,57 +95,22 @@
             </div>
         </div>
 
-        <!-- PANEL LATERAL: FLUJO -->
+        @* ── PANEL LATERAL INFO ── *@
         <div class="col-md-4">
-            <div class="card shadow-sm border-0 rounded-lg h-100">
-                <div class="card-body p-4">
-                    <h6 class="font-weight-bold text-warning mb-4">
-                        <i class="fas fa-exclamation-triangle mr-2"></i> FLUJO DE TRATAMIENTO
-                    </h6>
-                    <ul class="list-unstyled">
-                        <li class="d-flex align-items-start mb-3">
-                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3 flex-shrink-0"
-                                 style="width:28px;height:28px;font-size:12px;font-weight:700;">1</div>
-                            <span class="small">Registrar evidencia, ítem y estado.</span>
-                        </li>
-                        <li class="d-flex align-items-start mb-3">
-                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3 flex-shrink-0"
-                                 style="width:28px;height:28px;font-size:12px;font-weight:700;">2</div>
-                            <span class="small">Asignar investigación al responsable.</span>
-                        </li>
-                        <li class="d-flex align-items-start mb-3">
-                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3 flex-shrink-0"
-                                 style="width:28px;height:28px;font-size:12px;font-weight:700;">3</div>
-                            <span class="small">Definir reparación o reposición.</span>
-                        </li>
-                        <li class="d-flex align-items-start mb-3">
-                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mr-3 flex-shrink-0"
-                                 style="width:28px;height:28px;font-size:12px;font-weight:700;">4</div>
-                            <span class="small">Actualizar inventario sin borrar historial.</span>
-                        </li>
-                    </ul>
-                    <div class="alert bg-light border-0 rounded text-muted mt-3">
-                        <small><i class="fas fa-info-circle mr-1"></i>
-                        La responsabilidad definitiva requiere aprobación institucional.</small>
-                    </div>
-                    <!-- Historial de incidentes del mismo laboratorio -->
+            <div class="card border-0 bg-light shadow-sm rounded-lg">
+                <div class="card-body py-3 px-4">
+                    <small class="text-muted font-weight-bold d-block mb-2">INFORMACIÓN DEL FORMULARIO</small>
+                    <p class="small mb-1"><strong>Práctica:</strong> @(Model.RelatedL3Name ?? "—")</p>
+                    <p class="small mb-1"><strong>Laboratorio:</strong> @(Model.RelatedLabName ?? "—")</p>
+                    <p class="small mb-1"><strong>Código L3:</strong> L3-@Model.PlanId</p>
                     <hr />
-                    <h6 class="small font-weight-bold text-muted mb-2">INCIDENTES RECIENTES — SAL 01</h6>
-                    <ul class="list-unstyled">
-                        <li class="small text-muted mb-1"><i class="mdi mdi-circle text-danger mr-1"></i>L5-2026-0012 · Copa Martini rota</li>
-                        <li class="small text-muted mb-1"><i class="mdi mdi-circle text-warning mr-1"></i>L5-2026-0008 · Silpat faltante</li>
-                        <li class="small text-muted"><i class="mdi mdi-circle text-success mr-1"></i>L5-2026-0003 · Resuelto</li>
-                    </ul>
+                    <p class="small text-muted mb-0">
+                        <i class="mdi mdi-information mr-1"></i>
+                        Tras registrar el incidente serás devuelto al formulario L-3 de Devolución.
+                        El botón "Finalizar L-3" se desbloqueará automáticamente.
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-@section Scripts {
-<script>
-function generarBorrador() {
-    alert('✅ Borrador L-5 generado.\nCódigo: L5-2026-0013\n\nEn la versión final se guardará en la base de datos y se generará un PDF.');
-}
-</script>
-}

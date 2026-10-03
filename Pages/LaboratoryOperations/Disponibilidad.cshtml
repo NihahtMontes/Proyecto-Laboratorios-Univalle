@@ -1,13 +1,18 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.DisponibilidadModel
-@{ ViewData["Title"] = "Disponibilidad — Paso 3"; var sessionId = "L3-2026-0095"; }
+@{ ViewData["Title"] = "Disponibilidad — Paso 3"; }
 
 <div class="page-breadcrumb">
     <div class="row">
         <div class="col-12">
-            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 3 · <span class="text-dark">@sessionId</span></h4>
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 3 · <span class="text-dark">L3-@Model.PlanId</span></h4>
             <h2 class="font-weight-bold text-dark">Verificación de Disponibilidad</h2>
-            <div class="text-muted small">SAL 01 — Lab. Cocina Fría · Chef Francisco Galindo · Cocina Boliviana Contemporánea</div>
+            <div class="text-muted small">
+                @if (Model.PlanActivo != null)
+                {
+                    @(Model.PlanActivo.Laboratory?.Name) @: · @(Model.PlanActivo.Subject?.Name) · @(Model.PlanActivo.Teacher?.FirstName) @(Model.PlanActivo.Teacher?.LastName)
+                }
+            </div>
         </div>
     </div>
 </div>
@@ -15,24 +20,27 @@
 <div class="container-fluid mt-3">
     @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 3)
 
-    <!-- ALERTA DE CONFLICTO (visible si hay déficit) -->
-    <div class="alert alert-danger border-0 rounded d-flex align-items-center mb-4" id="alerta-conflicto" style="display:none!important;">
-        <i class="fas fa-exclamation-triangle fa-2x mr-3"></i>
-        <div>
-            <strong>¡Conflicto de disponibilidad!</strong><br>
-            <span id="alerta-detalle">Uno o más utensilios no tienen stock suficiente.</span>
-            Los ítems marcados en rojo deben ser corregidos antes de aprobar.
+    @* ── ALERTAS ── *@
+    @if (Model.HasConflict)
+    {
+        <div class="alert alert-danger border-0 rounded d-flex align-items-center mb-4">
+            <i class="mdi mdi-alert-circle mdi-36px mr-3"></i>
+            <div>
+                <strong>¡Conflicto de disponibilidad!</strong><br>
+                Uno o más utensilios no tienen stock suficiente. Corrige los ítems marcados en rojo volviendo al Paso 2.
+            </div>
         </div>
-    </div>
-
-    <!-- ALERTA OK (visible si todo está bien) -->
-    <div class="alert alert-success border-0 rounded d-flex align-items-center mb-4" id="alerta-ok">
-        <i class="fas fa-check-circle fa-2x mr-3"></i>
-        <div>
-            <strong>¡Todo disponible!</strong><br>
-            Todos los utensilios requeridos tienen stock suficiente. Puedes aprobar la reserva.
+    }
+    else
+    {
+        <div class="alert alert-success border-0 rounded d-flex align-items-center mb-4">
+            <i class="mdi mdi-check-circle mdi-36px mr-3"></i>
+            <div>
+                <strong>¡Todo disponible!</strong><br>
+                Todos los utensilios requeridos tienen stock suficiente. Puedes aprobar la reserva.
+            </div>
         </div>
-    </div>
+    }
 
     <div class="card shadow-sm border-0 rounded-lg">
         <div class="card-body p-4">
@@ -42,7 +50,7 @@
                     <thead class="bg-dark text-white">
                         <tr>
                             <th class="border-0">UTENSILIO</th>
-                            <th class="border-0 text-center">UNIDAD</th>
+                            <th class="border-0 text-center">INVENTARIO</th>
                             <th class="border-0 text-center">SOLICITADO</th>
                             <th class="border-0 text-center">DISPONIBLE</th>
                             <th class="border-0 text-center">DIFERENCIA</th>
@@ -50,30 +58,18 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @{
-                            /* Datos simulados: algunos OK, uno en déficit para demostrar la validación */
-                            var itemsDisp = new[] {
-                                new { Nombre="PLATO PLANO REDONDO",  Unidad="Unid.", Solicitado=20, Disponible=30 },
-                                new { Nombre="COPA MARTINI",          Unidad="Unid.", Solicitado=15, Disponible=40 },
-                                new { Nombre="SHOT",                  Unidad="Unid.", Solicitado=8,  Disponible=12 },
-                                new { Nombre="MOLDE DE SILICONA",     Unidad="Unid.", Solicitado=10, Disponible=8  },  /* DÉFICIT */
-                                new { Nombre="PAPEL FILM 1400 METROS",Unidad="Rollo", Solicitado=2,  Disponible=8  },
-                            };
-                        }
-                        @foreach (var item in itemsDisp)
+                        @foreach (var item in Model.Items)
                         {
-                            int diff = item.Disponible - item.Solicitado;
-                            bool ok  = diff >= 0;
-                            <tr class="@(ok ? "" : "table-danger")">
+                            <tr class="@(!item.Ok ? "table-danger" : "")">
                                 <td class="align-middle font-weight-bold">@item.Nombre</td>
-                                <td class="align-middle text-center">@item.Unidad</td>
+                                <td class="align-middle text-center"><span class="badge badge-secondary">@item.Inventario</span></td>
                                 <td class="align-middle text-center">@item.Solicitado</td>
                                 <td class="align-middle text-center">@item.Disponible</td>
-                                <td class="align-middle text-center font-weight-bold @(ok ? "text-success" : "text-danger")">
-                                    @(ok ? "+" : "")@diff
+                                <td class="align-middle text-center font-weight-bold @(item.Ok ? "text-success" : "text-danger")">
+                                    @(item.Ok ? "+" : "")@item.Diferencia
                                 </td>
                                 <td class="align-middle text-center">
-                                    @if (ok)
+                                    @if (item.Ok)
                                     {
                                         <span class="badge badge-success px-3 py-2 rounded-pill">Disponible</span>
                                     }
@@ -90,42 +86,30 @@
         </div>
     </div>
 
-    <!-- BOTONES SEGÚN ESTADO -->
-    <div class="d-flex justify-content-between mt-4" id="panel-sin-conflicto" style="display:none!important;">
-        <a asp-page="/LaboratoryOperations/Requerimientos" class="btn btn-outline-secondary px-4 py-2">
-            <i class="mdi mdi-arrow-left mr-1"></i> Atrás
-        </a>
-        <a asp-page="/LaboratoryOperations/L3" class="btn btn-success font-weight-bold px-5 py-2">
-            <i class="mdi mdi-check mr-1"></i> Aprobar reserva
-        </a>
-    </div>
-
-    <div class="d-flex justify-content-between mt-4" id="panel-con-conflicto">
-        <a asp-page="/LaboratoryOperations/Requerimientos" class="btn btn-warning font-weight-bold px-4 py-2">
-            <i class="mdi mdi-arrow-left mr-1"></i> Volver a Requerimientos
-        </a>
-        <span class="text-danger align-self-center small">
-            <i class="fas fa-info-circle mr-1"></i> Resuelve los conflictos antes de aprobar.
-        </span>
+    @* ── BOTONES ── *@
+    <div class="d-flex justify-content-between mt-4">
+        @if (Model.HasConflict)
+        {
+            <a asp-page="/LaboratoryOperations/Requerimientos" asp-route-planId="@Model.PlanId" asp-route-conflict="true"
+               class="btn btn-warning font-weight-bold px-4 py-2">
+                <i class="mdi mdi-arrow-left mr-1"></i> Volver a Requerimientos
+            </a>
+            <span class="text-danger align-self-center small">
+                <i class="mdi mdi-information mr-1"></i> Resuelve los conflictos antes de aprobar.
+            </span>
+        }
+        else
+        {
+            <a asp-page="/LaboratoryOperations/Requerimientos" asp-route-planId="@Model.PlanId"
+               class="btn btn-outline-secondary px-4 py-2">
+                <i class="mdi mdi-arrow-left mr-1"></i> Atrás
+            </a>
+            <form method="post" asp-page-handler="Approve">
+                <input type="hidden" name="planId" value="@Model.PlanId" />
+                <button type="submit" class="btn btn-success font-weight-bold px-5 py-2">
+                    <i class="mdi mdi-check mr-1"></i> Aprobar Reserva
+                </button>
+            </form>
+        }
     </div>
 </div>
-
-@section Scripts {
-<script>
-(function () {
-    // Detectar si hay filas con déficit (table-danger)
-    var hayConflicto = document.querySelectorAll('tr.table-danger').length > 0;
-    if (hayConflicto) {
-        document.getElementById('alerta-conflicto').removeAttribute('style');
-        document.getElementById('alerta-ok').style.display = 'none';
-        document.getElementById('panel-con-conflicto').removeAttribute('style');
-        document.getElementById('panel-sin-conflicto').style.display = 'none';
-    } else {
-        document.getElementById('alerta-ok').removeAttribute('style');
-        document.getElementById('alerta-conflicto').style.display = 'none';
-        document.getElementById('panel-sin-conflicto').removeAttribute('style');
-        document.getElementById('panel-con-conflicto').style.display = 'none';
-    }
-})();
-</script>
-}

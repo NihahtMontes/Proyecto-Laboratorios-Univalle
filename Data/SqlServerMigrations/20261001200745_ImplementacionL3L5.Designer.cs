@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Proyecto_Laboratorios_Univalle.Data;
 
@@ -11,9 +12,11 @@ using Proyecto_Laboratorios_Univalle.Data;
 namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001200745_ImplementacionL3L5")]
+    partial class ImplementacionL3L5
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1563,21 +1566,16 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("ResponsibleName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("ResponsibleType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int>("ResponsibleUserId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("EquipmentUnitId");
 
                     b.HasIndex("L3RequestId");
+
+                    b.HasIndex("ResponsibleUserId");
 
                     b.ToTable("L5Incidents");
                 });
@@ -3742,9 +3740,17 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .WithMany("Incidents")
                         .HasForeignKey("L3RequestId");
 
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ResponsibleUser")
+                        .WithMany()
+                        .HasForeignKey("ResponsibleUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("EquipmentUnit");
 
                     b.Navigation("L3Request");
+
+                    b.Navigation("ResponsibleUser");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Laboratory", b =>

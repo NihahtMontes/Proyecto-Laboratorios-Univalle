@@ -2,174 +2,183 @@
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanificacionModel
 @{ ViewData["Title"] = "Planificación — Paso 1"; }
 
-@* Identificador de sesión (simulado) *@
-@{ var sessionId = "L3-2026-0095"; }
-
 <div class="page-breadcrumb">
     <div class="row">
-        <div class="col-12">
-            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 1 · <span class="text-dark">@sessionId</span></h4>
-            <h2 class="font-weight-bold text-dark">Planificación de Práctica</h2>
-            <div class="text-muted small">Registra los datos de la sesión de laboratorio que se va a realizar.</div>
+        <div class="col-12 d-flex justify-content-between align-items-start">
+            <div>
+                <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 1</h4>
+                <h2 class="font-weight-bold text-dark">Planificación de Práctica</h2>
+                <div class="text-muted small">Registra los datos de la sesión de laboratorio que se va a realizar.</div>
+            </div>
+            <button type="button" class="btn btn-outline-info px-3" onclick="buscarPlanes()">
+                <i class="mdi mdi-calendar-search mr-1"></i> Buscar Código de Planificación
+            </button>
         </div>
     </div>
 </div>
 
 <div class="container-fluid mt-3">
-
-    <!-- BARRA DE PASOS -->
     @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 1)
+
+    @* ── CARD DE CONFIRMACIÓN (solo visible tras crear) ── *@
+    @if (Model.ShowConfirmation && Model.CreatedPlan != null)
+    {
+        <div class="alert alert-success border-0 shadow-sm rounded-lg d-flex align-items-start mb-4">
+            <i class="mdi mdi-check-circle mdi-36px mr-3 text-success"></i>
+            <div>
+                <h5 class="font-weight-bold mb-1">¡Planificación creada exitosamente!</h5>
+                <table class="mb-2">
+                    <tr><td class="font-weight-bold pr-3">ID Generado:</td><td><span class="badge badge-dark px-3 py-1">L3-@Model.CreatedPlan.Id</span></td></tr>
+                    <tr><td class="font-weight-bold pr-3">Práctica:</td><td>@Model.CreatedPlan.PracticeName</td></tr>
+                    <tr><td class="font-weight-bold pr-3">Fecha / Hora:</td><td>@Model.CreatedPlan.ScheduledDate.ToString("dd/MM/yyyy HH:mm")</td></tr>
+                    <tr><td class="font-weight-bold pr-3">Laboratorio:</td><td>@Model.CreatedPlan.Laboratory?.Name</td></tr>
+                    <tr><td class="font-weight-bold pr-3">Semana Académica:</td><td>@Model.CreatedPlan.AcademicWeek</td></tr>
+                </table>
+                <a asp-page="/LaboratoryOperations/Requerimientos" asp-route-planId="@Model.CreatedPlan.Id"
+                   class="btn btn-dark font-weight-bold px-5">
+                    Continuar al Paso 2 <i class="mdi mdi-arrow-right ml-1"></i>
+                </a>
+            </div>
+        </div>
+    }
 
     <div class="card shadow-sm border-0 rounded-lg">
         <div class="card-body p-4">
-            <h5 class="font-weight-bold mb-4 text-primary">Datos de la Sesión · <small class="text-muted font-weight-normal">@sessionId</small></h5>
+            <h5 class="font-weight-bold mb-4 text-primary">Datos de la Sesión</h5>
 
-            <form id="form-planificacion">
+            <form method="post">
                 <div class="form-row">
-                    <!-- Ciudad / Sede -->
-                    <div class="form-group col-md-3">
-                        <label class="small font-weight-bold text-muted">CIUDAD / SEDE <span class="text-danger">*</span></label>
-                        <select class="custom-select" required>
-                            <option selected>CBBA</option>
-                            <option>STA</option>
-                            <option>LPZ</option>
-                        </select>
-                    </div>
-                    <!-- Carrera -->
-                    <div class="form-group col-md-5">
-                        <label class="small font-weight-bold text-muted">CARRERA / DEPARTAMENTO <span class="text-danger">*</span></label>
-                        <select class="custom-select" required>
-                            <option value="">— Seleccionar —</option>
-                            <option selected>Gastronomía Comercial</option>
-                            <option>Nutrición y Dietética</option>
-                            <option>Hotelería y Turismo</option>
-                            <option>Diseño y Manejo de Menú</option>
-                        </select>
-                    </div>
-                    <!-- Laboratorio -->
                     <div class="form-group col-md-4">
                         <label class="small font-weight-bold text-muted">LABORATORIO <span class="text-danger">*</span></label>
-                        <select class="custom-select" id="sel-laboratorio" required>
+                        <select asp-for="Plan.LaboratoryId" asp-items="Model.LaboratoriesList" class="custom-select" required>
                             <option value="">— Seleccionar sala —</option>
-                            <option value="SAL01">SAL 01 — Lab. Cocina Fría</option>
-                            <option value="SAL02">SAL 02 — Lab. Cocina Caliente</option>
-                            <option value="SAL03">SAL 03 — Lab. Pastelería</option>
-                            <option value="SAL04">SAL 04 — Lab. Coctelería</option>
-                            <option value="SAL05">SAL 05 — Lab. Enología</option>
-                            <option value="SAL06">SAL 06 — Lab. Dietética</option>
-                            <option value="SAL07">SAL 07 — Lab. Panadería</option>
-                            <option value="SAL08">SAL 08 — Lab. Multipropósito</option>
-                            <option value="SAL09">SAL 09 — Lab. Inv. Gastronómica</option>
-                            <option value="SAL10">SAL 10 — Sala de Eventos</option>
-                            <option value="SAL11">SAL 11 — Sala de Catas</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="form-row">
-                    <!-- Docente -->
                     <div class="form-group col-md-4">
                         <label class="small font-weight-bold text-muted">DOCENTE RESPONSABLE <span class="text-danger">*</span></label>
-                        <select class="custom-select" required>
+                        <select asp-for="Plan.TeacherId" asp-items="Model.TeachersList" class="custom-select" required>
                             <option value="">— Seleccionar —</option>
-                            <option>Arq. Shohei Takahashi</option>
-                            <option>Chef Francisco Galindo</option>
-                            <option>Chef Lobo</option>
-                            <option>Chef Lunario</option>
-                            <option>Chef. Martin</option>
-                            <option>Ing. Sara Perez</option>
-                            <option>Lic. Ana Cardozo</option>
-                            <option>Lic. Rodrigo Quiroga</option>
-                            <option>Lic. Rojas</option>
-                            <option>Lic. Vania Vargas</option>
                         </select>
                     </div>
-                    <!-- Materia -->
-                    <div class="form-group col-md-5">
+                    <div class="form-group col-md-4">
                         <label class="small font-weight-bold text-muted">MATERIA / ASIGNATURA <span class="text-danger">*</span></label>
-                        <select class="custom-select" required>
+                        <select asp-for="Plan.SubjectId" asp-items="Model.SubjectsList" class="custom-select" required>
                             <option value="">— Seleccionar —</option>
-                            <option>Inv. Gastronómica 1</option>
-                            <option>Cocina Boliviana Contemporánea</option>
-                            <option>Cocina Internacional 1</option>
-                            <option>Cocina Internacional 3</option>
-                            <option>Coctelería</option>
-                            <option>Diseño y Manejo de Menú</option>
-                            <option>Enología</option>
-                            <option>Alimentos y Bebidas 2</option>
-                            <option>TAG IV</option>
-                            <option>Técnica Dietoterapéutica</option>
-                            <option>Evento</option>
-                        </select>
-                    </div>
-                    <!-- Grupo / Paralelo -->
-                    <div class="form-group col-md-3">
-                        <label class="small font-weight-bold text-muted">GRUPO / PARALELO</label>
-                        <select class="custom-select">
-                            <option>A</option>
-                            <option>B</option>
-                            <option>B2</option>
-                            <option>C</option>
                         </select>
                     </div>
                 </div>
 
                 <div class="form-row">
-                    <!-- Fecha -->
                     <div class="form-group col-md-3">
-                        <label class="small font-weight-bold text-muted">FECHA DE PRÁCTICA <span class="text-danger">*</span></label>
-                        <input type="date" class="form-control" id="fecha-practica" required />
-                    </div>
-                    <!-- Hora inicio -->
-                    <div class="form-group col-md-2">
-                        <label class="small font-weight-bold text-muted">HORA INICIO <span class="text-danger">*</span></label>
-                        <input type="time" class="form-control" value="08:00" required />
-                    </div>
-                    <!-- Hora fin -->
-                    <div class="form-group col-md-2">
-                        <label class="small font-weight-bold text-muted">HORA FIN <span class="text-danger">*</span></label>
-                        <input type="time" class="form-control" value="11:00" required />
-                    </div>
-                    <!-- Categoría de material -->
-                    <div class="form-group col-md-3">
-                        <label class="small font-weight-bold text-muted">CATEGORÍA MATERIAL</label>
-                        <select class="custom-select">
-                            <option>Gastronomía (Utensilios)</option>
-                            <option>Gastronomía (Misceláneos)</option>
-                            <option>Gastronomía (Botiquín)</option>
-                            <option>Limpieza</option>
+                        <label class="small font-weight-bold text-muted">GRUPO / PARALELO <span class="text-danger">*</span></label>
+                        <select asp-for="Plan.GroupId" asp-items="Model.GroupsList" class="custom-select" required>
+                            <option value="">— Seleccionar —</option>
                         </select>
                     </div>
-                    <!-- N° de práctica -->
+                    <div class="form-group col-md-5">
+                        <label class="small font-weight-bold text-muted">NOMBRE DE PRÁCTICA <span class="text-danger">*</span></label>
+                        <input type="text" asp-for="Plan.PracticeName" class="form-control" required placeholder="Ej: Cocina Boliviana Contemporánea" />
+                    </div>
                     <div class="form-group col-md-2">
-                        <label class="small font-weight-bold text-muted">N° DE PRÁCTICA</label>
-                        <input type="number" class="form-control" value="1" min="1" />
+                        <label class="small font-weight-bold text-muted">SEMANA ACADÉMICA</label>
+                        <input type="number" asp-for="Plan.AcademicWeek" class="form-control" min="1" max="20" value="1" />
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label class="small font-weight-bold text-muted">FECHA Y HORA <span class="text-danger">*</span></label>
+                        <input type="datetime-local" asp-for="Plan.ScheduledDate" class="form-control" required />
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="small font-weight-bold text-muted">OBSERVACIONES GENERALES</label>
-                    <textarea class="form-control bg-light" rows="2" placeholder="Ej: Examen primer parcial. Grupo B2."></textarea>
-                </div>
-
-                <!-- Botones -->
                 <div class="d-flex justify-content-between align-items-center mt-4">
-                    <div>
-                        <button type="button" class="btn btn-outline-secondary px-4 py-2 mr-2"
-                                onclick="alert('Función de exportar Excel disponible próximamente.')">
-                            <i class="fas fa-file-excel mr-2 text-success"></i> Exportar Excel
-                        </button>
-                    </div>
-                    <div>
-                        <a asp-page="/LaboratoryOperations/Index" class="btn btn-outline-secondary px-4 py-2 mr-2">
-                            <i class="mdi mdi-arrow-left mr-1"></i> Cancelar
-                        </a>
-                        <a asp-page="/LaboratoryOperations/Requerimientos" class="btn btn-dark font-weight-bold px-5 py-2">
-                            Definir <i class="mdi mdi-arrow-right ml-1"></i>
-                        </a>
-                    </div>
+                    <a asp-page="/LaboratoryOperations/Index" class="btn btn-outline-secondary px-4 py-2">
+                        <i class="mdi mdi-arrow-left mr-1"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2">
+                        <i class="mdi mdi-content-save mr-1"></i> Crear Planificación
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+@* ── MODAL BUSCAR PLANIFICACIONES ── *@
+<div class="modal fade" id="modalBuscarPlanes" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title font-weight-bold"><i class="mdi mdi-calendar-search mr-2"></i>Planificaciones Existentes</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="text-center py-4" id="loadingPlans">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 text-muted">Cargando planificaciones...</p>
+                </div>
+                <div class="table-responsive" id="containerPlans" style="display:none;">
+                    <table class="table table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>CÓDIGO</th>
+                                <th>PRÁCTICA</th>
+                                <th>LABORATORIO</th>
+                                <th>DOCENTE</th>
+                                <th>FECHA</th>
+                                <th>ESTADO</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyPlans"></tbody>
+                    </table>
+                </div>
+                <div class="text-center py-4 text-muted" id="emptyPlans" style="display:none;">
+                    <i class="mdi mdi-calendar-blank mdi-36px d-block mb-2"></i>
+                    No hay planificaciones registradas aún.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    async function buscarPlanes() {
+        document.getElementById('loadingPlans').style.display = '';
+        document.getElementById('containerPlans').style.display = 'none';
+        document.getElementById('emptyPlans').style.display = 'none';
+        $('#modalBuscarPlanes').modal('show');
+
+        try {
+            const response = await fetch('?handler=SearchPlans');
+            const data = await response.json();
+            const tbody = document.getElementById('tbodyPlans');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                document.getElementById('emptyPlans').style.display = '';
+            } else {
+                data.forEach(function(p) {
+                    var statusBadge = p.status === 'Aprobado'
+                        ? '<span class="badge badge-success">' + p.status + '</span>'
+                        : '<span class="badge badge-secondary">' + p.status + '</span>';
+                    var row = '<tr>' +
+                        '<td class="font-weight-bold">L3-' + p.id + '</td>' +
+                        '<td>' + p.practiceName + '</td>' +
+                        '<td>' + p.lab + '</td>' +
+                        '<td>' + p.teacher + '</td>' +
+                        '<td>' + p.date + '</td>' +
+                        '<td>' + statusBadge + '</td>' +
+                        '<td><a href="Requerimientos?planId=' + p.id + '" class="btn btn-sm btn-success font-weight-bold"><i class="mdi mdi-arrow-right mr-1"></i>Seleccionar</a></td>' +
+                        '</tr>';
+                    tbody.innerHTML += row;
+                });
+                document.getElementById('containerPlans').style.display = '';
+            }
+        } catch (err) {
+            document.getElementById('emptyPlans').style.display = '';
+            document.getElementById('emptyPlans').innerHTML = '<i class="mdi mdi-alert mdi-36px d-block mb-2 text-danger"></i>Error cargando datos.';
+        }
+        document.getElementById('loadingPlans').style.display = 'none';
+    }
+</script>
+}

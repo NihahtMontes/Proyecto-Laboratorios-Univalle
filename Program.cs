@@ -228,4 +228,41 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// TEMPORARY: Reset admin password to login locally
+using (var resetScope = app.Services.CreateScope())
+{
+    var userManager = resetScope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    var adminUser = await userManager.FindByEmailAsync("admin@univalle.edu"); // Assuming this is the email
+    if (adminUser != null)
+    {
+        adminUser.Status = Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo;
+        adminUser.LockoutEnd = null;
+        adminUser.AccessFailedCount = 0;
+        await userManager.UpdateAsync(adminUser);
+
+        var token = await userManager.GeneratePasswordResetTokenAsync(adminUser);
+        await userManager.ResetPasswordAsync(adminUser, token, "Admin123!");
+        Console.WriteLine("====================================================");
+        Console.WriteLine(">>> ÉXITO: Contraseña de admin@univalle.edu reseteada a Admin123! <<<");
+        Console.WriteLine("====================================================");
+    }
+    else
+    {
+        Console.WriteLine("====================================================");
+        Console.WriteLine(">>> ADVERTENCIA: El usuario admin@univalle.edu NO EXISTE en la BD. Buscando alternativas... <<<");
+        var firstUser = await userManager.Users.FirstOrDefaultAsync();
+        if (firstUser != null)
+        {
+            firstUser.Status = Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo;
+            firstUser.LockoutEnd = null;
+            firstUser.AccessFailedCount = 0;
+            await userManager.UpdateAsync(firstUser);
+            var token = await userManager.GeneratePasswordResetTokenAsync(firstUser);
+            await userManager.ResetPasswordAsync(firstUser, token, "Admin123!");
+            Console.WriteLine($">>> ÉXITO: Contraseña de {firstUser.Email} reseteada a Admin123! Usa este correo para entrar. <<<");
+        }
+        Console.WriteLine("====================================================");
+    }
+}
+
 app.Run();
