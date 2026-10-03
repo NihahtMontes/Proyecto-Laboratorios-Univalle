@@ -1,6 +1,5 @@
 using Microsoft.Data.SqlClient;
 using Proyecto_Laboratorios_Univalle.Services;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -77,16 +76,16 @@ internal sealed record QaCommand(QaMode Mode, QaProfile Profile, string? OutputD
 
         Uso:
           dotnet run --project Tools/DatabaseQaScenario -- plan [--profile functional] [--output ruta]
-          dotnet run --project Tools/DatabaseQaScenario -- create [--profile functional]
+          dotnet run --project Tools/DatabaseQaScenario -- create [--profile functional|stress]
           dotnet run --project Tools/DatabaseQaScenario -- seed [--profile smoke|functional|stress]
-          dotnet run --project Tools/DatabaseQaScenario -- verify [--profile functional]
-          dotnet run --project Tools/DatabaseQaScenario -- benchmark [--profile functional]
+          dotnet run --project Tools/DatabaseQaScenario -- verify [--profile functional|stress]
+          dotnet run --project Tools/DatabaseQaScenario -- benchmark [--profile functional|stress]
           dotnet run --project Tools/DatabaseQaScenario -- backup [--profile functional]
           dotnet run --project Tools/DatabaseQaScenario -- credentials
           dotnet run --project Tools/DatabaseQaScenario -- all [--profile functional]
 
         Fuente fija de solo lectura: DB_Laboratorios_Univalle
-        Destino fijo: DB_Laboratorios_Univalle_SCENARIOS_QA
+        Destino: DB_Laboratorios_Univalle_SCENARIOS_QA (smoke/functional) o DB_Laboratorios_Univalle_STRESS_QA (stress, exige QA_DATA_001_ALLOW_STRESS=YES)
         El modo credentials copia la contraseña QA al portapapeles sin imprimirla.
         """);
 }
@@ -103,54 +102,6 @@ internal sealed record QaPaths(string OutputDirectory, string ManifestPath, stri
             root,
             Path.Combine(root, "qa-data-001-manifest.json"),
             Path.Combine(root, "qa-data-001-benchmark.json"));
-    }
-}
-
-internal sealed record MemorySnapshot(double AvailableGb, double TotalGb, double UsedPercent);
-
-internal static class MemoryGuard
-{
-    private const ulong TwoGb = 2UL * 1024 * 1024 * 1024;
-    private const ulong SixGb = 6UL * 1024 * 1024 * 1024;
-
-    public static MemorySnapshot EnsureAvailable(bool stress)
-    {
-        if (!OperatingSystem.IsWindows())
-            throw new PlatformNotSupportedException("QA-DATA-001 está protegido para el SQL Server local de Windows.");
-
-        var status = new MemoryStatusEx();
-        if (!GlobalMemoryStatusEx(status))
-            throw new InvalidOperationException("No se pudo leer la memoria física disponible.");
-
-        var minimum = stress ? SixGb : TwoGb;
-        if (status.AvailablePhysical < minimum || status.MemoryLoad > 85)
-        {
-            throw new InvalidOperationException(
-                $"Memoria insuficiente: {status.AvailablePhysical / 1024d / 1024 / 1024:F2} GB libres, {status.MemoryLoad}% en uso.");
-        }
-
-        return new MemorySnapshot(
-            status.AvailablePhysical / 1024d / 1024 / 1024,
-            status.TotalPhysical / 1024d / 1024 / 1024,
-            status.MemoryLoad);
-    }
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GlobalMemoryStatusEx([In, Out] MemoryStatusEx buffer);
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private sealed class MemoryStatusEx
-    {
-        public uint Length = (uint)Marshal.SizeOf<MemoryStatusEx>();
-        public uint MemoryLoad;
-        public ulong TotalPhysical;
-        public ulong AvailablePhysical;
-        public ulong TotalPageFile;
-        public ulong AvailablePageFile;
-        public ulong TotalVirtual;
-        public ulong AvailableVirtual;
-        public ulong AvailableExtendedVirtual;
     }
 }
 

@@ -2,18 +2,80 @@ namespace Proyecto_Laboratorios_Univalle.Tools.DatabaseQaScenario;
 
 internal static class QaScenarioSql
 {
-    public static string Build() => """
+    private const int StressFirstYear = 2016;
+    private const int LastYear = 2026;
+
+    internal static int CycleCount(QaProfile profile) =>
+        profile == QaProfile.Stress ? (LastYear - StressFirstYear + 1) * 2 : 3;
+
+    // Gestiones preventivas del perfil + la gestión correctiva QA-2026-COR.
+    internal static int ManagementCount(QaProfile profile) =>
+        profile == QaProfile.Stress ? CycleCount(profile) + 1 : 7;
+
+    internal static string BatchCode(QaProfile profile) =>
+        profile == QaProfile.Stress ? "QA-DATA-001-STRESS-V1" : "QA-DATA-001-FUNCTIONAL-V1";
+
+    public static string Build(QaProfile profile) => Template
+        .Replace("/*BATCH_CODE*/", BatchCode(profile))
+        .Replace("/*MANAGEMENT_ROWS*/", ManagementRows(profile))
+        .Replace("/*CYCLE_ROWS*/", CycleRows(profile));
+
+    // Phase 1 y 2 son ciclos cerrados (2 incluye anulaciones); Phase 3 es el ciclo abierto QA-2026-2.
+    private static string CycleRows(QaProfile profile)
+    {
+        if (profile != QaProfile.Stress)
+        {
+            return """
+                (1,(SELECT Id FROM dbo.Managements WHERE Code=N'QA-2025-2'),CONVERT(date,'2025-08-15'),1),
+                    (2,(SELECT Id FROM dbo.Managements WHERE Code=N'QA-2026-1'),CONVERT(date,'2026-02-15'),2),
+                    (3,(SELECT Id FROM dbo.Managements WHERE Code=N'QA-2026-2'),CONVERT(date,'2026-08-15'),3)
+                """;
+        }
+
+        var rows = new List<string>();
+        var cycleNo = 0;
+        for (var year = StressFirstYear; year <= LastYear; year++)
+        {
+            for (var semester = 1; semester <= 2; semester++)
+            {
+                cycleNo++;
+                var phase = year == LastYear && semester == 2 ? 3 : cycleNo % 2 == 1 ? 1 : 2;
+                var start = semester == 1 ? $"{year}-02-15" : $"{year}-08-15";
+                rows.Add($"({cycleNo},(SELECT Id FROM dbo.Managements WHERE Code=N'QA-{year}-{semester}'),CONVERT(date,'{start}'),{phase})");
+            }
+        }
+        return string.Join(",\n            ", rows);
+    }
+
+    private static string ManagementRows(QaProfile profile)
+    {
+        var firstYear = profile == QaProfile.Stress ? StressFirstYear : 2024;
+        var rows = new List<string>();
+        for (var year = firstYear; year <= LastYear; year++)
+        {
+            for (var semester = 1; semester <= 2; semester++)
+            {
+                var status = year == LastYear && semester == 2 ? 0 : 2;
+                var (start, end) = semester == 1 ? ($"{year}-02-01", $"{year}-06-30") : ($"{year}-08-01", $"{year}-12-15");
+                rows.Add($"({year},{semester},N'QA-{year}-{semester}',CONVERT(date,'{start}'),CONVERT(date,'{end}'),{status},0)");
+            }
+        }
+        rows.Add("(2026,0,N'QA-2026-COR',CONVERT(date,'2026-01-01'),CONVERT(date,'2026-12-31'),1,1)");
+        return string.Join(",\n                ", rows);
+    }
+
+    private const string Template = """
         SET NOCOUNT ON;
         SET XACT_ABORT ON;
         BEGIN TRANSACTION;
 
         DECLARE @Now datetime2=SYSUTCDATETIME();
         DECLARE @BatchId int;
-        SELECT @BatchId=Id FROM dbo.ImportBatches WHERE Code=N'QA-DATA-001-FUNCTIONAL-V1';
+        SELECT @BatchId=Id FROM dbo.ImportBatches WHERE Code=N'/*BATCH_CODE*/';
         IF @BatchId IS NULL
         BEGIN
             INSERT dbo.ImportBatches(Code,SourceType,ContractVersion,SourceName,SourceSha256,ImportedAt,Status,Notes)
-            VALUES(N'QA-DATA-001-FUNCTIONAL-V1',N'SyntheticQA',N'qa-data-001-v1',N'Generador determinista 20260904',REPLICATE(N'0',64),@Now,1,N'Históricos sintéticos; prohibida su promoción a negocio.');
+            VALUES(N'/*BATCH_CODE*/',N'SyntheticQA',N'qa-data-001-v1',N'Generador determinista 20260904',REPLICATE(N'0',64),@Now,1,N'Históricos sintéticos; prohibida su promoción a negocio.');
             SET @BatchId=CONVERT(int,SCOPE_IDENTITY());
         END;
 
@@ -66,13 +128,7 @@ internal static class QaScenarioSql
         ;WITH SourceManagement AS
         (
             SELECT * FROM(VALUES
-                (2024,1,N'QA-2024-1',CONVERT(date,'2024-02-01'),CONVERT(date,'2024-06-30'),2,0),
-                (2024,2,N'QA-2024-2',CONVERT(date,'2024-08-01'),CONVERT(date,'2024-12-15'),2,0),
-                (2025,1,N'QA-2025-1',CONVERT(date,'2025-02-01'),CONVERT(date,'2025-06-30'),2,0),
-                (2025,2,N'QA-2025-2',CONVERT(date,'2025-08-01'),CONVERT(date,'2025-12-15'),2,0),
-                (2026,1,N'QA-2026-1',CONVERT(date,'2026-02-01'),CONVERT(date,'2026-06-30'),2,0),
-                (2026,2,N'QA-2026-2',CONVERT(date,'2026-08-01'),CONVERT(date,'2026-12-15'),0,0),
-                (2026,0,N'QA-2026-COR',CONVERT(date,'2026-01-01'),CONVERT(date,'2026-12-31'),1,1)
+                /*MANAGEMENT_ROWS*/
             ) v([Year],Semester,Code,StartDate,PlannedEndDate,[Status],[Type])
         )
         INSERT dbo.Managements([Year],Semester,Code,Description,StartDate,PlannedEndDate,ActualClosedDate,[Status],Responsible,[Type],CreatedById,CreatedDate,FacultyId)
@@ -88,11 +144,9 @@ internal static class QaScenarioSql
             FROM dbo.EquipmentUnits WHERE CurrentStatus<>99 AND LaboratoryId IS NOT NULL
         ) u WHERE rn>@StartRn AND rn<=@EndRn;
 
-        CREATE TABLE #Cycles(CycleNo int PRIMARY KEY,ManagementId int NOT NULL,StartDate date NOT NULL);
+        CREATE TABLE #Cycles(CycleNo int PRIMARY KEY,ManagementId int NOT NULL,StartDate date NOT NULL,Phase int NOT NULL);
         INSERT #Cycles VALUES
-            (1,(SELECT Id FROM dbo.Managements WHERE Code=N'QA-2025-2'),CONVERT(date,'2025-08-15')),
-            (2,(SELECT Id FROM dbo.Managements WHERE Code=N'QA-2026-1'),CONVERT(date,'2026-02-15')),
-            (3,(SELECT Id FROM dbo.Managements WHERE Code=N'QA-2026-2'),CONVERT(date,'2026-08-15'));
+            /*CYCLE_ROWS*/;
 
         INSERT dbo.Verifications(EquipmentUnitId,ManagementId,[Date],Observations,PhysicalCondition,[Status],CreatedById,CreatedDate,HistoricalSourceKey,ImportBatchId,ResponsiblePersonId,ObservedEquipmentStatus)
         SELECT u.UnitId,c.ManagementId,DATEADD(day,u.rn%75,c.StartDate),
@@ -114,7 +168,7 @@ internal static class QaScenarioSql
         INSERT dbo.Requests(LaboratoryId,EquipmentId,EquipmentUnitId,ManagementId,RequestedById,Description,Priority,Observations,Suggestion,RequestDate,EstimatedRepairTime,[Status],ApprovedById,ApprovalDate,RejectionReason,CreatedById,CreatedDate,[Type],InvestmentCode,CostCenter,HistoricalSourceKey,ImportBatchId,LocationResolutionStatus,RequestedByPersonId)
         SELECT u.LaboratoryId,u.EquipmentId,u.UnitId,c.ManagementId,@AdminId,N'[QA-SINTETICO] Solicitud generada desde una verificación con observaciones.',
             (u.rn+c.CycleNo)%4,N'Caso reproducible QA',N'Revisar, diagnosticar y documentar la solución.',DATEADD(day,(u.rn%75)+1,c.StartDate),N'2 a 8 horas',
-            CASE WHEN u.rn%5=0 THEN CASE c.CycleNo WHEN 1 THEN 5 WHEN 2 THEN 3 ELSE 2 END ELSE CASE (u.rn+c.CycleNo)%7 WHEN 0 THEN 0 WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 WHEN 5 THEN 5 ELSE 99 END END,
+            CASE WHEN u.rn%5=0 THEN CASE c.Phase WHEN 1 THEN 5 WHEN 2 THEN 3 ELSE 2 END ELSE CASE (u.rn+c.CycleNo)%7 WHEN 0 THEN 0 WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 3 WHEN 4 THEN 4 WHEN 5 THEN 5 ELSE 99 END END,
             CASE WHEN u.rn%5=0 OR (u.rn+c.CycleNo)%7 IN(2,3,5) THEN @AdminId ELSE NULL END,
             CASE WHEN u.rn%5=0 OR (u.rn+c.CycleNo)%7 IN(2,3,5) THEN DATEADD(day,(u.rn%75)+2,c.StartDate) ELSE NULL END,
             CASE WHEN u.rn%5=1 AND (u.rn+c.CycleNo)%7=4 THEN N'Rechazo sintético para validar el flujo.' ELSE NULL END,
@@ -138,18 +192,18 @@ internal static class QaScenarioSql
         SELECT u.UnitId,CASE (u.rn/5)%6 WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 4 WHEN 4 THEN 5 ELSE 99 END,c.ManagementId,
             CASE WHEN u.rn%10=0 THEN 1 ELSE 0 END,CONCAT(N'QA-MANT-',c.CycleNo,N'-',RIGHT(N'0000'+CONVERT(nvarchar(4),u.rn),4)),tech.Id,r.Id,
             DATEADD(day,(u.rn%75)+3,c.StartDate),
-            CASE WHEN c.CycleNo<3 OR u.rn%20 IN(10,15) THEN DATEADD(day,(u.rn%75)+3,c.StartDate) ELSE NULL END,
-            CASE WHEN c.CycleNo<3 OR u.rn%20=15 THEN DATEADD(hour,4,CONVERT(datetime2,DATEADD(day,(u.rn%75)+3,c.StartDate))) ELSE NULL END,
+            CASE WHEN c.Phase<3 OR u.rn%20 IN(10,15) THEN DATEADD(day,(u.rn%75)+3,c.StartDate) ELSE NULL END,
+            CASE WHEN c.Phase<3 OR u.rn%20=15 THEN DATEADD(hour,4,CONVERT(datetime2,DATEADD(day,(u.rn%75)+3,c.StartDate))) ELSE NULL END,
             N'[QA-SINTETICO] Diagnóstico, limpieza, calibración y prueba funcional.',
-            CASE WHEN c.CycleNo=1 THEN 2 WHEN c.CycleNo=2 THEN CASE WHEN u.rn%10=0 THEN 99 ELSE 2 END ELSE CASE u.rn%20 WHEN 0 THEN 0 WHEN 5 THEN 3 WHEN 10 THEN 1 ELSE 2 END END,
-            CASE WHEN c.CycleNo<3 AND NOT(c.CycleNo=2 AND u.rn%10=0) THEN 100 WHEN c.CycleNo=3 AND u.rn%20=10 THEN 50 WHEN c.CycleNo=3 AND u.rn%20=15 THEN 100 ELSE 0 END,
-            CASE WHEN c.CycleNo<3 OR u.rn%20 IN(10,15) THEN 1 ELSE 0 END,
-            CASE WHEN c.CycleNo<3 OR u.rn%20=15 THEN 1 ELSE 0 END,
-            CASE WHEN c.CycleNo<3 OR u.rn%20=15 THEN 1 ELSE 0 END,
-            CASE WHEN c.CycleNo<3 OR u.rn%20=15 THEN 1 ELSE 0 END,
-            CONVERT(decimal(18,2),100+(u.rn%20)*10),CASE WHEN c.CycleNo<3 OR u.rn%20=15 THEN CONVERT(decimal(18,2),90+(u.rn%20)*12) ELSE NULL END,
+            CASE WHEN c.Phase=1 THEN 2 WHEN c.Phase=2 THEN CASE WHEN u.rn%10=0 THEN 99 ELSE 2 END ELSE CASE u.rn%20 WHEN 0 THEN 0 WHEN 5 THEN 3 WHEN 10 THEN 1 ELSE 2 END END,
+            CASE WHEN c.Phase<3 AND NOT(c.Phase=2 AND u.rn%10=0) THEN 100 WHEN c.Phase=3 AND u.rn%20=10 THEN 50 WHEN c.Phase=3 AND u.rn%20=15 THEN 100 ELSE 0 END,
+            CASE WHEN c.Phase<3 OR u.rn%20 IN(10,15) THEN 1 ELSE 0 END,
+            CASE WHEN c.Phase<3 OR u.rn%20=15 THEN 1 ELSE 0 END,
+            CASE WHEN c.Phase<3 OR u.rn%20=15 THEN 1 ELSE 0 END,
+            CASE WHEN c.Phase<3 OR u.rn%20=15 THEN 1 ELSE 0 END,
+            CONVERT(decimal(18,2),100+(u.rn%20)*10),CASE WHEN c.Phase<3 OR u.rn%20=15 THEN CONVERT(decimal(18,2),90+(u.rn%20)*12) ELSE NULL END,
             N'Continuar monitoreo preventivo.',DATEADD(month,6,DATEADD(day,(u.rn%75)+3,c.StartDate)),
-            CASE WHEN c.CycleNo<3 OR u.rn%20=15 THEN ((u.rn+c.CycleNo)%5)+1 ELSE NULL END,N'Caso controlado QA',@AdminId,DATEADD(day,(u.rn%75)+3,c.StartDate),CONCAT(N'QA-V1-MAN-',c.CycleNo,N'-',u.UnitId),@BatchId
+            CASE WHEN c.Phase<3 OR u.rn%20=15 THEN ((u.rn+c.CycleNo)%5)+1 ELSE NULL END,N'Caso controlado QA',@AdminId,DATEADD(day,(u.rn%75)+3,c.StartDate),CONCAT(N'QA-V1-MAN-',c.CycleNo,N'-',u.UnitId),@BatchId
         FROM #UnitOrder u CROSS JOIN #Cycles c
         JOIN dbo.Requests r ON r.HistoricalSourceKey=CONCAT(N'QA-V1-REQ-',c.CycleNo,N'-',u.UnitId)
         CROSS APPLY(SELECT TOP(1) p.Id FROM dbo.People p WHERE p.ActorCode LIKE CASE WHEN u.rn%10=0 THEN N'QA-PROV-%' ELSE N'QA-TEC-%' END ORDER BY ABS(CHECKSUM(u.UnitId,c.CycleNo,p.Id))) tech
@@ -244,9 +298,9 @@ internal static class QaScenarioSql
         WHERE u.rn%2=0 AND NOT EXISTS(SELECT 1 FROM dbo.MaintenancePlans p WHERE p.HistoricalSourceKey=CONCAT(N'QA-V1-MPLAN-',u.UnitId));
 
         INSERT dbo.ManagementPlans(ManagementId,MaintenanceId,EquipmentUnitId,VerificationId,RequestId,DepartureId,KardexHistoryId,CurrentPhase,CurrentState,Responsible,PlannedWeek,ExecutedWeek,DocumentReference,Notes,PlannedDate,PlanStatus,IsDraft,CreatedById,CreatedDate,ImportBatchId,ResponsiblePersonId)
-        SELECT c.ManagementId,m.Id,u.UnitId,v.Id,r.Id,CASE WHEN c.CycleNo=3 THEN d.Id ELSE NULL END,h.Id,
-            CASE WHEN c.CycleNo=3 AND d.Id IS NOT NULL THEN 4 WHEN m.Id IS NOT NULL THEN 3 WHEN r.Id IS NOT NULL THEN 2 ELSE 1 END,
-            CASE WHEN c.CycleNo=3 AND d.Id IS NOT NULL THEN CASE WHEN d.Status=1 THEN 7 ELSE 6 END WHEN m.Id IS NOT NULL THEN CASE WHEN m.Status=2 THEN 9 WHEN m.Status=1 THEN 5 ELSE 4 END WHEN r.Id IS NOT NULL THEN 4 ELSE 2 END,
+        SELECT c.ManagementId,m.Id,u.UnitId,v.Id,r.Id,CASE WHEN c.Phase=3 THEN d.Id ELSE NULL END,h.Id,
+            CASE WHEN c.Phase=3 AND d.Id IS NOT NULL THEN 4 WHEN m.Id IS NOT NULL THEN 3 WHEN r.Id IS NOT NULL THEN 2 ELSE 1 END,
+            CASE WHEN c.Phase=3 AND d.Id IS NOT NULL THEN CASE WHEN d.Status=1 THEN 7 ELSE 6 END WHEN m.Id IS NOT NULL THEN CASE WHEN m.Status=2 THEN 9 WHEN m.Status=1 THEN 5 ELSE 4 END WHEN r.Id IS NOT NULL THEN 4 ELSE 2 END,
             N'Equipo QA-DATA-001',((u.rn+c.CycleNo-2)%8)+1,CASE WHEN m.Status=2 THEN ((u.rn+c.CycleNo-2)%8)+1 ELSE NULL END,
             CONCAT(N'QA-V1-DOC-',c.CycleNo,N'-',u.UnitId),N'[QA-SINTETICO] Flujo completo reproducible.',DATEADD(day,u.rn%75,c.StartDate),
             CASE WHEN m.Status=2 OR r.Status=5 OR (r.Id IS NULL AND v.Status IN(1,3)) THEN 2 WHEN m.Status=1 OR r.Status IN(1,2,3) THEN 1 WHEN d.Status=2 THEN 3 ELSE 0 END,
@@ -255,7 +309,7 @@ internal static class QaScenarioSql
         JOIN dbo.Verifications v ON v.HistoricalSourceKey=CONCAT(N'QA-V1-VER-',c.CycleNo,N'-',u.UnitId)
         LEFT JOIN dbo.Requests r ON r.HistoricalSourceKey=CONCAT(N'QA-V1-REQ-',c.CycleNo,N'-',u.UnitId)
         LEFT JOIN dbo.Maintenances m ON m.HistoricalSourceKey=CONCAT(N'QA-V1-MAN-',c.CycleNo,N'-',u.UnitId)
-        LEFT JOIN dbo.Departures d ON c.CycleNo=3 AND d.HistoricalSourceKey=CONCAT(N'QA-V1-DEP-',u.UnitId)
+        LEFT JOIN dbo.Departures d ON c.Phase=3 AND d.HistoricalSourceKey=CONCAT(N'QA-V1-DEP-',u.UnitId)
         OUTER APPLY(SELECT TOP(1) sh.Id FROM dbo.EquipmentStateHistories sh WHERE sh.EquipmentUnitId=u.UnitId AND sh.Reason=CONCAT(N'[QA-V1-STATE-',c.CycleNo,N'-',u.UnitId,N'] Estado sintético auditado.') ORDER BY sh.Id) h
         CROSS APPLY(SELECT TOP(1) p.Id FROM dbo.People p WHERE p.ActorCode LIKE N'QA-TEC-%' ORDER BY ABS(CHECKSUM(u.UnitId,c.CycleNo,p.Id))) responsible
         WHERE NOT EXISTS(SELECT 1 FROM dbo.ManagementPlans p WHERE p.ManagementId=c.ManagementId AND p.EquipmentUnitId=u.UnitId);

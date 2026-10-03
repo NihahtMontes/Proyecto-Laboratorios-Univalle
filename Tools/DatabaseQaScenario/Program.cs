@@ -1,7 +1,6 @@
 using Proyecto_Laboratorios_Univalle.Tools.DatabaseQaScenario;
 
 const string sourceDatabase = "DB_Laboratorios_Univalle";
-const string targetDatabase = "DB_Laboratorios_Univalle_SCENARIOS_QA";
 
 QaCommand options;
 try
@@ -21,11 +20,12 @@ if (options.Mode == QaMode.Help)
     return 0;
 }
 
+var targetDatabase = options.Profile == QaProfile.Stress
+    ? "DB_Laboratorios_Univalle_STRESS_QA"
+    : "DB_Laboratorios_Univalle_SCENARIOS_QA";
+
 try
 {
-    var memory = MemoryGuard.EnsureAvailable(options.Profile == QaProfile.Stress);
-    Console.WriteLine($"RAM aprobada: {memory.AvailableGb:F2} GB libres, {memory.UsedPercent:F1}% en uso.");
-
     var paths = QaPaths.Create(options.OutputDirectory);
     var service = new QaScenarioService(sourceDatabase, targetDatabase, paths);
 

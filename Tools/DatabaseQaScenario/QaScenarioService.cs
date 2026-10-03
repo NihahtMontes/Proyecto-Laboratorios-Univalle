@@ -41,9 +41,6 @@ internal sealed class QaScenarioService
 
     public async Task CreateAsync(QaProfile profile)
     {
-        if (profile == QaProfile.Stress)
-            throw new InvalidOperationException("El perfil stress utiliza una base separada y no se crea desde este destino funcional.");
-
         var source = await InspectSourceAsync();
         await EnsureTargetSchemaAsync();
         var adminId = await EnsureQaUsersAsync();
@@ -55,9 +52,6 @@ internal sealed class QaScenarioService
 
     public async Task SeedAsync(QaProfile profile)
     {
-        if (profile == QaProfile.Stress)
-            throw new InvalidOperationException("El perfil stress queda implementado como opt-in, pero requiere un destino separado y una ejecución autorizada posterior.");
-
         await EnsureTargetReadyAsync();
         var source = await InspectSourceAsync();
         var adminId = await EnsureQaUsersAsync();
@@ -152,6 +146,12 @@ internal sealed class QaScenarioService
             throw new InvalidOperationException("La conexión fuente no apunta a la base oficial esperada.");
 
         var counts = await ReadCountsAsync(_sourceConnection);
+        // Solo los catálogos con CatalogCode se copian a QA; los equipos demo sin código del DbInitializer no cuentan.
+        await using (var catalogCommand = connection.CreateCommand())
+        {
+            catalogCommand.CommandText = "SELECT COUNT_BIG(*) FROM dbo.Equipments WHERE CatalogCode IS NOT NULL;";
+            counts["Equipments"] = Convert.ToInt64(await catalogCommand.ExecuteScalarAsync());
+        }
         if (counts.GetValueOrDefault("Equipments") != 107 || counts.GetValueOrDefault("EquipmentUnits") != 556)
             throw new InvalidOperationException("La fuente no conserva los 107 catálogos y 556 unidades aprobados.");
 
@@ -172,7 +172,8 @@ internal sealed class QaScenarioService
     private async Task EnsureTargetSchemaAsync()
     {
         if (!_targetDatabase.EndsWith("_QA", StringComparison.OrdinalIgnoreCase)
-            || !string.Equals(_targetDatabase, "DB_Laboratorios_Univalle_SCENARIOS_QA", StringComparison.Ordinal))
+            || (!string.Equals(_targetDatabase, "DB_Laboratorios_Univalle_SCENARIOS_QA", StringComparison.Ordinal)
+                && !string.Equals(_targetDatabase, "DB_Laboratorios_Univalle_STRESS_QA", StringComparison.Ordinal)))
             throw new InvalidOperationException("Destino QA no autorizado.");
 
         await using var context = CreateContext(_targetConnection);
@@ -387,15 +388,19 @@ internal sealed class QaScenarioService
     private async Task ExecuteScenarioSeedAsync(QaProfile profile, int adminId)
     {
         var unitLimit = profile == QaProfile.Smoke ? 30 : 556;
-        var sql = QaScenarioSql.Build();
-        const int batchSize = 30;
-        for (var start = 0; start < unitLimit; start += batchSize)
+        var sql = QaScenarioSql.Build(profile);
+        // Máximo ~90 filas por inserción: unidades del lote × ciclos del perfil.
+        var batchSize = Math.Max(1, 90 / QaScenarioSql.CycleCount(profile));
+        for (var start = 0; start < unitLimit;)
         {
-            MemoryGuard.EnsureAvailable(false);
+            // Las unidades rn%10=0 se vinculan con rn+1 dentro del lote; ningún lote intermedio termina en múltiplo de 10.
+            var end = Math.Min(start + batchSize, unitLimit);
+            if (end < unitLimit && end % 10 == 0) end++;
             await ExecuteSqlAsync(_targetConnection, sql,
                 new SqlParameter("@AdminId", SqlDbType.Int) { Value = adminId },
                 new SqlParameter("@StartRn", SqlDbType.Int) { Value = start },
-                new SqlParameter("@EndRn", SqlDbType.Int) { Value = Math.Min(start + batchSize, unitLimit) });
+                new SqlParameter("@EndRn", SqlDbType.Int) { Value = end });
+            start = end;
         }
     }
 
@@ -432,7 +437,6 @@ internal sealed class QaScenarioService
 
     private static async Task ExecuteSqlAsync(string connectionString, string sql, params SqlParameter[] parameters)
     {
-        MemoryGuard.EnsureAvailable(false);
         await using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();

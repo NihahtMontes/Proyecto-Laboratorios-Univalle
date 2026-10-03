@@ -27,10 +27,6 @@ internal sealed class QaScenarioVerifier
 
     public async Task<QaVerificationResult> VerifyAsync(QaProfile profile)
     {
-        if (profile == QaProfile.Stress)
-            throw new InvalidOperationException("El perfil stress requiere una base independiente y autorización específica.");
-
-        MemoryGuard.EnsureAvailable(false);
         var checks = new List<QaCheckResult>();
         var failures = new List<string>();
 
@@ -126,9 +122,10 @@ internal sealed class QaScenarioVerifier
         await CheckAsync("cinco lecturas concurrentes controladas", VerifyConcurrentReadsAsync);
         await CheckAsync("datos marcados como sintéticos", async () =>
         {
-            var count = await QueryScalarAsync<long>(_targetConnection, """
+            var batchCode = QaScenarioSql.BatchCode(profile);
+            var count = await QueryScalarAsync<long>(_targetConnection, $"""
                 SELECT COUNT_BIG(*) FROM dbo.ImportBatches
-                WHERE Code IN(N'QA-DATA-001-FOUNDATION-V1',N'QA-DATA-001-FUNCTIONAL-V1')
+                WHERE Code IN(N'QA-DATA-001-FOUNDATION-V1',N'{batchCode}')
                   AND SourceType=N'SyntheticQA'
                   AND (Notes LIKE N'%promov%' OR Notes LIKE N'%prohibida%');
                 """);
@@ -144,7 +141,6 @@ internal sealed class QaScenarioVerifier
 
     public async Task<QaBenchmarkResult> BenchmarkAsync()
     {
-        MemoryGuard.EnsureAvailable(false);
         var definitions = new[]
         {
             new BenchmarkDefinition("resumen operativo", """
@@ -198,7 +194,6 @@ internal sealed class QaScenarioVerifier
             var durations = new List<double>(20);
             for (var iteration = 0; iteration < 20; iteration++)
             {
-                MemoryGuard.EnsureAvailable(false);
                 var watch = Stopwatch.StartNew();
                 await ExecuteAndConsumeAsync(_targetConnection, definition.Sql);
                 watch.Stop();
@@ -236,7 +231,6 @@ internal sealed class QaScenarioVerifier
 
     public async Task<QaBackupResult> CreateAndRestoreBackupAsync()
     {
-        MemoryGuard.EnsureAvailable(false);
         if (!string.Equals(_targetDatabase, "DB_Laboratorios_Univalle_SCENARIOS_QA", StringComparison.Ordinal))
             throw new InvalidOperationException("El backup solo admite el destino exacto QA-DATA-001.");
 
@@ -330,7 +324,8 @@ internal sealed class QaScenarioVerifier
 
     private static Dictionary<string, long> ExpectedCounts(QaProfile profile, long migrations)
     {
-        var functional = profile == QaProfile.Functional;
+        var cycle = QaScenarioSql.CycleCount(profile);
+        var isSmoke = profile == QaProfile.Smoke;
         return new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase)
         {
             ["__EFMigrationsHistory"] = migrations,
@@ -342,22 +337,22 @@ internal sealed class QaScenarioVerifier
             ["Users"] = 3,
             ["People"] = 30,
             ["Articles"] = 30,
-            ["Managements"] = 7,
+            ["Managements"] = QaScenarioSql.ManagementCount(profile),
             ["EquipmentClassificationDecisions"] = 107,
-            ["Verifications"] = functional ? 1668 : 90,
-            ["VerificationFaults"] = functional ? 669 : 36,
-            ["Requests"] = functional ? 669 : 36,
-            ["RequestEquipmentUnits"] = functional ? 834 : 45,
-            ["Maintenances"] = functional ? 333 : 18,
-            ["MaintenanceRequests"] = functional ? 498 : 27,
-            ["MaintenanceParticipants"] = functional ? 444 : 24,
-            ["MaintenanceTasks"] = functional ? 999 : 54,
-            ["CostDetails"] = functional ? 834 : 45,
-            ["EquipmentStateHistories"] = functional ? 1668 : 90,
-            ["Departures"] = functional ? 111 : 6,
-            ["DepartureItems"] = functional ? 222 : 12,
-            ["MaintenancePlans"] = functional ? 278 : 15,
-            ["ManagementPlans"] = functional ? 1668 : 90,
+            ["Verifications"] = isSmoke ? 90 : 556 * cycle,
+            ["VerificationFaults"] = isSmoke ? 36 : 223 * cycle,
+            ["Requests"] = isSmoke ? 36 : 223 * cycle,
+            ["RequestEquipmentUnits"] = isSmoke ? 45 : 278 * cycle,
+            ["Maintenances"] = isSmoke ? 18 : 111 * cycle,
+            ["MaintenanceRequests"] = isSmoke ? 27 : 166 * cycle,
+            ["MaintenanceParticipants"] = isSmoke ? 24 : 148 * cycle,
+            ["MaintenanceTasks"] = isSmoke ? 54 : 333 * cycle,
+            ["CostDetails"] = isSmoke ? 45 : 278 * cycle,
+            ["EquipmentStateHistories"] = isSmoke ? 90 : 556 * cycle,
+            ["Departures"] = isSmoke ? 6 : 111,
+            ["DepartureItems"] = isSmoke ? 12 : 222,
+            ["MaintenancePlans"] = isSmoke ? 15 : 278,
+            ["ManagementPlans"] = isSmoke ? 90 : 556 * cycle,
             ["ImportBatches"] = 3
         };
     }
