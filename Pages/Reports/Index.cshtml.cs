@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
@@ -24,6 +26,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Reports
         public bool HasAdquisicion => AcquisitionRequestId.HasValue;
     }
 
+    [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class IndexModel : PageModel
     {
         private readonly ApplicationDbContext _context;

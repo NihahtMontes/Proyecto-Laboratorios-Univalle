@@ -44,7 +44,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
         }
 
         [HttpGet("download/l6")]
-        public async Task<IActionResult> DownloadL6(int managementId, int labId, DateTime? date = null)
+        public async Task<IActionResult> DownloadL6(int managementId, int labId, DateTime? date = null, int? unitId = null)
         {
             try
             {
@@ -53,11 +53,26 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                 if (management.Type == ManagementType.Corrective) return BadRequest("L-6 solo aplica al proceso preventivo.");
 
                 var responsable = await GetCurrentUserFullName();
-                var bytes = await _reportService.GenerateL6VerificacionExcel(managementId, labId, responsable, date);
+                var bytes = await _reportService.GenerateL6VerificacionExcel(managementId, labId, responsable, date, unitId);
+                var unitSuffix = string.Empty;
+                if (unitId.HasValue)
+                {
+                    var inventory = await _context.EquipmentUnits.AsNoTracking()
+                        .Where(u => u.Id == unitId.Value)
+                        .Select(u => u.InventoryNumber)
+                        .FirstOrDefaultAsync();
+                    var safeInventory = new string((inventory ?? string.Empty)
+                        .Where(c => char.IsLetterOrDigit(c) || c == '-' || c == '_').ToArray());
+                    unitSuffix = $"_Inv_{(safeInventory.Length > 0 ? safeInventory : unitId.Value.ToString())}";
+                }
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    date.HasValue
-                        ? $"Verificacion_L6_{management.Code}_Lab_{labId}_{date.Value:yyyyMMdd}.xlsx"
-                        : $"Verificacion_L6_{management.Code}_Lab_{labId}.xlsx");
+                    $"Verificacion_L6_{management.Code}_Lab_{labId}"
+                    + unitSuffix
+                    + (date.HasValue ? $"_{date.Value:yyyyMMdd}" : "") + ".xlsx");
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound("No hay datos L-6 para este equipo en la gestión y laboratorio seleccionados.");
             }
             catch (Exception ex)
             {

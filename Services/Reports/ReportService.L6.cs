@@ -9,7 +9,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
 {
     public partial class ReportService
     {
-        public async Task<byte[]> GenerateL6VerificacionExcel(int managementId, int labId, string responsable = "Sistema", DateTime? sessionDate = null)
+        public async Task<byte[]> GenerateL6VerificacionExcel(int managementId, int labId, string responsable = "Sistema", DateTime? sessionDate = null, int? unitId = null)
         {
             // L-6 GENERADO DESDE CERO (SIN TEMPLATE)
             // Worksheets.Add(sourceSheet.Name, sourceSheet) copia estilos XML del template
@@ -37,7 +37,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
                              && v.EquipmentUnit != null
                              && v.EquipmentUnit.LaboratoryId == labId
                              && v.Date.Date == sessionDate.Value.Date
-                             && v.Status != VerificationStatus.Annulled)
+                             && v.Status != VerificationStatus.Annulled
+                             && (!unitId.HasValue || v.EquipmentUnitId == unitId.Value))
                     .OrderBy(v => v.EquipmentUnit!.InventoryNumber)
                     .Select(v => new
                     {
@@ -50,7 +51,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
                     .ToListAsync()
                 : await _context.ManagementPlans
                     .AsNoTracking()
-                    .Where(p => p.ManagementId == managementId && p.EquipmentUnit != null && p.EquipmentUnit.LaboratoryId == labId)
+                    .Where(p => p.ManagementId == managementId && p.EquipmentUnit != null
+                             && p.EquipmentUnit.LaboratoryId == labId
+                             && (!unitId.HasValue || p.EquipmentUnitId == unitId.Value))
                     .OrderBy(p => p.EquipmentUnit!.InventoryNumber)
                     .Select(p => new
                     {
@@ -60,6 +63,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
                         p.EquipmentUnit.InventoryNumber
                     })
                     .ToListAsync();
+
+            if (unitId.HasValue && equipmentData.Count == 0)
+                throw new KeyNotFoundException("El equipo no pertenece a la gestión y laboratorio seleccionados.");
 
             var unitIds = equipmentData.Select(e => e.Id).ToList();
 

@@ -16,7 +16,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
         Task<byte[]> GenerateReport(int requestId);
         Task<byte[]> GenerateL8KardexExcel(int unitId, int? managementPlanId = null, int? managementId = null);
         Task<byte[]> GenerateL48GanttExcel(int managementId, int labId);
-        Task<byte[]> GenerateL6VerificacionExcel(int managementId, int labId, string responsable, DateTime? sessionDate = null);
+        Task<byte[]> GenerateL6VerificacionExcel(int managementId, int labId, string responsable, DateTime? sessionDate = null, int? unitId = null);
         Task<byte[]> GenerateL3SalidaExcel(int departureId);
     }
 

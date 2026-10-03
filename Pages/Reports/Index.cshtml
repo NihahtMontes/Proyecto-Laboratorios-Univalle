@@ -185,7 +185,7 @@
                                                 <div class="btn-group flex-wrap justify-content-center">
                                                     @if (!Model.IsCorrective && status.HasL6)
                                                     {
-                                                        <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-success btn-rounded mr-1 mb-1" title="Descargar L-6">
+                                                        <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId&unitId=@unit.Id" class="btn btn-sm btn-outline-success btn-rounded mr-1 mb-1 js-report-download" title="Descargar L-6 de este equipo">
                                                             <i class="fas fa-file-excel mr-1"></i> L-6
                                                         </a>
                                                     }
@@ -254,4 +254,58 @@
             gap: 0;
         }
     </style>
+}
+
+@section Scripts {
+    <script>
+        // Descarga por equipo: si el servidor rechaza el reporte, se informa con SweetAlert en vez de navegar a una página de texto.
+        $(document).on('click', '.js-report-download', function (event) {
+            event.preventDefault();
+            var $link = $(this);
+            if ($link.hasClass('disabled')) return;
+
+            var originalHtml = $link.html();
+            $link.addClass('disabled').html('<i class="fas fa-spinner fa-spin mr-1"></i> L-6');
+
+            fetch($link.attr('href'), { credentials: 'same-origin' })
+                .then(function (response) {
+                    if (!response.ok) {
+                        return response.text().then(function (message) {
+                            throw new Error((message || '').replace(/^"|"$/g, '') || 'No se pudo generar el reporte.');
+                        });
+                    }
+
+                    var contentType = response.headers.get('Content-Type') || '';
+                    if (contentType.indexOf('spreadsheetml') === -1) {
+                        throw new Error('La sesión expiró o no tiene permisos para descargar. Recargue la página e intente nuevamente.');
+                    }
+
+                    var disposition = response.headers.get('Content-Disposition') || '';
+                    var encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+                    var plain = /filename="?([^";]+)"?/i.exec(disposition);
+                    var fileName = encoded ? decodeURIComponent(encoded[1]) : (plain ? plain[1] : 'Reporte_L6.xlsx');
+
+                    return response.blob().then(function (blob) {
+                        var url = URL.createObjectURL(blob);
+                        var anchor = document.createElement('a');
+                        anchor.href = url;
+                        anchor.download = fileName;
+                        document.body.appendChild(anchor);
+                        anchor.click();
+                        anchor.remove();
+                        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+                    });
+                })
+                .catch(function (error) {
+                    Swal.fire({
+                        type: 'error',
+                        title: 'No se pudo descargar',
+                        text: error.message
+                    });
+                })
+                .then(function () {
+                    $link.removeClass('disabled').html(originalHtml);
+                });
+        });
+    </script>
 }
