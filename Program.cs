@@ -108,6 +108,7 @@ builder.Services.AddSession(options =>
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, UserClaimsPrincipalFactory>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<LaboratoryPlanningDemoService>();
 builder.Services.AddScoped<IVerificationReportService, VerificationReportService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IDashboardReadService, DashboardReadService>();

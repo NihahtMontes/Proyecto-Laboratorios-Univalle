@@ -1,6 +1,6 @@
 @* Partial: _StepsBar.cshtml
    Uso: @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", pasoActual)
-   pasoActual: 1=Planificación, 2=Requerimientos, 3=Disponibilidad, 4=L-3 Devolución, 5=Cerrado
+   pasoActual: 1=Planificación, 2=Requerimientos, 3=Disponibilidad, 4=L-3 Devolución, 5=Incidencia/Cierre
 *@
 @model int
 
@@ -10,7 +10,7 @@
         new { Num = 2, Nombre = "Requerimientos" },
         new { Num = 3, Nombre = "Disponibilidad" },
         new { Num = 4, Nombre = "L-3 Devolución" },
-        new { Num = 5, Nombre = "Cerrado" },
+        new { Num = 5, Nombre = "Incidencia / cierre" },
     };
     double pct = Model <= 1 ? 0 : ((double)(Model - 1) / 4.0) * 100.0;
 }

@@ -1,175 +1,159 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanificacionModel
-@{ ViewData["Title"] = "Planificación — Paso 1"; }
-
-@* Identificador de sesión (simulado) *@
-@{ var sessionId = "L3-2026-0095"; }
+@{ ViewData["Title"] = "Planificación de práctica"; }
 
 <div class="page-breadcrumb">
-    <div class="row">
-        <div class="col-12">
-            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 1 · <span class="text-dark">@sessionId</span></h4>
-            <h2 class="font-weight-bold text-dark">Planificación de Práctica</h2>
-            <div class="text-muted small">Registra los datos de la sesión de laboratorio que se va a realizar.</div>
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
+            <h2 class="font-weight-bold text-dark">@Model.StatusText</h2>
+            <div class="text-muted small">MVP local: registra una práctica y continúa con sus requerimientos.</div>
+        </div>
+        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+            <span class="badge badge-light border px-3 py-2"><i class="fas fa-database mr-1 text-success"></i> Catálogos locales</span>
         </div>
     </div>
 </div>
 
 <div class="container-fluid mt-3">
-
-    <!-- BARRA DE PASOS -->
     @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 1)
 
-    <div class="card shadow-sm border-0 rounded-lg">
-        <div class="card-body p-4">
-            <h5 class="font-weight-bold mb-4 text-primary">Datos de la Sesión · <small class="text-muted font-weight-normal">@sessionId</small></h5>
+    <form method="post" asp-route-id="@Model.Id" id="form-planificacion">
+        <input type="hidden" name="id" value="@Model.Id" />
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0 rounded-lg">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="rounded-circle bg-light-primary text-primary p-3 mr-3"><i class="far fa-calendar-alt fa-lg"></i></div>
+                            <div>
+                                <h5 class="font-weight-bold text-primary mb-1">Datos de la práctica</h5>
+                                <small class="text-muted">Los campos se validan en el servidor y se conservan durante esta sesión.</small>
+                            </div>
+                        </div>
 
-            <form id="form-planificacion">
-                <div class="form-row">
-                    <!-- Ciudad / Sede -->
-                    <div class="form-group col-md-3">
-                        <label class="small font-weight-bold text-muted">CIUDAD / SEDE <span class="text-danger">*</span></label>
-                        <select class="custom-select" required>
-                            <option selected>CBBA</option>
-                            <option>STA</option>
-                            <option>LPZ</option>
-                        </select>
-                    </div>
-                    <!-- Carrera -->
-                    <div class="form-group col-md-5">
-                        <label class="small font-weight-bold text-muted">CARRERA / DEPARTAMENTO <span class="text-danger">*</span></label>
-                        <select class="custom-select" required>
-                            <option value="">— Seleccionar —</option>
-                            <option selected>Gastronomía Comercial</option>
-                            <option>Nutrición y Dietética</option>
-                            <option>Hotelería y Turismo</option>
-                            <option>Diseño y Manejo de Menú</option>
-                        </select>
-                    </div>
-                    <!-- Laboratorio -->
-                    <div class="form-group col-md-4">
-                        <label class="small font-weight-bold text-muted">LABORATORIO <span class="text-danger">*</span></label>
-                        <select class="custom-select" id="sel-laboratorio" required>
-                            <option value="">— Seleccionar sala —</option>
-                            <option value="SAL01">SAL 01 — Lab. Cocina Fría</option>
-                            <option value="SAL02">SAL 02 — Lab. Cocina Caliente</option>
-                            <option value="SAL03">SAL 03 — Lab. Pastelería</option>
-                            <option value="SAL04">SAL 04 — Lab. Coctelería</option>
-                            <option value="SAL05">SAL 05 — Lab. Enología</option>
-                            <option value="SAL06">SAL 06 — Lab. Dietética</option>
-                            <option value="SAL07">SAL 07 — Lab. Panadería</option>
-                            <option value="SAL08">SAL 08 — Lab. Multipropósito</option>
-                            <option value="SAL09">SAL 09 — Lab. Inv. Gastronómica</option>
-                            <option value="SAL10">SAL 10 — Sala de Eventos</option>
-                            <option value="SAL11">SAL 11 — Sala de Catas</option>
-                        </select>
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label asp-for="Input.FacultyId" class="small font-weight-bold text-muted"></label>
+                                <select asp-for="Input.FacultyId" asp-items="Model.FacultyList" class="custom-select">
+                                    <option value="0">— Seleccionar facultad —</option>
+                                </select>
+                                <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label asp-for="Input.CareerId" class="small font-weight-bold text-muted"></label>
+                                <select asp-for="Input.CareerId" asp-items="Model.CareerList" class="custom-select">
+                                    <option value="0">— Seleccionar carrera —</option>
+                                </select>
+                                <span asp-validation-for="Input.CareerId" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-7">
+                                <label asp-for="Input.LaboratoryId" class="small font-weight-bold text-muted"></label>
+                                <select asp-for="Input.LaboratoryId" asp-items="Model.LaboratoryList" class="custom-select">
+                                    <option value="0">— Seleccionar laboratorio —</option>
+                                </select>
+                                <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-5">
+                                <label asp-for="Input.ResponsibleName" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.ResponsibleName" class="form-control" placeholder="Ej. Chef responsable" />
+                                <span asp-validation-for="Input.ResponsibleName" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-7">
+                                <label asp-for="Input.Subject" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.Subject" class="form-control" placeholder="Ej. Cocina Boliviana Contemporánea" />
+                                <span asp-validation-for="Input.Subject" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label asp-for="Input.Group" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.Group" class="form-control" placeholder="A" />
+                                <span asp-validation-for="Input.Group" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label asp-for="Input.PracticeNumber" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.PracticeNumber" class="form-control" min="1" />
+                                <span asp-validation-for="Input.PracticeNumber" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.PracticeDate" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.PracticeDate" class="form-control" />
+                                <span asp-validation-for="Input.PracticeDate" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.StartTime" class="small font-weight-bold text-muted">Hora inicio</label>
+                                <input asp-for="Input.StartTime" type="time" class="form-control" />
+                                <span asp-validation-for="Input.StartTime" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.EndTime" class="small font-weight-bold text-muted">Hora fin</label>
+                                <input asp-for="Input.EndTime" type="time" class="form-control" />
+                                <span asp-validation-for="Input.EndTime" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-5">
+                                <label asp-for="Input.MaterialCategory" class="small font-weight-bold text-muted">Categoría de material</label>
+                                <select asp-for="Input.MaterialCategory" class="custom-select">
+                                    <option>Gastronomía (Utensilios)</option>
+                                    <option>Gastronomía (Misceláneos)</option>
+                                    <option>Gastronomía (Botiquín)</option>
+                                    <option>Limpieza</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-7">
+                                <label asp-for="Input.Observations" class="small font-weight-bold text-muted"></label>
+                                <textarea asp-for="Input.Observations" class="form-control" rows="2" placeholder="Observaciones o contexto de la práctica"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4">Cancelar</a>
+                            <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4">
+                                Guardar y definir requerimientos <i class="mdi mdi-arrow-right ml-1"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="form-row">
-                    <!-- Docente -->
-                    <div class="form-group col-md-4">
-                        <label class="small font-weight-bold text-muted">DOCENTE RESPONSABLE <span class="text-danger">*</span></label>
-                        <select class="custom-select" required>
-                            <option value="">— Seleccionar —</option>
-                            <option>Arq. Shohei Takahashi</option>
-                            <option>Chef Francisco Galindo</option>
-                            <option>Chef Lobo</option>
-                            <option>Chef Lunario</option>
-                            <option>Chef. Martin</option>
-                            <option>Ing. Sara Perez</option>
-                            <option>Lic. Ana Cardozo</option>
-                            <option>Lic. Rodrigo Quiroga</option>
-                            <option>Lic. Rojas</option>
-                            <option>Lic. Vania Vargas</option>
-                        </select>
-                    </div>
-                    <!-- Materia -->
-                    <div class="form-group col-md-5">
-                        <label class="small font-weight-bold text-muted">MATERIA / ASIGNATURA <span class="text-danger">*</span></label>
-                        <select class="custom-select" required>
-                            <option value="">— Seleccionar —</option>
-                            <option>Inv. Gastronómica 1</option>
-                            <option>Cocina Boliviana Contemporánea</option>
-                            <option>Cocina Internacional 1</option>
-                            <option>Cocina Internacional 3</option>
-                            <option>Coctelería</option>
-                            <option>Diseño y Manejo de Menú</option>
-                            <option>Enología</option>
-                            <option>Alimentos y Bebidas 2</option>
-                            <option>TAG IV</option>
-                            <option>Técnica Dietoterapéutica</option>
-                            <option>Evento</option>
-                        </select>
-                    </div>
-                    <!-- Grupo / Paralelo -->
-                    <div class="form-group col-md-3">
-                        <label class="small font-weight-bold text-muted">GRUPO / PARALELO</label>
-                        <select class="custom-select">
-                            <option>A</option>
-                            <option>B</option>
-                            <option>B2</option>
-                            <option>C</option>
-                        </select>
+            <div class="col-lg-4 mt-3 mt-lg-0">
+                <div class="card border-0 shadow-sm rounded-lg h-100">
+                    <div class="card-body p-4">
+                        <span class="text-uppercase small text-primary font-weight-bold">Flujo demostrable</span>
+                        <h5 class="font-weight-bold text-dark mt-2">Una planificación, cuatro decisiones</h5>
+                        <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Registrar fecha, sala y responsable.</span></div>
+                        <div class="d-flex mb-3"><span class="badge badge-info mr-2">2</span><span>Agregar materiales y cantidades.</span></div>
+                        <div class="d-flex mb-3"><span class="badge badge-warning mr-2">3</span><span>Validar disponibilidad y solapamientos.</span></div>
+                        <div class="d-flex"><span class="badge badge-success mr-2">4</span><span>Confirmar operación, devolución o incidencia.</span></div>
+                        <div class="alert alert-light border mt-4 mb-0 small">
+                            <i class="fas fa-info-circle text-primary mr-1"></i>
+                            Esta primera versión guarda el recorrido en la sesión del navegador para no modificar aún el esquema histórico.
+                        </div>
                     </div>
                 </div>
-
-                <div class="form-row">
-                    <!-- Fecha -->
-                    <div class="form-group col-md-3">
-                        <label class="small font-weight-bold text-muted">FECHA DE PRÁCTICA <span class="text-danger">*</span></label>
-                        <input type="date" class="form-control" id="fecha-practica" required />
-                    </div>
-                    <!-- Hora inicio -->
-                    <div class="form-group col-md-2">
-                        <label class="small font-weight-bold text-muted">HORA INICIO <span class="text-danger">*</span></label>
-                        <input type="time" class="form-control" value="08:00" required />
-                    </div>
-                    <!-- Hora fin -->
-                    <div class="form-group col-md-2">
-                        <label class="small font-weight-bold text-muted">HORA FIN <span class="text-danger">*</span></label>
-                        <input type="time" class="form-control" value="11:00" required />
-                    </div>
-                    <!-- Categoría de material -->
-                    <div class="form-group col-md-3">
-                        <label class="small font-weight-bold text-muted">CATEGORÍA MATERIAL</label>
-                        <select class="custom-select">
-                            <option>Gastronomía (Utensilios)</option>
-                            <option>Gastronomía (Misceláneos)</option>
-                            <option>Gastronomía (Botiquín)</option>
-                            <option>Limpieza</option>
-                        </select>
-                    </div>
-                    <!-- N° de práctica -->
-                    <div class="form-group col-md-2">
-                        <label class="small font-weight-bold text-muted">N° DE PRÁCTICA</label>
-                        <input type="number" class="form-control" value="1" min="1" />
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="small font-weight-bold text-muted">OBSERVACIONES GENERALES</label>
-                    <textarea class="form-control bg-light" rows="2" placeholder="Ej: Examen primer parcial. Grupo B2."></textarea>
-                </div>
-
-                <!-- Botones -->
-                <div class="d-flex justify-content-between align-items-center mt-4">
-                    <div>
-                        <button type="button" class="btn btn-outline-secondary px-4 py-2 mr-2"
-                                onclick="alert('Función de exportar Excel disponible próximamente.')">
-                            <i class="fas fa-file-excel mr-2 text-success"></i> Exportar Excel
-                        </button>
-                    </div>
-                    <div>
-                        <a asp-page="/LaboratoryOperations/Index" class="btn btn-outline-secondary px-4 py-2 mr-2">
-                            <i class="mdi mdi-arrow-left mr-1"></i> Cancelar
-                        </a>
-                        <a asp-page="/LaboratoryOperations/Requerimientos" class="btn btn-dark font-weight-bold px-5 py-2">
-                            Definir <i class="mdi mdi-arrow-right ml-1"></i>
-                        </a>
-                    </div>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 </div>
+
+@section Styles {
+<style>
+    .bg-light-primary { background-color: #e8f0fe; }
+</style>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
