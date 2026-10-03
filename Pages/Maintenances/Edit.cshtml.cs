@@ -338,7 +338,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                             await _context.SaveChangesAsync();
                         }
 
-                        return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = maintenanceDB.EquipmentUnit?.LaboratoryId, ManagementId = plan.ManagementId, FocusPlanId });
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan.CurrentPhase, SelectedLabId = maintenanceDB.EquipmentUnit?.LaboratoryId, ManagementId = plan.ManagementId, FocusPlanId });
                     }
                 }
 

@@ -749,25 +749,42 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     .Select(m => (ManagementType?)m.Type)
                     .FirstOrDefaultAsync();
 
-                _context.Notifications.Add(new Notification
+                var actionUrl = $"/Maintenances/Details/{maintenance.Id}?ManagementId={maintenance.ManagementId}&ManagementType={managementType}";
+                var message = $"El mantenimiento de la unidad {equipmentUnit?.InventoryNumber} debe realizarse el {maintenance.ScheduledDate.Value:dd/MM/yyyy}.";
+                var notification = await _context.Notifications.AsTracking()
+                    .Where(n => n.UserId == recipient.Id && n.Scope == "maintenance" && n.ActionUrl == actionUrl)
+                    .OrderByDescending(n => n.CreatedAt)
+                    .FirstOrDefaultAsync();
+
+                if (notification != null)
                 {
-                    UserId = recipient.Id,
-                    Title = "Mantenimiento Próximo a Vencer",
-                    Message = $"El mantenimiento de la unidad {equipmentUnit?.InventoryNumber} debe realizarse el {maintenance.ScheduledDate.Value:dd/MM/yyyy}.",
-                    ActionUrl = $"/Maintenances/Details/{maintenance.Id}?ManagementId={maintenance.ManagementId}&ManagementType={managementType}",
-                    IconClass = "fas fa-exclamation-triangle text-warning",
-                    ManagementId = maintenance.ManagementId,
-                    ManagementType = managementType,
-                    Scope = "maintenance",
-                    IsRead = false,
-                    CreatedAt = DateTime.UtcNow
-                });
+                    if (notification.Message == message) return;
+                    notification.Message = message;
+                    notification.IsRead = false;
+                }
+                else
+                {
+                    _context.Notifications.Add(new Notification
+                    {
+                        UserId = recipient.Id,
+                        Title = "Mantenimiento Próximo a Vencer",
+                        Message = message,
+                        ActionUrl = actionUrl,
+                        IconClass = "fas fa-exclamation-triangle text-warning",
+                        ManagementId = maintenance.ManagementId,
+                        ManagementType = managementType,
+                        Scope = "maintenance",
+                        IsRead = false,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
 
                 await _context.SaveChangesAsync();
             }
-            catch
+            catch (Exception ex)
             {
-                // La notificación no forma parte del guardado crítico de L-8.
+                _logger.LogWarning(ex, "No se pudo guardar el aviso para mantenimiento {MaintenanceId}", maintenance.Id);
+                // El aviso no forma parte del guardado crítico de L-8.
             }
         }
 

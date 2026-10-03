@@ -114,8 +114,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 .OrderBy(p => p.EquipmentUnit!.InventoryNumber)
                 .ToListAsync();
 
+            // Los borradores L-3 usan Cancelled para no figurar como préstamos activos.
+            // Su filtro global los oculta: recuperarlos solo para los planes en borrador de esta gestión.
+            var draftDepartureIds = plans
+                .Where(p => p.IsDraft && p.DraftPhase == WizardPhase.Exit && p.DepartureId.HasValue)
+                .Select(p => p.DepartureId!.Value)
+                .ToList();
+            var draftDepartures = await _context.Departures.IgnoreQueryFilters().AsNoTracking()
+                .Where(d => draftDepartureIds.Contains(d.Id) && d.ManagementId == activeMgmt.Id && d.Status == LoanStatus.Cancelled)
+                .ToDictionaryAsync(d => d.Id);
+
             var result = plans.Select(p => new
             {
+                // Un borrador cancelado se muestra para permitir retomarlo, sin exponer otras salidas canceladas.
                 planId = p.Id,
                 equipmentUnitId = p.EquipmentUnitId,
                 maintenanceId = p.MaintenanceId,
@@ -125,8 +136,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 brand = p.EquipmentUnit?.Equipment?.Brand ?? "",
                 hasTechnician = p.Maintenance?.TechnicianId != null,
                 hasLaboratory = p.EquipmentUnit?.LaboratoryId != null,
-                departureDate = p.Departure?.DepartureDate.ToString("yyyy-MM-dd"),
-                estimatedReturnDate = p.Departure?.EstimatedReturnDate?.ToString("yyyy-MM-dd"),
+                departureDate = (p.Departure ?? (p.DepartureId.HasValue && draftDepartures.TryGetValue(p.DepartureId.Value, out var draft) ? draft : null))?.DepartureDate.ToString("yyyy-MM-dd"),
+                estimatedReturnDate = (p.Departure ?? (p.DepartureId.HasValue && draftDepartures.TryGetValue(p.DepartureId.Value, out var draftReturn) ? draftReturn : null))?.EstimatedReturnDate?.ToString("yyyy-MM-dd"),
                 isDraft = p.IsDraft && p.DraftPhase == WizardPhase.Exit
             });
 
@@ -205,7 +216,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                         .Include(p => p.EquipmentUnit).ThenInclude(eu => eu!.Equipment)
                         .FirstOrDefaultAsync(p => p.Id == row.PlanId);
 
-                    if (plan == null || plan.ManagementId != activeMgmt.Id) continue;
+                    if (plan == null || plan.ManagementId != activeMgmt.Id
+                        || plan.EquipmentUnitId != row.EquipmentUnitId
+                        || plan.EquipmentUnit?.LaboratoryId != LabId
+                        || plan.CurrentPhase != WizardPhase.Exit
+                        || plan.CurrentState != WizardEquipmentState.AwaitingDeparture)
+                    {
+                        skipped++;
+                        continue;
+                    }
 
                     // Técnico SIEMPRE debe venir de L-8; laboratorio debe estar asignado
                     if (plan.Maintenance?.TechnicianId == null || !plan.EquipmentUnitId.HasValue || plan.EquipmentUnit?.LaboratoryId == null)
@@ -222,7 +241,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                         ? DepartureType.ExternalMaintenance
                         : DepartureType.InternalMaintenance;
 
-                    var departure = plan.Departure ?? new Departure
+                    var draftDeparture = plan.Departure == null && plan.IsDraft && plan.DraftPhase == WizardPhase.Exit && plan.DepartureId.HasValue
+                        ? await _context.Departures.IgnoreQueryFilters().AsTracking()
+                            .Include(d => d.Items)
+                            .FirstOrDefaultAsync(d => d.Id == plan.DepartureId.Value && d.ManagementId == plan.ManagementId && d.Status == LoanStatus.Cancelled)
+                        : null;
+                    if (plan.DepartureId.HasValue && plan.Departure == null && draftDeparture == null)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var departure = plan.Departure ?? draftDeparture ?? new Departure
                     {
                         CreatedDate = DateTime.UtcNow,
                         CreatedById = user?.Id
@@ -245,7 +275,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     }
 
                     // Ítem de salida derivado desde el equipo real, no desde el HTML.
-                    var item = departure.Items.FirstOrDefault() ?? new DepartureItem { Departure = departure };
+                    // El borrador se carga con IgnoreQueryFilters: no reutilizar ítems retirados.
+                    var item = departure.Items.FirstOrDefault(i => !i.IsRemoved) ?? new DepartureItem { Departure = departure };
                     item.EquipmentUnitId = equipmentUnitId;
                     item.ProductName = productName;
                     item.Quantity = 1;

@@ -96,6 +96,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
             if (normalizedScope == "dashboard")
             {
                 var anticipated = await BuildDashboardAnticipatedNotificationsAsync(managementId, parsedManagementType);
+                // Un aviso persistido para el mismo mantenimiento no debe aparecer otra vez como calculado.
+                var persistedMaintenanceUrls = persisted
+                    .Where(n => n.Url != null)
+                    .Select(n => n.Url!.Split('?')[0])
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                anticipated = anticipated
+                    .Where(n => n.Url == null
+                        || !n.Url.StartsWith("/Maintenances/Details/", StringComparison.OrdinalIgnoreCase)
+                        || !persistedMaintenanceUrls.Contains(n.Url.Split('?')[0]))
+                    .ToList();
                 syntheticCount = anticipated.Count;
                 items = items
                     .Concat(anticipated)

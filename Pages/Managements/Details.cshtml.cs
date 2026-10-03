@@ -198,19 +198,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             var techs = techsList.OrderBy(t => t.FullName).ToList();
             TechFList = new SelectList(techs, "Id", "FullName", TechFilterId);
 
-            // Eventos para FullCalendar — SOLO planes que tienen un mantenimiento registrado
-            // (fase L8 Maintenance o posterior: L3 Salida, Kardex, Desembolso)
+            // Mostrar planes con fecha real, incluso antes de L-8; nunca inventar un evento para hoy.
             CalendarEvents = allPlans
-                .Where(p => p.CurrentPhase >= WizardPhase.Maintenance)
+                .Where(p => p.PlannedDate.HasValue || p.Maintenance?.ScheduledDate.HasValue == true
+                    || p.Maintenance?.EndDate.HasValue == true)
                 .Select(p => {
-                    // Fecha que se muestra: prioridad ScheduledDate > EndDate > PlannedDate
-                    // Si Maintenance fue cancelado (soft delete), Maintenance será null por QueryFilter
-                    // Usamos PlannedDate como fallback para no perder el plan del calendario
+                    // El filtro global oculta mantenimientos cancelados; la fecha planificada sigue siendo válida.
                     var displayDate = p.Maintenance?.ScheduledDate
-                                   ?? p.Maintenance?.EndDate
-                                   ?? p.PlannedDate
-                                   ?? p.Maintenance?.CreatedDate
-                                   ?? DateTime.Now;
+                                    ?? p.Maintenance?.EndDate
+                                    ?? p.PlannedDate!.Value;
                     // Título: "INV - NombreEquipo"
                     var inv  = p.EquipmentUnit?.InventoryNumber ?? "—";
                     var name = p.EquipmentUnit?.Equipment?.Name ?? "Equipo";

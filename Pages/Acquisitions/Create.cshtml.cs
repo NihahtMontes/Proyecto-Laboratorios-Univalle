@@ -308,6 +308,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                         .Where(d => d.MaintenanceId == Input.MaintenanceId.Value)
                         .ToListAsync();
 
+                if (request.CostDetails.Count(c => c.Id > 0) > maintenanceCosts.Count)
+                {
+                    TempData.Error("La lista de costos L-8 se redujo después de guardar L-12. Revise los costos vinculados antes de continuar; no se eliminarán registros históricos automáticamente.");
+                    await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                    if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
+                    ViewData["IsWizard"] = isWizard;
+                    return Page();
+                }
+
                 SyncRequestCosts(request, maintenanceCosts);
             }
 
@@ -436,28 +445,28 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
         private static void SyncRequestCosts(Request request, IEnumerable<CostDetail> maintenanceCosts)
         {
-            foreach (var existing in request.CostDetails.Where(c => c.Id > 0).ToList())
+            var existing = request.CostDetails.Where(c => c.Id > 0).OrderBy(c => c.Id).ToList();
+            var source = maintenanceCosts.OrderBy(c => c.Id).ToList();
+            for (var i = 0; i < source.Count; i++)
             {
-                existing.RequestId = null;
-                existing.Request = null;
-                existing.LastModifiedDate = DateTime.UtcNow;
-            }
-
-            request.CostDetails.Clear();
-            foreach (var cost in maintenanceCosts)
-            {
-                request.CostDetails.Add(new CostDetail
+                var cost = source[i];
+                var target = i < existing.Count ? existing[i] : new CostDetail { CreatedDate = DateTime.UtcNow };
+                target.Concept = cost.Concept;
+                target.Description = cost.Description;
+                target.Quantity = cost.Quantity;
+                target.UnitOfMeasure = cost.UnitOfMeasure;
+                target.UnitPrice = cost.UnitPrice;
+                target.Category = cost.Category;
+                target.Provider = cost.Provider;
+                target.InvoiceNumber = cost.InvoiceNumber;
+                if (target.Id == 0)
                 {
-                    Concept = cost.Concept,
-                    Description = cost.Description,
-                    Quantity = cost.Quantity,
-                    UnitOfMeasure = cost.UnitOfMeasure,
-                    UnitPrice = cost.UnitPrice,
-                    Category = cost.Category,
-                    Provider = cost.Provider,
-                    InvoiceNumber = cost.InvoiceNumber,
-                    CreatedDate = DateTime.UtcNow
-                });
+                    request.CostDetails.Add(target);
+                }
+                else
+                {
+                    target.LastModifiedDate = DateTime.UtcNow;
+                }
             }
         }
 

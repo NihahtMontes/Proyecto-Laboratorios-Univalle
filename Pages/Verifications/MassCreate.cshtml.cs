@@ -17,15 +17,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
+        private readonly ILogger<MassCreateModel> _logger;
 
         public MassCreateModel(
             Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
             UserManager<User> userManager,
-            IManagementContextService managementContext)
+            IManagementContextService managementContext,
+            ILogger<MassCreateModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
+            _logger = logger;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -130,98 +133,163 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             var activeMgmt = ManagementId.HasValue
                 ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
                 : await _managementContext.GetCurrentManagementAsync();
-            if (activeMgmt == null)
+            if (activeMgmt == null || activeMgmt.Status != ManagementStatus.Active || activeMgmt.Type != ManagementType.Preventive)
             {
-                TempData.Error("No hay gestión activa.");
+                TempData.Error("Seleccione una gestión preventiva activa para registrar L-6.");
                 return RedirectToPage();
+            }
+
+            if (!LabId.HasValue || Rows.GroupBy(r => r.PlanId).Any(g => g.Key <= 0 || g.Count() > 1))
+            {
+                TempData.Error("Seleccione un laboratorio y envíe cada plan L-6 una sola vez.");
+                return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
+            }
+
+            // Validar todas las filas antes de escribir: los IDs del formulario no son autoridad.
+            foreach (var batch in Rows.Chunk(100))
+            {
+                var ids = batch.Select(r => r.PlanId).ToArray();
+                var validPlans = await _context.ManagementPlans.AsNoTracking()
+                    .Where(p => ids.Contains(p.Id) && p.ManagementId == activeMgmt.Id
+                        && p.CurrentPhase == WizardPhase.Verification && p.EquipmentUnit != null
+                        && p.EquipmentUnit.LaboratoryId == LabId.Value)
+                    .Select(p => new { p.Id, p.EquipmentUnitId, p.VerificationId })
+                    .ToDictionaryAsync(p => p.Id);
+
+                foreach (var row in batch)
+                {
+                    if (!validPlans.TryGetValue(row.PlanId, out var plan)
+                        || plan.EquipmentUnitId != row.EquipmentUnitId
+                        || !Enum.IsDefined(row.Condition))
+                    {
+                        TempData.Error("Los equipos o la fase de L-6 cambiaron. Recargue el formulario antes de guardar.");
+                        return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
+                    }
+
+                    if (row.Condition == PhysicalCondition.Bad && string.IsNullOrWhiteSpace(row.Observations))
+                    {
+                        TempData.Error("Describa las fallas de cada equipo marcado en estado Malo antes de guardar L-6.");
+                        return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
+                    }
+
+                    if (plan.VerificationId.HasValue && !await _context.Verifications.AsNoTracking()
+                        .AnyAsync(v => v.Id == plan.VerificationId.Value && v.ManagementId == activeMgmt.Id
+                            && v.EquipmentUnitId == row.EquipmentUnitId && v.Status == VerificationStatus.Draft))
+                    {
+                        TempData.Error("Una verificación L-6 ya fue finalizada o no pertenece a este plan. Recargue el formulario.");
+                        return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
+                    }
+                }
             }
 
             var user = await _userManager.GetUserAsync(User);
             int created = 0;
             int badCount = 0;
 
-            foreach (var row in Rows)
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                var plan = await _context.ManagementPlans
-                    .AsTracking()
-                    .FirstOrDefaultAsync(p => p.Id == row.PlanId);
-
-                if (plan == null) continue;
-
-                var verification = plan.VerificationId.HasValue
-                    ? await _context.Verifications.AsTracking().FirstOrDefaultAsync(v => v.Id == plan.VerificationId.Value)
-                    : null;
-
-                if (verification == null)
+                foreach (var batch in Rows.Chunk(100))
                 {
-                    verification = new Verification
+                    foreach (var row in batch)
                     {
-                        EquipmentUnitId = row.EquipmentUnitId,
-                        ManagementId = activeMgmt.Id,
-                        CreatedDate = DateTime.UtcNow,
-                        CreatedById = user?.Id
-                    };
-                    _context.Verifications.Add(verification);
+                        var plan = await _context.ManagementPlans
+                            .AsTracking()
+                            .FirstOrDefaultAsync(p => p.Id == row.PlanId && p.ManagementId == activeMgmt.Id
+                                && p.EquipmentUnitId == row.EquipmentUnitId && p.CurrentPhase == WizardPhase.Verification);
+
+                        if (plan == null) throw new InvalidOperationException("El plan L-6 cambió durante el guardado.");
+
+                        var verification = plan.VerificationId.HasValue
+                            ? await _context.Verifications.AsTracking().FirstOrDefaultAsync(v => v.Id == plan.VerificationId.Value)
+                            : null;
+
+                        if (plan.VerificationId.HasValue && verification?.Status != VerificationStatus.Draft)
+                            throw new InvalidOperationException("La verificación L-6 cambió durante el guardado.");
+
+                        if (verification == null)
+                        {
+                            verification = new Verification
+                            {
+                                EquipmentUnitId = row.EquipmentUnitId,
+                                ManagementId = activeMgmt.Id,
+                                CreatedDate = DateTime.UtcNow,
+                                CreatedById = user?.Id
+                            };
+                            _context.Verifications.Add(verification);
+                        }
+
+                        verification.Date = DateTime.UtcNow;
+                        verification.PhysicalCondition = row.Condition;
+                        verification.Observations = row.Condition == PhysicalCondition.Bad ? row.Observations?.Trim() : null;
+                        verification.Status = saveDraft
+                            ? VerificationStatus.Draft
+                            : row.Condition == PhysicalCondition.Bad ? VerificationStatus.WithObservations : VerificationStatus.Completed;
+                        verification.LastModifiedDate = verification.Id == 0 ? null : DateTime.UtcNow;
+                        if (verification.Id > 0) verification.ModifiedById = user?.Id;
+                        await _context.SaveChangesAsync();
+
+                        plan.VerificationId = verification.Id;
+
+                        if (saveDraft)
+                        {
+                            MarkVerificationDraft(plan);
+                            await _context.SaveChangesAsync();
+                            created++;
+                            continue;
+                        }
+
+                        if (row.Condition == PhysicalCondition.Bad)
+                        {
+                            badCount++;
+
+                            var unit = await _context.EquipmentUnits.FindAsync(row.EquipmentUnitId)
+                                ?? throw new InvalidOperationException("El equipo L-6 ya no existe.");
+                            var obsText = row.Observations?.Trim() ?? "Equipo en mal estado requiere mantenimiento.";
+                            var request = new Request
+                            {
+                                Type = RequestType.Technical,
+                                ManagementId = activeMgmt.Id,
+                                LaboratoryId = unit.LaboratoryId ?? throw new InvalidOperationException("El equipo L-6 ya no tiene laboratorio."),
+                                EquipmentId = unit.EquipmentId,
+                                EquipmentUnitId = row.EquipmentUnitId,
+                                Description = obsText.Length > 500 ? obsText[..497] + "..." : obsText,
+                                Priority = RequestPriority.Medium,
+                                Status = RequestStatus.Pending,
+                                CreatedDate = DateTime.UtcNow,
+                                CreatedById = user?.Id,
+                                RequestedById = user?.Id
+                            };
+
+                            _context.Requests.Add(request);
+                            await _context.SaveChangesAsync();
+
+                            plan.RequestId = request.Id;
+                            plan.CurrentPhase = WizardPhase.TechnicalRequest;
+                            plan.CurrentState = WizardEquipmentState.AwaitingRequest;
+                        }
+                        else
+                        {
+                            plan.CurrentPhase = WizardPhase.Verification;
+                            plan.CurrentState = WizardEquipmentState.VerifiedGood;
+                        }
+
+                        ClearDraft(plan);
+
+                        await _context.SaveChangesAsync();
+                        created++;
+                    }
+                    _context.ChangeTracker.Clear();
                 }
 
-                verification.Date = DateTime.UtcNow;
-                verification.PhysicalCondition = row.Condition;
-                verification.Observations = row.Condition == PhysicalCondition.Bad ? row.Observations?.Trim() : null;
-                verification.Status = saveDraft
-                    ? VerificationStatus.Draft
-                    : row.Condition == PhysicalCondition.Bad ? VerificationStatus.WithObservations : VerificationStatus.Completed;
-                verification.LastModifiedDate = verification.Id == 0 ? null : DateTime.UtcNow;
-                if (verification.Id > 0) verification.ModifiedById = user?.Id;
-                await _context.SaveChangesAsync();
-
-                plan.VerificationId = verification.Id;
-
-                if (saveDraft)
-                {
-                    MarkVerificationDraft(plan);
-                    await _context.SaveChangesAsync();
-                    created++;
-                    continue;
-                }
-
-                if (row.Condition == PhysicalCondition.Bad)
-                {
-                    badCount++;
-
-                    var unit = await _context.EquipmentUnits.FindAsync(row.EquipmentUnitId);
-                    var obsText = row.Observations?.Trim() ?? "Equipo en mal estado requiere mantenimiento.";
-                    var request = new Request
-                    {
-                        Type = RequestType.Technical,
-                        ManagementId = activeMgmt.Id,
-                        LaboratoryId = unit?.LaboratoryId ?? 0,
-                        EquipmentId = unit?.EquipmentId ?? 0,
-                        EquipmentUnitId = row.EquipmentUnitId,
-                        Description = obsText.Length > 500 ? obsText[..497] + "..." : obsText,
-                        Priority = RequestPriority.Medium,
-                        Status = RequestStatus.Pending,
-                        CreatedDate = DateTime.UtcNow,
-                        CreatedById = user?.Id,
-                        RequestedById = user?.Id
-                    };
-
-                    _context.Requests.Add(request);
-                    await _context.SaveChangesAsync();
-
-                    plan.RequestId = request.Id;
-                    plan.CurrentPhase = WizardPhase.TechnicalRequest;
-                    plan.CurrentState = WizardEquipmentState.AwaitingRequest;
-                }
-                else
-                {
-                    plan.CurrentPhase = WizardPhase.Verification;
-                    plan.CurrentState = WizardEquipmentState.VerifiedGood;
-                }
-
-                ClearDraft(plan);
-
-                await _context.SaveChangesAsync();
-                created++;
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Falló el guardado masivo L-6 para gestión {ManagementId} y laboratorio {LabId}", activeMgmt.Id, LabId);
+                TempData.Error("No se guardó L-6: alguno de los equipos cambió o hubo un error de persistencia. Recargue e intente nuevamente.");
+                return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
             }
 
             if (saveDraft)
