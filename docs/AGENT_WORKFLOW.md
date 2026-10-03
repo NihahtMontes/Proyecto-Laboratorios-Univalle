@@ -25,14 +25,21 @@ Una cifra documentada no describe automáticamente el estado actual. Debe vincul
 
 | Agente | Modo | Responsabilidad | Escritura ordinaria |
 |---|---|---|---|
-| `orchestrator` | Primary | Alcance, asignación, integración y verificación | Requiere permiso |
+| `orchestrator` | Primary | Alcance, asignación, integración y verificación | Dentro del alcance asignado |
+| `migration-worker` | Subagent | Lectura extensa, búsqueda, inventarios, runtime y evidencia compacta en MiniMax M3 | Solo superficies asignadas |
 | `data-analyst` | Subagent | Relaciones, integridad y calidad de datos | Ninguna |
 | `excel-auditor` | Subagent | Libro Excel, EPPlus y correspondencia contractual | Ninguna |
 | `reconciliation-auditor` | Subagent | P0/P1/P2, conflictos y trazabilidad | Ninguna |
 | `documentation` | Subagent | Alineación documental basada en evidencia | Markdown asignado bajo `docs/` |
 | `dotnet-data-engineer` | Subagent | Implementación en el pipeline histórico | Directorios asignados de Import/Apply |
 
-`subagent_depth: 1` permite que el orquestador invoque especialistas sin habilitar otro nivel de delegación. `permission.task` limita la delegación automática a estos cinco perfiles. El usuario aún puede invocarlos directamente mediante `@`.
+`default_agent: orchestrator` y `subagent_depth: 1` permiten la invocación directa de `migration-worker` sin delegación ulterior. `permission.task` del orquestador incluye el worker y los especialistas existentes. En OpenCode 1.18.32 los agentes usan `permission:` (reglas por herramienta), no una lista `permissions:`. `migration-worker` usa `minimax-coding-plan/MiniMax-M3` de la conexión MiniMax Token Plan (minimax.io), no OpenCode Go/Zen. La configuración se carga al iniciar el proceso; la sesión existente requiere reinicio.
+
+## AUTONOMOUS ENGINEERING AUTHORITY
+
+Los agentes pueden ejecutar autónomamente operaciones ordinarias necesarias para su tarea: shell, lectura/escritura dentro del alcance, Git, ramas/worktrees locales, builds, pruebas, linters, restores, instalaciones project-local necesarias, servidores locales temporales, browser/runtime, logs/procesos/puertos y consultas de bases de desarrollo. Commits locales solo cuando forman parte de la misión. No pedir aprobación repetida para esas acciones. Proteger siempre modificaciones ajenas; un árbol sucio no impide trabajar, pero puede requerir aislamiento. El orquestador conserva la asignación de un escritor por archivo y la revisión final.
+
+Excepciones: escrituras de datos y migraciones de desarrollo necesitan una misión explícita y verificar la base destino. Despliegues, producción, push y cambios externos requieren pedido específico. Nunca exponer secretos, destruir trabajo ajeno, hacer force push ni modificar el Excel institucional original. Cerrar y verificar servidores temporales al terminar. Los permisos de herramienta son defensa parcial y no sustituyen estas reglas.
 
 ## Protocolo de propiedad temporal
 
@@ -71,8 +78,8 @@ Nunca debe moverse, renombrarse, editarse, sobrescribirse, copiarse al repositor
 La denegación de `edit` no constituye por sí sola una barrera frente a comandos de shell. La protección operativa combina:
 
 - agentes auditores sin shell o con allowlist estrictamente de lectura;
-- shell del ingeniero y del orquestador en modo `ask`;
-- prohibición expresa de escribir mediante shell;
+- prohibición expresa de modificar el original incluso mediante shell;
+- preservar modificaciones ajenas sin usar comandos destructivos;
 - SHA-256 antes y después de cualquier tarea que utilice el original.
 
 Hash de referencia verificado el 9 de septiembre de 2026:
@@ -92,7 +99,7 @@ Si el hash final difiere, detener el trabajo, preservar la evidencia y comunicar
 7. El escritor entrega el handoff; el orquestador revisa diff y evidencia.
 8. El orquestador informa archivos modificados, validaciones ejecutadas y riesgos pendientes.
 
-Las operaciones de datos, migraciones, nuevas dependencias, commits, despliegues y cambios externos necesitan autorización explícita. No se inicia la aplicación web ni un servicio persistente salvo pedido expreso.
+Para operaciones ordinarias rige AUTONOMOUS ENGINEERING AUTHORITY; sus excepciones se mantienen vigentes. Un comando `bash` en modo `allow` no protege contra todas las formas de escribir el Excel mediante shell: el cumplimiento de esta norma sigue siendo obligatorio.
 
 ## Validación
 
@@ -105,7 +112,7 @@ git diff --check
 git status --short
 ```
 
-La versión debe pertenecer a la rama estable 1.x. Si OpenCode no está instalado, no se instala automáticamente: se realizan las comprobaciones estáticas y se reporta pendiente el smoke test.
+La versión debe pertenecer a la rama estable 1.x. Validar además `opencode debug config` y `opencode debug agent migration-worker` sin imprimir credenciales. Si OpenCode no está instalado, reportar pendiente el smoke test.
 
 Para cambios C# en herramientas históricas, compilar de forma explícita el proyecto afectado porque `Tools/` no forma parte de la solución principal:
 
@@ -114,7 +121,7 @@ dotnet build Tools/HistoricalDataImport/HistoricalDataImport.csproj -m:1
 dotnet build Tools/HistoricalDataApply/HistoricalDataApply.csproj -m:1
 ```
 
-El repositorio no tiene un runner convencional xUnit, NUnit o MSTest. Usar los self-checks y herramientas QA existentes según el alcance, sin presentar `dotnet test` como cobertura disponible. Importaciones, `apply`, SQL o conexiones de base de datos solo se ejecutan con autorización explícita.
+El repositorio no tiene un runner convencional xUnit, NUnit o MSTest. Usar los self-checks y herramientas QA existentes según el alcance, sin presentar `dotnet test` como cobertura disponible. Consultas locales de desarrollo de solo lectura son ordinarias; importaciones, `apply` y escrituras SQL requieren una misión explícita y comprobación del destino.
 
 ## Handoff
 

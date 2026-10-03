@@ -55,10 +55,34 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 await context.SaveChangesAsync();
             }
 
-            var tInt1 = await context.Interns.FirstOrDefaultAsync(x => x.Name.Contains("Carlos"))
-                ?? throw new InvalidOperationException("La semilla requiere el técnico interno Carlos.");
-            var tExt1 = await context.Externs.FirstOrDefaultAsync(x => x.Name.Contains("Soporte"))
-                ?? throw new InvalidOperationException("La semilla requiere el proveedor de soporte externo.");
+            var tInt1 = await context.Interns.FirstOrDefaultAsync(x => x.Name.Contains("Carlos"));
+            if (tInt1 == null)
+            {
+                tInt1 = new Intern
+                {
+                    Name = "Carlos Técnico Interno",
+                    Category = PersonCategory.Tecnico,
+                    InternStatus = GeneralStatus.Activo,
+                    Email = "carlos@univalle.edu"
+                };
+                context.Interns.Add(tInt1);
+                await context.SaveChangesAsync();
+            }
+
+            var tExt1 = await context.Externs.FirstOrDefaultAsync(x => x.Name.Contains("Soporte"));
+            if (tExt1 == null)
+            {
+                tExt1 = new Extern
+                {
+                    Name = "Soporte Especializado S.R.L.",
+                    Category = PersonCategory.Externo,
+                    ExternStatus = GeneralStatus.Activo,
+                    IsEntity = true,
+                    Address = "Calle Falsa 123"
+                };
+                context.Externs.Add(tExt1);
+                await context.SaveChangesAsync();
+            }
 
             // 4. Jerarquía: Países, Ciudades, Facultades, Carreras, Laboratorios
             if (!context.Countries.Any())
@@ -96,33 +120,61 @@ namespace Proyecto_Laboratorios_Univalle.Data
             var cbbaEntity = await context.Cities.FirstOrDefaultAsync()
                 ?? throw new InvalidOperationException("La semilla requiere al menos una ciudad.");
 
-            // 5. Equipos Catalogo
-            if (!context.Equipments.Any())
+            // 5. Equipos Catalogo: completar individualmente para tolerar bases parciales.
+            var eBat = await EnsureEquipmentAsync(context, new Equipment
             {
-                var eqBatidora = new Equipment { Name = "Batidora Industrial", Category = EquipmentCategory.Equipment, TypeClassification = EquipmentTypeClassification.Manual, UtensilType = UtensilType.NoAplica, CountryId = boliviaEntity.Id, CityId = cbbaEntity.Id };
-                var eqMicro = new Equipment { Name = "Microondas Industrial", Category = EquipmentCategory.Equipment, TypeClassification = EquipmentTypeClassification.Electronico, UtensilType = UtensilType.NoAplica, CountryId = boliviaEntity.Id, CityId = cbbaEntity.Id };
-                var eqHorno = new Equipment { Name = "Horno Rational", Category = EquipmentCategory.Equipment, TypeClassification = EquipmentTypeClassification.Electronico, UtensilType = UtensilType.NoAplica, CountryId = boliviaEntity.Id, CityId = cbbaEntity.Id };
-                
-                var eqMicroscopio = new Equipment { Name = "Microscopio Binocular", Category = EquipmentCategory.Equipment, TypeClassification = EquipmentTypeClassification.Medicion, UtensilType = UtensilType.NoAplica, CountryId = boliviaEntity.Id, CityId = cbbaEntity.Id };
-                var eqEspectro = new Equipment { Name = "Espectrofotómetro UV-Vis", Category = EquipmentCategory.Equipment, TypeClassification = EquipmentTypeClassification.Electronico, UtensilType = UtensilType.NoAplica, CountryId = boliviaEntity.Id, CityId = cbbaEntity.Id };
-
-                context.Equipments.AddRange(eqBatidora, eqMicro, eqHorno, eqMicroscopio, eqEspectro);
-                await context.SaveChangesAsync();
-            }
-
-            var eBat = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Batidora"))
-                ?? throw new InvalidOperationException("La semilla requiere el equipo Batidora.");
-            var eMic = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Microondas"))
-                ?? throw new InvalidOperationException("La semilla requiere el equipo Microondas.");
-            var eHorno = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Horno Rational"))
-                ?? throw new InvalidOperationException("La semilla requiere el equipo Horno Rational.");
-            var eMicroscopio = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Microscopio"))
-                ?? throw new InvalidOperationException("La semilla requiere el equipo Microscopio.");
-            var eEsp = await context.Equipments.FirstOrDefaultAsync(x => x.Name.Contains("Espectro"))
-                ?? throw new InvalidOperationException("La semilla requiere el equipo Espectrofotómetro.");
+                Name = "Batidora Industrial",
+                Category = EquipmentCategory.Equipment,
+                TypeClassification = EquipmentTypeClassification.Manual,
+                UtensilType = UtensilType.NoAplica,
+                CountryId = boliviaEntity.Id,
+                CityId = cbbaEntity.Id
+            });
+            var eMic = await EnsureEquipmentAsync(context, new Equipment
+            {
+                Name = "Microondas Industrial",
+                Category = EquipmentCategory.Equipment,
+                TypeClassification = EquipmentTypeClassification.Electronico,
+                UtensilType = UtensilType.NoAplica,
+                CountryId = boliviaEntity.Id,
+                CityId = cbbaEntity.Id
+            });
+            var eHorno = await EnsureEquipmentAsync(context, new Equipment
+            {
+                Name = "Horno Rational",
+                Category = EquipmentCategory.Equipment,
+                TypeClassification = EquipmentTypeClassification.Electronico,
+                UtensilType = UtensilType.NoAplica,
+                CountryId = boliviaEntity.Id,
+                CityId = cbbaEntity.Id
+            });
+            var eMicroscopio = await EnsureEquipmentAsync(context, new Equipment
+            {
+                Name = "Microscopio Binocular",
+                Category = EquipmentCategory.Equipment,
+                TypeClassification = EquipmentTypeClassification.Medicion,
+                UtensilType = UtensilType.NoAplica,
+                CountryId = boliviaEntity.Id,
+                CityId = cbbaEntity.Id
+            });
+            var eEsp = await EnsureEquipmentAsync(context, new Equipment
+            {
+                Name = "Espectrofotómetro UV-Vis",
+                Category = EquipmentCategory.Equipment,
+                TypeClassification = EquipmentTypeClassification.Electronico,
+                UtensilType = UtensilType.NoAplica,
+                CountryId = boliviaEntity.Id,
+                CityId = cbbaEntity.Id
+            });
 
             // 6. Gestión Principal 1-2026
             var management = await context.Managements.FirstOrDefaultAsync(m => m.Year == 2026 && m.Semester == 1);
+            if (management == null)
+            {
+                management = await context.Managements
+                    .FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+            }
+
             if (management == null)
             {
                 management = new Management
@@ -149,7 +201,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
                     Semester = 0,
                     Code = "CORR-2026-0",
                     Description = "Gestión correctiva 2026 para fallas reportadas por L-7.",
-                    Status = ManagementStatus.Active,
+                    Status = ManagementStatus.Inactive,
                     Type = ManagementType.Corrective
                 };
                 context.Managements.Add(correctiveMgmt);
@@ -219,7 +271,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
                     EmailConfirmed = true,
                     FirstName = firstName,
                     LastName = lastName,
-                    IdentityCard = "1234567" + Random.Shared.Next(10, 99),
+                    IdentityCard = await GenerateUniqueIdentityCardAsync(userManager),
                     PhoneNumber = "70000000",
                     Role = ToUserRole(role),
                     Status = GeneralStatus.Activo,
@@ -239,6 +291,32 @@ namespace Proyecto_Laboratorios_Univalle.Data
             var roleResult = await userManager.SynchronizeManagedRoleAsync(user, user.Role);
             ThrowIfFailed(roleResult, $"sincronizar el rol del usuario {userName}");
             return user;
+        }
+
+        private static async Task<string> GenerateUniqueIdentityCardAsync(UserManager<User> userManager)
+        {
+            string identityCard;
+            do
+            {
+                identityCard = Random.Shared.Next(100000000, 1000000000).ToString();
+            }
+            while (await userManager.Users
+                .IgnoreQueryFilters()
+                .AnyAsync(user => user.IdentityCard == identityCard));
+
+            return identityCard;
+        }
+
+        private static async Task<Equipment> EnsureEquipmentAsync(ApplicationDbContext context, Equipment candidate)
+        {
+            var existing = await context.Equipments
+                .FirstOrDefaultAsync(item => item.Name == candidate.Name);
+            if (existing != null)
+                return existing;
+
+            context.Equipments.Add(candidate);
+            await context.SaveChangesAsync();
+            return candidate;
         }
 
         private static UserRole ToUserRole(string role)

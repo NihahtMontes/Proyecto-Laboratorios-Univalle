@@ -26,11 +26,11 @@ Antes de modificar codigo:
 | Auth | ASP.NET Core Identity |
 | Cache/Sesion | IMemoryCache + Session 4h |
 
-No agregar dependencias ni cambiar stack sin aprobacion explicita.
+Restores y dependencias project-local necesarias para la mision son ordinarios; cambiar el stack requiere una mision explicita.
 
 ## Reglas Globales Criticas
 
-- No hacer commit sin aprobacion explicita del usuario.
+- Los commits locales estan preautorizados solo cuando forman parte de la mision; no hacerlos por rutina.
 - No usar hard-delete en entidades del negocio. Evitar `_context.Remove()` y `.RemoveRange()` salvo entidades temporales claramente descartables y aprobadas.
 - No modificar migraciones existentes. Crear migraciones nuevas.
 - El proyecto usa NoTracking global. Toda entidad que se modifica debe cargarse con `.AsTracking()` o `FindAsync()`.
@@ -43,15 +43,15 @@ No agregar dependencias ni cambiar stack sin aprobacion explicita.
 - No usar `FullName` de `Person` en LINQ porque es `[NotMapped]`.
 - `Semester` en `Management` acepta `0` para correctivo, `1` y `2` para preventivo.
 - Si la tarea toca mas de 5 archivos, proponer plan antes de editar.
-- Bajo consumo obligatorio: un proceso pesado a la vez, builds con `-m:1`,
-  escrituras en lotes maximos de 100 y sin servidor web en segundo plano.
-- Detener operaciones amplias con menos de 2 GB de RAM libre o mas de 85% de
-  uso. El estres requiere 6 GB libres y autorizacion explicita; nunca ajustar
-  automaticamente la memoria global de SQL Server.
+- Ejecucion controlada: un proceso pesado a la vez, builds con `-m:1`,
+  escrituras en lotes maximos de 100 y servidores temporales cerrados al terminar.
+- Las pruebas de estres requieren autorizacion explicita, sin umbral fijo de RAM
+  impuesto al agente. No ajustar automaticamente la memoria global de SQL Server.
 
 ## Orquestacion De Agentes
 
 - El agente principal de Codex u OpenCode es el orquestador: lee contexto, divide solo trabajo independiente, evita ediciones solapadas, integra resultados y verifica evidencia.
+- `migration-worker` (MiniMax M3) es el worker preferente para exploracion extensa y evidencia mecanica; Sol planifica, decide y valida. La autonomia ordinaria y sus excepciones estan en `AGENTS.md` y `docs/AGENT_WORKFLOW.md`.
 - La coordinacion entre tareas/chats se rige por `docs/COORDINACION_MULTI_CHAT.md`.
 - La propiedad temporal, los permisos y handoffs de OpenCode se rigen por `docs/AGENT_WORKFLOW.md`; no existe locking transaccional por archivo.
 - Cada tarea declara rol, ID de trabajo, archivos, dependencias y tipo de escritura antes de actuar.
@@ -86,8 +86,9 @@ No agregar dependencias ni cambiar stack sin aprobacion explicita.
 - `QA-DATA-001` completo `DB_Laboratorios_Univalle_SCENARIOS_QA`: conserva
   107 catalogos y 556 unidades, agrega historicos sinteticos reproducibles,
   aprobo integridad, transacciones, concurrencia, rendimiento y restauracion
-  de backup. No toca la base oficial ni MonsterASP. No levantar el servidor
-  hasta indicacion del usuario; ver `docs/QA_DATA_001_RESULTADO.md`.
+  de backup. No toca la base oficial ni MonsterASP. Para nuevas tareas, los
+  servidores de desarrollo temporales se rigen por la politica ordinaria;
+  ver `docs/QA_DATA_001_RESULTADO.md`.
 
 ## Documentacion Separada
 

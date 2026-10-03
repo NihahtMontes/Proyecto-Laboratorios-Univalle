@@ -93,8 +93,9 @@ el contrato como `Aprobado para implementar`.
 - La aplicacion no se inicia hasta que el usuario autorice sus pruebas
   manuales y se inyecte la conexion QA temporal; MonsterASP queda fuera de
   alcance.
-- Limites de recursos: un proceso pesado, `dotnet -m:1`, lotes de 100, abortar
-  bajo 2 GB libres o sobre 85% de uso; estres solo con 6 GB y autorizacion.
+- Ejecucion controlada: un proceso pesado, `dotnet -m:1` y escrituras en lotes
+  de hasta 100. La politica vigente no impone umbral fijo de RAM ni porcentaje
+  de uso; las pruebas de estres siguen siendo opt-in y requieren autorizacion.
 - Informe completo: `docs/QA_DATA_001_RESULTADO.md`.
 
 ### DB-LOCAL-001 — Normalizacion de la base local segun V2

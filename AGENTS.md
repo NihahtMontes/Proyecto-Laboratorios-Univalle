@@ -10,6 +10,10 @@
 - Integridad historica: evitar hard-delete; preferir estados, soft-delete o desvinculacion segura.
 - Contexto modular: no leer todo el historico si una tarea solo toca un modulo.
 
+## AUTONOMOUS ENGINEERING AUTHORITY
+
+Los agentes configurados pueden realizar sin permisos repetidos la ingenieria ordinaria necesaria para una tarea asignada: shell, filesystem, Git, ramas/worktrees locales, builds, tests, lint, restores, instalaciones project-local necesarias, logs/procesos/puertos, browser/runtime y servidores locales temporales (cerrarlos y comprobarlo al terminar). Los commits locales forman parte de esta autonomia solo cuando la mision los incluye; no hacer commits por rutina. Consultas a BD de desarrollo son ordinarias; escrituras y migraciones de desarrollo requieren una mision explicita y verificar el destino. Despliegues, produccion, push y cambios externos requieren pedido especifico. Nunca destruir modificaciones desconocidas, exponer secretos ni modificar el Excel institucional original; consultar `docs/AGENT_WORKFLOW.md`.
+
 ## Flujo Obligatorio
 
 Antes de tocar archivos:
@@ -23,7 +27,7 @@ Antes de tocar archivos:
 
 Si la tarea toca mas de 5 archivos, proponer plan antes de editar.
 
-No hacer commit sin aprobacion explicita del usuario.
+Los commits locales estan preautorizados cuando forman parte de la mision; no hacer commit si la mision no lo requiere.
 
 ## Matriz De Enrutamiento
 
@@ -54,23 +58,24 @@ No hacer commit sin aprobacion explicita del usuario.
 - Migraciones existentes son intocables.
 - No revertir cambios ajenos.
 
-## Politica De Bajo Consumo De Recursos
+## Ejecucion Controlada De Recursos
 
 - Ejecutar un solo build, prueba, importador o proceso pesado a la vez; para
   .NET usar `dotnet build -m:1` y evitar servidores en segundo plano.
-- Antes de una operacion de datos o una prueba amplia, comprobar memoria:
-  detenerse si quedan menos de 2 GB libres o si el uso supera 85%.
 - Procesar escrituras EF/SQL en lotes de hasta 100 filas, limpiar el
   `ChangeTracker` entre lotes y limitar la conexion a un maximo de 10
   conexiones cuando la herramienta controle el pool.
-- Las pruebas de estres son opt-in, exigen al menos 6 GB libres y autorizacion
-  explicita. No cambiar automaticamente la memoria global de SQL Server.
-- No iniciar la aplicacion web, browser ni servicios persistentes salvo pedido
-  expreso. Todo proceso temporal debe cerrarse y verificarse al finalizar.
+- Las pruebas de estres son opt-in y requieren autorizacion explicita. El
+  agente no impone un umbral fijo de RAM ni detiene tareas por un porcentaje
+  determinado de memoria; el operador administra la capacidad de su equipo.
+- No cambiar automaticamente la memoria global de SQL Server.
+- Los servidores locales y el browser de desarrollo pueden iniciarse durante una tarea que los requiera; cerrar y verificar todo proceso temporal al finalizar.
 
 ## Orquestacion Multiagente
 
 El agente principal de Codex u OpenCode actua como orquestador: define alcance, reparte tareas independientes, integra resultados, resuelve conflictos y verifica evidencia. No delegar por rutina ni permitir cambios solapados sobre los mismos archivos.
+
+Para lecturas extensas, busquedas, inventarios y evidencia mecanica usar preferentemente `migration-worker` (MiniMax M3); Sol conserva decisiones y validacion final. `subagent_depth: 1` impide delegacion ulterior del worker.
 
 La coordinacion persistente entre tareas de Codex se define en
 `docs/COORDINACION_MULTI_CHAT.md`. Antes de actuar, cada tarea declara rol, ID,

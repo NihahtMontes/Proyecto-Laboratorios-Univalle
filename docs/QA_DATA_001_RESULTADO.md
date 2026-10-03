@@ -113,5 +113,6 @@ DB_Laboratorios_Univalle_SCENARIOS_QA, conservar AutoMigrate=false y
 RunSeed=false, iniciar un solo servidor y ejecutar la matriz de navegacion con
 la tarea QA, navegacion y regresiones.
 
-El perfil de estres no fue ejecutado: continua requiriendo autorizacion
-especifica y al menos 6 GB de RAM libres.
+El perfil de estres no fue ejecutado en QA-DATA-001. Cualquier ejecucion futura
+sigue siendo opt-in y requiere una mision/autorizacion especifica; la politica
+vigente no impone un umbral fijo de memoria RAM.
