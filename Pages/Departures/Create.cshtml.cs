@@ -82,7 +82,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 public int? Id { get; set; }
                 public int? EquipmentUnitId { get; set; }
                 public string ProductName { get; set; } = string.Empty;
-                public int Quantity { get; set; } = 1;
+                [Range(0.01, 999999, ErrorMessage = "La cantidad debe ser mayor a 0")]
+                public decimal? Quantity { get; set; } = 1m;
                 public string UnitOfMeasure { get; set; } = "UNIDAD";
                 public string? Observations { get; set; }
             }
@@ -170,7 +171,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                         {
                             EquipmentUnitId = unit.Id,
                             ProductName = $"{unit.Equipment?.Name ?? "Equipo"} ({unit.InventoryNumber ?? "—"})",
-                            Quantity = 1,
+                            Quantity = 1m,
                             UnitOfMeasure = "UNIDAD"
                         });
                     }
@@ -383,7 +384,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                             Departure = departure,
                             EquipmentUnitId = unit.Id,
                             ProductName = productName,
-                            Quantity = 1,
+                            Quantity = 1m,
                             UnitOfMeasure = "UNIDAD",
                             Observations = Input.Items.FirstOrDefault()?.Observations?.Trim()
                         });

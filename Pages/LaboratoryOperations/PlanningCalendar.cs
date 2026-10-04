@@ -56,13 +56,18 @@ public sealed record PlanningCalendar(
             .OrderBy(r => r.ScheduledDate)
             .Select(r => new
             {
-                r.Id, r.AcademicWeekId, r.PracticeName, SubjectName = r.Subject.Name, LaboratoryName = r.Laboratory.Name,
-                GroupName = r.Group.Name, r.TeacherPersonId, r.ScheduledDate, r.ScheduledEndDate, r.Status,
+                r.Id, r.AcademicWeekId, r.PracticeName, r.SubjectId, r.LaboratoryId, r.AllLaboratories, r.GroupId, r.GroupName,
+                SubjectName = r.Subject != null ? r.Subject.Name : "Sin materia",
+                LaboratoryName = r.AllLaboratories ? "Todos los laboratorios"
+                    : (r.Laboratory != null ? r.Laboratory.Name : "—"),
+                GroupLabel = !string.IsNullOrEmpty(r.GroupName) ? r.GroupName
+                    : (r.Group != null ? r.Group.Name : "—"),
+                r.TeacherPersonId, r.ScheduledDate, r.ScheduledEndDate, r.Status,
                 HasDetails = r.Details.Any()
             })
             .ToListAsync();
 
-        var teacherIds = practices.Where(p => p.TeacherPersonId.HasValue).Select(p => p.TeacherPersonId!.Value).Distinct().ToList();
+        var teacherIds = practices.Select(p => p.TeacherPersonId).Distinct().ToList();
         var teachers = await context.Interns.AsNoTracking()
             .Where(i => teacherIds.Contains(i.Id))
             .ToDictionaryAsync(i => i.Id, i => i.Name);
@@ -72,8 +77,8 @@ public sealed record PlanningCalendar(
             {
                 WeekId = p.AcademicWeekId!.Value,
                 Weekday = AcademicWeekGenerator.WeekdayOf(p.ScheduledDate),
-                Card = new PracticeCard(p.Id, L3Codes.Format(p.Id), p.PracticeName, p.SubjectName, p.LaboratoryName, p.GroupName,
-                    p.TeacherPersonId.HasValue && teachers.TryGetValue(p.TeacherPersonId.Value, out var t) ? t : "—",
+                Card = new PracticeCard(p.Id, L3Codes.Format(p.Id), p.PracticeName, p.SubjectName, p.LaboratoryName, p.GroupLabel,
+                    teachers.TryGetValue(p.TeacherPersonId, out var t) ? t : "—",
                     p.ScheduledDate, p.ScheduledEndDate ?? p.ScheduledDate.AddHours(1), p.Status,
                     PracticeStatus.Css(p.Status), PracticeStatus.NextUrl(p.Id, p.Status, p.HasDetails))
             })

@@ -279,7 +279,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     var item = departure.Items.FirstOrDefault(i => !i.IsRemoved) ?? new DepartureItem { Departure = departure };
                     item.EquipmentUnitId = equipmentUnitId;
                     item.ProductName = productName;
-                    item.Quantity = 1;
+                    item.Quantity = 1m;
                     item.UnitOfMeasure = "UNIDAD";
                     item.Observations = null;
                     if (item.Id == 0)

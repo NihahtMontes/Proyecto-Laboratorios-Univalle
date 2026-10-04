@@ -1,6 +1,11 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.DisponibilidadModel
-@{ ViewData["Title"] = "Disponibilidad — Paso 3"; var canApprove = !Model.HasConflict && !Model.IsApproved && !(Model.Context?.IsReadOnly ?? false); }
+@{
+    ViewData["Title"] = "Disponibilidad — Paso 3";
+    var canApprove = !Model.IsApproved && !(Model.Context?.IsReadOnly ?? false);
+    var hasWarnings = Model.HasShortage || Model.HasUnregistered;
+    var selectedOriginId = Model.OriginLabId ?? 0;
+}
 
 <div class="container-fluid mt-3">
     @if (Model.Context != null)
@@ -19,33 +24,73 @@
             </div>
         }
 
-        @if (Model.HasConflict)
-        {
-            <div class="alert alert-danger border-0 rounded d-flex align-items-center mb-4">
-                <i class="fas fa-exclamation-triangle fa-2x mr-3"></i>
-                <div>
-                    <strong>Hay un conflicto de disponibilidad.</strong><br />
-                    <span>Reduce las cantidades o vuelve al paso anterior para ajustarlas antes de continuar.</span>
+        <div class="card border-0 shadow-sm rounded-lg mb-4">
+            <div class="card-body p-3 p-md-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+                    <div>
+                        <span class="text-uppercase small text-primary font-weight-bold">Comparar contra</span>
+                        <h6 class="font-weight-bold text-dark mb-0 mt-1">Stock del laboratorio de origen</h6>
+                        @if (!string.IsNullOrEmpty(Model.OriginName))
+                        {
+                            <small class="text-muted">Seleccionado: <strong>@Model.OriginName</strong></small>
+                        }
+                    </div>
+                    <form method="get" class="m-0" id="form-origin">
+                        <input type="hidden" name="planId" value="@Model.PlanId" />
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-warehouse text-primary"></i></span>
+                            </div>
+                            <select name="originLabId" asp-items="Model.OriginList" class="form-control select2" id="origin-select">
+                                <option value="0">— Seleccionar laboratorio —</option>
+                            </select>
+                            <div class="input-group-append">
+                                <button type="submit" class="btn btn-primary font-weight-bold">
+                                    <i class="fas fa-sync-alt mr-1"></i> Recalcular
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
+
+                @if (Model.IsApproved)
+                {
+                    <div class="alert alert-success border-0 rounded d-flex align-items-center mb-0">
+                        <i class="fas fa-check-circle fa-2x mr-3"></i>
+                        <div>
+                            <strong>Solicitud aprobada.</strong><br />
+                            <span>La práctica avanzó al paso L-3; el detalle siguiente se conserva como auditoría.</span>
+                        </div>
+                    </div>
+                }
+                else if (hasWarnings)
+                {
+                    <div class="alert alert-warning border-0 rounded d-flex align-items-start mb-0">
+                        <i class="fas fa-exclamation-triangle fa-2x mr-3 mt-1"></i>
+                        <div>
+                            <strong>Atención: revisá el detalle antes de aprobar.</strong><br />
+                            <span>
+                                La solicitud <strong>solo advierte</strong> y se puede aprobar aunque falte cobertura: la salida de artículos es la que se bloqueará si no alcanza el stock disponible.
+                                @if (Model.HasUnregistered)
+                                {
+                                    <span><br />Los artículos <strong>sin registro de stock</strong> se entregarán sin descontar del inventario.</span>
+                                }
+                            </span>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-success border-0 rounded d-flex align-items-center mb-0">
+                        <i class="fas fa-check-circle fa-2x mr-3"></i>
+                        <div>
+                            <strong>Todo está disponible.</strong><br />
+                            <span>La práctica puede aprobarse para iniciar la operación L-3.</span>
+                        </div>
+                    </div>
+                }
             </div>
-        }
-        else
-        {
-            <div class="alert alert-success border-0 rounded d-flex align-items-center mb-4">
-                <i class="fas fa-check-circle fa-2x mr-3"></i>
-                <div>
-                    <strong>Todo está disponible.</strong><br />
-                    @if (canApprove)
-                    {
-                        <span>La práctica puede aprobarse para iniciar la operación.</span>
-                    }
-                    else
-                    {
-                        <span>La práctica está lista para continuar; la aprobación ya fue registrada.</span>
-                    }
-                </div>
-            </div>
-        }
+        </div>
 
         <div class="card border-0 shadow-sm rounded-lg">
             <div class="card-body p-4">
@@ -57,31 +102,67 @@
                     <table class="table table-hover mb-0">
                         <thead class="bg-dark text-white">
                             <tr>
-                                <th>MATERIAL</th>
+                                <th>ARTÍCULO</th>
                                 <th class="text-center">SOLICITADO</th>
                                 <th class="text-center">DISPONIBLE</th>
-                                <th class="text-center">BALANCE</th>
-                                <th>ESTADO</th>
+                                <th class="text-center">DIFERENCIA</th>
+                                <th class="text-center">ESTADO</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var row in Model.Items)
                             {
-                                <tr class="@(row.Ok ? "" : "table-danger")">
-                                    <td class="font-weight-bold">@row.EquipmentName</td>
-                                    <td class="text-center">@row.Requested</td>
-                                    <td class="text-center">@row.Available</td>
-                                    <td class="text-center font-weight-bold @(row.Ok ? "text-success" : "text-danger")">
-                                        @(row.Difference > 0 ? "+" : "")@row.Difference
-                                    </td>
-                                    <td>
-                                        @if (row.Ok)
+                                var hasAvailable = row.Available.HasValue;
+                                var isInsufficient = hasAvailable && row.Available.GetValueOrDefault() < row.Requested;
+                                var isOk = hasAvailable && !isInsufficient;
+                                var rowClass = isInsufficient ? "table-danger" : (!hasAvailable ? "table-secondary" : "");
+                                <tr class="@rowClass">
+                                    <td class="font-weight-bold">
+                                        @row.ArticleName
+                                        <small class="d-block text-muted">@row.ArticleCode@(string.IsNullOrWhiteSpace(row.Unit) ? "" : $" · {row.Unit}")</small>
+                                        @if (!string.IsNullOrWhiteSpace(row.InventoryNumber))
                                         {
-                                            <span class="badge badge-success rounded-pill">Disponible</span>
+                                            <span class="badge badge-secondary badge-pill mt-1">@row.InventoryNumber</span>
+                                        }
+                                        @if (row.ArticlePending)
+                                        {
+                                            <span class="badge badge-warning badge-pill mt-1">Por confirmar</span>
+                                        }
+                                    </td>
+                                    <td class="text-center font-weight-bold">@row.Requested.ToString("0.##")</td>
+                                    <td class="text-center">
+                                        @if (hasAvailable)
+                                        {
+                                            @row.Available.GetValueOrDefault().ToString("0.##")
                                         }
                                         else
                                         {
-                                            <span class="badge badge-danger rounded-pill">Faltante</span>
+                                            <span class="badge badge-secondary badge-pill">Sin registro</span>
+                                        }
+                                    </td>
+                                    <td class="text-center font-weight-bold @(isOk ? "text-success" : (isInsufficient ? "text-danger" : "text-muted"))">
+                                        @if (row.Difference.HasValue)
+                                        {
+                                            @(row.Difference.Value > 0 ? "+" : "")@row.Difference.Value.ToString("0.##")
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (isOk)
+                                        {
+                                            <span class="badge badge-success rounded-pill"><i class="fas fa-check mr-1"></i> Disponible</span>
+                                        }
+                                        else if (isInsufficient)
+                                        {
+                                            <span class="badge badge-danger rounded-pill"><i class="fas fa-times mr-1"></i> Insuficiente</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-secondary rounded-pill"><i class="fas fa-question mr-1"></i> Sin registro</span>
+                                            <small class="d-block text-muted">Se entregará sin descontar</small>
                                         }
                                     </td>
                                 </tr>
@@ -90,42 +171,40 @@
                     </table>
                 </div>
 
+                @if (Model.IsApproved)
+                {
+                    <div class="alert alert-light border rounded mt-4 mb-0 small text-muted">
+                        <i class="fas fa-info-circle text-primary mr-1"></i>
+                        La solicitud ya está aprobada. Continúa con la entrega de los artículos en L-3.
+                    </div>
+                }
+
                 <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                    @if (Model.HasConflict)
+                    <a asp-page="./Requerimientos" asp-route-planId="@Model.PlanId"
+                       class="btn btn-outline-secondary btn-rounded px-4">
+                        <i class="mdi mdi-arrow-left mr-1"></i> Ajustar requerimientos
+                    </a>
+                    @if (Model.IsApproved)
                     {
-                        <a asp-page="./Requerimientos" asp-route-planId="@Model.PlanId" asp-route-conflict="true"
-                           class="btn btn-warning btn-rounded font-weight-bold px-4">
-                            <i class="mdi mdi-arrow-left mr-1"></i> Volver a requerimientos
-                        </a>
-                        <button type="button" class="btn btn-secondary btn-rounded" disabled>
-                            <i class="fas fa-lock mr-1"></i> Aprobar bloqueado
-                        </button>
-                    }
-                    else if (Model.IsApproved)
-                    {
-                        <a asp-page="./Requerimientos" asp-route-planId="@Model.PlanId"
-                           class="btn btn-outline-secondary btn-rounded px-4">
-                            <i class="mdi mdi-arrow-left mr-1"></i> Atrás
-                        </a>
                         <a asp-page="./L3" asp-route-id="@Model.PlanId"
                            class="btn btn-primary btn-rounded font-weight-bold px-4">
                             Continuar en L-3 <i class="mdi mdi-arrow-right ml-1"></i>
                         </a>
                     }
+                    else if (canApprove)
+                    {
+                        <form method="post" asp-page-handler="Approve" asp-route-planId="@Model.PlanId" class="d-inline" id="form-approve">
+                            <input type="hidden" name="OriginLabId" value="@selectedOriginId" />
+                            <button type="submit" class="btn btn-success btn-rounded font-weight-bold px-4 js-approve-confirm">
+                                <i class="mdi mdi-check mr-1"></i> Aprobar y pasar a L-3
+                            </button>
+                        </form>
+                    }
                     else
                     {
-                        <a asp-page="./Requerimientos" asp-route-planId="@Model.PlanId"
-                           class="btn btn-outline-secondary btn-rounded px-4">
-                            <i class="mdi mdi-arrow-left mr-1"></i> Ajustar requerimientos
-                        </a>
-                        @if (canApprove)
-                        {
-                            <form method="post" asp-page-handler="Approve" asp-route-planId="@Model.PlanId" class="d-inline" id="form-approve">
-                                <button type="submit" class="btn btn-success btn-rounded font-weight-bold px-4 js-approve-confirm">
-                                    <i class="mdi mdi-check mr-1"></i> Aprobar y pasar a L-3
-                                </button>
-                            </form>
-                        }
+                        <button type="button" class="btn btn-secondary btn-rounded" disabled>
+                            <i class="fas fa-lock mr-1"></i> Aprobar no disponible
+                        </button>
                     }
                 </div>
             </div>
@@ -133,9 +212,22 @@
     }
 </div>
 
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        .bg-light-primary { background-color: #e8e7ff; }
+    </style>
+}
+
 @section Scripts {
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         (function () {
+            $('.select2').select2({
+                width: '100%',
+                language: { noResults: function () { return 'Sin coincidencias'; } }
+            });
+
             var form = document.getElementById('form-approve');
             if (!form) return;
             form.addEventListener('submit', function (e) {
@@ -146,7 +238,7 @@
                 }
                 Swal.fire({
                     title: '¿Aprobar práctica?',
-                    text: 'Se confirmará la disponibilidad y la práctica pasará al paso L-3.',
+                    text: 'La solicitud avanzará al paso L-3 para registrar la entrega. Aunque haya faltantes, la solicitud se registra; la entrega es la que bloqueará si no alcanza el stock.',
                     type: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Sí, aprobar',
@@ -159,6 +251,15 @@
                     }
                 });
             });
+
+            // El selector de laboratorio de origen recarga la página con GET (D1: cambio en vivo).
+            var $origin = $('#origin-select');
+            if ($origin.length) {
+                $origin.on('change', function () {
+                    var formOrigin = document.getElementById('form-origin');
+                    if (formOrigin) formOrigin.submit();
+                });
+            }
         })();
     </script>
 }

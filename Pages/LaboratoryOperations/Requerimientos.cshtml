@@ -1,6 +1,10 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.RequerimientosModel
-@{ ViewData["Title"] = "Requerimientos — Paso 2"; var canWrite = Model.IsEditable && !(Model.Context?.IsReadOnly ?? false); }
+@{
+    ViewData["Title"] = "Requerimientos — Paso 2";
+    var canWrite = Model.IsEditable && !(Model.Context?.IsReadOnly ?? false);
+    var showRecipeCard = canWrite && Model.Recipe.Count > 0;
+}
 
 <div class="container-fluid mt-3">
     @if (Model.Context != null)
@@ -34,31 +38,118 @@
             @if (canWrite)
             {
                 <div class="col-lg-4 mb-4 mb-lg-0">
+                    @if (showRecipeCard)
+                    {
+                        <div class="card border-0 shadow-sm rounded-lg mb-4">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="rounded-circle bg-light-info text-info p-2 mr-2"><i class="fas fa-book-open"></i></div>
+                                    <div>
+                                        <h6 class="font-weight-bold text-info mb-0">Receta de la práctica</h6>
+                                        <small class="text-muted">@Model.Recipe.Count artículo(s) declarado(s) en la receta del catálogo.</small>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-2 small text-muted mb-3">
+                                    <span class="badge badge-light border"><i class="fas fa-users mr-1"></i> Estudiantes: <strong class="text-info">@(Model.StudentCount?.ToString() ?? "—")</strong></span>
+                                    <span class="badge badge-light border"><i class="fas fa-divide mr-1"></i> Factor: <strong class="text-info">@(Model.ScalingFactor?.ToString() ?? "—")</strong></span>
+                                </div>
+
+                                <div class="table-responsive" style="max-height: 260px; overflow-y:auto;">
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <thead class="bg-light text-dark">
+                                            <tr>
+                                                <th>Artículo</th>
+                                                <th class="text-center">Base</th>
+                                                <th class="text-center">Calculada</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var r in Model.Recipe)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="font-weight-bold small">@r.ArticleName</div>
+                                                        <small class="text-muted">@r.ArticleCode</small>
+                                                        @if (r.ArticlePending)
+                                                        {
+                                                            <span class="badge badge-warning badge-pill ml-1" title="Artículo por confirmar">Por confirmar</span>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(r.Note))
+                                                        {
+                                                            <small class="d-block text-muted">@r.Note</small>
+                                                        }
+                                                    </td>
+                                                    <td class="text-center small">@(r.BaseQuantity?.ToString("0.##") ?? "—")</td>
+                                                    <td class="text-center font-weight-bold">
+                                                        @(r.ComputedQuantity?.ToString("0.##") ?? "—")
+                                                        <small class="d-block text-muted">@(r.IsScalable ? "Escalable" : "Fija")</small>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <form method="post" asp-page-handler="LoadRecipe" asp-route-planId="@Model.PlanId" class="mt-3">
+                                    <button type="submit" class="btn btn-info btn-rounded btn-block font-weight-bold js-load-recipe">
+                                        <i class="fas fa-magic mr-1"></i> Cargar receta
+                                    </button>
+                                </form>
+                                <small class="text-muted d-block mt-1 small">Solo se agregan los artículos que aún no están en la lista.</small>
+                            </div>
+                        </div>
+                    }
+
                     <div class="card border-0 shadow-sm rounded-lg">
                         <div class="card-body p-4">
-                            <h5 class="font-weight-bold text-primary mb-1">Agregar material</h5>
-                            <p class="text-muted small">Selecciona el equipo y la cantidad a solicitar.</p>
+                            <h5 class="font-weight-bold text-primary mb-1">Agregar artículo</h5>
+                            <p class="text-muted small">Selecciona el artículo y la cantidad a solicitar; puedes vincular una unidad física concreta del laboratorio.</p>
                             <form method="post" asp-page-handler="Add" asp-route-planId="@Model.PlanId">
                                 <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
                                 <div class="form-group">
-                                    <label asp-for="Input.EquipmentId" class="small font-weight-bold text-muted">Material / utensilio</label>
-                                    <select asp-for="Input.EquipmentId" class="custom-select">
-                                        <option value="0">— Seleccionar —</option>
-                                        @foreach (var item in Model.Catalog)
+                                    <label asp-for="Input.ArticleId" class="small font-weight-bold text-muted"></label>
+                                    <select asp-for="Input.ArticleId" id="article-select" class="form-control select2-article" data-placeholder="— Buscar artículo —">
+                                        <option value="0">— Seleccionar artículo —</option>
+                                        @foreach (var a in Model.Articles)
                                         {
-                                            <option value="@item.EquipmentId">@item.Name - @item.OperationalInLab operativos de @item.TotalInLab</option>
+                                            var parts = new List<string> { a.Code, a.Name };
+                                            if (!string.IsNullOrWhiteSpace(a.Category)) parts.Add(a.Category);
+                                            var label = string.Join(" · ", parts);
+                                            if (a.Pending) label += " (Por confirmar)";
+                                            <option value="@a.Id">@label</option>
                                         }
                                     </select>
-                                    <span asp-validation-for="Input.EquipmentId" class="text-danger small"></span>
-                                    @if (Model.Catalog.Count == 0)
+                                    <span asp-validation-for="Input.ArticleId" class="text-danger small"></span>
+                                    @if (Model.Articles.Count == 0)
                                     {
-                                        <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay equipos registrados en este laboratorio.</small>
+                                        <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay artículos activos registrados.</small>
                                     }
                                 </div>
                                 <div class="form-group">
-                                    <label asp-for="Input.Quantity" class="small font-weight-bold text-muted">Cantidad solicitada</label>
-                                    <input asp-for="Input.Quantity" type="number" class="form-control" min="1" max="999" />
+                                    <label asp-for="Input.Quantity" class="small font-weight-bold text-muted"></label>
+                                    <input asp-for="Input.Quantity" type="number" step="0.01" min="0.01" max="999999" class="form-control" />
                                     <span asp-validation-for="Input.Quantity" class="text-danger small"></span>
+                                </div>
+                                <div class="form-group">
+                                    <label asp-for="Input.EquipmentUnitId" class="small font-weight-bold text-muted"></label>
+                                    <select asp-for="Input.EquipmentUnitId" id="unit-select" class="form-control select2-unit" data-placeholder="— Sin unidad específica —">
+                                        <option value="">— Sin unidad específica —</option>
+                                        @foreach (var u in Model.Units)
+                                        {
+                                            <option value="@u.Id">@(u.InventoryNumber) · @(u.EquipmentName)</option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                    @if (Model.Units.Count == 0)
+                                    {
+                                        <small class="text-muted d-block mt-1"><i class="fas fa-info-circle mr-1"></i> La práctica no tiene un laboratorio asignado o no hay unidades físicas registradas.</small>
+                                    }
+                                </div>
+                                <div class="form-group">
+                                    <label asp-for="Input.Observations" class="small font-weight-bold text-muted"></label>
+                                    <textarea asp-for="Input.Observations" class="form-control" rows="2" placeholder="Notas sobre el artículo"></textarea>
+                                    <span asp-validation-for="Input.Observations" class="text-danger small"></span>
                                 </div>
                                 <button type="submit" class="btn btn-primary btn-rounded btn-block font-weight-bold">
                                     <i class="mdi mdi-plus mr-1"></i> Agregar a la lista
@@ -66,7 +157,7 @@
                             </form>
                             <div class="alert alert-light border small mt-4 mb-0">
                                 <i class="fas fa-info-circle text-primary mr-1"></i>
-                                Puedes cargar una cantidad superior al stock para evidenciar el conflicto de disponibilidad.
+                                Si agregas el mismo artículo y unidad, su cantidad se acumula en la misma línea.
                             </div>
                         </div>
                     </div>
@@ -91,7 +182,13 @@
                         {
                             <div class="text-center rounded-lg p-5 bg-light">
                                 <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-                                <p class="text-muted mb-0">Aún no hay materiales agregados a esta práctica.</p>
+                                <p class="text-muted mb-0">Aún no hay artículos en esta práctica.</p>
+                                @if (canWrite && Model.Recipe.Count > 0)
+                                {
+                                    <small class="d-block text-info mt-2">
+                                        <i class="fas fa-book-open mr-1"></i> Usa <strong>Cargar receta</strong> para traer los artículos declarados en el catálogo.
+                                    </small>
+                                }
                             </div>
                         }
                         else
@@ -100,25 +197,43 @@
                                 <table class="table table-hover mb-0">
                                     <thead class="bg-dark text-white">
                                         <tr>
-                                            <th>MATERIAL</th>
+                                            <th>ARTÍCULO</th>
+                                            <th>UNIDAD FÍSICA</th>
                                             <th class="text-center">CANTIDAD</th>
-                                            <th class="text-center">OPERATIVOS EN LABORATORIO</th>
+                                            <th>OBSERVACIONES</th>
                                             <th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach (var item in Model.Items)
                                         {
-                                            var conflict = item.Quantity > item.OperationalInLab;
-                                            <tr class="@(conflict ? "table-danger" : "")">
-                                                <td class="font-weight-bold">@item.EquipmentName</td>
-                                                <td class="text-center" style="width:180px;">
+                                            <tr>
+                                                <td class="font-weight-bold">
+                                                    @item.ArticleName
+                                                    <small class="d-block text-muted">@item.ArticleCode@(string.IsNullOrWhiteSpace(item.Unit) ? "" : $" · {item.Unit}")</small>
+                                                    @if (item.ArticlePending)
+                                                    {
+                                                        <span class="badge badge-warning badge-pill mt-1">Por confirmar</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    @if (!string.IsNullOrWhiteSpace(item.InventoryNumber))
+                                                    {
+                                                        <span class="badge badge-secondary">@item.InventoryNumber</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted small">—</span>
+                                                    }
+                                                </td>
+                                                <td class="text-center" style="width:200px;">
                                                     @if (canWrite)
                                                     {
                                                         <form method="post" asp-page-handler="UpdateQuantity" asp-route-planId="@Model.PlanId" class="m-0">
                                                             <div class="input-group input-group-sm">
                                                                 <input type="hidden" name="detailId" value="@item.DetailId" />
-                                                                <input type="number" name="newQuantity" class="form-control text-center" value="@item.Quantity" min="1" max="999" />
+                                                                <input type="number" name="newQuantity" step="0.01" min="0.01" max="999999"
+                                                                       class="form-control text-center" value="@(item.Quantity?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))" />
                                                                 <div class="input-group-append">
                                                                     <button type="submit" class="btn btn-outline-success" title="Actualizar cantidad">
                                                                         <i class="mdi mdi-check"></i>
@@ -129,12 +244,18 @@
                                                     }
                                                     else
                                                     {
-                                                        <span class="font-weight-bold">@item.Quantity</span>
+                                                        <span class="font-weight-bold">@(item.Quantity?.ToString("0.##") ?? "0")</span>
                                                     }
                                                 </td>
-                                                <td class="text-center">
-                                                    @item.OperationalInLab<br />
-                                                    <small class="@(conflict ? "text-danger" : "text-success")">@(conflict ? "Insuficiente" : "Disponible")</small>
+                                                <td class="small text-muted">
+                                                    @if (!string.IsNullOrWhiteSpace(item.Observations))
+                                                    {
+                                                        @item.Observations
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">—</span>
+                                                    }
                                                 </td>
                                                 <td class="text-right">
                                                     @if (canWrite)
@@ -185,31 +306,82 @@
     }
 </div>
 
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        .bg-light-info { background-color: #e6f3fb; }
+    </style>
+}
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
-        document.querySelectorAll('form.js-form-remove-requirement').forEach(function (form) {
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                if (typeof Swal === 'undefined') {
-                    HTMLFormElement.prototype.submit.call(form);
-                    return;
+        (function () {
+            $('.select2').select2({
+                width: '100%',
+                language: {
+                    noResults: function () { return 'Sin coincidencias'; }
                 }
-                Swal.fire({
-                    title: '¿Retirar requerimiento?',
-                    text: 'Esta acción elimina el material de la práctica en estado Planificado.',
-                    type: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, retirar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#bb1e2d',
-                    cancelButtonColor: '#6c757d'
-                }).then(function (result) {
-                    if (result && (result.isConfirmed === true || result.value === true)) {
+            });
+
+            $('.select2-article').select2({
+                width: '100%',
+                placeholder: '— Buscar artículo —',
+                language: { noResults: function () { return 'Sin coincidencias'; } }
+            });
+
+            $('.select2-unit').select2({
+                width: '100%',
+                placeholder: '— Sin unidad específica —',
+                allowClear: true,
+                language: { noResults: function () { return 'Sin coincidencias'; } }
+            });
+
+            document.querySelectorAll('form.js-form-remove-requirement').forEach(function (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (typeof Swal === 'undefined') {
                         HTMLFormElement.prototype.submit.call(form);
+                        return;
                     }
+                    Swal.fire({
+                        title: '¿Retirar requerimiento?',
+                        text: 'Esta acción elimina el artículo de la práctica en estado Planificado.',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, retirar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#bb1e2d',
+                        cancelButtonColor: '#6c757d'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            HTMLFormElement.prototype.submit.call(form);
+                        }
+                    });
                 });
             });
-        });
+
+            document.querySelectorAll('form.js-load-recipe').forEach(function (form) {
+                form.addEventListener('submit', function (e) {
+                    if (typeof Swal === 'undefined') return;
+                    e.preventDefault();
+                    Swal.fire({
+                        title: '¿Cargar receta de la práctica?',
+                        text: 'Se agregarán a la solicitud los artículos declarados en la receta del catálogo que aún no están en la lista. Las cantidades se escalan según los estudiantes y el factor configurados.',
+                        type: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, cargar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#17a2b8',
+                        cancelButtonColor: '#6c757d'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            HTMLFormElement.prototype.submit.call(form);
+                        }
+                    });
+                });
+            });
+        })();
     </script>
 }

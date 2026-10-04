@@ -121,19 +121,16 @@ public class PracticasModel : PageModel
                 ScheduledEndDate = r.ScheduledEndDate,
                 Status = r.Status,
                 TeacherPersonId = r.TeacherPersonId,
-                SubjectName = r.Subject.Name,
-                GroupName = r.Group.Name,
-                LaboratoryName = r.Laboratory.Name,
+                SubjectName = r.Subject != null ? r.Subject.Name : "Sin materia",
+                GroupLabel = !string.IsNullOrEmpty(r.GroupName) ? r.GroupName : (r.Group != null ? r.Group.Name : "—"),
+                LaboratoryName = r.AllLaboratories ? "Todos los laboratorios"
+                    : (r.Laboratory != null ? r.Laboratory.Name : "—"),
                 HasDetails = r.Details.Any()
             })
             .ToListAsync();
 
         // Docentes: una sola consulta complementaria para evitar N+1.
-        var teacherIds = projections
-            .Where(p => p.TeacherPersonId.HasValue)
-            .Select(p => p.TeacherPersonId!.Value)
-            .Distinct()
-            .ToList();
+        var teacherIds = projections.Select(p => p.TeacherPersonId).Distinct().ToList();
         var teachers = teacherIds.Count == 0
             ? new Dictionary<int, string>()
             : await _context.Interns.AsNoTracking()
@@ -158,9 +155,9 @@ public class PracticasModel : PageModel
             Code = L3Codes.Format(p.Id),
             PracticeName = p.PracticeName,
             SubjectName = p.SubjectName,
-            GroupName = p.GroupName,
+            GroupName = p.GroupLabel,
             LaboratoryName = p.LaboratoryName,
-            TeacherName = p.TeacherPersonId.HasValue && teachers.TryGetValue(p.TeacherPersonId.Value, out var t) ? t : "Sin docente",
+            TeacherName = teachers.TryGetValue(p.TeacherPersonId, out var t) ? t : "Sin docente",
             AcademicWeek = p.AcademicWeek,
             WeekdayName = AcademicWeekGenerator.WeekdayOf(p.ScheduledDate) is var wd && wd >= 1 && wd <= 5
                 ? AcademicWeekGenerator.WeekdayNames[wd]
@@ -182,9 +179,9 @@ public class PracticasModel : PageModel
         public DateTime ScheduledDate { get; init; }
         public DateTime? ScheduledEndDate { get; init; }
         public string Status { get; init; } = string.Empty;
-        public int? TeacherPersonId { get; init; }
+        public int TeacherPersonId { get; init; }
         public string SubjectName { get; init; } = string.Empty;
-        public string GroupName { get; init; } = string.Empty;
+        public string GroupLabel { get; init; } = string.Empty;
         public string LaboratoryName { get; init; } = string.Empty;
         public bool HasDetails { get; init; }
     }

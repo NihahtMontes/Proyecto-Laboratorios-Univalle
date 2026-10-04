@@ -68,24 +68,25 @@ namespace Proyecto_Laboratorios_Univalle.Data
             var processedUnits = new HashSet<int>();
             foreach(var incident in newL5Incidents)
             {
-                if (!processedUnits.Add(incident.EquipmentUnitId))
+                // Los incidentes de artículos (sin unidad física) no cambian el estado de ningún equipo.
+                if (incident.EquipmentUnitId is not int unitId || !processedUnits.Add(unitId))
                     continue;
 
                 // Un solo historial abierto por unidad: cerrar el vigente y alinear el estado actual.
                 var openHistories = await EquipmentStateHistories.AsTracking()
-                    .Where(h => h.EquipmentUnitId == incident.EquipmentUnitId && h.EndDate == null)
+                    .Where(h => h.EquipmentUnitId == unitId && h.EndDate == null)
                     .ToListAsync(cancellationToken);
                 foreach (var open in openHistories)
                     open.EndDate = now;
 
                 var unit = await EquipmentUnits.AsTracking()
-                    .FirstOrDefaultAsync(u => u.Id == incident.EquipmentUnitId, cancellationToken);
+                    .FirstOrDefaultAsync(u => u.Id == unitId, cancellationToken);
                 if (unit != null)
                     unit.CurrentStatus = Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Broken;
 
                 EquipmentStateHistories.Add(new EquipmentStateHistory
                 {
-                    EquipmentUnitId = incident.EquipmentUnitId,
+                    EquipmentUnitId = unitId,
                     StartDate = now,
                     Reason = $"INCIDENTE L5 REGISTRADO: {incident.IncidentType} - {incident.DamageDescription}. Estado: {incident.RepositionStatus}",
                     Status = Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Broken,
@@ -389,6 +390,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<MeasurementUnit> MeasurementUnits { get; set; } = null!;
         public DbSet<ArticleStock> ArticleStocks { get; set; } = null!;
         public DbSet<PracticeSchedule> PracticeSchedules { get; set; } = null!;
+        public DbSet<DepartureReturn> DepartureReturns { get; set; } = null!;
+        public DbSet<DepartureReturnItem> DepartureReturnItems { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -824,6 +827,41 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<L3RequestDetail>().HasOne(d => d.EquipmentUnit).WithMany().HasForeignKey(d => d.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<L5Incident>().HasOne(i => i.EquipmentUnit).WithMany().HasForeignKey(i => i.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<L5Incident>().HasOne(i => i.L3Request).WithMany(r => r.Incidents).HasForeignKey(i => i.L3RequestId).OnDelete(DeleteBehavior.Restrict);
+
+            // Circuito L-3 por artículo (V4): solicitud -> salida -> devolución -> L-5.
+            modelBuilder.Entity<L3Request>().HasIndex(r => r.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            modelBuilder.Entity<L3Request>().HasOne(r => r.Management).WithMany().HasForeignKey(r => r.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.PracticeSchedule).WithMany().HasForeignKey(r => r.PracticeScheduleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.Campus).WithMany().HasForeignKey(r => r.CampusId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.Career).WithMany().HasForeignKey(r => r.CareerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.CourseGroup).WithMany().HasForeignKey(r => r.CourseGroupId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().Property(r => r.AllLaboratories).HasDefaultValue(false);
+            modelBuilder.Entity<L3Request>().ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_L3Requests_Laboratory", "[AllLaboratories] = 1 OR [LaboratoryId] IS NOT NULL");
+                t.HasCheckConstraint("CK_L3Requests_Status", "[Status] IN (N'Planificado', N'Aprobado', N'Finalizado', N'Cancelado')");
+            });
+            modelBuilder.Entity<L3RequestDetail>().HasIndex(d => d.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            modelBuilder.Entity<L3RequestDetail>().HasOne(d => d.Article).WithMany().HasForeignKey(d => d.ArticleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3RequestDetail>().ToTable(t =>
+                t.HasCheckConstraint("CK_L3RequestDetails_RequestedQuantity", "[RequestedQuantity] IS NULL OR [RequestedQuantity] > 0"));
+            modelBuilder.Entity<Departure>().HasIndex(d => d.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            modelBuilder.Entity<Departure>().HasOne(d => d.L3Request).WithMany(r => r.Departures).HasForeignKey(d => d.L3RequestId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DepartureItem>().HasIndex(i => i.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            modelBuilder.Entity<DepartureItem>().HasOne(i => i.MeasurementUnit).WithMany().HasForeignKey(i => i.MeasurementUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DepartureReturn>().HasQueryFilter(r => r.Departure!.Status != LoanStatus.Cancelled);
+            modelBuilder.Entity<DepartureReturn>().HasIndex(r => r.Code).IsUnique();
+            modelBuilder.Entity<DepartureReturn>().HasOne(r => r.Departure).WithMany(d => d.Returns).HasForeignKey(r => r.DepartureId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DepartureReturn>().HasOne(r => r.ResponsiblePerson).WithMany().HasForeignKey(r => r.ResponsiblePersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DepartureReturn>().ToTable(t => t.HasCheckConstraint("CK_DepartureReturns_Status", "[Status] IN (0, 1, 2, 9)"));
+            modelBuilder.Entity<DepartureReturnItem>().HasQueryFilter(i => !i.DepartureItem!.IsRemoved);
+            modelBuilder.Entity<DepartureReturnItem>().HasIndex(i => i.Code).IsUnique();
+            modelBuilder.Entity<DepartureReturnItem>().HasOne(i => i.DepartureReturn).WithMany(r => r.Items).HasForeignKey(i => i.DepartureReturnId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DepartureReturnItem>().HasOne(i => i.DepartureItem).WithMany().HasForeignKey(i => i.DepartureItemId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DepartureReturnItem>().ToTable(t => t.HasCheckConstraint("CK_DepartureReturnItems_Quantity", "[ReturnedQuantity] >= 0"));
+            modelBuilder.Entity<L5Incident>().HasOne(i => i.Article).WithMany().HasForeignKey(i => i.ArticleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L5Incident>().ToTable(t =>
+                t.HasCheckConstraint("CK_L5Incidents_Target", "[EquipmentUnitId] IS NOT NULL OR [ArticleId] IS NOT NULL"));
             // Planificación académica: una por gestión y carrera; semanas lunes-viernes; prácticas = L3Request.
             modelBuilder.Entity<AcademicPlanning>().HasQueryFilter(p => !p.IsDeleted);
             modelBuilder.Entity<AcademicWeek>().HasQueryFilter(w => !w.AcademicPlanning.IsDeleted);
@@ -865,6 +903,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
                     "CK_DepartureItems_ExactlyOneReference",
                     "CASE WHEN [EquipmentUnitId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [ArticleId] IS NULL THEN 0 ELSE 1 END = 1");
                 table.HasCheckConstraint("CK_DepartureItems_Quantity", "[Quantity] IS NULL OR [Quantity] > 0");
+                table.HasCheckConstraint("CK_DepartureItems_ReturnedQuantity",
+                    "[ReturnedQuantity] IS NULL OR ([ReturnedQuantity] >= 0 AND ([Quantity] IS NULL OR [ReturnedQuantity] <= [Quantity]))");
             });
             modelBuilder.Entity<Article>().ToTable(table =>
             {

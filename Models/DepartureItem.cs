@@ -23,16 +23,25 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Producto")]
         public string? ProductName { get; set; }
 
+        [StringLength(50)]
+        public string? Code { get; set; }
+
         [Display(Name = "Cantidad")]
-        [Range(1, 9999, ErrorMessage = "La cantidad debe ser mayor a 0")]
-        public int? Quantity { get; set; }
+        [Range(0.01, 999999, ErrorMessage = "La cantidad debe ser mayor a 0")]
+        [Column(TypeName = "decimal(12,2)")]
+        public decimal? Quantity { get; set; }
+
+        [Display(Name = "Unidad de medida")]
+        public int? MeasurementUnitId { get; set; }
 
         [StringLength(50)]
         [Display(Name = "Unidad de Medida")]
         public string? UnitOfMeasure { get; set; } = "UNIDAD";
 
+        /// <summary>Acumulado de DepartureReturnItems (se sincroniza para las pantallas antiguas).</summary>
         [Display(Name = "Cantidad Devuelta")]
-        public int? ReturnedQuantity { get; set; }
+        [Column(TypeName = "decimal(12,2)")]
+        public decimal? ReturnedQuantity { get; set; }
 
         [StringLength(500)]
         [Display(Name = "Observaciones")]
@@ -62,6 +71,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey(nameof(ArticleId))]
         public virtual Article? Article { get; set; }
 
+        [ForeignKey(nameof(MeasurementUnitId))]
+        public virtual MeasurementUnit? MeasurementUnit { get; set; }
+
         [ForeignKey("CreatedById")]
         public virtual User? CreatedBy { get; set; }
 
@@ -70,6 +82,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [NotMapped]
         [Display(Name = "Saldo")]
-        public int? Balance => Quantity.HasValue ? Quantity.Value - (ReturnedQuantity ?? 0) : null;
+        public decimal? Balance => Quantity.HasValue ? Quantity.Value - (ReturnedQuantity ?? 0) : null;
     }
 }

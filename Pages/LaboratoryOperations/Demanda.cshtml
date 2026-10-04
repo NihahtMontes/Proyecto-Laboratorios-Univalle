@@ -110,7 +110,7 @@
                     </div>
                     <div>
                         <div class="small text-muted text-uppercase font-weight-bold">Cantidad solicitada</div>
-                        <div class="h3 mb-0 font-weight-bold">@Model.TotalRequested</div>
+                        <div class="h3 mb-0 font-weight-bold">@Model.TotalRequested.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)</div>
                     </div>
                 </div>
             </div>
@@ -147,10 +147,19 @@
         <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                    <h6 class="font-weight-bold text-primary mb-1">CONSOLIDADO DE DEMANDA</h6>
-                    <span class="text-muted small">El stock operativo se calcula a partir de las unidades operativas del inventario del laboratorio del plan.</span>
+                    <h6 class="font-weight-bold text-primary mb-1">CONSOLIDADO DE DEMANDA POR ARTÍCULO</h6>
+                    <span class="text-muted small">
+                        @if (!string.IsNullOrEmpty(Model.OriginLaboratoryCode))
+                        {
+                            <span>Stock comparado con el Economato (<strong>@Model.OriginLaboratoryCode</strong>).</span>
+                        }
+                        else
+                        {
+                            <span>No se encontró un laboratorio con código "ECONO" para comparar el stock; las columnas Disponible mostrarán "Sin registro".</span>
+                        }
+                    </span>
                 </div>
-                <span class="badge badge-light text-muted">@Model.Rows.Count ítems</span>
+                <span class="badge badge-light text-muted">@Model.Rows.Count artículos</span>
             </div>
 
             @if (Model.Rows.Count == 0)
@@ -158,7 +167,7 @@
                 <div class="text-center py-5">
                     <i class="fas fa-chart-line text-muted mb-3" style="font-size:36px;"></i>
                     <h5 class="font-weight-bold">Todavía no hay requerimientos consolidados</h5>
-                    <p class="text-muted mb-3">Crea una práctica y agrega materiales para ver su demanda aquí.</p>
+                    <p class="text-muted mb-3">Crea una práctica y agrega artículos para ver su demanda aquí.</p>
                     <a asp-page="./Planificacion" class="btn btn-primary">Crear planificación</a>
                 </div>
             }
@@ -169,12 +178,11 @@
                         <thead class="bg-dark text-white">
                             <tr>
                                 <th class="border-0">#</th>
-                                <th class="border-0">MATERIAL / UTENSILIO</th>
-                                <th class="border-0">LABORATORIO</th>
+                                <th class="border-0">ARTÍCULO</th>
                                 <th class="border-0 text-center">CATEGORÍA</th>
                                 <th class="border-0 text-center">SOLICITADO</th>
-                                <th class="border-0 text-center">STOCK OPERATIVO</th>
-                                <th class="border-0 text-center">BALANCE</th>
+                                <th class="border-0 text-center">DISPONIBLE</th>
+                                <th class="border-0 text-center">SALDO</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -182,18 +190,43 @@
                             {
                                 var row = Model.Rows[index];
                                 var balanceClass = row.Balance < 0 ? "text-danger" : "text-success";
-                                var categoryClass = row.Category == "Utensilio" ? "primary" : row.Category == "Otro" ? "secondary" : "info";
+                                var balanceSign = row.Balance > 0 ? "+" : string.Empty;
                                 <tr>
                                     <td class="text-muted small">@(index + 1)</td>
                                     <td>
-                                        <div class="font-weight-bold">@row.Name</div>
-                                        <div class="text-muted small">@row.PlanCount práctica(s) · @row.Code</div>
+                                        <div class="font-weight-bold">
+                                            @row.Name
+                                            @if (row.ReviewPending)
+                                            {
+                                                <span class="badge badge-warning text-dark ml-1" title="Artículo con revisión pendiente">
+                                                    <i class="fas fa-exclamation-circle mr-1"></i>Por confirmar
+                                                </span>
+                                            }
+                                        </div>
+                                        <div class="text-muted small">@row.Code · @row.PlanCount práctica(s)</div>
                                     </td>
-                                    <td class="small text-muted">@row.LaboratoryName</td>
-                                    <td class="text-center"><span class="badge badge-@categoryClass">@row.Category</span></td>
-                                    <td class="text-center font-weight-bold">@row.Requested</td>
-                                    <td class="text-center">@row.Available</td>
-                                    <td class="text-center @balanceClass font-weight-bold">@(row.Balance > 0 ? "+" : "")@row.Balance</td>
+                                    <td class="text-center">
+                                        @if (!string.IsNullOrEmpty(row.Category))
+                                        {
+                                            <span class="badge badge-info">@row.Category</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted small">—</span>
+                                        }
+                                    </td>
+                                    <td class="text-center font-weight-bold">@row.Requested.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)</td>
+                                    <td class="text-center">
+                                        @if (row.Available.HasValue)
+                                        {
+                                            <span>@row.Available.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-light text-muted">Sin registro</span>
+                                        }
+                                    </td>
+                                    <td class="text-center @balanceClass font-weight-bold">@balanceSign@row.Balance.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)</td>
                                 </tr>
                             }
                         </tbody>
@@ -205,7 +238,7 @@
 
     <div class="alert alert-info border-0 shadow-sm mt-4 mb-0">
         <i class="fas fa-info-circle mr-2"></i>
-        Esta pantalla agrega los requerimientos de las prácticas L-3 activas a partir del flujo persistido (planificación, requerimientos, disponibilidad y devolución).
+        Esta pantalla agrega los requerimientos de las prácticas L-3 activas a partir del flujo persistido (planificación, requerimientos, disponibilidad y devolución). El stock proviene de los registros de existencias del Economato.
     </div>
     }
 </div>

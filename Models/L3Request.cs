@@ -4,20 +4,52 @@ using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
+    /// <summary>
+    /// Solicitud L-3 (= SolicitudesL3): pedido de artículos de una práctica programada o extraordinaria.
+    /// </summary>
     public class L3Request : IAuditable
     {
         [Key]
         public int Id { get; set; }
 
-        [Required]
-        public int SubjectId { get; set; }
-        [ForeignKey("SubjectId")]
-        public Subject Subject { get; set; } = null!;
+        /// <summary>SolicitudL3Codigo (PRA-00001 en la app).</summary>
+        [StringLength(50)]
+        public string? Code { get; set; }
 
-        [Required]
-        public int GroupId { get; set; }
+        public int ManagementId { get; set; }
+        [ForeignKey("ManagementId")]
+        public Management? Management { get; set; }
+
+        /// <summary>Programación de la práctica (null = solicitud extraordinaria).</summary>
+        public int? PracticeScheduleId { get; set; }
+        [ForeignKey("PracticeScheduleId")]
+        public PracticeSchedule? PracticeSchedule { get; set; }
+
+        public DateTime RequestDate { get; set; }
+
+        public int? CampusId { get; set; }
+        [ForeignKey("CampusId")]
+        public Campus? Campus { get; set; }
+
+        public int? CareerId { get; set; }
+        [ForeignKey("CareerId")]
+        public Career? Career { get; set; }
+
+        public int? SubjectId { get; set; }
+        [ForeignKey("SubjectId")]
+        public Subject? Subject { get; set; }
+
+        /// <summary>Legado (grupos A–D). Reemplazado por CourseGroupId + GroupName.</summary>
+        public int? GroupId { get; set; }
         [ForeignKey("GroupId")]
-        public Group Group { get; set; } = null!;
+        public Group? Group { get; set; }
+
+        public int? CourseGroupId { get; set; }
+        [ForeignKey("CourseGroupId")]
+        public CourseGroup? CourseGroup { get; set; }
+
+        [StringLength(20)]
+        public string? GroupName { get; set; }
 
         // Legado de RamaDani: docente como usuario del sistema. Se conserva opcional.
         public int? TeacherId { get; set; }
@@ -25,18 +57,23 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public User? Teacher { get; set; }
 
         // Docente como actor (People, categoría Docente).
-        public int? TeacherPersonId { get; set; }
+        public int TeacherPersonId { get; set; }
         [ForeignKey("TeacherPersonId")]
         public Person? TeacherPerson { get; set; }
 
-        [Required]
-        public int LaboratoryId { get; set; }
+        /// <summary>Solicitud para todos los laboratorios (TodosLosLaboratorios); si no, LaboratoryId es obligatorio.</summary>
+        public bool AllLaboratories { get; set; }
+
+        public int? LaboratoryId { get; set; }
         [ForeignKey("LaboratoryId")]
-        public Laboratory Laboratory { get; set; } = null!;
+        public Laboratory? Laboratory { get; set; }
 
         [Required]
         [StringLength(255)]
         public string PracticeName { get; set; } = string.Empty;
+
+        [StringLength(20)]
+        public string? PracticeNumber { get; set; }
 
         /// <summary>Número de semana académica (se mantiene sincronizado con AcademicWeekRef).</summary>
         public int AcademicWeek { get; set; }
@@ -54,6 +91,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         public DateTime? ScheduledEndDate { get; set; }
 
+        public TimeSpan? StartTime { get; set; }
+
+        public TimeSpan? EndTime { get; set; }
+
         [StringLength(1000)]
         public string? Observations { get; set; }
 
@@ -62,6 +103,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         public ICollection<L3RequestDetail> Details { get; set; } = new List<L3RequestDetail>();
         public ICollection<L5Incident> Incidents { get; set; } = new List<L5Incident>();
+        public ICollection<Departure> Departures { get; set; } = new List<Departure>();
 
         // IAuditable implementation
         public DateTime CreatedDate { get; set; }

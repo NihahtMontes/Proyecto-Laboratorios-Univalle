@@ -13,10 +13,15 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("L3RequestId")]
         public L3Request? L3Request { get; set; }
 
-        [Required]
-        public int EquipmentUnitId { get; set; }
+        /// <summary>Unidad física afectada (equipos con inventario). Al menos uno de EquipmentUnitId / ArticleId.</summary>
+        public int? EquipmentUnitId { get; set; }
         [ForeignKey("EquipmentUnitId")]
-        public EquipmentUnit EquipmentUnit { get; set; } = null!;
+        public EquipmentUnit? EquipmentUnit { get; set; }
+
+        /// <summary>Artículo faltante o dañado de una salida L-3.</summary>
+        public int? ArticleId { get; set; }
+        [ForeignKey("ArticleId")]
+        public Article? Article { get; set; }
 
         /// <summary>
         /// Nombre completo del responsable (texto libre, según Excel L-5).

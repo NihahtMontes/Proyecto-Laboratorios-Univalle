@@ -104,9 +104,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 items.Add(new DepartureItem
                 {
                     ProductName = departure.EquipmentUnit?.Equipment?.Name ?? "Equipo Principal",
-                    Quantity = 1,
+                    Quantity = 1m,
                     UnitOfMeasure = "UNIDAD",
-                    ReturnedQuantity = 0
+                    ReturnedQuantity = 0m
                 });
             }
 

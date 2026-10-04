@@ -1,6 +1,33 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PracticaModel
-@{ ViewData["Title"] = "Práctica de laboratorio"; }
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Práctica de laboratorio";
+    var readonlyClass = Model.IsReadOnly ? "bg-light" : null;
+
+    // Serializamos las opciones de práctica para que el JS filtre por materia en el cliente.
+    var practiceJson = JsonSerializer.Serialize(
+        Model.PracticeOptions.Select(m => new
+        {
+            id = m.Id,
+            subjectId = m.SubjectId,
+            code = m.Code,
+            label = m.Label,
+            requirementCount = m.RequirementCount
+        }),
+        new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+    // Sugerencias de grupo (datalist) con sus metadatos para autocompletar estudiantes y factor.
+    var groupJson = JsonSerializer.Serialize(
+        Model.GroupOptions.Select(g => new
+        {
+            subjectId = g.SubjectId,
+            name = g.Name,
+            studentCount = g.StudentCount,
+            scalingFactor = g.ScalingFactor
+        }),
+        new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
 
 <div class="container-fluid mt-3">
     <partial name="_PlanningContext" model="Model.Context" />
@@ -14,7 +41,7 @@
                             <div class="rounded-circle bg-light-primary text-primary p-3 mr-3"><i class="fas fa-flask fa-lg"></i></div>
                             <div>
                                 <h5 class="font-weight-bold text-primary mb-1">Datos de la práctica</h5>
-                                <small class="text-muted">Selecciona el laboratorio, responsable, materia, grupo y la semana académica en la que se ejecutará.</small>
+                                <small class="text-muted">Selecciona el laboratorio, docente, materia, práctica del catálogo y la semana académica en la que se ejecutará.</small>
                             </div>
                         </div>
 
@@ -58,6 +85,17 @@
                             </div>
                         }
 
+                        @if (!string.IsNullOrWhiteSpace(Model.ScheduleCode))
+                        {
+                            <div class="alert alert-info border-0 rounded d-flex align-items-center mb-4 small">
+                                <i class="fas fa-calendar-check fa-2x mr-3"></i>
+                                <div>
+                                    <strong>Programación vinculada:</strong> <span class="font-monospace">@Model.ScheduleCode</span><br />
+                                    <span class="text-muted">Esta práctica ya tiene una programación registrada en la gestión.</span>
+                                </div>
+                            </div>
+                        }
+
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label asp-for="Input.LaboratoryId" class="small font-weight-bold text-muted"></label>
@@ -86,7 +124,7 @@
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label asp-for="Input.SubjectId" class="small font-weight-bold text-muted"></label>
-                                <select asp-for="Input.SubjectId" asp-items="Model.SubjectList" class="form-control select2" disabled="@(Model.IsReadOnly ? "disabled" : null)">
+                                <select asp-for="Input.SubjectId" asp-items="Model.SubjectList" class="form-control select2" id="subject-select" disabled="@(Model.IsReadOnly ? "disabled" : null)">
                                     <option value="0">— Seleccionar materia —</option>
                                 </select>
                                 <span asp-validation-for="Input.SubjectId" class="text-danger small"></span>
@@ -96,23 +134,44 @@
                                 }
                             </div>
                             <div class="form-group col-md-6">
-                                <label asp-for="Input.GroupId" class="small font-weight-bold text-muted"></label>
-                                <select asp-for="Input.GroupId" asp-items="Model.GroupList" class="form-control select2" disabled="@(Model.IsReadOnly ? "disabled" : null)">
-                                    <option value="0">— Seleccionar grupo —</option>
+                                <label asp-for="Input.PracticeId" class="small font-weight-bold text-muted"></label>
+                                <select asp-for="Input.PracticeId" id="practice-select" class="form-control select2" disabled="@(Model.IsReadOnly ? "disabled" : null)" data-placeholder="— Seleccionar práctica —">
+                                    <option value="0">— Seleccionar práctica —</option>
                                 </select>
-                                <span asp-validation-for="Input.GroupId" class="text-danger small"></span>
-                                @if (Model.GroupList.Count() == 0)
-                                {
-                                    <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay grupos registrados.</small>
-                                }
+                                <span asp-validation-for="Input.PracticeId" class="text-danger small"></span>
+                                <small id="practice-hint" class="text-muted d-block mt-1" style="display:none;"></small>
+                                <small id="practice-empty-hint" class="text-warning d-block mt-1" style="display:none;">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i> No hay prácticas del catálogo para la materia seleccionada.
+                                    <a href="/Catalogs/Practices/Create" class="font-weight-bold ml-1">Registrar práctica</a>
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.GroupName" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.GroupName" id="group-name" list="group-options" maxlength="20" class="form-control text-uppercase @readonlyClass" placeholder="Ej: A1, B, LND-2" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
+                                <datalist id="group-options"></datalist>
+                                <span asp-validation-for="Input.GroupName" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.StudentCount" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.StudentCount" id="student-count" type="number" min="0" max="500" class="form-control @readonlyClass" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
+                                <span asp-validation-for="Input.StudentCount" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.ScalingFactor" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.ScalingFactor" id="scaling-factor" type="number" min="1" max="100" class="form-control @readonlyClass" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
+                                <span asp-validation-for="Input.ScalingFactor" class="text-danger small"></span>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group col-md-12">
-                                <label asp-for="Input.PracticeName" class="small font-weight-bold text-muted"></label>
-                                <input asp-for="Input.PracticeName" class="form-control" placeholder="Ej. Cocina Boliviana Contemporánea" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
-                                <span asp-validation-for="Input.PracticeName" class="text-danger small"></span>
+                                <div class="custom-control custom-checkbox mt-2">
+                                    <input asp-for="Input.IsDemonstrative" id="is-demonstrative" type="checkbox" class="custom-control-input" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
+                                    <label asp-for="Input.IsDemonstrative" class="custom-control-label small font-weight-bold text-muted"></label>
+                                </div>
                             </div>
                         </div>
 
@@ -140,12 +199,12 @@
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label asp-for="Input.StartTime" class="small font-weight-bold text-muted"></label>
-                                <input asp-for="Input.StartTime" type="time" class="form-control" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
+                                <input asp-for="Input.StartTime" type="time" class="form-control @readonlyClass" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
                                 <span asp-validation-for="Input.StartTime" class="text-danger small"></span>
                             </div>
                             <div class="form-group col-md-6">
                                 <label asp-for="Input.EndTime" class="small font-weight-bold text-muted"></label>
-                                <input asp-for="Input.EndTime" type="time" class="form-control" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
+                                <input asp-for="Input.EndTime" type="time" class="form-control @readonlyClass" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
                                 <span asp-validation-for="Input.EndTime" class="text-danger small"></span>
                             </div>
                         </div>
@@ -223,12 +282,113 @@
     <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         (function () {
-            $('.select2').select2({
-                width: '100%',
-                language: {
-                    noResults: function () { return 'Sin coincidencias'; }
+            var practices = @Html.Raw(practiceJson);
+            var groups = @Html.Raw(groupJson);
+
+            var $subject = $('#subject-select');
+            var $practice = $('#practice-select');
+            var $hint = $('#practice-hint');
+            var $emptyHint = $('#practice-empty-hint');
+            var $group = $('#group-name');
+            var $student = $('#student-count');
+            var $factor = $('#scaling-factor');
+            var $datalist = $('#group-options');
+
+            function renderPractices(subjectId) {
+                // Mantenemos el valor seleccionado si la materia sigue siendo la misma.
+                var previousValue = $practice.val() || '0';
+                $practice.empty();
+                $practice.append('<option value="0">— Seleccionar práctica —</option>');
+
+                var matched = [];
+                if (subjectId && Number(subjectId) > 0) {
+                    matched = practices.filter(function (p) { return p.subjectId === Number(subjectId); });
+                }
+                matched.forEach(function (p) {
+                    var text = p.label + ' · ' + (p.requirementCount > 0
+                        ? p.requirementCount + ' artículo(s) en receta'
+                        : 'sin receta');
+                    $practice.append('<option value="' + p.id + '" data-requirements="' + p.requirementCount + '">' + text + '</option>');
+                });
+
+                // Si el valor anterior sigue disponible, lo conservamos.
+                var stillVisible = matched.some(function (p) { return String(p.id) === String(previousValue); });
+                $practice.val(stillVisible ? previousValue : '0');
+
+                if (matched.length === 0 && subjectId && Number(subjectId) > 0) {
+                    $emptyHint.show();
+                    $hint.hide();
+                } else {
+                    $emptyHint.hide();
+                    $hint.show();
+                }
+
+                updatePracticeHint();
+                $practice.trigger('change.select2');
+            }
+
+            function updatePracticeHint() {
+                var selected = $practice.find('option:selected');
+                if (!selected.length || selected.val() === '0') {
+                    $hint.hide();
+                    return;
+                }
+                var requirements = selected.data('requirements');
+                if (requirements > 0) {
+                    $hint.html('<i class="fas fa-list-check mr-1"></i> La receta tiene <strong>' + requirements + '</strong> artículo(s). Podrás cargarlos en el paso 2.');
+                } else {
+                    $hint.html('<i class="fas fa-info-circle mr-1"></i> Esta práctica no tiene una receta registrada; agrega los artículos manualmente en el paso 2.');
+                }
+                $hint.show();
+            }
+
+            function renderGroupOptions(subjectId) {
+                $datalist.empty();
+                if (!subjectId) return;
+                groups
+                    .filter(function (g) { return g.subjectId === Number(subjectId); })
+                    .forEach(function (g) {
+                        var opt = document.createElement('option');
+                        opt.value = g.name;
+                        opt.dataset.student = g.studentCount != null ? g.studentCount : '';
+                        opt.dataset.factor = g.scalingFactor != null ? g.scalingFactor : '';
+                        $datalist.append(opt);
+                    });
+            }
+
+            // Cambio de materia.
+            $subject.on('change', function () {
+                var subjectId = $(this).val();
+                renderPractices(subjectId);
+                renderGroupOptions(subjectId);
+            });
+
+            // Cambio de práctica.
+            $practice.on('change', function () {
+                updatePracticeHint();
+            });
+
+            // Sugerencia de grupo seleccionada.
+            $group.on('input change', function () {
+                var typed = ($group.val() || '').trim().toUpperCase();
+                $group.val(typed);
+                var match = groups.find(function (g) {
+                    return (g.name || '').toUpperCase() === typed;
+                });
+                if (!match) return;
+                if (match.studentCount != null && $student.length) {
+                    $student.val(match.studentCount);
+                }
+                if (match.scalingFactor != null && $factor.length) {
+                    $factor.val(match.scalingFactor);
                 }
             });
+
+            // Estado inicial.
+            var initialSubject = $subject.val() || '0';
+            renderPractices(initialSubject);
+            renderGroupOptions(initialSubject);
+            updatePracticeHint();
         })();
     </script>
 }

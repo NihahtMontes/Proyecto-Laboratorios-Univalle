@@ -9,6 +9,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 {
@@ -86,7 +87,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 public int? Id { get; set; }
                 public int? EquipmentUnitId { get; set; }
                 public string? ProductName { get; set; }
-                public int? Quantity { get; set; }
+                [Range(0.01, 999999, ErrorMessage = "La cantidad debe ser mayor a 0")]
+                public decimal? Quantity { get; set; }
                 public string UnitOfMeasure { get; set; } = "UNIDAD";
                 public string? Observations { get; set; }
             }

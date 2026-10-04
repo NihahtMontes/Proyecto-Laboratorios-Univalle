@@ -1,6 +1,9 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.L3Model
-@{ ViewData["Title"] = "L-3 y devolución — Paso 4"; var canWrite = Model.IsEditable && !(Model.Context?.IsReadOnly ?? false); }
+@{
+    ViewData["Title"] = "L-3 y devolución — Paso 4";
+    var canWrite = Model.IsEditable && !(Model.Context?.IsReadOnly ?? false);
+}
 
 <div class="container-fluid mt-3">
     @if (Model.Context != null)
@@ -24,7 +27,8 @@
             <div class="alert alert-success border-0 rounded-lg d-flex align-items-center mb-4 shadow-sm">
                 <i class="mdi mdi-check-decagram mdi-36px mr-3"></i>
                 <div>
-                    <strong>Práctica finalizada.</strong><br />
+                    <strong>Práctica finalizada.</strong>
+                    <span class="badge badge-success badge-pill ml-2"><i class="mdi mdi-check-decagram mr-1"></i> FINALIZADA</span><br />
                     Esta práctica L-3 fue cerrada y ya no admite cambios. Los registros L-5 asociados se conservan como historial.
                 </div>
             </div>
@@ -39,210 +43,485 @@
                 </div>
             </div>
         }
-        else if (canWrite)
+        else if (canWrite && Model.HasDeparture)
         {
             <div class="alert alert-light border rounded-lg d-flex align-items-center mb-4">
                 <i class="fas fa-info-circle text-primary mr-2"></i>
                 <div class="small">
-                    Actualiza la cantidad devuelta por equipo. Una vez que todos los faltantes estén cubiertos por un L-5, podrás finalizar la práctica.
+                    Actualiza la cantidad devuelta por artículo. Una vez que todos los faltantes estén cubiertos por un L-5, podrás finalizar la práctica.
                 </div>
             </div>
         }
 
-        <div class="card shadow-sm border-0 rounded-lg">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="font-weight-bold text-primary mb-0">DETALLE DE PRÉSTAMO · DEVOLUCIÓN L-3</h6>
-                    <span class="badge badge-pill badge-light border px-3">@Model.Items.Count ítem(s)</span>
-                </div>
-
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0" id="tabla-devolucion">
-                        <thead class="bg-dark text-white">
-                            <tr>
-                                <th class="border-0">EQUIPO / UTENSILIO</th>
-                                <th class="border-0 text-center">DEVUELTO</th>
-                                <th class="border-0 text-center">FALTANTE</th>
-                                <th class="border-0 text-center">ESTADO</th>
-                                <th class="border-0 text-center">ACCIÓN</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (!Model.Items.Any())
-                            {
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">
-                                        <i class="mdi mdi-package-variant mdi-36px d-block mb-2"></i>
-                                        Esta práctica no tiene equipos registrados.
-                                    </td>
-                                </tr>
-                            }
-                            @foreach (var item in Model.Items)
-                            {
-                                var rowClass = item.Missing == 0 ? "table-success-l3" : (item.Uncovered == 0 ? "table-warning-l3" : "table-danger-l3");
-                                var rowStyle = item.Missing == 0 ? "opacity:.85;" : "";
-                                <tr class="@rowClass" style="@rowStyle">
-                                    <td class="align-middle">
-                                        <div class="font-weight-bold">@item.EquipmentName</div>
-                                        <small class="text-muted">Unidad #@item.EquipmentUnitId</small>
-                                    </td>
-                                    <td class="align-middle text-center" style="width:160px;max-width:160px;">
-                                        @if (canWrite)
-                                        {
-                                            <form method="post" asp-page-handler="UpdateReturn" asp-route-id="@Model.Id" class="m-0">
-                                                <input type="hidden" name="detailId" value="@item.DetailId" />
-                                                <div class="input-group input-group-sm">
-                                                    <input type="number" name="returnedQuantity" class="form-control text-center"
-                                                           min="0" max="@item.Delivered" value="@item.Returned" />
-                                                    <div class="input-group-append">
-                                                        <button type="submit" class="btn btn-outline-success" title="Guardar devolución">
-                                                            <i class="mdi mdi-check"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <small class="text-muted">Entregado: @item.Delivered</small>
-                                            </form>
-                                        }
-                                        else
-                                        {
-                                            <span class="font-weight-bold">@item.Returned</span>
-                                            <small class="d-block text-muted">de @item.Delivered</small>
-                                        }
-                                    </td>
-                                    <td class="align-middle text-center">
-                                        @if (item.Missing == 0)
-                                        {
-                                            <span class="font-weight-bold text-success">0</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="font-weight-bold text-danger">@item.Missing</span>
-                                        }
-                                    </td>
-                                    <td class="align-middle text-center" style="width:160px;">
-                                        @if (item.Missing == 0)
-                                        {
-                                            <span class="badge badge-success px-3 py-1"><i class="mdi mdi-check-circle mr-1"></i> Completo</span>
-                                        }
-                                        else if (item.Uncovered == 0)
-                                        {
-                                            <span class="badge badge-warning px-3 py-1"><i class="mdi mdi-shield-check mr-1"></i> Cubierto por L-5</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge badge-danger px-3 py-1"><i class="mdi mdi-alert mr-1"></i> Faltan @item.Missing</span>
-                                        }
-                                    </td>
-                                    <td class="align-middle text-center">
-                                        @if (canWrite && item.Uncovered > 0)
-                                        {
-                                            <a href="./L5?planId=@Model.Id&equipmentId=@item.EquipmentId"
-                                               class="btn btn-sm btn-danger font-weight-bold">
-                                                <i class="mdi mdi-alert-octagon mr-1"></i> Registrar L-5
-                                            </a>
-                                        }
-                                        else if (item.Missing == 0)
-                                        {
-                                            <span class="text-success small"><i class="mdi mdi-check-circle"></i> Cerrado</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted small"><i class="mdi mdi-shield-check text-warning"></i> Cubierto</span>
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                    <a asp-page="./Disponibilidad" asp-route-planId="@Model.Id"
-                       class="btn btn-outline-secondary btn-rounded px-4">
-                        <i class="mdi mdi-arrow-left mr-1"></i> Atrás
-                    </a>
-                    @if (Model.IsFinalized)
-                    {
-                        <span class="badge badge-success px-4 py-2"><i class="mdi mdi-check-decagram mr-1"></i> L-3 cerrado</span>
-                    }
-                    else if (canWrite)
-                    {
-                        <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0">
-                            <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2"
-                                    @(Model.BlockFinalization ? "disabled" : "")
-                                    title="@(Model.BlockFinalization ? "Hay faltantes sin incidente L-5" : "Cerrar la práctica L-3")">
-                                <i class="mdi mdi-check-all mr-1"></i> Finalizar L-3
-                            </button>
-                        </form>
-                    }
+        @* ── CABECERA DE SALIDA REGISTRADA ── *@
+        @if (Model.HasDeparture && Model.CurrentDeparture != null)
+        {
+            <div class="card shadow-sm border-0 rounded-lg mb-4">
+                <div class="card-body p-3 p-md-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-light-primary text-primary p-2 mr-3"><i class="fas fa-truck fa-lg"></i></div>
+                            <div>
+                                <span class="text-uppercase small text-primary font-weight-bold">Salida registrada</span>
+                                <h6 class="font-weight-bold text-dark mb-0 mt-1">@Model.CurrentDeparture.Code</h6>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-3 small">
+                            <span><i class="fas fa-warehouse text-muted mr-1"></i> <strong>Origen:</strong> @Model.CurrentDeparture.OriginName</span>
+                            <span><i class="fas fa-calendar-alt text-muted mr-1"></i> <strong>Fecha:</strong> @Model.CurrentDeparture.DepartureDate.ToString("dd/MM/yyyy HH:mm")</span>
+                            <span class="badge badge-info badge-pill">@Model.CurrentDeparture.Status</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        }
 
-        @* ── LISTADO DE INCIDENTES L-5 ASOCIADOS ── *@
-        <div class="card shadow-sm border-0 rounded-lg mt-4">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="font-weight-bold text-danger mb-0">INCIDENTES L-5 REGISTRADOS</h6>
-                    <span class="badge badge-pill badge-light border px-3">@Model.Incidents.Count registro(s)</span>
-                </div>
-
-                @if (!Model.Incidents.Any())
-                {
-                    <div class="text-center text-muted py-4">
-                        <i class="mdi mdi-shield-off-outline mdi-36px d-block mb-2"></i>
-                        Aún no se registraron incidentes L-5 para esta práctica.
+        @* ── (a) REGISTRAR SALIDA (si aún no hay departure) ── *@
+        @if (!Model.HasDeparture && canWrite)
+        {
+            <div class="card shadow-sm border-0 rounded-lg mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-light-warning text-warning p-2 mr-3"><i class="fas fa-truck-loading fa-lg"></i></div>
+                        <div>
+                            <h6 class="font-weight-bold text-warning mb-0">Registrar salida L-3</h6>
+                            <small class="text-muted">Confirma la cantidad entregada por artículo desde el laboratorio de origen.</small>
+                        </div>
                     </div>
-                }
-                else
-                {
+
+                    <form method="post" asp-page-handler="Departure" asp-route-id="@Model.Id" id="form-departure">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label class="small font-weight-bold text-muted">Laboratorio de origen</label>
+                                <select asp-for="Departure.OriginLaboratoryId" asp-items="Model.OriginList" class="form-control select2">
+                                    <option value="0">— Seleccionar —</option>
+                                </select>
+                                <span asp-validation-for="Departure.OriginLaboratoryId" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-8">
+                                <label asp-for="Departure.Observations" class="small font-weight-bold text-muted">Observaciones</label>
+                                <input asp-for="Departure.Observations" class="form-control" placeholder="Notas de la salida" maxlength="500" />
+                                <span asp-validation-for="Departure.Observations" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="bg-dark text-white">
+                                    <tr>
+                                        <th>ARTÍCULO</th>
+                                        <th class="text-center">SOLICITADO</th>
+                                        <th class="text-center">DISPONIBLE</th>
+                                        <th class="text-center">A ENTREGAR</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @for (var i = 0; i < Model.DeliveryRows.Count; i++)
+                                    {
+                                        var row = Model.DeliveryRows[i];
+                                        var requestedStr = row.Requested.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                                        <tr>
+                                                <td>
+                                                    <div class="font-weight-bold">@row.ArticleName</div>
+                                                    <small class="text-muted">@row.ArticleCode@(string.IsNullOrWhiteSpace(row.Unit) ? "" : $" · {row.Unit}")</small>
+                                                        @if (!string.IsNullOrWhiteSpace(row.InventoryNumber))
+                                                        {
+                                                            <span class="badge badge-secondary badge-pill">@row.InventoryNumber</span>
+                                                        }
+                                                        @if (row.ArticlePending)
+                                                        {
+                                                            <span class="badge badge-warning badge-pill">Por confirmar</span>
+                                                        }
+                                                </td>
+                                                <td class="text-center font-weight-bold">@requestedStr</td>
+                                                <td class="text-center">
+                                                    @if (row.Available.HasValue)
+                                                    {
+                                                        @row.Available.Value.ToString("0.##")
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge badge-secondary badge-pill">Sin registro</span>
+                                                    }
+                                                </td>
+                                                <td class="text-center" style="width:180px;">
+                                                    <input type="hidden" name="Departure.Lines[@i].DetailId" value="@row.DetailId" />
+                                                    <input type="number" name="Departure.Lines[@i].Quantity" step="0.01" min="0" max="999999"
+                                                           class="form-control text-center" value="@requestedStr" />
+                                                </td>
+                                            </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <a asp-page="./Disponibilidad" asp-route-planId="@Model.Id"
+                               class="btn btn-outline-secondary btn-rounded px-4">
+                                <i class="mdi mdi-arrow-left mr-1"></i> Atrás
+                            </a>
+                            <button type="submit" class="btn btn-warning btn-rounded font-weight-bold px-4 js-departure-confirm">
+                                <i class="fas fa-truck mr-1"></i> Registrar salida y descontar stock
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @* ── (b) DETALLE DE PRÉSTAMO / DEVOLUCIÓN ── *@
+        @if (Model.HasDeparture)
+        {
+            <div class="card shadow-sm border-0 rounded-lg">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="font-weight-bold text-primary mb-0">DETALLE DE PRÉSTAMO · DEVOLUCIÓN L-3</h6>
+                        <span class="badge badge-pill badge-light border px-3">@Model.Items.Count ítem(s)</span>
+                    </div>
+
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0">
-                            <thead class="bg-light text-dark">
+                        <table class="table table-hover mb-0" id="tabla-devolucion">
+                            <thead class="bg-dark text-white">
                                 <tr>
-                                    <th>EQUIPO</th>
-                                    <th>INVENTARIO</th>
-                                    <th>TIPO</th>
-                                    <th class="text-center">CANT.</th>
-                                    <th>RESPONSABLE</th>
-                                    <th>ESTADO REPOSICIÓN</th>
-                                    <th>FECHA</th>
+                                    <th class="border-0">ARTÍCULO</th>
+                                    <th class="border-0 text-center">ENTREGADO</th>
+                                    <th class="border-0 text-center">DEVUELTO</th>
+                                    <th class="border-0 text-center">PENDIENTE</th>
+                                    <th class="border-0 text-center">CUBIERTO L-5</th>
+                                    <th class="border-0 text-center">DESCUBIERTO</th>
+                                    <th class="border-0 text-center">ACCIÓN</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var inc in Model.Incidents)
+                                @if (!Model.Items.Any())
                                 {
                                     <tr>
-                                        <td class="font-weight-bold">@inc.EquipmentName</td>
-                                        <td><span class="badge badge-secondary">@inc.InventoryNumber</span></td>
-                                        <td><span class="badge badge-danger">@inc.IncidentType</span></td>
-                                        <td class="text-center font-weight-bold">@inc.AffectedQuantity</td>
-                                        <td>@inc.ResponsibleName</td>
-                                        <td><span class="badge badge-warning">@inc.RepositionStatus</span></td>
-                                        <td class="small text-muted">@inc.RecordDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="mdi mdi-package-variant mdi-36px d-block mb-2"></i>
+                                            Esta práctica no tiene artículos registrados.
+                                        </td>
+                                    </tr>
+                                }
+                                @foreach (var item in Model.Items)
+                                {
+                                    var pending = item.Pending;
+                                    var uncovered = item.Uncovered;
+                                    <tr class="@(pending == 0 ? "table-success-l3" : (uncovered == 0 ? "table-warning-l3" : "table-danger-l3"))">
+                                        <td class="align-middle">
+                                            <div class="font-weight-bold">@item.ArticleName</div>
+                                            <small class="text-muted">@item.ArticleCode@(string.IsNullOrWhiteSpace(item.Unit) ? "" : $" · {item.Unit}")</small>
+                                        </td>
+                                        <td class="align-middle text-center font-weight-bold">@item.Delivered.ToString("0.##")</td>
+                                        <td class="align-middle text-center">@item.Returned.ToString("0.##")</td>
+                                        <td class="align-middle text-center">
+                                            @if (pending == 0)
+                                            {
+                                                <span class="font-weight-bold text-success">0</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="font-weight-bold text-warning">@pending.ToString("0.##")</span>
+                                            }
+                                        </td>
+                                        <td class="align-middle text-center">@item.CoveredByIncidents.ToString("0.##")</td>
+                                        <td class="align-middle text-center">
+                                            @if (uncovered > 0)
+                                            {
+                                                <span class="font-weight-bold text-danger">@uncovered.ToString("0.##")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">0</span>
+                                            }
+                                        </td>
+                                        <td class="align-middle text-center">
+                                            @if (canWrite && pending > 0)
+                                            {
+                                                <a asp-page="./L5" asp-route-planId="@Model.Id" asp-route-articleId="@item.ArticleId"
+                                                   class="btn btn-sm btn-danger font-weight-bold">
+                                                    <i class="mdi mdi-alert-octagon mr-1"></i> Registrar L-5
+                                                </a>
+                                            }
+                                            else if (pending == 0)
+                                            {
+                                                <span class="text-success small"><i class="mdi mdi-check-circle"></i> Cerrado</span>
+                                            }
+                                            else if (uncovered == 0)
+                                            {
+                                                <span class="text-muted small"><i class="mdi mdi-shield-check text-warning"></i> Cubierto</span>
+                                            }
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
                         </table>
                     </div>
-                }
+
+                    @* ── FORMULARIO DE DEVOLUCIÓN ── *@
+                    @if (Model.CanReturn)
+                    {
+                        <hr />
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="rounded-circle bg-light-info text-info p-2 mr-3"><i class="fas fa-undo fa-lg"></i></div>
+                            <div>
+                                <h6 class="font-weight-bold text-info mb-0">Registrar devolución</h6>
+                                <small class="text-muted">Confirma la cantidad devuelta por artículo y el responsable de recibirla.</small>
+                            </div>
+                        </div>
+
+                        <form method="post" asp-page-handler="Return" asp-route-id="@Model.Id" id="form-return">
+                            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <label asp-for="Return.ResponsiblePersonId" class="small font-weight-bold text-muted">Responsable</label>
+                                    <select asp-for="Return.ResponsiblePersonId" asp-items="Model.ResponsibleList" class="form-control select2">
+                                        <option value="0">— Seleccionar responsable —</option>
+                                    </select>
+                                    <span asp-validation-for="Return.ResponsiblePersonId" class="text-danger small"></span>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label asp-for="Return.ReturnDate" class="small font-weight-bold text-muted">Fecha de devolución</label>
+                                    <input asp-for="Return.ReturnDate" type="date" class="form-control" />
+                                    <span asp-validation-for="Return.ReturnDate" class="text-danger small"></span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label asp-for="Return.Observations" class="small font-weight-bold text-muted">Observaciones</label>
+                                <textarea asp-for="Return.Observations" class="form-control" rows="2" placeholder="Notas de la devolución" maxlength="1000"></textarea>
+                                <span asp-validation-for="Return.Observations" class="text-danger small"></span>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="bg-light text-dark">
+                                        <tr>
+                                            <th>ARTÍCULO</th>
+                                            <th class="text-center">PENDIENTE</th>
+                                            <th class="text-center">DEVUELTO</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @{
+                                            var lineIndex = 0;
+                                        }
+                                        @foreach (var item in Model.Items)
+                                        {
+                                            if (item.Pending <= 0) { continue; }
+                                            var pendingStr = item.Pending.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                                            <tr>
+                                                <td>
+                                                    <div class="font-weight-bold small">@item.ArticleName</div>
+                                                    <small class="text-muted">@item.ArticleCode</small>
+                                                </td>
+                                                <td class="text-center font-weight-bold">@pendingStr</td>
+                                                <td class="text-center" style="width:180px;">
+                                                    <input type="hidden" name="Return.Lines[@lineIndex].DepartureItemId" value="@item.DepartureItemId" />
+                                                    <input type="number" name="Return.Lines[@lineIndex].Quantity" step="0.01" min="0" max="@pendingStr"
+                                                           class="form-control text-center" value="@pendingStr" />
+                                                </td>
+                                            </tr>
+                                            lineIndex++;
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="d-flex justify-content-end mt-3">
+                                <button type="submit" class="btn btn-info btn-rounded font-weight-bold px-4 js-return-confirm">
+                                    <i class="fas fa-undo mr-1"></i> Registrar devolución
+                                </button>
+                            </div>
+                        </form>
+                    }
+
+                    @* ── LISTADO DE DEVOLUCIONES REGISTRADAS ── *@
+                    @if (Model.Returns.Any())
+                    {
+                        <hr />
+                        <h6 class="font-weight-bold text-info mb-3"><i class="fas fa-clipboard-check mr-1"></i> DEVOLUCIONES REGISTRADAS</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="bg-light text-dark">
+                                    <tr>
+                                        <th>CÓDIGO</th>
+                                        <th>FECHA</th>
+                                        <th>RESPONSABLE</th>
+                                        <th>ESTADO</th>
+                                        <th>DETALLE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in Model.Returns)
+                                    {
+                                        <tr>
+                                            <td class="font-weight-bold">@r.Code</td>
+                                            <td class="small">@(r.ReturnDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                            <td>@r.ResponsibleName</td>
+                                            <td><span class="badge badge-info badge-pill">@r.Status</span></td>
+                                            <td class="small text-muted">@r.Lines</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                        <a asp-page="./Disponibilidad" asp-route-planId="@Model.Id"
+                           class="btn btn-outline-secondary btn-rounded px-4">
+                            <i class="mdi mdi-arrow-left mr-1"></i> Atrás
+                        </a>
+                        @if (Model.IsFinalized)
+                        {
+                            <span class="badge badge-success px-4 py-2"><i class="mdi mdi-check-decagram mr-1"></i> L-3 cerrado</span>
+                        }
+                        else if (canWrite)
+                        {
+                            <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0">
+                                <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2"
+                                        disabled="@(Model.BlockFinalization ? "disabled" : null)"
+                                        title="@(Model.BlockFinalization ? "Hay faltantes sin incidente L-5" : "Cerrar la práctica L-3")">
+                                    <i class="mdi mdi-check-all mr-1"></i> Finalizar L-3
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
             </div>
-        </div>
+
+            @* ── LISTADO DE INCIDENTES L-5 ASOCIADOS ── *@
+            <div class="card shadow-sm border-0 rounded-lg mt-4">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="font-weight-bold text-danger mb-0">INCIDENTES L-5 REGISTRADOS</h6>
+                        <span class="badge badge-pill badge-light border px-3">@Model.Incidents.Count registro(s)</span>
+                    </div>
+
+                    @if (!Model.Incidents.Any())
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="mdi mdi-shield-off-outline mdi-36px d-block mb-2"></i>
+                            Aún no se registraron incidentes L-5 para esta práctica.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="bg-light text-dark">
+                                    <tr>
+                                        <th>OBJETO</th>
+                                        <th>TIPO</th>
+                                        <th class="text-center">CANT.</th>
+                                        <th>RESPONSABLE</th>
+                                        <th>ESTADO REPOSICIÓN</th>
+                                        <th>FECHA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var inc in Model.Incidents)
+                                    {
+                                        <tr>
+                                            <td class="font-weight-bold">@inc.Target</td>
+                                            <td><span class="badge badge-danger">@inc.IncidentType</span></td>
+                                            <td class="text-center font-weight-bold">@inc.AffectedQuantity</td>
+                                            <td>@inc.ResponsibleName</td>
+                                            <td><span class="badge badge-warning">@inc.RepositionStatus</span></td>
+                                            <td class="small text-muted">@inc.RecordDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
     }
 </div>
 
 @section Styles {
-<style>
-    .table-success-l3 td { background-color: rgba(40, 167, 69, .06) !important; }
-    .table-warning-l3 td { background-color: rgba(255, 193, 7, .08) !important; }
-    .table-danger-l3 td { background-color: rgba(220, 53, 69, .06) !important; }
-</style>
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        .table-success-l3 td { background-color: rgba(40, 167, 69, .06) !important; }
+        .table-warning-l3 td { background-color: rgba(255, 193, 7, .08) !important; }
+        .table-danger-l3 td { background-color: rgba(220, 53, 69, .06) !important; }
+        .bg-light-primary { background-color: #e8e7ff; }
+        .bg-light-warning { background-color: #fff8e1; }
+        .bg-light-info { background-color: #e6f3fb; }
+    </style>
 }
 
 @section Scripts {
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         (function () {
-            const form = document.getElementById('formFinalizeL3');
+            $('.select2').select2({
+                width: '100%',
+                language: { noResults: function () { return 'Sin coincidencias'; } }
+            });
+
+            var depForm = document.getElementById('form-departure');
+            if (depForm) {
+                depForm.addEventListener('submit', function (e) {
+                    if (depForm.dataset.confirmed === '1') return true;
+                    e.preventDefault();
+                    if (typeof Swal === 'undefined') {
+                        depForm.dataset.confirmed = '1';
+                        HTMLFormElement.prototype.submit.call(depForm);
+                        return;
+                    }
+                    Swal.fire({
+                        title: '¿Registrar salida?',
+                        text: 'Se descontará del laboratorio seleccionado la cantidad confirmada por línea.',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#ffc107',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, registrar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            depForm.dataset.confirmed = '1';
+                            HTMLFormElement.prototype.submit.call(depForm);
+                        }
+                    });
+                });
+            }
+
+            var retForm = document.getElementById('form-return');
+            if (retForm) {
+                retForm.addEventListener('submit', function (e) {
+                    if (retForm.dataset.confirmed === '1') return true;
+                    e.preventDefault();
+                    if (typeof Swal === 'undefined') {
+                        retForm.dataset.confirmed = '1';
+                        HTMLFormElement.prototype.submit.call(retForm);
+                        return;
+                    }
+                    Swal.fire({
+                        title: '¿Registrar devolución?',
+                        text: 'Se repondrá al stock del laboratorio de origen la cantidad devuelta por artículo.',
+                        type: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#17a2b8',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, registrar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            retForm.dataset.confirmed = '1';
+                            HTMLFormElement.prototype.submit.call(retForm);
+                        }
+                    });
+                });
+            }
+
+            var form = document.getElementById('formFinalizeL3');
             if (!form) return;
             form.addEventListener('submit', function (e) {
                 if (form.dataset.confirmed === '1') return true;

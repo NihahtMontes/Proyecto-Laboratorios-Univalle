@@ -7,13 +7,12 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Services;
-using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Paso 5: incidente L-5 sobre una unidad concreta de un tipo de equipo prestado en la planificación.
-/// El historial y el estado de la unidad los actualiza ApplicationDbContext al guardar.
+/// Paso 5: incidente L-5 sobre un artículo entregado en la salida L-3 (y, si corresponde, la unidad física concreta).
+/// Con unidad física, ApplicationDbContext actualiza su historial y estado al guardar.
 /// </summary>
 public class L5Model : PageModel
 {
@@ -32,16 +31,20 @@ public class L5Model : PageModel
     [BindProperty(SupportsGet = true)]
     public int PlanId { get; set; }
 
-    /// <summary>Tipo de equipo preseleccionado desde L-3 (opcional).</summary>
+    /// <summary>Artículo preseleccionado desde L-3 (opcional).</summary>
     [BindProperty(SupportsGet = true)]
-    public int? EquipmentId { get; set; }
+    public int? ArticleId { get; set; }
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
     public L3Request? Plan { get; private set; }
     public string Code => L3Codes.Format(PlanId);
+    public List<SelectListItem> ArticleOptions { get; private set; } = [];
     public List<SelectListItem> UnitOptions { get; private set; } = [];
+
+    /// <summary>Cantidad entregada por artículo (tope de la cantidad afectada).</summary>
+    public Dictionary<int, decimal> DeliveredByArticle { get; private set; } = [];
 
     /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
     public PlanningContextViewModel? Context { get; private set; }
@@ -49,6 +52,7 @@ public class L5Model : PageModel
     public async Task<IActionResult> OnGetAsync()
     {
         Context = await PlanningContextLoader.ForPracticeAsync(_context, _planningService, PlanId, 5);
+        if (ArticleId.HasValue) Input.ArticleId = ArticleId.Value;
         var redirect = await LoadAsync();
         if (redirect != null) return redirect;
         return Page();
@@ -65,9 +69,12 @@ public class L5Model : PageModel
         var redirect = await LoadAsync();
         if (redirect != null) return redirect;
 
-        var allowedUnitIds = UnitOptions.Select(o => int.Parse(o.Value)).ToHashSet();
-        if (!allowedUnitIds.Contains(Input.EquipmentUnitId))
-            ModelState.AddModelError("Input.EquipmentUnitId", "La unidad no corresponde a los equipos prestados en esta planificación.");
+        if (!DeliveredByArticle.TryGetValue(Input.ArticleId, out var delivered))
+            ModelState.AddModelError("Input.ArticleId", "El artículo no fue entregado en la salida de esta práctica.");
+        else if (Input.AffectedQuantity > Math.Ceiling(delivered))
+            ModelState.AddModelError("Input.AffectedQuantity", $"La cantidad afectada no puede superar lo entregado ({delivered:0.##}).");
+        if (Input.EquipmentUnitId.HasValue && !UnitOptions.Any(o => o.Value == Input.EquipmentUnitId.Value.ToString()))
+            ModelState.AddModelError("Input.EquipmentUnitId", "La unidad no corresponde a las solicitadas en esta práctica.");
         if (!IncidentTypes.Contains(Input.IncidentType))
             ModelState.AddModelError("Input.IncidentType", "Selecciona un tipo de incidente válido.");
         if (!ResponsibleTypes.Contains(Input.ResponsibleType))
@@ -78,6 +85,7 @@ public class L5Model : PageModel
         _context.L5Incidents.Add(new L5Incident
         {
             L3RequestId = PlanId,
+            ArticleId = Input.ArticleId,
             EquipmentUnitId = Input.EquipmentUnitId,
             ResponsibleName = Input.ResponsibleName.Trim(),
             ResponsibleType = Input.ResponsibleType,
@@ -89,7 +97,9 @@ public class L5Model : PageModel
         });
         await _context.SaveChangesAsync();
 
-        TempData.Success("Incidente L-5 registrado. La unidad quedó marcada como averiada.");
+        TempData.Success(Input.EquipmentUnitId.HasValue
+            ? "Incidente L-5 registrado. La unidad quedó marcada como averiada."
+            : "Incidente L-5 registrado.");
         return RedirectToPage("./L3", new { id = PlanId });
     }
 
@@ -98,45 +108,58 @@ public class L5Model : PageModel
         Plan = await _context.L3Requests.AsNoTracking()
             .Include(r => r.Laboratory)
             .Include(r => r.Subject)
-            .Include(r => r.Group)
             .FirstOrDefaultAsync(r => r.Id == PlanId);
         if (Plan == null)
         {
-            TempData.Error("La planificación no existe.");
+            TempData.Error("La práctica no existe.");
             return RedirectToPage("./Index");
         }
         if (Plan.Status != L3RequestStatus.Approved)
         {
-            TempData.Error("Solo se registran incidentes L-5 de una planificación aprobada y no finalizada.");
+            TempData.Error("Solo se registran incidentes L-5 de una solicitud aprobada y no finalizada.");
             return RedirectToPage("./L3", new { id = PlanId });
         }
 
-        // Unidades concretas de los tipos de equipo prestados, dentro del laboratorio del plan.
-        var lentEquipmentIds = await _context.L3RequestDetails.AsNoTracking()
-            .Where(d => d.L3RequestId == PlanId && d.DeliveredQuantity > 0)
-            .Select(d => d.EquipmentUnit.EquipmentId)
+        // Artículos entregados en la salida de esta práctica.
+        var delivered = await _context.DepartureItems.AsNoTracking()
+            .Where(i => i.Departure!.L3RequestId == PlanId && i.ArticleId != null)
+            .GroupBy(i => new { ArticleId = i.ArticleId!.Value, i.Article!.Code, i.Article.Name })
+            .Select(g => new { g.Key.ArticleId, g.Key.Code, g.Key.Name, Quantity = g.Sum(i => i.Quantity ?? 0) })
+            .ToListAsync();
+        if (delivered.Count == 0)
+        {
+            TempData.Error("Primero registra la salida de los artículos en L-3.");
+            return RedirectToPage("./L3", new { id = PlanId });
+        }
+        DeliveredByArticle = delivered.ToDictionary(d => d.ArticleId, d => d.Quantity);
+        ArticleOptions = delivered.OrderBy(d => d.Name)
+            .Select(d => new SelectListItem($"{d.Code} · {d.Name} (entregado {d.Quantity:0.##})", d.ArticleId.ToString(), d.ArticleId == Input.ArticleId))
+            .ToList();
+
+        // Unidades físicas indicadas en los requerimientos de la práctica.
+        var units = await _context.L3RequestDetails.AsNoTracking()
+            .Where(d => d.L3RequestId == PlanId && d.EquipmentUnitId != null)
+            .Select(d => new
+            {
+                Id = d.EquipmentUnitId!.Value,
+                d.EquipmentUnit!.InventoryNumber,
+                Name = d.EquipmentUnit.Equipment != null ? d.EquipmentUnit.Equipment.Name : ""
+            })
             .Distinct()
             .ToListAsync();
-
-        var units = await _context.EquipmentUnits.AsNoTracking()
-            .Where(u => u.LaboratoryId == Plan.LaboratoryId && lentEquipmentIds.Contains(u.EquipmentId)
-                && u.CurrentStatus != EquipmentStatus.Deleted)
-            .OrderBy(u => u.Equipment!.Name).ThenBy(u => u.InventoryNumber)
-            .Select(u => new { u.Id, u.EquipmentId, Name = u.Equipment!.Name, u.InventoryNumber })
-            .ToListAsync();
-
-        UnitOptions = units.Select(u => new SelectListItem(
-                $"{u.Name} (INV: {u.InventoryNumber})",
-                u.Id.ToString(),
-                u.Id == Input.EquipmentUnitId || (Input.EquipmentUnitId == 0 && EquipmentId == u.EquipmentId && u == units.First(x => x.EquipmentId == EquipmentId))))
+        UnitOptions = units.OrderBy(u => u.InventoryNumber)
+            .Select(u => new SelectListItem($"{u.Name} (INV: {u.InventoryNumber})", u.Id.ToString(), u.Id == Input.EquipmentUnitId))
             .ToList();
         return null;
     }
 
     public sealed class InputModel
     {
-        [Range(1, int.MaxValue, ErrorMessage = "Selecciona la unidad afectada")]
-        public int EquipmentUnitId { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "Selecciona el artículo afectado")]
+        public int ArticleId { get; set; }
+
+        /// <summary>Unidad física concreta (opcional).</summary>
+        public int? EquipmentUnitId { get; set; }
 
         [Required(ErrorMessage = "Indica el nombre del involucrado"), StringLength(200)]
         public string ResponsibleName { get; set; } = string.Empty;

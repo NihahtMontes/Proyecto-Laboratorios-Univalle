@@ -10,10 +10,9 @@ using Proyecto_Laboratorios_Univalle.Services;
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Demanda agregada por (Laboratorio del plan, Equipo): suma ExpectedQuantity de
-/// los detalles de planes Planificado/Aprobado con ScheduledDate >= hoy y compara
-/// contra las unidades operativas del mismo tipo de equipo en ese laboratorio.
-/// Solo considera prácticas de la planificación académica activa.
+/// Demanda agregada por artículo para las prácticas L-3 de la planificación activa:
+/// suma RequestedQuantity de los detalles y compara contra el stock del Economato (laboratorio "ECONO").
+/// Solo considera prácticas Planificadas/Aprobadas y con fecha igual o posterior a hoy.
 /// </summary>
 public class DemandaModel : PageModel
 {
@@ -38,11 +37,12 @@ public class DemandaModel : PageModel
     public SelectList LaboratoryList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public IReadOnlyList<DemandRow> Rows { get; private set; } = [];
     public IReadOnlyList<string> Categories { get; private set; } = [];
-    public int TotalRequested { get; private set; }
+    public decimal TotalRequested { get; private set; }
     public int DeficitCount { get; private set; }
     public int SurplusCount { get; private set; }
     public bool HasActivePlanning { get; private set; }
     public PlanningSummary? ActivePlanning { get; private set; }
+    public string? OriginLaboratoryCode { get; private set; }
 
     public async Task OnGetAsync()
     {
@@ -59,16 +59,19 @@ public class DemandaModel : PageModel
             return;
         }
 
-        // Laboratorios activos: alimenta el filtro y la resolución de nombres.
+        // Laboratorios activos: alimenta el filtro y la resolución del Economato.
         var laboratories = await _context.Laboratories.AsNoTracking()
             .Where(item => item.Status == GeneralStatus.Activo)
             .OrderBy(item => item.Name)
             .Select(item => new { item.Id, item.Code, item.Name })
             .ToListAsync();
         LaboratoryList = new SelectList(laboratories, "Id", "Name", LaboratoryId);
-        var laboratoryNames = laboratories.ToDictionary(item => item.Id, item => $"{item.Code} · {item.Name}");
 
-        // Demanda agregada por (Laboratorio del plan, Equipo). Una sola consulta,
+        var econo = laboratories.FirstOrDefault(item => item.Code == "ECONO");
+        var econoDbId = econo?.Id;
+        OriginLaboratoryCode = econo?.Code;
+
+        // Demanda agregada por artículo (RequestedQuantity es decimal). Una sola consulta,
         // acotada a prácticas de la planificación activa.
         var demandRows = await _context.L3RequestDetails.AsNoTracking()
             .Where(d => d.L3Request!.AcademicPlanningId == ActivePlanning!.Id
@@ -76,71 +79,63 @@ public class DemandaModel : PageModel
                          || d.L3Request!.Status == L3RequestStatus.Approved)
                         && d.L3Request!.ScheduledDate >= today
                         && (!LaboratoryId.HasValue || d.L3Request!.LaboratoryId == LaboratoryId.Value))
-            .GroupBy(d => new { LabId = d.L3Request!.LaboratoryId, EqId = d.EquipmentUnit.EquipmentId })
+            .GroupBy(d => d.ArticleId)
             .Select(g => new
             {
-                LaboratoryId = g.Key.LabId,
-                EquipmentId = g.Key.EqId,
-                Requested = g.Sum(d => (int?)d.ExpectedQuantity) ?? 0,
+                ArticleId = g.Key,
+                Requested = g.Sum(d => (decimal?)d.RequestedQuantity) ?? 0m,
                 PlanCount = g.Count()
             })
             .ToListAsync();
 
-        // Stock operativo por (Laboratorio, Equipo). Una sola consulta, acotada a los laboratorios relevantes.
-        var relevantLabIds = LaboratoryId.HasValue
-            ? new List<int> { LaboratoryId.Value }
-            : demandRows.Select(row => row.LaboratoryId).Distinct().ToList();
+        var articleIds = demandRows.Select(row => row.ArticleId).Distinct().ToList();
 
-        var stockMap = relevantLabIds.Count == 0
-            ? new Dictionary<(int Lab, int Eq), int>()
-            : (await _context.EquipmentUnits.AsNoTracking()
-                .Where(u => u.LaboratoryId.HasValue
-                            && relevantLabIds.Contains(u.LaboratoryId.Value)
-                            && u.CurrentStatus == EquipmentStatus.Operational)
-                .GroupBy(u => new { LabId = u.LaboratoryId!.Value, u.EquipmentId })
-                .Select(g => new { g.Key.LabId, g.Key.EquipmentId, Count = g.Count() })
+        // Stock disponible por artículo del Economato (AvailableQuantity es decimal).
+        var stockMap = (econoDbId == null || articleIds.Count == 0)
+            ? new Dictionary<int, decimal>()
+            : (await _context.ArticleStocks.AsNoTracking()
+                .Where(s => s.LaboratoryId == econoDbId.Value && articleIds.Contains(s.ArticleId))
+                .GroupBy(s => s.ArticleId)
+                .Select(g => new { ArticleId = g.Key, Available = g.Sum(s => s.AvailableQuantity) })
                 .ToListAsync())
-            .ToDictionary(x => (x.LabId, x.EquipmentId), x => x.Count);
+            .ToDictionary(x => x.ArticleId, x => x.Available);
 
-        // Catálogo de equipos referenciados (un lote).
-        var equipmentIds = demandRows.Select(row => row.EquipmentId).Distinct().ToList();
-        var equipmentMap = equipmentIds.Count == 0
-            ? new Dictionary<int, EquipmentProjection>()
-            : (await _context.Equipments.AsNoTracking()
-                .Where(item => equipmentIds.Contains(item.Id))
-                .Select(item => new EquipmentProjection
+        // Catálogo de artículos referenciados (un lote).
+        var articleMap = articleIds.Count == 0
+            ? new Dictionary<int, ArticleProjection>()
+            : (await _context.Articles.AsNoTracking()
+                .Where(item => articleIds.Contains(item.Id))
+                .Select(item => new ArticleProjection
                 {
                     Id = item.Id,
+                    Code = item.Code,
                     Name = item.Name,
                     Category = item.Category,
-                    CatalogCode = item.CatalogCode
+                    ReviewStatus = item.ReviewStatus
                 })
                 .ToListAsync())
             .ToDictionary(item => item.Id);
 
         var source = demandRows.Select(d =>
         {
-            equipmentMap.TryGetValue(d.EquipmentId, out var eq);
-            var key = (d.LaboratoryId, d.EquipmentId);
-            var available = stockMap.TryGetValue(key, out var s) ? s : 0;
-            var labName = laboratoryNames.TryGetValue(d.LaboratoryId, out var lab)
-                ? lab
-                : $"Laboratorio #{d.LaboratoryId}";
+            articleMap.TryGetValue(d.ArticleId, out var article);
+            var hasStock = stockMap.TryGetValue(d.ArticleId, out var stockValue);
             return new DemandRow
             {
-                Code = eq?.CatalogCode ?? $"EQ-{d.EquipmentId:0000}",
-                Name = eq?.Name ?? "Equipo sin nombre",
-                Category = GetCategoryName(eq?.Category ?? EquipmentCategory.Equipment),
-                LaboratoryId = d.LaboratoryId,
-                LaboratoryName = labName,
+                ArticleId = d.ArticleId,
+                Code = article?.Code ?? $"ART-{d.ArticleId:0000}",
+                Name = article?.Name ?? "Artículo sin nombre",
+                Category = article?.Category ?? string.Empty,
+                ReviewPending = article?.ReviewStatus == DataReviewStatus.PorConfirmar,
                 Requested = d.Requested,
-                Available = available,
+                Available = hasStock ? stockValue : (decimal?)null,
                 PlanCount = d.PlanCount
             };
         }).ToList();
 
         Categories = source
-            .Select(item => item.Category)
+            .Where(item => !string.IsNullOrWhiteSpace(item.Category))
+            .Select(item => item.Category!)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(item => item)
             .ToList();
@@ -151,40 +146,34 @@ public class DemandaModel : PageModel
             : source.Where(item => string.Equals(item.Category, category, StringComparison.OrdinalIgnoreCase)).ToList();
 
         Rows = string.Equals(Order, "menos", StringComparison.OrdinalIgnoreCase)
-            ? filtered.OrderBy(item => item.Requested).ThenBy(item => item.LaboratoryName).ThenBy(item => item.Name).ToList()
-            : filtered.OrderByDescending(item => item.Requested).ThenBy(item => item.LaboratoryName).ThenBy(item => item.Name).ToList();
+            ? filtered.OrderBy(item => item.Requested).ThenBy(item => item.Name).ToList()
+            : filtered.OrderByDescending(item => item.Requested).ThenBy(item => item.Name).ToList();
 
-        TotalRequested = Rows.Sum(item => item.Requested);
-        DeficitCount = Rows.Count(item => item.Balance < 0);
-        SurplusCount = Rows.Count(item => item.Balance >= 0);
+        TotalRequested = source.Sum(item => item.Requested);
+        DeficitCount = source.Count(item => item.Balance < 0);
+        SurplusCount = source.Count(item => item.Balance >= 0);
     }
 
-    private static string GetCategoryName(EquipmentCategory category) => category switch
-    {
-        EquipmentCategory.Equipment => "Equipo",
-        EquipmentCategory.Utensil => "Utensilio",
-        EquipmentCategory.Other => "Otro",
-        _ => category.ToString()
-    };
-
-    private sealed class EquipmentProjection
+    private sealed class ArticleProjection
     {
         public int Id { get; init; }
+        public string Code { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
-        public EquipmentCategory Category { get; init; }
-        public string? CatalogCode { get; init; }
+        public string? Category { get; init; }
+        public DataReviewStatus ReviewStatus { get; init; }
     }
 
     public sealed class DemandRow
     {
+        public int ArticleId { get; init; }
         public string Code { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
         public string Category { get; init; } = string.Empty;
-        public int LaboratoryId { get; init; }
-        public string LaboratoryName { get; init; } = string.Empty;
-        public int Requested { get; init; }
-        public int Available { get; init; }
-        public int Balance => Available - Requested;
+        public bool ReviewPending { get; init; }
+        public decimal Requested { get; init; }
+        /// <summary>Null cuando no existe ArticleStock para el artículo en el Economato.</summary>
+        public decimal? Available { get; init; }
+        public decimal Balance => (Available ?? 0m) - Requested;
         public int PlanCount { get; init; }
     }
 }
