@@ -1,0 +1,166 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+<div class="row">
+    <!-- Main Column -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">
+                            <i class="fas fa-edit mr-2 text-warning"></i>Editar Categoría de Artículo
+                        </h4>
+                        <h6 class="card-subtitle text-muted">Actualice el nombre, el código o el estado operativo de la categoría.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-tag fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" id="edit-category-form" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+
+                    <div class="row">
+                        <div class="col-md-7 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-card mr-2"></i> Identidad
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre de la Categoría <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" required maxlength="100" />
+                                <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-muted">Código Único</label>
+                                <input asp-for="Input.Code" class="form-control font-weight-bold" maxlength="50" />
+                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-5">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-cog mr-2"></i> Configuración
+                            </h5>
+
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-3 rounded shadow-none">
+                                <label asp-for="Input.Status" class="control-label font-weight-bold small text-warning uppercase mb-2">Estado Administrativo <span class="text-danger">*</span></label>
+                                <select asp-for="Input.Status" class="form-control border-warning font-weight-bold custom-select"
+                                        asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
+                                        required></select>
+                                <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold d-block mt-1"></span>
+                                <small class="text-muted italic mt-2 d-block small">Indique si la categoría está disponible para nuevos artículos.</small>
+                            </div>
+
+                            <div class="alert alert-light border-0 small p-3 mt-2 text-info italic shadow-none border-left border-info border-3">
+                                <i class="fas fa-info-circle mr-1"></i> Las categorías con estado <strong>Inactivo</strong> dejan de estar disponibles en los formularios de alta y edición de artículos.
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions mt-4 text-right">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> Actualizar Registro
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4">
+                    <i class="fas fa-info-circle mr-2 text-info"></i> Vista Rápida
+                </h5>
+                <hr class="border-secondary" />
+
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-info mb-3">
+                        <i class="fas fa-tag fa-lg"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-white mb-1">@(Model.CategorySnapshot?.Name ?? Model.Input.Name)</h5>
+                    <span class="badge badge-pill badge-warning px-3 small font-weight-bold">@Model.Input.Status</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+
+            var alphanumericPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]*$/;
+            function setupBlocking(selector, pattern) {
+                $(selector).on('input', function () {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]/g, ''));
+                    }
+                });
+            }
+            setupBlocking('#Input_Name', alphanumericPattern);
+            setupBlocking('#Input_Code', alphanumericPattern);
+
+            var form = document.getElementById('edit-category-form');
+            if (form) {
+                form.addEventListener('submit', function (event) {
+                    if (form.dataset.confirmed === 'true') {
+                        return true;
+                    }
+                    event.preventDefault();
+
+                    if (typeof Swal === 'undefined') {
+                        form.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(form);
+                        return false;
+                    }
+
+                    Swal.fire({
+                        title: 'Guardar cambios',
+                        text: 'Se actualizará la categoría. Los artículos que la tengan asociada reflejarán los nuevos datos.',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, guardar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            form.dataset.confirmed = 'true';
+                            HTMLFormElement.prototype.submit.call(form);
+                        }
+                    });
+
+                    return false;
+                });
+            }
+        });
+    </script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 4px !important; }
+    </style>
+}

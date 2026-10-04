@@ -1,0 +1,185 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+<div class="row">
+    <!-- Main Column: Subject Management -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Gestión de Materia Académica</h4>
+                        <h6 class="card-subtitle text-muted">Actualice la información de la materia y verifique la carrera y semestre asignados.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-book fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+
+                    <div class="row">
+                        <!-- Identity -->
+                        <div class="col-md-7 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-card mr-2"></i> Identidad Académica
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre de la Materia <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" required maxlength="255" />
+                                <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-muted">Código Institucional</label>
+                                <input asp-for="Input.Code" class="form-control" maxlength="50" placeholder="Opcional" />
+                                <small class="text-muted italic mt-1 d-block">Si se define, debe ser único en el sistema institucional.</small>
+                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold d-block mt-1"></span>
+                            </div>
+                        </div>
+
+                        <!-- Plan -->
+                        <div class="col-md-5">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-graduation-cap mr-2"></i> Plan de Estudios
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.CareerId" class="control-label font-weight-bold small uppercase text-muted">Carrera <span class="text-danger">*</span></label>
+                                <select asp-for="Input.CareerId" class="form-control custom-select select2" asp-items="Model.CareerOptions" required>
+                                    <option value="">-- Seleccione carrera --</option>
+                                </select>
+                                <span asp-validation-for="Input.CareerId" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Semester" class="control-label font-weight-bold small uppercase text-muted">Semestre</label>
+                                <select asp-for="Input.Semester" class="form-control custom-select select2" aria-label="Semestre">
+                                    <option value="">Sin semestre definido</option>
+                                    @for (var s = 1; s <= 12; s++)
+                                    {
+                                        <option value="@s">@(s).º Semestre</option>
+                                    }
+                                </select>
+                                <small class="text-muted italic mt-1 d-block">Permite ubicar la materia dentro de la malla curricular.</small>
+                                <span asp-validation-for="Input.Semester" class="text-danger small"></span>
+                            </div>
+
+                            <div class="alert alert-light border-0 small p-3 mt-2 text-info italic shadow-none border-left border-info border-3">
+                                <i class="fas fa-info-circle mr-1"></i> Cambiar la materia de carrera puede afectar los grupos y prácticas ya registrados.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning mt-3 shadow-none">
+                        <label asp-for="Input.Status" class="text-warning small uppercase font-weight-bold mb-2 d-block">Estado Administrativo <span class="text-danger">*</span></label>
+                        <select asp-for="Input.Status" class="form-control border-warning font-weight-bold custom-select"
+                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
+                                required></select>
+                        <small class="text-muted italic mt-2 d-block small">Indique si la materia sigue vigente para asignar nuevos grupos y prácticas.</small>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions mt-4 text-right">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> Actualizar Registro
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: Status Summary -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-info-circle mr-2 text-info"></i> Estado de la Materia</h5>
+                <hr class="border-secondary" />
+
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-info mb-3">
+                        <i class="fas fa-book fa-lg"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-white mb-1">@(Model.Input.Name)</h5>
+                    <span class="badge badge-pill @(Model.Input.Status == GeneralStatus.Activo ? "badge-success" : "badge-danger") px-3 small font-weight-bold">@(Model.Input.Status)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-sitemap mr-2 text-warning"></i> Ubicación Académica</h5>
+                <hr />
+                <div class="small mt-3">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Carrera</label>
+                        <span class="font-weight-bold text-dark d-block">@(Model.CurrentCareerName ?? "Sin carrera")</span>
+                    </div>
+                    <div class="mb-0">
+                        <label class="text-muted d-block small uppercase mb-0">Semestre</label>
+                        <span class="font-weight-bold text-dark d-block">@(Model.Input.Semester.HasValue ? Model.Input.Semester.Value.ToString() + ".º" : "No definido")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 4px !important; }
+        .opacity-5 { opacity: 0.5; }
+        .select2-container--default .select2-selection--single { height: 38px; border: 1px solid #ced4da; }
+        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 38px; }
+        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px; }
+    </style>
+}
+
+@section Scripts {
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $('.select2').select2({ width: '100%', allowClear: true });
+
+            // Confirmación SweetAlert2 para Guardar Cambios
+            var $editForm = $('form').first();
+            $editForm.on('submit', function (e) {
+                e.preventDefault();
+                var form = this;
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call(form);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Guardar cambios?',
+                    text: 'Se actualizará la ficha académica de la materia.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
+        });
+    </script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

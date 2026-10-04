@@ -1,0 +1,457 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices.DetailsModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    var requirementCount = Model.Requirements?.Count ?? 0;
+}
+
+<div class="row">
+    <!-- Main column -->
+    <div class="col-lg-8">
+        <!-- Practice header card -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Receta de la Práctica</h4>
+                        <h6 class="card-subtitle text-muted">
+                            Lista de artículos requeridos para: <span class="font-weight-bold text-dark">@Model.Practice.Code</span>
+                            @if (!string.IsNullOrWhiteSpace(Model.Practice.Number))
+                            {
+                                <span class="text-muted">· @Model.Practice.Number</span>
+                            }
+                        </h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-list-ul fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-5 border-right">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="btn btn-circle btn-info text-white shadow-sm mr-3">
+                                <i class="fas fa-flask"></i>
+                            </span>
+                            <div>
+                                <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.7rem;">Práctica</small>
+                                <h5 class="font-weight-bold text-dark mb-0">@Model.Practice.Code</h5>
+                                @if (!string.IsNullOrWhiteSpace(Model.Practice.Number))
+                                {
+                                    <small class="text-muted">N.º @Model.Practice.Number</small>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="bg-light p-3 rounded border shadow-none text-left mt-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small uppercase font-weight-bold">ID Sistema</span>
+                                <strong class="text-info">#@Model.Practice.Id</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small uppercase font-weight-bold">Estado</span>
+                                <span class="badge badge-pill @(Model.Practice.Status == GeneralStatus.Activo ? "badge-success" : "badge-secondary") px-3 font-weight-bold">@Model.Practice.Status</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small uppercase font-weight-bold">Requerimientos activos</span>
+                                <strong class="text-info">@requirementCount</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-7">
+                        <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-book mr-2"></i> Materia y Carrera</h5>
+
+                        <div class="bg-light p-3 rounded mb-3 shadow-none">
+                            <label class="text-muted small uppercase font-weight-bold d-block mb-1">Materia</label>
+                            <p class="text-dark h6 font-weight-bold mb-1">@(Model.Practice.Subject?.Name ?? "—")</p>
+                            <small class="text-muted">
+                                <i class="fas fa-graduation-cap mr-1"></i>Carrera: @(Model.Practice.Subject?.Career?.Name ?? "Sin carrera asociada")
+                            </small>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(Model.Practice.Description))
+                        {
+                            <div class="alert alert-light border-0 p-3 shadow-none small text-info italic border-left border-info border-3">
+                                <label class="text-muted small uppercase font-weight-bold d-block mb-1">Descripción</label>
+                                @Model.Practice.Description
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recipe -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-3 pb-2 border-bottom">
+                    <div>
+                        <h5 class="font-weight-bold text-dark mb-0"><i class="fas fa-clipboard-list mr-2 text-info"></i> Receta (Artículos)</h5>
+                        <small class="text-muted">Sólo se muestran las líneas activas. Las líneas retiradas se conservan para auditoría.</small>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Artículo</th>
+                                <th class="text-center">Unidad</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-center">Escalable</th>
+                                <th class="text-center">Validación</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Requirements == null || Model.Requirements.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted italic">
+                                        <i class="fas fa-box-open fa-3x mb-3 d-block opacity-2"></i>
+                                        Esta práctica aún no tiene artículos en su receta. Use el formulario de la derecha para registrar el primero.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var item in Model.Requirements)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <h6 class="m-b-0 font-weight-bold text-dark">@item.ArticleCode</h6>
+                                                <span class="text-muted small">@item.ArticleName</span>
+                                                @if (!string.IsNullOrWhiteSpace(item.Observations))
+                                                {
+                                                    <small class="text-info italic mt-1"><i class="fas fa-comment-dots mr-1"></i>@item.Observations</small>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge badge-light border text-dark font-weight-bold px-3 py-1">@item.UnitOfMeasure</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="font-weight-bold text-dark">@item.Quantity.ToString("0.##")</span>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (item.IsScalable)
+                                            {
+                                                <span class="badge badge-pill badge-success px-3 font-weight-bold">Sí</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-pill badge-light text-muted border px-3 font-weight-bold">No</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="text-dark small">@(string.IsNullOrWhiteSpace(item.ValidationStatus) ? "—" : item.ValidationStatus)</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group">
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-warning btn-rounded shadow-none js-edit-requirement"
+                                                        data-bs-toggle="tooltip"
+                                                        title="Editar línea"
+                                                        data-id="@item.Id"
+                                                        data-quantity="@item.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                        data-scalable="@(item.IsScalable ? "true" : "false")"
+                                                        data-observations="@item.Observations">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <form method="post" asp-page-handler="RemoveRequirement" asp-route-id="@Model.Practice.Id" asp-route-requirementId="@item.Id" class="d-inline js-remove-requirement-form">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded shadow-none" title="Retirar línea">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: Add requirement + Audit -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <h5 class="card-title text-dark font-weight-bold small uppercase mb-3">
+                    <i class="fas fa-plus-circle mr-2 text-info"></i> Agregar Artículo a la Receta
+                </h5>
+                <hr />
+
+                <form method="post" asp-page-handler="AddRequirement" asp-route-id="@Model.Practice.Id" id="add-requirement-form">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="RequirementInput.ArticleId" class="control-label font-weight-bold small uppercase text-muted">Artículo <span class="text-danger">*</span></label>
+                        <select asp-for="RequirementInput.ArticleId"
+                                class="form-control select2-article"
+                                asp-items="@(ViewData["ArticleId"] as SelectList ?? new SelectList(Enumerable.Empty<SelectListItem>()))"
+                                required>
+                            <option value="">-- Seleccione artículo --</option>
+                        </select>
+                        <span asp-validation-for="RequirementInput.ArticleId" class="text-danger small font-weight-bold"></span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-7">
+                            <div class="form-group mb-3">
+                                <label asp-for="RequirementInput.Quantity" class="control-label font-weight-bold small uppercase text-muted">Cantidad <span class="text-danger">*</span></label>
+                                <input asp-for="RequirementInput.Quantity" type="number" step="0.01" min="0.01" class="form-control" required />
+                                <span asp-validation-for="RequirementInput.Quantity" class="text-danger small font-weight-bold"></span>
+                            </div>
+                        </div>
+                        <div class="col-5 d-flex align-items-end">
+                            <div class="form-group mb-3">
+                                <label class="control-label font-weight-bold small uppercase text-muted d-block">&nbsp;</label>
+                                    <div class="form-check form-switch">
+                                        <input asp-for="RequirementInput.IsScalable" class="form-check-input" type="checkbox" id="chkScalable" />
+                                        <label class="form-check-label small font-weight-bold text-muted" for="chkScalable">Escalable</label>
+                                    </div>
+                                </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="RequirementInput.ValidationStatus" class="control-label font-weight-bold small uppercase text-muted">Estado de validación</label>
+                        <input asp-for="RequirementInput.ValidationStatus" class="form-control" maxlength="40" placeholder="Ej: Validado, Pendiente…" />
+                        <span asp-validation-for="RequirementInput.ValidationStatus" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="RequirementInput.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones</label>
+                        <textarea asp-for="RequirementInput.Observations" class="form-control" rows="2" maxlength="1000"></textarea>
+                        <span asp-validation-for="RequirementInput.Observations" class="text-danger small"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-info btn-rounded btn-block shadow-sm font-weight-bold py-2 mt-2">
+                        <i class="fas fa-plus mr-1"></i> Agregar a la Receta
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-3"><i class="fas fa-info-circle mr-2 text-info"></i> Datos de la Práctica</h5>
+                <hr class="border-secondary" />
+                <div class="small">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Estado de cobertura</span>
+                        <span class="font-weight-bold">@(string.IsNullOrWhiteSpace(Model.Practice.CoverageStatus) ? "—" : Model.Practice.CoverageStatus)</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Método</span>
+                        <span class="font-weight-bold">@(string.IsNullOrWhiteSpace(Model.Practice.CoverageMethod) ? "—" : Model.Practice.CoverageMethod)</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Practice.SourceReference))
+                    {
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted uppercase font-weight-bold" style="font-size: 0.65rem;">Fuente</span>
+                            <span class="font-weight-bold text-info">@Model.Practice.SourceReference</span>
+                        </div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.Practice.Observations))
+                    {
+                        <div class="mt-3">
+                            <span class="text-muted uppercase font-weight-bold d-block mb-1" style="font-size: 0.65rem;">Observaciones</span>
+                            <span class="font-italic">@Model.Practice.Observations</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Auditoría Operativa</h5>
+                <hr />
+                <div class="small mt-3">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Alta de Sistema</label>
+                        <span class="font-weight-bold text-dark d-block">@Model.Practice.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="text-muted small">Por: Usuario #@(Model.Practice.CreatedById?.ToString() ?? "Sistema")</div>
+                    </div>
+                    @if (Model.Practice.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0 font-weight-bold">Última Gestión</label>
+                            <span class="font-weight-bold text-dark d-block">Usuario #@(Model.Practice.ModifiedById?.ToString() ?? "—")</span>
+                            <span class="text-muted small">@Model.Practice.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions mt-4">
+            <a asp-page="./Edit" asp-route-id="@Model.Practice.Id" class="btn btn-warning btn-block btn-rounded text-white shadow-sm font-weight-bold py-2 mb-2">
+                <i class="fas fa-edit mr-1"></i> Modificar Práctica
+            </a>
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
+                <i class="fas fa-list mr-1"></i> Volver al Listado
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar línea -->
+<div class="modal fade" id="editRequirementModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-lg">
+            <form method="post" asp-page-handler="UpdateRequirement" asp-route-id="@Model.Practice.Id" id="edit-requirement-form">
+                <div class="modal-header bg-warning text-white">
+                    <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-2"></i> Editar Línea de Receta</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" asp-for="RequirementUpdate.Id" id="editReqId" />
+
+                    <div class="form-group mb-3">
+                        <label class="control-label font-weight-bold small uppercase text-muted">Artículo</label>
+                        <input type="text" id="editReqArticle" class="form-control" readonly disabled />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-7">
+                            <div class="form-group mb-3">
+                                <label asp-for="RequirementUpdate.Quantity" class="control-label font-weight-bold small uppercase text-muted">Cantidad <span class="text-danger">*</span></label>
+                                <input asp-for="RequirementUpdate.Quantity" type="number" step="0.01" min="0.01" id="editReqQuantity" class="form-control" required />
+                                <span asp-validation-for="RequirementUpdate.Quantity" class="text-danger small font-weight-bold"></span>
+                            </div>
+                        </div>
+                        <div class="col-5 d-flex align-items-end">
+                            <div class="form-group mb-3">
+                                <label class="control-label font-weight-bold small uppercase text-muted d-block">&nbsp;</label>
+                                <div class="form-check form-switch">
+                                    <input asp-for="RequirementUpdate.IsScalable" class="form-check-input" type="checkbox" id="editReqScalable" />
+                                    <label class="form-check-label small font-weight-bold text-muted" for="editReqScalable">Escalable</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="RequirementUpdate.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones</label>
+                        <textarea asp-for="RequirementUpdate.Observations" id="editReqObservations" class="form-control" rows="2" maxlength="1000"></textarea>
+                        <span asp-validation-for="RequirementUpdate.Observations" class="text-danger small"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-rounded font-weight-bold" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning btn-rounded text-white font-weight-bold shadow-sm">
+                        <i class="fas fa-save mr-1"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+
+            $(".select2-article").select2({
+                width: '100%',
+                allowClear: true,
+                placeholder: '-- Seleccione artículo --'
+            });
+
+            // Cargar datos al modal de edición.
+            $('.js-edit-requirement').on('click', function () {
+                var btn = $(this);
+                $('#editReqId').val(btn.data('id'));
+                $('#editReqQuantity').val(btn.data('quantity'));
+                $('#editReqScalable').prop('checked', btn.data('scalable') === true || btn.data('scalable') === 'true');
+                $('#editReqObservations').val(btn.data('observations') || '');
+                var row = btn.closest('tr');
+                var articleText = row.find('h6').first().text().trim() + ' — ' + row.find('span.text-muted').first().text().trim();
+                $('#editReqArticle').val(articleText);
+                $('#editRequirementModal').modal('show');
+            });
+
+            // Confirmación al guardar cambios del modal.
+            var editForm = document.getElementById('edit-requirement-form');
+            if (editForm) {
+                editForm.addEventListener('submit', function (event) {
+                    if (editForm.dataset.confirmed === 'true') return true;
+                    event.preventDefault();
+                    if (typeof Swal === 'undefined') {
+                        editForm.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(editForm);
+                        return false;
+                    }
+                    Swal.fire({
+                        title: 'Actualizar línea',
+                        text: 'Se guardarán los cambios de la línea seleccionada.',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, guardar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            editForm.dataset.confirmed = 'true';
+                            HTMLFormElement.prototype.submit.call(editForm);
+                        }
+                    });
+                    return false;
+                });
+            }
+
+            // Confirmación al retirar línea.
+            $('.js-remove-requirement-form').on('submit', function (event) {
+                var form = this;
+                if (form.dataset.confirmed === 'true') return true;
+                event.preventDefault();
+                if (typeof Swal === 'undefined') {
+                    form.dataset.confirmed = 'true';
+                    HTMLFormElement.prototype.submit.call(form);
+                    return false;
+                }
+                Swal.fire({
+                    title: 'Retirar línea',
+                    text: 'La línea quedará marcada como retirada. Podrá volver a agregarse posteriormente.',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, retirar',
+                    cancelButtonText: 'Cancelar'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        form.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+                return false;
+            });
+        });
+    </script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 4px !important; }
+        .v-middle td { vertical-align: middle !important; }
+        .opacity-2 { opacity: 0.2; }
+    </style>
+}

@@ -1,0 +1,244 @@
+@page "{laboratoryId:int}/{articleId:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock.EditModel
+@using Proyecto_Laboratorios_Univalle.Helpers
+@{
+    ViewData["Title"] = "Ajustar Existencia";
+    var articleName = Model.Article?.Name ?? "Artículo";
+    var articleCode = Model.Article?.Code ?? string.Empty;
+    var labDisplay = Model.Laboratory != null ? LaboratoryDisplayHelper.Format(Model.Laboratory) : "—";
+    var unitName = !string.IsNullOrWhiteSpace(Model.Article?.MeasurementUnit?.Name)
+        ? Model.Article!.MeasurementUnit!.Name
+        : Model.Article?.UnitOfMeasure ?? string.Empty;
+    var unitCode = Model.Article?.MeasurementUnit?.Code;
+    var isNew = !Model.RowExists;
+}
+
+<div class="row">
+    <!-- Main Column -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">@(isNew ? "Registrar Existencia" : "Ajustar Existencia")</h4>
+                        <h6 class="card-subtitle text-muted">
+                            @(isNew
+                                ? "Defina la cantidad disponible para iniciar el registro de stock en el laboratorio."
+                                : "Actualice la cantidad disponible y la fecha del último ajuste del artículo en el laboratorio.")
+                        </h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-warehouse fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" id="stockEditForm">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+                    <input type="hidden" asp-for="Input.LaboratoryId" />
+                    <input type="hidden" asp-for="Input.ArticleId" />
+                    <input type="hidden" asp-for="Input.RowVersionBase64" />
+                    <input type="hidden" asp-for="Input.LaboratoryFilter" />
+                    <input type="hidden" asp-for="Input.SearchTerm" />
+
+                    <div class="row">
+                        <!-- Identidad del contexto -->
+                        <div class="col-md-7 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-card mr-2"></i> Contexto del Registro
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label class="control-label font-weight-bold small uppercase text-muted">Laboratorio</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-warehouse text-muted"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control border-left-0 bg-light font-weight-bold"
+                                           value="@labDisplay" readonly tabindex="-1" />
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label class="control-label font-weight-bold small uppercase text-muted">Artículo</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-box text-muted"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control border-left-0 bg-light font-weight-bold"
+                                           value="@articleName@(string.IsNullOrWhiteSpace(articleCode) ? string.Empty : " · " + articleCode)" readonly tabindex="-1" />
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label class="control-label font-weight-bold small uppercase text-muted">Unidad de medida</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-ruler text-muted"></i></span>
+                                    </div>
+                                    <input type="text" class="form-control border-left-0 bg-light"
+                                           value="@(string.IsNullOrWhiteSpace(unitName) ? "—" : unitName + (string.IsNullOrWhiteSpace(unitCode) ? string.Empty : " · " + unitCode))" readonly tabindex="-1" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Cantidad y fecha -->
+                        <div class="col-md-5">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-sliders-h mr-2"></i> Existencia
+                            </h5>
+
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-3 rounded shadow-none">
+                                <label asp-for="Input.AvailableQuantity" class="control-label font-weight-bold small text-warning uppercase mb-2">Cantidad disponible</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white"><i class="fas fa-hashtag text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="Input.AvailableQuantity"
+                                           class="form-control border-warning shadow-none font-weight-bold text-right"
+                                           min="0" step="0.01" />
+                                </div>
+                                <span asp-validation-for="Input.AvailableQuantity" class="text-danger small font-weight-bold d-block mt-1"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.UpdatedOn" class="control-label font-weight-bold small uppercase text-muted">Fecha de actualización</label>
+                                <div class="input-group drop-shadow">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white border-right-0"><i class="fas fa-calendar-alt text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="Input.UpdatedOn" type="date" class="form-control border-left-0" />
+                                </div>
+                                <span asp-validation-for="Input.UpdatedOn" class="text-danger small"></span>
+                            </div>
+
+                            <div class="alert alert-light border-0 small p-3 mt-4 text-info italic shadow-none border-left border-info border-3">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                @(isNew
+                                    ? "Al guardar se creará la fila única de este par laboratorio-artículo."
+                                    : "El sistema controla la concurrencia: si otra persona modificó la existencia, se le notificará para recargar.")
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions mt-4 text-right">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> @(isNew ? "Registrar Existencia" : "Actualizar Existencia")
+                        </button>
+                        <a asp-page="./Index"
+                           asp-route-laboratoryFilter="@Model.Input.LaboratoryFilter"
+                           asp-route-searchTerm="@Model.Input.SearchTerm"
+                           class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: contexto del artículo y auditoría -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-info-circle mr-2 text-info"></i> Existencia</h5>
+                <hr class="border-secondary" />
+
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-warning mb-3">
+                        <i class="fas fa-warehouse fa-lg"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-white mb-1">@labDisplay</h5>
+                    <span class="text-muted small d-block">@articleName</span>
+                    <span class="badge badge-pill @(isNew ? "badge-info" : "badge-warning") px-3 small font-weight-bold mt-2">@(isNew ? "Nuevo registro" : "Edición")</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Auditoría Operativa</h5>
+                <hr />
+                <div class="small mt-3">
+                    @if (Model.RowExists && Model.Article != null)
+                    {
+                        <div class="mb-3">
+                            <label class="text-muted d-block small uppercase mb-0">Cantidad actual</label>
+                            <span class="font-weight-bold text-dark d-block">@Model.Input.AvailableQuantity.ToString("0.##")</span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted d-block small uppercase mb-0">Última actualización</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.Input.UpdatedOn?.ToString("dd/MM/yyyy") ?? "—")</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted italic mb-0">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Aún no existe un registro de stock para este par laboratorio-artículo.
+                        </p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(function () {
+            "use strict";
+
+            var isExistingRow = @(Model.RowExists ? "true" : "false");
+            var isConfirmedSubmit = false;
+
+            $('#stockEditForm').on('submit', function (event) {
+                if (isConfirmedSubmit) return true;
+                if (!isExistingRow) return true; // Crear no pide confirmación previa.
+
+                // Si jQuery unobtrusive detecta errores de validación, deja que los muestre y no bloquees.
+                if ($(this).valid && $(this).valid() === false) return true;
+
+                event.preventDefault();
+                var form = this;
+                var submitForm = function () {
+                    isConfirmedSubmit = true;
+                    var btn = $(form).find('button[type="submit"]');
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Actualizando...');
+                    HTMLFormElement.prototype.submit.call(form);
+                };
+
+                if (typeof Swal === 'undefined') {
+                    submitForm();
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Guardar cambios en la existencia?',
+                    text: 'Se actualizará la cantidad disponible y la fecha de actualización del artículo en el laboratorio seleccionado.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#ffc107',
+                    cancelButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        submitForm();
+                    }
+                });
+            });
+        });
+    </script>
+}
+@section Styles {
+    <style>
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .italic { font-style: italic; }
+        .border-3 { border-left-width: 4px !important; }
+        .drop-shadow { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.05)); }
+    </style>
+}

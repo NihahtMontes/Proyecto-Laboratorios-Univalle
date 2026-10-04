@@ -1,0 +1,95 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits.CreateModel
+
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Header -->
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">
+                            <i class="fas fa-ruler-combined mr-2 text-info"></i>Alta de Unidad de Medida
+                        </h4>
+                        <h6 class="card-subtitle text-muted">Registre las unidades (PZA, JUEGO, KG, LITRO…) aplicables al catálogo de artículos.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-ruler fa-2x text-info opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-card mr-2"></i> Identidad de la Unidad
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre de la Unidad <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" placeholder="Ej: Pieza, Kilogramo, Litro, Juego" required maxlength="60" />
+                                <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-3 rounded shadow-none">
+                                <label asp-for="Input.Code" class="control-label font-weight-bold small text-warning uppercase mb-2">Código Único</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text bg-white"><i class="fas fa-hashtag text-muted"></i></span>
+                                    </div>
+                                    <input asp-for="Input.Code" class="form-control border-warning shadow-none" placeholder="Ej: PZA, KG, LIT" maxlength="50" />
+                                </div>
+                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold d-block mt-1"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions text-right mt-4">
+                        <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> Registrar Unidad
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+
+            var alphaPattern = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s\-]*$/;
+            var alphanumericPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]*$/;
+            function setupBlocking(selector, pattern) {
+                $(selector).on('input', function () {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]/g, ''));
+                    }
+                });
+            }
+            setupBlocking('#Input_Name', alphaPattern);
+            setupBlocking('#Input_Code', alphanumericPattern);
+        });
+    </script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+    </style>
+}

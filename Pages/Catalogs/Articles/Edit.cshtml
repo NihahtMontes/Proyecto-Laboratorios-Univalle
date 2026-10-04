@@ -1,0 +1,255 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+<div class="row">
+    <!-- Main Column -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">
+                            <i class="fas fa-edit mr-2 text-warning"></i>Editar Artículo
+                        </h4>
+                        <h6 class="card-subtitle text-muted">Actualice la identidad, clasificación y estado del artículo.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-box fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" id="edit-article-form" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+
+                    <div class="row">
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-card mr-2"></i> Identidad
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-muted">Código Único <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Code" class="form-control" required maxlength="30" />
+                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Artículo <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" required maxlength="200" />
+                                <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.ArticleType" class="control-label font-weight-bold small uppercase text-muted">Tipo <span class="text-danger">*</span></label>
+                                <select asp-for="Input.ArticleType" class="form-control custom-select" required>
+                                    <option value="">-- Seleccione tipo --</option>
+                                    @foreach (var t in Model.ArticleTypeOptions)
+                                    {
+                                        <option value="@t.Value">@t.Text</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Input.ArticleType" class="text-danger small font-weight-bold"></span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-sitemap mr-2"></i> Clasificación
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.ArticleCategoryId" class="control-label font-weight-bold small uppercase text-muted">Categoría <span class="text-danger">*</span></label>
+                                <select asp-for="Input.ArticleCategoryId" class="form-control custom-select select2" required>
+                                    <option value="">-- Seleccione categoría --</option>
+                                    @foreach (var c in Model.CategoryOptions)
+                                    {
+                                        <option value="@c.Value">@c.Text</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Input.ArticleCategoryId" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.MeasurementUnitId" class="control-label font-weight-bold small uppercase text-muted">Unidad de Medida <span class="text-danger">*</span></label>
+                                <select asp-for="Input.MeasurementUnitId" class="form-control custom-select select2" required>
+                                    <option value="">-- Seleccione unidad --</option>
+                                    @foreach (var u in Model.UnitOptions)
+                                    {
+                                        <option value="@u.Value">@u.Text</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Input.MeasurementUnitId" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4" id="equipmentField">
+                                <label asp-for="Input.EquipmentId" class="control-label font-weight-bold small uppercase text-muted">Equipo de catálogo (opcional)</label>
+                                <select asp-for="Input.EquipmentId" class="form-control custom-select select2" data-placeholder="-- Seleccione equipo --">
+                                    <option value="">-- Sin equipo asociado --</option>
+                                    @foreach (var e in Model.EquipmentOptions)
+                                    {
+                                        <option value="@e.Value">@e.Text</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Input.EquipmentId" class="text-danger small font-weight-bold"></span>
+                                <small class="text-muted italic">Sólo relevante cuando el tipo es <strong>Equipo</strong>.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning mt-4 shadow-none">
+                        <label asp-for="Input.Status" class="text-warning small uppercase font-weight-bold mb-2 d-block">Estado Administrativo <span class="text-danger">*</span></label>
+                        <select asp-for="Input.Status" class="form-control border-warning font-weight-bold custom-select"
+                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
+                                required></select>
+                        <small class="text-muted italic mt-2 d-block small">Indique si el artículo está disponible para nuevas recetas y solicitudes de salida.</small>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions mt-4 text-right">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> Actualizar Registro
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4">
+                    <i class="fas fa-info-circle mr-2 text-info"></i> Vista Rápida
+                </h5>
+                <hr class="border-secondary" />
+
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-info mb-3">
+                        <i class="fas fa-box fa-lg"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-white mb-1">@Model.ArticleSnapshot?.Name</h5>
+                    <span class="badge badge-pill badge-warning px-3 small font-weight-bold">@(Model.ArticleSnapshot?.Status)</span>
+                    @if (Model.ArticleSnapshot != null && !string.IsNullOrWhiteSpace(Model.ArticleSnapshot.Code))
+                    {
+                        <div class="mt-2 small text-white-50">Cód: @Model.ArticleSnapshot.Code</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase">
+                    <i class="fas fa-history mr-2 text-warning"></i> Auditoría Operativa
+                </h5>
+                <hr />
+                <div class="small mt-3">
+                    @if (Model.ArticleSnapshot != null)
+                    {
+                        <div class="mb-3">
+                            <label class="text-muted d-block small uppercase mb-0">Alta de Registro</label>
+                            <span class="font-weight-bold text-dark d-block">@Model.ArticleSnapshot.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        @if (Model.ArticleSnapshot.LastModifiedDate.HasValue)
+                        {
+                            <div class="mb-0 border-top pt-2">
+                                <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                                <span class="font-weight-bold text-dark d-block">@Model.ArticleSnapshot.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $("input,select,textarea").not("[type=submit]").jqBootstrapValidation();
+
+            var alphanumericPattern = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]*$/;
+            function setupBlocking(selector, pattern) {
+                $(selector).on('input', function () {
+                    var $field = $(this);
+                    var val = $field.val();
+                    if (!pattern.test(val)) {
+                        $field.val(val.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-\.\(\)]/g, ''));
+                    }
+                });
+            }
+            setupBlocking('#Input_Code', alphanumericPattern);
+            setupBlocking('#Input_Name', alphanumericPattern);
+
+            $('.select2').select2({ width: '100%', allowClear: true });
+
+            function toggleEquipment() {
+                var val = parseInt($('#Input_ArticleType').val(), 10);
+                if (val === 1) {
+                    $('#equipmentField').slideDown(150);
+                } else {
+                    $('#equipmentField').slideUp(150);
+                    $('#Input_EquipmentId').val(null).trigger('change');
+                }
+            }
+            $('#Input_ArticleType').on('change', toggleEquipment);
+            toggleEquipment();
+
+            var form = document.getElementById('edit-article-form');
+            if (form) {
+                form.addEventListener('submit', function (event) {
+                    if (form.dataset.confirmed === 'true') {
+                        return true;
+                    }
+                    event.preventDefault();
+
+                    if (typeof Swal === 'undefined') {
+                        form.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(form);
+                        return false;
+                    }
+
+                    Swal.fire({
+                        title: 'Guardar cambios',
+                        text: 'Se actualizará el artículo y se sincronizarán las columnas legadas (categoría y unidad de medida).',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, guardar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            form.dataset.confirmed = 'true';
+                            HTMLFormElement.prototype.submit.call(form);
+                        }
+                    });
+
+                    return false;
+                });
+            }
+        });
+    </script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 4px !important; }
+    </style>
+}

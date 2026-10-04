@@ -1,0 +1,187 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    var hasActiveFilters = Model.LaboratoryFilter.HasValue || !string.IsNullOrWhiteSpace(Model.SearchTerm);
+    var hasSelection = Model.SelectedLaboratoryId.HasValue;
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <!-- Header section -->
+                <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Existencias por Laboratorio</h3>
+                        <h6 class="card-subtitle text-muted ml-2">
+                            Cantidades disponibles de artículos en el laboratorio seleccionado.
+                            @if (hasSelection)
+                            {
+                                <span class="font-weight-bold text-dark">Mostrando: @(Model.SelectedLaboratoryDisplay)</span>
+                            }
+                            else
+                            {
+                                <span class="italic">Seleccione un laboratorio para listar las existencias.</span>
+                            }
+                        </h6>
+                    </div>
+                </div>
+
+                <!-- 🔍 Smart Index Zone: filtros -->
+                <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                    <form method="get" data-live-filter-form>
+                        <label asp-for="SearchTerm" class="sr-only">Buscar artículo</label>
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                            </div>
+                            <input type="search" asp-for="SearchTerm"
+                                   class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                                   placeholder="Buscar por nombre o código de artículo"
+                                   autocomplete="off"
+                                   data-live-filter-search />
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                            <select asp-for="LaboratoryFilter"
+                                    class="custom-select select2 btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.LaboratoryFilter.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="Model.LaboratoryOptions"
+                                    aria-label="Laboratorio"
+                                    data-live-filter-control>
+                                <option value="">Laboratorio</option>
+                            </select>
+
+                            @if (hasActiveFilters)
+                            {
+                                <a asp-page="./Index" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                    <i class="fas fa-times mr-1"></i> Limpiar filtros
+                                </a>
+                            }
+
+                            <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                <strong class="text-dark">@Model.StockRows.Count</strong> artículo(s)
+                            </span>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Artículo / Código</th>
+                                <th>Unidad de medida</th>
+                                <th class="text-center">Cantidad disponible</th>
+                                <th class="text-center">Última actualización</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!hasSelection)
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted italic">
+                                        <i class="fas fa-warehouse fa-3x mb-3 d-block opacity-2"></i>
+                                        Seleccione un laboratorio activo para listar sus existencias.
+                                    </td>
+                                </tr>
+                            }
+                            else if (Model.StockRows == null || !Model.StockRows.Any())
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted italic">
+                                        <i class="fas fa-boxes fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron artículos activos en el laboratorio seleccionado.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var item in Model.StockRows)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="m-r-10">
+                                                    <span class="btn btn-circle btn-info text-white shadow-sm font-weight-bold"><i class="fas fa-box"></i></span>
+                                                </div>
+                                                <div>
+                                                    <h6 class="m-b-0 font-weight-bold text-dark">@item.ArticleName</h6>
+                                                    <span class="text-muted small">Cód: @(string.IsNullOrWhiteSpace(item.ArticleCode) ? "No asignado" : item.ArticleCode)</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex flex-column">
+                                                <span class="font-weight-bold text-dark">@item.UnitOfMeasure</span>
+                                                @if (!string.IsNullOrWhiteSpace(item.UnitCode))
+                                                {
+                                                    <span class="text-muted small"><i class="fas fa-ruler mr-1"></i>@item.UnitCode</span>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (item.HasStockRow)
+                                            {
+                                                <span class="badge badge-pill badge-outline-success border border-success text-success font-weight-bold px-3 py-1">
+                                                    @item.AvailableQuantity.ToString("0.##")
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-pill badge-secondary px-3 py-1 font-weight-bold">0</span>
+                                                <div class="small italic text-muted mt-1">sin registro</div>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (item.HasStockRow && item.UpdatedOn.HasValue)
+                                            {
+                                                <span class="font-weight-bold text-dark">@item.UpdatedOn.Value.ToString("dd/MM/yyyy")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted italic">—</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <a asp-page="./Edit"
+                                               asp-route-laboratoryId="@Model.SelectedLaboratoryId"
+                                               asp-route-articleId="@item.ArticleId"
+                                               asp-route-laboratoryFilter="@Model.LaboratoryFilter"
+                                               asp-route-searchTerm="@Model.SearchTerm"
+                                               class="btn btn-sm btn-outline-warning btn-rounded shadow-none"
+                                               title="Ajustar existencia">
+                                                <i class="fas fa-sliders-h"></i> Ajustar
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .italic { font-style: italic; }
+        .opacity-2 { opacity: 0.2; }
+    </style>
+}
+@section Scripts {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $(".select2").select2({ width: '100%', allowClear: true, placeholder: '-- Seleccione laboratorio --' });
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+    </script>
+}

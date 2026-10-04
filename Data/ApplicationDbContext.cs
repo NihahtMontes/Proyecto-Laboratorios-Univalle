@@ -382,6 +382,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<AcademicPlanning> AcademicPlannings { get; set; } = null!;
         public DbSet<AcademicWeek> AcademicWeeks { get; set; } = null!;
         public DbSet<Campus> Campuses { get; set; } = null!;
+        public DbSet<CourseGroup> CourseGroups { get; set; } = null!;
+        public DbSet<Practice> Practices { get; set; } = null!;
+        public DbSet<PracticeRequirement> PracticeRequirements { get; set; } = null!;
+        public DbSet<ArticleCategory> ArticleCategories { get; set; } = null!;
+        public DbSet<MeasurementUnit> MeasurementUnits { get; set; } = null!;
+        public DbSet<ArticleStock> ArticleStocks { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -414,6 +420,55 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Laboratory>().HasOne(l => l.Campus).WithMany(c => c.Laboratories).HasForeignKey(l => l.CampusId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Faculty>().HasIndex(f => f.Code).IsUnique().HasFilter("[Code] IS NOT NULL AND [Code] <> ''");
             modelBuilder.Entity<Subject>().HasIndex(x => x.Code).IsUnique().HasFilter("[Code] <> ''");
+
+            // Catálogo académico y de artículos (base estructural del cliente). Borrado lógico por Status; sin cascadas.
+            modelBuilder.Entity<Subject>().HasIndex(x => new { x.CareerId, x.Name }).IsUnique().HasFilter("[CareerId] IS NOT NULL");
+            modelBuilder.Entity<Subject>().HasOne(x => x.Career).WithMany().HasForeignKey(x => x.CareerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Subject>().ToTable(t => t.HasCheckConstraint("CK_Subjects_Status", "[Status] BETWEEN 0 AND 2"));
+
+            modelBuilder.Entity<CourseGroup>().HasIndex(g => g.Code).IsUnique();
+            modelBuilder.Entity<CourseGroup>().HasIndex(g => new { g.ManagementId, g.SubjectId, g.Name }).IsUnique().HasFilter("[Status] <> 2");
+            modelBuilder.Entity<CourseGroup>().HasQueryFilter(g => g.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<CourseGroup>().HasOne(g => g.Management).WithMany().HasForeignKey(g => g.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CourseGroup>().HasOne(g => g.Subject).WithMany().HasForeignKey(g => g.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CourseGroup>().HasOne(g => g.TeacherPerson).WithMany().HasForeignKey(g => g.TeacherPersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CourseGroup>().HasOne(g => g.Laboratory).WithMany().HasForeignKey(g => g.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CourseGroup>().ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_CourseGroups_Status", "[Status] BETWEEN 0 AND 2");
+                t.HasCheckConstraint("CK_CourseGroups_Weekday", "[Weekday] IS NULL OR [Weekday] BETWEEN 1 AND 6");
+                t.HasCheckConstraint("CK_CourseGroups_Times", "[StartTime] IS NULL OR [EndTime] IS NULL OR [EndTime] > [StartTime]");
+            });
+
+            modelBuilder.Entity<Practice>().HasIndex(x => x.Code).IsUnique();
+            modelBuilder.Entity<Practice>().HasQueryFilter(x => x.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<Practice>().HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Practice>().ToTable(t => t.HasCheckConstraint("CK_Practices_Status", "[Status] BETWEEN 0 AND 2"));
+
+            modelBuilder.Entity<PracticeRequirement>().HasIndex(r => new { r.PracticeId, r.ArticleId }).IsUnique().HasFilter("[IsRemoved] = 0");
+            modelBuilder.Entity<PracticeRequirement>().HasQueryFilter(r => !r.IsRemoved);
+            modelBuilder.Entity<PracticeRequirement>().Property(r => r.Quantity).HasPrecision(12, 2);
+            modelBuilder.Entity<PracticeRequirement>().HasOne(r => r.Practice).WithMany(p => p.Requirements).HasForeignKey(r => r.PracticeId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PracticeRequirement>().HasOne(r => r.Article).WithMany().HasForeignKey(r => r.ArticleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PracticeRequirement>().ToTable(t => t.HasCheckConstraint("CK_PracticeRequirements_Quantity", "[Quantity] > 0"));
+
+            modelBuilder.Entity<ArticleCategory>().HasIndex(c => c.Code).IsUnique();
+            modelBuilder.Entity<ArticleCategory>().HasIndex(c => c.Name).IsUnique();
+            modelBuilder.Entity<ArticleCategory>().ToTable(t => t.HasCheckConstraint("CK_ArticleCategories_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<MeasurementUnit>().HasIndex(u => u.Code).IsUnique();
+            modelBuilder.Entity<MeasurementUnit>().HasIndex(u => u.Name).IsUnique();
+            modelBuilder.Entity<MeasurementUnit>().ToTable(t => t.HasCheckConstraint("CK_MeasurementUnits_Status", "[Status] BETWEEN 0 AND 2"));
+
+            modelBuilder.Entity<Article>().HasIndex(a => a.Name).IsUnique().HasFilter("[Status] <> 2").HasDatabaseName("UX_Articles_Name_Active");
+            modelBuilder.Entity<Article>().HasOne(a => a.ArticleCategory).WithMany().HasForeignKey(a => a.ArticleCategoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Article>().HasOne(a => a.MeasurementUnit).WithMany().HasForeignKey(a => a.MeasurementUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Article>().HasOne(a => a.Equipment).WithMany().HasForeignKey(a => a.EquipmentId).OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ArticleStock>().HasIndex(x => new { x.LaboratoryId, x.ArticleId }).IsUnique();
+            modelBuilder.Entity<ArticleStock>().Property(x => x.AvailableQuantity).HasPrecision(12, 2);
+            modelBuilder.Entity<ArticleStock>().HasOne(x => x.Laboratory).WithMany().HasForeignKey(x => x.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ArticleStock>().HasOne(x => x.Article).WithMany().HasForeignKey(x => x.ArticleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<ArticleStock>().ToTable(t => t.HasCheckConstraint("CK_ArticleStocks_Quantity", "[AvailableQuantity] >= 0"));
             modelBuilder.Entity<ImportBatch>().HasIndex(batch => batch.Code).IsUnique();
             modelBuilder.Entity<Management>().HasIndex(m => m.Code).IsUnique().HasFilter("[Status] <> 99");
             modelBuilder.Entity<Management>().HasIndex(m => m.Status).IsUnique().HasFilter("[Status] = 0");

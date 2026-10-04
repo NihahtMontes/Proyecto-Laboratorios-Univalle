@@ -1,0 +1,211 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices.EditModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+<div class="row">
+    <!-- Main Column -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Editar Práctica Académica</h4>
+                        <h6 class="card-subtitle text-muted">Actualice la información de la práctica. Los cambios se confirman antes de guardar.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-flask fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate id="edit-practice-form">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+
+                    <div class="row">
+                        <!-- Identidad -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-card mr-2"></i> Identidad de la Práctica
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-muted">Código <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Code" class="form-control" required maxlength="50" />
+                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Number" class="control-label font-weight-bold small uppercase text-muted">N.º de práctica</label>
+                                <input asp-for="Input.Number" class="form-control" maxlength="20" />
+                                <span asp-validation-for="Input.Number" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.SubjectId" class="control-label font-weight-bold small uppercase text-muted">Materia <span class="text-danger">*</span></label>
+                                <select asp-for="Input.SubjectId"
+                                        class="form-control select2"
+                                        asp-items="@(ViewData["SubjectId"] as SelectList ?? new SelectList(Enumerable.Empty<SelectListItem>()))"
+                                        required>
+                                    <option value="">-- Seleccione materia --</option>
+                                </select>
+                                <span asp-validation-for="Input.SubjectId" class="text-danger small font-weight-bold"></span>
+                            </div>
+                        </div>
+
+                        <!-- Descripcion -->
+                        <div class="col-md-6">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-align-left mr-2"></i> Descripción Académica
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Description" class="control-label font-weight-bold small uppercase text-muted">Descripción</label>
+                                <textarea asp-for="Input.Description" class="form-control" rows="3" placeholder="Objetivo, alcance y consideraciones…"></textarea>
+                                <span asp-validation-for="Input.Description" class="text-danger small"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.SourceReference" class="control-label font-weight-bold small uppercase text-muted">Fuente de referencia</label>
+                                <input asp-for="Input.SourceReference" class="form-control" maxlength="500" />
+                                <span asp-validation-for="Input.SourceReference" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.CoverageStatus" class="control-label font-weight-bold small uppercase text-muted">Estado de cobertura</label>
+                                <input asp-for="Input.CoverageStatus" class="form-control" maxlength="40" />
+                                <span asp-validation-for="Input.CoverageStatus" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.CoverageMethod" class="control-label font-weight-bold small uppercase text-muted">Método de cobertura</label>
+                                <input asp-for="Input.CoverageMethod" class="form-control" maxlength="60" />
+                                <span asp-validation-for="Input.CoverageMethod" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group mb-4 bg-light p-3 rounded shadow-none border-left border-info">
+                                <label asp-for="Input.Observations" class="control-label font-weight-bold small uppercase text-muted">Observaciones</label>
+                                <textarea asp-for="Input.Observations" class="form-control border-0 shadow-none" rows="2"></textarea>
+                                <span asp-validation-for="Input.Observations" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning mt-3 shadow-none">
+                        <label asp-for="Input.Status" class="text-warning small uppercase font-weight-bold mb-2 d-block">Estado Administrativo <span class="text-danger">*</span></label>
+                        <select asp-for="Input.Status" class="form-control border-warning font-weight-bold custom-select"
+                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
+                                required></select>
+                        <small class="text-muted italic mt-2 d-block small">Indique si la práctica está operativa para la asignación de recetas y grupos.</small>
+                        <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold"></span>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions mt-4 text-right">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> Actualizar Práctica
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-info-circle mr-2 text-info"></i> Estado de la Práctica</h5>
+                <hr class="border-secondary" />
+
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-info mb-3">
+                        <i class="fas fa-flask fa-lg"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-white mb-1">@(Model.Input.Code)</h5>
+                    <span class="badge badge-pill badge-warning px-3 small font-weight-bold">@Model.Input.Status</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Información de Auditoría</h5>
+                <hr />
+                <div class="small mt-3 text-muted italic">
+                    <i class="fas fa-info-circle mr-1"></i> La auditoría (alta y última modificación) la gestiona ApplicationDbContext de forma automática al guardar.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $(".select2").select2({ width: '100%', allowClear: true });
+
+            var form = document.getElementById('edit-practice-form');
+            if (!form) {
+                return;
+            }
+
+            form.addEventListener('submit', function (event) {
+                if (form.dataset.confirmed === 'true') {
+                    return true;
+                }
+
+                event.preventDefault();
+
+                if (typeof Swal === 'undefined') {
+                    form.dataset.confirmed = 'true';
+                    HTMLFormElement.prototype.submit.call(form);
+                    return false;
+                }
+
+                Swal.fire({
+                    title: 'Actualizar Práctica',
+                    text: 'Se guardarán los cambios de la práctica y su materia asociada.',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        form.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+
+                return false;
+            });
+        });
+    </script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+@section Styles {
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 4px !important; }
+    </style>
+}

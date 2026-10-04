@@ -1,0 +1,297 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups.EditModel
+
+@{
+    string WeekdayName(int d) => d switch
+    {
+        1 => "Lunes",
+        2 => "Martes",
+        3 => "Miércoles",
+        4 => "Jueves",
+        5 => "Viernes",
+        6 => "Sábado",
+        _ => ""
+    };
+}
+
+<div class="row">
+    <!-- Main Column: CourseGroup Management -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Gestión de Grupo de Materia</h4>
+                        <h6 class="card-subtitle text-muted">Actualice el paralelo, su docente, laboratorio y horario. Las recetas asociadas se conservan.</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <i class="fas fa-users-class fa-2x text-warning opacity-5"></i>
+                    </div>
+                </div>
+
+                <form method="post" novalidate>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+
+                    <div class="row">
+                        <!-- Identity -->
+                        <div class="col-md-6 border-right">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-id-card mr-2"></i> Identidad del Grupo
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-muted">Código del Grupo <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Code" class="form-control" required maxlength="50" />
+                                <small class="text-muted italic mt-1 d-block">Único en el sistema institucional.</small>
+                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre del Grupo <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" required maxlength="20" />
+                                <small class="text-muted italic mt-1 d-block">Junto con la gestión y la materia, debe ser único.</small>
+                                <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.ManagementId" class="control-label font-weight-bold small uppercase text-muted">Gestión <span class="text-danger">*</span></label>
+                                <select asp-for="Input.ManagementId" class="form-control custom-select select2" asp-items="Model.ManagementOptions" required>
+                                    <option value="">-- Seleccione gestión --</option>
+                                </select>
+                                <span asp-validation-for="Input.ManagementId" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label class="control-label font-weight-bold small uppercase text-muted">Filtrar materias por carrera (opcional)</label>
+                                <select id="careerFilter" class="form-control custom-select select2" asp-items="Model.CareerOptions" data-placeholder="-- Todas las carreras --">
+                                    <option value="">-- Todas las carreras --</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.SubjectId" class="control-label font-weight-bold small uppercase text-muted">Materia <span class="text-danger">*</span></label>
+                                <select asp-for="Input.SubjectId" class="form-control custom-select select2" required id="subjectSelect">
+                                    <option value="">-- Seleccione materia --</option>
+                                    @foreach (var opt in Model.SubjectOptions)
+                                    {
+                                        <option value="@opt.Id" data-career="@(opt.CareerId?.ToString() ?? "")">@opt.Name</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Input.SubjectId" class="text-danger small font-weight-bold"></span>
+                            </div>
+                        </div>
+
+                        <!-- Operación -->
+                        <div class="col-md-6 pl-lg-4">
+                            <h5 class="font-weight-bold text-info mb-3">
+                                <i class="fas fa-chalkboard-teacher mr-2"></i> Operación Académica
+                            </h5>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.TeacherPersonId" class="control-label font-weight-bold small uppercase text-muted">Docente <span class="text-danger">*</span></label>
+                                <select asp-for="Input.TeacherPersonId" class="form-control custom-select select2" asp-items="Model.TeacherOptions" required>
+                                    <option value="">-- Seleccione docente --</option>
+                                </select>
+                                <span asp-validation-for="Input.TeacherPersonId" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.LaboratoryId" class="control-label font-weight-bold small uppercase text-muted">Laboratorio Habitual</label>
+                                <select asp-for="Input.LaboratoryId" class="form-control custom-select select2" asp-items="Model.LaboratoryOptions">
+                                    <option value="">-- Sin laboratorio definido --</option>
+                                </select>
+                                <span asp-validation-for="Input.LaboratoryId" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.Weekday" class="control-label font-weight-bold small uppercase text-muted">Día</label>
+                                        <select asp-for="Input.Weekday" class="form-control custom-select select2">
+                                            <option value="">— Sin día —</option>
+                                            @for (var d = 1; d <= 6; d++)
+                                            {
+                                                <option value="@d">@WeekdayName(d)</option>
+                                            }
+                                        </select>
+                                        <span asp-validation-for="Input.Weekday" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.StartTime" class="control-label font-weight-bold small uppercase text-muted">Hora Inicio</label>
+                                        <input asp-for="Input.StartTime" type="time" class="form-control" value="@(Model.Input.StartTime ?? "")" />
+                                        <span asp-validation-for="Input.StartTime" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.EndTime" class="control-label font-weight-bold small uppercase text-muted">Hora Fin</label>
+                                        <input asp-for="Input.EndTime" type="time" class="form-control" value="@(Model.Input.EndTime ?? "")" />
+                                        <span asp-validation-for="Input.EndTime" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.StudentCount" class="control-label font-weight-bold small uppercase text-muted">N.º de Estudiantes</label>
+                                        <input asp-for="Input.StudentCount" type="number" min="0" max="1000" class="form-control" />
+                                        <span asp-validation-for="Input.StudentCount" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-4">
+                                        <label asp-for="Input.ScalingFactor" class="control-label font-weight-bold small uppercase text-muted">Factor de Escalamiento</label>
+                                        <input asp-for="Input.ScalingFactor" type="number" min="0" max="1000" class="form-control" />
+                                        <span asp-validation-for="Input.ScalingFactor" class="text-danger small"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning shadow-none">
+                                <div class="custom-control custom-switch">
+                                    <input asp-for="Input.IsDemonstrative" type="checkbox" class="custom-control-input" id="isDemonstrative" />
+                                    <label class="custom-control-label font-weight-bold text-warning" for="isDemonstrative">
+                                        <i class="fas fa-flask mr-1"></i>Grupo demostrativo
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning mt-3 shadow-none">
+                        <label asp-for="Input.Status" class="text-warning small uppercase font-weight-bold mb-2 d-block">Estado Administrativo <span class="text-danger">*</span></label>
+                        <select asp-for="Input.Status" class="form-control border-warning font-weight-bold custom-select"
+                                asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
+                                required></select>
+                        <small class="text-muted italic mt-2 d-block small">Indique si el grupo sigue operativo para nuevas prácticas.</small>
+                    </div>
+
+                    <hr />
+
+                    <div class="form-actions mt-4 text-right">
+                        <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
+                            <i class="fas fa-save mr-1"></i> Actualizar Registro
+                        </button>
+                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: Status and Audit -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm border-0 bg-dark text-white mb-4">
+            <div class="card-body">
+                <h5 class="card-title text-white font-weight-bold small uppercase mb-4"><i class="fas fa-info-circle mr-2 text-info"></i> Estado del Grupo</h5>
+                <hr class="border-secondary" />
+
+                <div class="text-center py-3">
+                    <div class="btn btn-circle btn-lg btn-info mb-3">
+                        <i class="fas fa-users-class fa-lg"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-white mb-1">@(Model.Input.Name)</h5>
+                    <span class="badge badge-pill @(Model.Input.Status == Proyecto_Laboratorios_Univalle.Models.Enums.GeneralStatus.Activo ? "badge-success" : "badge-danger") px-3 small font-weight-bold">@(Model.Input.Status)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-4 small uppercase"><i class="fas fa-history mr-2 text-warning"></i> Auditoría Operativa</h5>
+                <hr />
+                <div class="small mt-3">
+                    <div class="mb-3">
+                        <label class="text-muted d-block small uppercase mb-0">Alta de Registro</label>
+                        <span class="font-weight-bold text-dark d-block">@Model.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                        <div class="text-muted small">Por: @(Model.CreatedByName ?? "Sistema")</div>
+                    </div>
+                    @if (Model.LastModifiedDate.HasValue)
+                    {
+                        <div class="mb-0 border-top pt-2">
+                            <label class="text-muted d-block small uppercase mb-0">Última Gestión</label>
+                            <span class="font-weight-bold text-dark d-block">@(Model.ModifiedByName ?? "-")</span>
+                            <span class="text-muted small">@Model.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        .help-block ul { list-style: none; padding-left: 0; }
+        .italic { font-style: italic; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .border-3 { border-left-width: 4px !important; }
+        .opacity-5 { opacity: 0.5; }
+        .select2-container--default .select2-selection--single { height: 38px; border: 1px solid #ced4da; }
+        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 38px; }
+        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px; }
+    </style>
+}
+
+@section Scripts {
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script>
+        $(function () {
+            "use strict";
+            $('.select2').select2({ width: '100%', allowClear: true });
+
+            // Filtro opcional por carrera
+            var subjectSelect = $('#subjectSelect');
+            $('#careerFilter').on('change', function () {
+                var careerId = $(this).val();
+                subjectSelect.find('option').each(function () {
+                    var $opt = $(this);
+                    if ($opt.val() === '') return;
+                    var optCareer = $opt.data('career');
+                    if (!careerId) {
+                        $opt.prop('disabled', false);
+                    } else {
+                        $opt.prop('disabled', String(optCareer) !== String(careerId));
+                    }
+                });
+                if (subjectSelect.find('option:selected').is(':disabled')) {
+                    subjectSelect.val('').trigger('change');
+                }
+                subjectSelect.select2({ width: '100%', allowClear: true });
+            });
+
+            // Confirmación SweetAlert2
+            var $form = $('form').first();
+            $form.on('submit', function (e) {
+                e.preventDefault();
+                var form = this;
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call(form);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Guardar cambios?',
+                    text: 'Se actualizará la ficha del grupo. Las recetas asociadas se conservan.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#f59e0b',
+                    cancelButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
+        });
+    </script>
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

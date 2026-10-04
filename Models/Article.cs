@@ -52,5 +52,24 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual User? ModifiedBy { get; set; }
 
         public virtual ICollection<DepartureItem> DepartureItems { get; set; } = [];
+
+        [Display(Name = "Categoría")]
+        public int? ArticleCategoryId { get; set; }
+        [ForeignKey("ArticleCategoryId")]
+        public virtual ArticleCategory? ArticleCategory { get; set; }
+
+        [Display(Name = "Unidad de medida")]
+        public int? MeasurementUnitId { get; set; }
+        [ForeignKey("MeasurementUnitId")]
+        public virtual MeasurementUnit? MeasurementUnit { get; set; }
+
+        [Display(Name = "Tipo")]
+        public ArticleType? ArticleType { get; set; }
+
+        /// <summary>Vínculo opcional con el catálogo de equipos (artículos de tipo Equipo).</summary>
+        [Display(Name = "Equipo de catálogo")]
+        public int? EquipmentId { get; set; }
+        [ForeignKey("EquipmentId")]
+        public virtual Equipment? Equipment { get; set; }
     }
 }
