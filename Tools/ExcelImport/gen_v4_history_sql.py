@@ -705,6 +705,52 @@ def load():
             w("COMMIT TRANSACTION;")
     w("GO")
     w(declare)
+    w("""-- Vínculos de la BD contradichos por la V4 (mantenimiento y solicitud con versión V4): se desactivan, no se borran
+BEGIN TRANSACTION;
+DECLARE @M TABLE(id int PRIMARY KEY);
+INSERT @M SELECT DISTINCT CAST(TargetEntityKey AS int) FROM dbo.ImportSourceRows WHERE ImportBatchId = @Batch AND TargetEntityName = N'Maintenance';
+DECLARE @R TABLE(id int PRIMARY KEY);
+INSERT @R SELECT DISTINCT CAST(TargetEntityKey AS int) FROM dbo.ImportSourceRows WHERE ImportBatchId = @Batch AND TargetEntityName IN (N'Request', N'Request.SplitMerged');
+IF EXISTS (SELECT 1 FROM #MS)
+BEGIN
+    INSERT #Issue SELECT 'LEGACY_LINK_SUPERSEDED', 'MaintenanceRequest', CONCAT(mr.MaintenanceId, '-', mr.RequestId), NULL, NULL, NULL,
+           N'Vínculo de la BD contradicho por MantSolicitudes de la V4: desactivado (no se borra).', 1, N'MantSolicitudes', NULL
+    FROM dbo.MaintenanceRequests mr
+    WHERE mr.IsActive = 1 AND mr.MaintenanceId IN (SELECT id FROM @M) AND mr.RequestId IN (SELECT id FROM @R)
+      AND NOT EXISTS (SELECT 1 FROM #MS s WHERE s.MaintenanceId = mr.MaintenanceId AND s.RequestId = mr.RequestId);
+    UPDATE mr SET IsActive = 0, IsLegacyPrimary = 0, DeactivatedDate = @Now, LastModifiedDate = @Now
+    FROM dbo.MaintenanceRequests mr
+    WHERE mr.IsActive = 1 AND mr.MaintenanceId IN (SELECT id FROM @M) AND mr.RequestId IN (SELECT id FROM @R)
+      AND NOT EXISTS (SELECT 1 FROM #MS s WHERE s.MaintenanceId = mr.MaintenanceId AND s.RequestId = mr.RequestId);
+
+    INSERT #Issue SELECT 'LEGACY_LINK_SUPERSEDED', 'Maintenance', CAST(t.Id AS nvarchar(20)), 'RequestId', CAST(t.RequestId AS nvarchar(20)), NULL,
+           N'RequestId apuntaba a una solicitud que la V4 no vincula; se reasigna a la de la V4 si está libre.', 1, N'MantSolicitudes', NULL
+    FROM dbo.Maintenances t
+    WHERE t.Id IN (SELECT id FROM @M) AND t.RequestId IN (SELECT id FROM @R)
+      AND NOT EXISTS (SELECT 1 FROM #MS s WHERE s.MaintenanceId = t.Id AND s.RequestId = t.RequestId);
+    UPDATE t SET RequestId = NULL, LastModifiedDate = @Now
+    FROM dbo.Maintenances t
+    WHERE t.Id IN (SELECT id FROM @M) AND t.RequestId IN (SELECT id FROM @R)
+      AND NOT EXISTS (SELECT 1 FROM #MS s WHERE s.MaintenanceId = t.Id AND s.RequestId = t.RequestId);
+
+    ;WITH c AS (
+        SELECT t.Id mid, s.RequestId rid,
+               ROW_NUMBER() OVER (PARTITION BY s.RequestId ORDER BY CASE WHEN mr.IsLegacyPrimary = 1 THEN 0 ELSE 1 END, t.Id) rn
+        FROM dbo.Maintenances t
+        JOIN #MS s ON s.MaintenanceId = t.Id
+        JOIN dbo.MaintenanceRequests mr ON mr.MaintenanceId = t.Id AND mr.RequestId = s.RequestId AND mr.IsActive = 1
+        WHERE t.RequestId IS NULL AND t.Id IN (SELECT id FROM @M)
+          AND NOT EXISTS (SELECT 1 FROM dbo.Maintenances o WHERE o.RequestId = s.RequestId))
+    UPDATE t SET RequestId = c.rid, LastModifiedDate = @Now FROM dbo.Maintenances t JOIN c ON c.mid = t.Id WHERE c.rn = 1;
+
+    -- Cada solicitud V4 con vínculos activos conserva un vínculo principal histórico
+    UPDATE mr SET IsLegacyPrimary = 1, LastModifiedDate = @Now
+    FROM dbo.MaintenanceRequests mr
+    JOIN (SELECT a.RequestId, MIN(a.MaintenanceId) m FROM dbo.MaintenanceRequests a
+          WHERE a.IsActive = 1 AND a.RequestId IN (SELECT id FROM @R)
+          GROUP BY a.RequestId HAVING MAX(CAST(a.IsLegacyPrimary AS int)) = 0) z ON z.RequestId = mr.RequestId AND z.m = mr.MaintenanceId;
+END;
+COMMIT TRANSACTION;""")
     w("-- Vínculos mantenimiento-solicitud de la BD que la V4 no trae")
     w("INSERT #Issue SELECT 'LEGACY_ONLY_IN_DB', 'MaintenanceRequest', CONCAT(mr.MaintenanceId, '-', mr.RequestId), NULL, NULL, NULL, "
       "N'Vínculo mantenimiento-solicitud de la BD sin par en MantSolicitudes; se conserva.', 1, NULL, NULL "
