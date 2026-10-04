@@ -1,115 +1,197 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.IndexModel
-@{ ViewData["Title"] = "Prácticas de laboratorios"; }
+@{ ViewData["Title"] = "Planificación activa"; }
 
 <div class="page-breadcrumb">
     <div class="row align-items-center">
         <div class="col-md-8">
             <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
-            <h2 class="font-weight-bold text-dark">Prácticas</h2>
-            <div class="text-muted small">Resumen del flujo local de prácticas, requerimientos y devoluciones.</div>
-        </div>
-        <div class="col-md-4 text-md-right mt-3 mt-md-0">
-            <a asp-page="./Calendario" class="btn btn-primary btn-rounded font-weight-bold px-4"><i class="far fa-calendar-alt mr-1"></i> Abrir calendario</a>
-            <a asp-page="./Planificacion" class="btn btn-outline-primary btn-rounded font-weight-bold px-4"><i class="mdi mdi-plus mr-1"></i> Nueva planificación</a>
+            <h2 class="font-weight-bold text-dark">Planificación</h2>
+            <div class="text-muted small">Resumen de la planificación académica, métricas de prácticas y calendario semanal.</div>
         </div>
     </div>
 </div>
 
 <div class="container-fluid mt-3">
-    <div class="card border-0 shadow-sm rounded-lg mb-4">
-        <div class="card-body py-3">
-            <div class="d-flex flex-wrap align-items-center">
-                <span class="text-muted small font-weight-bold mr-3">VER:</span>
-                <div class="btn-group btn-group-sm" role="group" aria-label="Filtro de periodo">
-                    @foreach (var filter in new[] { (Key: "hoy", Label: "Hoy"), (Key: "semana", Label: "Esta semana"), (Key: "mes", Label: "Este mes"), (Key: "todos", Label: "Todos") })
-                    {
-                        <a asp-page="./Index" asp-route-filter="@filter.Key" class="btn @(string.Equals(Model.Filter, filter.Key, StringComparison.OrdinalIgnoreCase) ? "btn-primary" : "btn-outline-secondary")">@filter.Label</a>
-                    }
-                </div>
-                <div class="ml-auto mt-2 mt-md-0">
-                    <a asp-page="./Calendario" class="btn btn-sm btn-outline-primary btn-rounded"><i class="far fa-calendar-alt mr-1"></i> Calendario</a>
-                </div>
+
+    @if (Model.Planning == null)
+    {
+        <!-- Estado vacío: no hay planificación activa (estilo Pages/Index.cshtml ~536-555). -->
+        <div class="d-flex flex-column justify-content-center align-items-center text-center p-5"
+             style="min-height: 60vh; background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <div class="mb-4">
+                <i class="fas fa-calendar-plus opacity-25" style="font-size: 5rem; color: #7460ee !important;"></i>
+            </div>
+            <h2 class="font-weight-bold text-dark mb-2">No tiene ninguna planificación activa</h2>
+            <p class="text-muted mb-4" style="max-width: 540px;">
+                Cree una planificación académica o active una existente para registrar prácticas, requerimientos y devoluciones en el calendario.
+            </p>
+            <div class="d-flex mt-2">
+                <a asp-page="./Planificacion" class="btn btn-primary rounded-pill px-4 shadow-sm mr-2" style="background: #7460ee; border: none;">
+                    <i class="fas fa-plus mr-2"></i> Crear planificación
+                </a>
+                <a asp-page="./Planificaciones" class="btn btn-light border rounded-pill px-4 shadow-sm">
+                    <i class="fas fa-table mr-2"></i> Ver planificaciones
+                </a>
             </div>
         </div>
-    </div>
+    }
+    else
+    {
+        var planning = Model.Planning;
 
-    <div class="row mb-4">
-        <div class="col-md-3 mb-3 mb-md-0"><div class="card border-0 shadow-sm rounded-lg h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon bg-light-primary text-primary mr-3"><i class="far fa-calendar-alt fa-lg"></i></div><div><h2 class="mb-0 font-weight-bold">@Model.TotalPlans</h2><small class="text-muted">Prácticas visibles</small></div></div></div></div>
-        <div class="col-md-3 mb-3 mb-md-0"><div class="card border-0 shadow-sm rounded-lg h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon bg-light-success text-success mr-3"><i class="fas fa-check-circle fa-lg"></i></div><div><h2 class="mb-0 font-weight-bold">@Model.ReadyPlans</h2><small class="text-muted">Listas para operar</small></div></div></div></div>
-        <div class="col-md-3 mb-3 mb-md-0"><div class="card border-0 shadow-sm rounded-lg h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon bg-light-warning text-warning mr-3"><i class="fas fa-exclamation-triangle fa-lg"></i></div><div><h2 class="mb-0 font-weight-bold">@Model.ConflictPlans</h2><small class="text-muted">Revisan disponibilidad</small></div></div></div></div>
-        <div class="col-md-3"><div class="card border-0 shadow-sm rounded-lg h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon bg-light-dark text-dark mr-3"><i class="fas fa-flag-checkered fa-lg"></i></div><div><h2 class="mb-0 font-weight-bold">@Model.ClosedPlans</h2><small class="text-muted">Cerradas</small></div></div></div></div>
-    </div>
+        @if (Model.IsReadOnly)
+        {
+            <div class="alert border-0 shadow-sm rounded-lg d-flex align-items-center mb-3"
+                 style="background: linear-gradient(135deg, #fef9e7, #fff8db); border-left: 4px solid #f6c343 !important;">
+                <i class="fas fa-eye text-warning fa-lg mr-3"></i>
+                <div class="flex-grow-1">
+                    <strong class="text-dark">Consultando una planificación @planning.StatusText: solo lectura.</strong>
+                    <div class="small text-muted">Las prácticas de esta planificación no admiten nuevos registros.</div>
+                </div>
+                @if (Model.HasActivePlanning)
+                {
+                    <a asp-page="./Index" class="btn btn-warning btn-rounded font-weight-bold px-3 shadow-sm">
+                        <i class="fas fa-arrow-left mr-1"></i> Volver a la planificación activa
+                    </a>
+                }
+            </div>
+        }
 
-    <div class="row">
-        <div class="col-lg-8 mb-4 mb-lg-0">
-            <div class="card border-0 shadow-sm rounded-lg">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div><h5 class="font-weight-bold text-primary mb-1">PRÁCTICAS PLANIFICADAS</h5><small class="text-muted">La información se carga desde los catálogos locales.</small></div>
-                        <span class="badge badge-light border">@Model.Filter</span>
+        <!-- Cabecera de contexto de la planificación -->
+        <div class="card border-0 shadow-sm rounded-lg mb-4"
+             style="background: linear-gradient(135deg, #f4f3ff, #ffffff); border-left: 4px solid #7460ee !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start flex-wrap">
+                    <div class="rounded-circle p-3 mr-3"
+                         style="background: rgba(116, 96, 238, 0.12); color: #7460ee;">
+                        <i class="fas fa-calendar-alt fa-lg"></i>
                     </div>
-
-                    @if (Model.Plans.Count == 0)
-                    {
-                        <div class="text-center border rounded-lg p-5 bg-light">
-                            <i class="far fa-calendar-plus fa-3x text-muted mb-3"></i>
-                            <h5 class="font-weight-bold">No hay prácticas en este periodo</h5>
-                            <p class="text-muted mb-3">Crea una nueva o carga un ejemplo para recorrer la presentación.</p>
-                            <a asp-page="./Planificacion" class="btn btn-primary btn-rounded">Crear planificación</a>
+                    <div class="flex-grow-1">
+                        <span class="badge badge-light border text-muted px-2 py-1">
+                            <i class="fas fa-bookmark mr-1 text-primary"></i> @(planning.IsActive ? "Planificación activa" : "Planificación " + planning.StatusText)
+                        </span>
+                        <h3 class="font-weight-bold text-dark mb-1 mt-2">@planning.Name</h3>
+                        <div class="text-muted small mb-3"><i class="fas fa-hashtag mr-1"></i>@planning.Code</div>
+                        <div class="d-flex flex-wrap mb-3" style="gap: 6px;">
+                            <span class="badge badge-white border text-dark px-3 py-2 shadow-sm">
+                                <i class="fas fa-university mr-1 text-primary"></i> Gestión @planning.ManagementCode
+                            </span>
+                            <span class="badge badge-white border text-dark px-3 py-2 shadow-sm">
+                                <i class="fas fa-building mr-1 text-primary"></i> @planning.FacultyName
+                            </span>
+                            <span class="badge badge-white border text-dark px-3 py-2 shadow-sm">
+                                <i class="fas fa-graduation-cap mr-1 text-primary"></i> @planning.CareerName
+                            </span>
+                            <span class="badge badge-white border text-dark px-3 py-2 shadow-sm">
+                                <i class="far fa-calendar mr-1 text-primary"></i> @planning.StartDate.ToString("dd/MM/yyyy") – @planning.EndDate.ToString("dd/MM/yyyy")
+                            </span>
                         </div>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="bg-dark text-white"><tr><th>CÓDIGO</th><th>PLANIFICACIÓN</th><th>PRÁCTICA</th><th>LABORATORIO</th><th>FECHA</th><th>ESTADO</th><th></th></tr></thead>
-                                <tbody>
-                                @foreach (var plan in Model.Plans)
-                                {
-                                    <tr>
-                                        <td class="small font-weight-bold">@plan.Code</td>
-                                        <td class="small text-muted">@plan.PlanningCode</td>
-                                        <td><strong>@plan.Subject</strong><br /><small class="text-muted">@plan.ResponsibleName · Grupo @plan.Group</small></td>
-                                        <td class="small text-muted">@plan.LaboratoryName<br /><small>@plan.FacultyName</small></td>
-                                        <td class="small">@plan.PracticeDate.ToString("dd/MM/yyyy")<br /><span class="text-muted">@plan.StartTime.ToString(@"hh\:mm")–@plan.EndTime.ToString(@"hh\:mm")</span></td>
-                                        <td><span class="badge badge-@plan.StatusCss px-2 py-1 rounded-pill">@plan.StatusText</span>@if (plan.HasConflict) { <br /><small class="text-danger">Stock insuficiente</small> }</td>
-                                        <td class="text-right text-nowrap">
-                                            <a asp-page="./Practica" asp-route-id="@plan.Id" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a>
-                                            <a asp-page="./Requerimientos" asp-route-planId="@plan.Id" class="btn btn-sm btn-outline-primary" title="Requerimientos"><i class="fas fa-list"></i></a>
-                                        </td>
-                                    </tr>
-                                }
-                                </tbody>
-                            </table>
+                        <div class="d-flex flex-wrap" style="gap: 8px;">
+                            @if (!Model.IsReadOnly)
+                            {
+                                <a asp-page="./Planificacion" asp-route-id="@planning.Id"
+                                   class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm"
+                                   style="background: #7460ee; border: none;">
+                                    <i class="fas fa-edit mr-1"></i> Editar planificación
+                                </a>
+                            }
+                            <a asp-page="./Planificaciones" class="btn btn-outline-primary btn-rounded font-weight-bold px-4">
+                                <i class="fas fa-list mr-1"></i> Planificaciones
+                            </a>
+                            <a asp-page="./Practicas" class="btn btn-outline-primary btn-rounded font-weight-bold px-4">
+                                <i class="fas fa-flask mr-1"></i> Prácticas
+                            </a>
                         </div>
-                    }
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm rounded-lg mb-4">
-                <div class="card-body p-4">
-                    <h5 class="font-weight-bold text-primary mb-3">RECORRIDO</h5>
-                    <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Planificación y práctica</span></div>
-                    <div class="d-flex mb-3"><span class="badge badge-info mr-2">2</span><span>Requerimientos</span></div>
-                    <div class="d-flex mb-3"><span class="badge badge-warning mr-2">3</span><span>Disponibilidad</span></div>
-                    <div class="d-flex mb-3"><span class="badge badge-success mr-2">4</span><span>L-3 devolución</span></div>
-                    <div class="d-flex"><span class="badge badge-danger mr-2">5</span><span>L-5 incidencia</span></div>
+        <!-- Fila de KPIs -->
+        <div class="row mb-4">
+            <div class="col-md-2 col-sm-4 col-6 mb-3">
+                <div class="card border-0 shadow-sm rounded-lg h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="metric-icon bg-light-primary text-primary mr-3"><i class="fas fa-calendar-week fa-lg"></i></div>
+                        <div>
+                            <h3 class="mb-0 font-weight-bold">@Model.WeekCount</h3>
+                            <small class="text-muted">Semanas (@Model.LectiveWeekCount lectivas)</small>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="alert alert-light border small mb-0"><i class="fas fa-shield-alt text-success mr-1"></i> Los datos provienen del flujo L-3 persistido en la base: planificación, requerimientos, disponibilidad, devolución e incidencias L-5.</div>
+            <div class="col-md-2 col-sm-4 col-6 mb-3">
+                <div class="card border-0 shadow-sm rounded-lg h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="metric-icon bg-light-info text-info mr-3"><i class="fas fa-flask fa-lg"></i></div>
+                        <div>
+                            <h3 class="mb-0 font-weight-bold">@Model.PracticeCount</h3>
+                            <small class="text-muted">Prácticas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6 mb-3">
+                <div class="card border-0 shadow-sm rounded-lg h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="metric-icon bg-light-warning text-warning mr-3"><i class="fas fa-clock fa-lg"></i></div>
+                        <div>
+                            <h3 class="mb-0 font-weight-bold">@Model.PlannedCount</h3>
+                            <small class="text-muted">Planificadas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6 mb-3">
+                <div class="card border-0 shadow-sm rounded-lg h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="metric-icon bg-light-primary text-primary mr-3"><i class="fas fa-thumbs-up fa-lg"></i></div>
+                        <div>
+                            <h3 class="mb-0 font-weight-bold">@Model.ApprovedCount</h3>
+                            <small class="text-muted">Aprobadas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6 mb-3">
+                <div class="card border-0 shadow-sm rounded-lg h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="metric-icon bg-light-success text-success mr-3"><i class="fas fa-check-circle fa-lg"></i></div>
+                        <div>
+                            <h3 class="mb-0 font-weight-bold">@Model.FinalizedCount</h3>
+                            <small class="text-muted">Finalizadas</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6 mb-3">
+                <div class="card border-0 shadow-sm rounded-lg h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="metric-icon bg-light-danger text-danger mr-3"><i class="fas fa-exclamation-triangle fa-lg"></i></div>
+                        <div>
+                            <h3 class="mb-0 font-weight-bold">@Model.IncidentCount</h3>
+                            <small class="text-muted">Incidencias L-5</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
+
+        @if (Model.Calendar != null)
+        {
+            <partial name="_PlanningCalendar" model="Model.Calendar" />
+        }
+    }
 </div>
 
 @section Styles {
-<style>
-    .metric-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-    .bg-light-primary { background: #e8f0fe; }
-    .bg-light-success { background: #e6f4ea; }
-    .bg-light-warning { background: #fef7e0; }
-    .bg-light-dark { background: #eceff1; }
-</style>
+    <style>
+        .metric-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .bg-light-primary { background: #e8e7ff; }
+        .bg-light-success { background: #e6f4ea; }
+        .bg-light-warning { background: #fef7e0; }
+        .bg-light-info    { background: #e8f4fd; }
+        .bg-light-danger  { background: #fde7e9; }
+    </style>
 }

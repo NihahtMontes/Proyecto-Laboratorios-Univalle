@@ -2,139 +2,144 @@
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.L5Model
 @{ ViewData["Title"] = "Incidencia L-5 — Paso 5"; }
 
-<div class="page-breadcrumb">
-    <div class="row">
-        <div class="col-12">
-            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 5 · <span class="text-dark">@Model.Code</span></h4>
-            <h2 class="font-weight-bold text-dark">Registro de Incidente L-5</h2>
-            <div class="text-muted small">
-                @if (Model.Plan != null)
-                {
-                    <text>@Model.Plan.Laboratory?.Name · @Model.Plan.Subject?.Name · Grupo @Model.Plan.Group?.Name</text>
-                }
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="container-fluid mt-3">
-    @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 5)
+    @if (Model.Context != null)
+    {
+        <partial name="_PlanningContext" model="Model.Context" />
 
-    <div class="row">
-        @* ── FORMULARIO PRINCIPAL ── *@
-        <div class="col-lg-8">
-            <div class="card shadow-sm border-0 rounded-lg">
-                <div class="card-body p-4">
-                    <h6 class="font-weight-bold text-danger mb-1">FORMULARIO L-5 · INCIDENCIA</h6>
-                    <p class="text-muted small mb-3">Reporta el incidente de un utensilio devuelto con faltante, daño o pérdida.</p>
-
-                    <div class="alert alert-warning border-0 rounded-lg d-flex align-items-start mb-4">
-                        <i class="fas fa-exclamation-triangle fa-2x mr-3 mt-1"></i>
-                        <div class="small">
-                            Registrar el incidente marca la unidad seleccionada como averiada y cierra su estado anterior.
-                            Esta acción queda asentada en el historial y queda pendiente de reposición.
+        <div class="row">
+            @if (Model.Context.IsReadOnly)
+            {
+                <div class="col-lg-8">
+                    <div class="alert alert-warning border-0 rounded d-flex align-items-center mb-4">
+                        <i class="fas fa-eye fa-2x mr-3"></i>
+                        <div>
+                            <strong>Solo consulta.</strong><br />
+                            <span>La planificación no admite el registro de incidentes L-5.</span>
                         </div>
                     </div>
+                </div>
+            }
+            else
+            {
+                <div class="col-lg-8">
+                    <div class="card shadow-sm border-0 rounded-lg">
+                        <div class="card-body p-4">
+                            <h6 class="font-weight-bold text-danger mb-1">FORMULARIO L-5 · INCIDENCIA</h6>
+                            <p class="text-muted small mb-3">Reporta el incidente de un utensilio devuelto con faltante, daño o pérdida.</p>
 
-                    <form method="post" asp-route-planId="@Model.PlanId">
-                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
-
-                        @* ── EQUIPO AFECTADO ── *@
-                        <div class="form-group">
-                            <label asp-for="Input.EquipmentUnitId" class="small font-weight-bold text-muted">UNIDAD AFECTADA <span class="text-danger">*</span></label>
-                            <select asp-for="Input.EquipmentUnitId" asp-items="Model.UnitOptions" class="custom-select">
-                                <option value="">— Seleccionar unidad prestada —</option>
-                            </select>
-                            <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
-                        </div>
-
-                        <div class="form-row">
-                            @* ── TIPO DE INCIDENTE ── *@
-                            <div class="form-group col-md-6">
-                                <label asp-for="Input.IncidentType" class="small font-weight-bold text-muted">TIPO DE INCIDENTE <span class="text-danger">*</span></label>
-                                <select asp-for="Input.IncidentType" class="custom-select">
-                                    <option value="">— Seleccionar —</option>
-                                    @foreach (var t in L5Model.IncidentTypes)
-                                    {
-                                        <option value="@t">@t</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="Input.IncidentType" class="text-danger small"></span>
+                            <div class="alert alert-warning border-0 rounded-lg d-flex align-items-start mb-4">
+                                <i class="fas fa-exclamation-triangle fa-2x mr-3 mt-1"></i>
+                                <div class="small">
+                                    Registrar el incidente marca la unidad seleccionada como averiada y cierra su estado anterior.
+                                    Esta acción queda asentada en el historial y queda pendiente de reposición.
+                                </div>
                             </div>
 
-                            @* ── CANTIDAD AFECTADA ── *@
-                            <div class="form-group col-md-6">
-                                <label asp-for="Input.AffectedQuantity" class="small font-weight-bold text-muted">CANTIDAD AFECTADA <span class="text-danger">*</span></label>
-                                <input asp-for="Input.AffectedQuantity" type="number" class="form-control" min="1" value="1" />
-                                <span asp-validation-for="Input.AffectedQuantity" class="text-danger small"></span>
-                            </div>
-                        </div>
+                            <form method="post" asp-route-planId="@Model.PlanId">
+                                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-                        <div class="form-row">
-                            @* ── TIPO INVOLUCRADO ── *@
-                            <div class="form-group col-md-4">
-                                <label asp-for="Input.ResponsibleType" class="small font-weight-bold text-muted">TIPO DE INVOLUCRADO <span class="text-danger">*</span></label>
-                                <select asp-for="Input.ResponsibleType" class="custom-select">
-                                    @foreach (var t in L5Model.ResponsibleTypes)
-                                    {
-                                        <option value="@t">@t</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="Input.ResponsibleType" class="text-danger small"></span>
-                            </div>
+                                @* ── EQUIPO AFECTADO ── *@
+                                <div class="form-group">
+                                    <label asp-for="Input.EquipmentUnitId" class="small font-weight-bold text-muted">UNIDAD AFECTADA <span class="text-danger">*</span></label>
+                                    <select asp-for="Input.EquipmentUnitId" asp-items="Model.UnitOptions" class="custom-select">
+                                        <option value="">— Seleccionar unidad prestada —</option>
+                                    </select>
+                                    <span asp-validation-for="Input.EquipmentUnitId" class="text-danger small"></span>
+                                </div>
 
-                            @* ── NOMBRE DEL INVOLUCRADO ── *@
-                            <div class="form-group col-md-8">
-                                <label asp-for="Input.ResponsibleName" class="small font-weight-bold text-muted">NOMBRE DEL INVOLUCRADO <span class="text-danger">*</span></label>
-                                <input asp-for="Input.ResponsibleName" class="form-control" placeholder="Ej: Juan Pérez Mamani" />
-                                <span asp-validation-for="Input.ResponsibleName" class="text-danger small"></span>
-                            </div>
-                        </div>
+                                <div class="form-row">
+                                    @* ── TIPO DE INCIDENTE ── *@
+                                    <div class="form-group col-md-6">
+                                        <label asp-for="Input.IncidentType" class="small font-weight-bold text-muted">TIPO DE INCIDENTE <span class="text-danger">*</span></label>
+                                        <select asp-for="Input.IncidentType" class="custom-select">
+                                            <option value="">— Seleccionar —</option>
+                                            @foreach (var t in L5Model.IncidentTypes)
+                                            {
+                                                <option value="@t">@t</option>
+                                            }
+                                        </select>
+                                        <span asp-validation-for="Input.IncidentType" class="text-danger small"></span>
+                                    </div>
 
-                        @* ── DESCRIPCIÓN DEL DAÑO ── *@
-                        <div class="form-group">
-                            <label asp-for="Input.DamageDescription" class="small font-weight-bold text-muted">DESCRIPCIÓN DEL DAÑO <span class="text-danger">*</span></label>
-                            <textarea asp-for="Input.DamageDescription" class="form-control" rows="4"
-                                      placeholder="Describe cómo ocurrió el daño, rotura o pérdida, y cualquier antecedente relevante."></textarea>
-                            <span asp-validation-for="Input.DamageDescription" class="text-danger small"></span>
-                        </div>
+                                    @* ── CANTIDAD AFECTADA ── *@
+                                    <div class="form-group col-md-6">
+                                        <label asp-for="Input.AffectedQuantity" class="small font-weight-bold text-muted">CANTIDAD AFECTADA <span class="text-danger">*</span></label>
+                                        <input asp-for="Input.AffectedQuantity" type="number" class="form-control" min="1" value="1" />
+                                        <span asp-validation-for="Input.AffectedQuantity" class="text-danger small"></span>
+                                    </div>
+                                </div>
 
-                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                            <a asp-page="./L3" asp-route-id="@Model.PlanId" class="btn btn-outline-secondary btn-rounded px-4">
-                                <i class="mdi mdi-arrow-left mr-1"></i> Cancelar
-                            </a>
-                            <button type="submit" class="btn btn-danger btn-rounded font-weight-bold px-5">
-                                <i class="mdi mdi-content-save mr-1"></i> Registrar Incidente L-5
-                            </button>
+                                <div class="form-row">
+                                    @* ── TIPO INVOLUCRADO ── *@
+                                    <div class="form-group col-md-4">
+                                        <label asp-for="Input.ResponsibleType" class="small font-weight-bold text-muted">TIPO DE INVOLUCRADO <span class="text-danger">*</span></label>
+                                        <select asp-for="Input.ResponsibleType" class="custom-select">
+                                            @foreach (var t in L5Model.ResponsibleTypes)
+                                            {
+                                                <option value="@t">@t</option>
+                                            }
+                                        </select>
+                                        <span asp-validation-for="Input.ResponsibleType" class="text-danger small"></span>
+                                    </div>
+
+                                    @* ── NOMBRE DEL INVOLUCRADO ── *@
+                                    <div class="form-group col-md-8">
+                                        <label asp-for="Input.ResponsibleName" class="small font-weight-bold text-muted">NOMBRE DEL INVOLUCRADO <span class="text-danger">*</span></label>
+                                        <input asp-for="Input.ResponsibleName" class="form-control" placeholder="Ej: Juan Pérez Mamani" />
+                                        <span asp-validation-for="Input.ResponsibleName" class="text-danger small"></span>
+                                    </div>
+                                </div>
+
+                                @* ── DESCRIPCIÓN DEL DAÑO ── *@
+                                <div class="form-group">
+                                    <label asp-for="Input.DamageDescription" class="small font-weight-bold text-muted">DESCRIPCIÓN DEL DAÑO <span class="text-danger">*</span></label>
+                                    <textarea asp-for="Input.DamageDescription" class="form-control" rows="4"
+                                              placeholder="Describe cómo ocurrió el daño, rotura o pérdida, y cualquier antecedente relevante."></textarea>
+                                    <span asp-validation-for="Input.DamageDescription" class="text-danger small"></span>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                                    <a asp-page="./L3" asp-route-id="@Model.PlanId" class="btn btn-outline-secondary btn-rounded px-4">
+                                        <i class="mdi mdi-arrow-left mr-1"></i> Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-danger btn-rounded font-weight-bold px-5">
+                                        <i class="mdi mdi-content-save mr-1"></i> Registrar Incidente L-5
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                    </form>
+                    </div>
+                </div>
+            }
+
+            @* ── PANEL LATERAL: TRAZABILIDAD ── *@
+            <div class="col-lg-4 mt-4 mt-lg-0">
+                <div class="card border-0 bg-light shadow-sm rounded-lg h-100">
+                    <div class="card-body p-4">
+                        <small class="text-uppercase text-danger font-weight-bold d-block mb-2">Trazabilidad</small>
+                        <h5 class="font-weight-bold mt-1 mb-3">@Model.Code</h5>
+
+                        <p class="small mb-1"><strong>Laboratorio:</strong> @(Model.Plan?.Laboratory?.Name ?? "—")</p>
+                        <p class="small mb-1"><strong>Materia:</strong> @(Model.Plan?.Subject?.Name ?? "—")</p>
+                        <p class="small mb-1"><strong>Grupo:</strong> @(Model.Plan?.Group?.Name ?? "—")</p>
+                        <p class="small mb-3"><strong>Fecha práctica:</strong> @(Model.Plan?.ScheduledDate.ToString("dd/MM/yyyy HH:mm") ?? "—")</p>
+
+                        @if (!Model.Context.IsReadOnly)
+                        {
+                            <hr />
+
+                            <p class="small text-muted mb-0">
+                                <i class="fas fa-info-circle text-primary mr-1"></i>
+                                Al guardar el incidente volverás al formulario L-3 de Devolución y la unidad se marcará como averiada.
+                                La cantidad cubierta se descontará del faltante pendiente.
+                            </p>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
-
-        @* ── PANEL LATERAL: TRAZABILIDAD ── *@
-        <div class="col-lg-4 mt-4 mt-lg-0">
-            <div class="card border-0 bg-light shadow-sm rounded-lg h-100">
-                <div class="card-body p-4">
-                    <small class="text-uppercase text-danger font-weight-bold d-block mb-2">Trazabilidad</small>
-                    <h5 class="font-weight-bold mt-1 mb-3">@Model.Code</h5>
-
-                    <p class="small mb-1"><strong>Laboratorio:</strong> @(Model.Plan?.Laboratory?.Name ?? "—")</p>
-                    <p class="small mb-1"><strong>Materia:</strong> @(Model.Plan?.Subject?.Name ?? "—")</p>
-                    <p class="small mb-1"><strong>Grupo:</strong> @(Model.Plan?.Group?.Name ?? "—")</p>
-                    <p class="small mb-3"><strong>Fecha práctica:</strong> @(Model.Plan?.ScheduledDate.ToString("dd/MM/yyyy HH:mm") ?? "—")</p>
-
-                    <hr />
-
-                    <p class="small text-muted mb-0">
-                        <i class="fas fa-info-circle text-primary mr-1"></i>
-                        Al guardar el incidente volverás al formulario L-3 de Devolución y la unidad se marcará como averiada.
-                        La cantidad cubierta se descontará del faltante pendiente.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
+    }
 </div>
 
 @section Scripts {

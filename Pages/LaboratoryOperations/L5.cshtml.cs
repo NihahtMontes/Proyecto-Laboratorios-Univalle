@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Services;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
@@ -20,10 +21,12 @@ public class L5Model : PageModel
     public static readonly string[] ResponsibleTypes = ["ESTUDIANTE", "DOCENTE"];
 
     private readonly ApplicationDbContext _context;
+    private readonly IPlanningService _planningService;
 
-    public L5Model(ApplicationDbContext context)
+    public L5Model(ApplicationDbContext context, IPlanningService planningService)
     {
         _context = context;
+        _planningService = planningService;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -40,8 +43,12 @@ public class L5Model : PageModel
     public string Code => L3Codes.Format(PlanId);
     public List<SelectListItem> UnitOptions { get; private set; } = [];
 
+    /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
+    public PlanningContextViewModel? Context { get; private set; }
+
     public async Task<IActionResult> OnGetAsync()
     {
+        Context = await PlanningContextLoader.ForPracticeAsync(_context, _planningService, PlanId, 5);
         var redirect = await LoadAsync();
         if (redirect != null) return redirect;
         return Page();
@@ -49,6 +56,12 @@ public class L5Model : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        if (!await PlanningContextLoader.IsWritableAsync(_context, PlanId))
+        {
+            TempData.Error(PlanningContextLoader.ReadOnlyMessage);
+            return RedirectToPage(new { planId = PlanId });
+        }
+
         var redirect = await LoadAsync();
         if (redirect != null) return redirect;
 

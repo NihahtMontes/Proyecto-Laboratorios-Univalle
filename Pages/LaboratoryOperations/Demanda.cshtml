@@ -10,16 +10,61 @@
             <div class="text-muted small">Consolidado de los requerimientos registrados en prácticas L-3 planificadas o aprobadas con fecha igual o posterior a hoy.</div>
         </div>
         <div class="col-md-4 text-md-right mt-3 mt-md-0">
-            <a asp-page="./Planificacion" class="btn btn-primary font-weight-bold">
-                <i class="fas fa-plus mr-1"></i> Nueva planificación
-            </a>
+            @if (Model.HasActivePlanning)
+            {
+                <a asp-page="./Planificacion" class="btn btn-outline-primary font-weight-bold">
+                    <i class="fas fa-edit mr-1"></i> Editar planificación activa
+                </a>
+            }
+            else
+            {
+                <a asp-page="./Planificacion" class="btn btn-primary font-weight-bold">
+                    <i class="fas fa-plus mr-1"></i> Nueva planificación
+                </a>
+            }
         </div>
     </div>
 </div>
 
 <div class="container-fluid mt-3">
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body py-3">
+
+    @if (!Model.HasActivePlanning)
+    {
+        <div class="card border-0 shadow-sm rounded-lg">
+            <div class="card-body text-center p-5">
+                <div class="mb-3">
+                    <i class="fas fa-folder-open text-primary opacity-50" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="font-weight-bold text-dark mb-2">No tiene ninguna planificación activa</h3>
+                <p class="text-muted mb-4">
+                    La demanda se calcula sobre las prácticas de la planificación académica activa. Cree o active una para ver los requerimientos consolidados.
+                </p>
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <a asp-page="./Planificacion" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm">
+                        <i class="fas fa-plus mr-2"></i> Crear planificación
+                    </a>
+                    <a asp-page="./Planificaciones" class="btn btn-outline-primary btn-rounded font-weight-bold px-4 shadow-sm">
+                        <i class="fas fa-list mr-2"></i> Ver planificaciones
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light border rounded-lg d-flex align-items-center mb-4 shadow-sm">
+            <div class="rounded-circle bg-light-primary text-primary p-2 mr-3"><i class="fas fa-university"></i></div>
+            <div class="flex-grow-1">
+                <strong class="text-dark">@Model.ActivePlanning!.Name</strong>
+                <small class="text-muted ml-1">— @Model.ActivePlanning.ManagementCode · @Model.ActivePlanning.FacultyName · @Model.ActivePlanning.CareerName</small>
+            </div>
+            <a asp-page="./Planificaciones" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold">
+                <i class="fas fa-list mr-1"></i> Ver planificaciones
+            </a>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body py-3">
             <form method="get" class="form-row align-items-end">
                 <div class="col-md-4">
                     <label asp-for="LaboratoryId" class="small font-weight-bold">LABORATORIO</label>
@@ -162,6 +207,7 @@
         <i class="fas fa-info-circle mr-2"></i>
         Esta pantalla agrega los requerimientos de las prácticas L-3 activas a partir del flujo persistido (planificación, requerimientos, disponibilidad y devolución).
     </div>
+    }
 </div>
 
 <style>

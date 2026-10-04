@@ -113,6 +113,7 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IDashboardReadService, DashboardReadService>();
 builder.Services.AddScoped<IManagementContextService, ManagementContextService>();
 builder.Services.AddScoped<IManagementActivationService, ManagementActivationService>();
+builder.Services.AddScoped<IPlanningService, PlanningService>();
 builder.Services.AddScoped<IManagementPlanExclusionService, ManagementPlanExclusionService>();
 builder.Services.AddScoped<IEquipmentClassificationDecisionService, EquipmentClassificationDecisionService>();
 builder.Services.AddScoped<ICatalogClassificationBatchService, CatalogClassificationBatchService>();

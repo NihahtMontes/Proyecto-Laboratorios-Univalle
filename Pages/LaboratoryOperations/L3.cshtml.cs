@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
@@ -13,11 +14,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 public class L3Model : PageModel
 {
     private readonly ApplicationDbContext _context;
+    private readonly IPlanningService _planningService;
     private readonly ILogger<L3Model> _logger;
 
-    public L3Model(ApplicationDbContext context, ILogger<L3Model> logger)
+    public L3Model(ApplicationDbContext context, IPlanningService planningService, ILogger<L3Model> logger)
     {
         _context = context;
+        _planningService = planningService;
         _logger = logger;
     }
 
@@ -43,8 +46,12 @@ public class L3Model : PageModel
     public sealed record IncidentRow(int Id, string EquipmentName, string InventoryNumber, string IncidentType,
         int AffectedQuantity, string ResponsibleName, string RepositionStatus, DateTime RecordDate);
 
+    /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
+    public PlanningContextViewModel? Context { get; private set; }
+
     public async Task<IActionResult> OnGetAsync()
     {
+        Context = await PlanningContextLoader.ForPracticeAsync(_context, _planningService, Id, 4);
         Plan = await _context.L3Requests.AsNoTracking()
             .Include(r => r.Laboratory)
             .Include(r => r.Subject)
@@ -74,6 +81,12 @@ public class L3Model : PageModel
 
     public async Task<IActionResult> OnPostUpdateReturnAsync(int detailId, int returnedQuantity)
     {
+        if (!await PlanningContextLoader.IsWritableAsync(_context, Id))
+        {
+            TempData.Error(PlanningContextLoader.ReadOnlyMessage);
+            return RedirectToPage(new { id = Id });
+        }
+
         var plan = await _context.L3Requests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == Id);
         if (plan == null || plan.Status != L3RequestStatus.Approved)
         {
@@ -102,6 +115,12 @@ public class L3Model : PageModel
 
     public async Task<IActionResult> OnPostFinalizeAsync()
     {
+        if (!await PlanningContextLoader.IsWritableAsync(_context, Id))
+        {
+            TempData.Error(PlanningContextLoader.ReadOnlyMessage);
+            return RedirectToPage(new { id = Id });
+        }
+
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {

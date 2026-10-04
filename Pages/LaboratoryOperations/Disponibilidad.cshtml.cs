@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Services;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
@@ -14,11 +15,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 public class DisponibilidadModel : PageModel
 {
     private readonly ApplicationDbContext _context;
+    private readonly IPlanningService _planningService;
     private readonly ILogger<DisponibilidadModel> _logger;
 
-    public DisponibilidadModel(ApplicationDbContext context, ILogger<DisponibilidadModel> logger)
+    public DisponibilidadModel(ApplicationDbContext context, IPlanningService planningService, ILogger<DisponibilidadModel> logger)
     {
         _context = context;
+        _planningService = planningService;
         _logger = logger;
     }
 
@@ -37,8 +40,12 @@ public class DisponibilidadModel : PageModel
         public bool Ok => Difference >= 0;
     }
 
+    /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
+    public PlanningContextViewModel? Context { get; private set; }
+
     public async Task<IActionResult> OnGetAsync()
     {
+        Context = await PlanningContextLoader.ForPracticeAsync(_context, _planningService, PlanId, 3);
         Plan = await _context.L3Requests.AsNoTracking()
             .Include(r => r.Laboratory)
             .Include(r => r.Subject)
@@ -63,6 +70,12 @@ public class DisponibilidadModel : PageModel
 
     public async Task<IActionResult> OnPostApproveAsync()
     {
+        if (!await PlanningContextLoader.IsWritableAsync(_context, PlanId))
+        {
+            TempData.Error(PlanningContextLoader.ReadOnlyMessage);
+            return RedirectToPage(new { planId = PlanId });
+        }
+
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {

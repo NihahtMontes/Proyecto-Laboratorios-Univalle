@@ -38,6 +38,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Column(TypeName = "date")]
         public DateTime EndDate { get; set; }
 
+        /// <summary>Solo una planificación activa en todo el sistema (índice único filtrado).</summary>
+        public Enums.AcademicPlanningStatus Status { get; set; } = Enums.AcademicPlanningStatus.Inactive;
+
         public ICollection<AcademicWeek> Weeks { get; set; } = new List<AcademicWeek>();
         public ICollection<L3Request> Practices { get; set; } = new List<L3Request>();
 

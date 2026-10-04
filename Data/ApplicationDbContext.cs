@@ -740,6 +740,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<AcademicPlanning>().HasQueryFilter(p => !p.IsDeleted);
             modelBuilder.Entity<AcademicWeek>().HasQueryFilter(w => !w.AcademicPlanning.IsDeleted);
             modelBuilder.Entity<AcademicPlanning>().HasIndex(p => new { p.ManagementId, p.CareerId }).IsUnique().HasFilter("[IsDeleted] = 0");
+            modelBuilder.Entity<AcademicPlanning>().HasIndex(p => p.Status).IsUnique().HasFilter("[Status] = 0 AND [IsDeleted] = 0").HasDatabaseName("UX_AcademicPlannings_SingleActive");
             modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Management).WithMany().HasForeignKey(p => p.ManagementId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Faculty).WithMany().HasForeignKey(p => p.FacultyId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Career).WithMany().HasForeignKey(p => p.CareerId).OnDelete(DeleteBehavior.Restrict);

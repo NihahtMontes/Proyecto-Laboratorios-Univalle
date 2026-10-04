@@ -201,11 +201,19 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("date");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CareerId");
 
                     b.HasIndex("FacultyId");
+
+                    b.HasIndex("Status")
+                        .IsUnique()
+                        .HasDatabaseName("UX_AcademicPlannings_SingleActive")
+                        .HasFilter("[Status] = 0 AND [IsDeleted] = 0");
 
                     b.HasIndex("ManagementId", "CareerId")
                         .IsUnique()

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Services;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
@@ -16,10 +17,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 public class RequerimientosModel : PageModel
 {
     private readonly ApplicationDbContext _context;
+    private readonly IPlanningService _planningService;
 
-    public RequerimientosModel(ApplicationDbContext context)
+    public RequerimientosModel(ApplicationDbContext context, IPlanningService planningService)
     {
         _context = context;
+        _planningService = planningService;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -40,10 +43,23 @@ public class RequerimientosModel : PageModel
     public sealed record RequirementRow(int DetailId, int EquipmentId, string EquipmentName, int Quantity, int OperationalInLab);
     public sealed record CatalogOption(int EquipmentId, string Name, int OperationalInLab, int TotalInLab);
 
-    public async Task<IActionResult> OnGetAsync() => await LoadPageAsync();
+    /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
+    public PlanningContextViewModel? Context { get; private set; }
+
+    public async Task<IActionResult> OnGetAsync()
+    {
+        Context = await PlanningContextLoader.ForPracticeAsync(_context, _planningService, PlanId, 2);
+        return await LoadPageAsync();
+    }
 
     public async Task<IActionResult> OnPostAddAsync()
     {
+        if (!await PlanningContextLoader.IsWritableAsync(_context, PlanId))
+        {
+            TempData.Error(PlanningContextLoader.ReadOnlyMessage);
+            return RedirectToPage(new { planId = PlanId });
+        }
+
         var plan = await FindEditablePlanAsync();
         if (plan == null) return RedirectToPage(new { planId = PlanId });
 
@@ -84,6 +100,12 @@ public class RequerimientosModel : PageModel
 
     public async Task<IActionResult> OnPostUpdateQuantityAsync(int detailId, int newQuantity)
     {
+        if (!await PlanningContextLoader.IsWritableAsync(_context, PlanId))
+        {
+            TempData.Error(PlanningContextLoader.ReadOnlyMessage);
+            return RedirectToPage(new { planId = PlanId });
+        }
+
         var plan = await FindEditablePlanAsync();
         if (plan == null) return RedirectToPage(new { planId = PlanId });
 
@@ -109,6 +131,12 @@ public class RequerimientosModel : PageModel
 
     public async Task<IActionResult> OnPostRemoveAsync(int detailId)
     {
+        if (!await PlanningContextLoader.IsWritableAsync(_context, PlanId))
+        {
+            TempData.Error(PlanningContextLoader.ReadOnlyMessage);
+            return RedirectToPage(new { planId = PlanId });
+        }
+
         var plan = await FindEditablePlanAsync();
         if (plan == null) return RedirectToPage(new { planId = PlanId });
 
@@ -126,6 +154,12 @@ public class RequerimientosModel : PageModel
 
     public async Task<IActionResult> OnPostContinueAsync()
     {
+        if (!await PlanningContextLoader.IsWritableAsync(_context, PlanId))
+        {
+            TempData.Error(PlanningContextLoader.ReadOnlyMessage);
+            return RedirectToPage(new { planId = PlanId });
+        }
+
         var plan = await FindEditablePlanAsync();
         if (plan == null) return RedirectToPage(new { planId = PlanId });
 

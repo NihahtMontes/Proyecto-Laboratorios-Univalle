@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
@@ -12,14 +13,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 /// Demanda agregada por (Laboratorio del plan, Equipo): suma ExpectedQuantity de
 /// los detalles de planes Planificado/Aprobado con ScheduledDate >= hoy y compara
 /// contra las unidades operativas del mismo tipo de equipo en ese laboratorio.
+/// Solo considera prácticas de la planificación académica activa.
 /// </summary>
 public class DemandaModel : PageModel
 {
     private readonly ApplicationDbContext _context;
+    private readonly IPlanningService _planning;
 
-    public DemandaModel(ApplicationDbContext context)
+    public DemandaModel(ApplicationDbContext context, IPlanningService planning)
     {
         _context = context;
+        _planning = planning;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -37,10 +41,23 @@ public class DemandaModel : PageModel
     public int TotalRequested { get; private set; }
     public int DeficitCount { get; private set; }
     public int SurplusCount { get; private set; }
+    public bool HasActivePlanning { get; private set; }
+    public PlanningSummary? ActivePlanning { get; private set; }
 
     public async Task OnGetAsync()
     {
         var today = DateTime.Today;
+
+        ActivePlanning = await _planning.GetActiveAsync();
+        HasActivePlanning = ActivePlanning != null;
+
+        if (!HasActivePlanning)
+        {
+            Rows = [];
+            Categories = [];
+            LaboratoryList = new SelectList(Enumerable.Empty<SelectListItem>());
+            return;
+        }
 
         // Laboratorios activos: alimenta el filtro y la resolución de nombres.
         var laboratories = await _context.Laboratories.AsNoTracking()
@@ -51,9 +68,11 @@ public class DemandaModel : PageModel
         LaboratoryList = new SelectList(laboratories, "Id", "Name", LaboratoryId);
         var laboratoryNames = laboratories.ToDictionary(item => item.Id, item => $"{item.Code} · {item.Name}");
 
-        // Demanda agregada por (Laboratorio del plan, Equipo). Una sola consulta.
+        // Demanda agregada por (Laboratorio del plan, Equipo). Una sola consulta,
+        // acotada a prácticas de la planificación activa.
         var demandRows = await _context.L3RequestDetails.AsNoTracking()
-            .Where(d => (d.L3Request!.Status == L3RequestStatus.Planned
+            .Where(d => d.L3Request!.AcademicPlanningId == ActivePlanning!.Id
+                        && (d.L3Request!.Status == L3RequestStatus.Planned
                          || d.L3Request!.Status == L3RequestStatus.Approved)
                         && d.L3Request!.ScheduledDate >= today
                         && (!LaboratoryId.HasValue || d.L3Request!.LaboratoryId == LaboratoryId.Value))

@@ -19,10 +19,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 public class PracticaModel : PageModel
 {
     private readonly ApplicationDbContext _context;
+    private readonly IPlanningService _planning;
 
-    public PracticaModel(ApplicationDbContext context)
+    public PracticaModel(ApplicationDbContext context, IPlanningService planning)
     {
         _context = context;
+        _planning = planning;
     }
 
     /// <summary>Id de L3Requests al editar una práctica.</summary>
@@ -42,7 +44,10 @@ public class PracticaModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
-    public PlanningHeader? Planning { get; private set; }
+    public PlanningSummary? Planning { get; private set; }
+
+    /// <summary>Franja superior del wizard (planificación + práctica + paso 1).</summary>
+    public PlanningContextViewModel Context => new(Planning, Id, Id.HasValue ? $"Práctica {Code}" : "Nueva práctica", 1);
     public string Code => Id.HasValue ? L3Codes.Format(Id.Value) : "Nueva práctica";
     public string StatusText { get; private set; } = L3RequestStatus.Planned;
     public bool IsReadOnly { get; private set; }
@@ -54,8 +59,6 @@ public class PracticaModel : PageModel
     public SelectList WeekList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList DayList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
 
-    public sealed record PlanningHeader(int Id, string Code, string Name, string ManagementCode,
-        string FacultyName, string CareerName, int FacultyId, DateTime StartDate, DateTime EndDate);
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -65,7 +68,7 @@ public class PracticaModel : PageModel
             if (practice == null)
             {
                 TempData.Error("La práctica no existe.");
-                return RedirectToPage("./Calendario");
+                return RedirectToPage("./Index");
             }
             if (!practice.AcademicPlanningId.HasValue)
             {
@@ -80,14 +83,25 @@ public class PracticaModel : PageModel
         }
         else
         {
+            PlanningId ??= (await _planning.GetActiveAsync())?.Id;
             if (WeekId.HasValue) Input.AcademicWeekId = WeekId.Value;
             if (Day is >= 1 and <= 5) Input.Weekday = Day.Value;
         }
 
         if (!await LoadPlanningAsync())
         {
-            TempData.Warning("Primero crea o selecciona una planificación académica.");
-            return RedirectToPage("./Calendario");
+            TempData.Warning("No tiene ninguna planificación activa. Crea o activa una antes de registrar prácticas.");
+            return RedirectToPage("./Index");
+        }
+
+        if (!Planning!.IsActive)
+        {
+            if (!Id.HasValue)
+            {
+                TempData.Warning("Solo se registran prácticas en la planificación activa.");
+                return RedirectToPage("./Index");
+            }
+            IsReadOnly = true;
         }
 
         await LoadListsAsync();
@@ -103,7 +117,7 @@ public class PracticaModel : PageModel
             if (practice == null || !practice.AcademicPlanningId.HasValue)
             {
                 TempData.Error("La práctica ya no existe o no pertenece a una planificación.");
-                return RedirectToPage("./Calendario");
+                return RedirectToPage("./Index");
             }
             PlanningId = practice.AcademicPlanningId;
             if (practice.Status != L3RequestStatus.Planned)
@@ -113,7 +127,12 @@ public class PracticaModel : PageModel
         if (!await LoadPlanningAsync())
         {
             TempData.Error("La planificación no existe.");
-            return RedirectToPage("./Calendario");
+            return RedirectToPage("./Index");
+        }
+        if (!Planning!.IsActive)
+        {
+            TempData.Error("La planificación de esta práctica no está activa: solo se puede consultar.");
+            return Id.HasValue ? RedirectToPage(new { id = Id }) : RedirectToPage("./Index");
         }
 
         if (!TryParseTime(Input.StartTime, out var startTime))
@@ -198,16 +217,8 @@ public class PracticaModel : PageModel
     private async Task<bool> LoadPlanningAsync()
     {
         if (!PlanningId.HasValue) return false;
-        var row = await _context.AcademicPlannings.AsNoTracking()
-            .Where(p => p.Id == PlanningId.Value)
-            .Select(p => new { p.Id, p.Name, ManagementCode = p.Management.Code, FacultyName = p.Faculty.Name,
-                CareerName = p.Career.Name, CareerCode = p.Career.Code, p.FacultyId, p.StartDate, p.EndDate })
-            .FirstOrDefaultAsync();
-        if (row == null) return false;
-
-        Planning = new PlanningHeader(row.Id, L3Codes.Planning(row.ManagementCode, row.CareerCode, row.Id), row.Name,
-            row.ManagementCode, row.FacultyName, row.CareerName, row.FacultyId, row.StartDate, row.EndDate);
-        return true;
+        Planning = await _planning.GetSummaryAsync(PlanningId.Value);
+        return Planning != null;
     }
 
     private async Task LoadListsAsync()

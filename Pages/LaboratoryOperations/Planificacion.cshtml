@@ -1,27 +1,32 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanificacionModel
-@{ ViewData["Title"] = "Planificación académica"; }
+@{
+    ViewData["Title"] = "Planificación académica";
+    var titleText = (Model.Id.HasValue ? "Editar planificación" : "Nueva planificación");
+    var readOnly = Model.IsReadOnly;
+}
 
 <div class="page-breadcrumb">
     <div class="row align-items-center">
-        <div class="col-md-8">
+        <div class="col-md-7">
             <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
-            <h2 class="font-weight-bold text-dark">Planificación académica</h2>
-            <div class="text-muted small">Registra gestión, facultad, carrera y rango para generar las semanas académicas lunes a viernes.</div>
+            <h2 class="font-weight-bold text-dark">@titleText</h2>
+            <div class="text-muted small">
+                Registra gestión, facultad, carrera y rango de meses para generar las semanas académicas lunes a viernes.
+            </div>
         </div>
-        <div class="col-md-4 text-md-right mt-3 mt-md-0">
-            @if (Model.Id.HasValue)
-            {
-                <a asp-page="./Calendario" asp-route-planningId="@Model.Id" class="btn btn-outline-primary btn-rounded px-3">
-                    <i class="far fa-calendar-alt mr-1"></i> Ver calendario
-                </a>
-            }
+        <div class="col-md-5 text-md-right mt-3 mt-md-0">
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-3 mr-1">
+                <i class="fas fa-tachometer-alt mr-1"></i> Panel de planificación
+            </a>
+            <a asp-page="./Planificaciones" class="btn btn-outline-primary btn-rounded px-3">
+                <i class="fas fa-list mr-1"></i> Planificaciones
+            </a>
         </div>
     </div>
 </div>
 
 <div class="container-fluid mt-3">
-    @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 1)
 
     @if (Model.Id.HasValue)
     {
@@ -30,6 +35,19 @@
             <div class="small">
                 <strong class="text-dark">@Model.Code</strong>
                 <span class="text-muted ml-1">— código visible de esta planificación durante todo el flujo.</span>
+            </div>
+        </div>
+    }
+
+    @if (readOnly)
+    {
+        <div class="alert alert-warning border-0 rounded-lg shadow-sm mb-4">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-warning text-white p-2 mr-3"><i class="fas fa-lock"></i></div>
+                <div>
+                    <strong>Planificación cerrada: solo consulta.</strong>
+                    <div class="small">Esta planificación está en estado <em>Cerrada</em>; no se pueden modificar gestión, facultad, carrera, rango ni semanas lectivas. Actívala desde <a asp-page="./Planificaciones" class="font-weight-bold">Planificaciones</a> si necesitas editarla.</div>
+                </div>
             </div>
         </div>
     }
@@ -53,67 +71,139 @@
                         <div class="form-row">
                             <div class="form-group col-md-4">
                                 <label asp-for="Input.ManagementId" class="small font-weight-bold text-muted"></label>
-                                <select asp-for="Input.ManagementId" asp-items="Model.ManagementList" class="form-control select2">
+                                <select asp-for="Input.ManagementId" asp-items="Model.ManagementList" class="form-control select2" disabled="@(readOnly ? "disabled" : null)">
                                     <option value="0">— Seleccionar gestión —</option>
                                 </select>
+                                @if (readOnly) { <input type="hidden" asp-for="Input.ManagementId" /> }
                                 <span asp-validation-for="Input.ManagementId" class="text-danger small"></span>
                                 @if (Model.ManagementList.Count() == 0)
                                 {
-                                    <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay gestiones registradas.</small>
+                                    <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay gestiones semestrales registradas.</small>
                                 }
                             </div>
                             <div class="form-group col-md-4">
                                 <label asp-for="Input.FacultyId" class="small font-weight-bold text-muted"></label>
-                                <select asp-for="Input.FacultyId" asp-items="Model.FacultyList" class="form-control select2" id="facultySelect" disabled="@(Model.StructureLocked ? "disabled" : null)">
+                                <select asp-for="Input.FacultyId" asp-items="Model.FacultyList" class="form-control select2" id="facultySelect" disabled="@((readOnly || Model.StructureLocked) ? "disabled" : null)">
                                     <option value="0">— Seleccionar facultad —</option>
                                 </select>
+                                @if (readOnly || Model.StructureLocked) { <input type="hidden" asp-for="Input.FacultyId" /> }
                                 <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
                                 @if (Model.StructureLocked)
                                 {
-                                    <input type="hidden" asp-for="Input.FacultyId" />
                                     <small class="text-muted d-block mt-1"><i class="fas fa-lock mr-1"></i> La planificación ya tiene @Model.PracticeCount práctica(s): no se cambian facultad ni carrera.</small>
                                 }
                             </div>
                             <div class="form-group col-md-4">
                                 <label asp-for="Input.CareerId" class="small font-weight-bold text-muted"></label>
-                                <select asp-for="Input.CareerId" asp-items="Model.CareerList" class="form-control select2" id="careerSelect" disabled="@(Model.StructureLocked ? "disabled" : null)">
+                                <select asp-for="Input.CareerId" asp-items="Model.CareerList" class="form-control select2" id="careerSelect" disabled="@((readOnly || Model.StructureLocked) ? "disabled" : null)">
                                     <option value="0">— Seleccionar carrera —</option>
                                 </select>
+                                @if (readOnly || Model.StructureLocked) { <input type="hidden" asp-for="Input.CareerId" /> }
                                 <span asp-validation-for="Input.CareerId" class="text-danger small"></span>
-                                @if (Model.StructureLocked)
-                                {
-                                    <input type="hidden" asp-for="Input.CareerId" />
-                                }
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group col-md-12">
                                 <label asp-for="Input.Name" class="small font-weight-bold text-muted"></label>
-                                <input asp-for="Input.Name" class="form-control" placeholder="Ej. Planificación segundo semestre — Gastronomía" />
+                                <input asp-for="Input.Name" class="form-control" placeholder="Ej. Planificación segundo semestre — Gastronomía" disabled="@(readOnly ? "disabled" : null)" />
                                 <span asp-validation-for="Input.Name" class="text-danger small"></span>
                             </div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label asp-for="Input.StartDate" class="small font-weight-bold text-muted"></label>
-                                <input asp-for="Input.StartDate" type="date" class="form-control" />
-                                <span asp-validation-for="Input.StartDate" class="text-danger small"></span>
+                        @* SELECTOR VISUAL DE MESES *@
+                        <div class="form-row mt-2">
+                            <div class="form-group col-md-12 mb-2">
+                                <label class="small font-weight-bold text-muted d-block mb-2">
+                                    Rango de meses <span class="text-danger">*</span>
+                                </label>
+
+                                <div id="month-selector" class="month-selector @(readOnly ? "is-readonly" : null)" data-locked-start="@(Model.StructureLocked.ToString().ToLower())">
+                                    <div class="month-selector-header d-flex align-items-center justify-content-between px-3 py-2">
+                                        <button type="button" class="btn btn-circle btn-light month-nav" id="ms-prev" aria-label="Año anterior" disabled="@(readOnly ? "disabled" : null)">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                        <h5 class="mb-0 font-weight-bold text-dark" id="ms-year">—</h5>
+                                        <button type="button" class="btn btn-circle btn-light month-nav" id="ms-next" aria-label="Año siguiente" disabled="@(readOnly ? "disabled" : null)">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                    <div class="month-selector-grid px-3 pb-3" id="ms-grid">
+                                        @* Generado por JS *@
+                                    </div>
+                                    <div class="month-selector-summary px-3 pb-3 pt-1">
+                                        <div class="d-flex flex-wrap align-items-center mb-2">
+                                            <span class="badge badge-primary mr-2 px-3 py-1" id="ms-start-chip">
+                                                <i class="fas fa-play mr-1"></i> Inicio: —
+                                            </span>
+                                            <span class="text-muted mx-1"><i class="fas fa-long-arrow-alt-right"></i></span>
+                                            <span class="badge badge-primary mr-2 px-3 py-1" id="ms-end-chip">
+                                                <i class="fas fa-flag-checkered mr-1"></i> Fin: —
+                                            </span>
+                                        </div>
+                                        <div class="small text-muted" id="ms-summary">
+                                            Selecciona el mes de inicio y luego el mes de fin haciendo clic en las baldosas.
+                                        </div>
+                                        @if (Model.StructureLocked)
+                                        {
+                                            <div class="small text-warning mt-2">
+                                                <i class="fas fa-lock mr-1"></i>
+                                                El mes de inicio está bloqueado porque la planificación ya tiene @Model.PracticeCount práctica(s) registrada(s).
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <input type="hidden" asp-for="Input.StartMonth" id="Input_StartMonth" />
+                                <input type="hidden" asp-for="Input.EndMonth" id="Input_EndMonth" />
+                                <div class="d-flex flex-wrap mt-2">
+                                    <div class="mr-3">
+                                        <span asp-validation-for="Input.StartMonth" class="text-danger small"></span>
+                                    </div>
+                                    <div>
+                                        <span asp-validation-for="Input.EndMonth" class="text-danger small"></span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-group col-md-6">
-                                <label asp-for="Input.EndDate" class="small font-weight-bold text-muted"></label>
-                                <input asp-for="Input.EndDate" type="date" class="form-control" />
-                                <span asp-validation-for="Input.EndDate" class="text-danger small"></span>
+                        </div>
+
+                        @* SWITCH ACTIVAR *@
+                        <div class="form-row mt-2">
+                            <div class="form-group col-md-12">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" asp-for="Input.Activate" class="custom-control-input" id="activateSwitch" disabled="@(readOnly ? "disabled" : null)" />
+                                    <label class="custom-control-label font-weight-bold text-dark" for="activateSwitch">@Html.DisplayNameFor(m => m.Input.Activate)</label>
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    @if (Model.HasActivePlanning)
+                                    {
+                                        <i class="fas fa-exclamation-triangle text-warning mr-1"></i>
+                                        <span>Al activarla se cerrará la planificación activa actual.</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-info-circle text-primary mr-1"></i>
+                                        <span>No hay ninguna planificación activa; esta será la nueva planificación activa del sistema.</span>
+                                    }
+                                </small>
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                            <a asp-page="./Calendario" class="btn btn-outline-secondary btn-rounded px-4">Cancelar</a>
-                            <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4">
-                                @(Model.Id.HasValue ? "Actualizar planificación" : "Guardar planificación")
-                                <i class="mdi mdi-arrow-right ml-1"></i>
-                            </button>
+                            <a asp-page="./Planificaciones" class="btn btn-outline-secondary btn-rounded px-4">
+                                <i class="fas fa-times mr-1"></i> Cancelar
+                            </a>
+                            @if (!readOnly)
+                            {
+                                <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4">
+                                    @(Model.Id.HasValue ? "Actualizar planificación" : "Guardar planificación")
+                                    <i class="mdi mdi-arrow-right ml-1"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="text-muted small"><i class="fas fa-lock mr-1"></i> Solo consulta</span>
+                            }
                         </div>
                     </div>
                 </div>
@@ -127,14 +217,72 @@
                             <div class="rounded-circle bg-light-primary text-primary p-2 mr-3"><i class="fas fa-calendar-week"></i></div>
                             <div>
                                 <h5 class="font-weight-bold text-primary mb-1">Semanas académicas</h5>
-                                <small class="text-muted">Marca cada semana como lectiva o no lectiva; las semanas lectivas reciben prácticas.</small>
+                                <small class="text-muted">
+                                    @(readOnly
+                                        ? "Solo consulta. Marca cada semana como lectiva o no lectiva; las semanas lectivas reciben prácticas."
+                                        : "Marca cada semana como lectiva o no lectiva; las semanas lectivas reciben prácticas.")
+                                </small>
                             </div>
                         </div>
 
-                        <form method="post" asp-page-handler="Weeks" asp-route-id="@Model.Id" id="form-semanas">
-                            <input type="hidden" name="id" value="@Model.Id" />
-                            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                        @if (!readOnly)
+                        {
+                            <form method="post" asp-page-handler="Weeks" asp-route-id="@Model.Id" id="form-semanas">
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="bg-dark text-white">
+                                            <tr>
+                                                <th>SEMANA</th>
+                                                <th>RANGO</th>
+                                                <th class="text-center">PRÁCTICAS</th>
+                                                <th class="text-center">LECTIVA</th>
+                                                <th>NOTA</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @for (var i = 0; i < Model.Weeks.Count; i++)
+                                            {
+                                                var week = Model.Weeks[i];
+                                                <tr class="@(week.IsLective ? string.Empty : "table-light")">
+                                                    <td class="font-weight-bold">Semana @week.Number</td>
+                                                    <td class="small text-muted">@week.StartDate.ToString("dd/MM/yyyy") – @week.EndDate.ToString("dd/MM/yyyy")</td>
+                                                    <td class="text-center">
+                                                        <span class="badge badge-light border">@week.PracticeCount</span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <input type="hidden" name="WeekInputs[@i].Id" value="@week.Id" />
+                                                        <input type="hidden" name="WeekInputs[@i].IsLective" value="false" />
+                                                        <div class="custom-control custom-switch d-inline-block">
+                                                            <input type="checkbox" name="WeekInputs[@i].IsLective" value="true" class="custom-control-input" id="lective-@week.Id" @(week.IsLective ? "checked" : "") />
+                                                            <label class="custom-control-label" for="lective-@week.Id"></label>
+                                                        </div>
+                                                        @if (!week.IsLective)
+                                                        {
+                                                            <span class="badge badge-secondary ml-2">No lectiva</span>
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <input type="text" name="WeekInputs[@i].Note" class="form-control form-control-sm" maxlength="100" value="@(week.Note ?? string.Empty)" placeholder="Opcional" />
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                                    <span class="text-muted small">Las semanas con prácticas no se pueden marcar como no lectivas.</span>
+                                    <button type="submit" id="btnGuardarSemanas" class="btn btn-primary btn-rounded font-weight-bold px-4">
+                                        <i class="fas fa-save mr-1"></i> Guardar semanas
+                                    </button>
+                                </div>
+                            </form>
+                        }
+                        else
+                        {
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="bg-dark text-white">
@@ -153,37 +301,24 @@
                                             <tr class="@(week.IsLective ? string.Empty : "table-light")">
                                                 <td class="font-weight-bold">Semana @week.Number</td>
                                                 <td class="small text-muted">@week.StartDate.ToString("dd/MM/yyyy") – @week.EndDate.ToString("dd/MM/yyyy")</td>
+                                                <td class="text-center"><span class="badge badge-light border">@week.PracticeCount</span></td>
                                                 <td class="text-center">
-                                                    <span class="badge badge-light border">@week.PracticeCount</span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <input type="hidden" name="WeekInputs[@i].Id" value="@week.Id" />
-                                                    <input type="hidden" name="WeekInputs[@i].IsLective" value="false" />
-                                                    <div class="custom-control custom-switch d-inline-block">
-                                                        <input type="checkbox" name="WeekInputs[@i].IsLective" value="true" class="custom-control-input" id="lective-@week.Id" @(week.IsLective ? "checked" : "") />
-                                                        <label class="custom-control-label" for="lective-@week.Id"></label>
-                                                    </div>
-                                                    @if (!week.IsLective)
+                                                    @if (week.IsLective)
                                                     {
-                                                        <span class="badge badge-secondary ml-2">No lectiva</span>
+                                                        <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Lectiva</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge badge-secondary">No lectiva</span>
                                                     }
                                                 </td>
-                                                <td>
-                                                    <input type="text" name="WeekInputs[@i].Note" class="form-control form-control-sm" maxlength="100" value="@(week.Note ?? string.Empty)" placeholder="Opcional" />
-                                                </td>
+                                                <td class="small text-muted">@(week.Note ?? "—")</td>
                                             </tr>
                                         }
                                     </tbody>
                                 </table>
                             </div>
-
-                            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                                <span class="text-muted small">Las semanas con prácticas no se pueden marcar como no lectivas.</span>
-                                <button type="submit" id="btnGuardarSemanas" class="btn btn-primary btn-rounded font-weight-bold px-4">
-                                    <i class="fas fa-save mr-1"></i> Guardar semanas
-                                </button>
-                            </div>
-                        </form>
+                        }
                     </div>
                 </div>
             }
@@ -200,11 +335,18 @@
                     <div class="d-flex mb-3"><span class="badge badge-dark mr-2">4</span><span>Validar disponibilidad, L-3 y devolución.</span></div>
                     <div class="d-flex"><span class="badge badge-danger mr-2">5</span><span>Registrar L-5 incidente (si aplica).</span></div>
 
-                    @if (Model.StructureLocked)
+                    @if (readOnly)
                     {
                         <div class="alert alert-warning border-0 small mt-4 mb-0">
                             <i class="fas fa-lock mr-1"></i>
-                            <strong>Estructura bloqueada.</strong> La planificación ya tiene @Model.PracticeCount práctica(s) registrada(s); no se cambian facultad ni carrera.
+                            <strong>Solo consulta.</strong> La planificación está cerrada.
+                        </div>
+                    }
+                    else if (Model.StructureLocked)
+                    {
+                        <div class="alert alert-warning border-0 small mt-4 mb-0">
+                            <i class="fas fa-lock mr-1"></i>
+                            <strong>Estructura bloqueada.</strong> La planificación ya tiene @Model.PracticeCount práctica(s) registrada(s); no se cambian facultad ni carrera ni mes de inicio.
                         </div>
                     }
                     else
@@ -224,6 +366,93 @@
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
     <style>
         .bg-light-primary { background-color: #e8e7ff; }
+
+        /* Selector visual de meses */
+        .month-selector {
+            border: 1px solid #e9ecef;
+            border-radius: .5rem;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(0,0,0,.03);
+        }
+        .month-selector.is-readonly { opacity: .9; }
+        .month-selector-header {
+            background: linear-gradient(90deg, #f6f4ff 0%, #ffffff 100%);
+            border-bottom: 1px solid #ecebf6;
+        }
+        .month-selector .month-nav {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+        .month-selector .month-nav:disabled { opacity: .4; cursor: not-allowed; }
+
+        .month-selector-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: .5rem;
+        }
+        @@media (max-width: 575.98px) {
+            .month-selector-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        .ms-tile {
+            border: 1px solid #e6e6f0;
+            border-radius: .5rem;
+            padding: .65rem .25rem;
+            text-align: center;
+            cursor: pointer;
+            background: #fff;
+            font-weight: 600;
+            color: #495057;
+            transition: all .15s ease;
+            user-select: none;
+        }
+        .ms-tile:hover:not(.ms-disabled) {
+            border-color: #7460ee;
+            color: #7460ee;
+            background: #f6f4ff;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(116, 96, 238, .15);
+        }
+        .ms-tile.ms-in-range {
+            background: #efeaff;
+            color: #4a3eb2;
+            border-color: #d9d2f7;
+        }
+        .ms-tile.ms-start, .ms-tile.ms-end {
+            background: #7460ee;
+            color: #fff;
+            border-color: #7460ee;
+            box-shadow: 0 3px 8px rgba(116, 96, 238, .35);
+        }
+        .ms-tile.ms-start { border-top-right-radius: .25rem; border-bottom-right-radius: .25rem; }
+        .ms-tile.ms-end { border-top-left-radius: .25rem; border-bottom-left-radius: .25rem; }
+        .ms-tile.ms-disabled {
+            cursor: not-allowed;
+            opacity: .5;
+            background: #f8f9fa;
+        }
+        .ms-tile.ms-locked-start {
+            outline: 2px dashed #ffc107;
+            outline-offset: -3px;
+            cursor: not-allowed;
+        }
+        .ms-tile small {
+            display: block;
+            font-size: .7rem;
+            font-weight: 500;
+            color: inherit;
+            opacity: .8;
+        }
+        .month-selector-summary {
+            background: #fafaff;
+            border-top: 1px solid #ecebf6;
+            border-bottom-left-radius: .5rem;
+            border-bottom-right-radius: .5rem;
+        }
     </style>
 }
 
@@ -261,7 +490,195 @@
                 });
             });
 
-            // Confirmación SweetAlert v7 al enviar el formulario de semanas.
+            // =================== SELECTOR VISUAL DE MESES ===================
+            var MonthNamesEs = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+            var MonthNamesFullEs = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+            function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+            function parseMonthString(s) {
+                if (!s || typeof s !== 'string') return null;
+                var m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(s);
+                if (!m) return null;
+                return { year: parseInt(m[1], 10), month: parseInt(m[2], 10) };
+            }
+
+            // Réplica de AcademicWeekGenerator.MondayOf para el resumen en vivo.
+            function mondayOf(d) {
+                var offset = ((d.getDay() + 6) % 7); // lunes=0 ... domingo=6
+                return new Date(d.getFullYear(), d.getMonth(), d.getDate() - offset);
+            }
+            function countWeeks(startMonthStr, endMonthStr) {
+                var s = parseMonthString(startMonthStr);
+                var e = parseMonthString(endMonthStr);
+                if (!s || !e) return 0;
+                var startDate = new Date(s.year, s.month - 1, 1);
+                var endDate = new Date(e.year, e.month, 0); // último día del mes fin
+                var m1 = mondayOf(startDate);
+                var m2 = mondayOf(endDate);
+                if (m2 < m1) return 0;
+                return Math.floor((m2 - m1) / (7 * 24 * 60 * 60 * 1000)) + 1;
+            }
+
+            var $sel = $('#month-selector');
+            if ($sel.length === 0) return;
+
+            var lockedStart = $sel.data('locked-start') === true || $sel.data('locked-start') === 'true';
+            var isReadOnly = $sel.hasClass('is-readonly');
+
+            // Estado del selector.
+            var state = {
+                year: (function () {
+                    var today = new Date();
+                    var initial = parseMonthString($('#Input_StartMonth').val()) || parseMonthString($('#Input_EndMonth').val());
+                    return initial ? initial.year : today.getFullYear();
+                })(),
+                start: parseMonthString($('#Input_StartMonth').val()),
+                end: parseMonthString($('#Input_EndMonth').val())
+            };
+
+            var $grid = $('#ms-grid');
+            var $year = $('#ms-year');
+            var $startChip = $('#ms-start-chip');
+            var $endChip = $('#ms-end-chip');
+            var $summary = $('#ms-summary');
+
+            function keyOf(p) { return p.year + '-' + pad2(p.month); }
+
+            function render() {
+                $year.text(state.year);
+                $grid.empty();
+                for (var m = 1; m <= 12; m++) {
+                    var isStart = state.start && state.start.year === state.year && state.start.month === m;
+                    var isEnd = state.end && state.end.year === state.year && state.end.month === m;
+                    var tileKey = state.year + '-' + pad2(m);
+                    var inR = false;
+                    if (state.start && state.end) {
+                        var ks = keyOf(state.start), ke = keyOf(state.end);
+                        var lo = ks <= ke ? ks : ke, hi = ks <= ke ? ke : ks;
+                        inR = tileKey >= lo && tileKey <= hi;
+                    }
+                    var $tile = $('<button type="button" class="ms-tile" data-month="' + m + '"></button>')
+                        .append($('<span>').text(MonthNamesEs[m - 1]))
+                        .append($('<small>').text('M' + pad2(m)));
+                    if (isStart) $tile.addClass('ms-start');
+                    else if (isEnd) $tile.addClass('ms-end');
+                    else if (inR) $tile.addClass('ms-in-range');
+
+                    if (isReadOnly) {
+                        $tile.addClass('ms-disabled').attr('disabled', 'disabled');
+                    } else if (lockedStart && state.start) {
+                        // Mes de inicio: marcado especial (no se cambia) pero todavía seleccionable como referencia.
+                        if (isStart) {
+                            $tile.addClass('ms-locked-start').attr('title', 'Mes de inicio bloqueado: la planificación ya tiene prácticas.');
+                        } else if (tileKey < keyOf(state.start)) {
+                            // Meses anteriores al inicio bloqueado: no se pueden elegir como fin.
+                            $tile.addClass('ms-disabled').attr('disabled', 'disabled')
+                                .attr('title', 'Mes anterior al inicio: la planificación ya tiene prácticas.');
+                        }
+                    }
+
+                    $tile.on('click', function () {
+                        if (isReadOnly) return;
+                        if ($(this).attr('disabled') === 'disabled') return;
+                        var month = parseInt($(this).data('month'), 10);
+                        handleClick(month);
+                    });
+
+                    $grid.append($tile);
+                }
+                updateSummary();
+            }
+
+            function updateSummary() {
+                if (state.start) {
+                    $startChip.html('<i class="fas fa-play mr-1"></i> Inicio: ' + MonthNamesFullEs[state.start.month - 1] + ' ' + state.start.year);
+                } else {
+                    $startChip.html('<i class="fas fa-play mr-1"></i> Inicio: —');
+                }
+                if (state.end) {
+                    $endChip.html('<i class="fas fa-flag-checkered mr-1"></i> Fin: ' + MonthNamesFullEs[state.end.month - 1] + ' ' + state.end.year);
+                } else {
+                    $endChip.html('<i class="fas fa-flag-checkered mr-1"></i> Fin: —');
+                }
+
+                if (state.start && state.end) {
+                    var sw = keyOf(state.start), ew = keyOf(state.end);
+                    var lo = sw <= ew ? state.start : state.end;
+                    var hi = sw <= ew ? state.end : state.start;
+                    var n = countWeeks(keyOf(lo), keyOf(hi));
+                    var txt = MonthNamesFullEs[lo.month - 1] + ' – ' + MonthNamesFullEs[hi.month - 1] + ' ' + hi.year
+                        + ' · ' + n + ' semana' + (n === 1 ? '' : 's') + ' académicas (lunes a viernes)';
+                    $summary.html('<i class="fas fa-calendar-week text-primary mr-1"></i>' + txt).removeClass('text-muted').addClass('text-dark font-weight-bold');
+                } else if (state.start) {
+                    $summary.html('<i class="fas fa-hand-pointer text-primary mr-1"></i>Selecciona el mes de fin haciendo clic en otra baldosa.').removeClass('text-dark font-weight-bold').addClass('text-muted');
+                } else {
+                    $summary.html('<i class="fas fa-hand-pointer text-primary mr-1"></i>Selecciona el mes de inicio haciendo clic en una baldosa.').removeClass('text-dark font-weight-bold').addClass('text-muted');
+                }
+
+                $('#Input_StartMonth').val(state.start ? keyOf(state.start) : '');
+                $('#Input_EndMonth').val(state.end ? keyOf(state.end) : '');
+            }
+
+            function handleClick(month) {
+                var p = { year: state.year, month: month };
+                var k = keyOf(p);
+
+                // Mes de inicio bloqueado: solo se permite elegir/cambiar el mes de FIN (>= inicio).
+                // Cualquier intento de cambiar state.start se ignora silenciosamente.
+                if (lockedStart && state.start) {
+                    var ks = keyOf(state.start);
+                    if (k === ks) return;            // clic sobre el inicio: ignorar
+                    if (k < ks) return;              // clic anterior al inicio: ignorar
+                    state.end = p;                   // asignar o reemplazar el fin (>= inicio)
+                    render();
+                    return;
+                }
+
+                // Si ya hay inicio y fin, cualquier clic reinicia el rango tomando este como nuevo inicio.
+                if (state.start && state.end) {
+                    state.start = p;
+                    state.end = null;
+                    render();
+                    return;
+                }
+
+                // Primer clic = inicio (o reemplazo si el inicio ya estaba en este mes/año).
+                if (!state.start) {
+                    state.start = p;
+                    render();
+                    return;
+                }
+
+                // Segundo clic = fin; si el segundo clic es el mismo mes del mismo año, se reinicia.
+                var ks = keyOf(state.start);
+                if (ks === k) {
+                    // Mismo mes: reiniciar.
+                    state.start = null;
+                    state.end = null;
+                    render();
+                    return;
+                }
+                // Si hacen clic sobre el inicio actual (mismo mes/año), no se permite cerrar ahí; se ignora.
+                if (state.start.year === p.year && state.start.month === p.month) {
+                    return;
+                }
+                state.end = p;
+                // Si el fin es anterior al inicio, intercambiar.
+                if (keyOf(state.end) < keyOf(state.start)) {
+                    var tmp = state.start;
+                    state.start = state.end;
+                    state.end = tmp;
+                }
+                render();
+            }
+
+            $('#ms-prev').on('click', function () { state.year--; render(); });
+            $('#ms-next').on('click', function () { state.year++; render(); });
+
+            render();
+
+            // =================== CONFIRMACIONES SWEETALERT ===================
             var formSemanas = document.getElementById('form-semanas');
             if (formSemanas) {
                 formSemanas.addEventListener('submit', function (e) {
@@ -290,8 +707,6 @@
                 });
             }
 
-            // Editar planificación: confirmar con SweetAlert v7 antes de enviar.
-            // En creación (Model.Id == null) no se intercepta el submit.
             @if (Model.Id.HasValue)
             {
                 <text>

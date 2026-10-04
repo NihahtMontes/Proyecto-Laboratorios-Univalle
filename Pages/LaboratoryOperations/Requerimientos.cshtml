@@ -1,189 +1,188 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.RequerimientosModel
-@{ ViewData["Title"] = "Requerimientos — Paso 2"; }
-
-<div class="page-breadcrumb">
-    <div class="row">
-        <div class="col-12">
-            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PASO 2 · @Model.Code</h4>
-            <h2 class="font-weight-bold text-dark">Requerimientos de la práctica</h2>
-            @if (Model.Plan != null)
-            {
-                <div class="text-muted small">
-                    @(Model.Plan.Laboratory?.Name) · @(Model.Plan.Subject?.Name) · @(Model.Plan.Group?.Name) ·
-                    @Model.Plan.ScheduledDate.ToString("dd/MM/yyyy HH:mm")–@((Model.Plan.ScheduledEndDate ?? Model.Plan.ScheduledDate.AddHours(1)).ToString("HH:mm"))
-                </div>
-            }
-        </div>
-    </div>
-</div>
+@{ ViewData["Title"] = "Requerimientos — Paso 2"; var canWrite = Model.IsEditable && !(Model.Context?.IsReadOnly ?? false); }
 
 <div class="container-fluid mt-3">
-    @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 2)
-
-    @if (Model.Conflict)
+    @if (Model.Context != null)
     {
-        <div class="alert alert-danger border-0 rounded d-flex align-items-center mb-4">
-            <i class="fas fa-exclamation-triangle fa-2x mr-3"></i>
-            <div>
-                <strong>Stock insuficiente en el laboratorio.</strong><br />
-                <span>Vuelve a ajustar las cantidades antes de revalidar disponibilidad.</span>
-            </div>
-        </div>
-    }
+        <partial name="_PlanningContext" model="Model.Context" />
 
-    <div class="row">
-        @if (Model.IsEditable)
+
+        @if (Model.Context.IsReadOnly)
         {
-            <div class="col-lg-4 mb-4 mb-lg-0">
-                <div class="card border-0 shadow-sm rounded-lg">
-                    <div class="card-body p-4">
-                        <h5 class="font-weight-bold text-primary mb-1">Agregar material</h5>
-                        <p class="text-muted small">Selecciona el equipo y la cantidad a solicitar.</p>
-                        <form method="post" asp-page-handler="Add" asp-route-planId="@Model.PlanId">
-                            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
-                            <div class="form-group">
-                                <label asp-for="Input.EquipmentId" class="small font-weight-bold text-muted">Material / utensilio</label>
-                                <select asp-for="Input.EquipmentId" class="custom-select">
-                                    <option value="0">— Seleccionar —</option>
-                                    @foreach (var item in Model.Catalog)
-                                    {
-                                        <option value="@item.EquipmentId">@item.Name - @item.OperationalInLab operativos de @item.TotalInLab</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="Input.EquipmentId" class="text-danger small"></span>
-                                @if (Model.Catalog.Count == 0)
-                                {
-                                    <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay equipos registrados en este laboratorio.</small>
-                                }
-                            </div>
-                            <div class="form-group">
-                                <label asp-for="Input.Quantity" class="small font-weight-bold text-muted">Cantidad solicitada</label>
-                                <input asp-for="Input.Quantity" type="number" class="form-control" min="1" max="999" />
-                                <span asp-validation-for="Input.Quantity" class="text-danger small"></span>
-                            </div>
-                            <button type="submit" class="btn btn-primary btn-rounded btn-block font-weight-bold">
-                                <i class="mdi mdi-plus mr-1"></i> Agregar a la lista
-                            </button>
-                        </form>
-                        <div class="alert alert-light border small mt-4 mb-0">
-                            <i class="fas fa-info-circle text-primary mr-1"></i>
-                            Puedes cargar una cantidad superior al stock para evidenciar el conflicto de disponibilidad.
-                        </div>
-                    </div>
+            <div class="alert alert-warning border-0 rounded d-flex align-items-center mb-4">
+                <i class="fas fa-eye fa-2x mr-3"></i>
+                <div>
+                    <strong>Solo consulta.</strong><br />
+                    <span>La planificación no admite agregar, modificar ni retirar requerimientos.</span>
                 </div>
             </div>
         }
 
-        <div class="@(Model.IsEditable ? "col-lg-8" : "col-lg-12")">
-            <div class="card border-0 shadow-sm rounded-lg">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h5 class="font-weight-bold text-primary mb-1">LISTA DE REQUERIMIENTOS</h5>
-                            @if (Model.Plan != null)
-                            {
-                                <small class="text-muted">@Model.Plan.ScheduledDate.ToString("dd/MM/yyyy")</small>
-                            }
-                        </div>
-                        <span class="badge badge-light border">@Model.Items.Count ítem(s)</span>
-                    </div>
+        @if (Model.Conflict)
+        {
+            <div class="alert alert-danger border-0 rounded d-flex align-items-center mb-4">
+                <i class="fas fa-exclamation-triangle fa-2x mr-3"></i>
+                <div>
+                    <strong>Stock insuficiente en el laboratorio.</strong><br />
+                    <span>Vuelve a ajustar las cantidades antes de revalidar disponibilidad.</span>
+                </div>
+            </div>
+        }
 
-                    @if (Model.Items.Count == 0)
-                    {
-                        <div class="text-center rounded-lg p-5 bg-light">
-                            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-                            <p class="text-muted mb-0">Aún no hay materiales agregados a esta práctica.</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="bg-dark text-white">
-                                    <tr>
-                                        <th>MATERIAL</th>
-                                        <th class="text-center">CANTIDAD</th>
-                                        <th class="text-center">OPERATIVOS EN LABORATORIO</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in Model.Items)
+        <div class="row">
+            @if (canWrite)
+            {
+                <div class="col-lg-4 mb-4 mb-lg-0">
+                    <div class="card border-0 shadow-sm rounded-lg">
+                        <div class="card-body p-4">
+                            <h5 class="font-weight-bold text-primary mb-1">Agregar material</h5>
+                            <p class="text-muted small">Selecciona el equipo y la cantidad a solicitar.</p>
+                            <form method="post" asp-page-handler="Add" asp-route-planId="@Model.PlanId">
+                                <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                                <div class="form-group">
+                                    <label asp-for="Input.EquipmentId" class="small font-weight-bold text-muted">Material / utensilio</label>
+                                    <select asp-for="Input.EquipmentId" class="custom-select">
+                                        <option value="0">— Seleccionar —</option>
+                                        @foreach (var item in Model.Catalog)
+                                        {
+                                            <option value="@item.EquipmentId">@item.Name - @item.OperationalInLab operativos de @item.TotalInLab</option>
+                                        }
+                                    </select>
+                                    <span asp-validation-for="Input.EquipmentId" class="text-danger small"></span>
+                                    @if (Model.Catalog.Count == 0)
                                     {
-                                        var conflict = item.Quantity > item.OperationalInLab;
-                                        <tr class="@(conflict ? "table-danger" : "")">
-                                            <td class="font-weight-bold">@item.EquipmentName</td>
-                                            <td class="text-center" style="width:180px;">
-                                                @if (Model.IsEditable)
-                                                {
-                                                    <form method="post" asp-page-handler="UpdateQuantity" asp-route-planId="@Model.PlanId" class="m-0">
-                                                        <div class="input-group input-group-sm">
-                                                            <input type="hidden" name="detailId" value="@item.DetailId" />
-                                                            <input type="number" name="newQuantity" class="form-control text-center" value="@item.Quantity" min="1" max="999" />
-                                                            <div class="input-group-append">
-                                                                <button type="submit" class="btn btn-outline-success" title="Actualizar cantidad">
-                                                                    <i class="mdi mdi-check"></i>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </form>
-                                                }
-                                                else
-                                                {
-                                                    <span class="font-weight-bold">@item.Quantity</span>
-                                                }
-                                            </td>
-                                            <td class="text-center">
-                                                @item.OperationalInLab<br />
-                                                <small class="@(conflict ? "text-danger" : "text-success")">@(conflict ? "Insuficiente" : "Disponible")</small>
-                                            </td>
-                                            <td class="text-right">
-                                                @if (Model.IsEditable)
-                                                {
-                                                    <form method="post" asp-page-handler="Remove" asp-route-planId="@Model.PlanId" class="d-inline js-form-remove-requirement">
-                                                        <input type="hidden" name="detailId" value="@item.DetailId" />
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Retirar">
-                                                            <i class="mdi mdi-delete"></i>
-                                                        </button>
-                                                    </form>
-                                                }
-                                            </td>
-                                        </tr>
+                                        <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay equipos registrados en este laboratorio.</small>
                                     }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-
-                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                        <a asp-page="./Practica" asp-route-id="@Model.PlanId" class="btn btn-outline-secondary btn-rounded px-4">
-                            <i class="mdi mdi-arrow-left mr-1"></i> Atrás
-                        </a>
-                        @if (Model.IsEditable)
-                        {
-                            <form method="post" asp-page-handler="Continue" asp-route-planId="@Model.PlanId" class="d-inline">
-                                <button type="submit" class="btn btn-dark btn-rounded font-weight-bold px-4">
-                                    Validar disponibilidad <i class="mdi mdi-arrow-right ml-1"></i>
+                                </div>
+                                <div class="form-group">
+                                    <label asp-for="Input.Quantity" class="small font-weight-bold text-muted">Cantidad solicitada</label>
+                                    <input asp-for="Input.Quantity" type="number" class="form-control" min="1" max="999" />
+                                    <span asp-validation-for="Input.Quantity" class="text-danger small"></span>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-rounded btn-block font-weight-bold">
+                                    <i class="mdi mdi-plus mr-1"></i> Agregar a la lista
                                 </button>
                             </form>
+                            <div class="alert alert-light border small mt-4 mb-0">
+                                <i class="fas fa-info-circle text-primary mr-1"></i>
+                                Puedes cargar una cantidad superior al stock para evidenciar el conflicto de disponibilidad.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="@(canWrite ? "col-lg-8" : "col-lg-12")">
+                <div class="card border-0 shadow-sm rounded-lg">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5 class="font-weight-bold text-primary mb-1">LISTA DE REQUERIMIENTOS</h5>
+                                @if (Model.Plan != null)
+                                {
+                                    <small class="text-muted">@Model.Plan.ScheduledDate.ToString("dd/MM/yyyy")</small>
+                                }
+                            </div>
+                            <span class="badge badge-light border">@Model.Items.Count ítem(s)</span>
+                        </div>
+
+                        @if (Model.Items.Count == 0)
+                        {
+                            <div class="text-center rounded-lg p-5 bg-light">
+                                <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                                <p class="text-muted mb-0">Aún no hay materiales agregados a esta práctica.</p>
+                            </div>
                         }
                         else
                         {
-                            <div class="d-flex">
-                                <a asp-page="./Disponibilidad" asp-route-planId="@Model.PlanId" class="btn btn-outline-info btn-rounded px-4 mr-2">
-                                    Ver disponibilidad <i class="mdi mdi-arrow-right ml-1"></i>
-                                </a>
-                                <a asp-page="./L3" asp-route-id="@Model.PlanId" class="btn btn-primary btn-rounded font-weight-bold px-4">
-                                    Ir a L-3 <i class="mdi mdi-arrow-right ml-1"></i>
-                                </a>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="bg-dark text-white">
+                                        <tr>
+                                            <th>MATERIAL</th>
+                                            <th class="text-center">CANTIDAD</th>
+                                            <th class="text-center">OPERATIVOS EN LABORATORIO</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in Model.Items)
+                                        {
+                                            var conflict = item.Quantity > item.OperationalInLab;
+                                            <tr class="@(conflict ? "table-danger" : "")">
+                                                <td class="font-weight-bold">@item.EquipmentName</td>
+                                                <td class="text-center" style="width:180px;">
+                                                    @if (canWrite)
+                                                    {
+                                                        <form method="post" asp-page-handler="UpdateQuantity" asp-route-planId="@Model.PlanId" class="m-0">
+                                                            <div class="input-group input-group-sm">
+                                                                <input type="hidden" name="detailId" value="@item.DetailId" />
+                                                                <input type="number" name="newQuantity" class="form-control text-center" value="@item.Quantity" min="1" max="999" />
+                                                                <div class="input-group-append">
+                                                                    <button type="submit" class="btn btn-outline-success" title="Actualizar cantidad">
+                                                                        <i class="mdi mdi-check"></i>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </form>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="font-weight-bold">@item.Quantity</span>
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @item.OperationalInLab<br />
+                                                    <small class="@(conflict ? "text-danger" : "text-success")">@(conflict ? "Insuficiente" : "Disponible")</small>
+                                                </td>
+                                                <td class="text-right">
+                                                    @if (canWrite)
+                                                    {
+                                                        <form method="post" asp-page-handler="Remove" asp-route-planId="@Model.PlanId" class="d-inline js-form-remove-requirement">
+                                                            <input type="hidden" name="detailId" value="@item.DetailId" />
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Retirar">
+                                                                <i class="mdi mdi-delete"></i>
+                                                            </button>
+                                                        </form>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
                             </div>
                         }
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <a asp-page="./Practica" asp-route-id="@Model.PlanId" class="btn btn-outline-secondary btn-rounded px-4">
+                                <i class="mdi mdi-arrow-left mr-1"></i> Atrás
+                            </a>
+                            @if (canWrite)
+                            {
+                                <form method="post" asp-page-handler="Continue" asp-route-planId="@Model.PlanId" class="d-inline">
+                                    <button type="submit" class="btn btn-dark btn-rounded font-weight-bold px-4">
+                                        Validar disponibilidad <i class="mdi mdi-arrow-right ml-1"></i>
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <div class="d-flex">
+                                    <a asp-page="./Disponibilidad" asp-route-planId="@Model.PlanId" class="btn btn-outline-info btn-rounded px-4 mr-2">
+                                        Ver disponibilidad <i class="mdi mdi-arrow-right ml-1"></i>
+                                    </a>
+                                    <a asp-page="./L3" asp-route-id="@Model.PlanId" class="btn btn-primary btn-rounded font-weight-bold px-4">
+                                        Ir a L-3 <i class="mdi mdi-arrow-right ml-1"></i>
+                                    </a>
+                                </div>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    }
 </div>
 
 @section Scripts {

@@ -18,9 +18,11 @@ public class PlanificacionModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<PlanificacionModel> _logger;
+    private readonly IPlanningService _planning;
 
-    public PlanificacionModel(ApplicationDbContext context, ILogger<PlanificacionModel> logger)
+    public PlanificacionModel(ApplicationDbContext context, ILogger<PlanificacionModel> logger, IPlanningService planning)
     {
+        _planning = planning;
         _context = context;
         _logger = logger;
     }
@@ -43,6 +45,11 @@ public class PlanificacionModel : PageModel
     public int PracticeCount { get; private set; }
     /// <summary>Con prácticas registradas no se cambian facultad, carrera ni fecha de inicio.</summary>
     public bool StructureLocked => PracticeCount > 0;
+    /// <summary>Estado de la planificación editada (null al crear).</summary>
+    public AcademicPlanningStatus? Status { get; private set; }
+    /// <summary>Las planificaciones cerradas solo se consultan.</summary>
+    public bool IsReadOnly => Status == AcademicPlanningStatus.Completed;
+    public bool HasActivePlanning { get; private set; }
     public List<WeekRow> Weeks { get; private set; } = [];
 
     public sealed record WeekRow(int Id, int Number, DateTime StartDate, DateTime EndDate, bool IsLective, string? Note, int PracticeCount);
@@ -56,9 +63,14 @@ public class PlanificacionModel : PageModel
             if (planning == null)
             {
                 TempData.Error("La planificación no existe.");
-                return RedirectToPage("./Calendario");
+                return RedirectToPage("./Index");
             }
             Input = InputModel.From(planning);
+        }
+        else
+        {
+            // Al crear, se propone activarla si no hay ninguna planificación activa.
+            Input.Activate = await _planning.GetActiveAsync() == null;
         }
 
         await LoadPageAsync();
@@ -90,12 +102,15 @@ public class PlanificacionModel : PageModel
             ModelState.AddModelError("Input.CareerId", "La carrera no pertenece a la facultad seleccionada.");
 
         IReadOnlyList<AcademicWeekGenerator.WeekSlot> slots = [];
-        if (Input.EndDate.Date < Input.StartDate.Date)
-            ModelState.AddModelError("Input.EndDate", "La fecha de fin no puede ser anterior a la de inicio.");
-        else
+        if (Input.StartDate != null && Input.EndDate != null)
         {
-            try { slots = AcademicWeekGenerator.Generate(Input.StartDate, Input.EndDate); }
-            catch (ArgumentException ex) { ModelState.AddModelError("Input.EndDate", ex.Message); }
+            if (Input.EndDate < Input.StartDate)
+                ModelState.AddModelError("Input.EndMonth", "El mes de fin no puede ser anterior al de inicio.");
+            else
+            {
+                try { slots = AcademicWeekGenerator.Generate(Input.StartDate.Value, Input.EndDate.Value); }
+                catch (ArgumentException ex) { ModelState.AddModelError("Input.EndMonth", ex.Message); }
+            }
         }
 
         if (await _context.AcademicPlannings.AsNoTracking()
@@ -112,7 +127,12 @@ public class PlanificacionModel : PageModel
             if (planning == null)
             {
                 TempData.Error("La planificación ya no existe.");
-                return RedirectToPage("./Calendario");
+                return RedirectToPage("./Planificaciones");
+            }
+            if (planning.Status == AcademicPlanningStatus.Completed)
+            {
+                TempData.Error("La planificación está cerrada; actívala desde Planificaciones para modificarla.");
+                return RedirectToPage("./Planificaciones");
             }
 
             practicesByWeek = await PracticesByWeekAsync(planning.Id);
@@ -122,8 +142,8 @@ public class PlanificacionModel : PageModel
             {
                 if (planning.FacultyId != Input.FacultyId || planning.CareerId != Input.CareerId)
                     ModelState.AddModelError(string.Empty, "La planificación ya tiene prácticas: no se puede cambiar la facultad ni la carrera.");
-                if (AcademicWeekGenerator.MondayOf(planning.StartDate) != AcademicWeekGenerator.MondayOf(Input.StartDate))
-                    ModelState.AddModelError("Input.StartDate", "La planificación ya tiene prácticas: la fecha de inicio debe quedar en la misma semana.");
+                if (Input.StartDate != null && AcademicWeekGenerator.MondayOf(planning.StartDate) != AcademicWeekGenerator.MondayOf(Input.StartDate.Value))
+                    ModelState.AddModelError("Input.StartMonth", "La planificación ya tiene prácticas: no se puede cambiar el mes de inicio.");
             }
 
             var lastNumber = slots.Count;
@@ -132,7 +152,7 @@ public class PlanificacionModel : PageModel
                 .Select(w => w.Number)
                 .ToList();
             if (droppedWithPractices.Count > 0)
-                ModelState.AddModelError("Input.EndDate",
+                ModelState.AddModelError("Input.EndMonth",
                     $"No se puede acortar el rango: las semanas {string.Join(", ", droppedWithPractices)} tienen prácticas.");
         }
 
@@ -151,9 +171,12 @@ public class PlanificacionModel : PageModel
             planning.FacultyId = Input.FacultyId;
             planning.CareerId = Input.CareerId;
             planning.Name = Input.Name.Trim();
-            planning.StartDate = Input.StartDate.Date;
-            planning.EndDate = Input.EndDate.Date;
+            planning.StartDate = Input.StartDate!.Value;
+            planning.EndDate = Input.EndDate!.Value;
             if (isNew) _context.AcademicPlannings.Add(planning);
+            var closedOthers = Input.Activate && planning.Status != AcademicPlanningStatus.Active
+                ? await _planning.ActivateAsync(planning)
+                : 0;
 
             var existing = planning.Weeks.ToDictionary(w => w.Number);
             foreach (var slot in slots)
@@ -175,10 +198,13 @@ public class PlanificacionModel : PageModel
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+            _planning.InvalidateCache();
 
-            TempData.Success(isNew
+            TempData.Success((isNew
                 ? $"Planificación creada con {slots.Count} semanas académicas."
-                : "Planificación actualizada.");
+                : "Planificación actualizada.")
+                + (planning.Status == AcademicPlanningStatus.Active ? " Es la planificación activa." : "")
+                + (closedOthers > 0 ? " Se cerró la planificación que estaba activa." : ""));
             return RedirectToPage(new { id = planning.Id });
         }
         catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
@@ -186,7 +212,7 @@ public class PlanificacionModel : PageModel
             // Carrera concurrente: otra planificación ocupó la misma gestión y carrera.
             await transaction.RollbackAsync();
             TempData.Error("Ya existe una planificación para esa gestión y carrera.");
-            return Id.HasValue ? RedirectToPage(new { id = Id }) : RedirectToPage("./Calendario");
+            return Id.HasValue ? RedirectToPage(new { id = Id }) : RedirectToPage("./Planificacion");
         }
         catch (Exception ex)
         {
@@ -200,7 +226,14 @@ public class PlanificacionModel : PageModel
     /// <summary>Guarda lectiva/no lectiva y nota de cada semana.</summary>
     public async Task<IActionResult> OnPostWeeksAsync()
     {
-        if (!Id.HasValue) return RedirectToPage("./Calendario");
+        if (!Id.HasValue) return RedirectToPage("./Index");
+
+        if (await _context.AcademicPlannings.AsNoTracking()
+                .AnyAsync(p => p.Id == Id.Value && p.Status == AcademicPlanningStatus.Completed))
+        {
+            TempData.Error("La planificación está cerrada; sus semanas solo se consultan.");
+            return RedirectToPage(new { id = Id });
+        }
 
         var weeks = await _context.AcademicWeeks.AsTracking()
             .Where(w => w.AcademicPlanningId == Id.Value)
@@ -208,7 +241,7 @@ public class PlanificacionModel : PageModel
         if (weeks.Count == 0)
         {
             TempData.Error("La planificación no existe o no tiene semanas.");
-            return RedirectToPage("./Calendario");
+            return RedirectToPage("./Index");
         }
 
         var byId = weeks.ToDictionary(w => w.Id);
@@ -264,8 +297,14 @@ public class PlanificacionModel : PageModel
         ManagementList = new SelectList(managements, "Id", "Code", Input.ManagementId);
         FacultyList = new SelectList(faculties, "Id", "Name", Input.FacultyId);
         CareerList = new SelectList(careers, "Id", "Name", Input.CareerId);
+        HasActivePlanning = await _planning.GetActiveAsync() != null;
 
         if (!Id.HasValue) return;
+
+        Status = await _context.AcademicPlannings.AsNoTracking()
+            .Where(p => p.Id == Id.Value)
+            .Select(p => (AcademicPlanningStatus?)p.Status)
+            .FirstOrDefaultAsync();
 
         var header = await _context.AcademicPlannings.AsNoTracking()
             .Where(p => p.Id == Id.Value)
@@ -302,13 +341,30 @@ public class PlanificacionModel : PageModel
         [Display(Name = "Nombre de la planificación")]
         public string Name { get; set; } = string.Empty;
 
-        [DataType(DataType.Date)]
-        [Display(Name = "Fecha de inicio")]
-        public DateTime StartDate { get; set; } = DateTime.Today;
+        /// <summary>Mes de inicio (yyyy-MM) elegido en el selector visual.</summary>
+        [Required(ErrorMessage = "Selecciona el mes de inicio")]
+        [RegularExpression(@"^\d{4}-(0[1-9]|1[0-2])$", ErrorMessage = "Mes de inicio inválido")]
+        [Display(Name = "Mes de inicio")]
+        public string? StartMonth { get; set; }
 
-        [DataType(DataType.Date)]
-        [Display(Name = "Fecha de fin")]
-        public DateTime EndDate { get; set; } = DateTime.Today.AddMonths(4);
+        /// <summary>Mes de fin (yyyy-MM) elegido en el selector visual.</summary>
+        [Required(ErrorMessage = "Selecciona el mes de fin")]
+        [RegularExpression(@"^\d{4}-(0[1-9]|1[0-2])$", ErrorMessage = "Mes de fin inválido")]
+        [Display(Name = "Mes de fin")]
+        public string? EndMonth { get; set; }
+
+        [Display(Name = "Activar esta planificación al guardar")]
+        public bool Activate { get; set; }
+
+        /// <summary>Primer día del mes de inicio.</summary>
+        public DateTime? StartDate => ParseMonth(StartMonth);
+
+        /// <summary>Último día del mes de fin.</summary>
+        public DateTime? EndDate => ParseMonth(EndMonth)?.AddMonths(1).AddDays(-1);
+
+        private static DateTime? ParseMonth(string? value) =>
+            DateTime.TryParseExact(value, "yyyy-MM", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var month) ? month : null;
 
         public static InputModel From(AcademicPlanning planning) => new()
         {
@@ -316,8 +372,9 @@ public class PlanificacionModel : PageModel
             FacultyId = planning.FacultyId,
             CareerId = planning.CareerId,
             Name = planning.Name,
-            StartDate = planning.StartDate,
-            EndDate = planning.EndDate
+            StartMonth = planning.StartDate.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture),
+            EndMonth = planning.EndDate.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture),
+            Activate = planning.Status == AcademicPlanningStatus.Active
         };
     }
 
