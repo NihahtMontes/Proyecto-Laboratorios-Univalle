@@ -134,7 +134,7 @@
                                             <span class="badge badge-light border text-dark font-weight-bold px-3 py-1">@item.UnitOfMeasure</span>
                                         </td>
                                         <td class="text-center">
-                                            <span class="font-weight-bold text-dark">@item.Quantity.ToString("0.##")</span>
+                                            <span class="font-weight-bold text-dark">@(item.Quantity.HasValue ? item.Quantity.Value.ToString("0.##") : "Sin cantidad")</span>
                                         </td>
                                         <td class="text-center">
                                             @if (item.IsScalable)
@@ -156,7 +156,7 @@
                                                         data-bs-toggle="tooltip"
                                                         title="Editar línea"
                                                         data-id="@item.Id"
-                                                        data-quantity="@item.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                        data-quantity="@(item.Quantity?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
                                                         data-scalable="@(item.IsScalable ? "true" : "false")"
                                                         data-observations="@item.Observations">
                                                     <i class="fas fa-edit"></i>

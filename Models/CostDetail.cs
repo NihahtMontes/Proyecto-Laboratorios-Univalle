@@ -75,6 +75,14 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(200)]
         public string? HistoricalSourceKey { get; set; }
 
+        /// <summary>Anulado (no borrado): p. ej. costo inferido reemplazado por el dato real del cliente.</summary>
+        public bool IsVoided { get; set; }
+
+        public DateTime? VoidedDate { get; set; }
+
+        [StringLength(300)]
+        public string? VoidReason { get; set; }
+
         [StringLength(100)]
         [Display(Name = "N° Factura/Recibo")]
         public string? InvoiceNumber { get; set; }

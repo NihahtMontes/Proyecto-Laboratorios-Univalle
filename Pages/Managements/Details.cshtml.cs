@@ -328,6 +328,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 return RedirectToPage("./Index");
             }
 
+            if (currentManagement.Type == ManagementType.PorConfirmar)
+            {
+                TempData.Error("Las gestiones históricas importadas son de solo consulta.");
+                return RedirectToPage("./Details", new { id });
+            }
+
             var preferredId = currentManagement.Status == ManagementStatus.Active
                 ? currentManagement.Id
                 : (int?)null;
@@ -360,6 +366,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             if (management == null || management.Status != ManagementStatus.Active)
             {
                 TempData.Error("No se puede sincronizar una gestión que no está activa.");
+                return RedirectToPage(new { id, ActiveTab });
+            }
+
+            if (management.Type == ManagementType.PorConfirmar)
+            {
+                TempData.Error("Las gestiones históricas importadas son de solo consulta.");
                 return RedirectToPage(new { id, ActiveTab });
             }
 
@@ -427,6 +439,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (plan == null || plan.Management == null)
                 return NotFound();
+
+            if (plan.Management.Type == ManagementType.PorConfirmar)
+                return BadRequest();
 
             if (type == "planned")
             {

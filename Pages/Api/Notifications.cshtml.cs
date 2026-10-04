@@ -281,7 +281,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
             var typeQuery = managementType.HasValue ? $"&ManagementType={managementType.Value}" : string.Empty;
             var maintenanceTitle = managementType == ManagementType.Corrective
                 ? "Mantenimiento correctivo próximo"
-                : "Mantenimiento preventivo próximo";
+                : managementType == ManagementType.PorConfirmar
+                    ? "Mantenimiento próximo"
+                    : "Mantenimiento preventivo próximo";
 
             var overdueMaintenanceQuery = _context.Maintenances
                 .AsNoTracking()

@@ -95,6 +95,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 return RedirectToPage("./Index");
             }
 
+            // Gestiones históricas (Type == PorConfirmar) son de solo consulta; redirigir al detalle.
+            if (management.Type == ManagementType.PorConfirmar)
+            {
+                TempData.Warning("Las gestiones históricas importadas son de solo consulta.");
+                return RedirectToPage("./Details", new { id = management.Id });
+            }
+
             ManagementType = management.Type;
             Input = new EditManagementInputModel
             {
@@ -150,6 +157,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             {
                 TempData.Warning("La gestión solicitada fue eliminada o no existe.");
                 return RedirectToPage("./Index");
+            }
+
+            // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
+            // aunque el OnGet ya redirige si la URL llega directa al detalle.
+            if (management.Type == ManagementType.PorConfirmar)
+            {
+                TempData.Error("Las gestiones históricas importadas son de solo consulta.");
+                return RedirectToPage("./Details", new { id = management.Id });
             }
 
             ManagementType = management.Type;

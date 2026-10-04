@@ -168,7 +168,7 @@
                                         </select>
                                         <select asp-for="MaintenanceManagementType"
                                                 class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
-                                                asp-items="Html.GetEnumSelectList<ManagementType>()"
+                                                asp-items="Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<ManagementType>()"
                                                 aria-label="Tipo de gestión"
                                                 data-live-filter-control>
                                             <option value="">Tipo de gestión</option>

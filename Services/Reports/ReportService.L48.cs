@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.Drawing;
@@ -36,7 +37,11 @@ namespace Proyecto_Laboratorios_Univalle.Services
             using var package = new ExcelPackage(new FileInfo(templatePath));
             var worksheet = package.Workbook.Worksheets[0];
 
-            var processLabel = management.Type == ManagementType.Corrective ? "CORRECTIVO" : "PREVENTIVO";
+            var processLabel = management.Type == ManagementType.Corrective
+                ? "CORRECTIVO"
+                : management.Type == ManagementType.PorConfirmar
+                    ? "POR CONFIRMAR"
+                    : "PREVENTIVO";
             worksheet.Cells["A5"].Value = $"PLAN DE MANTENIMIENTO {processLabel} EQUIPOS DE LABORATORIO GESTIÓN {management.Code}";
             for (int r = 13; r <= 60; r++)
                 for (int c = 1; c <= 16; c++)
@@ -53,7 +58,11 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 worksheet.Cells[currentRow, 1].Value = itemIndex;
                 worksheet.Cells[currentRow, 2].Value = u?.Equipment?.Name?.ToUpper();
                 worksheet.Cells[currentRow, 3].Value = u?.InventoryNumber;
-                worksheet.Cells[currentRow, 4].Value = m?.MaintenanceType.ToString() ?? "Preventivo";
+                // Datos históricos: PorConfirmar se imprime con el texto del [Display] ("Por confirmar")
+                // para no caer en el nombre técnico del enum ("PorConfirmar").
+                worksheet.Cells[currentRow, 4].Value = m == null
+                    ? "Preventivo"
+                    : EnumHelper.GetDisplayName(m.MaintenanceType);
                 worksheet.Cells[currentRow, 5].Value = m?.Technician?.FullName ?? "Interno";
                 worksheet.Cells[currentRow, 6].Value = m?.ScheduledDate?.ToString("dd/MM/yyyy");
                 worksheet.Cells[currentRow, 7].Value = m?.StartDate?.ToString("dd/MM/yyyy");

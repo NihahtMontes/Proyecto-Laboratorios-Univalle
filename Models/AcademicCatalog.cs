@@ -133,14 +133,19 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("PracticeId")]
         public virtual Practice? Practice { get; set; }
 
+        /// <summary>RequerimientoCodigo de la fuente (trazabilidad e idempotencia de la importación).</summary>
+        [StringLength(50)]
+        public string? Code { get; set; }
+
         [Display(Name = "Artículo")]
         public int ArticleId { get; set; }
         [ForeignKey("ArticleId")]
         public virtual Article? Article { get; set; }
 
+        /// <summary>Cantidad requerida; NULL si la fuente no la trae (se registra incidencia, no se inventa).</summary>
         [Range(0.01, 999999)]
         [Display(Name = "Cantidad")]
-        public decimal Quantity { get; set; } = 1;
+        public decimal? Quantity { get; set; } = 1;
 
         /// <summary>La cantidad depende del número de estudiantes del grupo.</summary>
         [Display(Name = "Escalable")]

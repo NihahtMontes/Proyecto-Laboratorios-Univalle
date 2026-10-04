@@ -50,6 +50,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 Enum.TryParse<ManagementType>(type, ignoreCase: true, out var typeEnum) &&
                 Enum.IsDefined(typeof(ManagementType), typeEnum))
             {
+                // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
+                // aunque el select (FormSelectList) lo excluye. Redirigir al índice con error.
+                if (typeEnum == ManagementType.PorConfirmar)
+                {
+                    TempData.Error("Las gestiones históricas importadas son de solo consulta; no se permite crear con tipo 'Por confirmar'.");
+                    return RedirectToPage("./Index", new { Type = ManagementType.Preventive.ToString() });
+                }
+
                 Input.Type = typeEnum;
             }
 
@@ -108,6 +116,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         {
             if (!Enum.IsDefined(typeof(ManagementType), Input.Type))
                 ModelState.AddModelError("Input.Type", "Seleccione un tipo de gestión válido.");
+
+            // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
+            // aunque el select (FormSelectList) ya lo excluye en la UI.
+            if (Input.Type == ManagementType.PorConfirmar)
+                ModelState.AddModelError("Input.Type", "Las gestiones históricas importadas son de solo consulta; no se permite crear con tipo 'Por confirmar'.");
 
             if (!Enum.IsDefined(typeof(ManagementStatus), Input.Status) ||
                 Input.Status == ManagementStatus.Deleted)

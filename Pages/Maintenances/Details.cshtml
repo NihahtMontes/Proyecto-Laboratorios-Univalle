@@ -58,7 +58,7 @@
                         <div class="mb-3">
                             <label class="small text-muted font-weight-bold d-block mb-0 uppercase">Gestión</label>
                             <p class="text-dark font-weight-bold mb-1">@Model.FormatManagement(Model.Maintenance.Management)</p>
-                            <span class="text-muted small">@(Model.Maintenance.Management?.Type == ManagementType.Corrective ? "Correctiva" : "Preventiva")</span>
+                            <span class="text-muted small">@(Model.Maintenance.Management?.Type == ManagementType.Corrective ? "Correctiva" : Model.Maintenance.Management?.Type == ManagementType.PorConfirmar ? "Por confirmar" : "Preventiva")</span>
                         </div>
 
                         <div class="mb-3">

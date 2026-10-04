@@ -11,7 +11,7 @@
         <div class="card shadow-sm border-0">
             <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link @(Model.Type != "Corrective" ? "active" : "") font-weight-bold uppercase small"
+                    <a class="nav-link @(!Model.IsHistorical && Model.Type != "Corrective" ? "active" : "") font-weight-bold uppercase small"
                        href="?Type=Preventive">
                         <i class="fas fa-folder-open mr-2"></i> Preventivo
                     </a>
@@ -20,6 +20,12 @@
                     <a class="nav-link @(Model.Type == "Corrective" ? "active" : "") font-weight-bold uppercase small"
                        href="?Type=Corrective">
                         <i class="fas fa-tools mr-2"></i> Correctivo
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(Model.IsHistorical ? "active" : "") font-weight-bold uppercase small"
+                       href="?Type=PorConfirmar">
+                        <i class="fas fa-archive mr-2"></i> Hist&oacute;ricas (Por confirmar)
                     </a>
                 </li>
             </ul>
@@ -33,9 +39,18 @@
                                 <h6 class="card-subtitle text-muted ml-2">Gestión centralizada de ciclos de mantenimiento.</h6>
                             </div>
                             <div class="ml-auto mt-3">
-                                <a asp-page="Create" asp-route-type="@Model.Type" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
-                                    <i class="fas fa-plus-circle mr-1 text-info"></i> @(Model.Type == "Corrective" ? "Nueva Gestión Correctiva" : "Nueva Gestión")
-                                </a>
+                                @if (!Model.IsHistorical)
+                                {
+                                    <a asp-page="Create" asp-route-type="@Model.Type" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                                        <i class="fas fa-plus-circle mr-1 text-info"></i> @(Model.Type == "Corrective" ? "Nueva Gestión Correctiva" : "Nueva Gestión")
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-light border text-muted px-3 py-2 font-weight-bold" title="Las gestiones hist&oacute;ricas importadas son de solo lectura; no se crean, activan ni eliminan desde este listado.">
+                                        <i class="fas fa-eye mr-1"></i> Solo lectura
+                                    </span>
+                                }
                             </div>
                         </div>
 
@@ -122,30 +137,39 @@
                                                             <i class="fas fa-calendar-alt"></i>
                                                         </a>
 
-                                                        @if (item.Status == ManagementStatus.Active && item.Type != ManagementType.Corrective)
+                                                        @if (!Model.IsHistorical)
                                                         {
-                                                            <a asp-page="./PlanAssets" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary btn-rounded shadow-sm ml-1" title="Planificar Activos">
-                                                                <i class="fas fa-tasks"></i>
+                                                            @if (item.Status == ManagementStatus.Active && item.Type != ManagementType.Corrective)
+                                                            {
+                                                                <a asp-page="./PlanAssets" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary btn-rounded shadow-sm ml-1" title="Planificar Activos">
+                                                                    <i class="fas fa-tasks"></i>
+                                                                </a>
+                                                            }
+                                                            <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded mx-1 shadow-sm" title="Editar">
+                                                                <i class="fas fa-edit"></i>
                                                             </a>
+                                                            @if (item.Status != ManagementStatus.Active)
+                                                            {
+                                                                <form method="post" asp-page-handler="ActivateManagement" asp-route-id="@item.Id" class="d-inline js-activate-management-form">
+                                                                    <button type="submit" class="btn btn-sm btn-outline-success btn-rounded shadow-sm" title="Activar gestiÃ³n">
+                                                                        <i class="fas fa-check-circle"></i>
+                                                                    </button>
+                                                                </form>
+                                                            }
+                                                            @if (item.Status != ManagementStatus.Active || item.Type == ManagementType.Corrective)
+                                                            {
+                                                                <form method="post" asp-page-handler="DeleteLogical" asp-route-id="@item.Id" class="d-inline js-delete-management-form">
+                                                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded shadow-sm" title="Eliminar (Lógico)">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                </form>
+                                                            }
                                                         }
-                                                        <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded mx-1 shadow-sm" title="Editar">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        @if (item.Status != ManagementStatus.Active)
+                                                        else
                                                         {
-                                                            <form method="post" asp-page-handler="ActivateManagement" asp-route-id="@item.Id" class="d-inline js-activate-management-form">
-                                                                <button type="submit" class="btn btn-sm btn-outline-success btn-rounded shadow-sm" title="Activar gestiÃ³n">
-                                                                    <i class="fas fa-check-circle"></i>
-                                                                </button>
-                                                            </form>
-                                                        }
-                                                        @if (item.Status != ManagementStatus.Active || item.Type == ManagementType.Corrective)
-                                                        {
-                                                            <form method="post" asp-page-handler="DeleteLogical" asp-route-id="@item.Id" class="d-inline js-delete-management-form">
-                                                                <button type="submit" class="btn btn-sm btn-outline-danger btn-rounded shadow-sm" title="Eliminar (Lógico)">
-                                                                    <i class="fas fa-trash"></i>
-                                                                </button>
-                                                            </form>
+                                                            <span class="badge badge-light border text-muted small ml-1" title="Gesti&oacute;n hist&oacute;rica importada; no se permite editar, activar ni dar de baja desde este listado.">
+                                                                <i class="fas fa-archive mr-1"></i> Hist&oacute;rica
+                                                            </span>
                                                         }
                                                     </div>
                                                 </td>

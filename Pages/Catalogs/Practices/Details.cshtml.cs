@@ -39,7 +39,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             public string ArticleCode { get; set; } = string.Empty;
             public string ArticleName { get; set; } = string.Empty;
             public string UnitOfMeasure { get; set; } = string.Empty;
-            public decimal Quantity { get; set; }
+            public decimal? Quantity { get; set; }
             public bool IsScalable { get; set; }
             public string? ValidationStatus { get; set; }
             public string? Observations { get; set; }

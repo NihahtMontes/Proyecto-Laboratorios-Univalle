@@ -388,6 +388,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<ArticleCategory> ArticleCategories { get; set; } = null!;
         public DbSet<MeasurementUnit> MeasurementUnits { get; set; } = null!;
         public DbSet<ArticleStock> ArticleStocks { get; set; } = null!;
+        public DbSet<PracticeSchedule> PracticeSchedules { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -446,11 +447,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Practice>().ToTable(t => t.HasCheckConstraint("CK_Practices_Status", "[Status] BETWEEN 0 AND 2"));
 
             modelBuilder.Entity<PracticeRequirement>().HasIndex(r => new { r.PracticeId, r.ArticleId }).IsUnique().HasFilter("[IsRemoved] = 0");
+            modelBuilder.Entity<PracticeRequirement>().HasIndex(r => r.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
             modelBuilder.Entity<PracticeRequirement>().HasQueryFilter(r => !r.IsRemoved);
             modelBuilder.Entity<PracticeRequirement>().Property(r => r.Quantity).HasPrecision(12, 2);
             modelBuilder.Entity<PracticeRequirement>().HasOne(r => r.Practice).WithMany(p => p.Requirements).HasForeignKey(r => r.PracticeId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PracticeRequirement>().HasOne(r => r.Article).WithMany().HasForeignKey(r => r.ArticleId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<PracticeRequirement>().ToTable(t => t.HasCheckConstraint("CK_PracticeRequirements_Quantity", "[Quantity] > 0"));
+            modelBuilder.Entity<PracticeRequirement>().ToTable(t => t.HasCheckConstraint("CK_PracticeRequirements_Quantity", "[Quantity] IS NULL OR [Quantity] > 0"));
 
             modelBuilder.Entity<ArticleCategory>().HasIndex(c => c.Code).IsUnique();
             modelBuilder.Entity<ArticleCategory>().HasIndex(c => c.Name).IsUnique();
@@ -464,6 +466,28 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Article>().HasOne(a => a.ArticleCategory).WithMany().HasForeignKey(a => a.ArticleCategoryId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Article>().HasOne(a => a.MeasurementUnit).WithMany().HasForeignKey(a => a.MeasurementUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Article>().HasOne(a => a.Equipment).WithMany().HasForeignKey(a => a.EquipmentId).OnDelete(DeleteBehavior.Restrict);
+
+
+            // Programación de prácticas (V4 ProgramacionPracticas) y anulación lógica de costos.
+            modelBuilder.Entity<PracticeSchedule>().HasQueryFilter(x => !x.IsDeleted);
+            modelBuilder.Entity<PracticeSchedule>().HasIndex(x => x.Code).IsUnique();
+            modelBuilder.Entity<PracticeSchedule>().HasIndex(x => new { x.ManagementId, x.PracticeId, x.GroupName }).IsUnique().HasFilter("[IsDeleted] = 0");
+            modelBuilder.Entity<PracticeSchedule>().HasOne(x => x.Management).WithMany().HasForeignKey(x => x.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PracticeSchedule>().HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PracticeSchedule>().HasOne(x => x.Practice).WithMany().HasForeignKey(x => x.PracticeId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PracticeSchedule>().HasOne(x => x.CourseGroup).WithMany().HasForeignKey(x => x.CourseGroupId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PracticeSchedule>().HasOne(x => x.TeacherPerson).WithMany().HasForeignKey(x => x.TeacherPersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PracticeSchedule>().HasOne(x => x.Laboratory).WithMany().HasForeignKey(x => x.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PracticeSchedule>().HasOne(x => x.AcademicWeek).WithMany().HasForeignKey(x => x.AcademicWeekId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PracticeSchedule>().ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_PracticeSchedules_Status", "[Status] IN (0, 1, 2, 3, 9)");
+                t.HasCheckConstraint("CK_PracticeSchedules_Week", "[WeekNumber] IS NULL OR [WeekNumber] BETWEEN 1 AND 30");
+                t.HasCheckConstraint("CK_PracticeSchedules_Times", "[StartTime] IS NULL OR [EndTime] IS NULL OR [EndTime] > [StartTime]");
+                t.HasCheckConstraint("CK_PracticeSchedules_Counts", "([StudentCount] IS NULL OR [StudentCount] >= 0) AND ([ScalingFactor] IS NULL OR [ScalingFactor] >= 0)");
+            });
+            modelBuilder.Entity<CostDetail>().HasQueryFilter(c => !c.IsVoided);
+            modelBuilder.Entity<CostDetail>().ToTable(t => t.HasCheckConstraint("CK_CostDetails_Voided", "[IsVoided] = 0 OR [VoidedDate] IS NOT NULL"));
 
             modelBuilder.Entity<ArticleStock>().HasIndex(x => new { x.LaboratoryId, x.ArticleId }).IsUnique();
             modelBuilder.Entity<ArticleStock>().Property(x => x.AvailableQuantity).HasPrecision(12, 2);
@@ -724,7 +748,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 table.HasCheckConstraint("CK_Maintenances_CompletionPercentage", "[CompletionPercentage] BETWEEN 0 AND 100");
                 table.HasCheckConstraint("CK_Maintenances_NonNegativeCosts", "([EstimatedCost] IS NULL OR [EstimatedCost] >= 0) AND ([ActualCost] IS NULL OR [ActualCost] >= 0)");
                 table.HasCheckConstraint("CK_Maintenances_ExecutionDates", "[StartDate] IS NULL OR [EndDate] IS NULL OR [EndDate] >= [StartDate]");
-                table.HasCheckConstraint("CK_Maintenances_Type", "[MaintenanceType] IN (1, 2, 3, 4, 5, 99)");
+                table.HasCheckConstraint("CK_Maintenances_Type", "[MaintenanceType] IN (1, 2, 3, 4, 5, 9, 99)");
                 table.HasCheckConstraint("CK_Maintenances_ServiceType", "[ServiceType] IN (0, 1, 9)");
                 table.HasCheckConstraint("CK_Maintenances_Status", "[Status] IN (0, 1, 2, 3, 99)");
                 table.HasCheckConstraint("CK_Maintenances_Satisfaction", "[SatisfactionLevel] IS NULL OR [SatisfactionLevel] BETWEEN 1 AND 5");
@@ -734,7 +758,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 table.HasCheckConstraint("CK_Managements_Year", "[Year] BETWEEN 2000 AND 2100");
                 table.HasCheckConstraint("CK_Managements_Semester", "[Semester] IN (0, 1, 2)");
                 table.HasCheckConstraint("CK_Managements_Status", "[Status] IN (0, 1, 2, 99)");
-                table.HasCheckConstraint("CK_Managements_Type", "[Type] IN (0, 1)");
+                table.HasCheckConstraint("CK_Managements_Type", "[Type] IN (0, 1, 9)");
             });
             modelBuilder.Entity<ManagementPlan>().ToTable(table =>
             {
@@ -867,7 +891,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<MaintenancePlan>().ToTable(table =>
             {
                 table.HasCheckConstraint("CK_MaintenancePlans_ServiceType", "[ServiceType] IS NULL OR [ServiceType] IN (0, 1)");
-                table.HasCheckConstraint("CK_MaintenancePlans_MaintenanceType", "[MaintenanceType] IS NULL OR [MaintenanceType] IN (1, 2, 3, 4, 5, 99)");
+                table.HasCheckConstraint("CK_MaintenancePlans_MaintenanceType", "[MaintenanceType] IS NULL OR [MaintenanceType] IN (1, 2, 3, 4, 5, 9, 99)");
                 table.HasCheckConstraint("CK_MaintenancePlans_Status", "[Status] IS NULL OR [Status] IN (0, 1, 2, 3, 99)");
                 table.HasCheckConstraint("CK_MaintenancePlans_Times", "([EstimatedTime] IS NULL OR [EstimatedTime] >= 0) AND ([ActualTime] IS NULL OR [ActualTime] >= 0)");
             });

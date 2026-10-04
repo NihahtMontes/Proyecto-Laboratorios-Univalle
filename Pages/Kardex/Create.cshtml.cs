@@ -769,7 +769,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 .ToListAsync();
 
             ViewData["TechnicianId"] = new SelectList(technicians.OrderBy(p => p.FullName).Select(p => new { p.Id, p.FullName }), "Id", "FullName", Input.TechnicianId);
-            ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
+            // En alta (Kardex/Create) "Por confirmar" no debe ser elegible; si la gestión
+            // histórica quedó con MaintenanceType.PorConfirmar se mantiene en su fila y
+            // se gestiona desde la edición.
+            ViewData["MaintenanceType"] = EnumHelper.FormSelectList<MaintenanceType>();
         }
     }
 }

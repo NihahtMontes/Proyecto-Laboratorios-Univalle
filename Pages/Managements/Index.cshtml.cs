@@ -38,6 +38,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         [BindProperty(SupportsGet = true)]
         public string? Type { get; set; }
 
+        /// <summary>True cuando la pestaña activa es "Históricas (Por confirmar)": solo lectura.</summary>
+        public bool IsHistorical => string.Equals(Type, ManagementType.PorConfirmar.ToString(), StringComparison.OrdinalIgnoreCase);
+
         public async Task<IActionResult> OnGetAsync(int? pageIndex)
         {
             try
@@ -107,6 +110,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     return RedirectToManagementError(id, "No se encontro la gestion solicitada para cerrar.", type);
                 }
 
+                // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
+                // aunque la UI ya no expone el formulario.
+                if (management.Type == ManagementType.PorConfirmar)
+                {
+                    TempData.Error("Las gestiones históricas importadas son de solo consulta.");
+                    return RedirectToPage("./Index", new { Type = management.Type.ToString() });
+                }
+
                 type = management.Type.ToString();
                 management.Status = ManagementStatus.Completed;
                 management.ActualClosedDate = DateTime.UtcNow;
@@ -137,6 +148,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 if (management == null || management.Status == ManagementStatus.Deleted)
                 {
                     return RedirectToManagementError(id, "No se encontro la gestion solicitada para activar.", type);
+                }
+
+                // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
+                // aunque la UI ya no expone el formulario.
+                if (management.Type == ManagementType.PorConfirmar)
+                {
+                    TempData.Error("Las gestiones históricas importadas son de solo consulta.");
+                    return RedirectToPage("./Index", new { Type = management.Type.ToString() });
                 }
 
                 type = management.Type.ToString();
@@ -172,6 +191,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 if (management == null)
                 {
                     return RedirectToManagementError(id, "No se encontro la gestion solicitada para eliminar.", type);
+                }
+
+                // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
+                // aunque la UI ya no expone el formulario.
+                if (management.Type == ManagementType.PorConfirmar)
+                {
+                    TempData.Error("Las gestiones históricas importadas son de solo consulta.");
+                    return RedirectToPage("./Index", new { Type = management.Type.ToString() });
                 }
 
                 type = management.Type.ToString();
@@ -212,6 +239,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 if (management == null)
                 {
                     return RedirectToManagementError(id, "No se encontro la gestion solicitada para planificar activos.", type);
+                }
+
+                // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
+                // aunque la UI ya no expone el formulario.
+                if (management.Type == ManagementType.PorConfirmar)
+                {
+                    TempData.Error("Las gestiones históricas importadas son de solo consulta.");
+                    return RedirectToPage("./Index", new { Type = management.Type.ToString() });
                 }
 
                 type = management.Type.ToString();

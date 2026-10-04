@@ -4,7 +4,7 @@
     ViewData["Title"] = "Centro de Reportes Oficiales";
     var managementLabel = Model.SelectedManagement == null
         ? "Seleccione una gestión para exportar reportes oficiales."
-        : $"Gestión {Model.SelectedManagement.Code} - {(Model.IsCorrective ? "Correctivo" : "Preventivo")}";
+        : $"Gestión {Model.SelectedManagement.Code} - {(Model.IsCorrective ? "Correctivo" : Model.SelectedManagement.Type == Proyecto_Laboratorios_Univalle.Models.Enums.ManagementType.PorConfirmar ? "Por confirmar" : "Preventivo")}";
     var labLabel = Model.SelectedLaboratory?.Name ?? "Todos los laboratorios";
     var hasActiveFilters = Model.SelectedLabId.HasValue
         || !string.IsNullOrWhiteSpace(Model.SearchTerm)
