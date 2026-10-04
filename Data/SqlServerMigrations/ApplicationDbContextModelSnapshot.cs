@@ -327,6 +327,50 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         });
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Campus", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int?>("CityId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CityId");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Campuses", t =>
+                        {
+                            t.HasCheckConstraint("CK_Campuses_Status", "[Status] BETWEEN 0 AND 2");
+                        });
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Career", b =>
                 {
                     b.Property<int>("Id")
@@ -1130,7 +1174,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         {
                             t.HasCheckConstraint("CK_EquipmentStateHistories_Dates", "[EndDate] IS NULL OR [EndDate] >= [StartDate]");
 
-                            t.HasCheckConstraint("CK_EquipmentStateHistories_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 6, 10, 99)");
+                            t.HasCheckConstraint("CK_EquipmentStateHistories_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 6, 10, 98, 99)");
                         });
                 });
 
@@ -1239,11 +1283,11 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         {
                             t.HasCheckConstraint("CK_EquipmentUnits_AcquisitionValue", "[AcquisitionValue] IS NULL OR [AcquisitionValue] >= 0");
 
-                            t.HasCheckConstraint("CK_EquipmentUnits_CurrentStatus", "[CurrentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 99)");
+                            t.HasCheckConstraint("CK_EquipmentUnits_CurrentStatus", "[CurrentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 98, 99)");
 
                             t.HasCheckConstraint("CK_EquipmentUnits_LocationResolution", "([LaboratoryId] IS NULL AND [LocationResolutionStatus] = 0) OR ([LaboratoryId] IS NOT NULL AND [LocationResolutionStatus] = 1)");
 
-                            t.HasCheckConstraint("CK_EquipmentUnits_PhysicalCondition", "[PhysicalCondition] IS NULL OR [PhysicalCondition] BETWEEN 1 AND 5");
+                            t.HasCheckConstraint("CK_EquipmentUnits_PhysicalCondition", "[PhysicalCondition] IS NULL OR [PhysicalCondition] BETWEEN 1 AND 5 OR [PhysicalCondition] = 9");
                         });
                 });
 
@@ -1286,6 +1330,10 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasDefaultValue(0);
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("[Code] IS NOT NULL AND [Code] <> ''");
 
                     b.HasIndex("CreatedById");
 
@@ -1722,6 +1770,9 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<int?>("CampusId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("CityId")
                         .HasColumnType("int");
 
@@ -1772,6 +1823,8 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CampusId");
 
                     b.HasIndex("CityId");
 
@@ -1935,7 +1988,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                             t.HasCheckConstraint("CK_Maintenances_Satisfaction", "[SatisfactionLevel] IS NULL OR [SatisfactionLevel] BETWEEN 1 AND 5");
 
-                            t.HasCheckConstraint("CK_Maintenances_ServiceType", "[ServiceType] IN (0, 1)");
+                            t.HasCheckConstraint("CK_Maintenances_ServiceType", "[ServiceType] IN (0, 1, 9)");
 
                             t.HasCheckConstraint("CK_Maintenances_Status", "[Status] IN (0, 1, 2, 3, 99)");
 
@@ -2530,6 +2583,10 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<string>("Title")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ActorCode")
@@ -2625,7 +2682,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         {
                             t.HasCheckConstraint("CK_PersonRoleAssignments_Dates", "[ValidTo] IS NULL OR [ValidTo] >= [ValidFrom]");
 
-                            t.HasCheckConstraint("CK_PersonRoleAssignments_Role", "[Role] IN (1, 2, 3, 4, 5, 6, 7, 99)");
+                            t.HasCheckConstraint("CK_PersonRoleAssignments_Role", "[Role] IN (1, 2, 3, 4, 5, 6, 7, 8, 99)");
                         });
                 });
 
@@ -2762,9 +2819,9 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         {
                             t.HasCheckConstraint("CK_Requests_LocationResolution", "([LaboratoryId] IS NULL AND [LocationResolutionStatus] = 0) OR ([LaboratoryId] IS NOT NULL AND [LocationResolutionStatus] = 1)");
 
-                            t.HasCheckConstraint("CK_Requests_Priority", "[Priority] BETWEEN 0 AND 3");
+                            t.HasCheckConstraint("CK_Requests_Priority", "[Priority] BETWEEN 0 AND 3 OR [Priority] = 9");
 
-                            t.HasCheckConstraint("CK_Requests_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 99)");
+                            t.HasCheckConstraint("CK_Requests_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 98, 99)");
 
                             t.HasCheckConstraint("CK_Requests_Type", "[Type] IN (1, 2, 3)");
                         });
@@ -2839,6 +2896,10 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasColumnType("nvarchar(255)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasFilter("[Code] <> ''");
 
                     b.ToTable("Subjects");
                 });
@@ -3059,9 +3120,9 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.ToTable("Verifications", t =>
                         {
-                            t.HasCheckConstraint("CK_Verifications_ObservedEquipmentStatus", "[ObservedEquipmentStatus] IS NULL OR [ObservedEquipmentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 99)");
+                            t.HasCheckConstraint("CK_Verifications_ObservedEquipmentStatus", "[ObservedEquipmentStatus] IS NULL OR [ObservedEquipmentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 98, 99)");
 
-                            t.HasCheckConstraint("CK_Verifications_PhysicalCondition", "[PhysicalCondition] BETWEEN 1 AND 5");
+                            t.HasCheckConstraint("CK_Verifications_PhysicalCondition", "[PhysicalCondition] BETWEEN 1 AND 5 OR [PhysicalCondition] = 9");
 
                             t.HasCheckConstraint("CK_Verifications_Status", "[Status] IN (0, 1, 2, 3, 99)");
                         });
@@ -3434,6 +3495,16 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("ImportBatch");
 
                     b.Navigation("ModifiedBy");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Campus", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("City");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Career", b =>
@@ -3932,6 +4003,11 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Laboratory", b =>
                 {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Campus", "Campus")
+                        .WithMany("Laboratories")
+                        .HasForeignKey("CampusId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.City", "City")
                         .WithMany()
                         .HasForeignKey("CityId")
@@ -3951,6 +4027,8 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "ModifiedBy")
                         .WithMany()
                         .HasForeignKey("ModifiedById");
+
+                    b.Navigation("Campus");
 
                     b.Navigation("City");
 
@@ -4492,6 +4570,11 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Article", b =>
                 {
                     b.Navigation("DepartureItems");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Campus", b =>
+                {
+                    b.Navigation("Laboratories");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Career", b =>

@@ -28,6 +28,27 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
                 }).ToList();
         }
 
+        /// <summary>
+        /// Lista para formularios de alta/edición: excluye "Eliminado" y "Por confirmar".
+        /// "Por confirmar" solo aparece si el registro editado ya lo tiene (para no cambiarlo sin que el usuario lo decida).
+        /// Los filtros de listados deben usar GetStatusSelectList (que sí incluye "Por confirmar").
+        /// </summary>
+        public static List<SelectListItem> FormSelectList<TEnum>(TEnum? current = null) where TEnum : struct, Enum
+        {
+            return Enum.GetValues<TEnum>()
+                .Where(e => !IsDeletedStatus(e) && (!IsPendingValue(e) || (current.HasValue && current.Value.Equals(e))))
+                .Select(e => new SelectListItem
+                {
+                    Value = Convert.ToInt32(e).ToString(),
+                    Text = GetDisplayName(e),
+                    Selected = current.HasValue && current.Value.Equals(e)
+                }).ToList();
+        }
+
+        /// <summary>Valor "Por confirmar" de datos históricos importados (convención de nombre PorConfirmar).</summary>
+        public static bool IsPendingValue(Enum value) =>
+            value.ToString().Equals("PorConfirmar", StringComparison.Ordinal);
+
         private static bool IsDeletedStatus(Enum value)
         {
             // Convención: GeneralStatus.Eliminado = 2, EquipmentStatus.Deleted = 99

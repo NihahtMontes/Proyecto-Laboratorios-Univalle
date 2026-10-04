@@ -834,7 +834,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             ViewData["TechnicianId"] = new SelectList(technicianList, "Id", "Name", technicianId);
 
             ViewData["MaintenanceType"] = EnumHelper.GetStatusSelectList<MaintenanceType>();
-            ViewData["ServiceType"] = EnumHelper.GetStatusSelectList<ServiceType>();
+            // En creación/alta nunca se debe permitir "Por confirmar"; en re-edición del
+            // Input cargado desde un Maintenance existente se pasa el valor actual para
+            // que aparezca como Selected sin que el sistema lo cambie de oficio.
+            ViewData["ServiceType"] = EnumHelper.FormSelectList<ServiceType>();
             var requests = _context.Requests
                 .Include(r => r.Laboratory)
                 .OrderByDescending(r => r.CreatedDate)

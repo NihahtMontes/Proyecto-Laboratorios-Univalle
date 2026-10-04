@@ -128,11 +128,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             RequestStatus.Scheduled or RequestStatus.InProgress or RequestStatus.Approved => "badge-info",
             RequestStatus.Pending => "badge-warning",
             RequestStatus.Rejected or RequestStatus.Cancelled => "badge-danger",
+            // Datos históricos importados: PorConfirmar se muestra neutro (sin forzar
+            // color de "Pending" cuando en realidad está pendiente de confirmacion).
+            RequestStatus.PorConfirmar => "badge-light",
             _ => "badge-secondary"
         };
 
         public static string FormatServiceType(ServiceType serviceType) =>
-            serviceType == ServiceType.External ? "Externo" : "Interno";
+            EnumHelper.GetDisplayName(serviceType);
 
         public static string FormatRequester(Request request) =>
             request.RequestedByPerson?.FullName

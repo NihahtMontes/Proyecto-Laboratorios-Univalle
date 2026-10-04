@@ -511,9 +511,16 @@
                         {
                             var failText = plan.TechnicalRequest?.Description ?? "Sin falla reportada";
 
-                            var svcLabel = plan.Maintenance?.Technician != null 
-                                ? (plan.Maintenance.Technician.Category == PersonCategory.Tecnico ? "I" : "E") 
-                                : (plan.Maintenance?.ServiceType == ServiceType.External ? "E" : "I");
+                            var svcLabel = plan.Maintenance?.Technician != null
+                                ? (plan.Maintenance.Technician.Category == PersonCategory.Tecnico ? "I" : "E")
+                                : (plan.Maintenance?.ServiceType switch
+                                {
+                                    ServiceType.External => "E",
+                                    ServiceType.Internal => "I",
+                                    // Servicio aún por confirmar en datos históricos importados.
+                                    ServiceType.PorConfirmar => "?",
+                                    _ => "I"
+                                });
                             
                             var svcClass = svcLabel == "I" ? "badge-soft-success" : "badge-soft-danger";
 

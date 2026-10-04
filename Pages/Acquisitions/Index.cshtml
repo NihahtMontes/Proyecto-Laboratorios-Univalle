@@ -48,14 +48,14 @@
                         <div class="d-flex flex-wrap align-items-center border-top pt-3">
                             <select asp-for="PriorityFilter"
                                     class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.PriorityFilter.HasValue ? "border-info text-info font-weight-bold" : "")"
-                                    asp-items="Html.GetEnumSelectList<RequestPriority>()"
+                                    asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.RequestPriority>()"
                                     aria-label="Prioridad"
                                     data-live-filter-control>
                                 <option value="">Prioridad</option>
                             </select>
                             <select asp-for="StatusFilter"
                                     class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.StatusFilter.HasValue ? "border-info text-info font-weight-bold" : "")"
-                                    asp-items="Html.GetEnumSelectList<RequestStatus>()"
+                                    asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.RequestStatus>()"
                                     aria-label="Estado"
                                     data-live-filter-control>
                                 <option value="">Estado</option>

@@ -22,6 +22,10 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "Completado")]
         Completed = 5,
 
+        /// <summary>Dato histórico sin confirmar (solo importación; no se ofrece en formularios).</summary>
+        [Display(Name = "Por confirmar")]
+        PorConfirmar = 98,
+
         [Display(Name = "Cancelado")]
         Cancelled = 99
     }

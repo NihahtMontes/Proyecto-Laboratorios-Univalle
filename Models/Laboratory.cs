@@ -124,5 +124,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         [ForeignKey("CityId")]
         public virtual City? City { get; set; }
+
+        /// <summary>Sede a la que pertenece el laboratorio.</summary>
+        [Display(Name = "Sede")]
+        public int? CampusId { get; set; }
+
+        [ForeignKey("CampusId")]
+        public virtual Campus? Campus { get; set; }
     }
 }

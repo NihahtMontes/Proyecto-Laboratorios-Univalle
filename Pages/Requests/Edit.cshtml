@@ -1,6 +1,7 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Helpers
 
 <div class="row">
     <div class="col-lg-8">
@@ -85,7 +86,7 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Nivel de Prioridad <span class="text-danger">*</span></label>
-                                <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
+                                <select asp-for="Input.Priority" class="form-control custom-select" asp-items="EnumHelper.FormSelectList<RequestPriority>(Model.Input.Priority)"></select>
                                 <span asp-validation-for="Input.Priority" class="text-danger small"></span>
                             </div>
                         </div>
@@ -148,7 +149,7 @@
                                     <div class="col-md-12">
                                         <div class="form-group mb-0">
                                             <label asp-for="Input.Status" class="control-label font-weight-bold small uppercase text-info">Estado de Resolución</label>
-                                            <select asp-for="Input.Status" class="form-control custom-select border-info" asp-items="Html.GetEnumSelectList<RequestStatus>()"></select>
+                                            <select asp-for="Input.Status" class="form-control custom-select border-info" asp-items="EnumHelper.FormSelectList<RequestStatus>(Model.Input.Status)"></select>
                                         </div>
                                     </div>
                                     <div id="rejectionSection" class="col-md-12 mt-3" style="@(Model.Input.Status == RequestStatus.Rejected ? "" : "display:none;")">

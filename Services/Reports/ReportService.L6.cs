@@ -199,6 +199,9 @@ namespace Proyecto_Laboratorios_Univalle.Services
                         PhysicalCondition.Regular => "Regular",
                         PhysicalCondition.Bad => "Malo",
                         PhysicalCondition.Decommissioned => "Baja",
+                        // Datos históricos: PorConfirmar se imprime literal para no caer
+                        // en el fallback del nombre técnico del enum ("PorConfirmar").
+                        PhysicalCondition.PorConfirmar => "Por confirmar",
                         _ => lastV.PhysicalCondition.ToString()
                     };
                     observationsText = lastV.Observations ?? "";

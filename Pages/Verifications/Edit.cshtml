@@ -1,6 +1,7 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Helpers
 @{
     ViewData["Title"] = "Editar Verificación L-6";
 }
@@ -74,6 +75,14 @@
                             
                             @foreach (PhysicalCondition condition in Enum.GetValues(typeof(PhysicalCondition)))
                             {
+                                // Excluir PorConfirmar salvo que sea el valor actual del registro
+                                // (datos históricos importados); así no se ofrece al usuario
+                                // pero se conserva si ya estaba marcado.
+                                if (EnumHelper.IsPendingValue(condition) && !Model.Input.PhysicalCondition.Equals(condition))
+                                {
+                                    continue;
+                                }
+
                                 var color = condition switch {
                                     PhysicalCondition.Excellent => "#16a34a",
                                     PhysicalCondition.Good => "#0ea5e9",

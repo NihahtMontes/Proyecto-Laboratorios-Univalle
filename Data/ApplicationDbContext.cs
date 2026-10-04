@@ -381,6 +381,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<L5Incident> L5Incidents { get; set; } = null!;
         public DbSet<AcademicPlanning> AcademicPlannings { get; set; } = null!;
         public DbSet<AcademicWeek> AcademicWeeks { get; set; } = null!;
+        public DbSet<Campus> Campuses { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -406,6 +407,13 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<User>().HasIndex(u => u.IdentityCard).IsUnique().HasFilter("[Status] <> 2");
             modelBuilder.Entity<EquipmentUnit>().HasIndex(e => e.InventoryNumber).IsUnique().HasFilter("[CurrentStatus] <> 99");
             modelBuilder.Entity<Laboratory>().HasIndex(l => l.Code).IsUnique().HasFilter("[Status] <> 2");
+            // Sedes (campus) y códigos maestros únicos según la base estructural del cliente.
+            modelBuilder.Entity<Campus>().HasIndex(c => c.Code).IsUnique();
+            modelBuilder.Entity<Campus>().HasOne(c => c.City).WithMany().HasForeignKey(c => c.CityId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Campus>().ToTable(table => table.HasCheckConstraint("CK_Campuses_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<Laboratory>().HasOne(l => l.Campus).WithMany(c => c.Laboratories).HasForeignKey(l => l.CampusId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Faculty>().HasIndex(f => f.Code).IsUnique().HasFilter("[Code] IS NOT NULL AND [Code] <> ''");
+            modelBuilder.Entity<Subject>().HasIndex(x => x.Code).IsUnique().HasFilter("[Code] <> ''");
             modelBuilder.Entity<ImportBatch>().HasIndex(batch => batch.Code).IsUnique();
             modelBuilder.Entity<Management>().HasIndex(m => m.Code).IsUnique().HasFilter("[Status] <> 99");
             modelBuilder.Entity<Management>().HasIndex(m => m.Status).IsUnique().HasFilter("[Status] = 0");
@@ -636,8 +644,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 "([LaboratoryId] IS NULL AND [LocationResolutionStatus] = 0) OR ([LaboratoryId] IS NOT NULL AND [LocationResolutionStatus] = 1)"));
             modelBuilder.Entity<EquipmentUnit>().ToTable(table =>
             {
-                table.HasCheckConstraint("CK_EquipmentUnits_CurrentStatus", "[CurrentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 99)");
-                table.HasCheckConstraint("CK_EquipmentUnits_PhysicalCondition", "[PhysicalCondition] IS NULL OR [PhysicalCondition] BETWEEN 1 AND 5");
+                table.HasCheckConstraint("CK_EquipmentUnits_CurrentStatus", "[CurrentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 98, 99)");
+                table.HasCheckConstraint("CK_EquipmentUnits_PhysicalCondition", "[PhysicalCondition] IS NULL OR [PhysicalCondition] BETWEEN 1 AND 5 OR [PhysicalCondition] = 9");
                 table.HasCheckConstraint("CK_EquipmentUnits_AcquisitionValue", "[AcquisitionValue] IS NULL OR [AcquisitionValue] >= 0");
             });
             modelBuilder.Entity<Request>().ToTable(table => table.HasCheckConstraint(
@@ -645,8 +653,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 "([LaboratoryId] IS NULL AND [LocationResolutionStatus] = 0) OR ([LaboratoryId] IS NOT NULL AND [LocationResolutionStatus] = 1)"));
             modelBuilder.Entity<Request>().ToTable(table =>
             {
-                table.HasCheckConstraint("CK_Requests_Priority", "[Priority] BETWEEN 0 AND 3");
-                table.HasCheckConstraint("CK_Requests_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 99)");
+                table.HasCheckConstraint("CK_Requests_Priority", "[Priority] BETWEEN 0 AND 3 OR [Priority] = 9");
+                table.HasCheckConstraint("CK_Requests_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 98, 99)");
                 table.HasCheckConstraint("CK_Requests_Type", "[Type] IN (1, 2, 3)");
             });
             modelBuilder.Entity<CostDetail>().ToTable(table =>
@@ -661,7 +669,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 table.HasCheckConstraint("CK_Maintenances_NonNegativeCosts", "([EstimatedCost] IS NULL OR [EstimatedCost] >= 0) AND ([ActualCost] IS NULL OR [ActualCost] >= 0)");
                 table.HasCheckConstraint("CK_Maintenances_ExecutionDates", "[StartDate] IS NULL OR [EndDate] IS NULL OR [EndDate] >= [StartDate]");
                 table.HasCheckConstraint("CK_Maintenances_Type", "[MaintenanceType] IN (1, 2, 3, 4, 5, 99)");
-                table.HasCheckConstraint("CK_Maintenances_ServiceType", "[ServiceType] IN (0, 1)");
+                table.HasCheckConstraint("CK_Maintenances_ServiceType", "[ServiceType] IN (0, 1, 9)");
                 table.HasCheckConstraint("CK_Maintenances_Status", "[Status] IN (0, 1, 2, 3, 99)");
                 table.HasCheckConstraint("CK_Maintenances_Satisfaction", "[SatisfactionLevel] IS NULL OR [SatisfactionLevel] BETWEEN 1 AND 5");
             });
@@ -683,9 +691,9 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 "CK_VerificationCheckResults_Result", "[Result] IN (0, 1)"));
             modelBuilder.Entity<Verification>().ToTable(table =>
             {
-                table.HasCheckConstraint("CK_Verifications_PhysicalCondition", "[PhysicalCondition] BETWEEN 1 AND 5");
+                table.HasCheckConstraint("CK_Verifications_PhysicalCondition", "[PhysicalCondition] BETWEEN 1 AND 5 OR [PhysicalCondition] = 9");
                 table.HasCheckConstraint("CK_Verifications_Status", "[Status] IN (0, 1, 2, 3, 99)");
-                table.HasCheckConstraint("CK_Verifications_ObservedEquipmentStatus", "[ObservedEquipmentStatus] IS NULL OR [ObservedEquipmentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 99)");
+                table.HasCheckConstraint("CK_Verifications_ObservedEquipmentStatus", "[ObservedEquipmentStatus] IS NULL OR [ObservedEquipmentStatus] IN (0, 1, 2, 3, 4, 5, 6, 10, 98, 99)");
             });
             modelBuilder.Entity<Equipment>().ToTable(table =>
             {
@@ -794,7 +802,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             });
             modelBuilder.Entity<EquipmentStateHistory>().ToTable(table =>
             {
-                table.HasCheckConstraint("CK_EquipmentStateHistories_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 6, 10, 99)");
+                table.HasCheckConstraint("CK_EquipmentStateHistories_Status", "[Status] IN (0, 1, 2, 3, 4, 5, 6, 10, 98, 99)");
                 table.HasCheckConstraint("CK_EquipmentStateHistories_Dates", "[EndDate] IS NULL OR [EndDate] >= [StartDate]");
             });
             modelBuilder.Entity<MaintenancePlan>().ToTable(table =>
@@ -812,7 +820,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             });
             modelBuilder.Entity<PersonRoleAssignment>().ToTable(table =>
             {
-                table.HasCheckConstraint("CK_PersonRoleAssignments_Role", "[Role] IN (1, 2, 3, 4, 5, 6, 7, 99)");
+                table.HasCheckConstraint("CK_PersonRoleAssignments_Role", "[Role] IN (1, 2, 3, 4, 5, 6, 7, 8, 99)");
                 table.HasCheckConstraint("CK_PersonRoleAssignments_Dates", "[ValidTo] IS NULL OR [ValidTo] >= [ValidFrom]");
             });
             modelBuilder.Entity<ImportBatch>().ToTable(table => table.HasCheckConstraint(

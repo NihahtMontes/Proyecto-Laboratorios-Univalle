@@ -195,7 +195,7 @@
                                                 <td class="small font-weight-bold">@KardexModel.FormatManagement(maintenance.Management)</td>
                                                 <td class="small">
                                                     <span class="font-weight-bold text-dark d-block">@EnumHelper.GetDisplayName(maintenance.MaintenanceType)</span>
-                                                    <span class="text-muted">@(maintenance.ServiceType == ServiceType.External ? "Externo" : "Interno")</span>
+                                                    <span class="text-muted">@EnumHelper.GetDisplayName(maintenance.ServiceType)</span>
                                                 </td>
                                                 <td class="small text-muted">@(string.IsNullOrWhiteSpace(maintenance.Description) ? "Sin descripción registrada" : maintenance.Description)</td>
                                                 <td class="small">@(maintenance.Technician?.FullName ?? maintenance.TechnicianName ?? "Sin asignar")</td>

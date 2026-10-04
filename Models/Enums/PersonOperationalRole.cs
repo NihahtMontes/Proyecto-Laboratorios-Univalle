@@ -25,6 +25,9 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "Verificador")]
         Verifier = 7,
 
+        [Display(Name = "Docente")]
+        Teacher = 8,
+
         [Display(Name = "Otro")]
         Other = 99
     }

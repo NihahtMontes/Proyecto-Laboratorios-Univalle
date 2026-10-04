@@ -16,6 +16,10 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "MALO")]
         Bad = 2,
 
+        /// <summary>Dato histórico sin confirmar (solo importación; no se ofrece en formularios).</summary>
+        [Display(Name = "Por confirmar")]
+        PorConfirmar = 9,
+
         [Display(Name = "BAJA DEL EQUIPO")]
         Decommissioned = 1
     }

@@ -17,6 +17,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Código de Actor")]
         public string? ActorCode { get; set; }
 
+        /// <summary>Título o grado (Lic., Ing., Chef...).</summary>
+        [StringLength(50)]
+        [Display(Name = "Título")]
+        public string? Title { get; set; }
+
         [Required]
         [Display(Name = "Estado")]
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;

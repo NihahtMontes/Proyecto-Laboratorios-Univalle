@@ -13,6 +13,10 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "Alta")]
         High = 2,
 
+        /// <summary>Dato histórico sin confirmar (solo importación; no se ofrece en formularios).</summary>
+        [Display(Name = "Por confirmar")]
+        PorConfirmar = 9,
+
         [Display(Name = "Crítica")]
         VeryHigh = 3
     }

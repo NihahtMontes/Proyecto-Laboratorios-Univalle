@@ -77,6 +77,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             Models.Enums.EquipmentStatus.UnderMaintenance or Models.Enums.EquipmentStatus.InRepair => "badge-warning",
             Models.Enums.EquipmentStatus.OutOfService or Models.Enums.EquipmentStatus.Broken => "badge-danger",
             Models.Enums.EquipmentStatus.OnLoan => "badge-info",
+            // Datos históricos: "Por confirmar" se renderiza neutro (badge-light),
+            // evitando confundirlo con "desconocido" (badge-secondary).
+            Models.Enums.EquipmentStatus.PorConfirmar => "badge-light",
             _ => "badge-secondary"
         };
 

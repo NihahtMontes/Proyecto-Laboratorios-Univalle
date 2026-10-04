@@ -95,7 +95,7 @@ public static class EquipmentKardexSummaryBuilder
                     lastMaintenance.Id,
                     FormatDate(lastMaintenance.EndDate ?? lastMaintenance.StartDate ?? lastMaintenance.ScheduledDate ?? lastMaintenance.CreatedDate),
                     EnumHelper.GetDisplayName(lastMaintenance.MaintenanceType),
-                    lastMaintenance.ServiceType == ServiceType.External ? "Externo" : "Interno",
+                    EnumHelper.GetDisplayName(lastMaintenance.ServiceType),
                     EnumHelper.GetDisplayName(lastMaintenance.Status),
                     GetMaintenanceStatusBadge(lastMaintenance.Status),
                     FormatManagement(lastMaintenance.Management),
@@ -127,6 +127,10 @@ public static class EquipmentKardexSummaryBuilder
         EquipmentStatus.UnderMaintenance or EquipmentStatus.InRepair => "badge-warning",
         EquipmentStatus.OutOfService or EquipmentStatus.Broken => "badge-danger",
         EquipmentStatus.OnLoan => "badge-info",
+        // Datos históricos: "Por confirmar" se renderiza neutro, no en gris secundario
+        // porque "badge-secondary" se reutiliza como estado desconocido en otros
+        // lugares del producto.
+        EquipmentStatus.PorConfirmar => "badge-light",
         _ => "badge-secondary"
     };
 

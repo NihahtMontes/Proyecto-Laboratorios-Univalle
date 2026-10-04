@@ -29,6 +29,10 @@ namespace Proyecto_Laboratorios_Univalle.Models.Enums
         [Display(Name = "En Préstamo")]
         OnLoan = 10,
 
+        /// <summary>Dato histórico sin confirmar (solo importación; no se ofrece en formularios).</summary>
+        [Display(Name = "Por confirmar")]
+        PorConfirmar = 98,
+
         [Display(Name = "Eliminado")]
         Deleted = 99
     }

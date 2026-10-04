@@ -319,3 +319,43 @@ SHA-256
 Completar el Excel no concede autorizacion de escritura: la decision debe
 trasladarse al manifiesto JSON revisado y volver a validarse contra paquete,
 snapshot, servidor y base.
+
+## Decisiones de importación de BaseEstructuraFinal.xlsx (2026-10-04)
+
+1. **L-3 híbrido**: artículo obligatorio + cantidad; la unidad física
+   (`EquipmentUnit`) es opcional y solo se utiliza para registrar equipos
+   patrimoniales que salen del laboratorio.
+2. **Gestión de L-6/L-7**: en el Excel la gestión es la del semestre
+   SIGUIENTE a la fecha (1.599 verificaciones y 316 de 329 solicitudes). Es
+   REGLA DE NEGOCIO (se verifica al final de un semestre para mantener el
+   inventario en el siguiente); se importa tal cual, no se recalcula. L-8
+   sí coincide con la fecha.
+3. **`Por confirmar` / `Sin especificar`**: se importan como el valor
+   `PorConfirmar` agregado a `EquipmentStatus` (98), `RequestStatus` (98),
+   `PhysicalCondition` (9), `RequestPriority` (9) y `ServiceType` (9), con un
+   `DataQualityIssue` por fila. Nunca se convierten en un valor real. Los
+   formularios de alta no ofrecen ese valor y las ediciones lo conservan
+   hasta que el usuario elija otro.
+4. **Códigos maestros oficiales**: los del Excel (facultades `FGYT`/`FCSN`;
+   carreras `LGS`, `LTH`, `LND` y `LCG`, con `LND` en `FGYT` según el Excel;
+   advertencia: originalmente Nutrición estaba en Ciencias de la Salud;
+   laboratorios `H-01..H-07`, `H-102..H-107`, `K-01..K-06`, `CIRC-GEN`,
+   `ECONO`, `SALA-DOC`, `OFI-COORD` y `CAS-VES`; sedes `LPZ`, `CBBA` y
+   `SCZ`). Se normalizan los códigos actuales conservando los `Id`.
+5. **Lo que solo está en la BD** (191 solicitudes L-7, 124 costos por
+   Bs 22.900, 121 movimientos de Kardex, 519 planes del wizard) NO se
+   borra.
+6. **Columnas 100% vacías del Excel** no sobrescriben datos de la BD:
+   `FechaProgramada` de L-8; fechas de adquisición, fabricación y
+   ubicación interna de unidades; `PaisOrigen` y `VidaUtilAnios` del
+   catálogo; `Email` y `Telefono` de actores. `TiempoEstimado` de L-7 es
+   basura en las 329 filas y se descarta.
+7. **Gestión `1900-1`** (2 mantenimientos) va a cuarentena; se crea la
+   gestión `2027-1`.
+
+### Estado en DB_Laboratorios_Univalle_DEMO_QA
+
+Fase A aplicada (migración `MasterDataAndPendingValues`; 3 sedes; códigos
+normalizados; 24 laboratorios del Excel; 547 unidades con el laboratorio real
+del Excel marcadas `[EXCEL]` en `Notes`; 9 unidades solo en BD conservan la
+inferencia: 37070, 37077, 43486-43491, 45840).

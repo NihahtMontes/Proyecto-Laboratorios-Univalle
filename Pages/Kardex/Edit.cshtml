@@ -1,6 +1,7 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Kardex.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Helpers
 
 @{
     ViewData["Title"] = "Editar Registro de Kardex";
@@ -175,7 +176,7 @@
                                         <div class="col-md-4 border-right">
                                             <div class="form-group mb-0">
                                                 <label asp-for="Input.Status" class="control-label font-weight-bold small text-uppercase text-muted">Estado Actual <span class="text-danger">*</span></label>
-                                                <select asp-for="Input.Status" class="form-control custom-select border-success" asp-items="Html.GetEnumSelectList<EquipmentStatus>()" required>
+                                                <select asp-for="Input.Status" class="form-control custom-select border-success" asp-items="EnumHelper.FormSelectList<EquipmentStatus>(Model.Input.Status)" required>
                                                     <option value="">-- Seleccione Estado --</option>
                                                 </select>
                                             </div>

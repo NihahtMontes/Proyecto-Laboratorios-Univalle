@@ -114,7 +114,12 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                         col.Item().PaddingTop(10).Row(r => {
                             r.RelativeItem().Text(t => {
                                 t.Span("Condición detectada: ").FontSize(10);
-                                t.Span(verification.PhysicalCondition.ToString().ToUpper()).FontSize(10).Bold();
+                                // Datos históricos: "Por confirmar" se imprime literalmente para no
+                                // romper la lectura ni confundirse con otra condición operativa.
+                                var conditionText = verification.PhysicalCondition == PhysicalCondition.PorConfirmar
+                                    ? "POR CONFIRMAR"
+                                    : verification.PhysicalCondition.ToString().ToUpper();
+                                t.Span(conditionText).FontSize(10).Bold();
                             });
                         });
                     });
@@ -208,6 +213,7 @@ namespace Proyecto_Laboratorios_Univalle.Services.Reporting
                         PhysicalCondition.Regular => "REGULAR",
                         PhysicalCondition.Bad => "MALO",
                         PhysicalCondition.Decommissioned => "BAJA",
+                        PhysicalCondition.PorConfirmar => "POR CONFIRMAR",
                         _ => "SIN EVALUAR"
                     };
 

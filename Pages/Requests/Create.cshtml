@@ -1,6 +1,7 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.CreateModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Helpers
 
 @{
     ViewData["Title"] = "Registrar Requerimiento Técnico (L-7)";
@@ -119,7 +120,7 @@
 
                             <div class="form-group mb-3">
                                 <label asp-for="Input.Priority" class="control-label font-weight-bold small uppercase text-muted">Grado de Prioridad <span class="text-danger">*</span></label>
-                                <select asp-for="Input.Priority" class="form-control custom-select" asp-items="Html.GetEnumSelectList<RequestPriority>()"></select>
+                                <select asp-for="Input.Priority" class="form-control custom-select" asp-items="EnumHelper.FormSelectList<RequestPriority>()"></select>
                             </div>
 
                             <div class="form-group mb-3">
