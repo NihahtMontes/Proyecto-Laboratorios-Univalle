@@ -6,7 +6,7 @@
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
                            || Model.StatusFilter.HasValue
                            || Model.ArticleCategoryId.HasValue
-                           || Model.ArticleTypeFilter.HasValue;
+                           || Model.ReviewStatusFilter.HasValue;
 }
 
 <div class="row">
@@ -51,11 +51,18 @@
                                 <option value="">Categoría</option>
                             </select>
 
-                            <select asp-for="ArticleTypeFilter"
-                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.ArticleTypeFilter.HasValue ? "border-info text-info font-weight-bold" : "")"
-                                    asp-items="@(new SelectList(Model.ArticleTypeOptions, "Value", "Text", Model.ArticleTypeFilter))"
+                            <select asp-for="ReviewStatusFilter"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.ReviewStatusFilter.HasValue ? "border-info text-info font-weight-bold" : "")"
                                     data-live-filter-control>
-                                <option value="">Tipo</option>
+                                <option value="">Revisión (Todos)</option>
+                                @foreach (var item in (IEnumerable<SelectListItem>)(
+                                    new[] {
+                                        new SelectListItem { Value = ((int)DataReviewStatus.Confirmed).ToString(), Text = "Confirmado" },
+                                        new SelectListItem { Value = ((int)DataReviewStatus.PorConfirmar).ToString(), Text = "Por confirmar" }
+                                    }))
+                                {
+                                    <option value="@item.Value">@item.Text</option>
+                                }
                             </select>
 
                             <select asp-for="StatusFilter"
@@ -75,6 +82,13 @@
 
                             <span class="small text-muted ml-auto mb-2" aria-live="polite">
                                 <strong class="text-dark">@Model.Articles.TotalCount</strong> artículo(s)
+                                @if (Model.PendingReviewCount > 0)
+                                {
+                                    <span class="badge badge-pill badge-soft-warning text-warning ml-2 px-3 py-1 font-weight-bold"
+                                          title="Artículos aún no confirmados en la fuente del cliente">
+                                        <i class="fas fa-exclamation-circle mr-1"></i>@Model.PendingReviewCount por confirmar
+                                    </span>
+                                }
                             </span>
                         </div>
                     </form>
@@ -86,7 +100,7 @@
                             <tr class="small uppercase font-weight-bold text-muted">
                                 <th>Artículo</th>
                                 <th>Categoría / Unidad</th>
-                                <th class="text-center">Tipo</th>
+                                <th class="text-center">Revisión</th>
                                 <th class="text-center">Estado</th>
                                 <th class="text-center">Acciones</th>
                             </tr>
@@ -124,17 +138,19 @@
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        @if (item.ArticleType == Models.Enums.ArticleType.Equipment)
+                                        @if (item.ReviewStatus == DataReviewStatus.PorConfirmar)
                                         {
-                                            <span class="badge badge-pill badge-primary px-3 py-1 font-weight-bold"><i class="fas fa-cogs mr-1"></i>Equipo</span>
-                                        }
-                                        else if (item.ArticleType == Models.Enums.ArticleType.Utensil)
-                                        {
-                                            <span class="badge badge-pill badge-info px-3 py-1 font-weight-bold"><i class="fas fa-utensils mr-1"></i>Utensilio</span>
+                                            <span class="badge badge-pill badge-soft-warning text-warning px-3 py-1 font-weight-bold"
+                                                  title="Dato pendiente de confirmación en la fuente del cliente">
+                                                <i class="fas fa-exclamation-circle mr-1"></i>Por confirmar
+                                            </span>
                                         }
                                         else
                                         {
-                                            <span class="badge badge-pill badge-light text-muted px-3 py-1 font-weight-bold">N/D</span>
+                                            <span class="badge badge-pill badge-soft-success text-success px-3 py-1 font-weight-bold"
+                                                  title="Dato confirmado en la fuente del cliente">
+                                                <i class="fas fa-check-circle mr-1"></i>Confirmado
+                                            </span>
                                         }
                                     </td>
                                     <td class="text-center">
@@ -169,7 +185,7 @@
                                        asp-route-SearchTerm="@Model.SearchTerm"
                                        asp-route-StatusFilter="@Model.StatusFilter"
                                        asp-route-ArticleCategoryId="@Model.ArticleCategoryId"
-                                       asp-route-ArticleTypeFilter="@Model.ArticleTypeFilter">Anterior</a>
+                                       asp-route-ReviewStatusFilter="@Model.ReviewStatusFilter">Anterior</a>
                                 </li>
                             }
                             @for (var i = 1; i <= Model.Articles.TotalPages; i++)
@@ -180,7 +196,7 @@
                                        asp-route-SearchTerm="@Model.SearchTerm"
                                        asp-route-StatusFilter="@Model.StatusFilter"
                                        asp-route-ArticleCategoryId="@Model.ArticleCategoryId"
-                                       asp-route-ArticleTypeFilter="@Model.ArticleTypeFilter">@i</a>
+                                       asp-route-ReviewStatusFilter="@Model.ReviewStatusFilter">@i</a>
                                 </li>
                             }
                             @if (Model.Articles.HasNextPage)
@@ -191,7 +207,7 @@
                                        asp-route-SearchTerm="@Model.SearchTerm"
                                        asp-route-StatusFilter="@Model.StatusFilter"
                                        asp-route-ArticleCategoryId="@Model.ArticleCategoryId"
-                                       asp-route-ArticleTypeFilter="@Model.ArticleTypeFilter">Siguiente</a>
+                                       asp-route-ReviewStatusFilter="@Model.ReviewStatusFilter">Siguiente</a>
                                 </li>
                             }
                         </ul>
@@ -208,6 +224,8 @@
         .uppercase { text-transform: uppercase; letter-spacing: 1px; }
         .italic { font-style: italic; }
         .opacity-2 { opacity: 0.2; }
+        .badge-soft-warning { background-color: #fff3cd; }
+        .badge-soft-success { background-color: #d4edda; }
     </style>
 }
 @section Scripts {

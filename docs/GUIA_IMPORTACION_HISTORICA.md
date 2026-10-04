@@ -359,3 +359,50 @@ Fase A aplicada (migración `MasterDataAndPendingValues`; 3 sedes; códigos
 normalizados; 24 laboratorios del Excel; 547 unidades con el laboratorio real
 del Excel marcadas `[EXCEL]` en `Notes`; 9 unidades solo en BD conservan la
 inferencia: 37070, 37077, 43486-43491, 45840).
+
+### Versión V3 (artículos y docentes)
+
+1. **Fuente vigente**: la única fuente vigente es
+   `BaseEstructuraFinal_V3_ARTICULOS.xlsx`, SHA-256
+   `1e70f5e4cbf9b298ee3690bfc65e4a0aec07efae109ca398aa10b774ca87680e`; la V1
+   (SHA-256 `e78cfce6a4764ca67841c4c70a0de0c296b33fa8f3f8721b6b2dc2c3cf010ad8`)
+   queda obsoleta. Las hojas que empiezan con `_` no se importan y los archivos
+   `_DICCIONARIO` e `_INDICE` están desactualizados para Artículos; se importa
+   según los encabezados reales del libro.
+2. **`Articulos.Estado` = `Por confirmar`**: es el valor literal de la base de
+   la ingeniera. Se importa `Status` = `Activo` con el significado "registrado,
+   no dado de baja" y `ReviewStatus` = `Por confirmar` (nuevo campo
+   `Article.ReviewStatus` con valores `Confirmado` y `Por confirmar`), además
+   de un `DataQualityIssue ARTICLE_PENDING_CONFIRMATION` por fila. Un usuario
+   puede confirmar el artículo desde Catálogos > Artículos > Editar.
+3. **`TipoArticulo` y `CatalogoCodigo` retirados a propósito**: los campos
+   `Article.ArticleType` y `EquipmentId` quedan `NULL` y se retiraron de la
+   interfaz.
+4. **Columnas legadas con el nombre**: `Article.Category` y
+   `Article.UnitOfMeasure` se llenan con el NOMBRE de la categoría y de la
+   unidad, respectivamente.
+5. **Unidades homologadas a 3**: `UNI-01` Juego, `UNI-02` Paquete y `UNI-03`
+   Pieza.
+6. **Conflicto de nombre**: cuando un artículo existente con otro código y el
+   mismo nombre coincide con uno de la V3 (caso `ART-0005` "Plato plano
+   redondo" frente a `ART-REQ-00462`) se da de baja lógica y su receta y stock
+   se trasladan al artículo V3.
+7. **Docentes**: 15 nuevos `ACT-0037..ACT-0051` como `Intern` de categoría
+   `Docente`, con título, rol `Docente` y alias "Nombre en la planificación"
+   (p. ej. "ING PEDRO GUERECA"). Además se dieron de alta los 12 actores de
+   la V1 que faltaban (`ACT-0008`, `ACT-0009`, `ACT-0027..ACT-0036`); la
+   vinculación "Por confirmar" se materializa como un
+   `DataQualityIssue ACTOR_LINK_PENDING`.
+8. **Casi-duplicados**: 21 grupos (mismas palabras en otro orden, ignorando
+   plural simple y conectores) registrados como `ARTICLE_POSSIBLE_DUPLICATE`
+   sin fusionar. Los nombres sospechosos `ECO-R0349`, `ART-REQ-00492` y
+   `ART-REQ-00479` quedaron como `ARTICLE_SUSPICIOUS_NAME`.
+9. **Estado DEMO_QA**: lote `XLSX-V3-ARTICULOS-1E70F5E4CBF9` con 466
+   incidencias; 1.023 artículos (de los cuales 416 están por confirmar);
+   51 actores con código. La importación es idempotente: una segunda pasada
+   produce 0 inserciones.
+10. **Pendientes del usuario**: confirmar si los artículos con
+    `ReviewStatus` = `Por confirmar` pueden elegirse en L-3; fusión de los
+    21 grupos casi-duplicados; vinculación definitiva de los 15 docentes;
+    archivo `BASE_NORMALIZADA_UTENSILIOS_1-2027_COMPLETADA.xlsx` con materias,
+    grupos, prácticas y requerimientos.

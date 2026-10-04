@@ -30,8 +30,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
 
         public List<SelectListItem> CategoryOptions { get; set; } = new();
         public List<SelectListItem> UnitOptions { get; set; } = new();
-        public List<SelectListItem> ArticleTypeOptions { get; set; } = new();
-        public List<SelectListItem> EquipmentOptions { get; set; } = new();
 
         public IActionResult OnGet()
         {
@@ -61,27 +59,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
             [Required(ErrorMessage = "Seleccione la unidad de medida")]
             [Display(Name = "Unidad de Medida")]
             public int? MeasurementUnitId { get; set; }
-
-            [Required(ErrorMessage = "Seleccione el tipo de artículo")]
-            [Display(Name = "Tipo")]
-            public ArticleType? ArticleType { get; set; }
-
-            [Display(Name = "Equipo de Catálogo")]
-            public int? EquipmentId { get; set; }
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
             if (!ModelState.IsValid)
             {
-                LoadOptions();
-                return Page();
-            }
-
-            // Validación: tipo de artículo definido
-            if (!Input.ArticleType.HasValue || !Enum.IsDefined(typeof(ArticleType), Input.ArticleType.Value))
-            {
-                ModelState.AddModelError("Input.ArticleType", "Seleccione un tipo de artículo válido.");
                 LoadOptions();
                 return Page();
             }
@@ -103,26 +86,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
             if (!unitActive)
             {
                 ModelState.AddModelError("Input.MeasurementUnitId", "La unidad de medida seleccionada no está disponible.");
-                LoadOptions();
-                return Page();
-            }
-
-            // EquipmentId sólo aplica si es tipo Equipo
-            if (Input.ArticleType == ArticleType.Equipment && Input.EquipmentId.HasValue)
-            {
-                var equipmentActive = await _context.Equipments
-                    .AnyAsync(e => e.Id == Input.EquipmentId && e.Status == GeneralStatus.Activo);
-
-                if (!equipmentActive)
-                {
-                    ModelState.AddModelError("Input.EquipmentId", "El equipo seleccionado no está disponible.");
-                    LoadOptions();
-                    return Page();
-                }
-            }
-            else if (Input.ArticleType != ArticleType.Equipment && Input.EquipmentId.HasValue)
-            {
-                ModelState.AddModelError("Input.EquipmentId", "Sólo los artículos de tipo Equipo pueden vincularse a un catálogo de equipo.");
                 LoadOptions();
                 return Page();
             }
@@ -169,9 +132,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                 Name = Input.Name.Clean(),
                 ArticleCategoryId = Input.ArticleCategoryId,
                 MeasurementUnitId = Input.MeasurementUnitId,
-                ArticleType = Input.ArticleType,
-                EquipmentId = Input.ArticleType == ArticleType.Equipment ? Input.EquipmentId : null,
                 Status = GeneralStatus.Activo,
+                ReviewStatus = DataReviewStatus.Confirmed,
                 // Columnas legadas sincronizadas.
                 Category = categoryName,
                 UnitOfMeasure = string.IsNullOrWhiteSpace(unitCode) ? "UNIDAD" : unitCode,
@@ -220,25 +182,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                 {
                     Value = u.Id.ToString(),
                     Text = $"{u.Code} - {u.Name}"
-                })
-                .ToList();
-
-            ArticleTypeOptions = Enum.GetValues<ArticleType>()
-                .Select(t => new SelectListItem
-                {
-                    Value = ((int)t).ToString(),
-                    Text = EnumHelper.GetDisplayName(t)
-                })
-                .ToList();
-
-            EquipmentOptions = _context.Equipments
-                .AsNoTracking()
-                .Where(e => e.Status == GeneralStatus.Activo)
-                .OrderBy(e => e.CatalogCode)
-                .Select(e => new SelectListItem
-                {
-                    Value = e.Id.ToString(),
-                    Text = $"{(string.IsNullOrWhiteSpace(e.CatalogCode) ? "S/C" : e.CatalogCode)} - {e.Name}"
                 })
                 .ToList();
         }

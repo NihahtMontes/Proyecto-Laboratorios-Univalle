@@ -63,8 +63,13 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("MeasurementUnitId")]
         public virtual MeasurementUnit? MeasurementUnit { get; set; }
 
+        /// <summary>Retirado de la interfaz: el cliente lo considera redundante con la categoría (queda NULL).</summary>
         [Display(Name = "Tipo")]
         public ArticleType? ArticleType { get; set; }
+
+        /// <summary>Confirmación del dato en la fuente ("Por confirmar" en la base del cliente).</summary>
+        [Display(Name = "Revisión")]
+        public DataReviewStatus ReviewStatus { get; set; } = DataReviewStatus.Confirmed;
 
         /// <summary>Vínculo opcional con el catálogo de equipos (artículos de tipo Equipo).</summary>
         [Display(Name = "Equipo de catálogo")]

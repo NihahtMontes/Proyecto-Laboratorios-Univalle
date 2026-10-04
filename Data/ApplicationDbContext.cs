@@ -460,6 +460,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<MeasurementUnit>().ToTable(t => t.HasCheckConstraint("CK_MeasurementUnits_Status", "[Status] BETWEEN 0 AND 2"));
 
             modelBuilder.Entity<Article>().HasIndex(a => a.Name).IsUnique().HasFilter("[Status] <> 2").HasDatabaseName("UX_Articles_Name_Active");
+            modelBuilder.Entity<Article>().HasIndex(a => a.ReviewStatus);
             modelBuilder.Entity<Article>().HasOne(a => a.ArticleCategory).WithMany().HasForeignKey(a => a.ArticleCategoryId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Article>().HasOne(a => a.MeasurementUnit).WithMany().HasForeignKey(a => a.MeasurementUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<Article>().HasOne(a => a.Equipment).WithMany().HasForeignKey(a => a.EquipmentId).OnDelete(DeleteBehavior.Restrict);
@@ -841,8 +842,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
                     "CASE WHEN [EquipmentUnitId] IS NULL THEN 0 ELSE 1 END + CASE WHEN [ArticleId] IS NULL THEN 0 ELSE 1 END = 1");
                 table.HasCheckConstraint("CK_DepartureItems_Quantity", "[Quantity] IS NULL OR [Quantity] > 0");
             });
-            modelBuilder.Entity<Article>().ToTable(table => table.HasCheckConstraint(
-                "CK_Articles_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<Article>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Articles_Status", "[Status] BETWEEN 0 AND 2");
+                table.HasCheckConstraint("CK_Articles_ReviewStatus", "[ReviewStatus] IN (0, 9)");
+            });
             modelBuilder.Entity<RequestEquipmentUnit>().ToTable(table => table.HasCheckConstraint(
                 "CK_RequestEquipmentUnits_Activation",
                 "(([IsActive] = 1 AND [DeactivatedDate] IS NULL) OR ([IsActive] = 0 AND [DeactivatedDate] IS NOT NULL)) AND ([IsLegacyPrimary] = 0 OR [IsActive] = 1)"));

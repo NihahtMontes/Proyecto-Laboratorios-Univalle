@@ -30,8 +30,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
 
         public List<SelectListItem> CategoryOptions { get; set; } = new();
         public List<SelectListItem> UnitOptions { get; set; } = new();
-        public List<SelectListItem> ArticleTypeOptions { get; set; } = new();
-        public List<SelectListItem> EquipmentOptions { get; set; } = new();
 
         /// <summary>Snapshot de sólo lectura para la barra lateral (auditoría).</summary>
         public Article? ArticleSnapshot { get; set; }
@@ -61,16 +59,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
             [Display(Name = "Unidad de Medida")]
             public int? MeasurementUnitId { get; set; }
 
-            [Required(ErrorMessage = "Seleccione el tipo de artículo")]
-            [Display(Name = "Tipo")]
-            public ArticleType? ArticleType { get; set; }
-
-            [Display(Name = "Equipo de Catálogo")]
-            public int? EquipmentId { get; set; }
-
             [Required]
             [Display(Name = "Estado")]
             public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
+
+            /// <summary>
+            /// Revisión del dato en la fuente. Sólo se ofrece el conjunto de valores que
+            /// devuelve <see cref="EnumHelper.FormSelectList{T}"/> con el valor actual;
+            /// un artículo ya Confirmado no puede regresar a Por confirmar.
+            /// </summary>
+            [Required]
+            [Display(Name = "Revisión")]
+            public DataReviewStatus ReviewStatus { get; set; } = DataReviewStatus.Confirmed;
         }
 
         public async Task<IActionResult> OnGetAsync(int? id)
@@ -95,9 +95,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                 Name = article.Name,
                 ArticleCategoryId = article.ArticleCategoryId,
                 MeasurementUnitId = article.MeasurementUnitId,
-                ArticleType = article.ArticleType,
-                EquipmentId = article.EquipmentId,
-                Status = article.Status
+                Status = article.Status,
+                ReviewStatus = article.ReviewStatus
             };
 
             LoadOptions();
@@ -113,15 +112,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                 return Page();
             }
 
-            if (!Input.ArticleType.HasValue || !Enum.IsDefined(typeof(ArticleType), Input.ArticleType.Value))
+            // Cargar la entidad tracked para conocer el ReviewStatus actual y validar la transición.
+            var articleToUpdate = await _context.Articles
+                .AsTracking()
+                .FirstOrDefaultAsync(a => a.Id == Input.Id);
+
+            if (articleToUpdate == null) return NotFound();
+
+            // Validar transición de ReviewStatus contra los valores permitidos por FormSelectList(actual).
+            var allowedReviewValues = EnumHelper
+                .FormSelectList<DataReviewStatus>(articleToUpdate.ReviewStatus)
+                .Select(s => (DataReviewStatus)int.Parse(s.Value))
+                .ToHashSet();
+
+            if (!allowedReviewValues.Contains(Input.ReviewStatus))
             {
-                ModelState.AddModelError("Input.ArticleType", "Seleccione un tipo de artículo válido.");
+                ModelState.AddModelError("Input.ReviewStatus",
+                    "El estado de revisión enviado no es válido para el estado actual del artículo.");
                 await ReloadSnapshot(Input.Id);
                 LoadOptions();
                 return Page();
             }
 
-            // Validación de FKs activas (categoría, unidad, equipo).
+            // Validación de FKs activas (categoría, unidad).
             var categoryActive = await _context.ArticleCategories
                 .AnyAsync(c => c.Id == Input.ArticleCategoryId && c.Status == GeneralStatus.Activo);
 
@@ -139,27 +152,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
             if (!unitActive)
             {
                 ModelState.AddModelError("Input.MeasurementUnitId", "La unidad de medida seleccionada no está disponible.");
-                await ReloadSnapshot(Input.Id);
-                LoadOptions();
-                return Page();
-            }
-
-            if (Input.ArticleType == ArticleType.Equipment && Input.EquipmentId.HasValue)
-            {
-                var equipmentActive = await _context.Equipments
-                    .AnyAsync(e => e.Id == Input.EquipmentId && e.Status == GeneralStatus.Activo);
-
-                if (!equipmentActive)
-                {
-                    ModelState.AddModelError("Input.EquipmentId", "El equipo seleccionado no está disponible.");
-                    await ReloadSnapshot(Input.Id);
-                    LoadOptions();
-                    return Page();
-                }
-            }
-            else if (Input.ArticleType != ArticleType.Equipment && Input.EquipmentId.HasValue)
-            {
-                ModelState.AddModelError("Input.EquipmentId", "Sólo los artículos de tipo Equipo pueden vincularse a un catálogo de equipo.");
                 await ReloadSnapshot(Input.Id);
                 LoadOptions();
                 return Page();
@@ -195,13 +187,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                 return Page();
             }
 
-            // AsTracking para preservar RowVersion del modelo.
-            var articleToUpdate = await _context.Articles
-                .AsTracking()
-                .FirstOrDefaultAsync(a => a.Id == Input.Id);
-
-            if (articleToUpdate == null) return NotFound();
-
             // Sincronizar columnas legadas desde las FKs activas.
             var categoryName = await _context.ArticleCategories
                 .Where(c => c.Id == Input.ArticleCategoryId)
@@ -217,9 +202,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
             articleToUpdate.Name = Input.Name.Clean();
             articleToUpdate.ArticleCategoryId = Input.ArticleCategoryId;
             articleToUpdate.MeasurementUnitId = Input.MeasurementUnitId;
-            articleToUpdate.ArticleType = Input.ArticleType;
-            articleToUpdate.EquipmentId = Input.ArticleType == ArticleType.Equipment ? Input.EquipmentId : null;
             articleToUpdate.Status = Input.Status;
+            articleToUpdate.ReviewStatus = Input.ReviewStatus;
             // Columnas legadas sincronizadas.
             articleToUpdate.Category = categoryName;
             articleToUpdate.UnitOfMeasure = string.IsNullOrWhiteSpace(unitCode) ? "UNIDAD" : unitCode;
@@ -286,25 +270,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                 {
                     Value = u.Id.ToString(),
                     Text = $"{u.Code} - {u.Name}"
-                })
-                .ToList();
-
-            ArticleTypeOptions = Enum.GetValues<ArticleType>()
-                .Select(t => new SelectListItem
-                {
-                    Value = ((int)t).ToString(),
-                    Text = EnumHelper.GetDisplayName(t)
-                })
-                .ToList();
-
-            EquipmentOptions = _context.Equipments
-                .AsNoTracking()
-                .Where(e => e.Status == GeneralStatus.Activo)
-                .OrderBy(e => e.CatalogCode)
-                .Select(e => new SelectListItem
-                {
-                    Value = e.Id.ToString(),
-                    Text = $"{(string.IsNullOrWhiteSpace(e.CatalogCode) ? "S/C" : e.CatalogCode)} - {e.Name}"
                 })
                 .ToList();
         }

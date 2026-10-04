@@ -1,6 +1,7 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Helpers
 
 <div class="row">
     <!-- Main Column -->
@@ -12,7 +13,7 @@
                         <h4 class="card-title text-dark font-weight-bold">
                             <i class="fas fa-edit mr-2 text-warning"></i>Editar Artículo
                         </h4>
-                        <h6 class="card-subtitle text-muted">Actualice la identidad, clasificación y estado del artículo.</h6>
+                        <h6 class="card-subtitle text-muted">Actualice la identidad, clasificación, estado y revisión del artículo.</h6>
                     </div>
                     <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-box fa-2x text-warning opacity-5"></i>
@@ -41,16 +42,18 @@
                                 <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
                             </div>
 
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.ArticleType" class="control-label font-weight-bold small uppercase text-muted">Tipo <span class="text-danger">*</span></label>
-                                <select asp-for="Input.ArticleType" class="form-control custom-select" required>
-                                    <option value="">-- Seleccione tipo --</option>
-                                    @foreach (var t in Model.ArticleTypeOptions)
-                                    {
-                                        <option value="@t.Value">@t.Text</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="Input.ArticleType" class="text-danger small font-weight-bold"></span>
+                            <div class="form-group mb-4 border-left border-info pl-3 bg-light p-3 rounded shadow-none">
+                                <label asp-for="Input.ReviewStatus" class="control-label font-weight-bold small text-info uppercase mb-2">
+                                    Revisión del Dato <span class="text-danger">*</span>
+                                </label>
+                                <select asp-for="Input.ReviewStatus"
+                                        class="form-control border-info font-weight-bold custom-select"
+                                        asp-items="@EnumHelper.FormSelectList<DataReviewStatus>(Model.ArticleSnapshot?.ReviewStatus)"
+                                        required></select>
+                                <span asp-validation-for="Input.ReviewStatus" class="text-danger small font-weight-bold d-block mt-1"></span>
+                                <small class="text-muted italic mt-2 d-block">
+                                    Si el artículo figura <strong>Por confirmar</strong>, márquelo <strong>Confirmado</strong> una vez conciliado con la fuente del cliente.
+                                </small>
                             </div>
                         </div>
 
@@ -81,19 +84,6 @@
                                     }
                                 </select>
                                 <span asp-validation-for="Input.MeasurementUnitId" class="text-danger small font-weight-bold"></span>
-                            </div>
-
-                            <div class="form-group mb-4" id="equipmentField">
-                                <label asp-for="Input.EquipmentId" class="control-label font-weight-bold small uppercase text-muted">Equipo de catálogo (opcional)</label>
-                                <select asp-for="Input.EquipmentId" class="form-control custom-select select2" data-placeholder="-- Seleccione equipo --">
-                                    <option value="">-- Sin equipo asociado --</option>
-                                    @foreach (var e in Model.EquipmentOptions)
-                                    {
-                                        <option value="@e.Value">@e.Text</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="Input.EquipmentId" class="text-danger small font-weight-bold"></span>
-                                <small class="text-muted italic">Sólo relevante cuando el tipo es <strong>Equipo</strong>.</small>
                             </div>
                         </div>
                     </div>
@@ -139,6 +129,15 @@
                     @if (Model.ArticleSnapshot != null && !string.IsNullOrWhiteSpace(Model.ArticleSnapshot.Code))
                     {
                         <div class="mt-2 small text-white-50">Cód: @Model.ArticleSnapshot.Code</div>
+                    }
+                    @if (Model.ArticleSnapshot != null && Model.ArticleSnapshot.ReviewStatus == DataReviewStatus.PorConfirmar)
+                    {
+                        <div class="mt-3">
+                            <span class="badge badge-pill badge-soft-warning text-warning px-3 py-1 font-weight-bold"
+                                  title="Dato pendiente de confirmación en la fuente del cliente">
+                                <i class="fas fa-exclamation-circle mr-1"></i>Por confirmar
+                            </span>
+                        </div>
                     }
                 </div>
             </div>
@@ -195,18 +194,6 @@
 
             $('.select2').select2({ width: '100%', allowClear: true });
 
-            function toggleEquipment() {
-                var val = parseInt($('#Input_ArticleType').val(), 10);
-                if (val === 1) {
-                    $('#equipmentField').slideDown(150);
-                } else {
-                    $('#equipmentField').slideUp(150);
-                    $('#Input_EquipmentId').val(null).trigger('change');
-                }
-            }
-            $('#Input_ArticleType').on('change', toggleEquipment);
-            toggleEquipment();
-
             var form = document.getElementById('edit-article-form');
             if (form) {
                 form.addEventListener('submit', function (event) {
@@ -251,5 +238,6 @@
         .italic { font-style: italic; }
         .uppercase { text-transform: uppercase; letter-spacing: 1px; }
         .border-3 { border-left-width: 4px !important; }
+        .badge-soft-warning { background-color: #fff3cd; }
     </style>
 }

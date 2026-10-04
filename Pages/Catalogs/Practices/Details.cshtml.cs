@@ -299,6 +299,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
 
         private async Task LoadArticlesAsync()
         {
+            // Artículos activos seleccionables para la receta. Los marcados con
+            // ReviewStatus = PorConfirmar siguen siendo elegibles, pero se etiquetan
+            // visualmente con el sufijo "· Por confirmar" para que el docente los
+            // identifique al componer la receta.
             var articles = await _context.Articles
                 .AsNoTracking()
                 .Where(a => a.Status == GeneralStatus.Activo)
@@ -307,6 +311,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
                 {
                     a.Id,
                     Display = a.Code + " — " + a.Name
+                        + (a.ReviewStatus == Models.Enums.DataReviewStatus.PorConfirmar
+                            ? " · Por confirmar"
+                            : string.Empty)
                 })
                 .ToListAsync();
 

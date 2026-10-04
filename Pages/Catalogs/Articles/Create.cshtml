@@ -40,16 +40,8 @@
                                 <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
                             </div>
 
-                            <div class="form-group mb-4">
-                                <label asp-for="Input.ArticleType" class="control-label font-weight-bold small uppercase text-muted">Tipo <span class="text-danger">*</span></label>
-                                <select asp-for="Input.ArticleType" class="form-control custom-select" required>
-                                    <option value="">-- Seleccione tipo --</option>
-                                    @foreach (var t in Model.ArticleTypeOptions)
-                                    {
-                                        <option value="@t.Value">@t.Text</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="Input.ArticleType" class="text-danger small font-weight-bold"></span>
+                            <div class="alert alert-light border-0 small p-3 mt-2 text-muted italic shadow-none border-left border-info border-3">
+                                <i class="fas fa-info-circle mr-1"></i> El estado de revisión se registra como <strong>Confirmado</strong> por defecto. Si el dato proviene de una fuente aún sin conciliar, márquelo después desde la opción Editar.
                             </div>
                         </div>
 
@@ -83,19 +75,6 @@
                                 </select>
                                 <span asp-validation-for="Input.MeasurementUnitId" class="text-danger small font-weight-bold"></span>
                                 <small class="text-muted italic">Si elige una unidad, el campo legado <code>UnitOfMeasure</code> se sincroniza con su código.</small>
-                            </div>
-
-                            <div class="form-group mb-4" id="equipmentField" style="display:none;">
-                                <label asp-for="Input.EquipmentId" class="control-label font-weight-bold small uppercase text-muted">Equipo de catálogo (opcional)</label>
-                                <select asp-for="Input.EquipmentId" class="form-control custom-select select2" data-placeholder="-- Seleccione equipo --">
-                                    <option value="">-- Sin equipo asociado --</option>
-                                    @foreach (var e in Model.EquipmentOptions)
-                                    {
-                                        <option value="@e.Value">@e.Text</option>
-                                    }
-                                </select>
-                                <span asp-validation-for="Input.EquipmentId" class="text-danger small font-weight-bold"></span>
-                                <small class="text-muted italic">Sólo relevante cuando el tipo es <strong>Equipo</strong>.</small>
                             </div>
                         </div>
                     </div>
@@ -140,19 +119,6 @@
 
             // Select2
             $('.select2').select2({ width: '100%', allowClear: true, placeholder: '-- Seleccione --' });
-
-            // Mostrar/ocultar Equipo según tipo seleccionado
-            function toggleEquipment() {
-                var val = parseInt($('#Input_ArticleType').val(), 10);
-                if (val === 1) {
-                    $('#equipmentField').slideDown(150);
-                } else {
-                    $('#equipmentField').slideUp(150);
-                    $('#Input_EquipmentId').val(null).trigger('change');
-                }
-            }
-            $('#Input_ArticleType').on('change', toggleEquipment);
-            toggleEquipment();
         });
     </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

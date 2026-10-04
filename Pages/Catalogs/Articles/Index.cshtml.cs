@@ -22,7 +22,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
         public PaginatedList<Article> Articles { get; set; } = new PaginatedList<Article>(new List<Article>(), 0, 1, 20);
 
         public List<SelectListItem> CategoryOptions { get; set; } = new();
-        public List<SelectListItem> ArticleTypeOptions { get; set; } = new();
+
+        /// <summary>Cantidad de artículos con revisión PorConfirmar (calculada con el resto de filtros aplicados, pero sin el propio filtro de revisión).</summary>
+        public int PendingReviewCount { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public int? PageIndex { get; set; }
@@ -37,39 +39,49 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
         public int? ArticleCategoryId { get; set; }
 
         [BindProperty(SupportsGet = true)]
-        public ArticleType? ArticleTypeFilter { get; set; }
+        public DataReviewStatus? ReviewStatusFilter { get; set; }
 
         public async Task OnGetAsync(int? pageIndex)
         {
             // Article tiene query filter global (Status != Eliminado).
-            var query = _context.Articles
+            var baseQuery = _context.Articles
                 .AsNoTracking()
                 .Include(a => a.ArticleCategory)
                 .Include(a => a.MeasurementUnit)
                 .Where(a => a.Status != GeneralStatus.Eliminado);
 
+            // Filtro de texto
             if (!string.IsNullOrWhiteSpace(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                query = query.Where(a => a.Name.ToLower().Contains(term) || a.Code.ToLower().Contains(term));
+                baseQuery = baseQuery.Where(a => a.Name.ToLower().Contains(term) || a.Code.ToLower().Contains(term));
             }
 
             if (StatusFilter.HasValue)
             {
-                query = query.Where(a => a.Status == StatusFilter.Value);
+                baseQuery = baseQuery.Where(a => a.Status == StatusFilter.Value);
             }
 
             if (ArticleCategoryId.HasValue)
             {
-                query = query.Where(a => a.ArticleCategoryId == ArticleCategoryId.Value);
+                baseQuery = baseQuery.Where(a => a.ArticleCategoryId == ArticleCategoryId.Value);
             }
 
-            if (ArticleTypeFilter.HasValue)
+            // Filtro de revisión (Todos/Confirmado/Por confirmar)
+            if (ReviewStatusFilter.HasValue)
             {
-                query = query.Where(a => a.ArticleType == ArticleTypeFilter.Value);
+                baseQuery = baseQuery.Where(a => a.ReviewStatus == ReviewStatusFilter.Value);
             }
 
-            // Cargar opciones de filtro (categorías activas).
+            // Contador de Por confirmar (calculado sobre los mismos filtros de categoría/estado/texto, sin filtro de revisión).
+            PendingReviewCount = await baseQuery.CountAsync(a => a.ReviewStatus == DataReviewStatus.PorConfirmar);
+
+            Articles = await PaginatedList<Article>.CreateAsync(
+                baseQuery.OrderBy(a => a.Name),
+                pageIndex ?? 1,
+                20);
+
+            // Opciones de filtro de categoría.
             CategoryOptions = await _context.ArticleCategories
                 .AsNoTracking()
                 .Where(c => c.Status == GeneralStatus.Activo)
@@ -80,16 +92,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                     Text = c.Name
                 })
                 .ToListAsync();
-
-            ArticleTypeOptions = Enum.GetValues<ArticleType>()
-                .Select(t => new SelectListItem
-                {
-                    Value = ((int)t).ToString(),
-                    Text = EnumHelper.GetDisplayName(t)
-                })
-                .ToList();
-
-            Articles = await PaginatedList<Article>.CreateAsync(query.OrderBy(a => a.Name), pageIndex ?? 1, 20);
         }
     }
 }

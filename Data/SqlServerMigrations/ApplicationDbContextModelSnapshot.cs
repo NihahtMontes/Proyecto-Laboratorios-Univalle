@@ -306,6 +306,9 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("ReviewStatus")
+                        .HasColumnType("int");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -344,8 +347,12 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasDatabaseName("UX_Articles_Name_Active")
                         .HasFilter("[Status] <> 2");
 
+                    b.HasIndex("ReviewStatus");
+
                     b.ToTable("Articles", t =>
                         {
+                            t.HasCheckConstraint("CK_Articles_ReviewStatus", "[ReviewStatus] IN (0, 9)");
+
                             t.HasCheckConstraint("CK_Articles_Status", "[Status] BETWEEN 0 AND 2");
                         });
                 });
