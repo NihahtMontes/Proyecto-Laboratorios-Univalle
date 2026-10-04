@@ -1,16 +1,17 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.IndexModel
-@{ ViewData["Title"] = "Planificaciones de laboratorios"; }
+@{ ViewData["Title"] = "Prácticas de laboratorios"; }
 
 <div class="page-breadcrumb">
     <div class="row align-items-center">
         <div class="col-md-8">
             <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
-            <h2 class="font-weight-bold text-dark">Planificaciones</h2>
+            <h2 class="font-weight-bold text-dark">Prácticas</h2>
             <div class="text-muted small">Resumen del flujo local de prácticas, requerimientos y devoluciones.</div>
         </div>
         <div class="col-md-4 text-md-right mt-3 mt-md-0">
-            <a asp-page="./Planificacion" class="btn btn-primary btn-rounded font-weight-bold px-4"><i class="mdi mdi-plus mr-1"></i> Nueva planificación</a>
+            <a asp-page="./Calendario" class="btn btn-primary btn-rounded font-weight-bold px-4"><i class="far fa-calendar-alt mr-1"></i> Abrir calendario</a>
+            <a asp-page="./Planificacion" class="btn btn-outline-primary btn-rounded font-weight-bold px-4"><i class="mdi mdi-plus mr-1"></i> Nueva planificación</a>
         </div>
     </div>
 </div>
@@ -34,7 +35,7 @@
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-3 mb-3 mb-md-0"><div class="card border-0 shadow-sm rounded-lg h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon bg-light-primary text-primary mr-3"><i class="far fa-calendar-alt fa-lg"></i></div><div><h2 class="mb-0 font-weight-bold">@Model.TotalPlans</h2><small class="text-muted">Planificaciones visibles</small></div></div></div></div>
+        <div class="col-md-3 mb-3 mb-md-0"><div class="card border-0 shadow-sm rounded-lg h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon bg-light-primary text-primary mr-3"><i class="far fa-calendar-alt fa-lg"></i></div><div><h2 class="mb-0 font-weight-bold">@Model.TotalPlans</h2><small class="text-muted">Prácticas visibles</small></div></div></div></div>
         <div class="col-md-3 mb-3 mb-md-0"><div class="card border-0 shadow-sm rounded-lg h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon bg-light-success text-success mr-3"><i class="fas fa-check-circle fa-lg"></i></div><div><h2 class="mb-0 font-weight-bold">@Model.ReadyPlans</h2><small class="text-muted">Listas para operar</small></div></div></div></div>
         <div class="col-md-3 mb-3 mb-md-0"><div class="card border-0 shadow-sm rounded-lg h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon bg-light-warning text-warning mr-3"><i class="fas fa-exclamation-triangle fa-lg"></i></div><div><h2 class="mb-0 font-weight-bold">@Model.ConflictPlans</h2><small class="text-muted">Revisan disponibilidad</small></div></div></div></div>
         <div class="col-md-3"><div class="card border-0 shadow-sm rounded-lg h-100"><div class="card-body d-flex align-items-center"><div class="metric-icon bg-light-dark text-dark mr-3"><i class="fas fa-flag-checkered fa-lg"></i></div><div><h2 class="mb-0 font-weight-bold">@Model.ClosedPlans</h2><small class="text-muted">Cerradas</small></div></div></div></div>
@@ -53,7 +54,7 @@
                     {
                         <div class="text-center border rounded-lg p-5 bg-light">
                             <i class="far fa-calendar-plus fa-3x text-muted mb-3"></i>
-                            <h5 class="font-weight-bold">No hay planificaciones en este periodo</h5>
+                            <h5 class="font-weight-bold">No hay prácticas en este periodo</h5>
                             <p class="text-muted mb-3">Crea una nueva o carga un ejemplo para recorrer la presentación.</p>
                             <a asp-page="./Planificacion" class="btn btn-primary btn-rounded">Crear planificación</a>
                         </div>
@@ -62,18 +63,19 @@
                     {
                         <div class="table-responsive">
                             <table class="table table-hover align-middle mb-0">
-                                <thead class="bg-dark text-white"><tr><th>CÓDIGO</th><th>PRÁCTICA</th><th>LABORATORIO</th><th>FECHA</th><th>ESTADO</th><th></th></tr></thead>
+                                <thead class="bg-dark text-white"><tr><th>CÓDIGO</th><th>PLANIFICACIÓN</th><th>PRÁCTICA</th><th>LABORATORIO</th><th>FECHA</th><th>ESTADO</th><th></th></tr></thead>
                                 <tbody>
                                 @foreach (var plan in Model.Plans)
                                 {
                                     <tr>
                                         <td class="small font-weight-bold">@plan.Code</td>
+                                        <td class="small text-muted">@plan.PlanningCode</td>
                                         <td><strong>@plan.Subject</strong><br /><small class="text-muted">@plan.ResponsibleName · Grupo @plan.Group</small></td>
                                         <td class="small text-muted">@plan.LaboratoryName<br /><small>@plan.FacultyName</small></td>
                                         <td class="small">@plan.PracticeDate.ToString("dd/MM/yyyy")<br /><span class="text-muted">@plan.StartTime.ToString(@"hh\:mm")–@plan.EndTime.ToString(@"hh\:mm")</span></td>
                                         <td><span class="badge badge-@plan.StatusCss px-2 py-1 rounded-pill">@plan.StatusText</span>@if (plan.HasConflict) { <br /><small class="text-danger">Stock insuficiente</small> }</td>
                                         <td class="text-right text-nowrap">
-                                            <a asp-page="./Planificacion" asp-route-id="@plan.Id" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a>
+                                            <a asp-page="./Practica" asp-route-id="@plan.Id" class="btn btn-sm btn-outline-secondary" title="Editar"><i class="fas fa-edit"></i></a>
                                             <a asp-page="./Requerimientos" asp-route-planId="@plan.Id" class="btn btn-sm btn-outline-primary" title="Requerimientos"><i class="fas fa-list"></i></a>
                                         </td>
                                     </tr>
@@ -90,7 +92,7 @@
             <div class="card border-0 shadow-sm rounded-lg mb-4">
                 <div class="card-body p-4">
                     <h5 class="font-weight-bold text-primary mb-3">RECORRIDO</h5>
-                    <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Planificación y horario</span></div>
+                    <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Planificación y práctica</span></div>
                     <div class="d-flex mb-3"><span class="badge badge-info mr-2">2</span><span>Requerimientos</span></div>
                     <div class="d-flex mb-3"><span class="badge badge-warning mr-2">3</span><span>Disponibilidad</span></div>
                     <div class="d-flex mb-3"><span class="badge badge-success mr-2">4</span><span>L-3 devolución</span></div>

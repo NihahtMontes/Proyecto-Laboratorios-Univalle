@@ -65,7 +65,10 @@ public class IndexModel : PageModel
                     FacultyName = r.Laboratory.Faculty!.Name,
                     ScheduledDate = r.ScheduledDate,
                     ScheduledEndDate = r.ScheduledEndDate,
-                    Status = r.Status
+                    Status = r.Status,
+                    AcademicPlanningId = r.AcademicPlanningId,
+                    ManagementCode = r.AcademicPlanning!.Management.Code,
+                    CareerCode = r.AcademicPlanning.Career.Code ?? string.Empty
                 })
             .ToListAsync();
 
@@ -166,6 +169,9 @@ public class IndexModel : PageModel
                 EndTime = scheduledEnd.TimeOfDay,
                 LaboratoryName = $"{r.LabCode} · {r.LabName}",
                 FacultyName = r.FacultyName,
+                PlanningCode = r.AcademicPlanningId.HasValue
+                    ? L3Codes.Planning(r.ManagementCode, r.CareerCode, r.AcademicPlanningId.Value)
+                    : "Sin planificación",
                 StatusText = GetStatusText(r.Status),
                 StatusCss = GetStatusCss(r.Status),
                 HasConflict = conflictByPlan.Contains(r.Id),
@@ -216,6 +222,9 @@ public class IndexModel : PageModel
         public DateTime ScheduledDate { get; init; }
         public DateTime? ScheduledEndDate { get; init; }
         public string Status { get; init; } = string.Empty;
+        public int? AcademicPlanningId { get; init; }
+        public string ManagementCode { get; init; } = string.Empty;
+        public string CareerCode { get; init; } = string.Empty;
     }
 
     public sealed class PlanListItem
@@ -230,6 +239,7 @@ public class IndexModel : PageModel
         public TimeSpan EndTime { get; init; }
         public string LaboratoryName { get; init; } = string.Empty;
         public string FacultyName { get; init; } = string.Empty;
+        public string PlanningCode { get; init; } = string.Empty;
         public string StatusText { get; init; } = string.Empty;
         public string StatusCss { get; init; } = "secondary";
         public bool HasConflict { get; init; }

@@ -38,7 +38,17 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(255)]
         public string PracticeName { get; set; } = string.Empty;
 
+        /// <summary>Número de semana académica (se mantiene sincronizado con AcademicWeekRef).</summary>
         public int AcademicWeek { get; set; }
+
+        /// <summary>Planificación a la que pertenece la práctica (null en prácticas legadas).</summary>
+        public int? AcademicPlanningId { get; set; }
+        [ForeignKey("AcademicPlanningId")]
+        public AcademicPlanning? AcademicPlanning { get; set; }
+
+        public int? AcademicWeekId { get; set; }
+        [ForeignKey("AcademicWeekId")]
+        public AcademicWeek? AcademicWeekRef { get; set; }
 
         public DateTime ScheduledDate { get; set; }
 

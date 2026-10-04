@@ -1,12 +1,12 @@
 @* Partial: _StepsBar.cshtml
    Uso: @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", pasoActual)
-   pasoActual: 1=Planificación, 2=Requerimientos, 3=Disponibilidad, 4=L-3 Devolución, 5=Incidencia/Cierre
+   pasoActual: 1=Planificación y práctica, 2=Requerimientos, 3=Disponibilidad, 4=L-3 Devolución, 5=Incidencia/Cierre
 *@
 @model int
 
 @{
     var pasos = new[] {
-        new { Num = 1, Nombre = "Planificación" },
+        new { Num = 1, Nombre = "Planificación y práctica" },
         new { Num = 2, Nombre = "Requerimientos" },
         new { Num = 3, Nombre = "Disponibilidad" },
         new { Num = 4, Nombre = "L-3 Devolución" },

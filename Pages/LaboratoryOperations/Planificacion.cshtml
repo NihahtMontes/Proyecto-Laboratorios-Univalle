@@ -1,19 +1,21 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanificacionModel
-@{ ViewData["Title"] = "Planificación — Paso 1"; }
+@{ ViewData["Title"] = "Planificación académica"; }
 
 <div class="page-breadcrumb">
     <div class="row align-items-center">
         <div class="col-md-8">
             <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
-            <h2 class="font-weight-bold text-dark">@Model.StatusText</h2>
-            <div class="text-muted small">Registra los datos de la práctica y avanza al siguiente paso para definir requerimientos.</div>
+            <h2 class="font-weight-bold text-dark">Planificación académica</h2>
+            <div class="text-muted small">Registra gestión, facultad, carrera y rango para generar las semanas académicas lunes a viernes.</div>
         </div>
         <div class="col-md-4 text-md-right mt-3 mt-md-0">
-            <span class="badge badge-light border px-3 py-2"><i class="fas fa-database mr-1 text-success"></i> Planificaciones persistidas en L3Requests</span>
-            <button type="button" class="btn btn-outline-info px-3 mt-2 mt-md-2" onclick="buscarPlanes()">
-                <i class="mdi mdi-calendar-search mr-1"></i> Buscar planificación existente
-            </button>
+            @if (Model.Id.HasValue)
+            {
+                <a asp-page="./Calendario" asp-route-planningId="@Model.Id" class="btn btn-outline-primary btn-rounded px-3">
+                    <i class="far fa-calendar-alt mr-1"></i> Ver calendario
+                </a>
+            }
         </div>
     </div>
 </div>
@@ -21,209 +23,197 @@
 <div class="container-fluid mt-3">
     @await Html.PartialAsync("../LaboratoryOperations/_StepsBar", 1)
 
-    @if (Model.IsReadOnly)
-{
-    <div class="alert alert-secondary border-0 rounded d-flex align-items-center mb-4">
-        <div class="rounded-circle bg-light-secondary text-secondary p-3 mr-3"><i class="fas fa-lock fa-lg"></i></div>
-        <div>
-            <strong>Planificación @Model.Code en estado @Model.StatusText.</strong><br />
-            <span>Sus datos están bloqueados. Continúa con los requerimientos para revisar la operación.</span>
+    @if (Model.Id.HasValue)
+    {
+        <div class="alert alert-light border rounded-lg d-flex align-items-center mb-4 shadow-sm">
+            <div class="rounded-circle bg-light-primary text-primary p-2 mr-3"><i class="fas fa-hashtag"></i></div>
+            <div class="small">
+                <strong class="text-dark">@Model.Code</strong>
+                <span class="text-muted ml-1">— código visible de esta planificación durante todo el flujo.</span>
+            </div>
         </div>
-    </div>
-}
+    }
 
-    <form method="post" asp-route-id="@Model.Id" id="form-planificacion">
-        <input type="hidden" name="id" value="@Model.Id" />
-            <div class="row">
-                <div class="col-lg-8">
-                    <div class="card shadow-sm border-0 rounded-lg">
-                        <div class="card-body p-4">
-                            <div class="d-flex align-items-center mb-4">
-                                <div class="rounded-circle bg-light-primary text-primary p-3 mr-3"><i class="far fa-calendar-alt fa-lg"></i></div>
-                                <div>
-                                    <h5 class="font-weight-bold text-primary mb-1">Datos de la práctica</h5>
-                                    <small class="text-muted">Los campos se validan en el servidor antes de persistir la planificación.</small>
-                                </div>
+    <div class="row">
+        <div class="col-lg-8">
+            <form method="post" asp-route-id="@Model.Id" id="form-planificacion">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div class="card shadow-sm border-0 rounded-lg">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-4">
+                            <div class="rounded-circle bg-light-primary text-primary p-3 mr-3"><i class="fas fa-university fa-lg"></i></div>
+                            <div>
+                                <h5 class="font-weight-bold text-primary mb-1">Datos de la planificación</h5>
+                                <small class="text-muted">Al guardar se generan las semanas académicas (lunes a viernes) del rango.</small>
                             </div>
+                        </div>
 
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.ManagementId" class="small font-weight-bold text-muted"></label>
+                                <select asp-for="Input.ManagementId" asp-items="Model.ManagementList" class="form-control select2">
+                                    <option value="0">— Seleccionar gestión —</option>
+                                </select>
+                                <span asp-validation-for="Input.ManagementId" class="text-danger small"></span>
+                                @if (Model.ManagementList.Count() == 0)
+                                {
+                                    <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay gestiones registradas.</small>
+                                }
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.FacultyId" class="small font-weight-bold text-muted"></label>
+                                <select asp-for="Input.FacultyId" asp-items="Model.FacultyList" class="form-control select2" id="facultySelect" disabled="@(Model.StructureLocked ? "disabled" : null)">
+                                    <option value="0">— Seleccionar facultad —</option>
+                                </select>
+                                <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
+                                @if (Model.StructureLocked)
+                                {
+                                    <input type="hidden" asp-for="Input.FacultyId" />
+                                    <small class="text-muted d-block mt-1"><i class="fas fa-lock mr-1"></i> La planificación ya tiene @Model.PracticeCount práctica(s): no se cambian facultad ni carrera.</small>
+                                }
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label asp-for="Input.CareerId" class="small font-weight-bold text-muted"></label>
+                                <select asp-for="Input.CareerId" asp-items="Model.CareerList" class="form-control select2" id="careerSelect" disabled="@(Model.StructureLocked ? "disabled" : null)">
+                                    <option value="0">— Seleccionar carrera —</option>
+                                </select>
+                                <span asp-validation-for="Input.CareerId" class="text-danger small"></span>
+                                @if (Model.StructureLocked)
+                                {
+                                    <input type="hidden" asp-for="Input.CareerId" />
+                                }
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-12">
+                                <label asp-for="Input.Name" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.Name" class="form-control" placeholder="Ej. Planificación segundo semestre — Gastronomía" />
+                                <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label asp-for="Input.StartDate" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.StartDate" type="date" class="form-control" />
+                                <span asp-validation-for="Input.StartDate" class="text-danger small"></span>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label asp-for="Input.EndDate" class="small font-weight-bold text-muted"></label>
+                                <input asp-for="Input.EndDate" type="date" class="form-control" />
+                                <span asp-validation-for="Input.EndDate" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                            <a asp-page="./Calendario" class="btn btn-outline-secondary btn-rounded px-4">Cancelar</a>
+                            <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4">
+                                @(Model.Id.HasValue ? "Actualizar planificación" : "Guardar planificación")
+                                <i class="mdi mdi-arrow-right ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            @if (Model.Weeks.Count > 0)
+            {
+                <div class="card shadow-sm border-0 rounded-lg mt-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="rounded-circle bg-light-primary text-primary p-2 mr-3"><i class="fas fa-calendar-week"></i></div>
+                            <div>
+                                <h5 class="font-weight-bold text-primary mb-1">Semanas académicas</h5>
+                                <small class="text-muted">Marca cada semana como lectiva o no lectiva; las semanas lectivas reciben prácticas.</small>
+                            </div>
+                        </div>
+
+                        <form method="post" asp-page-handler="Weeks" asp-route-id="@Model.Id" id="form-semanas">
+                            <input type="hidden" name="id" value="@Model.Id" />
                             <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-                            <div class="form-row">
-                                <div class="form-group col-md-6">
-                                    <label asp-for="Input.FacultyId" class="small font-weight-bold text-muted"></label>
-                                    <select asp-for="Input.FacultyId" asp-items="Model.FacultyList" class="custom-select" disabled="@(Model.IsReadOnly ? "disabled" : null)">
-                                        <option value="0">— Seleccionar facultad —</option>
-                                    </select>
-                                    <span asp-validation-for="Input.FacultyId" class="text-danger small"></span>
-                                </div>
-                                <div class="form-group col-md-6">
-                                    <label asp-for="Input.CareerId" class="small font-weight-bold text-muted"></label>
-                                    <select asp-for="Input.CareerId" asp-items="Model.CareerList" class="custom-select" disabled="@(Model.IsReadOnly ? "disabled" : null)">
-                                        <option value="0">— Seleccionar carrera —</option>
-                                    </select>
-                                    <span asp-validation-for="Input.CareerId" class="text-danger small"></span>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group col-md-6">
-                                    <label asp-for="Input.LaboratoryId" class="small font-weight-bold text-muted"></label>
-                                    <select asp-for="Input.LaboratoryId" asp-items="Model.LaboratoryList" class="custom-select" disabled="@(Model.IsReadOnly ? "disabled" : null)">
-                                        <option value="0">— Seleccionar laboratorio —</option>
-                                    </select>
-                                    <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
-                                </div>
-                                <div class="form-group col-md-6">
-                                    <label asp-for="Input.TeacherPersonId" class="small font-weight-bold text-muted"></label>
-                                    <select asp-for="Input.TeacherPersonId" asp-items="Model.TeacherList" class="custom-select" disabled="@(Model.IsReadOnly ? "disabled" : null)">
-                                        <option value="0">— Seleccionar docente —</option>
-                                    </select>
-                                    <span asp-validation-for="Input.TeacherPersonId" class="text-danger small"></span>
-                                    @if (Model.TeacherList.Count() == 0)
-                                    {
-                                        <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay docentes registrados.</small>
-                                    }
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group col-md-6">
-                                    <label asp-for="Input.SubjectId" class="small font-weight-bold text-muted"></label>
-                                    <select asp-for="Input.SubjectId" asp-items="Model.SubjectList" class="custom-select" disabled="@(Model.IsReadOnly ? "disabled" : null)">
-                                        <option value="0">— Seleccionar materia —</option>
-                                    </select>
-                                    <span asp-validation-for="Input.SubjectId" class="text-danger small"></span>
-                                    @if (Model.SubjectList.Count() == 0)
-                                    {
-                                        <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay materias registradas.</small>
-                                    }
-                                </div>
-                                <div class="form-group col-md-6">
-                                    <label asp-for="Input.GroupId" class="small font-weight-bold text-muted"></label>
-                                    <select asp-for="Input.GroupId" asp-items="Model.GroupList" class="custom-select" disabled="@(Model.IsReadOnly ? "disabled" : null)">
-                                        <option value="0">— Seleccionar grupo —</option>
-                                    </select>
-                                    <span asp-validation-for="Input.GroupId" class="text-danger small"></span>
-                                    @if (Model.GroupList.Count() == 0)
-                                    {
-                                        <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay grupos registrados.</small>
-                                    }
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group col-md-7">
-                                    <label asp-for="Input.PracticeName" class="small font-weight-bold text-muted"></label>
-                                    <input asp-for="Input.PracticeName" class="form-control" placeholder="Ej. Cocina Boliviana Contemporánea" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
-                                    <span asp-validation-for="Input.PracticeName" class="text-danger small"></span>
-                                </div>
-                                <div class="form-group col-md-5">
-                                    <label asp-for="Input.AcademicWeek" class="small font-weight-bold text-muted"></label>
-                                    <input asp-for="Input.AcademicWeek" type="number" class="form-control" min="1" max="30" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
-                                    <span asp-validation-for="Input.AcademicWeek" class="text-danger small"></span>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group col-md-4">
-                                    <label asp-for="Input.PracticeDate" class="small font-weight-bold text-muted"></label>
-                                    <input asp-for="Input.PracticeDate" type="date" class="form-control" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
-                                    <span asp-validation-for="Input.PracticeDate" class="text-danger small"></span>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label asp-for="Input.StartTime" class="small font-weight-bold text-muted">Hora inicio</label>
-                                    <input asp-for="Input.StartTime" type="time" class="form-control" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
-                                    <span asp-validation-for="Input.StartTime" class="text-danger small"></span>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label asp-for="Input.EndTime" class="small font-weight-bold text-muted">Hora fin</label>
-                                    <input asp-for="Input.EndTime" type="time" class="form-control" disabled="@(Model.IsReadOnly ? "disabled" : null)" />
-                                    <span asp-validation-for="Input.EndTime" class="text-danger small"></span>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group col-md-12">
-                                    <label asp-for="Input.Observations" class="small font-weight-bold text-muted"></label>
-                                    <textarea asp-for="Input.Observations" class="form-control" rows="2" placeholder="Observaciones o contexto de la práctica" disabled="@(Model.IsReadOnly ? "disabled" : null)"></textarea>
-                                    <span asp-validation-for="Input.Observations" class="text-danger small"></span>
-                                </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-dark text-white">
+                                        <tr>
+                                            <th>SEMANA</th>
+                                            <th>RANGO</th>
+                                            <th class="text-center">PRÁCTICAS</th>
+                                            <th class="text-center">LECTIVA</th>
+                                            <th>NOTA</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (var i = 0; i < Model.Weeks.Count; i++)
+                                        {
+                                            var week = Model.Weeks[i];
+                                            <tr class="@(week.IsLective ? string.Empty : "table-light")">
+                                                <td class="font-weight-bold">Semana @week.Number</td>
+                                                <td class="small text-muted">@week.StartDate.ToString("dd/MM/yyyy") – @week.EndDate.ToString("dd/MM/yyyy")</td>
+                                                <td class="text-center">
+                                                    <span class="badge badge-light border">@week.PracticeCount</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <input type="hidden" name="WeekInputs[@i].Id" value="@week.Id" />
+                                                    <input type="hidden" name="WeekInputs[@i].IsLective" value="false" />
+                                                    <div class="custom-control custom-switch d-inline-block">
+                                                        <input type="checkbox" name="WeekInputs[@i].IsLective" value="true" class="custom-control-input" id="lective-@week.Id" @(week.IsLective ? "checked" : "") />
+                                                        <label class="custom-control-label" for="lective-@week.Id"></label>
+                                                    </div>
+                                                    @if (!week.IsLective)
+                                                    {
+                                                        <span class="badge badge-secondary ml-2">No lectiva</span>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <input type="text" name="WeekInputs[@i].Note" class="form-control form-control-sm" maxlength="100" value="@(week.Note ?? string.Empty)" placeholder="Opcional" />
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
                             </div>
 
                             <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                                <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-4">Cancelar</a>
-                                @if (Model.IsReadOnly)
-                                {
-                                    <a asp-page="./Requerimientos" asp-route-planId="@Model.Id" class="btn btn-primary btn-rounded font-weight-bold px-4">
-                                        Ver requerimientos <i class="mdi mdi-arrow-right ml-1"></i>
-                                    </a>
-                                }
-                                else
-                                {
-                                    <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4">
-                                        @(Model.Id.HasValue ? "Actualizar planificación" : "Guardar y definir requerimientos")
-                                        <i class="mdi mdi-arrow-right ml-1"></i>
-                                    </button>
-                                }
+                                <span class="text-muted small">Las semanas con prácticas no se pueden marcar como no lectivas.</span>
+                                <button type="submit" id="btnGuardarSemanas" class="btn btn-primary btn-rounded font-weight-bold px-4">
+                                    <i class="fas fa-save mr-1"></i> Guardar semanas
+                                </button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
+            }
+        </div>
 
-                <div class="col-lg-4 mt-3 mt-lg-0">
-                    <div class="card border-0 shadow-sm rounded-lg h-100">
-                        <div class="card-body p-4">
-                            <span class="text-uppercase small text-primary font-weight-bold">Flujo de planificación</span>
-                            <h5 class="font-weight-bold text-dark mt-2">Una planificación, cinco decisiones</h5>
-                            <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Registrar fecha, sala y responsable.</span></div>
-                            <div class="d-flex mb-3"><span class="badge badge-info mr-2">2</span><span>Agregar materiales y cantidades.</span></div>
-                            <div class="d-flex mb-3"><span class="badge badge-warning mr-2">3</span><span>Validar disponibilidad y solapamientos.</span></div>
-                            <div class="d-flex mb-3"><span class="badge badge-dark mr-2">4</span><span>Registrar entrega/devolución L-3.</span></div>
-                            <div class="d-flex"><span class="badge badge-success mr-2">5</span><span>Cerrar con L-5 incidente (si aplica).</span></div>
-                            <div class="alert alert-light border mt-4 mb-0 small">
-                                <i class="fas fa-info-circle text-primary mr-1"></i>
-                                La planificación se guarda en <strong>L3Requests</strong> y su código se conserva durante todo el flujo.
-                            </div>
+        <div class="col-lg-4 mt-3 mt-lg-0">
+            <div class="card border-0 shadow-sm rounded-lg h-100">
+                <div class="card-body p-4">
+                    <span class="text-uppercase small text-primary font-weight-bold">Planificación académica</span>
+                    <h5 class="font-weight-bold text-dark mt-2">Una planificación, cinco decisiones</h5>
+                    <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Planificación académica (gestión, carrera y semanas).</span></div>
+                    <div class="d-flex mb-3"><span class="badge badge-info mr-2">2</span><span>Definir prácticas dentro de semanas lectivas.</span></div>
+                    <div class="d-flex mb-3"><span class="badge badge-warning mr-2">3</span><span>Agregar requerimientos a cada práctica.</span></div>
+                    <div class="d-flex mb-3"><span class="badge badge-dark mr-2">4</span><span>Validar disponibilidad, L-3 y devolución.</span></div>
+                    <div class="d-flex"><span class="badge badge-danger mr-2">5</span><span>Registrar L-5 incidente (si aplica).</span></div>
+
+                    @if (Model.StructureLocked)
+                    {
+                        <div class="alert alert-warning border-0 small mt-4 mb-0">
+                            <i class="fas fa-lock mr-1"></i>
+                            <strong>Estructura bloqueada.</strong> La planificación ya tiene @Model.PracticeCount práctica(s) registrada(s); no se cambian facultad ni carrera.
                         </div>
-                    </div>
-                </div>
-            </div>
-        </form>
-</div>
-
-@* ── MODAL BUSCAR PLANIFICACIONES ── *@
-<div class="modal fade" id="modalBuscarPlanes" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title font-weight-bold"><i class="mdi mdi-calendar-search mr-2"></i>Planificaciones existentes</h5>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body p-0">
-                <div class="text-center py-4" id="loadingPlans">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-2 text-muted">Cargando planificaciones...</p>
-                </div>
-                <div class="table-responsive" id="containerPlans" style="display:none;">
-                    <table class="table table-hover mb-0">
-                        <thead class="bg-light">
-                            <tr>
-                                <th>CÓDIGO</th>
-                                <th>PRÁCTICA</th>
-                                <th>LABORATORIO</th>
-                                <th>MATERIA</th>
-                                <th>DOCENTE</th>
-                                <th>FECHA</th>
-                                <th>ESTADO</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbodyPlans"></tbody>
-                    </table>
-                </div>
-                <div class="text-center py-4 text-muted" id="emptyPlans" style="display:none;">
-                    <i class="mdi mdi-calendar-blank mdi-36px d-block mb-2"></i>
-                    No hay planificaciones registradas aún.
+                    }
+                    else
+                    {
+                        <div class="alert alert-light border mt-4 mb-0 small">
+                            <i class="fas fa-info-circle text-primary mr-1"></i>
+                            Al guardar, se generan las semanas académicas (lunes a viernes) del rango y se asignan automáticamente a la planificación.
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -231,65 +221,114 @@
 </div>
 
 @section Styles {
-<style>
-    .bg-light-primary { background-color: #e8f0fe; }
-    .bg-light-secondary { background-color: #e9ecef; }
-</style>
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        .bg-light-primary { background-color: #e8e7ff; }
+    </style>
 }
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
-        function escapeHtml(text) {
-            if (!text) return '';
-            return $('<div/>').text(text).html();
-        }
-
-        async function buscarPlanes() {
-            document.getElementById('loadingPlans').style.display = '';
-            document.getElementById('containerPlans').style.display = 'none';
-            document.getElementById('emptyPlans').style.display = 'none';
-            $('#modalBuscarPlanes').modal('show');
-
-            try {
-                const response = await fetch('?handler=SearchPlans', { headers: { 'Accept': 'application/json' } });
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                const data = await response.json();
-                const tbody = document.getElementById('tbodyPlans');
-                tbody.innerHTML = '';
-
-                if (!data || data.length === 0) {
-                    document.getElementById('emptyPlans').style.display = '';
-                } else {
-                    data.forEach(function (p) {
-                        var statusBadge;
-                        if (p.status === 'Aprobado' || p.status === 'Finalizado') {
-                            statusBadge = '<span class="badge badge-success">' + escapeHtml(p.status) + '</span>';
-                        } else if (p.status === 'Cancelado') {
-                            statusBadge = '<span class="badge badge-danger">' + escapeHtml(p.status) + '</span>';
-                        } else {
-                            statusBadge = '<span class="badge badge-secondary">' + escapeHtml(p.status) + '</span>';
-                        }
-                        var row = '<tr>' +
-                            '<td class="font-weight-bold">' + escapeHtml(p.code) + '</td>' +
-                            '<td>' + escapeHtml(p.practiceName) + '</td>' +
-                            '<td>' + escapeHtml(p.lab) + '</td>' +
-                            '<td>' + escapeHtml(p.subject) + '</td>' +
-                            '<td>' + escapeHtml(p.teacher) + '</td>' +
-                            '<td>' + escapeHtml(p.date) + '</td>' +
-                            '<td>' + statusBadge + '</td>' +
-                            '<td><a href="Planificacion?id=' + p.id + '" class="btn btn-sm btn-outline-primary font-weight-bold mr-1"><i class="mdi mdi-eye"></i></a>' +
-                            '<a href="Requerimientos?planId=' + p.id + '" class="btn btn-sm btn-success font-weight-bold"><i class="mdi mdi-arrow-right mr-1"></i>Ir</a></td>' +
-                            '</tr>';
-                        tbody.innerHTML += row;
-                    });
-                    document.getElementById('containerPlans').style.display = '';
+        (function () {
+            $('.select2').select2({
+                width: '100%',
+                language: {
+                    noResults: function () { return 'Sin coincidencias'; }
                 }
-            } catch (err) {
-                document.getElementById('emptyPlans').style.display = '';
-                document.getElementById('emptyPlans').innerHTML = '<i class="mdi mdi-alert mdi-36px d-block mb-2 text-danger"></i>Error cargando datos.';
+            });
+
+            // Cascada Facultad -> Carrera.
+            $('#facultySelect').on('change', function () {
+                var facultyId = $(this).val();
+                var $career = $('#careerSelect');
+                $career.prop('disabled', true).empty().append('<option value="0">— Cargando... —</option>').trigger('change');
+
+                if (!facultyId || facultyId === '0') {
+                    $career.empty().append('<option value="0">— Seleccionar carrera —</option>').trigger('change');
+                    return;
+                }
+
+                $.get('?handler=CareersByFaculty', { facultyId: facultyId }, function (data) {
+                    $career.empty().append('<option value="0">— Seleccionar carrera —</option>');
+                    $.each(data, function (_, item) {
+                        $career.append(new Option(item.name, item.id));
+                    });
+                    $career.prop('disabled', false).trigger('change');
+                }).fail(function () {
+                    $career.empty().append('<option value="0">— Error al cargar —</option>').trigger('change');
+                });
+            });
+
+            // Confirmación SweetAlert v7 al enviar el formulario de semanas.
+            var formSemanas = document.getElementById('form-semanas');
+            if (formSemanas) {
+                formSemanas.addEventListener('submit', function (e) {
+                    if (formSemanas.dataset.confirmed === '1') return true;
+                    e.preventDefault();
+                    if (typeof Swal === 'undefined') {
+                        formSemanas.dataset.confirmed = '1';
+                        HTMLFormElement.prototype.submit.call(formSemanas);
+                        return;
+                    }
+                    Swal.fire({
+                        title: '¿Guardar semanas académicas?',
+                        text: 'Se actualizará el estado lectivo y las notas de cada semana.',
+                        type: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#7460ee',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, guardar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            formSemanas.dataset.confirmed = '1';
+                            HTMLFormElement.prototype.submit.call(formSemanas);
+                        }
+                    });
+                });
             }
-            document.getElementById('loadingPlans').style.display = 'none';
-        }
+
+            // Editar planificación: confirmar con SweetAlert v7 antes de enviar.
+            // En creación (Model.Id == null) no se intercepta el submit.
+            @if (Model.Id.HasValue)
+            {
+                <text>
+                var formPlan = document.getElementById('form-planificacion');
+                if (formPlan) {
+                    formPlan.addEventListener('submit', function (e) {
+                        if (formPlan.dataset.confirmed === '1') return true;
+                        e.preventDefault();
+
+                        // Respetar validación cliente (jQuery validate) si está disponible.
+                        if (typeof $ !== 'undefined' && $(formPlan).valid && $(formPlan).valid() === false) {
+                            return;
+                        }
+
+                        if (typeof Swal === 'undefined') {
+                            formPlan.dataset.confirmed = '1';
+                            HTMLFormElement.prototype.submit.call(formPlan);
+                            return;
+                        }
+
+                        Swal.fire({
+                            type: 'warning',
+                            title: 'Actualizar planificación',
+                            text: 'Se recalcularán las semanas académicas según el nuevo rango. ¿Deseas continuar?',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, actualizar',
+                            cancelButtonText: 'Cancelar'
+                        }).then(function (result) {
+                            if (result && (result.isConfirmed === true || result.value === true)) {
+                                formPlan.dataset.confirmed = '1';
+                                HTMLFormElement.prototype.submit.call(formPlan);
+                            }
+                        });
+                    });
+                }
+                </text>
+            }
+        })();
     </script>
 }

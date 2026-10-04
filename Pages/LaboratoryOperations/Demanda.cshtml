@@ -5,9 +5,9 @@
 <div class="page-breadcrumb">
     <div class="row align-items-end">
         <div class="col-md-8">
-            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-1">PLANIFICACIÓN FUTURA</h4>
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-1">PRÁCTICAS FUTURAS</h4>
             <h2 class="font-weight-bold text-dark mb-1">Demanda de utensilios y materiales</h2>
-            <div class="text-muted small">Consolidado de los requerimientos registrados en planificaciones L-3 planificadas o aprobadas con fecha igual o posterior a hoy.</div>
+            <div class="text-muted small">Consolidado de los requerimientos registrados en prácticas L-3 planificadas o aprobadas con fecha igual o posterior a hoy.</div>
         </div>
         <div class="col-md-4 text-md-right mt-3 mt-md-0">
             <a asp-page="./Planificacion" class="btn btn-primary font-weight-bold">
@@ -113,7 +113,7 @@
                 <div class="text-center py-5">
                     <i class="fas fa-chart-line text-muted mb-3" style="font-size:36px;"></i>
                     <h5 class="font-weight-bold">Todavía no hay requerimientos consolidados</h5>
-                    <p class="text-muted mb-3">Crea una planificación y agrega materiales para ver su demanda aquí.</p>
+                    <p class="text-muted mb-3">Crea una práctica y agrega materiales para ver su demanda aquí.</p>
                     <a asp-page="./Planificacion" class="btn btn-primary">Crear planificación</a>
                 </div>
             }
@@ -142,7 +142,7 @@
                                     <td class="text-muted small">@(index + 1)</td>
                                     <td>
                                         <div class="font-weight-bold">@row.Name</div>
-                                        <div class="text-muted small">@row.PlanCount planificación(es) · @row.Code</div>
+                                        <div class="text-muted small">@row.PlanCount práctica(s) · @row.Code</div>
                                     </td>
                                     <td class="small text-muted">@row.LaboratoryName</td>
                                     <td class="text-center"><span class="badge badge-@categoryClass">@row.Category</span></td>
@@ -160,7 +160,7 @@
 
     <div class="alert alert-info border-0 shadow-sm mt-4 mb-0">
         <i class="fas fa-info-circle mr-2"></i>
-        Esta pantalla agrega los requerimientos de las planificaciones L-3 activas a partir del flujo persistido (planificación, requerimientos, disponibilidad y devolución).
+        Esta pantalla agrega los requerimientos de las prácticas L-3 activas a partir del flujo persistido (planificación, requerimientos, disponibilidad y devolución).
     </div>
 </div>
 

@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -8,274 +7,326 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Paso 1: cabecera de la planificación L-3 persistida en L3Requests.
+/// Planificación académica (gestión + facultad + carrera + rango) y sus semanas académicas lunes-viernes.
 /// </summary>
 public class PlanificacionModel : PageModel
 {
     private readonly ApplicationDbContext _context;
+    private readonly ILogger<PlanificacionModel> _logger;
 
-    public PlanificacionModel(ApplicationDbContext context)
+    public PlanificacionModel(ApplicationDbContext context, ILogger<PlanificacionModel> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
-    /// <summary>Id de L3Requests cuando se edita una planificación existente.</summary>
+    /// <summary>Id de AcademicPlannings cuando se edita.</summary>
     [BindProperty(SupportsGet = true)]
     public int? Id { get; set; }
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
+    [BindProperty]
+    public List<WeekInput> WeekInputs { get; set; } = [];
+
+    public SelectList ManagementList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList FacultyList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList CareerList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
-    public SelectList LaboratoryList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
-    public SelectList TeacherList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
-    public SelectList SubjectList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
-    public SelectList GroupList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
 
-    public string Code => Id.HasValue ? L3Codes.Format(Id.Value) : "Nueva";
-    public string StatusText { get; private set; } = "Nueva planificación";
-    public bool IsReadOnly { get; private set; }
+    public string Code { get; private set; } = "Nueva planificación";
+    public int PracticeCount { get; private set; }
+    /// <summary>Con prácticas registradas no se cambian facultad, carrera ni fecha de inicio.</summary>
+    public bool StructureLocked => PracticeCount > 0;
+    public List<WeekRow> Weeks { get; private set; } = [];
+
+    public sealed record WeekRow(int Id, int Number, DateTime StartDate, DateTime EndDate, bool IsLective, string? Note, int PracticeCount);
 
     public async Task<IActionResult> OnGetAsync()
     {
         if (Id.HasValue)
         {
-            var plan = await _context.L3Requests.AsNoTracking()
-                .Include(r => r.Laboratory)
-                .FirstOrDefaultAsync(r => r.Id == Id.Value);
-            if (plan == null)
+            var planning = await _context.AcademicPlannings.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == Id.Value);
+            if (planning == null)
             {
-                TempData.Error("La planificación solicitada no existe.");
-                return RedirectToPage("./Index");
+                TempData.Error("La planificación no existe.");
+                return RedirectToPage("./Calendario");
             }
-
-            Input = InputModel.From(plan);
-            StatusText = plan.Status;
-            IsReadOnly = plan.Status != L3RequestStatus.Planned;
+            Input = InputModel.From(planning);
         }
 
-        await LoadListsAsync();
+        await LoadPageAsync();
         return Page();
+    }
+
+    /// <summary>AJAX: carreras activas de una facultad.</summary>
+    public async Task<JsonResult> OnGetCareersByFacultyAsync(int facultyId)
+    {
+        var careers = await _context.Careers.AsNoTracking()
+            .Where(c => c.FacultadId == facultyId && c.Status == GeneralStatus.Activo)
+            .OrderBy(c => c.Name)
+            .Select(c => new { id = c.Id, name = c.Name })
+            .ToListAsync();
+        return new JsonResult(careers);
     }
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!TryParseTime(Input.StartTime, out var startTime))
-            ModelState.AddModelError("Input.StartTime", "Indica una hora de inicio válida.");
-        if (!TryParseTime(Input.EndTime, out var endTime))
-            ModelState.AddModelError("Input.EndTime", "Indica una hora de finalización válida.");
-        if (ModelState.IsValid && endTime <= startTime)
-            ModelState.AddModelError("Input.EndTime", "La hora de finalización debe ser posterior a la de inicio.");
+        var management = await _context.Managements.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.Id == Input.ManagementId && m.Status != ManagementStatus.Deleted && m.Semester > 0);
+        if (management == null)
+            ModelState.AddModelError("Input.ManagementId", "Selecciona una gestión semestral válida.");
 
-        var laboratory = await _context.Laboratories.AsNoTracking()
-            .FirstOrDefaultAsync(l => l.Id == Input.LaboratoryId && l.Status == GeneralStatus.Activo);
-        if (laboratory == null || laboratory.FacultyId != Input.FacultyId)
-            ModelState.AddModelError("Input.LaboratoryId", "El laboratorio no pertenece a la facultad seleccionada.");
-
-        if (Input.CareerId.HasValue && !await _context.Careers.AsNoTracking()
+        if (!await _context.Faculties.AsNoTracking().AnyAsync(f => f.Id == Input.FacultyId && f.Status == GeneralStatus.Activo))
+            ModelState.AddModelError("Input.FacultyId", "Selecciona una facultad activa.");
+        if (!await _context.Careers.AsNoTracking()
                 .AnyAsync(c => c.Id == Input.CareerId && c.FacultadId == Input.FacultyId && c.Status == GeneralStatus.Activo))
             ModelState.AddModelError("Input.CareerId", "La carrera no pertenece a la facultad seleccionada.");
 
-        if (!await TeacherQuery().AnyAsync(t => t.Id == Input.TeacherPersonId))
-            ModelState.AddModelError("Input.TeacherPersonId", "Selecciona un docente activo.");
-        if (!await _context.Subjects.AsNoTracking().AnyAsync(s => s.Id == Input.SubjectId))
-            ModelState.AddModelError("Input.SubjectId", "Selecciona una materia válida.");
-        if (!await _context.Groups.AsNoTracking().AnyAsync(g => g.Id == Input.GroupId))
-            ModelState.AddModelError("Input.GroupId", "Selecciona un grupo válido.");
-
-        var start = Input.PracticeDate.Date + startTime;
-        var end = Input.PracticeDate.Date + endTime;
-
-        if (ModelState.IsValid)
+        IReadOnlyList<AcademicWeekGenerator.WeekSlot> slots = [];
+        if (Input.EndDate.Date < Input.StartDate.Date)
+            ModelState.AddModelError("Input.EndDate", "La fecha de fin no puede ser anterior a la de inicio.");
+        else
         {
-            // Choque de horario en el mismo laboratorio (planificaciones vigentes).
-            var clash = await _context.L3Requests.AsNoTracking()
-                .Where(r => r.Id != (Id ?? 0)
-                    && r.LaboratoryId == Input.LaboratoryId
-                    && r.Status != L3RequestStatus.Cancelled
-                    && r.ScheduledDate < end
-                    && start < (r.ScheduledEndDate ?? r.ScheduledDate.AddHours(1)))
-                .Select(r => new { r.Id, r.PracticeName, r.ScheduledDate, r.ScheduledEndDate })
-                .FirstOrDefaultAsync();
-            if (clash != null)
-            {
-                ModelState.AddModelError(string.Empty,
-                    $"El laboratorio ya está reservado por {L3Codes.Format(clash.Id)} ({clash.PracticeName}) " +
-                    $"entre {clash.ScheduledDate:HH\\:mm} y {(clash.ScheduledEndDate ?? clash.ScheduledDate.AddHours(1)):HH\\:mm}.");
-            }
+            try { slots = AcademicWeekGenerator.Generate(Input.StartDate, Input.EndDate); }
+            catch (ArgumentException ex) { ModelState.AddModelError("Input.EndDate", ex.Message); }
         }
 
-        L3Request? plan = null;
+        if (await _context.AcademicPlannings.AsNoTracking()
+                .AnyAsync(p => p.Id != (Id ?? 0) && p.ManagementId == Input.ManagementId && p.CareerId == Input.CareerId))
+            ModelState.AddModelError(string.Empty, "Ya existe una planificación para esa gestión y carrera.");
+
+        AcademicPlanning? planning = null;
+        Dictionary<int, int> practicesByWeek = [];
         if (Id.HasValue)
         {
-            plan = await _context.L3Requests.AsTracking().FirstOrDefaultAsync(r => r.Id == Id.Value);
-            if (plan == null)
+            planning = await _context.AcademicPlannings.AsTracking()
+                .Include(p => p.Weeks)
+                .FirstOrDefaultAsync(p => p.Id == Id.Value);
+            if (planning == null)
             {
                 TempData.Error("La planificación ya no existe.");
-                return RedirectToPage("./Index");
+                return RedirectToPage("./Calendario");
             }
-            if (plan.Status != L3RequestStatus.Planned)
-                ModelState.AddModelError(string.Empty, "Solo se puede editar una planificación en estado Planificado.");
+
+            practicesByWeek = await PracticesByWeekAsync(planning.Id);
+            var hasPractices = await _context.L3Requests.AsNoTracking()
+                .AnyAsync(r => r.AcademicPlanningId == planning.Id && r.Status != L3RequestStatus.Cancelled);
+            if (hasPractices)
+            {
+                if (planning.FacultyId != Input.FacultyId || planning.CareerId != Input.CareerId)
+                    ModelState.AddModelError(string.Empty, "La planificación ya tiene prácticas: no se puede cambiar la facultad ni la carrera.");
+                if (AcademicWeekGenerator.MondayOf(planning.StartDate) != AcademicWeekGenerator.MondayOf(Input.StartDate))
+                    ModelState.AddModelError("Input.StartDate", "La planificación ya tiene prácticas: la fecha de inicio debe quedar en la misma semana.");
+            }
+
+            var lastNumber = slots.Count;
+            var droppedWithPractices = planning.Weeks
+                .Where(w => w.Number > lastNumber && practicesByWeek.GetValueOrDefault(w.Id) > 0)
+                .Select(w => w.Number)
+                .ToList();
+            if (droppedWithPractices.Count > 0)
+                ModelState.AddModelError("Input.EndDate",
+                    $"No se puede acortar el rango: las semanas {string.Join(", ", droppedWithPractices)} tienen prácticas.");
         }
 
         if (!ModelState.IsValid)
         {
-            await LoadListsAsync();
+            await LoadPageAsync();
             return Page();
         }
 
-        var isNew = plan == null;
-        plan ??= new L3Request { Status = L3RequestStatus.Planned };
-        plan.LaboratoryId = Input.LaboratoryId;
-        plan.TeacherPersonId = Input.TeacherPersonId;
-        plan.SubjectId = Input.SubjectId;
-        plan.GroupId = Input.GroupId;
-        plan.PracticeName = Input.PracticeName.Trim();
-        plan.AcademicWeek = Input.AcademicWeek;
-        plan.ScheduledDate = start;
-        plan.ScheduledEndDate = end;
-        plan.Observations = string.IsNullOrWhiteSpace(Input.Observations) ? null : Input.Observations.Trim();
-
-        if (isNew) _context.L3Requests.Add(plan);
-        await _context.SaveChangesAsync();
-
-        TempData.Success(isNew
-            ? $"Planificación {L3Codes.Format(plan.Id)} creada. Ahora define sus requerimientos."
-            : "Planificación actualizada correctamente.");
-        return RedirectToPage("./Requerimientos", new { planId = plan.Id });
-    }
-
-    /// <summary>AJAX: planificaciones existentes para el modal de búsqueda.</summary>
-    public async Task<JsonResult> OnGetSearchPlansAsync()
-    {
-        var plans = await _context.L3Requests.AsNoTracking()
-            .OrderByDescending(p => p.ScheduledDate)
-            .Take(200)
-            .Select(p => new
-            {
-                p.Id,
-                p.PracticeName,
-                Lab = p.Laboratory.Name,
-                Subject = p.Subject.Name,
-                p.TeacherPersonId,
-                p.ScheduledDate,
-                p.Status
-            })
-            .ToListAsync();
-
-        var teacherIds = plans.Where(p => p.TeacherPersonId.HasValue).Select(p => p.TeacherPersonId!.Value).Distinct().ToList();
-        var teachers = await _context.Interns.AsNoTracking()
-            .Where(i => teacherIds.Contains(i.Id))
-            .ToDictionaryAsync(i => i.Id, i => i.Name);
-
-        return new JsonResult(plans.Select(p => new
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            p.Id,
-            Code = L3Codes.Format(p.Id),
-            p.PracticeName,
-            p.Lab,
-            p.Subject,
-            Teacher = p.TeacherPersonId.HasValue && teachers.TryGetValue(p.TeacherPersonId.Value, out var name) ? name : "—",
-            Date = p.ScheduledDate.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture),
-            p.Status
-        }));
+            var isNew = planning == null;
+            planning ??= new AcademicPlanning();
+            planning.ManagementId = Input.ManagementId;
+            planning.FacultyId = Input.FacultyId;
+            planning.CareerId = Input.CareerId;
+            planning.Name = Input.Name.Trim();
+            planning.StartDate = Input.StartDate.Date;
+            planning.EndDate = Input.EndDate.Date;
+            if (isNew) _context.AcademicPlannings.Add(planning);
+
+            var existing = planning.Weeks.ToDictionary(w => w.Number);
+            foreach (var slot in slots)
+            {
+                if (existing.TryGetValue(slot.Number, out var week))
+                {
+                    week.StartDate = slot.Monday;
+                    week.EndDate = slot.Friday;
+                }
+                else
+                {
+                    planning.Weeks.Add(new AcademicWeek { Number = slot.Number, StartDate = slot.Monday, EndDate = slot.Friday });
+                }
+            }
+
+            // Semanas que quedan fuera del rango y no tienen prácticas (validado arriba): filas de configuración sin historial.
+            foreach (var week in planning.Weeks.Where(w => w.Number > slots.Count && w.Id > 0).ToList())
+                _context.AcademicWeeks.Remove(week);
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            TempData.Success(isNew
+                ? $"Planificación creada con {slots.Count} semanas académicas."
+                : "Planificación actualizada.");
+            return RedirectToPage(new { id = planning.Id });
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
+        {
+            // Carrera concurrente: otra planificación ocupó la misma gestión y carrera.
+            await transaction.RollbackAsync();
+            TempData.Error("Ya existe una planificación para esa gestión y carrera.");
+            return Id.HasValue ? RedirectToPage(new { id = Id }) : RedirectToPage("./Calendario");
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "No se pudo guardar la planificación académica {PlanningId}", Id);
+            TempData.Error("No se pudo guardar la planificación. Intente nuevamente.");
+            return RedirectToPage(new { id = Id });
+        }
     }
 
-    private IQueryable<Intern> TeacherQuery() => _context.Interns.AsNoTracking()
-        .Where(i => i.Category == PersonCategory.Docente
-            && i.Status == GeneralStatus.Activo
-            && i.InternStatus == GeneralStatus.Activo);
-
-    private async Task LoadListsAsync()
+    /// <summary>Guarda lectiva/no lectiva y nota de cada semana.</summary>
+    public async Task<IActionResult> OnPostWeeksAsync()
     {
+        if (!Id.HasValue) return RedirectToPage("./Calendario");
+
+        var weeks = await _context.AcademicWeeks.AsTracking()
+            .Where(w => w.AcademicPlanningId == Id.Value)
+            .ToListAsync();
+        if (weeks.Count == 0)
+        {
+            TempData.Error("La planificación no existe o no tiene semanas.");
+            return RedirectToPage("./Calendario");
+        }
+
+        var byId = weeks.ToDictionary(w => w.Id);
+        if (WeekInputs.Any(i => !byId.ContainsKey(i.Id)))
+        {
+            TempData.Error("Las semanas enviadas no pertenecen a esta planificación. Recargue la página.");
+            return RedirectToPage(new { id = Id });
+        }
+
+        var practicesByWeek = await PracticesByWeekAsync(Id.Value);
+        var blocked = WeekInputs
+            .Where(i => !i.IsLective && byId[i.Id].IsLective && practicesByWeek.GetValueOrDefault(i.Id) > 0)
+            .Select(i => byId[i.Id].Number)
+            .ToList();
+        if (blocked.Count > 0)
+        {
+            TempData.Error($"Las semanas {string.Join(", ", blocked)} tienen prácticas; muévalas antes de marcarlas como no lectivas.");
+            return RedirectToPage(new { id = Id });
+        }
+
+        foreach (var input in WeekInputs)
+        {
+            var week = byId[input.Id];
+            week.IsLective = input.IsLective;
+            week.Note = string.IsNullOrWhiteSpace(input.Note) ? null : input.Note.Trim();
+        }
+
+        await _context.SaveChangesAsync();
+        TempData.Success("Semanas académicas actualizadas.");
+        return RedirectToPage(new { id = Id });
+    }
+
+    private async Task<Dictionary<int, int>> PracticesByWeekAsync(int planningId) =>
+        await _context.L3Requests.AsNoTracking()
+            .Where(r => r.AcademicPlanningId == planningId && r.AcademicWeekId != null && r.Status != L3RequestStatus.Cancelled)
+            .GroupBy(r => r.AcademicWeekId!.Value)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count);
+
+    private async Task LoadPageAsync()
+    {
+        var managements = await _context.Managements.AsNoTracking()
+            .Where(m => m.Status != ManagementStatus.Deleted && m.Semester > 0)
+            .OrderByDescending(m => m.Year).ThenByDescending(m => m.Semester)
+            .Select(m => new { m.Id, m.Code })
+            .ToListAsync();
         var faculties = await _context.Faculties.AsNoTracking()
             .Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name).ToListAsync();
         var careers = await _context.Careers.AsNoTracking()
-            .Where(c => c.Status == GeneralStatus.Activo && (Input.FacultyId <= 0 || c.FacultadId == Input.FacultyId))
+            .Where(c => c.Status == GeneralStatus.Activo && c.FacultadId == Input.FacultyId)
             .OrderBy(c => c.Name).ToListAsync();
-        var laboratories = await _context.Laboratories.AsNoTracking()
-            .Where(l => l.Status == GeneralStatus.Activo && (Input.FacultyId <= 0 || l.FacultyId == Input.FacultyId))
-            .OrderBy(l => l.Name).ToListAsync();
-        var teachers = await TeacherQuery().OrderBy(t => t.Name).Select(t => new { t.Id, t.Name }).ToListAsync();
-        var subjects = await _context.Subjects.AsNoTracking().OrderBy(s => s.Name).ToListAsync();
-        var groups = await _context.Groups.AsNoTracking().OrderBy(g => g.Name).ToListAsync();
 
+        ManagementList = new SelectList(managements, "Id", "Code", Input.ManagementId);
         FacultyList = new SelectList(faculties, "Id", "Name", Input.FacultyId);
         CareerList = new SelectList(careers, "Id", "Name", Input.CareerId);
-        LaboratoryList = new SelectList(laboratories, "Id", "Name", Input.LaboratoryId);
-        TeacherList = new SelectList(teachers, "Id", "Name", Input.TeacherPersonId);
-        SubjectList = new SelectList(subjects, "Id", "Name", Input.SubjectId);
-        GroupList = new SelectList(groups, "Id", "Name", Input.GroupId);
-    }
 
-    private static bool TryParseTime(string? value, out TimeSpan result) =>
-        TimeSpan.TryParseExact(value, [@"hh\:mm", @"h\:mm", @"hh\:mm\:ss"], CultureInfo.InvariantCulture, out result)
-        || TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out result);
+        if (!Id.HasValue) return;
+
+        var header = await _context.AcademicPlannings.AsNoTracking()
+            .Where(p => p.Id == Id.Value)
+            .Select(p => new { ManagementCode = p.Management.Code, CareerCode = p.Career.Code })
+            .FirstOrDefaultAsync();
+        Code = L3Codes.Planning(header?.ManagementCode, header?.CareerCode, Id.Value);
+
+        var practicesByWeek = await PracticesByWeekAsync(Id.Value);
+        PracticeCount = await _context.L3Requests.AsNoTracking()
+            .CountAsync(r => r.AcademicPlanningId == Id.Value && r.Status != L3RequestStatus.Cancelled);
+        Weeks = (await _context.AcademicWeeks.AsNoTracking()
+                .Where(w => w.AcademicPlanningId == Id.Value)
+                .OrderBy(w => w.Number)
+                .ToListAsync())
+            .Select(w => new WeekRow(w.Id, w.Number, w.StartDate, w.EndDate, w.IsLective, w.Note, practicesByWeek.GetValueOrDefault(w.Id)))
+            .ToList();
+    }
 
     public sealed class InputModel
     {
+        [Range(1, int.MaxValue, ErrorMessage = "La gestión es obligatoria")]
+        [Display(Name = "Gestión")]
+        public int ManagementId { get; set; }
+
         [Range(1, int.MaxValue, ErrorMessage = "La facultad es obligatoria")]
+        [Display(Name = "Facultad")]
         public int FacultyId { get; set; }
 
-        /// <summary>Solo filtra el formulario; L3Requests no guarda carrera.</summary>
-        public int? CareerId { get; set; }
+        [Range(1, int.MaxValue, ErrorMessage = "La carrera es obligatoria")]
+        [Display(Name = "Carrera")]
+        public int CareerId { get; set; }
 
-        [Range(1, int.MaxValue, ErrorMessage = "El laboratorio es obligatorio")]
-        public int LaboratoryId { get; set; }
+        [Required(ErrorMessage = "El nombre es obligatorio"), StringLength(150)]
+        [Display(Name = "Nombre de la planificación")]
+        public string Name { get; set; } = string.Empty;
 
-        [Range(1, int.MaxValue, ErrorMessage = "El docente es obligatorio")]
-        [Display(Name = "Docente responsable")]
-        public int TeacherPersonId { get; set; }
+        [DataType(DataType.Date)]
+        [Display(Name = "Fecha de inicio")]
+        public DateTime StartDate { get; set; } = DateTime.Today;
 
-        [Range(1, int.MaxValue, ErrorMessage = "La materia es obligatoria")]
-        public int SubjectId { get; set; }
+        [DataType(DataType.Date)]
+        [Display(Name = "Fecha de fin")]
+        public DateTime EndDate { get; set; } = DateTime.Today.AddMonths(4);
 
-        [Range(1, int.MaxValue, ErrorMessage = "El grupo es obligatorio")]
-        public int GroupId { get; set; }
-
-        [Required(ErrorMessage = "El nombre de la práctica es obligatorio"), StringLength(255)]
-        [Display(Name = "Nombre de la práctica")]
-        public string PracticeName { get; set; } = string.Empty;
-
-        [Range(1, 30, ErrorMessage = "La semana académica debe estar entre 1 y 30")]
-        public int AcademicWeek { get; set; } = 1;
-
-        [Required(ErrorMessage = "La fecha es obligatoria"), DataType(DataType.Date)]
-        public DateTime PracticeDate { get; set; } = DateTime.Today;
-
-        [Required(ErrorMessage = "La hora de inicio es obligatoria")]
-        public string StartTime { get; set; } = "08:00";
-
-        [Required(ErrorMessage = "La hora de finalización es obligatoria")]
-        public string EndTime { get; set; } = "11:00";
-
-        [StringLength(1000)]
-        public string? Observations { get; set; }
-
-        public static InputModel From(L3Request plan) => new()
+        public static InputModel From(AcademicPlanning planning) => new()
         {
-            FacultyId = plan.Laboratory?.FacultyId ?? 0,
-            LaboratoryId = plan.LaboratoryId,
-            TeacherPersonId = plan.TeacherPersonId ?? 0,
-            SubjectId = plan.SubjectId,
-            GroupId = plan.GroupId,
-            PracticeName = plan.PracticeName,
-            AcademicWeek = plan.AcademicWeek,
-            PracticeDate = plan.ScheduledDate.Date,
-            StartTime = plan.ScheduledDate.ToString("HH:mm", CultureInfo.InvariantCulture),
-            EndTime = (plan.ScheduledEndDate ?? plan.ScheduledDate.AddHours(1)).ToString("HH:mm", CultureInfo.InvariantCulture),
-            Observations = plan.Observations
+            ManagementId = planning.ManagementId,
+            FacultyId = planning.FacultyId,
+            CareerId = planning.CareerId,
+            Name = planning.Name,
+            StartDate = planning.StartDate,
+            EndDate = planning.EndDate
         };
     }
-}
 
-/// <summary>Formato visible del código de planificación a partir del Id persistido.</summary>
-public static class L3Codes
-{
-    public static string Format(int id) => $"PLN-{id:00000}";
+    public sealed class WeekInput
+    {
+        public int Id { get; set; }
+        public bool IsLective { get; set; }
+
+        [StringLength(100)]
+        public string? Note { get; set; }
+    }
 }

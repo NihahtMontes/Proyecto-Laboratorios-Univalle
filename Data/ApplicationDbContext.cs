@@ -379,6 +379,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<L3Request> L3Requests { get; set; } = null!;
         public DbSet<L3RequestDetail> L3RequestDetails { get; set; } = null!;
         public DbSet<L5Incident> L5Incidents { get; set; } = null!;
+        public DbSet<AcademicPlanning> AcademicPlannings { get; set; } = null!;
+        public DbSet<AcademicWeek> AcademicWeeks { get; set; } = null!;
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -734,6 +736,17 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<L3RequestDetail>().HasOne(d => d.EquipmentUnit).WithMany().HasForeignKey(d => d.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<L5Incident>().HasOne(i => i.EquipmentUnit).WithMany().HasForeignKey(i => i.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<L5Incident>().HasOne(i => i.L3Request).WithMany(r => r.Incidents).HasForeignKey(i => i.L3RequestId).OnDelete(DeleteBehavior.Restrict);
+            // Planificación académica: una por gestión y carrera; semanas lunes-viernes; prácticas = L3Request.
+            modelBuilder.Entity<AcademicPlanning>().HasQueryFilter(p => !p.IsDeleted);
+            modelBuilder.Entity<AcademicWeek>().HasQueryFilter(w => !w.AcademicPlanning.IsDeleted);
+            modelBuilder.Entity<AcademicPlanning>().HasIndex(p => new { p.ManagementId, p.CareerId }).IsUnique().HasFilter("[IsDeleted] = 0");
+            modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Management).WithMany().HasForeignKey(p => p.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Faculty).WithMany().HasForeignKey(p => p.FacultyId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Career).WithMany().HasForeignKey(p => p.CareerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AcademicWeek>().HasIndex(w => new { w.AcademicPlanningId, w.Number }).IsUnique();
+            modelBuilder.Entity<AcademicWeek>().HasOne(w => w.AcademicPlanning).WithMany(p => p.Weeks).HasForeignKey(w => w.AcademicPlanningId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.AcademicPlanning).WithMany(p => p.Practices).HasForeignKey(r => r.AcademicPlanningId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L3Request>().HasOne(r => r.AcademicWeekRef).WithMany().HasForeignKey(r => r.AcademicWeekId).OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<User>().ToTable("Users", table =>
             {
