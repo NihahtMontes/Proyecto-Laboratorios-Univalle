@@ -31,9 +31,9 @@
                             </h5>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-muted">Código Único <span class="text-danger">*</span></label>
-                                <input asp-for="Input.Code" class="form-control" required maxlength="30" />
-                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold"></span>
+                                <label class="control-label font-weight-bold small uppercase text-muted">Código Único</label>
+                                <input class="form-control bg-light font-weight-bold" value="@(Model.ArticleSnapshot?.Code ?? string.Empty)" disabled />
+                                <small class="form-text text-muted"><i class="fas fa-lock mr-1"></i>El código lo asigna el sistema y no se modifica.</small>
                             </div>
 
                             <div class="form-group mb-4">
@@ -84,6 +84,19 @@
                                     }
                                 </select>
                                 <span asp-validation-for="Input.MeasurementUnitId" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label asp-for="Input.EquipmentId" class="control-label font-weight-bold small uppercase text-muted">Catálogo de Equipo Vinculado</label>
+                                <select asp-for="Input.EquipmentId" class="form-control custom-select select2">
+                                    <option value="">Sin vínculo</option>
+                                    @foreach (var eq in Model.EquipmentOptions)
+                                    {
+                                        <option value="@eq.Value">@eq.Text</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="Input.EquipmentId" class="text-danger small font-weight-bold"></span>
+                                <small class="text-muted italic">Si el artículo es un equipo, vincúlalo a su catálogo: su stock serán las unidades físicas disponibles.</small>
                             </div>
                         </div>
                     </div>
@@ -189,10 +202,11 @@
                     }
                 });
             }
-            setupBlocking('#Input_Code', alphanumericPattern);
             setupBlocking('#Input_Name', alphanumericPattern);
 
             $('.select2').select2({ width: '100%', allowClear: true });
+            // El select de Catálogo de equipo usa placeholder propio y no es requerido.
+            $('#Input_EquipmentId').select2({ width: '100%', allowClear: true, placeholder: 'Sin vínculo' });
 
             var form = document.getElementById('edit-article-form');
             if (form) {

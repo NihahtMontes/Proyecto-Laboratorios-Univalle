@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -11,19 +10,27 @@ using Proyecto_Laboratorios_Univalle.Services;
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Paso 2: requerimientos L-3 por artículo. Se precargan desde la receta de la práctica (cantidad escalada por
-/// estudiantes ÷ factor en las líneas escalables) y se pueden agregar artículos sueltos, con unidad física opcional.
+/// Paso 2: requerimientos L-3 por artículo. Se precargan desde la receta de la práctica o el kit de la materia
+/// (cantidad escalada por estudiantes ÷ factor en las líneas escalables) y se agregan con el buscador:
+/// artículos por categoría/nombre y equipos por nombre, inventario o serie (cada unidad física es una línea).
 /// Los artículos "Por confirmar" se pueden pedir (D1) y se muestran con su etiqueta.
 /// </summary>
 public class RequerimientosModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly IPlanningService _planningService;
+    private readonly RequirementPickerService _picker;
+    private readonly IArticleAvailabilityService _availability;
+    private readonly IL3CircuitService _circuit;
 
-    public RequerimientosModel(ApplicationDbContext context, IPlanningService planningService)
+    public RequerimientosModel(ApplicationDbContext context, IPlanningService planningService, RequirementPickerService picker,
+        IArticleAvailabilityService availability, IL3CircuitService circuit)
     {
         _context = context;
         _planningService = planningService;
+        _picker = picker;
+        _availability = availability;
+        _circuit = circuit;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -32,27 +39,48 @@ public class RequerimientosModel : PageModel
     [BindProperty(SupportsGet = true)]
     public bool Conflict { get; set; }
 
+    /// <summary>Selección del buscador: artículos con cantidad y unidades físicas.</summary>
     [BindProperty]
-    public InputModel Input { get; set; } = new();
+    public BatchInput Batch { get; set; } = new();
 
     public L3Request? Plan { get; private set; }
     public string Code => L3Codes.Format(PlanId);
     public bool IsEditable => Plan?.Status == L3RequestStatus.Planned;
     public List<RequirementRow> Items { get; private set; } = [];
-    public List<ArticleOption> Articles { get; private set; } = [];
-    public List<UnitOption> Units { get; private set; } = [];
 
     /// <summary>Líneas de la receta de la práctica (para mostrar qué se precargará).</summary>
     public List<RecipeRow> Recipe { get; private set; } = [];
     public int? StudentCount { get; private set; }
     public int? ScalingFactor { get; private set; }
 
+    /// <summary>Kit de la materia de la práctica (vacío si no tiene).</summary>
+    public List<KitRow> Kit { get; private set; } = [];
+    public string? SubjectName { get; private set; }
+    /// <summary>Guardar las líneas como kit requiere los roles del catálogo de materias.</summary>
+    public bool CanEditKit => User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
+
+    /// <summary>Datos del buscador: categorías de artículos y laboratorios de la sede/facultad (filtro de equipos).</summary>
+    public List<RequirementPickerService.CategoryOption> Categories { get; private set; } = [];
+    public List<LaboratoryOption> Laboratories { get; private set; } = [];
+
     public sealed record RequirementRow(int DetailId, int ArticleId, string ArticleCode, string ArticleName, bool ArticlePending,
-        string? Unit, decimal? Quantity, string? InventoryNumber, string? Observations);
-    public sealed record ArticleOption(int Id, string Code, string Name, string? Category, string? Unit, bool Pending);
-    public sealed record UnitOption(int Id, string InventoryNumber, string EquipmentName);
+        string? Unit, decimal? Quantity, string? InventoryNumber, string? Observations)
+    {
+        /// <summary>Stock del artículo (existencias en el Economato o unidades físicas del equipo vinculado).</summary>
+        public ArticleStockInfo? Stock { get; init; }
+    }
+
+    /// <summary>Cantidad total pedida por artículo (varias líneas del mismo artículo comparten el stock).</summary>
+    public Dictionary<int, decimal> RequestedByArticle { get; private set; } = [];
+
+    /// <summary>True si el total pedido de este artículo supera su stock registrado.</summary>
+    public bool IsShort(RequirementRow row) =>
+        row.Stock?.Available is decimal available && RequestedByArticle.GetValueOrDefault(row.ArticleId) > available;
     public sealed record RecipeRow(string ArticleCode, string ArticleName, bool ArticlePending, decimal? BaseQuantity,
         bool IsScalable, decimal? ComputedQuantity, string? Note);
+    public sealed record KitRow(string ArticleCode, string ArticleName, string? Category, bool IsEquipment, decimal BaseQuantity,
+        bool IsScalable, decimal? ComputedQuantity, string? Note, bool AlreadyInRequest);
+    public sealed record LaboratoryOption(int Id, string Name);
 
     /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
     public PlanningContextViewModel? Context { get; private set; }
@@ -119,48 +147,239 @@ public class RequerimientosModel : PageModel
         return RedirectToPage(new { planId = PlanId });
     }
 
-    public async Task<IActionResult> OnPostAddAsync()
+    /// <summary>Carga el kit de la materia: agrega los artículos que aún no están en la solicitud.</summary>
+    public async Task<IActionResult> OnPostLoadKitAsync()
+    {
+        var plan = await GuardAsync();
+        if (plan == null) return RedirectToPage(new { planId = PlanId });
+        if (!plan.SubjectId.HasValue)
+        {
+            TempData.Warning("La práctica no tiene materia: agrega los artículos con el buscador.");
+            return RedirectToPage(new { planId = PlanId });
+        }
+
+        var kit = await _context.SubjectKitItems.AsNoTracking()
+            .Where(k => k.SubjectId == plan.SubjectId.Value && k.Article!.Status == GeneralStatus.Activo)
+            .ToListAsync();
+        if (kit.Count == 0)
+        {
+            TempData.Warning("Esta materia aún no tiene kit.");
+            return RedirectToPage(new { planId = PlanId });
+        }
+
+        var schedule = plan.PracticeScheduleId.HasValue
+            ? await _context.PracticeSchedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == plan.PracticeScheduleId.Value)
+            : null;
+        // Un artículo ya pedido (por cantidad o como unidades físicas) no se vuelve a cargar.
+        var present = await _context.L3RequestDetails.AsNoTracking()
+            .Where(d => d.L3RequestId == plan.Id)
+            .Select(d => d.ArticleId).ToListAsync();
+
+        var added = 0;
+        foreach (var item in kit.Where(k => !present.Contains(k.ArticleId)))
+        {
+            var (quantity, note) = RequirementPickerService.Scale(item.Quantity, item.IsScalable, schedule?.StudentCount, schedule?.ScalingFactor);
+            var observations = string.Join(" · ", new[] { item.Observations, note }.Where(t => !string.IsNullOrWhiteSpace(t)));
+            _context.L3RequestDetails.Add(new L3RequestDetail
+            {
+                L3RequestId = plan.Id,
+                ArticleId = item.ArticleId,
+                RequestedQuantity = quantity,
+                ExpectedQuantity = (int)Math.Ceiling(quantity ?? 0),
+                Observations = observations.Length == 0 ? null : observations[..Math.Min(observations.Length, 1000)]
+            });
+            added++;
+        }
+        await _context.SaveChangesAsync();
+
+        if (added > 0) TempData.Success($"Kit de la materia cargado: {added} artículo(s) agregados. Ajusta las cantidades si hace falta.");
+        else TempData.Info("Todos los artículos del kit ya estaban en la solicitud.");
+        return RedirectToPage(new { planId = PlanId });
+    }
+
+    /// <summary>Agrega lo elegido en el buscador: artículos (acumula cantidad) y unidades físicas (una línea por unidad).</summary>
+    public async Task<IActionResult> OnPostAddBatchAsync()
     {
         var plan = await GuardAsync();
         if (plan == null) return RedirectToPage(new { planId = PlanId });
 
-        if (Input.Quantity is decimal q && decimal.Round(q, 2) != q)
-            ModelState.AddModelError("Input.Quantity", "La cantidad admite hasta 2 decimales.");
-        var article = await _context.Articles.AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == Input.ArticleId && a.Status == GeneralStatus.Activo);
-        if (article == null)
-            ModelState.AddModelError("Input.ArticleId", "Selecciona un artículo activo.");
-        if (Input.EquipmentUnitId.HasValue && !await _context.EquipmentUnits.AsNoTracking().AnyAsync(u =>
-                u.Id == Input.EquipmentUnitId && u.LaboratoryId == plan.LaboratoryId && u.CurrentStatus != EquipmentStatus.Deleted))
-            ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física no pertenece al laboratorio de la práctica.");
-        if (!ModelState.IsValid) return await LoadPageAsync();
+        var articleLines = Batch.Articles.Where(l => l.Id > 0)
+            .GroupBy(l => l.Id)
+            .Select(g => (ArticleId: g.Key, Quantity: g.Sum(l => l.Quantity ?? 0)))
+            .ToList();
+        var unitIds = Batch.UnitIds.Where(id => id > 0).Distinct().ToList();
+        if (articleLines.Count == 0 && unitIds.Count == 0)
+        {
+            TempData.Warning("Selecciona al menos un artículo o una unidad de equipo.");
+            return RedirectToPage(new { planId = PlanId });
+        }
+        if (articleLines.Any(l => l.Quantity <= 0 || l.Quantity > 999999 || decimal.Round(l.Quantity, 2) != l.Quantity))
+        {
+            TempData.Error("Las cantidades deben ser mayores a 0 y admiten hasta 2 decimales.");
+            return RedirectToPage(new { planId = PlanId });
+        }
 
-        var observations = string.IsNullOrWhiteSpace(Input.Observations) ? null : Input.Observations.Trim();
-        var existing = await _context.L3RequestDetails.AsTracking()
-            .FirstOrDefaultAsync(d => d.L3RequestId == plan.Id && d.ArticleId == Input.ArticleId && d.EquipmentUnitId == Input.EquipmentUnitId);
-        if (existing != null)
+        var articleIds = articleLines.Select(l => l.ArticleId).ToList();
+        var activeArticles = await _context.Articles.AsNoTracking()
+            .CountAsync(a => articleIds.Contains(a.Id) && a.Status == GeneralStatus.Activo);
+        if (activeArticles != articleIds.Count)
         {
-            existing.RequestedQuantity = (existing.RequestedQuantity ?? 0) + Input.Quantity;
-            existing.ExpectedQuantity = (int)Math.Ceiling(existing.RequestedQuantity ?? 0);
-            if (observations != null) existing.Observations = observations;
+            TempData.Error("Algún artículo seleccionado ya no está activo. Vuelve a buscarlo.");
+            return RedirectToPage(new { planId = PlanId });
         }
-        else
+
+        var units = new List<(int Id, int EquipmentId)>();
+        if (unitIds.Count > 0)
         {
-            _context.L3RequestDetails.Add(new L3RequestDetail
+            var scope = await ScopeAsync(plan.Id);
+            if (scope == null)
             {
-                L3RequestId = plan.Id,
-                ArticleId = Input.ArticleId,
-                EquipmentUnitId = Input.EquipmentUnitId,
-                RequestedQuantity = Input.Quantity,
-                ExpectedQuantity = (int)Math.Ceiling(Input.Quantity ?? 0),
-                Observations = observations
-            });
+                TempData.Error("La práctica no tiene facultad para ubicar unidades de equipo.");
+                return RedirectToPage(new { planId = PlanId });
+            }
+            var labIds = _picker.ScopeLaboratories(scope.Value.FacultyId, scope.Value.CampusId).Select(l => l.Id);
+            units = (await _context.EquipmentUnits.AsNoTracking()
+                    .Where(u => unitIds.Contains(u.Id) && u.LaboratoryId != null && labIds.Contains(u.LaboratoryId.Value)
+                        && u.CurrentStatus != EquipmentStatus.Deleted && u.CurrentStatus != EquipmentStatus.Decommissioned
+                        && u.CurrentStatus != EquipmentStatus.Dismantled
+                        && u.Equipment != null && u.Equipment.Status == GeneralStatus.Activo)
+                    .Select(u => new { u.Id, u.EquipmentId })
+                    .ToListAsync())
+                .Select(u => (u.Id, u.EquipmentId))
+                .ToList();
+            if (units.Count != unitIds.Count)
+            {
+                TempData.Error("Alguna unidad seleccionada no está disponible en la sede y facultad de la práctica.");
+                return RedirectToPage(new { planId = PlanId });
+            }
         }
+
+        int added = 0, merged = 0, skipped = 0;
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // Primero se resuelven (o crean) los artículos de los equipos; ResolveEquipmentArticleAsync guarda.
+            var articleByEquipment = new Dictionary<int, int>();
+            foreach (var equipmentId in units.Select(u => u.EquipmentId).Distinct())
+                articleByEquipment[equipmentId] = await _picker.ResolveEquipmentArticleAsync(equipmentId);
+
+            var existing = await _context.L3RequestDetails.AsTracking()
+                .Where(d => d.L3RequestId == plan.Id)
+                .ToListAsync();
+
+            foreach (var unit in units)
+            {
+                if (existing.Any(d => d.EquipmentUnitId == unit.Id))
+                {
+                    skipped++;
+                    continue;
+                }
+                var detail = new L3RequestDetail
+                {
+                    L3RequestId = plan.Id,
+                    ArticleId = articleByEquipment[unit.EquipmentId],
+                    EquipmentUnitId = unit.Id,
+                    RequestedQuantity = 1,
+                    ExpectedQuantity = 1
+                };
+                _context.L3RequestDetails.Add(detail);
+                existing.Add(detail);
+                added++;
+            }
+
+            foreach (var line in articleLines)
+            {
+                var current = existing.FirstOrDefault(d => d.ArticleId == line.ArticleId && d.EquipmentUnitId == null);
+                if (current != null)
+                {
+                    current.RequestedQuantity = (current.RequestedQuantity ?? 0) + line.Quantity;
+                    current.ExpectedQuantity = (int)Math.Ceiling(current.RequestedQuantity.Value);
+                    merged++;
+                }
+                else
+                {
+                    var detail = new L3RequestDetail
+                    {
+                        L3RequestId = plan.Id,
+                        ArticleId = line.ArticleId,
+                        RequestedQuantity = line.Quantity,
+                        ExpectedQuantity = (int)Math.Ceiling(line.Quantity)
+                    };
+                    _context.L3RequestDetails.Add(detail);
+                    existing.Add(detail);
+                    added++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync();
+            TempData.Error("No se pudieron agregar los requerimientos. Intente nuevamente.");
+            return RedirectToPage(new { planId = PlanId });
+        }
+
+        var parts = new List<string>();
+        if (added > 0) parts.Add($"{added} línea(s) agregada(s)");
+        if (merged > 0) parts.Add($"{merged} cantidad(es) sumada(s) a líneas existentes");
+        if (parts.Count > 0) TempData.Success($"Requerimientos actualizados: {string.Join(" y ", parts)}.");
+        if (skipped > 0) TempData.Info($"{skipped} unidad(es) ya estaban en la solicitud.");
+        return RedirectToPage(new { planId = PlanId });
+    }
+
+    /// <summary>
+    /// Reemplaza el kit de la materia con las líneas actuales (sumadas por artículo). Las líneas escalables del kit
+    /// conservan su cantidad base, porque la de la práctica ya viene escalada.
+    /// </summary>
+    public async Task<IActionResult> OnPostSaveKitAsync()
+    {
+        if (!CanEditKit)
+        {
+            TempData.Error("No tiene permisos para modificar el kit de la materia.");
+            return RedirectToPage(new { planId = PlanId });
+        }
+        var plan = await _context.L3Requests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == PlanId);
+        if (plan?.SubjectId is not int subjectId)
+        {
+            TempData.Error("La práctica no tiene materia.");
+            return RedirectToPage(new { planId = PlanId });
+        }
+
+        var lines = (await _context.L3RequestDetails.AsNoTracking()
+                .Where(d => d.L3RequestId == plan.Id)
+                .Select(d => new { d.ArticleId, Quantity = d.RequestedQuantity ?? d.ExpectedQuantity })
+                .ToListAsync())
+            .GroupBy(d => d.ArticleId)
+            .Select(g => (ArticleId: g.Key, Quantity: g.Sum(d => d.Quantity)))
+            .Where(l => l.Quantity > 0)
+            .ToList();
+        if (lines.Count == 0)
+        {
+            TempData.Error("La solicitud no tiene líneas con cantidad para guardar como kit.");
+            return RedirectToPage(new { planId = PlanId });
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        var kit = await _context.SubjectKitItems.AsTracking()
+            .Where(k => k.SubjectId == subjectId)
+            .ToListAsync();
+        foreach (var line in lines)
+        {
+            var item = kit.FirstOrDefault(k => k.ArticleId == line.ArticleId);
+            if (item == null)
+                _context.SubjectKitItems.Add(new SubjectKitItem { SubjectId = subjectId, ArticleId = line.ArticleId, Quantity = line.Quantity });
+            else if (!item.IsScalable)
+                item.Quantity = line.Quantity;
+        }
+        var keep = lines.Select(l => l.ArticleId).ToHashSet();
+        foreach (var item in kit.Where(k => !keep.Contains(k.ArticleId)))
+            item.IsRemoved = true;
 
         await _context.SaveChangesAsync();
-        TempData.Success(article!.ReviewStatus == DataReviewStatus.PorConfirmar
-            ? $"Requerimiento agregado. {article.Code} es un artículo \"Por confirmar\"."
-            : "Requerimiento agregado.");
+        await transaction.CommitAsync();
+        TempData.Success($"Kit de la materia guardado con {lines.Count} artículo(s).");
         return RedirectToPage(new { planId = PlanId });
     }
 
@@ -180,6 +399,11 @@ public class RequerimientosModel : PageModel
         if (detail == null)
         {
             TempData.Error("El requerimiento no pertenece a esta práctica.");
+            return RedirectToPage(new { planId = PlanId });
+        }
+        if (detail.EquipmentUnitId.HasValue && newQuantity != 1)
+        {
+            TempData.Error("Una unidad física de equipo siempre se solicita con cantidad 1.");
             return RedirectToPage(new { planId = PlanId });
         }
 
@@ -222,16 +446,12 @@ public class RequerimientosModel : PageModel
     }
 
     /// <summary>Cantidad de una línea de receta: base, o base × estudiantes ÷ factor (redondeada hacia arriba) si es escalable.</summary>
-    public static (decimal? Quantity, string? Note) Scale(PracticeRequirement line, int? students, int? factor)
-    {
-        if (line.Quantity is not decimal baseQuantity)
-            return (null, "la receta no trae cantidad");
-        if (!line.IsScalable)
-            return (baseQuantity, null);
-        if (students is not int s || s <= 0 || factor is not int f || f <= 0)
-            return (baseQuantity, "Escalable sin estudiantes o factor en la programación: se usa la cantidad base.");
-        return (Math.Ceiling(baseQuantity * s / f), $"Escalada: {baseQuantity:0.##} × {s} estudiantes ÷ {f}.");
-    }
+    public static (decimal? Quantity, string? Note) Scale(PracticeRequirement line, int? students, int? factor) =>
+        line.Quantity == null
+            ? (null, "la receta no trae cantidad")
+            : RequirementPickerService.Scale(line.Quantity, line.IsScalable, students, factor);
+
+    private Task<(int FacultyId, int? CampusId)?> ScopeAsync(int practiceId) => _picker.PracticeScopeAsync(practiceId);
 
     private async Task<L3Request?> GuardAsync()
     {
@@ -274,29 +494,51 @@ public class RequerimientosModel : PageModel
         Items = await _context.L3RequestDetails.AsNoTracking()
             .Where(d => d.L3RequestId == Plan.Id)
             .OrderBy(d => d.Article!.Name)
+            .ThenBy(d => d.EquipmentUnit != null ? d.EquipmentUnit.InventoryNumber : null)
             .Select(d => new RequirementRow(d.Id, d.ArticleId, d.Article!.Code, d.Article.Name,
                 d.Article.ReviewStatus == DataReviewStatus.PorConfirmar,
                 d.Article.MeasurementUnit != null ? d.Article.MeasurementUnit.Name : d.Article.UnitOfMeasure,
-                d.RequestedQuantity, d.EquipmentUnit != null ? d.EquipmentUnit.InventoryNumber : null, d.Observations))
+                d.RequestedQuantity,
+                d.EquipmentUnit != null
+                    ? d.EquipmentUnit.InventoryNumber + (d.EquipmentUnit.SerialNumber != null && d.EquipmentUnit.SerialNumber != "" ? " · S/N " + d.EquipmentUnit.SerialNumber : "")
+                    : null,
+                d.Observations))
             .ToListAsync();
+        var stock = await _availability.GetStockAsync(Items.Select(i => i.ArticleId), await _circuit.GetDefaultOriginLaboratoryIdAsync());
+        Items = Items.Select(i => i with { Stock = stock.GetValueOrDefault(i.ArticleId) }).ToList();
+        RequestedByArticle = Items.GroupBy(i => i.ArticleId).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity ?? 0));
 
         if (IsEditable)
         {
-            Articles = await _context.Articles.AsNoTracking()
-                .Where(a => a.Status == GeneralStatus.Activo)
-                .OrderBy(a => a.Name)
-                .Select(a => new ArticleOption(a.Id, a.Code, a.Name,
-                    a.ArticleCategory != null ? a.ArticleCategory.Name : a.Category,
-                    a.MeasurementUnit != null ? a.MeasurementUnit.Name : a.UnitOfMeasure,
-                    a.ReviewStatus == DataReviewStatus.PorConfirmar))
+            Categories = await _picker.CategoriesAsync();
+            var scope = await ScopeAsync(Plan.Id);
+            if (scope != null)
+                Laboratories = await _picker.ScopeLaboratories(scope.Value.FacultyId, scope.Value.CampusId)
+                    .OrderBy(l => l.Code)
+                    .Select(l => new LaboratoryOption(l.Id, l.Code + " · " + l.Name))
+                    .ToListAsync();
+        }
+
+        SubjectName = Plan.Subject?.Name;
+        if (Plan.SubjectId.HasValue)
+        {
+            var present = Items.Select(i => i.ArticleId).ToHashSet();
+            var kit = await _context.SubjectKitItems.AsNoTracking()
+                .Where(k => k.SubjectId == Plan.SubjectId.Value)
+                .OrderBy(k => k.Article!.Name)
+                .Select(k => new
+                {
+                    k.ArticleId, k.Article!.Code, k.Article.Name, k.Quantity, k.IsScalable, k.Observations,
+                    Category = k.Article.ArticleCategory != null ? k.Article.ArticleCategory.Name : k.Article.Category,
+                    IsEquipment = k.Article.EquipmentId != null
+                })
                 .ToListAsync();
-            Units = Plan.LaboratoryId.HasValue
-                ? await _context.EquipmentUnits.AsNoTracking()
-                    .Where(u => u.LaboratoryId == Plan.LaboratoryId && u.CurrentStatus != EquipmentStatus.Deleted)
-                    .OrderBy(u => u.InventoryNumber)
-                    .Select(u => new UnitOption(u.Id, u.InventoryNumber, u.Equipment != null ? u.Equipment.Name : ""))
-                    .ToListAsync()
-                : [];
+            Kit = kit.Select(k =>
+            {
+                var (quantity, note) = RequirementPickerService.Scale(k.Quantity, k.IsScalable, StudentCount, ScalingFactor);
+                return new KitRow(k.Code, k.Name, k.Category, k.IsEquipment, k.Quantity, k.IsScalable, quantity,
+                    note ?? k.Observations, present.Contains(k.ArticleId));
+            }).ToList();
         }
 
         if (Plan.PracticeSchedule != null)
@@ -317,22 +559,15 @@ public class RequerimientosModel : PageModel
         return Page();
     }
 
-    public sealed class InputModel
+    public sealed class BatchInput
     {
-        [Range(1, int.MaxValue, ErrorMessage = "Selecciona un artículo")]
-        [Display(Name = "Artículo")]
-        public int ArticleId { get; set; }
+        public List<BatchLine> Articles { get; set; } = [];
+        public List<int> UnitIds { get; set; } = [];
+    }
 
-        [Required(ErrorMessage = "La cantidad es obligatoria")]
-        [Range(0.01, 999999, ErrorMessage = "La cantidad debe ser mayor a 0")]
-        [Display(Name = "Cantidad")]
-        public decimal? Quantity { get; set; } = 1;
-
-        [Display(Name = "Unidad física (opcional)")]
-        public int? EquipmentUnitId { get; set; }
-
-        [StringLength(1000)]
-        [Display(Name = "Observaciones")]
-        public string? Observations { get; set; }
+    public sealed class BatchLine
+    {
+        public int Id { get; set; }
+        public decimal? Quantity { get; set; }
     }
 }

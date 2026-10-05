@@ -54,7 +54,7 @@
                                     <i class="fas fa-link mr-2 text-primary"></i>Datos heredados de la planificación
                                 </h5>
                                 <div class="row">
-                                    <div class="form-group col-md-4 mb-2">
+                                    <div class="form-group col-md-3 mb-2">
                                         <label class="small font-weight-bold text-muted">
                                             <i class="fas fa-lock text-muted mr-1"></i>Gestión
                                         </label>
@@ -63,7 +63,16 @@
                                         </select>
                                         <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>Se define en la planificación.</small>
                                     </div>
-                                    <div class="form-group col-md-4 mb-2">
+                                    <div class="form-group col-md-3 mb-2">
+                                        <label class="small font-weight-bold text-muted">
+                                            <i class="fas fa-lock text-muted mr-1"></i>Sede
+                                        </label>
+                                        <select class="form-control select2" disabled>
+                                            <option selected>@(Model.Planning.CampusName ?? "Sin sede")</option>
+                                        </select>
+                                        <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>Se define en la planificación.</small>
+                                    </div>
+                                    <div class="form-group col-md-3 mb-2">
                                         <label class="small font-weight-bold text-muted">
                                             <i class="fas fa-lock text-muted mr-1"></i>Facultad
                                         </label>
@@ -72,7 +81,7 @@
                                         </select>
                                         <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>Se define en la planificación.</small>
                                     </div>
-                                    <div class="form-group col-md-4 mb-2">
+                                    <div class="form-group col-md-3 mb-2">
                                         <label class="small font-weight-bold text-muted">
                                             <i class="fas fa-lock text-muted mr-1"></i>Carrera
                                         </label>
@@ -98,6 +107,40 @@
 
                         <div class="form-row">
                             <div class="form-group col-md-6">
+                                <label asp-for="Input.SubjectId" class="small font-weight-bold text-muted"></label>
+                                <select asp-for="Input.SubjectId" asp-items="Model.SubjectList" class="form-control select2" id="subject-select" disabled="@(Model.IsReadOnly ? "disabled" : null)">
+                                    <option value="0">— Seleccionar materia —</option>
+                                </select>
+                                <span asp-validation-for="Input.SubjectId" class="text-danger small"></span>
+                                @if (Model.SubjectList.Count() == 0)
+                                {
+                                    <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay materias registradas.</small>
+                                }
+                                <div id="practice-status" class="mt-2 small"></div>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label asp-for="Input.PracticeId" class="small font-weight-bold text-muted"></label>
+                                <div class="d-flex align-items-center">
+                                    <select asp-for="Input.PracticeId" id="practice-select" class="form-control select2 flex-grow-1" disabled="@(Model.IsReadOnly ? "disabled" : null)" data-placeholder="— Seleccionar práctica —">
+                                        <option value="0">— Seleccionar práctica —</option>
+                                    </select>
+                                    @if (Model.CanCreatePractice && !Model.IsReadOnly)
+                                    {
+                                        <button type="button" id="new-practice-link" class="btn btn-link btn-sm ml-2 flex-shrink-0" data-toggle="modal" data-target="#modal-new-practice" style="display:none;">
+                                            <i class="fas fa-plus mr-1"></i>Nueva práctica
+                                        </button>
+                                    }
+                                </div>
+                                <span asp-validation-for="Input.PracticeId" class="text-danger small"></span>
+                                <small id="practice-hint" class="text-muted d-block mt-1" style="display:none;"></small>
+                                <small id="practice-empty-hint" class="text-warning d-block mt-1" style="display:none;">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i> No hay prácticas del catálogo para la materia seleccionada.
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
                                 <label asp-for="Input.LaboratoryId" class="small font-weight-bold text-muted"></label>
                                 <select asp-for="Input.LaboratoryId" asp-items="Model.LaboratoryList" class="form-control select2" disabled="@(Model.IsReadOnly ? "disabled" : null)">
                                     <option value="0">— Seleccionar laboratorio —</option>
@@ -105,7 +148,7 @@
                                 <span asp-validation-for="Input.LaboratoryId" class="text-danger small"></span>
                                 @if (Model.LaboratoryList.Count() == 0)
                                 {
-                                    <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay laboratorios registrados en esta facultad.</small>
+                                    <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay laboratorios activos de esta sede y facultad.</small>
                                 }
                             </div>
                             <div class="form-group col-md-6">
@@ -118,32 +161,6 @@
                                 {
                                     <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay docentes registrados.</small>
                                 }
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group col-md-6">
-                                <label asp-for="Input.SubjectId" class="small font-weight-bold text-muted"></label>
-                                <select asp-for="Input.SubjectId" asp-items="Model.SubjectList" class="form-control select2" id="subject-select" disabled="@(Model.IsReadOnly ? "disabled" : null)">
-                                    <option value="0">— Seleccionar materia —</option>
-                                </select>
-                                <span asp-validation-for="Input.SubjectId" class="text-danger small"></span>
-                                @if (Model.SubjectList.Count() == 0)
-                                {
-                                    <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay materias registradas.</small>
-                                }
-                            </div>
-                            <div class="form-group col-md-6">
-                                <label asp-for="Input.PracticeId" class="small font-weight-bold text-muted"></label>
-                                <select asp-for="Input.PracticeId" id="practice-select" class="form-control select2" disabled="@(Model.IsReadOnly ? "disabled" : null)" data-placeholder="— Seleccionar práctica —">
-                                    <option value="0">— Seleccionar práctica —</option>
-                                </select>
-                                <span asp-validation-for="Input.PracticeId" class="text-danger small"></span>
-                                <small id="practice-hint" class="text-muted d-block mt-1" style="display:none;"></small>
-                                <small id="practice-empty-hint" class="text-warning d-block mt-1" style="display:none;">
-                                    <i class="fas fa-exclamation-triangle mr-1"></i> No hay prácticas del catálogo para la materia seleccionada.
-                                    <a href="/Catalogs/Practices/Create" class="font-weight-bold ml-1">Registrar práctica</a>
-                                </small>
                             </div>
                         </div>
 
@@ -252,12 +269,10 @@
                 <div class="card border-0 shadow-sm rounded-lg h-100">
                     <div class="card-body p-4">
                         <span class="text-uppercase small text-primary font-weight-bold">Práctica dentro del flujo</span>
-                        <h5 class="font-weight-bold text-dark mt-2">Una práctica, cinco decisiones</h5>
-                        <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Definir práctica (laboratorio, docente, horario).</span></div>
+                        <h5 class="font-weight-bold text-dark mt-2">Una práctica, tres pasos</h5>
+                        <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Elegir materia y práctica; luego laboratorio, docente y horario.</span></div>
                         <div class="d-flex mb-3"><span class="badge badge-info mr-2">2</span><span>Agregar materiales y cantidades.</span></div>
-                        <div class="d-flex mb-3"><span class="badge badge-warning mr-2">3</span><span>Validar disponibilidad y solapamientos.</span></div>
-                        <div class="d-flex mb-3"><span class="badge badge-dark mr-2">4</span><span>Registrar entrega/devolución L-3.</span></div>
-                        <div class="d-flex"><span class="badge badge-danger mr-2">5</span><span>Cerrar con L-5 incidente (si aplica).</span></div>
+                        <div class="d-flex"><span class="badge badge-warning mr-2">3</span><span>Validar disponibilidad de la semana: conflictos y rotaciones.</span></div>
 
                         <div class="alert alert-light border mt-4 mb-0 small">
                             <i class="fas fa-info-circle text-primary mr-1"></i>
@@ -269,6 +284,49 @@
         </div>
     </form>
 </div>
+
+@if (Model.CanCreatePractice && !Model.IsReadOnly)
+{
+    <div class="modal fade" id="modal-new-practice" tabindex="-1" role="dialog" aria-labelledby="modal-new-practice-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title font-weight-bold" id="modal-new-practice-title">
+                        <i class="fas fa-flask mr-1"></i>Nueva práctica
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="new-practice-form" novalidate>
+                    <div class="modal-body">
+                        <div id="new-practice-error" class="alert alert-danger small" role="alert" style="display:none;"></div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold text-muted">Materia</label>
+                            <div id="new-practice-subject" class="font-weight-bold text-dark"></div>
+                            <input type="hidden" id="new-practice-planning-id" value="@Model.PlanningId" />
+                        </div>
+                        <div class="form-group">
+                            <label for="new-practice-name" class="small font-weight-bold text-muted">Nombre de la práctica <span class="text-danger">*</span></label>
+                            <input type="text" id="new-practice-name" class="form-control" maxlength="200" placeholder="Ej: Cortes básicos de vegetales" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="new-practice-description" class="small font-weight-bold text-muted">Descripción</label>
+                            <textarea id="new-practice-description" class="form-control" rows="3" maxlength="2000" placeholder="Describe brevemente el objetivo o contenido de la práctica"></textarea>
+                        </div>
+                        <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>El código PRC-xxxxx se genera automáticamente.</small>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" id="new-practice-save" class="btn btn-primary font-weight-bold">
+                            <i class="fas fa-save mr-1"></i>Guardar práctica
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
 
 @section Styles {
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
@@ -284,15 +342,52 @@
         (function () {
             var practices = @Html.Raw(practiceJson);
             var groups = @Html.Raw(groupJson);
+            var canCreatePractice = @(Model.CanCreatePractice ? "true" : "false");
+            var isReadOnly = @(Model.IsReadOnly ? "true" : "false");
+            var planningId = @(Model.PlanningId ?? 0);
+            var subjectLabels = {};
 
             var $subject = $('#subject-select');
             var $practice = $('#practice-select');
-            var $hint = $('#practice-hint');
+            var $practiceStatus = $('#practice-status');
             var $emptyHint = $('#practice-empty-hint');
+            var $hint = $('#practice-hint');
             var $group = $('#group-name');
             var $student = $('#student-count');
             var $factor = $('#scaling-factor');
             var $datalist = $('#group-options');
+            var $newPracticeLink = $('#new-practice-link');
+
+            // Mapa de id -> texto de materia (para mostrar la materia seleccionada dentro del modal).
+            $subject.find('option').each(function () {
+                var v = $(this).val();
+                if (v && v !== '0') {
+                    subjectLabels[v] = $(this).text();
+                }
+            });
+
+            function renderPracticeStatus(subjectId) {
+                if (!subjectId || Number(subjectId) === 0) {
+                    $practiceStatus.html('<span class="text-muted"><i class="fas fa-info-circle mr-1"></i>Elige la materia para ver sus prácticas del catálogo.</span>');
+                    if ($newPracticeLink.length) $newPracticeLink.hide();
+                    return;
+                }
+                var matched = practices.filter(function (p) { return p.subjectId === Number(subjectId); });
+                if (matched.length > 0) {
+                    var n = matched.length;
+                    $practiceStatus.html('<span class="badge badge-success"><i class="fas fa-check-circle mr-1"></i>Esta materia tiene ' + n + ' práctica(s) en el catálogo</span>');
+                    if ($newPracticeLink.length) $newPracticeLink.show();
+                } else {
+                    var html = '<div class="alert alert-warning border-0 small p-2 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i>Esta materia todavía no tiene prácticas en el catálogo.</div>';
+                    if (canCreatePractice && !isReadOnly) {
+                        html += '<button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modal-new-practice"><i class="fas fa-plus mr-1"></i>Crear práctica para esta materia</button>';
+                    } else {
+                        html += '<div class="text-muted small">Solicita a un administrador que registre la práctica.</div>';
+                    }
+                    $practiceStatus.html(html);
+                    if ($newPracticeLink.length) $newPracticeLink.hide();
+                }
+            }
 
             function renderPractices(subjectId) {
                 // Mantenemos el valor seleccionado si la materia sigue siendo la misma.
@@ -314,6 +409,14 @@
                 // Si el valor anterior sigue disponible, lo conservamos.
                 var stillVisible = matched.some(function (p) { return String(p.id) === String(previousValue); });
                 $practice.val(stillVisible ? previousValue : '0');
+
+                // Deshabilitar visualmente si la materia no tiene prácticas; un select disabled no se envía,
+                // pero como no hay opciones válidas para esa materia, el modelo lo rechaza de todos modos.
+                if (subjectId && Number(subjectId) > 0 && matched.length === 0) {
+                    $practice.prop('disabled', true);
+                } else if (!isReadOnly) {
+                    $practice.prop('disabled', false);
+                }
 
                 if (matched.length === 0 && subjectId && Number(subjectId) > 0) {
                     $emptyHint.show();
@@ -361,6 +464,7 @@
                 var subjectId = $(this).val();
                 renderPractices(subjectId);
                 renderGroupOptions(subjectId);
+                renderPracticeStatus(subjectId);
             });
 
             // Cambio de práctica.
@@ -388,7 +492,104 @@
             var initialSubject = $subject.val() || '0';
             renderPractices(initialSubject);
             renderGroupOptions(initialSubject);
+            renderPracticeStatus(initialSubject);
             updatePracticeHint();
+
+            // Modal: solo se renderiza cuando CanCreatePractice && !IsReadOnly.
+            var $modal = $('#modal-new-practice');
+            if ($modal.length) {
+                var $form = $('#new-practice-form');
+                var $errBox = $('#new-practice-error');
+                var $name = $('#new-practice-name');
+                var $desc = $('#new-practice-description');
+                var $save = $('#new-practice-save');
+                var $subjectLabel = $('#new-practice-subject');
+                var $planningInput = $('#new-practice-planning-id');
+
+                function resetModal() {
+                    $errBox.hide().text('');
+                    $name.val('');
+                    $desc.val('');
+                    $save.prop('disabled', false);
+                }
+
+                function syncSubjectLabel() {
+                    var sid = $subject.val() || '0';
+                    $subjectLabel.text(subjectLabels[sid] || '');
+                    $planningInput.val(planningId);
+                }
+
+                $modal.on('show.bs.modal', function () {
+                    syncSubjectLabel();
+                    resetModal();
+                });
+
+                $modal.on('hidden.bs.modal', function () {
+                    resetModal();
+                });
+
+                $form.on('submit', function (e) {
+                    e.preventDefault();
+                    var name = ($name.val() || '').trim();
+                    if (!name) {
+                        $errBox.text('El nombre de la práctica es obligatorio.').show();
+                        $name.trigger('focus');
+                        return;
+                    }
+                    var subjectId = $subject.val() || '0';
+                    if (!subjectId || Number(subjectId) === 0) {
+                        $errBox.text('Selecciona primero una materia.').show();
+                        return;
+                    }
+                    var description = ($desc.val() || '').trim();
+                    var token = $('#form-practica input[name="__RequestVerificationToken"]').val() || '';
+
+                    $save.prop('disabled', true);
+                    $.ajax({
+                        url: window.location.pathname + '?handler=CreatePractice',
+                        method: 'POST',
+                        data: {
+                            __RequestVerificationToken: token,
+                            subjectId: subjectId,
+                            name: name,
+                            description: description,
+                            planningId: planningId
+                        }
+                    }).done(function (resp) {
+                        if (resp && resp.ok && resp.practice) {
+                            practices.push(resp.practice);
+                            renderPractices(subjectId);
+                            $practice.val(String(resp.practice.id));
+                            $practice.trigger('change.select2');
+                            renderPracticeStatus(subjectId);
+                            $modal.modal('hide');
+                            if (window.Swal) {
+                                Swal.fire({
+                                    type: 'success',
+                                    title: 'Práctica creada',
+                                    text: resp.practice.label || name
+                                });
+                            }
+                        } else {
+                            var msg = (resp && resp.message) ? resp.message : 'No se pudo crear la práctica.';
+                            $errBox.text(msg).show();
+                        }
+                    }).fail(function (xhr) {
+                        var msg = 'No se pudo crear la práctica.';
+                        if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        } else if (xhr && xhr.responseText) {
+                            try {
+                                var parsed = JSON.parse(xhr.responseText);
+                                if (parsed && parsed.message) msg = parsed.message;
+                            } catch (_) { /* mensaje genérico */ }
+                        }
+                        $errBox.text(msg).show();
+                    }).always(function () {
+                        $save.prop('disabled', false);
+                    });
+                });
+            }
         })();
     </script>
 }

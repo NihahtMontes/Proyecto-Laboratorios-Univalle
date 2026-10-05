@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
@@ -17,12 +18,18 @@ public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly IPlanningService _planning;
+    private readonly IArticleAvailabilityService _availability;
 
-    public IndexModel(ApplicationDbContext context, IPlanningService planning)
+    public IndexModel(ApplicationDbContext context, IPlanningService planning, IArticleAvailabilityService availability)
     {
         _context = context;
         _planning = planning;
+        _availability = availability;
     }
+
+    /// <summary>Periodo del ranking de uso: "week" (semana actual) o "month" (mes actual).</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? UsagePeriod { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public int? PlanningId { get; set; }
@@ -45,6 +52,24 @@ public class IndexModel : PageModel
     public int FinalizedCount { get; private set; }
     public int IncidentCount { get; private set; }
 
+    // Notificaciones al entrar al panel.
+    public DateTime Today { get; private set; } = DateTime.Today;
+    /// <summary>Prácticas de hoy (todas las planificaciones: el material es compartido).</summary>
+    public List<WeekPractice> TodayPractices { get; private set; } = [];
+    /// <summary>Semana calendario actual (lunes a domingo) con conflictos y rotaciones.</summary>
+    public WeekAvailability? CurrentWeek { get; private set; }
+    public List<PendingReturn> PendingReturns { get; private set; } = [];
+
+    public sealed record PendingReturn(int DepartureId, string? Code, int? PracticeId, string? PracticeName,
+        DateTime DepartureDate, DateTime? EstimatedReturnDate, bool IsOverdue);
+
+    // Pestaña "Uso de artículos".
+    public bool UsageIsMonth => !string.Equals(UsagePeriod, "week", StringComparison.OrdinalIgnoreCase);
+    public DateTime UsageFrom { get; private set; }
+    public DateTime UsageTo { get; private set; }
+    public List<ArticleUsage> MostUsed { get; private set; } = [];
+    public List<ArticleUsage> MostIssues { get; private set; } = [];
+
     public async Task<IActionResult> OnGetAsync()
     {
         var active = await _planning.GetActiveAsync();
@@ -63,6 +88,8 @@ public class IndexModel : PageModel
         {
             Planning = active;
         }
+
+        await LoadNotificationsAsync();
 
         if (Planning == null) return Page();
 
@@ -88,6 +115,36 @@ public class IndexModel : PageModel
         IncidentCount = await _context.L5Incidents.AsNoTracking()
             .CountAsync(i => i.L3Request != null && i.L3Request.AcademicPlanningId == Planning.Id);
 
+        var usage = await _availability.GetUsageAsync(UsageFrom, UsageTo);
+        MostUsed = usage.OrderByDescending(u => u.PracticeCount).ThenByDescending(u => u.TotalRequested).Take(10).ToList();
+        MostIssues = usage.Where(u => u.IssueDays > 0)
+            .OrderByDescending(u => u.ConflictDays).ThenByDescending(u => u.RotationDays).Take(10).ToList();
+
         return Page();
+    }
+
+    private async Task LoadNotificationsAsync()
+    {
+        var monday = Today.AddDays(-(((int)Today.DayOfWeek + 6) % 7));
+        CurrentWeek = await _availability.GetRangeAsync(monday, monday.AddDays(6));
+        TodayPractices = CurrentWeek.Practices.Where(p => p.Date == Today).ToList();
+
+        UsageFrom = UsageIsMonth ? new DateTime(Today.Year, Today.Month, 1) : monday;
+        UsageTo = UsageIsMonth ? UsageFrom.AddMonths(1).AddDays(-1) : monday.AddDays(6);
+
+        var openStatuses = new[] { LoanStatus.Active, LoanStatus.Overdue };
+        PendingReturns = (await _context.Departures.AsNoTracking()
+            .Where(d => d.L3RequestId != null && openStatuses.Contains(d.Status))
+            .OrderBy(d => d.EstimatedReturnDate ?? d.DepartureDate)
+            .Take(20)
+            .Select(d => new
+            {
+                d.Id, d.Code, d.L3RequestId, d.DepartureDate, d.EstimatedReturnDate, d.Status,
+                Practice = _context.L3Requests.Where(r => r.Id == d.L3RequestId).Select(r => r.PracticeName).FirstOrDefault()
+            })
+            .ToListAsync())
+            .Select(d => new PendingReturn(d.Id, d.Code, d.L3RequestId, d.Practice, d.DepartureDate, d.EstimatedReturnDate,
+                d.Status == LoanStatus.Overdue || (d.EstimatedReturnDate.HasValue && d.EstimatedReturnDate.Value.Date < Today)))
+            .ToList();
     }
 }

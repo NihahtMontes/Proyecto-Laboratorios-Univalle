@@ -30,6 +30,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
 
         public List<SelectListItem> CategoryOptions { get; set; } = new();
         public List<SelectListItem> UnitOptions { get; set; } = new();
+        public List<SelectListItem> EquipmentOptions { get; set; } = new();
 
         /// <summary>Snapshot de sólo lectura para la barra lateral (auditoría).</summary>
         public Article? ArticleSnapshot { get; set; }
@@ -41,10 +42,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
         {
             public int Id { get; set; }
 
-            [Required(ErrorMessage = "El código del artículo es obligatorio")]
-            [Display(Name = "Código")]
-            [StringLength(30, ErrorMessage = "El código no puede superar los 30 caracteres")]
-            public string Code { get; set; } = string.Empty;
+            // Code no se captura: lo asigna el sistema (ART-00001) y se muestra desde ArticleSnapshot.
 
             [Required(ErrorMessage = "El nombre del artículo es obligatorio")]
             [Display(Name = "Nombre")]
@@ -62,6 +60,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
             [Required]
             [Display(Name = "Estado")]
             public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
+
+            /// <summary>Vínculo opcional con el catálogo de equipos (artículos de tipo Equipo).</summary>
+            [Display(Name = "Catálogo de equipo vinculado")]
+            public int? EquipmentId { get; set; }
 
             /// <summary>
             /// Revisión del dato en la fuente. Sólo se ofrece el conjunto de valores que
@@ -91,10 +93,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
             Input = new InputModel
             {
                 Id = article.Id,
-                Code = article.Code,
                 Name = article.Name,
                 ArticleCategoryId = article.ArticleCategoryId,
                 MeasurementUnitId = article.MeasurementUnitId,
+                EquipmentId = article.EquipmentId,
                 Status = article.Status,
                 ReviewStatus = article.ReviewStatus
             };
@@ -157,20 +159,25 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                 return Page();
             }
 
-            // Unicidad de Code (índice sin filtro: cualquier estado).
-            var normalizedCode = Input.Code.Trim().ToLower();
-            var codeExists = await _context.Articles
-                .AnyAsync(a => a.Id != Input.Id
-                               && a.Code != null
-                               && a.Code.Trim().ToLower() == normalizedCode);
-
-            if (codeExists)
+            // Validación: EquipmentId (si viene informado) debe existir y estar activo.
+            // El query filter global ya excluye Equipment con Status == Eliminado; el filtro
+            // explícito por Status == Activo mantiene el mismo criterio de "disponible" usado
+            // en la lista EquipmentOptions y bloquea FKs de catálogos dados de baja.
+            if (Input.EquipmentId.HasValue)
             {
-                ModelState.AddModelError("Input.Code", "Ya existe otro artículo con este código en el sistema.");
-                await ReloadSnapshot(Input.Id);
-                LoadOptions();
-                return Page();
+                var equipmentActive = await _context.Equipments
+                    .AnyAsync(e => e.Id == Input.EquipmentId.Value && e.Status == GeneralStatus.Activo);
+
+                if (!equipmentActive)
+                {
+                    ModelState.AddModelError("Input.EquipmentId", "El catálogo de equipo no existe.");
+                    await ReloadSnapshot(Input.Id);
+                    LoadOptions();
+                    return Page();
+                }
             }
+
+            // Code no se edita: lo asigna el sistema; no se valida unicidad aquí.
 
             // Unicidad de Name entre no eliminados.
             var normalizedName = Input.Name.Trim().ToLower();
@@ -198,10 +205,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                 .Select(u => u.Code)
                 .FirstOrDefaultAsync() ?? "UNIDAD";
 
-            articleToUpdate.Code = Input.Code.Trim().ToUpper();
+            // Code no se reasigna: lo conserva el sistema desde la creación.
             articleToUpdate.Name = Input.Name.Clean();
             articleToUpdate.ArticleCategoryId = Input.ArticleCategoryId;
             articleToUpdate.MeasurementUnitId = Input.MeasurementUnitId;
+            articleToUpdate.EquipmentId = Input.EquipmentId;
             articleToUpdate.Status = Input.Status;
             articleToUpdate.ReviewStatus = Input.ReviewStatus;
             // Columnas legadas sincronizadas.
@@ -230,7 +238,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
             {
                 _logger.LogWarning(ex, "Conflicto de unicidad al actualizar el artículo {ArticleId}.", Input.Id);
                 ModelState.AddModelError(string.Empty,
-                    "No se pudo guardar el artículo porque ya existe un registro con el mismo código o nombre.");
+                    "No se pudo guardar el artículo porque ya existe un registro con el mismo nombre.");
                 await ReloadSnapshot(Input.Id);
                 LoadOptions();
                 return Page();
@@ -272,6 +280,50 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles
                     Text = $"{u.Code} - {u.Name}"
                 })
                 .ToList();
+
+            EquipmentOptions = _context.Equipments
+                .AsNoTracking()
+                .Where(e => e.Status == GeneralStatus.Activo)
+                .OrderBy(e => e.Name)
+                .Select(e => new
+                {
+                    e.Id,
+                    e.Name,
+                    e.Brand,
+                    e.Model,
+                    UnitCount = _context.EquipmentUnits
+                        .Count(u => u.EquipmentId == e.Id && !ArticleRetiredStatuses.Contains(u.CurrentStatus))
+                })
+                .ToList()
+                .Select(e => new SelectListItem
+                {
+                    Value = e.Id.ToString(),
+                    Text = BuildEquipmentLabel(e.Name, e.Brand, e.Model, e.UnitCount)
+                })
+                .ToList();
+        }
+
+        /// <summary>
+        /// Estados de unidad que ya no están operativas (retiradas/dadas de baja).
+        /// Reutilizado por EquipmentOptions; el patrón proviene de
+        /// <see cref="Proyecto_Laboratorios_Univalle.Services.RequirementPickerService"/>
+        /// y <see cref="Proyecto_Laboratorios_Univalle.Services.ArticleAvailabilityService"/>.
+        /// </summary>
+        private static readonly EquipmentStatus[] ArticleRetiredStatuses =
+        {
+            EquipmentStatus.Decommissioned, EquipmentStatus.Dismantled, EquipmentStatus.Deleted
+        };
+
+        private static string BuildEquipmentLabel(string name, string? brand, string? model, int unitCount)
+        {
+            var hasBrand = !string.IsNullOrWhiteSpace(brand);
+            var hasModel = !string.IsNullOrWhiteSpace(model);
+            string middle;
+            if (hasBrand && hasModel) middle = $" · {brand!.Trim()} {model!.Trim()}";
+            else if (hasBrand) middle = $" · {brand!.Trim()}";
+            else if (hasModel) middle = $" · {model!.Trim()}";
+            else middle = string.Empty;
+            return $"{name}{middle} ({unitCount} unid.)";
         }
 
         private static bool IsUniqueViolation(DbUpdateException ex)

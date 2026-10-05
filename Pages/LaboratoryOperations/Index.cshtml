@@ -1,5 +1,7 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.IndexModel
+@using System.Globalization
+@using Proyecto_Laboratorios_Univalle.Services
 @{ ViewData["Title"] = "Planificación activa"; }
 
 <div class="page-breadcrumb">
@@ -108,6 +110,184 @@
             </div>
         </div>
 
+        <!-- Notificaciones al entrar al panel -->
+        <div class="card border-0 shadow-sm rounded-lg mb-4" id="pn-notifications"
+             style="background: linear-gradient(135deg, #ffffff, #f8f7ff); border-left: 4px solid #7460ee !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3 flex-wrap">
+                    <div class="rounded-circle bg-light-primary text-primary p-2 mr-2">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-dark mb-0 mr-3">Mis notificaciones</h5>
+                    <small class="text-muted">Hoy @Model.Today.ToString("dd/MM/yyyy")</small>
+                </div>
+                <div class="row">
+                    @* (a) Prácticas de hoy *@
+                    <div class="col-lg-4 mb-3 mb-lg-0">
+                        <h6 class="font-weight-bold text-dark mb-2">
+                            <i class="far fa-calendar mr-1 text-primary"></i>
+                            Hoy · @Model.Today.ToString("dd/MM")
+                        </h6>
+                        @if (Model.TodayPractices.Count == 0)
+                        {
+                            <div class="text-muted small pn-empty">
+                                <i class="far fa-calendar-check mr-1"></i> No hay prácticas hoy
+                            </div>
+                        }
+                        else
+                        {
+                            <ul class="list-unstyled mb-0 pn-list">
+                                @foreach (var p in Model.TodayPractices)
+                                {
+                                    DemandState? state = null;
+                                    if (Model.CurrentWeek?.PracticeStates != null && Model.CurrentWeek.PracticeStates.TryGetValue(p.Id, out var st))
+                                    {
+                                        state = st;
+                                    }
+                                    <li class="pn-list__item">
+                                        <a asp-page="./Disponibilidad" asp-route-planId="@p.Id" class="d-flex align-items-start text-dark pn-link">
+                                            <i class="fas fa-clock text-muted mt-1 mr-2"></i>
+                                            <div class="flex-grow-1">
+                                                <div class="font-weight-bold">
+                                                    @p.TimeText · @p.PracticeName
+                                                    @if (state == DemandState.Conflict)
+                                                    {
+                                                        <i class="fas fa-exclamation-circle text-danger ml-1" title="Conflicto de stock"></i>
+                                                    }
+                                                    else if (state == DemandState.Rotation)
+                                                    {
+                                                        <i class="fas fa-sync-alt text-warning ml-1" title="Rotación de material"></i>
+                                                    }
+                                                </div>
+                                                <div class="small text-muted">
+                                                    @(p.SubjectName ?? "—") / @(p.GroupName ?? "—") · @(p.LaboratoryCode ?? "—")
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    @* (b) Resumen semanal *@
+                    <div class="col-lg-4 mb-3 mb-lg-0">
+                        <h6 class="font-weight-bold text-dark mb-2">
+                            <i class="far fa-calendar-alt mr-1 text-primary"></i>
+                            @if (Model.CurrentWeek != null)
+                            {
+                                <text>Esta semana · @Model.CurrentWeek.StartDate.ToString("dd/MM")–@Model.CurrentWeek.EndDate.ToString("dd/MM")</text>
+                            }
+                            else
+                            {
+                                <text>Esta semana</text>
+                            }
+                        </h6>
+                        @if (Model.CurrentWeek != null)
+                        {
+                            <div class="pn-summary mb-2">
+                                <span class="badge badge-light border text-dark">
+                                    <i class="fas fa-flask mr-1 text-primary"></i>
+                                    @Model.CurrentWeek.Practices.Count práctica(s)
+                                </span>
+                                @if (Model.CurrentWeek.ConflictCount > 0)
+                                {
+                                    <span class="badge badge-danger ml-1">@Model.CurrentWeek.ConflictCount conflicto(s)</span>
+                                }
+                                @if (Model.CurrentWeek.RotationCount > 0)
+                                {
+                                    <span class="badge badge-warning ml-1">@Model.CurrentWeek.RotationCount rotación(es)</span>
+                                }
+                            </div>
+                            var issueItems = Model.CurrentWeek.Issues.Take(6).ToList();
+                            @if (issueItems.Count == 0)
+                            {
+                                <div class="text-success small pn-empty">
+                                    <i class="fas fa-check-circle mr-1"></i> Sin conflictos de material esta semana
+                                </div>
+                            }
+                            else
+                            {
+                                <ul class="list-unstyled mb-0 pn-list">
+                                    @foreach (var issue in issueItems)
+                                    {
+                                        var firstPracticeId = issue.Practices.FirstOrDefault()?.PracticeId ?? 0;
+                                        <li class="pn-list__item">
+                                            <a asp-page="./Disponibilidad" asp-route-planId="@firstPracticeId" class="d-flex align-items-start text-dark pn-link">
+                                                <i class="fas @(issue.State == DemandState.Conflict ? "fa-exclamation-circle text-danger" : "fa-sync-alt text-warning") mt-1"></i>
+                                                <div class="flex-grow-1 ml-2">
+                                                    <div class="font-weight-bold small">
+                                                        @issue.Date.ToString("ddd dd/MM", CultureInfo.GetCultureInfo("es-ES")) · @issue.ArticleName
+                                                    </div>
+                                                    <div class="small text-muted">
+                                                        @issue.TotalRequested.ToString("0.##") pedidos / @(issue.Stock.Available?.ToString("0.##") ?? "—") en stock
+                                                    </div>
+                                                    <div class="small">
+                                                        @if (issue.State == DemandState.Conflict)
+                                                        {
+                                                            <span class="text-danger">Conflicto @issue.PeakText</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-warning">Rotación</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        }
+                    </div>
+                    @* (c) Devoluciones pendientes *@
+                    <div class="col-lg-4">
+                        <h6 class="font-weight-bold text-dark mb-2">
+                            <i class="fas fa-undo mr-1 text-primary"></i> Devoluciones pendientes
+                        </h6>
+                        @if (Model.PendingReturns.Count == 0)
+                        {
+                            <div class="text-muted small pn-empty">
+                                <i class="fas fa-check mr-1"></i> Sin devoluciones pendientes
+                            </div>
+                        }
+                        else
+                        {
+                            <ul class="list-unstyled mb-0 pn-list">
+                                @foreach (var r in Model.PendingReturns.Take(6))
+                                {
+                                    <li class="pn-list__item">
+                                        <div class="d-flex align-items-start">
+                                            <i class="fas fa-box-open text-muted mt-1 mr-2"></i>
+                                            <div class="flex-grow-1">
+                                                <div class="font-weight-bold small">
+                                                    @(string.IsNullOrWhiteSpace(r.Code) ? $"Salida #{r.DepartureId}" : r.Code)
+                                                </div>
+                                                <div class="small text-muted">@(r.PracticeName ?? "—")</div>
+                                                <div class="small">
+                                                    @if (r.EstimatedReturnDate.HasValue)
+                                                    {
+                                                        <span>Prevista @r.EstimatedReturnDate.Value.ToString("dd/MM")</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">Sin fecha</span>
+                                                    }
+                                                    @if (r.IsOverdue)
+                                                    {
+                                                        <span class="badge badge-danger ml-1">Vencida</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Fila de KPIs -->
         <div class="row mb-4">
             <div class="col-md-2 col-sm-4 col-6 mb-3">
@@ -180,7 +360,164 @@
 
         @if (Model.Calendar != null)
         {
-            <partial name="_PlanningCalendar" model="Model.Calendar" />
+            <!-- Pestañas: Calendario / Uso de artículos -->
+            <ul class="nav nav-tabs pn-tabs" id="pn-view-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="pn-tab-calendar-tab" data-toggle="tab" href="#pn-tab-calendar" role="tab" aria-controls="pn-tab-calendar" aria-selected="true">
+                        <i class="far fa-calendar mr-1"></i> Calendario
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="pn-tab-usage-tab" data-toggle="tab" href="#pn-tab-usage" role="tab" aria-controls="pn-tab-usage" aria-selected="false">
+                        <i class="fas fa-chart-bar mr-1"></i> Uso de artículos
+                    </a>
+                </li>
+            </ul>
+            <div class="tab-content pn-tab-content" id="pn-view-tabs-content">
+                <div class="tab-pane fade show active" id="pn-tab-calendar" role="tabpanel" aria-labelledby="pn-tab-calendar-tab">
+                    <partial name="_PlanningCalendar" model="Model.Calendar" />
+                </div>
+                <div class="tab-pane fade" id="pn-tab-usage" role="tabpanel" aria-labelledby="pn-tab-usage-tab">
+                    <div class="card border-0 shadow-sm rounded-lg">
+                        <div class="card-body">
+                            <div class="d-flex flex-wrap align-items-center mb-3">
+                                <h5 class="font-weight-bold text-dark mb-0 mr-3">
+                                    <i class="fas fa-chart-bar text-primary mr-1"></i> Uso de artículos
+                                </h5>
+                                <div class="btn-group btn-group-sm pn-usage-toggle" role="group" aria-label="Periodo de uso">
+                                    <a asp-page="./Index"
+                                       asp-route-planningId="@(Model.PlanningId ?? planning.Id)"
+                                       asp-route-month="@Model.Month"
+                                       asp-route-usagePeriod="week"
+                                       class="btn btn-outline-primary @(Model.UsageIsMonth ? string.Empty : "active")">
+                                        Esta semana
+                                    </a>
+                                    <a asp-page="./Index"
+                                       asp-route-planningId="@(Model.PlanningId ?? planning.Id)"
+                                       asp-route-month="@Model.Month"
+                                       asp-route-usagePeriod="month"
+                                       class="btn btn-outline-primary @(Model.UsageIsMonth ? "active" : string.Empty)">
+                                        Este mes
+                                    </a>
+                                </div>
+                                <small class="text-muted ml-auto">
+                                    @Model.UsageFrom.ToString("dd/MM/yyyy") – @Model.UsageTo.ToString("dd/MM/yyyy")
+                                </small>
+                            </div>
+                            <div class="row">
+                                <div class="col-lg-6 mb-3 mb-lg-0">
+                                    <h6 class="font-weight-bold text-dark mb-2">
+                                        <i class="fas fa-trophy text-warning mr-1"></i> Más utilizados
+                                    </h6>
+                                    @if (Model.MostUsed.Count == 0)
+                                    {
+                                        <div class="text-muted small pn-empty">Sin uso registrado en el periodo.</div>
+                                    }
+                                    else
+                                    {
+                                        int maxPracticeCount = Model.MostUsed.Max(u => u.PracticeCount);
+                                        <div class="table-responsive pn-table-wrap">
+                                            <table class="table table-sm mb-0 pn-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width: 36px;">#</th>
+                                                        <th>Artículo</th>
+                                                        <th class="text-right">Prácticas</th>
+                                                        <th class="text-right">Total pedido</th>
+                                                        <th class="text-right">Stock</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @for (var i = 0; i < Model.MostUsed.Count; i++)
+                                                    {
+                                                        var u = Model.MostUsed[i];
+                                                        var pct = maxPracticeCount > 0 ? (int)Math.Round(u.PracticeCount * 100.0 / maxPracticeCount) : 0;
+                                                        <tr>
+                                                            <td class="text-muted">@(i + 1)</td>
+                                                            <td>
+                                                                <div class="font-weight-bold text-dark">@u.ArticleName</div>
+                                                                <div class="small text-muted">@u.ArticleCode</div>
+                                                                <div class="pn-bar mt-1" aria-hidden="true">
+                                                                    <span class="pn-bar__fill" style="width: @(pct)%;"></span>
+                                                                </div>
+                                                            </td>
+                                                            <td class="text-right font-weight-bold">@u.PracticeCount</td>
+                                                            <td class="text-right">@u.TotalRequested.ToString("0.##")</td>
+                                                            <td class="text-right">@(u.Available?.ToString("0.##") ?? "—")</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="col-lg-6">
+                                    <h6 class="font-weight-bold text-dark mb-2">
+                                        <i class="fas fa-exclamation-triangle text-danger mr-1"></i> Generan rotación o conflicto
+                                    </h6>
+                                    @if (Model.MostIssues.Count == 0)
+                                    {
+                                        <div class="text-success small pn-empty">
+                                            <i class="fas fa-check-circle mr-1"></i> Sin conflictos ni rotaciones en el periodo
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="table-responsive pn-table-wrap">
+                                            <table class="table table-sm mb-0 pn-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Artículo</th>
+                                                        <th class="text-center">Días conflicto</th>
+                                                        <th class="text-center">Días rotación</th>
+                                                        <th class="text-right">Stock</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var u in Model.MostIssues)
+                                                    {
+                                                        <tr>
+                                                            <td>
+                                                                <div class="font-weight-bold text-dark">@u.ArticleName</div>
+                                                                <div class="small text-muted">@u.ArticleCode</div>
+                                                            </td>
+                                                            <td class="text-center">
+                                                                @if (u.ConflictDays > 0)
+                                                                {
+                                                                    <span class="badge badge-danger">@u.ConflictDays</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">0</span>
+                                                                }
+                                                            </td>
+                                                            <td class="text-center">
+                                                                @if (u.RotationDays > 0)
+                                                                {
+                                                                    <span class="badge badge-warning">@u.RotationDays</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted">0</span>
+                                                                }
+                                                            </td>
+                                                            <td class="text-right">@(u.Available?.ToString("0.##") ?? "—")</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-3 pn-footnote">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Conflicto: prácticas simultáneas superan el stock. Rotación: el total del día supera el stock en horarios distintos.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         }
     }
 </div>
@@ -193,5 +530,68 @@
         .bg-light-warning { background: #fef7e0; }
         .bg-light-info    { background: #e8f4fd; }
         .bg-light-danger  { background: #fde7e9; }
+
+        /* Notificaciones y pestañas del panel de planificación (pn-). */
+        #pn-notifications .pn-list { max-height: 260px; overflow-y: auto; }
+        #pn-notifications .pn-list__item + .pn-list__item { border-top: 1px solid #f0eef9; padding-top: 6px; margin-top: 6px; }
+        #pn-notifications .pn-link { text-decoration: none; transition: background-color .15s; padding: 4px 6px; border-radius: 6px; }
+        #pn-notifications .pn-link:hover { background: #f4f3ff; text-decoration: none; }
+        #pn-notifications .pn-empty { padding: 6px 8px; background: #f8f7ff; border-radius: 6px; }
+
+        .pn-tabs { border-bottom: 2px solid #7460ee22; margin-bottom: 0; }
+        .pn-tabs .nav-link { color: #555; font-weight: 600; border: none; border-bottom: 3px solid transparent; padding: 8px 16px; }
+        .pn-tabs .nav-link.active { color: #7460ee; background: transparent; border-bottom-color: #7460ee; }
+        .pn-tabs .nav-link:hover:not(.active) { color: #7460ee; background: #f4f3ff; border-bottom-color: #c7c2f0; }
+        .pn-tab-content > .tab-pane { padding-top: 1rem; }
+
+        .pn-table { background: #fff; }
+        .pn-table thead th { background: #f8f7ff; color: #7460ee; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #ececec; }
+        .pn-table tbody tr:hover { background: #faf9ff; }
+        .pn-table td, .pn-table th { vertical-align: middle; }
+        .pn-table-wrap { border-radius: 10px; border: 1px solid #ececec; }
+
+        .pn-bar { display: block; height: 4px; background: #ececec; border-radius: 4px; overflow: hidden; }
+        .pn-bar__fill { display: block; height: 100%; background: linear-gradient(90deg, #7460ee, #a895f7); }
+
+        .pn-summary .badge { font-weight: 600; padding: 6px 10px; }
+        .pn-usage-toggle .btn.active { background: #7460ee; color: #fff; border-color: #7460ee; }
+        .pn-footnote { line-height: 1.4; }
     </style>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            // Activa la pestaña "Uso de artículos" si la URL trae ?usagePeriod=...
+            var params = new URLSearchParams(window.location.search);
+            if (params.get('usagePeriod')) {
+                var tab = document.getElementById('pn-tab-usage-tab');
+                if (tab && window.jQuery) {
+                    window.jQuery(tab).tab('show');
+                }
+            }
+
+            // Toast inicial si hay conflictos / rotaciones o devoluciones vencidas.
+            var conflicts = @(Model.CurrentWeek?.ConflictCount ?? 0);
+            var rotations = @(Model.CurrentWeek?.RotationCount ?? 0);
+            var overdue = @(Model.PendingReturns.Count(r => r.IsOverdue));
+            if (conflicts > 0 || rotations > 0 || overdue > 0) {
+                var todayKey = 'lab-planning-notif-' + new Date().toLocaleDateString('en-CA');
+                try {
+                    if (sessionStorage.getItem(todayKey)) return;
+                    sessionStorage.setItem(todayKey, '1');
+                } catch (e) { /* sessionStorage no disponible: mostrar igual */ }
+                if (typeof Swal !== 'undefined') {
+                    var msg = 'Esta semana: ' + conflicts + ' conflicto(s), ' + rotations + ' rotación(es). ' +
+                              'Devoluciones vencidas: ' + overdue + '.';
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Notificaciones de planificación',
+                        text: msg,
+                        confirmButtonColor: '#7460ee'
+                    });
+                }
+            }
+        })();
+    </script>
 }

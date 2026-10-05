@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Services;
 using Proyecto_Laboratorios_Univalle.Services.Reporting;
 using QuestPDF.Infrastructure;
@@ -114,7 +115,9 @@ builder.Services.AddScoped<IDashboardReadService, DashboardReadService>();
 builder.Services.AddScoped<IManagementContextService, ManagementContextService>();
 builder.Services.AddScoped<IManagementActivationService, ManagementActivationService>();
 builder.Services.AddScoped<IPlanningService, PlanningService>();
+builder.Services.AddScoped<RequirementPickerService>();
 builder.Services.AddScoped<IL3CircuitService, L3CircuitService>();
+builder.Services.AddScoped<IArticleAvailabilityService, ArticleAvailabilityService>();
 builder.Services.AddScoped<IManagementPlanExclusionService, ManagementPlanExclusionService>();
 builder.Services.AddScoped<IEquipmentClassificationDecisionService, EquipmentClassificationDecisionService>();
 builder.Services.AddScoped<ICatalogClassificationBatchService, CatalogClassificationBatchService>();
@@ -131,6 +134,9 @@ ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 builder.WebHost.UseSetting("BrowserLink:Enabled", "false");
 
 builder.Services.AddControllers();
+// Decimales con punto o coma (los input number envían punto; la cultura del servidor usa coma).
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(options =>
+    options.ModelBinderProviders.Insert(0, new FlexibleDecimalModelBinderProvider()));
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AuthorizeFolder("/");

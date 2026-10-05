@@ -1,10 +1,36 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.DisponibilidadModel
+@using Proyecto_Laboratorios_Univalle.Services
 @{
     ViewData["Title"] = "Disponibilidad — Paso 3";
     var canApprove = !Model.IsApproved && !(Model.Context?.IsReadOnly ?? false);
     var hasWarnings = Model.HasShortage || Model.HasUnregistered;
     var selectedOriginId = Model.OriginLabId ?? 0;
+    var needsAck = Model.HasShortage || (Model.PracticeIssues?.Count ?? 0) > 0;
+
+    // Agrupamos prácticas y demandas por día para iterar en orden dentro de la grilla.
+    var practicesByDay = Model.Week != null
+        ? Model.Week.Practices
+            .GroupBy(p => p.Date.Date)
+            .ToDictionary(g => g.Key, g => g.OrderBy(p => p.StartTime ?? TimeSpan.Zero).ToList())
+        : new Dictionary<DateTime, List<WeekPractice>>();
+    var demandsByDay = Model.Week != null
+        ? Model.Week.Demands
+            .GroupBy(d => d.Date.Date)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.HasIssue).ThenBy(x => x.ArticleName).ToList())
+        : new Dictionary<DateTime, List<ArticleDayDemand>>();
+    var dayNames = new Dictionary<DayOfWeek, string>
+    {
+        { DayOfWeek.Monday, "Lunes" }, { DayOfWeek.Tuesday, "Martes" },
+        { DayOfWeek.Wednesday, "Miércoles" }, { DayOfWeek.Thursday, "Jueves" },
+        { DayOfWeek.Friday, "Viernes" }, { DayOfWeek.Saturday, "Sábado" },
+        { DayOfWeek.Sunday, "Domingo" }
+    };
+
+    var anyConflict = (Model.Week?.ConflictCount ?? 0) > 0;
+    var anyRotation = (Model.Week?.RotationCount ?? 0) > 0;
+    var practiceHasConflict = Model.PracticeIssues != null && Model.PracticeIssues.Any(i => i.State == DemandState.Conflict);
+    var practiceHasOnlyRotation = !practiceHasConflict && Model.PracticeIssues != null && Model.PracticeIssues.Any(i => i.State == DemandState.Rotation);
 }
 
 <div class="container-fluid mt-3">
@@ -58,8 +84,8 @@
                     <div class="alert alert-success border-0 rounded d-flex align-items-center mb-0">
                         <i class="fas fa-check-circle fa-2x mr-3"></i>
                         <div>
-                            <strong>Solicitud aprobada.</strong><br />
-                            <span>La práctica avanzó al paso L-3; el detalle siguiente se conserva como auditoría.</span>
+                            <strong>La planificación de esta práctica está aprobada.</strong><br />
+                            <span>El detalle siguiente se conserva como auditoría. La entrega y los incidentes se registran como proceso aparte.</span>
                         </div>
                     </div>
                 }
@@ -85,12 +111,58 @@
                         <i class="fas fa-check-circle fa-2x mr-3"></i>
                         <div>
                             <strong>Todo está disponible.</strong><br />
-                            <span>La práctica puede aprobarse para iniciar la operación L-3.</span>
+                            <span>La planificación puede aprobarse; la entrega se registra como proceso aparte.</span>
                         </div>
                     </div>
                 }
             </div>
         </div>
+
+        @* --- Alerta de issues de la semana (solo si esta práctica participa en alguno) --- *@
+        @if (Model.PracticeIssues != null && Model.PracticeIssues.Count > 0)
+        {
+            var alertClass = practiceHasConflict ? "alert-danger" : "alert-warning";
+            var alertIcon = practiceHasConflict ? "fa-exclamation-triangle" : "fa-sync-alt";
+            var alertTitle = practiceHasConflict
+                ? "He detectado conflictos de horario en la semana"
+                : "He detectado rotaciones de material en la semana";
+            <div class="alert @alertClass border-0 rounded mb-4">
+                <div class="d-flex align-items-start">
+                    <i class="fas @alertIcon fa-2x mr-3 mt-1"></i>
+                    <div class="flex-grow-1">
+                        <strong>@alertTitle</strong>
+                        <div class="small mt-1 mb-2">
+                            <span><strong>Conflicto</strong> = prácticas al mismo tiempo piden más unidades que el stock disponible. </span>
+                            <span><strong>Rotación</strong> = el total del día supera el stock pero en horarios distintos: hay que pasarse el material entre prácticas.</span>
+                        </div>
+                        <ul class="mb-0 pl-3">
+                            @foreach (var issue in Model.PracticeIssues)
+                            {
+                                var isConflict = issue.State == DemandState.Conflict;
+                                <li class="mb-1">
+                                    @if (isConflict)
+                                    {
+                                        <span class="badge badge-danger mr-1">Conflicto de horario</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning text-white mr-1">Requiere rotación</span>
+                                    }
+                                    <span>
+                                        <strong>Día @issue.Date.ToString("dd/MM")</strong> ·
+                                        Artículo <strong>@issue.ArticleName</strong>:
+                                        piden <strong>@issue.TotalRequested.ToString("0.##")</strong> en el día
+                                        (máx. <strong>@issue.PeakRequested.ToString("0.##")</strong> a la vez,
+                                        <em>@issue.PeakText</em>)
+                                        y hay <strong>@(issue.Stock.Available?.ToString("0.##") ?? "0")</strong>.
+                                    </span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        }
 
         <div class="card border-0 shadow-sm rounded-lg">
             <div class="card-body p-4">
@@ -133,11 +205,26 @@
                                     <td class="text-center">
                                         @if (hasAvailable)
                                         {
-                                            @row.Available.GetValueOrDefault().ToString("0.##")
+                                            <div class="font-weight-bold">@row.Available.GetValueOrDefault().ToString("0.##")</div>
+                                            <small class="d-block text-muted">@row.Stock.SourceText</small>
+                                            @if (row.Stock.Source == StockSource.EquipmentUnits)
+                                            {
+                                                <small class="d-block text-muted">
+                                                    @{
+                                                        var parts = new List<string>();
+                                                        parts.Add($"{row.Stock.TotalUnits} unidades");
+                                                        if (row.Stock.OnLoan > 0) { parts.Add($"{row.Stock.OnLoan} en préstamo"); }
+                                                        if (row.Stock.InMaintenance > 0) { parts.Add($"{row.Stock.InMaintenance} en mantenimiento"); }
+                                                        if (row.Stock.OutOfService > 0) { parts.Add($"{row.Stock.OutOfService} fuera de servicio"); }
+                                                    }
+                                                    @string.Join(" · ", parts)@if (row.Stock.Unconfirmed > 0) { <span> · @row.Stock.Unconfirmed por confirmar</span> }
+                                                </small>
+                                            }
                                         }
                                         else
                                         {
                                             <span class="badge badge-secondary badge-pill">Sin registro</span>
+                                            <small class="d-block text-muted">Sin stock registrado</small>
                                         }
                                     </td>
                                     <td class="text-center font-weight-bold @(isOk ? "text-success" : (isInsufficient ? "text-danger" : "text-muted"))">
@@ -162,7 +249,7 @@
                                         else
                                         {
                                             <span class="badge badge-secondary rounded-pill"><i class="fas fa-question mr-1"></i> Sin registro</span>
-                                            <small class="d-block text-muted">Se entregará sin descontar</small>
+                                            <small class="d-block text-muted">Sin stock registrado</small>
                                         }
                                     </td>
                                 </tr>
@@ -171,32 +258,31 @@
                     </table>
                 </div>
 
-                @if (Model.IsApproved)
-                {
-                    <div class="alert alert-light border rounded mt-4 mb-0 small text-muted">
-                        <i class="fas fa-info-circle text-primary mr-1"></i>
-                        La solicitud ya está aprobada. Continúa con la entrega de los artículos en L-3.
-                    </div>
-                }
-
-                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top flex-wrap gap-2">
                     <a asp-page="./Requerimientos" asp-route-planId="@Model.PlanId"
                        class="btn btn-outline-secondary btn-rounded px-4">
                         <i class="mdi mdi-arrow-left mr-1"></i> Ajustar requerimientos
                     </a>
                     @if (Model.IsApproved)
                     {
-                        <a asp-page="./L3" asp-route-id="@Model.PlanId"
-                           class="btn btn-primary btn-rounded font-weight-bold px-4">
-                            Continuar en L-3 <i class="mdi mdi-arrow-right ml-1"></i>
+                        <a asp-page="./Index" class="btn btn-primary btn-rounded font-weight-bold px-4">
+                            <i class="fas fa-th-large mr-1"></i> Volver al panel
                         </a>
                     }
                     else if (canApprove)
                     {
-                        <form method="post" asp-page-handler="Approve" asp-route-planId="@Model.PlanId" class="d-inline" id="form-approve">
+                        <form method="post" asp-page-handler="Approve" asp-route-planId="@Model.PlanId"
+                              class="d-inline-flex align-items-center flex-wrap gap-2" id="form-approve">
                             <input type="hidden" name="OriginLabId" value="@selectedOriginId" />
+                            @if (needsAck)
+                            {
+                                <div class="form-check mr-1">
+                                    <input type="checkbox" class="form-check-input" id="acknowledgeCheck" name="Acknowledged" value="true" />
+                                    <label class="form-check-label font-weight-bold text-dark" for="acknowledgeCheck">Estoy consciente de los faltantes/conflictos y continúo</label>
+                                </div>
+                            }
                             <button type="submit" class="btn btn-success btn-rounded font-weight-bold px-4 js-approve-confirm">
-                                <i class="mdi mdi-check mr-1"></i> Aprobar y pasar a L-3
+                                <i class="mdi mdi-check mr-1"></i> Aprobar planificación
                             </button>
                         </form>
                     }
@@ -209,6 +295,147 @@
                 </div>
             </div>
         </div>
+
+        @* --- Semana académica (debajo de la tabla) --- *@
+        @if (Model.Week != null)
+        {
+            <div class="card border-0 shadow-sm rounded-lg mt-4">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+                        <div>
+                            <span class="text-uppercase small text-primary font-weight-bold">Semana académica</span>
+                            <h5 class="font-weight-bold text-dark mb-0 mt-1">
+                                @(Model.Week.WeekNumber.HasValue ? $"Semana {Model.Week.WeekNumber.Value}" : "Semana")
+                                <small class="text-muted font-weight-normal">· @Model.Week.StartDate.ToString("dd/MM")–@Model.Week.EndDate.ToString("dd/MM")</small>
+                            </h5>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            @if (anyConflict)
+                            {
+                                <span class="badge badge-danger px-3 py-2 font-weight-bold">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>@Model.Week.ConflictCount conflicto(s) de horario
+                                </span>
+                            }
+                            @if (anyRotation)
+                            {
+                                <span class="badge badge-warning text-white px-3 py-2 font-weight-bold">
+                                    <i class="fas fa-sync-alt mr-1"></i>@Model.Week.RotationCount rotación(es)
+                                </span>
+                            }
+                            @if (!anyConflict && !anyRotation)
+                            {
+                                <span class="badge badge-success px-3 py-2 font-weight-bold">
+                                    <i class="fas fa-check mr-1"></i>Sin conflictos ni rotaciones
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="av-week-grid">
+                        @foreach (var day in Model.Week.Days)
+                        {
+                            var dayKey = day.Date;
+                            var hasDayPractices = practicesByDay.TryGetValue(dayKey, out var dayPractices) && dayPractices != null && dayPractices.Count > 0;
+
+                            // Regla: si es domingo y no tiene prácticas, no se muestra.
+                            if (day.DayOfWeek == DayOfWeek.Sunday && !hasDayPractices)
+                            {
+                                continue;
+                            }
+
+                            var dayDemands = demandsByDay.TryGetValue(dayKey, out var dList) ? dList : new List<ArticleDayDemand>();
+                            var dayHasConflict = dayDemands.Any(d => d.State == DemandState.Conflict);
+                            var dayHasRotation = dayDemands.Any(d => d.State == DemandState.Rotation);
+                            <div class="av-week-day">
+                                <div class="av-week-day-head">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="av-week-day-name">@dayNames[day.DayOfWeek]</span>
+                                        <span class="av-week-day-date">@day.ToString("dd/MM")</span>
+                                    </div>
+                                    @if (dayHasConflict || dayHasRotation)
+                                    {
+                                        <div class="mt-1">
+                                            @if (dayHasConflict)
+                                            {
+                                                <span class="badge badge-danger badge-pill mr-1">Conflicto</span>
+                                            }
+                                            @if (dayHasRotation)
+                                            {
+                                                <span class="badge badge-warning text-white badge-pill">Rotación</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                                <div class="av-week-day-body">
+                                    @if (!hasDayPractices)
+                                    {
+                                        <div class="text-muted small text-center py-3">Sin prácticas</div>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var p in dayPractices!)
+                                        {
+                                            var isCurrent = p.Id == Model.PlanId;
+                                            string pStateClass = "";
+                                            if (Model.Week.PracticeStates.TryGetValue(p.Id, out var pState))
+                                            {
+                                                if (pState == DemandState.Conflict) { pStateClass = "av-practice-conflict"; }
+                                                else if (pState == DemandState.Rotation) { pStateClass = "av-practice-rotation"; }
+                                            }
+                                            var linkClass = "av-practice" + (isCurrent ? " av-practice-current" : "") + (string.IsNullOrEmpty(pStateClass) ? "" : " " + pStateClass);
+                                            <a class="@linkClass" asp-page="./Requerimientos" asp-route-planId="@p.Id">
+                                                <div class="av-practice-time">@p.TimeText</div>
+                                                <div class="av-practice-code">@p.Code</div>
+                                                <div class="av-practice-name">@p.PracticeName</div>
+                                                @if (!string.IsNullOrEmpty(p.SubjectName) || !string.IsNullOrEmpty(p.GroupName))
+                                                {
+                                                    <small class="d-block text-muted">@(p.SubjectName ?? "")@(string.IsNullOrEmpty(p.GroupName) ? "" : $" · {p.GroupName}")</small>
+                                                }
+                                                @if (!string.IsNullOrEmpty(p.LaboratoryCode))
+                                                {
+                                                    <small class="d-block text-muted"><i class="fas fa-map-marker-alt mr-1"></i>@p.LaboratoryCode</small>
+                                                }
+                                                @if (isCurrent)
+                                                {
+                                                    <span class="badge badge-primary badge-pill mt-1">Esta práctica</span>
+                                                }
+                                            </a>
+                                        }
+                                    }
+
+                                    @if (dayDemands.Any(d => d.HasIssue))
+                                    {
+                                        <div class="av-demands">
+                                            @foreach (var d in dayDemands.Where(x => x.HasIssue))
+                                            {
+                                                var demandClass = d.State == DemandState.Conflict ? "av-demand-conflict" : "av-demand-rotation";
+                                                <div class="av-demand @demandClass">
+                                                    <div class="av-demand-head">
+                                                        <span title="@d.ArticleName">@d.ArticleName</span>
+                                                        <span class="av-demand-qty">@d.TotalRequested.ToString("0.##")/@(d.Stock.Available?.ToString("0.##") ?? "0")</span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        @if (d.State == DemandState.Conflict)
+                                                        {
+                                                            <span class="badge badge-danger badge-pill">Conflicto</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge badge-warning text-white badge-pill">Rotación</span>
+                                                        }
+                                                        <small class="text-muted">@d.PeakText</small>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
     }
 </div>
 
@@ -216,6 +443,145 @@
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
     <style>
         .bg-light-primary { background-color: #e8e7ff; }
+
+        /* Semana académica (prefijo .av-) */
+        .av-week-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .av-week-day {
+            flex: 1 1 0;
+            min-width: 140px;
+            background: #fbfaff;
+            border: 1px solid #e9e5fb;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 80px;
+        }
+        @@media (max-width: 575.98px) {
+            .av-week-day { flex: 1 1 100%; }
+        }
+        .av-week-day-head {
+            background: linear-gradient(90deg, #f6f4ff 0%, #ffffff 100%);
+            padding: 0.5rem 0.65rem;
+            border-bottom: 1px solid #ecebf6;
+        }
+        .av-week-day-name {
+            font-weight: 800;
+            color: #2a1d6b;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .av-week-day-date {
+            color: #8a82b5;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .av-week-day-body {
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            flex: 1;
+        }
+
+        .av-practice {
+            display: block;
+            text-decoration: none;
+            background: #ffffff;
+            border: 1px solid #e9e5fb;
+            border-left: 3px solid #c8c0e8;
+            border-radius: 8px;
+            padding: 0.45rem 0.55rem;
+            color: #2a1d6b;
+            transition: all .15s ease;
+        }
+        .av-practice:hover {
+            text-decoration: none;
+            background: #f5f1ff;
+            border-color: #7460ee;
+            color: #2a1d6b;
+        }
+        .av-practice-current {
+            border-color: #7460ee;
+            border-left-color: #7460ee;
+            background: #f6f4ff;
+            box-shadow: 0 0 0 1px rgba(116, 96, 238, 0.25);
+        }
+        .av-practice-conflict {
+            border-left-width: 4px;
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        .av-practice-rotation {
+            border-left-width: 4px;
+            border-left-color: #fd7e14;
+            background: #fff8ed;
+        }
+        .av-practice-time {
+            font-weight: 800;
+            color: #5d3df5;
+            font-size: 0.72rem;
+        }
+        .av-practice-code {
+            font-size: 0.68rem;
+            color: #8a82b5;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+        .av-practice-name {
+            font-weight: 700;
+            font-size: 0.78rem;
+            line-height: 1.15;
+            margin-top: 0.15rem;
+            color: #2a1d6b;
+        }
+
+        .av-demands {
+            margin-top: 0.35rem;
+            padding-top: 0.35rem;
+            border-top: 1px dashed #ecebf6;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .av-demand {
+            font-size: 0.72rem;
+            background: #ffffff;
+            border: 1px solid #f0ecfa;
+            border-left: 3px solid #c8c0e8;
+            border-radius: 6px;
+            padding: 0.3rem 0.4rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+        .av-demand-conflict {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+        .av-demand-rotation {
+            border-left-color: #fd7e14;
+            background: #fff8ed;
+        }
+        .av-demand-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 0.35rem;
+            font-weight: 700;
+            color: #2a1d6b;
+        }
+        .av-demand-qty {
+            font-weight: 800;
+            color: #5d3df5;
+            white-space: nowrap;
+            font-size: 0.72rem;
+        }
     </style>
 }
 
@@ -229,28 +595,41 @@
             });
 
             var form = document.getElementById('form-approve');
-            if (!form) return;
-            form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                if (typeof Swal === 'undefined') {
-                    HTMLFormElement.prototype.submit.call(form);
-                    return;
-                }
-                Swal.fire({
-                    title: '¿Aprobar práctica?',
-                    text: 'La solicitud avanzará al paso L-3 para registrar la entrega. Aunque haya faltantes, la solicitud se registra; la entrega es la que bloqueará si no alcanza el stock.',
-                    type: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, aprobar',
-                    cancelButtonText: 'Cancelar',
-                    confirmButtonColor: '#28a745',
-                    cancelButtonColor: '#6c757d'
-                }).then(function (result) {
-                    if (result && (result.isConfirmed === true || result.value === true)) {
-                        HTMLFormElement.prototype.submit.call(form);
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    var ackBox = form.querySelector('input[name="Acknowledged"]');
+                    if (ackBox && !ackBox.checked) {
+                        if (typeof Swal === 'undefined') return;
+                        Swal.fire({
+                            title: 'Confirma antes de aprobar',
+                            text: 'Hay faltantes, conflictos o rotaciones. Marca la casilla para confirmar que estás consciente antes de aprobar.',
+                            type: 'warning',
+                            confirmButtonText: 'Entendido',
+                            confirmButtonColor: '#ffc107'
+                        });
+                        return;
                     }
+                    if (typeof Swal === 'undefined') {
+                        HTMLFormElement.prototype.submit.call(form);
+                        return;
+                    }
+                    Swal.fire({
+                        title: '¿Aprobar planificación?',
+                        text: 'La planificación de esta práctica se aprobará. La entrega de artículos se realiza como proceso aparte.',
+                        type: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, aprobar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#28a745',
+                        cancelButtonColor: '#6c757d'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            HTMLFormElement.prototype.submit.call(form);
+                        }
+                    });
                 });
-            });
+            }
 
             // El selector de laboratorio de origen recarga la página con GET (D1: cambio en vivo).
             var $origin = $('#origin-select');

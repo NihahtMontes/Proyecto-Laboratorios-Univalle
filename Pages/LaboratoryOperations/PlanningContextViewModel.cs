@@ -17,7 +17,13 @@ public sealed record PlanningContextViewModel(
     /// <summary>Las escrituras solo se permiten en la planificación activa (o en prácticas legadas sin planificación).</summary>
     public bool IsReadOnly => Planning is { IsActive: false };
 
-    public static readonly string[] StepNames = ["", "Práctica", "Requerimientos", "Disponibilidad", "L-3 Entrega y devolución", "L-5 Incidentes"];
+    /// <summary>Pasos del wizard de planificación. L-3 y L-5 son el cierre de la práctica (proceso aparte, Step 4/5).</summary>
+    public static readonly string[] StepNames = ["", "Práctica", "Requerimientos", "Disponibilidad"];
+
+    public const int StepCount = 3;
+
+    /// <summary>True en L-3/L-5: no forman parte del wizard de planificación.</summary>
+    public bool IsClosingStep => Step > StepCount;
 }
 
 public static class PlanningContextLoader
