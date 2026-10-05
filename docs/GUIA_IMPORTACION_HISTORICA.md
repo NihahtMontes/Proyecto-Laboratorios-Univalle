@@ -406,3 +406,141 @@ inferencia: 37070, 37077, 43486-43491, 45840).
     21 grupos casi-duplicados; vinculación definitiva de los 15 docentes;
     archivo `BASE_NORMALIZADA_UTENSILIOS_1-2027_COMPLETADA.xlsx` con materias,
     grupos, prácticas y requerimientos.
+
+### Versión V7 (bloque académico) — 2026-10-05
+
+1. **Fuente vigente para el bloque académico**:
+   `BaseEstructuraFinal_V7.xlsx`, SHA-256
+   `c677c7cc81d63f5e74b00daab60c214be032c5089b1876c61b9ddb66dc4320e9`.
+   La V7 tiene **el mismo contenido histórico que la V4** si se compara
+   sin distinguir mayúsculas, pero alguien aplicó "Tipo Título"
+   (`NOMPROPIO`) a **todo el libro** — códigos, encabezados, estados y
+   textos — y además reemplazó los saltos de línea de los textos largos
+   por espacios. Por eso la V7 **solo se importa para el bloque
+   académico**: prácticas, programaciones, recetas y existencias
+   nuevas. Todo lo histórico (L-6, L-7, L-8, L-48, catálogo, unidades,
+   actores, materias, L-3, `_*`) sigue saliendo de la V4: reimportar
+   esos bloques desde la V7 **degrada datos ya cargados**. El contrato
+   operativo detallado está en
+   `docs/INSTRUCCIONES_AGENTE_V7_ACADEMICO.md`.
+2. **Generador**: `Tools/ExcelImport/gen_v7_academic_sql.py`
+   (copia adaptada de `gen_v4_academic_sql.py`, **no** modifica el
+   generador V4). Lote `ImportBatches`:
+   `XLSX-V7-ACADEMIC-C677C7CC81D6`, `SourceName` =
+   `BaseEstructuraFinal_V7.xlsx`, `ContractVersion` =
+   `base-estructural-v7`. Lotes de 100 como máximo, una transacción por
+   bloque y `SET XACT_ABORT ON`; el script se detiene si
+   `DB_NAME() <> 'DB_Laboratorios_Univalle_DEMO_QA'`.
+3. **Comando de ejecución** (un solo proceso a la vez, ejecutar dos
+   veces para confirmar idempotencia):
+
+   ```cmd
+   sqlcmd -S localhost -E -C -d DB_Laboratorios_Univalle_DEMO_QA -b -f 65001 -i <sql>
+   ```
+
+   **`-f 65001` es obligatorio.** Sin él, `sqlcmd` lee el archivo
+   UTF-8 como ANSI y daña las tildes. Esto pasó en la primera pasada
+   del 2026-10-05: se repararon en el lugar **481 filas** con un
+   script Python que revierte el doble encoding — **49 prácticas**
+   (`Name`/descripción), **365 recetas** (`Observations`) y **66
+   incidencias** (`Description`) — y se corrigió la fila del lote en
+   `ImportBatches` (1 row). La segunda ejecución del mismo script
+   insertó 0 filas.
+4. **Respaldo previo**: `DEMO_QA_pre_V7_20261005.bak`,
+   `WITH COPY_ONLY, CHECKSUM`, `RESTORE VERIFYONLY` OK, guardado en la
+   carpeta `Backup` de la instancia. Sin un respaldo verificado no se
+   ejecuta la carga.
+5. **Resultados verificados** en `DB_Laboratorios_Univalle_DEMO_QA`
+   (migración `20261004214711_AddSubjectKit`):
+
+   - 196 prácticas (`PRA-%`, salvo `PRA-GAS%`), `Status = 0`;
+   - 422 programaciones de la gestión `2027-1`
+     (`PracticeSchedules`, `Status = Programada`);
+   - 41 grupos `GRP-2027-1-*` activos;
+   - 2.111 recetas (`PracticeRequirements` con `Code LIKE 'REQ-%'`,
+     `IsRemoved = 0`);
+   - 220 existencias nuevas: total `ArticleStocks` 228
+     (8 previas + 220). Por laboratorio: ECONO 122, H-03 26, K-01 16,
+     H-06 14, H-01 13, H-05 12, H-04 11, H-02 8, H-07 6;
+   - 1.002 artículos activos (1.023 − 25 bajas lógicas + 4 nuevos):
+     25 `Status = 2` (24 duplicados fusionados + la nota del formato
+     L-3 `ART-REQ-00348`) y 4 nuevos (`ART-REQ-00566…00569`) con
+     `Status = 0`, `ReviewStatus = 9`;
+   - artículos de receta con stock: **83** en algún laboratorio
+     (ECONO o H-01…K-01) y **49** solo en ECONO (de 493 artículos
+     usados en recetas);
+   - 410 de 493 artículos de receta quedan sin stock en ningún
+     laboratorio, y 444 sin stock en ECONO;
+   - incidencias del lote: **120** en total —
+     `ARTICLE_NEW_V7` 4, `ARTICLE_RETIRED_V7` 25,
+     `COURSE_GROUP_VALUES_VARY` 2, `SCHEDULE_DATE_SUSPECT` 33,
+     `SCHEDULE_OUT_OF_MANAGEMENT` 2, `VALUE_MISSING` 11,
+     `VALUE_PENDING_CONFIRMATION` 41 (una por grupo, campo hora) y
+     `VALUE_TRUNCATED_IN_NAME` 2;
+   - segunda ejecución del mismo script: **0 filas** y **0
+     incidencias** nuevas;
+   - *checksums* de los textos históricos L-6 / L-7 / L-8, de los
+     nombres de materias, de `PRC-00001` / `PRC-00002`, de
+     `PRG-00001` y de los artículos conservados: **idénticos**
+     antes y después;
+   - códigos guardados en minúscula: **0** (verificado con un
+     `SELECT … WHERE Code COLLATE Latin1_General_CS_AS <> UPPER(Code)`
+     sobre las tablas tocadas).
+6. **Hallazgos corregidos en el generador durante la revisión** (ya
+   reflejados en `gen_v7_academic_sql.py` antes de ejecutar):
+
+   - Columnas invertidas en la nota `ART-REQ-00348` (no era la baja
+     lógica de un duplicado).
+   - Faltaba `SET QUOTED_IDENTIFIER ON` en el bloque de prácticas /
+     programaciones: rompía los índices filtrados
+     (`IX_PracticeRequirements_PracticeId_ArticleId`,
+     `IX_PracticeSchedules_ManagementId_PracticeId_GroupName`,
+     `UX_Articles_Name_Active`).
+   - Faltaba `IsDeleted = 0` en el `MERGE` de `PracticeSchedules`,
+     necesario para respetar el índice filtrado.
+
+   **Lección operativa**: `SET NOEXEC ON` no valida columnas en
+   sentencias que crean tablas temporales (las valida recién al
+   ejecutar). Validar con un ensayo real en una transacción con
+   `ROLLBACK`, o incluyendo `SELECT TOP 0 … FROM #temp` justo después
+   de crearla.
+7. **Vulnerabilidades / pendientes abiertos** (no bloquean la carga,
+   requieren acción posterior):
+
+   - `AcademicPlanning` 2027-1 **no existe**: las 422 programaciones
+     importadas quedan con `AcademicWeekId = NULL`. Hay que crear la
+     planificación y vincular cada `WeekNumber` con su
+     `AcademicWeek` — teniendo en cuenta que la **semana 6 es
+     sospechosa** (la fecha del Excel coincide con la semana 3; ver
+     `INSTRUCCIONES_AGENTE_V7_ACADEMICO.md` §1.3 y §2.1).
+   - Fechas reales de la **semana 6**: no se pueden deducir; pedir a
+     la cliente.
+   - `HoraInicio` / `HoraFin` de la programación: vacías en las 422
+     filas; sin horas no se puede saber si un mismo laboratorio y día
+     tienen choques (hay hasta 8 programaciones el mismo día y, en 4
+     casos, un docente en 2 laboratorios). Incidencia
+     `VALUE_PENDING_CONFIRMATION` (41, una por grupo).
+   - Stock por laboratorio. `ArticleAvailabilityService` compara
+     contra un solo laboratorio de origen (ECONO por defecto).
+     Recomendación para una tarea de código posterior: que la vista
+     semanal de Disponibilidad compare contra el **total
+     institucional** (ECONO + laboratorios) y mantenga el selector de
+     origen. **No** se modifica en esta carga.
+   - Vínculo artículo-equipo: `docs/PROPUESTA_VINCULO_ARTICULO_EQUIPO.csv`
+     sigue abierto; los artículos de categoría Equipo deberían leer su
+     stock de las unidades físicas correspondientes.
+   - Reexportar el Excel **sin** "Tipo Título" para que la V8 se
+     pueda cargar como una sola corrida limpia, sin necesidad de
+     normalizar encabezados, mayúsculas ni textos.
+   - Las 422 programaciones **no aparecen** en Disponibilidad ni en el
+     calendario de planificación porque Planificación /
+     Disponibilidad leen `L3Requests`, no `PracticeSchedules` (ver
+     `INSTRUCCIONES_AGENTE_V7_ACADEMICO.md` §2.1). Es lo esperado, no
+     un fallo.
+   - **Resuelto el 2026-10-05:** el wizard
+     (`Pages/LaboratoryOperations/Practica.cshtml.cs`) ya no choca con
+     las programaciones importadas: si existe una programación libre de
+     la misma gestión + práctica + grupo, la adopta (vincula
+     `L3Request.PracticeScheduleId`) en lugar de crear otra; solo
+     rechaza si otra práctica planificada vigente ya la usa. Probado
+     con el `PracticaModel` real contra DEMO_QA.

@@ -187,20 +187,24 @@ Ya existe estructura (padre exclusivo). **No se crean `CostDetail` a partir de `
 - Issues: `SUBJECT_CAREER_HOMOLOGATED` (6), ALI1N7 (semestre 6 frente a código 7), nombres con sufijo "LND".
 - Las 8 materias demo `GAS-xxx` → `Eliminado` (PLAN §4.2).
 
-### 3.19 `Practicas` → `Practices` ⚪
-`PracticaCodigo`→`Code` · `MateriaCodigo`→`SubjectId` · `NumeroPractica`→`Number` · `Descripcion`→`Description` · `EstadoCobertura`→`CoverageStatus` · `MetodoCobertura`→`CoverageMethod` · `FuenteReferencia`→`SourceReference` · `Observaciones`→`Observations`.
+### 3.19 `Practicas` → `Practices` ✅
+`PracticaCodigo`→`Code` · `MateriaCodigo`→`SubjectId` · `NumeroPractica`→`Number` · `Descripcion`→`Description` · `Observaciones`→`Observations`. `EstadoCobertura`, `MetodoCobertura` y `FuenteReferencia` **no existen en la V7** → NULL. `Estado = Normal (0)`. `Name = LEFT(Descripcion, 200)` (regla de la migración `AddPracticeName`); si la descripción supera los 200 caracteres, `Description` conserva el texto completo y se emite `VALUE_TRUNCATED_IN_NAME` (2 filas).
+**Fuente: V7 (bloque académico), cargado 2026-10-05** — 196 prácticas (`PRA-%`, salvo `PRC-*` de pruebas y `PRA-GAS%`), `Status = 0`. Lote `XLSX-V7-ACADEMIC-C677C7CC81D6`. Detalle operativo en `INSTRUCCIONES_AGENTE_V7_ACADEMICO.md` y `docs/GUIA_IMPORTACION_HISTORICA.md` §V7.
 
-### 3.20 `ProgramacionPracticas` → `PracticeSchedule` (nueva) + `CourseGroup` derivado ⚪
+### 3.20 `ProgramacionPracticas` → `PracticeSchedule` (nueva) + `CourseGroup` derivado 🟡
 Columna por columna en PLAN §3.2 y §3.3.
+**Fuente: V7 (bloque académico), cargado 2026-10-05** — 422 programaciones de la gestión `2027-1`, 19 materias, 41 grupos `GRP-2027-1-*`, 15 docentes (ACT-0037…0051, todos con rol Docente), 8 laboratorios (H-01…H-07, K-01). `HoraInicio` / `HoraFin` vacías → `VALUE_PENDING_CONFIRMATION` (41, una por grupo). 33 filas con `Semana = 6` y fecha 09-03…12-03-2027 → `SCHEDULE_DATE_SUSPECT`; 2 programaciones fuera del rango de la gestión → `SCHEDULE_OUT_OF_MANAGEMENT`. `FactorMateria` varía dentro de TAL300-A y TAL300-B → `COURSE_GROUP_VALUES_VARY` (2). `AcademicWeekId` queda NULL (2027-1 no tiene `AcademicPlanning`); cuando se cree la planificación, el wizard adopta la programación importada (gestión + práctica + grupo) en lugar de crear otra (corregido el 2026-10-05 en `Pages/LaboratoryOperations/Practica.cshtml.cs`). Lote `XLSX-V7-ACADEMIC-C677C7CC81D6`.
 
 ### 3.21 `CategoriasArticulo` → `ArticleCategories` ✅ (10) · 3.22 `UnidadesMedida` → `MeasurementUnits` ✅ (3) · 3.23 `Articulos` → `Articles` ✅ (1.023)
 Cargados en V3. Pendiente: retirar los restos demo (PLAN §4.3).
 
-### 3.24 `RequerimientosPractica` → `PracticeRequirements` ⚪
-`RequerimientoCodigo`→`Code` (nuevo) · `PracticaCodigo`→`PracticeId` · `ArticuloCodigo`→`ArticleId` · `Cantidad`→`Quantity` (nullable) · `Escalable`→`IsScalable` · `EstadoValidacion`→`ValidationStatus` · `Observaciones`→`Observations`.
+### 3.24 `RequerimientosPractica` → `PracticeRequirements` ✅
+`RequerimientoCodigo`→`Code` (nuevo) · `PracticaCodigo`→`PracticeId` · `ArticuloCodigo`→`ArticleId` · `Cantidad`→`Quantity` (nullable) · `Escalable`→`IsScalable` · `EstadoValidacion`→`ValidationStatus` · `Observaciones`→`Observations`. `Cantidad` NULL → `VALUE_MISSING` (11). `Code` se guarda en MAYÚSCULAS (`REQ-0001…`).
+**Fuente: V7 (bloque académico), cargado 2026-10-05** — 2.111 recetas (`PracticeRequirements` con `Code LIKE 'REQ-%'`, `IsRemoved = 0`), 180 de 196 prácticas, 493 artículos. Sin FK rotas ni duplicados (práctica, artículo). Estado de validación: `Validado Historico` 1.529, `Referencia - Revisar Docente` 372, `Validado Por Practica` 169, `Validado Plan` 41. Lote `XLSX-V7-ACADEMIC-C677C7CC81D6`.
 
-### 3.25 `ExistenciasArticulos` → `ArticleStocks` ⚪
-`LaboratorioCodigo`+`ArticuloCodigo`→clave única (`LaboratoryId`, `ArticleId`) · `CantidadDisponible`→`AvailableQuantity` · `FechaActualizacion`→`UpdatedOn`.
+### 3.25 `ExistenciasArticulos` → `ArticleStocks` 🟡
+`LaboratorioCodigo`+`ArticuloCodigo`→clave única (`LaboratoryId`, `ArticleId`) · `CantidadDisponible`→`AvailableQuantity` · `FechaActualizacion`→`UpdatedOn`. Solo se cargan las filas con `LaboratorioCodigo` **y** `CantidadDisponible`; las 843 filas vacías se descartan (no se emiten incidencias por ellas).
+**Fuente: V7 (bloque académico), cargado 2026-10-05** — 220 existencias nuevas (1.063 leídas). `ArticleStocks` total: 228 (8 previas + 220). Por laboratorio: ECONO 122, H-03 26, K-01 16, H-06 14, H-01 13, H-05 12, H-04 11, H-02 8, H-07 6. **Disponibilidad (D12, aplicado el 2026-10-05):** `ArticleAvailabilityService` compara por defecto contra el total institucional (ECONO + laboratorios); el selector de origen permite ver un solo laboratorio. Tras la carga, 83 de 493 artículos de receta tienen stock en algún laboratorio (49 solo en ECONO, 410 sin stock en ninguno). No se modifica en esta carga. Lote `XLSX-V7-ACADEMIC-C677C7CC81D6`.
 
 ### 3.26–3.31 Circuito L-3 → `L3Requests`, `L3RequestDetails`, `Departures`, `DepartureItems`, `DepartureReturns`, `DepartureReturnItems` ⚪
 Columna por columna en PLAN §3.4. Todas vacías en el Excel.
