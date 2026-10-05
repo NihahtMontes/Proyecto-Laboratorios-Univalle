@@ -55,7 +55,7 @@
                 <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
                     <div>
                         <span class="text-uppercase small text-primary font-weight-bold">Comparar contra</span>
-                        <h6 class="font-weight-bold text-dark mb-0 mt-1">Stock del laboratorio de origen</h6>
+                        <h6 class="font-weight-bold text-dark mb-0 mt-1">Stock disponible (total o por laboratorio)</h6>
                         @if (!string.IsNullOrEmpty(Model.OriginName))
                         {
                             <small class="text-muted">Seleccionado: <strong>@Model.OriginName</strong></small>
@@ -68,7 +68,7 @@
                                 <span class="input-group-text bg-white border-right-0"><i class="fas fa-warehouse text-primary"></i></span>
                             </div>
                             <select name="originLabId" asp-items="Model.OriginList" class="form-control select2" id="origin-select">
-                                <option value="0">— Seleccionar laboratorio —</option>
+                                <option value="0">Total institucional (todos los laboratorios)</option>
                             </select>
                             <div class="input-group-append">
                                 <button type="submit" class="btn btn-primary font-weight-bold">
@@ -124,7 +124,7 @@
             var alertClass = practiceHasConflict ? "alert-danger" : "alert-warning";
             var alertIcon = practiceHasConflict ? "fa-exclamation-triangle" : "fa-sync-alt";
             var alertTitle = practiceHasConflict
-                ? "He detectado conflictos de horario en la semana"
+                ? "He detectado faltantes o conflictos de horario en la semana"
                 : "He detectado rotaciones de material en la semana";
             <div class="alert @alertClass border-0 rounded mb-4">
                 <div class="d-flex align-items-start">
@@ -140,7 +140,11 @@
                             {
                                 var isConflict = issue.State == DemandState.Conflict;
                                 <li class="mb-1">
-                                    @if (isConflict)
+                                    @if (isConflict && issue.Practices.Count == 1)
+                                    {
+                                        <span class="badge badge-danger mr-1">Stock insuficiente</span>
+                                    }
+                                    else if (isConflict)
                                     {
                                         <span class="badge badge-danger mr-1">Conflicto de horario</span>
                                     }

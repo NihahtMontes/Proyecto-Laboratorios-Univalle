@@ -224,7 +224,7 @@
                                                     <div class="small">
                                                         @if (issue.State == DemandState.Conflict)
                                                         {
-                                                            <span class="text-danger">Conflicto @issue.PeakText</span>
+                                                            <span class="text-danger">@(issue.Practices.Count == 1 ? "Stock insuficiente" : "Conflicto") @issue.PeakText</span>
                                                         }
                                                         else
                                                         {

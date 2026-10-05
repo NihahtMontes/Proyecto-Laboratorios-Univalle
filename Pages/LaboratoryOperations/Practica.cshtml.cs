@@ -179,12 +179,30 @@ public class PracticaModel : PageModel
         else if (!week.IsLective)
             ModelState.AddModelError("Input.AcademicWeekId", $"La semana {week.Number} es no lectiva{(string.IsNullOrWhiteSpace(week.Note) ? "" : $" ({week.Note})")}.");
 
-        // Una programación por gestión + práctica + grupo (índice único).
-        if (catalogPractice != null && !string.IsNullOrEmpty(Input.GroupName)
-            && await _context.PracticeSchedules.AsNoTracking().AnyAsync(s =>
-                s.ManagementId == planning.ManagementId && s.PracticeId == catalogPractice.Id && s.GroupName == Input.GroupName
-                && s.Id != (existing != null ? existing.PracticeScheduleId ?? 0 : 0)))
-            ModelState.AddModelError("Input.GroupName", $"El grupo {Input.GroupName} ya tiene programada esta práctica en la gestión.");
+        // Una programación por gestión + práctica + grupo (índice único). Si ya existe (importada del Excel o
+        // liberada por otra práctica), se reutiliza; solo es un choque si otra práctica planificada vigente la usa.
+        int? adoptScheduleId = null;
+        if (catalogPractice != null && !string.IsNullOrEmpty(Input.GroupName))
+        {
+            var currentScheduleId = existing?.PracticeScheduleId ?? 0;
+            var currentRequestId = Id ?? 0;
+            var match = await _context.PracticeSchedules.AsNoTracking()
+                .Where(s => s.ManagementId == planning.ManagementId && s.PracticeId == catalogPractice.Id
+                    && s.GroupName == Input.GroupName && s.Id != currentScheduleId)
+                .Select(s => new
+                {
+                    s.Id,
+                    UsedBy = _context.L3Requests
+                        .Where(r => r.PracticeScheduleId == s.Id && r.Id != currentRequestId && r.Status != L3RequestStatus.Cancelled)
+                        .Select(r => (int?)r.Id)
+                        .FirstOrDefault()
+                })
+                .FirstOrDefaultAsync();
+            if (match?.UsedBy is int usedBy)
+                ModelState.AddModelError("Input.GroupName", $"El grupo {Input.GroupName} ya tiene planificada esta práctica en la gestión ({L3Codes.Format(usedBy)}).");
+            else if (match != null)
+                adoptScheduleId = match.Id;
+        }
 
         DateTime start = default, end = default;
         if (ModelState.IsValid && week != null)
@@ -228,8 +246,10 @@ public class PracticaModel : PageModel
             var request = isNew
                 ? new L3Request { Status = L3RequestStatus.Planned, RequestDate = DateTime.UtcNow }
                 : await _context.L3Requests.AsTracking().FirstAsync(r => r.Id == existing!.Id);
-            var schedule = request.PracticeScheduleId.HasValue
-                ? await _context.PracticeSchedules.AsTracking().FirstOrDefaultAsync(s => s.Id == request.PracticeScheduleId.Value)
+            // Programación existente de la gestión + práctica + grupo: se adopta (la anterior, si había, queda libre).
+            var scheduleId = adoptScheduleId ?? request.PracticeScheduleId;
+            var schedule = scheduleId.HasValue
+                ? await _context.PracticeSchedules.AsTracking().FirstOrDefaultAsync(s => s.Id == scheduleId.Value)
                 : null;
             var newSchedule = schedule == null;
             schedule ??= new PracticeSchedule { Code = TemporaryCode(), Status = PracticeScheduleStatus.Scheduled };
@@ -246,8 +266,9 @@ public class PracticaModel : PageModel
             schedule.ExecutionDate = start.Date;
             schedule.StartTime = startTime;
             schedule.EndTime = endTime;
-            schedule.StudentCount = Input.StudentCount;
-            schedule.ScalingFactor = Input.ScalingFactor;
+            // Sin dato en el formulario se conserva el de la programación (p. ej. el importado del Excel).
+            schedule.StudentCount = Input.StudentCount ?? schedule.StudentCount;
+            schedule.ScalingFactor = Input.ScalingFactor ?? schedule.ScalingFactor;
             schedule.IsDemonstrative = Input.IsDemonstrative;
             if (newSchedule) _context.PracticeSchedules.Add(schedule);
 

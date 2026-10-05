@@ -504,7 +504,7 @@ public class RequerimientosModel : PageModel
                     : null,
                 d.Observations))
             .ToListAsync();
-        var stock = await _availability.GetStockAsync(Items.Select(i => i.ArticleId), await _circuit.GetDefaultOriginLaboratoryIdAsync());
+        var stock = await _availability.GetStockAsync(Items.Select(i => i.ArticleId), null); // total institucional (D12)
         Items = Items.Select(i => i with { Stock = stock.GetValueOrDefault(i.ArticleId) }).ToList();
         RequestedByArticle = Items.GroupBy(i => i.ArticleId).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity ?? 0));
 

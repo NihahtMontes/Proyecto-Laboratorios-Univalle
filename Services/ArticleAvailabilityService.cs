@@ -154,10 +154,13 @@ public interface IArticleAvailabilityService
     /// <summary>Ranking de uso por artículo en el periodo (a partir de la demanda diaria).</summary>
     Task<List<ArticleUsage>> GetUsageAsync(DateTime startDate, DateTime endDate);
 
-    /// <summary>Stock por artículo: equipos vinculados por unidades físicas; el resto por existencias en el origen.</summary>
+    /// <summary>
+    /// Stock por artículo: equipos vinculados por unidades físicas; el resto por existencias en el laboratorio
+    /// indicado o, sin laboratorio (null), el total institucional (Economato + laboratorios).
+    /// </summary>
     Task<Dictionary<int, ArticleStockInfo>> GetStockAsync(IEnumerable<int> articleIds, int? originLaboratoryId);
 
-    /// <summary>Demanda por día y artículo de todas las prácticas (no canceladas) entre las fechas, contra el stock.</summary>
+    /// <summary>Demanda por día y artículo de todas las prácticas (no canceladas) entre las fechas, contra el stock (total si no hay origen).</summary>
     Task<WeekAvailability> GetRangeAsync(DateTime startDate, DateTime endDate, int? weekNumber = null, int? originLaboratoryId = null);
 
     /// <summary>Semana académica de la práctica (o lunes a domingo de su fecha si no tiene semana asignada).</summary>
@@ -240,12 +243,12 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
             }
         }
 
-        // Resto: existencias en el laboratorio de origen.
-        var inventory = originLaboratoryId.HasValue
-            ? await _context.ArticleStocks.AsNoTracking()
-                .Where(s => s.LaboratoryId == originLaboratoryId && ids.Contains(s.ArticleId))
-                .ToDictionaryAsync(s => s.ArticleId, s => s.AvailableQuantity)
-            : new Dictionary<int, decimal>();
+        // Resto: existencias del laboratorio de origen o, sin origen, la suma de todos los laboratorios (D12).
+        var inventory = await _context.ArticleStocks.AsNoTracking()
+            .Where(s => ids.Contains(s.ArticleId) && (originLaboratoryId == null || s.LaboratoryId == originLaboratoryId))
+            .GroupBy(s => s.ArticleId)
+            .Select(g => new { ArticleId = g.Key, Quantity = g.Sum(s => s.AvailableQuantity) })
+            .ToDictionaryAsync(x => x.ArticleId, x => x.Quantity);
 
         foreach (var link in links)
         {
@@ -312,7 +315,6 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
     {
         var from = startDate.Date;
         var to = endDate.Date;
-        originLaboratoryId ??= await _circuit.GetDefaultOriginLaboratoryIdAsync();
 
         var practices = await _context.L3Requests.AsNoTracking()
             .Where(r => !r.IsDeleted && r.Status != L3RequestStatus.Cancelled

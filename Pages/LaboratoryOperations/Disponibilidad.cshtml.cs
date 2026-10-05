@@ -87,14 +87,14 @@ public class DisponibilidadModel : PageModel
             return RedirectToPage("./Index");
         }
 
-        OriginLabId ??= await _circuit.GetDefaultOriginLaboratoryIdAsync();
+        if (OriginLabId is 0) OriginLabId = null; // null = total institucional (D12)
         var labs = await _context.Laboratories.AsNoTracking()
             .Where(l => l.Status == GeneralStatus.Activo)
             .OrderBy(l => l.Code)
             .Select(l => new { l.Id, Name = l.Code + " · " + l.Name })
             .ToListAsync();
         OriginList = new SelectList(labs, "Id", "Name", OriginLabId);
-        OriginName = labs.FirstOrDefault(l => l.Id == OriginLabId)?.Name;
+        OriginName = OriginLabId.HasValue ? labs.FirstOrDefault(l => l.Id == OriginLabId)?.Name : "Total institucional (Economato + laboratorios)";
 
         Items = await BuildRowsAsync(Plan.Id, OriginLabId);
         if (Items.Count == 0)
@@ -103,7 +103,8 @@ public class DisponibilidadModel : PageModel
             return RedirectToPage("./Requerimientos", new { planId = PlanId });
         }
 
-        Week = await _availability.GetWeekForPracticeAsync(Plan.Id, OriginLabId);
+        // La semana compara siempre contra el total: el material se mueve entre laboratorios (D12).
+        Week = await _availability.GetWeekForPracticeAsync(Plan.Id);
         PracticeIssues = Week?.Issues.Where(d => d.Practices.Any(p => p.PracticeId == Plan.Id)).ToList() ?? [];
 
         return Page();
@@ -139,9 +140,9 @@ public class DisponibilidadModel : PageModel
             }
 
             // La aprobación no exige stock (D2): solo se informa. La salida valida y descuenta.
-            var originId = OriginLabId ?? await _circuit.GetDefaultOriginLaboratoryIdAsync();
+            var originId = OriginLabId is 0 ? null : OriginLabId;
             var rows = await BuildRowsAsync(plan.Id, originId);
-            var week = await _availability.GetWeekForPracticeAsync(plan.Id, originId);
+            var week = await _availability.GetWeekForPracticeAsync(plan.Id);
             var issues = week?.Issues.Count(d => d.Practices.Any(p => p.PracticeId == plan.Id)) ?? 0;
             var shortages = rows.Count(r => r.State == AvailabilityState.Insufficient);
             var unregistered = rows.Count(r => r.State == AvailabilityState.NotRegistered);
