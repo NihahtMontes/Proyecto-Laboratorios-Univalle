@@ -44,7 +44,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
             [Display(Name = "Nombre de la Materia")]
             public string Name { get; set; } = string.Empty;
 
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
+            /// <summary>Código asignado por el sistema. Solo se conserva para mostrarlo en la UI.</summary>
             [Display(Name = "Código")]
             public string? Code { get; set; }
 
@@ -105,15 +105,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
 
             if (!ModelState.IsValid)
             {
+                // El código no se envía desde el formulario: repoblar desde BD para mantenerlo visible.
+                Input.Code = subjectToUpdate.Code;
                 await LoadCareersAsync();
                 return Page();
             }
 
             // Normalización
             var nameNormalized = Regex.Replace(Input.Name.Trim().ToLower(), @"\s+", " ");
-            var codeNormalized = string.IsNullOrWhiteSpace(Input.Code)
-                ? string.Empty
-                : Regex.Replace(Input.Code.Trim().ToUpper(), @"\s+", "");
 
             // Validación de FK: la carrera debe existir y estar Activa
             var career = await _context.Careers.AsNoTracking()
@@ -123,23 +122,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
                 ModelState.AddModelError("Input.CareerId", "La carrera seleccionada no existe o no está activa.");
                 await LoadCareersAsync();
                 return Page();
-            }
-
-            // Unicidad: Code (si no está vacío) entre no eliminados y excluyendo el actual
-            if (!string.IsNullOrWhiteSpace(codeNormalized))
-            {
-                var codeExists = await _context.Subjects
-                    .AsNoTracking()
-                    .AnyAsync(s => s.Id != Input.Id
-                                   && s.Code != null
-                                   && s.Code.Trim().ToUpper() == codeNormalized
-                                   && s.Status != GeneralStatus.Eliminado);
-                if (codeExists)
-                {
-                    ModelState.AddModelError("Input.Code", "Ya existe otra materia con este código en el sistema.");
-                    await LoadCareersAsync();
-                    return Page();
-                }
             }
 
             // Unicidad: (CareerId, Name) entre no eliminados, excluyendo el actual
@@ -158,7 +140,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
 
             // Entity Mapping
             subjectToUpdate.Name = Input.Name.Clean();
-            subjectToUpdate.Code = string.IsNullOrWhiteSpace(Input.Code) ? string.Empty : Input.Code.Clean().ToUpper();
+            // Code no se modifica: lo asigna el sistema.
             subjectToUpdate.CareerId = Input.CareerId;
             subjectToUpdate.Semester = Input.Semester;
             subjectToUpdate.Status = Input.Status;
@@ -166,7 +148,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success($"Materia '{subjectToUpdate.Name}' actualizada correctamente.");
+                TempData.Success($"Materia '{subjectToUpdate.Code}' ({subjectToUpdate.Name}) actualizada correctamente.");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -176,7 +158,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
                 _logger.LogWarning(ex, "Conflicto de unicidad al actualizar materia {Id}", Input.Id);
-                ModelState.AddModelError(string.Empty, "Ya existe un registro con esos datos (código o nombre duplicado).");
+                ModelState.AddModelError(string.Empty, "Ya existe otra materia con ese nombre en la carrera seleccionada.");
                 await LoadCareersAsync();
                 return Page();
             }

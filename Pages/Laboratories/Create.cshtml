@@ -42,17 +42,14 @@
                             <div class="row">
                                 <div class="col-md-5">
                                     <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-3 rounded shadow-none">
-                                        <label asp-for="Input.Code" class="control-label font-weight-bold small text-warning uppercase">
-                                            Código / Sigla <span class="text-danger">*</span>
-                                        </label>
+                                        <label class="control-label font-weight-bold small text-warning uppercase">Código</label>
                                         <div class="input-group">
                                             <div class="input-group-prepend">
                                                 <span class="input-group-text bg-white"><i class="fas fa-hashtag text-muted"></i></span>
                                             </div>
-                                            <input asp-for="Input.Code" class="form-control border-warning shadow-none font-weight-bold" placeholder="EJ: LAB-01" 
-                                                   required data-validation-required-message="Obligatorio" maxlength="20" />
+                                            <input class="form-control bg-light border-warning shadow-none font-weight-bold" value="Se generará automáticamente" disabled />
                                         </div>
-                                        <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold d-block mt-1"></span>
+                                        <small class="form-text text-muted"><i class="fas fa-magic mr-1"></i>Formato LAB-00001.</small>
                                     </div>
                                 </div>
                                 <div class="col-md-7">
@@ -139,7 +136,6 @@
 
             // Apply aggressive validation
             setupBlocking('#Input_Name', alphanumericPattern);
-            setupBlocking('#Input_Code', alphanumericPattern);
             setupBlocking('#Input_Floor', alphanumericPattern);
         });
     </script>

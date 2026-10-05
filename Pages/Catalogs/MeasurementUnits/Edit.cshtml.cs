@@ -38,9 +38,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
             [StringLength(60, ErrorMessage = "El nombre no puede superar los 60 caracteres")]
             public string Name { get; set; } = string.Empty;
 
-            [Display(Name = "Código")]
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
-            public string? Code { get; set; }
+            // Code no se captura: lo asigna el sistema (UNI-00001) y se muestra desde UnitSnapshot.
 
             /// <summary>Estado administrativo. Sólo se permite Activo/Inactivo (Eliminado se rechaza en servidor).</summary>
             [Required(ErrorMessage = "El estado es obligatorio")]
@@ -63,7 +61,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
             {
                 Id = unit.Id,
                 Name = unit.Name,
-                Code = unit.Code,
                 Status = unit.Status
             };
 
@@ -115,26 +112,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
                 return Page();
             }
 
-            // Unicidad por código
-            var normalizedCode = (Input.Code ?? string.Empty).Trim().ToLower();
-            if (!string.IsNullOrWhiteSpace(normalizedCode))
-            {
-                var codeExists = await _context.MeasurementUnits
-                    .AnyAsync(u => u.Id != Input.Id
-                                   && u.Code != null
-                                   && u.Code.Trim().ToLower() == normalizedCode);
-
-                if (codeExists)
-                {
-                    ModelState.AddModelError("Input.Code", "Ya existe otra unidad de medida con este código en el sistema.");
-                    await ReloadSnapshot(Input.Id);
-                    return Page();
-                }
-            }
+            // Code no se edita: lo asigna el sistema; no se valida unicidad aquí.
 
             // Copiar SOLO los campos permitidos (evita overposting).
             unitToUpdate.Name = Input.Name.Clean();
-            unitToUpdate.Code = Input.Code?.ToUpper().Trim() ?? string.Empty;
+            // Code no se reasigna: lo conserva el sistema desde la creación.
             unitToUpdate.Status = Input.Status;
 
             try
@@ -147,7 +129,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
             {
                 _logger.LogWarning(ex, "Conflicto de unicidad al actualizar la unidad de medida {UnitId}.", Input.Id);
                 ModelState.AddModelError(string.Empty,
-                    "No se pudo guardar la unidad porque ya existe un registro con el mismo código o nombre.");
+                    "No se pudo guardar la unidad porque ya existe un registro con el mismo nombre.");
                 await ReloadSnapshot(Input.Id);
                 return Page();
             }

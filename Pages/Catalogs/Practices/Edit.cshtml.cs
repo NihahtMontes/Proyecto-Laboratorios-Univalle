@@ -26,22 +26,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
+        /// <summary>Código actual en BD (no bindeado, sólo lectura en la vista).</summary>
+        public string CurrentCode { get; set; } = string.Empty;
+
         public class InputModel
         {
             public int Id { get; set; }
 
-            [Required(ErrorMessage = "El código de la práctica es obligatorio")]
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
-            [Display(Name = "Código")]
-            public string Code { get; set; } = string.Empty;
+            [Required(ErrorMessage = "El nombre de la práctica es obligatorio")]
+            [StringLength(200, ErrorMessage = "El nombre no puede superar los 200 caracteres")]
+            [Display(Name = "Nombre de la práctica")]
+            public string Name { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "Debe seleccionar una materia")]
             [Display(Name = "Materia")]
             public int SubjectId { get; set; }
-
-            [StringLength(20, ErrorMessage = "El número no puede superar los 20 caracteres")]
-            [Display(Name = "N.º de práctica")]
-            public string? Number { get; set; }
 
             [StringLength(2000)]
             [Display(Name = "Descripción")]
@@ -78,12 +77,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
 
             if (practice == null) return NotFound();
 
+            CurrentCode = practice.Code;
+
             Input = new InputModel
             {
                 Id = practice.Id,
-                Code = practice.Code,
+                Name = practice.Name,
                 SubjectId = practice.SubjectId,
-                Number = practice.Number,
                 Description = practice.Description,
                 CoverageStatus = practice.CoverageStatus,
                 CoverageMethod = practice.CoverageMethod,
@@ -93,28 +93,34 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             };
 
             await LoadSubjectsAsync();
+            await LoadCoverageStatusesAsync();
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // Cargar CurrentCode desde BD antes de cualquier posible retorno a la página.
+            var currentForCode = await _context.Practices
+                .AsNoTracking()
+                .Where(p => p.Id == Input.Id)
+                .Select(p => p.Code)
+                .FirstOrDefaultAsync();
+            CurrentCode = currentForCode ?? string.Empty;
+
             if (!ModelState.IsValid)
             {
                 await LoadSubjectsAsync();
+                await LoadCoverageStatusesAsync();
                 return Page();
             }
 
-            var normalizedCode = Input.Code.Trim().ToLower();
-
-            // Unicidad contra otros registros (no contra sí mismo). Índice único global en Code.
-            var duplicate = await _context.Practices
-                .IgnoreQueryFilters()
-                .AnyAsync(p => p.Id != Input.Id && p.Code.Trim().ToLower() == normalizedCode);
-
-            if (duplicate)
+            // Validar el valor de CoverageStatus contra el catálogo permitido.
+            if (!string.IsNullOrWhiteSpace(Input.CoverageStatus)
+                && Array.IndexOf(PracticeCoverageStatus.All, Input.CoverageStatus) < 0)
             {
-                ModelState.AddModelError("Input.Code", "Ya existe otra práctica con este código en el sistema (incluyendo registros eliminados).");
+                ModelState.AddModelError("Input.CoverageStatus", "El estado de cobertura seleccionado no es válido.");
                 await LoadSubjectsAsync();
+                await LoadCoverageStatusesAsync();
                 return Page();
             }
 
@@ -127,6 +133,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             {
                 ModelState.AddModelError("Input.SubjectId", "La materia seleccionada no existe o no está activa.");
                 await LoadSubjectsAsync();
+                await LoadCoverageStatusesAsync();
                 return Page();
             }
 
@@ -136,9 +143,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
 
             if (practiceToUpdate == null) return NotFound();
 
-            practiceToUpdate.Code = Input.Code.Clean().ToUpperInvariant();
+            // No se modifica Code (lo asigna el sistema). No se modifica Number (campo histórico del Excel).
+            practiceToUpdate.Name = Input.Name.Clean();
             practiceToUpdate.SubjectId = Input.SubjectId;
-            practiceToUpdate.Number = Input.Number?.Clean().ToUpperInvariant();
             practiceToUpdate.Description = Input.Description?.Clean();
             practiceToUpdate.CoverageStatus = Input.CoverageStatus?.Clean();
             practiceToUpdate.CoverageMethod = Input.CoverageMethod?.Clean();
@@ -150,11 +157,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
+            catch (DbUpdateException ex) when (ex is not DbUpdateConcurrencyException)
             {
-                _logger.LogWarning(ex, "Concurrencia al actualizar práctica {Id}", Input.Id);
-                ModelState.AddModelError("Input.Code", "Ya existe otra práctica con este código en el sistema.");
+                _logger.LogWarning(ex, "No se pudo actualizar la práctica {Id}", Input.Id);
+                ModelState.AddModelError(string.Empty, "Ya existe un registro con los mismos datos o no se pudo guardar la práctica. Intente nuevamente.");
                 await LoadSubjectsAsync();
+                await LoadCoverageStatusesAsync();
                 return Page();
             }
             catch (DbUpdateConcurrencyException)
@@ -188,6 +196,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
                 .ToListAsync();
 
             ViewData["SubjectId"] = new SelectList(subjects, "Id", "Display", Input.SubjectId);
+        }
+
+        private async Task LoadCoverageStatusesAsync()
+        {
+            // Construye la lista base con los estados permitidos.
+            var statuses = Proyecto_Laboratorios_Univalle.Models.PracticeCoverageStatus.All.ToList();
+
+            // Si el valor actual cargado en Input no está en la lista, lo añadimos como opción extra
+            // para que el usuario pueda conservarlo sin perderlo visualmente.
+            var currentStatus = Input.CoverageStatus;
+            if (!string.IsNullOrWhiteSpace(currentStatus) && !statuses.Contains(currentStatus))
+            {
+                statuses.Add(currentStatus);
+            }
+
+            ViewData["CoverageStatuses"] = new SelectList(statuses);
+            await Task.CompletedTask;
         }
     }
 }

@@ -88,7 +88,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("SubjectId")]
         public virtual Subject? Subject { get; set; }
 
-        /// <summary>Texto libre: P1, P4, E3P, PE3P...</summary>
+        [Required, StringLength(200)]
+        [Display(Name = "Nombre")]
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>Texto libre: P1, P4, E3P, PE3P... Se conserva por el Excel; no se captura en pantalla.</summary>
         [StringLength(20)]
         [Display(Name = "N.º de práctica")]
         public string? Number { get; set; }
@@ -121,6 +125,55 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public int? ModifiedById { get; set; }
         public DateTime? LastModifiedDate { get; set; }
+    }
+
+    /// <summary>
+    /// Kit de la materia: artículos (utensilios y equipos) y cantidades que la materia usa habitualmente.
+    /// Es un atajo para cargar requerimientos L-3; los equipos van como cantidad del artículo vinculado al catálogo.
+    /// </summary>
+    public class SubjectKitItem : IAuditable
+    {
+        [Key]
+        public int Id { get; set; }
+
+        public int SubjectId { get; set; }
+        [ForeignKey("SubjectId")]
+        public virtual Subject? Subject { get; set; }
+
+        [Display(Name = "Artículo")]
+        public int ArticleId { get; set; }
+        [ForeignKey("ArticleId")]
+        public virtual Article? Article { get; set; }
+
+        [Range(0.01, 999999)]
+        [Display(Name = "Cantidad")]
+        public decimal Quantity { get; set; }
+
+        /// <summary>La cantidad se escala por estudiantes ÷ factor del grupo, igual que la receta.</summary>
+        [Display(Name = "Escalable")]
+        public bool IsScalable { get; set; }
+
+        [StringLength(500)]
+        [Display(Name = "Observaciones")]
+        public string? Observations { get; set; }
+
+        /// <summary>Retiro lógico de la línea (preserva historial).</summary>
+        public bool IsRemoved { get; set; }
+
+        public int? CreatedById { get; set; }
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+        public int? ModifiedById { get; set; }
+        public DateTime? LastModifiedDate { get; set; }
+    }
+
+    /// <summary>Valores esperados de Practice.CoverageStatus (cobertura de utensilios de la receta).</summary>
+    public static class PracticeCoverageStatus
+    {
+        public const string Covered = "Cubierta";
+        public const string Partial = "Parcial";
+        public const string Pending = "Pendiente";
+
+        public static readonly string[] All = [Covered, Partial, Pending];
     }
 
     /// <summary>"Receta" de una práctica: artículo y cantidad requerida. Equivale a RequerimientosPractica.</summary>

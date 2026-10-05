@@ -38,9 +38,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
             [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres")]
             public string Name { get; set; } = string.Empty;
 
-            [Display(Name = "Código")]
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
-            public string? Code { get; set; }
+            // Code no se captura: lo asigna el sistema (CAT-00001) y se muestra desde CategorySnapshot.
 
             /// <summary>Estado administrativo. Sólo se permite Activo/Inactivo (Eliminado se rechaza en servidor).</summary>
             [Required(ErrorMessage = "El estado es obligatorio")]
@@ -63,7 +61,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
             {
                 Id = category.Id,
                 Name = category.Name,
-                Code = category.Code,
                 Status = category.Status
             };
 
@@ -115,26 +112,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
                 return Page();
             }
 
-            // Unicidad por código (no se permite vacío en BD)
-            var normalizedCode = (Input.Code ?? string.Empty).Trim().ToLower();
-            if (!string.IsNullOrWhiteSpace(normalizedCode))
-            {
-                var codeExists = await _context.ArticleCategories
-                    .AnyAsync(c => c.Id != Input.Id
-                                   && c.Code != null
-                                   && c.Code.Trim().ToLower() == normalizedCode);
-
-                if (codeExists)
-                {
-                    ModelState.AddModelError("Input.Code", "Ya existe otra categoría con este código en el sistema.");
-                    await ReloadSnapshot(Input.Id);
-                    return Page();
-                }
-            }
+            // Code no se edita: lo asigna el sistema; no se valida unicidad aquí.
 
             // Copiar SOLO los campos permitidos (evita overposting).
             categoryToUpdate.Name = Input.Name.Clean();
-            categoryToUpdate.Code = Input.Code?.ToUpper().Trim() ?? string.Empty;
+            // Code no se reasigna: lo conserva el sistema desde la creación.
             categoryToUpdate.Status = Input.Status;
 
             try
@@ -147,7 +129,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
             {
                 _logger.LogWarning(ex, "Conflicto de unicidad al actualizar la categoría {CategoryId}.", Input.Id);
                 ModelState.AddModelError(string.Empty,
-                    "No se pudo guardar la categoría porque ya existe un registro con el mismo código o nombre.");
+                    "No se pudo guardar la categoría porque ya existe un registro con el mismo nombre.");
                 await ReloadSnapshot(Input.Id);
                 return Page();
             }

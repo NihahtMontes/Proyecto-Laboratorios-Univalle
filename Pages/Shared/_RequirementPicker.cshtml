@@ -1,0 +1,727 @@
+@*
+    Partial: buscador de requerimientos (Requerimientos de la práctica y Kit de la materia).
+    Modelo: RequirementPickerOptions. Abre con cualquier botón data-toggle="modal" data-target="#requirement-picker".
+    Búsquedas y fichas: /Api/RequirementPicker (JSON). Envío: POST a SubmitUrl con
+    Batch.Articles[i].Id/Quantity y, según el modo, Batch.UnitIds[i] (units) o Batch.Equipments[i].Id/Quantity (catalog).
+*@
+@model Proyecto_Laboratorios_Univalle.Pages.Shared.RequirementPickerOptions
+@using Proyecto_Laboratorios_Univalle.Pages.Shared
+@{
+    var isUnits = Model.Mode == RequirementPickerOptions.UnitsMode;
+    var config = System.Text.Json.JsonSerializer.Serialize(new
+    {
+        mode = Model.Mode,
+        apiUrl = RequirementPickerOptions.ApiUrl,
+        planId = Model.PlanId,
+        defaultLaboratoryId = Model.DefaultLaboratoryId,
+        submitLabel = isUnits ? "a la solicitud" : "al kit"
+    });
+}
+
+<div class="modal fade rp-modal" id="requirement-picker" tabindex="-1" role="dialog" aria-labelledby="rp-title" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-xl rp-dialog" role="document">
+        <div class="modal-content rp-content">
+            <div class="rp-header">
+                <div class="d-flex align-items-center">
+                    <span class="rp-header__icon"><i class="fas fa-search-plus"></i></span>
+                    <div>
+                        <h5 class="rp-header__title mb-0" id="rp-title">@Model.Title</h5>
+                        <small class="text-muted">Busca, consulta el detalle y arma tu selección; se agrega todo de una vez.</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-sm btn-light rp-icon-btn mr-2" id="rp-toggle-size" title="Maximizar">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light rp-icon-btn" data-dismiss="modal" title="Cerrar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="rp-body">
+                <section class="rp-main">
+                    <ul class="nav rp-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-rp-tab="articles" href="#" role="tab">
+                                <i class="fas fa-box-open mr-1"></i> Artículos y utensilios
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-rp-tab="equipment" href="#" role="tab">
+                                <i class="fas fa-blender mr-1"></i> Equipos @(isUnits ? "(unidades físicas)" : "(catálogo)")
+                            </a>
+                        </li>
+                    </ul>
+
+                    @* ---------- Artículos ---------- *@
+                    <div class="rp-pane" data-rp-pane="articles">
+                        <div class="rp-toolbar">
+                            <div class="rp-search">
+                                <i class="fas fa-search"></i>
+                                <input type="search" class="form-control" id="rp-article-q" placeholder="Buscar por nombre o código (ej. licuadora, bandeja, GA-05…)" autocomplete="off" />
+                            </div>
+                            <div class="custom-control custom-switch rp-switch">
+                                <input type="checkbox" class="custom-control-input" id="rp-article-confirmed" />
+                                <label class="custom-control-label" for="rp-article-confirmed">Ocultar "Por confirmar"</label>
+                            </div>
+                        </div>
+                        <div class="rp-chips" id="rp-categories">
+                            <button type="button" class="rp-chip active" data-category="">Todas <span>@Model.Categories.Sum(c => c.ArticleCount)</span></button>
+                            @foreach (var category in Model.Categories.Where(c => c.ArticleCount > 0))
+                            {
+                                <button type="button" class="rp-chip" data-category="@category.Id">@category.Name <span>@category.ArticleCount</span></button>
+                            }
+                        </div>
+                        <div class="rp-status" id="rp-article-status"></div>
+                        <div class="rp-results">
+                            <table class="table rp-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th style="width:130px">Código</th>
+                                        <th>Artículo</th>
+                                        <th style="width:150px">Categoría</th>
+                                        <th style="width:90px">Unidad</th>
+                                        <th style="width:80px" class="text-right">Stock</th>
+                                        <th style="width:150px" class="text-center">Cantidad</th>
+                                        <th style="width:96px"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rp-article-rows"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    @* ---------- Equipos ---------- *@
+                    <div class="rp-pane d-none" data-rp-pane="equipment">
+                        <div class="rp-toolbar">
+                            <div class="rp-search">
+                                <i class="fas fa-search"></i>
+                                <input type="search" class="form-control" id="rp-equipment-q"
+                                       placeholder="@(isUnits ? "Buscar por equipo, n.º de inventario o n.º de serie…" : "Buscar por nombre, código de catálogo, marca o modelo…")" autocomplete="off" />
+                            </div>
+                            @if (isUnits)
+                            {
+                                <select class="form-control rp-select" id="rp-equipment-lab">
+                                    <option value="">Todos los laboratorios</option>
+                                    @foreach (var lab in Model.Laboratories)
+                                    {
+                                        <option value="@lab.Id" selected="@(lab.Id == Model.DefaultLaboratoryId)">@lab.Name</option>
+                                    }
+                                </select>
+                                <div class="custom-control custom-switch rp-switch">
+                                    <input type="checkbox" class="custom-control-input" id="rp-equipment-operational" />
+                                    <label class="custom-control-label" for="rp-equipment-operational">Solo operativas</label>
+                                </div>
+                                <div class="custom-control custom-switch rp-switch">
+                                    <input type="checkbox" class="custom-control-input" id="rp-equipment-serial" />
+                                    <label class="custom-control-label" for="rp-equipment-serial">Con n.º de serie</label>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="custom-control custom-switch rp-switch">
+                                    <input type="checkbox" class="custom-control-input" id="rp-equipment-withunits" />
+                                    <label class="custom-control-label" for="rp-equipment-withunits">Solo con unidades registradas</label>
+                                </div>
+                            }
+                        </div>
+                        <div class="rp-status" id="rp-equipment-status"></div>
+                        <div class="rp-results" id="rp-equipment-results"></div>
+                    </div>
+                </section>
+
+                @* ---------- Selección ---------- *@
+                <aside class="rp-cart">
+                    <div class="rp-cart__head">
+                        <span><i class="fas fa-clipboard-list mr-1"></i> Selección</span>
+                        <span class="badge badge-pill badge-primary" id="rp-cart-count">0</span>
+                    </div>
+                    <div class="rp-cart__list" id="rp-cart-list"></div>
+                    <div class="rp-cart__foot">
+                        <button type="button" class="btn btn-link btn-sm text-muted p-0 mb-2" id="rp-cart-clear">Vaciar selección</button>
+                        <button type="button" class="btn btn-primary btn-block btn-rounded font-weight-bold" id="rp-submit" disabled>
+                            <i class="fas fa-check mr-1"></i> <span id="rp-submit-label">Agregar</span>
+                        </button>
+                        <button type="button" class="btn btn-light btn-block btn-rounded" data-dismiss="modal">Cancelar</button>
+                    </div>
+                </aside>
+
+                @* ---------- Ficha de detalle ---------- *@
+                <div class="rp-drawer" id="rp-drawer" aria-hidden="true">
+                    <div class="rp-drawer__head">
+                        <span class="text-uppercase small font-weight-bold text-muted" id="rp-drawer-kind">Detalle</span>
+                        <button type="button" class="btn btn-sm btn-light rp-icon-btn" id="rp-drawer-close" title="Cerrar detalle"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="rp-drawer__body" id="rp-drawer-body"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="post" action="@Model.SubmitUrl" id="requirement-picker-form" class="d-none">
+    @Html.AntiForgeryToken()
+</form>
+
+<script type="application/json" id="rp-config">@Html.Raw(config)</script>
+
+<style>
+    .rp-modal .rp-dialog { max-width: 1380px; }
+    .rp-modal .rp-content { height: 86vh; display: flex; flex-direction: column; border: 0; border-radius: 14px; overflow: hidden; }
+    .rp-modal.rp-max .rp-dialog { max-width: 100%; width: 100%; height: 100%; margin: 0; }
+    .rp-modal.rp-max .rp-content { height: 100vh; border-radius: 0; }
+
+    .rp-header { display: flex; justify-content: space-between; align-items: center; padding: .9rem 1.25rem; border-bottom: 1px solid #ecebf5; background: #fbfaff; }
+    .rp-header__icon { width: 40px; height: 40px; border-radius: 10px; background: #eee9fc; color: #7460ee; display: inline-flex; align-items: center; justify-content: center; margin-right: .75rem; }
+    .rp-header__title { font-weight: 800; color: #2a1d6b; }
+    .rp-icon-btn { width: 34px; height: 34px; border-radius: 8px; padding: 0; }
+
+    .rp-body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+    .rp-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+    .rp-tabs { padding: 0 1.25rem; border-bottom: 1px solid #ecebf5; }
+    .rp-tabs .nav-link { color: #6c757d; font-weight: 700; padding: .8rem 1rem; border-bottom: 3px solid transparent; }
+    .rp-tabs .nav-link.active { color: #7460ee; border-bottom-color: #7460ee; }
+    .rp-pane { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+    .rp-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; padding: .9rem 1.25rem .5rem; }
+    .rp-search { position: relative; flex: 1 1 320px; }
+    .rp-search i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #a3a0c2; }
+    .rp-search input { height: 44px; padding-left: 40px; border-radius: 10px; font-size: .95rem; }
+    .rp-select { height: 44px; border-radius: 10px; max-width: 320px; }
+    .rp-switch { white-space: nowrap; font-size: .85rem; }
+
+    .rp-chips { display: flex; flex-wrap: wrap; gap: .4rem; padding: 0 1.25rem .6rem; }
+    .rp-chip { border: 1px solid #e3e0f3; background: #fff; color: #4a3f7d; border-radius: 999px; padding: .3rem .8rem; font-size: .8rem; font-weight: 600; cursor: pointer; }
+    .rp-chip span { background: #f1effb; color: #7460ee; border-radius: 999px; padding: 0 .45rem; margin-left: .3rem; font-size: .72rem; }
+    .rp-chip.active { background: #7460ee; border-color: #7460ee; color: #fff; }
+    .rp-chip.active span { background: rgba(255,255,255,.25); color: #fff; }
+
+    .rp-status { padding: 0 1.25rem .4rem; font-size: .8rem; color: #8a87a8; min-height: 1.4rem; }
+    .rp-status .text-danger { font-weight: 600; }
+    .rp-results { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 1.25rem 1rem; }
+
+    .rp-table { font-size: .875rem; }
+    .rp-table thead th { position: sticky; top: 0; z-index: 2; background: #f7f6fc; color: #6c6a8a; font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; border: 0; }
+    .rp-table td { vertical-align: middle; border-top: 1px solid #f0eff7; }
+    .rp-table tbody tr { cursor: pointer; }
+    .rp-table tbody tr:hover { background: #faf9ff; }
+    .rp-table tbody tr.rp-selected { background: #f1fbf4; }
+    .rp-code { font-family: SFMono-Regular, Consolas, monospace; font-size: .78rem; color: #8a87a8; }
+    .rp-name { font-weight: 700; color: #343a40; }
+    .rp-meta { font-size: .82rem; color: #5f5c7a; }
+    .rp-badge { font-size: .68rem; font-weight: 700; border-radius: 999px; padding: .15rem .5rem; margin-left: .35rem; }
+    .rp-badge--pending { background: #fff3cd; color: #8a6d00; }
+    .rp-badge--equipment { background: #e6f3fb; color: #1f6f9c; }
+    .rp-badge--ok { background: #e3f7ea; color: #1e7b45; }
+    .rp-badge--warn { background: #fff3cd; color: #8a6d00; }
+
+    .rp-qty { display: inline-flex; align-items: center; border: 1px solid #e3e0f3; border-radius: 8px; overflow: hidden; }
+    .rp-qty button { border: 0; background: #f7f6fc; width: 30px; height: 32px; color: #7460ee; font-weight: 800; }
+    .rp-qty input { border: 0; width: 64px; height: 32px; text-align: center; font-weight: 700; -moz-appearance: textfield; }
+    .rp-qty input::-webkit-outer-spin-button, .rp-qty input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+    .rp-group { border: 1px solid #ecebf5; border-radius: 12px; margin-bottom: .9rem; overflow: hidden; }
+    .rp-group__head { display: flex; align-items: center; gap: .75rem; padding: .7rem 1rem; background: #fbfaff; cursor: pointer; }
+    .rp-group__head .rp-name { font-size: .95rem; }
+    .rp-group .rp-table thead th { position: static; }
+    .rp-check { width: 18px; height: 18px; accent-color: #7460ee; cursor: pointer; vertical-align: middle; }
+    .rp-info-btn { border: 0; background: transparent; color: #7460ee; padding: .25rem .4rem; border-radius: 6px; }
+    .rp-info-btn:hover { background: #eee9fc; }
+
+    .rp-empty { text-align: center; color: #8a87a8; padding: 3rem 1rem; }
+    .rp-empty i { font-size: 2rem; color: #d3cff0; display: block; margin-bottom: .5rem; }
+
+    .rp-cart { width: 340px; flex: 0 0 340px; border-left: 1px solid #ecebf5; display: flex; flex-direction: column; background: #fcfcfe; }
+    .rp-cart__head { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.1rem; font-weight: 800; color: #2a1d6b; border-bottom: 1px solid #ecebf5; }
+    .rp-cart__list { flex: 1 1 auto; overflow: auto; padding: .6rem .8rem; }
+    .rp-cart__foot { padding: .9rem 1rem; border-top: 1px solid #ecebf5; background: #fff; }
+    .rp-cart-item { display: flex; align-items: center; gap: .5rem; background: #fff; border: 1px solid #ecebf5; border-radius: 10px; padding: .55rem .6rem; margin-bottom: .5rem; }
+    .rp-cart-item__icon { width: 30px; height: 30px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 30px; }
+    .rp-cart-item__icon--article { background: #eee9fc; color: #7460ee; }
+    .rp-cart-item__icon--equipment { background: #e6f3fb; color: #1f6f9c; }
+    .rp-cart-item__text { flex: 1 1 auto; min-width: 0; }
+    .rp-cart-item__text div { font-weight: 700; font-size: .82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .rp-cart-item__text small { color: #8a87a8; }
+    .rp-cart-item input { width: 64px; height: 30px; text-align: center; border: 1px solid #e3e0f3; border-radius: 6px; font-weight: 700; }
+    .rp-cart-item .rp-remove { border: 0; background: transparent; color: #c0392b; }
+
+    .rp-drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 460px; max-width: 100%; background: #fff; box-shadow: -12px 0 32px rgba(42,29,107,.14);
+                 transform: translateX(105%); transition: transform .2s ease; z-index: 5; display: flex; flex-direction: column; }
+    .rp-drawer.open { transform: translateX(0); }
+    .rp-drawer__head { display: flex; justify-content: space-between; align-items: center; padding: .9rem 1.1rem; border-bottom: 1px solid #ecebf5; }
+    .rp-drawer__body { flex: 1 1 auto; overflow: auto; padding: 1.1rem 1.25rem; }
+    .rp-detail-title { font-weight: 800; color: #2a1d6b; font-size: 1.15rem; margin-bottom: .2rem; }
+    .rp-facts { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin: 1rem 0; }
+    .rp-fact { background: #f7f6fc; border-radius: 10px; padding: .55rem .7rem; }
+    .rp-fact span { display: block; font-size: .68rem; text-transform: uppercase; color: #8a87a8; font-weight: 700; letter-spacing: .03em; }
+    .rp-fact strong { font-size: .9rem; color: #343a40; word-break: break-word; }
+    .rp-detail-section { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: #8a87a8; font-weight: 800; margin: 1rem 0 .4rem; }
+
+    @@media (max-width: 991px) {
+        .rp-cart { width: 280px; flex-basis: 280px; }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var $ = window.jQuery;
+        if (!$) return;
+
+        var cfg = JSON.parse(document.getElementById('rp-config').textContent);
+        var isUnits = cfg.mode === 'units';
+        var $modal = $('#requirement-picker');
+
+        // ---------- utilidades ----------
+        function esc(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function num(value) {
+            var n = parseFloat(String(value).replace(',', '.'));
+            return isFinite(n) ? Math.round(n * 100) / 100 : 0;
+        }
+        function fmt(n) { return (Math.round(n * 100) / 100).toString(); }
+        function api(handler, params) {
+            var query = $.param($.extend({ handler: handler }, params || {}));
+            return $.ajax({ url: cfg.apiUrl + '?' + query, dataType: 'json', cache: false });
+        }
+        function debounce(fn, ms) {
+            var t;
+            return function () { var args = arguments, self = this; clearTimeout(t); t = setTimeout(function () { fn.apply(self, args); }, ms); };
+        }
+        function loading($target, colspan) {
+            var html = '<div class="rp-empty"><i class="fas fa-spinner fa-spin"></i>Buscando…</div>';
+            colspan ? $target.html('<tr><td colspan="' + colspan + '">' + html + '</td></tr>') : $target.html(html);
+        }
+        function empty(text) { return '<div class="rp-empty"><i class="fas fa-search"></i>' + esc(text) + '</div>'; }
+        function statusLine(page, noun) {
+            if (!page.total) return '';
+            return page.truncated
+                ? 'Mostrando los primeros ' + page.items.length + ' de ' + page.total + ' ' + noun + '. Afina la búsqueda para ver más.'
+                : page.total + ' ' + noun + '.';
+        }
+        function qtyControl(id, value) {
+            return '<div class="rp-qty" data-qty-for="' + id + '">' +
+                '<button type="button" data-step="-1">−</button>' +
+                '<input type="number" min="0.01" step="0.01" value="' + fmt(value || 1) + '" />' +
+                '<button type="button" data-step="1">+</button></div>';
+        }
+
+        // ---------- selección ----------
+        var cart = { articles: {}, equipment: {}, units: {} };
+
+        function cartCount() {
+            return Object.keys(cart.articles).length + Object.keys(cart.equipment).length + Object.keys(cart.units).length;
+        }
+        function renderCart() {
+            var html = '';
+            $.each(cart.articles, function (id, a) {
+                html += '<div class="rp-cart-item"><span class="rp-cart-item__icon rp-cart-item__icon--article"><i class="fas fa-box"></i></span>' +
+                    '<div class="rp-cart-item__text"><div title="' + esc(a.name) + '">' + esc(a.name) + '</div><small>' + esc(a.code) + '</small></div>' +
+                    '<input type="number" min="0.01" step="0.01" value="' + fmt(a.quantity) + '" data-cart-qty="articles:' + id + '" />' +
+                    '<button type="button" class="rp-remove" data-cart-remove="articles:' + id + '" title="Quitar"><i class="fas fa-times"></i></button></div>';
+            });
+            $.each(cart.equipment, function (id, e) {
+                html += '<div class="rp-cart-item"><span class="rp-cart-item__icon rp-cart-item__icon--equipment"><i class="fas fa-blender"></i></span>' +
+                    '<div class="rp-cart-item__text"><div title="' + esc(e.name) + '">' + esc(e.name) + '</div><small>' + esc(e.code || 'Equipo') + '</small></div>' +
+                    '<input type="number" min="0.01" step="0.01" value="' + fmt(e.quantity) + '" data-cart-qty="equipment:' + id + '" />' +
+                    '<button type="button" class="rp-remove" data-cart-remove="equipment:' + id + '" title="Quitar"><i class="fas fa-times"></i></button></div>';
+            });
+            $.each(cart.units, function (id, u) {
+                html += '<div class="rp-cart-item"><span class="rp-cart-item__icon rp-cart-item__icon--equipment"><i class="fas fa-barcode"></i></span>' +
+                    '<div class="rp-cart-item__text"><div title="' + esc(u.name) + '">' + esc(u.name) + '</div><small>INV ' + esc(u.inventory) +
+                    (u.serial ? ' · S/N ' + esc(u.serial) : '') + '</small></div>' +
+                    '<button type="button" class="rp-remove" data-cart-remove="units:' + id + '" title="Quitar"><i class="fas fa-times"></i></button></div>';
+            });
+            var count = cartCount();
+            $('#rp-cart-list').html(html || '<div class="rp-empty py-4"><i class="fas fa-hand-pointer"></i>Agrega artículos o marca unidades de equipo.</div>');
+            $('#rp-cart-count').text(count);
+            $('#rp-submit').prop('disabled', count === 0);
+            $('#rp-submit-label').text(count ? 'Agregar ' + count + ' ' + cfg.submitLabel : 'Agregar ' + cfg.submitLabel);
+            markSelected();
+        }
+        function markSelected() {
+            $('#rp-article-rows tr[data-article-id]').each(function () {
+                $(this).toggleClass('rp-selected', !!cart.articles[$(this).data('article-id')]);
+            });
+            $('#rp-equipment-results tr[data-unit-id]').each(function () {
+                var on = !!cart.units[$(this).data('unit-id')];
+                $(this).toggleClass('rp-selected', on).find('input[type=checkbox]').prop('checked', on);
+            });
+            $('#rp-equipment-results [data-group-all]').each(function () {
+                var g = equipmentState.groups[$(this).data('group-all')];
+                this.checked = !!g && g.units.every(function (u) { return !!cart.units[u.id]; });
+            });
+            $('#rp-equipment-results tr[data-equipment-id]').each(function () {
+                $(this).toggleClass('rp-selected', !!cart.equipment[$(this).data('equipment-id')]);
+            });
+        }
+        function addArticle(a, quantity) {
+            if (quantity <= 0) return;
+            var current = cart.articles[a.id];
+            cart.articles[a.id] = { id: a.id, code: a.code, name: a.name, quantity: (current ? current.quantity : 0) + quantity };
+            renderCart();
+        }
+        function addEquipment(e, quantity) {
+            if (quantity <= 0) return;
+            var current = cart.equipment[e.equipmentId];
+            cart.equipment[e.equipmentId] = { id: e.equipmentId, code: e.catalogCode, name: e.name, quantity: (current ? current.quantity : 0) + quantity };
+            renderCart();
+        }
+        function toggleUnit(u, equipmentName, on) {
+            if (on) cart.units[u.id] = { id: u.id, name: equipmentName, inventory: u.inventoryNumber, serial: u.serialNumber };
+            else delete cart.units[u.id];
+            renderCart();
+        }
+
+        $('#rp-cart-list').on('click', '[data-cart-remove]', function () {
+            var parts = String($(this).data('cart-remove')).split(':');
+            delete cart[parts[0]][parts[1]];
+            renderCart();
+        }).on('change', '[data-cart-qty]', function () {
+            var parts = String($(this).data('cart-qty')).split(':');
+            var value = num(this.value);
+            if (value <= 0) { delete cart[parts[0]][parts[1]]; } else { cart[parts[0]][parts[1]].quantity = value; }
+            renderCart();
+        });
+        $('#rp-cart-clear').on('click', function () { cart = { articles: {}, equipment: {}, units: {} }; renderCart(); });
+
+        // Stepper de cantidad en tablas de resultados.
+        $modal.on('click', '.rp-qty button', function (e) {
+            e.stopPropagation();
+            var $input = $(this).siblings('input');
+            var next = Math.max(1, num($input.val()) + Number($(this).data('step')));
+            $input.val(fmt(next));
+        }).on('click', '.rp-qty input', function (e) { e.stopPropagation(); });
+
+        // ---------- pestañas ----------
+        var loaded = { articles: false, equipment: false };
+        $modal.on('click', '[data-rp-tab]', function (e) {
+            e.preventDefault();
+            var tab = $(this).data('rp-tab');
+            $modal.find('[data-rp-tab]').removeClass('active');
+            $(this).addClass('active');
+            $modal.find('[data-rp-pane]').addClass('d-none');
+            $modal.find('[data-rp-pane="' + tab + '"]').removeClass('d-none');
+            closeDrawer();
+            if (!loaded[tab]) { loaded[tab] = true; tab === 'articles' ? searchArticles() : searchEquipment(); }
+        });
+
+        // ---------- artículos ----------
+        var articleState = { categoryId: '', q: '', confirmedOnly: false, seq: 0, items: {} };
+
+        function searchArticles() {
+            var seq = ++articleState.seq;
+            loading($('#rp-article-rows'), 7);
+            $('#rp-article-status').text('');
+            api('Articles', { categoryId: articleState.categoryId, q: articleState.q, confirmedOnly: articleState.confirmedOnly })
+                .done(function (page) {
+                    if (seq !== articleState.seq) return;
+                    articleState.items = {};
+                    if (!page.items.length) {
+                        $('#rp-article-rows').html('<tr><td colspan="7">' + empty(articleState.q ? 'Sin artículos para "' + articleState.q + '".' : 'No hay artículos en esta categoría.') + '</td></tr>');
+                        return;
+                    }
+                    var html = '';
+                    $.each(page.items, function (_, a) {
+                        articleState.items[a.id] = a;
+                        html += '<tr data-article-id="' + a.id + '">' +
+                            '<td class="rp-code">' + esc(a.code) + '</td>' +
+                            '<td><span class="rp-name">' + esc(a.name) + '</span>' +
+                            (a.pending ? '<span class="rp-badge rp-badge--pending">Por confirmar</span>' : '') +
+                            (a.equipmentLinked ? '<span class="rp-badge rp-badge--equipment">Equipo</span>' : '') + '</td>' +
+                            '<td class="rp-meta">' + esc(a.category || '—') + '</td>' +
+                            '<td class="rp-meta">' + esc(a.unit || '—') + '</td>' +
+                            '<td class="text-right small">' + (a.stock == null ? '<span class="text-muted">—</span>' : '<strong>' + fmt(a.stock) + '</strong>') + '</td>' +
+                            '<td class="text-center">' + qtyControl('a' + a.id, 1) + '</td>' +
+                            '<td class="text-right text-nowrap">' +
+                            '<button type="button" class="rp-info-btn" data-detail="article" data-id="' + a.id + '" title="Ver detalle"><i class="fas fa-info-circle"></i></button>' +
+                            '<button type="button" class="btn btn-sm btn-outline-primary btn-rounded ml-1" data-add-article="' + a.id + '"><i class="fas fa-plus"></i></button>' +
+                            '</td></tr>';
+                    });
+                    $('#rp-article-rows').html(html);
+                    $('#rp-article-status').text(statusLine(page, 'artículo(s)'));
+                    markSelected();
+                })
+                .fail(function (xhr) {
+                    if (seq !== articleState.seq) return;
+                    $('#rp-article-rows').html('');
+                    $('#rp-article-status').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mr-1"></i>No se pudieron cargar los artículos (' + esc(xhr.status || 'sin conexión') + '). Intenta de nuevo.</span>');
+                });
+        }
+
+        $('#rp-article-q').on('input', debounce(function () { articleState.q = $.trim(this.value); searchArticles(); }, 300));
+        $('#rp-article-confirmed').on('change', function () { articleState.confirmedOnly = this.checked; searchArticles(); });
+        $('#rp-categories').on('click', '.rp-chip', function () {
+            $('#rp-categories .rp-chip').removeClass('active');
+            $(this).addClass('active');
+            articleState.categoryId = $(this).data('category') || '';
+            searchArticles();
+        });
+        $('#rp-article-rows').on('click', '[data-add-article]', function (e) {
+            e.stopPropagation();
+            var id = $(this).data('add-article');
+            addArticle(articleState.items[id], num($(this).closest('tr').find('.rp-qty input').val()));
+        }).on('click', 'tr[data-article-id]', function () {
+            openDetail('article', $(this).data('article-id'));
+        });
+
+        // ---------- equipos ----------
+        var equipmentState = {
+            q: '', laboratoryId: cfg.defaultLaboratoryId || '', operationalOnly: false, withSerialOnly: false, withUnitsOnly: false,
+            seq: 0, groups: {}, catalog: {}
+        };
+
+        function searchEquipment() {
+            var seq = ++equipmentState.seq;
+            var $results = $('#rp-equipment-results');
+            loading($results);
+            $('#rp-equipment-status').text('');
+            var request = isUnits
+                ? api('Units', {
+                    planId: cfg.planId, laboratoryId: equipmentState.laboratoryId, q: equipmentState.q,
+                    operationalOnly: equipmentState.operationalOnly, withSerialOnly: equipmentState.withSerialOnly
+                })
+                : api('Equipment', { q: equipmentState.q, withUnitsOnly: equipmentState.withUnitsOnly });
+
+            request.done(function (page) {
+                if (seq !== equipmentState.seq) return;
+                if (!page.items.length) {
+                    $results.html(empty(equipmentState.q ? 'Sin equipos para "' + equipmentState.q + '".' : 'No hay equipos con estos filtros.'));
+                    return;
+                }
+                isUnits ? renderUnitGroups(page) : renderCatalog(page);
+                markSelected();
+            }).fail(function (xhr) {
+                if (seq !== equipmentState.seq) return;
+                $results.html('');
+                $('#rp-equipment-status').html('<span class="text-danger"><i class="fas fa-exclamation-triangle mr-1"></i>No se pudieron cargar los equipos (' + esc(xhr.status || 'sin conexión') + '). Intenta de nuevo.</span>');
+            });
+        }
+
+        function renderUnitGroups(page) {
+            equipmentState.groups = {};
+            var html = '', units = 0;
+            $.each(page.items, function (_, g) {
+                equipmentState.groups[g.equipmentId] = g;
+                units += g.units.length;
+                var meta = [g.catalogCode, g.brand, g.model].filter(Boolean).map(esc).join(' · ');
+                html += '<div class="rp-group" data-group="' + g.equipmentId + '">' +
+                    '<div class="rp-group__head">' +
+                    '<input type="checkbox" class="rp-check" title="Seleccionar todas las unidades" data-group-all="' + g.equipmentId + '" onclick="event.stopPropagation()" />' +
+                    '<div class="flex-grow-1"><div class="rp-name">' + esc(g.name) + '</div><small class="text-muted">' + (meta || 'Sin datos de catálogo') + '</small></div>' +
+                    '<span class="badge badge-light border">' + g.units.length + ' unidad(es)</span>' +
+                    '<button type="button" class="rp-info-btn" data-detail="equipment" data-id="' + g.equipmentId + '" title="Ver equipo"><i class="fas fa-info-circle"></i></button>' +
+                    '</div>' +
+                    '<table class="table rp-table mb-0"><thead><tr><th style="width:44px"></th><th>N.º inventario</th><th>N.º serie</th><th>Laboratorio</th><th>Estado</th><th style="width:44px"></th></tr></thead><tbody>';
+                $.each(g.units, function (_, u) {
+                    html += '<tr data-unit-id="' + u.id + '" data-equipment="' + g.equipmentId + '">' +
+                        '<td><input type="checkbox" class="rp-check" tabindex="-1" /></td>' +
+                        '<td class="rp-code text-dark font-weight-bold">' + esc(u.inventoryNumber) + '</td>' +
+                        '<td>' + (u.serialNumber ? '<span class="rp-code text-dark">' + esc(u.serialNumber) + '</span>' : '<span class="text-muted small">Sin serie</span>') + '</td>' +
+                        '<td class="rp-meta">' + esc(u.laboratory || '—') + '</td>' +
+                        '<td><span class="rp-badge ml-0 ' + (u.available ? 'rp-badge--ok' : 'rp-badge--warn') + '">' + esc(u.status) + '</span></td>' +
+                        '<td><button type="button" class="rp-info-btn" data-detail="unit" data-id="' + u.id + '" title="Ver unidad"><i class="fas fa-info-circle"></i></button></td>' +
+                        '</tr>';
+                });
+                html += '</tbody></table></div>';
+            });
+            $('#rp-equipment-results').html(html);
+            $('#rp-equipment-status').text(page.truncated
+                ? 'Mostrando ' + units + ' de ' + page.total + ' unidades. Afina la búsqueda o filtra por laboratorio.'
+                : page.total + ' unidad(es) en ' + page.items.length + ' equipo(s).');
+        }
+
+        function renderCatalog(page) {
+            equipmentState.catalog = {};
+            var html = '<table class="table rp-table mb-0"><thead><tr><th style="width:120px">Código</th><th>Equipo</th><th>Marca / modelo</th>' +
+                '<th style="width:110px" class="text-center">Unidades</th><th style="width:150px" class="text-center">Cantidad</th><th style="width:96px"></th></tr></thead><tbody>';
+            $.each(page.items, function (_, e) {
+                equipmentState.catalog[e.equipmentId] = e;
+                html += '<tr data-equipment-id="' + e.equipmentId + '">' +
+                    '<td class="rp-code">' + esc(e.catalogCode || '—') + '</td>' +
+                    '<td class="rp-name">' + esc(e.name) + '</td>' +
+                    '<td class="rp-meta">' + ([e.brand, e.model].filter(Boolean).map(esc).join(' · ') || '—') + '</td>' +
+                    '<td class="text-center"><span class="badge badge-light border">' + e.unitCount + '</span></td>' +
+                    '<td class="text-center">' + qtyControl('e' + e.equipmentId, 1) + '</td>' +
+                    '<td class="text-right text-nowrap">' +
+                    '<button type="button" class="rp-info-btn" data-detail="equipment" data-id="' + e.equipmentId + '" title="Ver detalle"><i class="fas fa-info-circle"></i></button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-primary btn-rounded ml-1" data-add-equipment="' + e.equipmentId + '"><i class="fas fa-plus"></i></button>' +
+                    '</td></tr>';
+            });
+            $('#rp-equipment-results').html(html + '</tbody></table>');
+            $('#rp-equipment-status').text(statusLine(page, 'equipo(s)'));
+        }
+
+        $('#rp-equipment-q').on('input', debounce(function () { equipmentState.q = $.trim(this.value); searchEquipment(); }, 300));
+        $('#rp-equipment-lab').on('change', function () { equipmentState.laboratoryId = this.value; searchEquipment(); });
+        $('#rp-equipment-operational').on('change', function () { equipmentState.operationalOnly = this.checked; searchEquipment(); });
+        $('#rp-equipment-serial').on('change', function () { equipmentState.withSerialOnly = this.checked; searchEquipment(); });
+        $('#rp-equipment-withunits').on('change', function () { equipmentState.withUnitsOnly = this.checked; searchEquipment(); });
+
+        $('#rp-equipment-results')
+            .on('click', 'tr[data-unit-id]', function (e) {
+                if ($(e.target).closest('[data-detail]').length) return;
+                var g = equipmentState.groups[$(this).data('equipment')];
+                var unit = g.units.filter(function (u) { return u.id === $(this).data('unit-id'); }, this)[0];
+                toggleUnit(unit, g.name, !cart.units[unit.id]);
+            })
+            .on('change', '[data-group-all]', function () {
+                var g = equipmentState.groups[$(this).data('group-all')], on = this.checked;
+                $.each(g.units, function (_, u) {
+                    if (on) cart.units[u.id] = { id: u.id, name: g.name, inventory: u.inventoryNumber, serial: u.serialNumber };
+                    else delete cart.units[u.id];
+                });
+                renderCart();
+            })
+            .on('click', '.rp-group__head', function (e) {
+                if ($(e.target).closest('[data-detail]').length) return;
+                $(this).next('table').toggleClass('d-none');
+            })
+            .on('click', '[data-add-equipment]', function (e) {
+                e.stopPropagation();
+                var id = $(this).data('add-equipment');
+                addEquipment(equipmentState.catalog[id], num($(this).closest('tr').find('.rp-qty input').val()));
+            })
+            .on('click', 'tr[data-equipment-id]', function (e) {
+                if ($(e.target).closest('button, input').length) return;
+                openDetail('equipment', $(this).data('equipment-id'));
+            });
+
+        // ---------- ficha de detalle ----------
+        function closeDrawer() { $('#rp-drawer').removeClass('open').attr('aria-hidden', 'true'); }
+        $('#rp-drawer-close').on('click', closeDrawer);
+        $modal.on('click', '[data-detail]', function (e) {
+            e.stopPropagation();
+            openDetail($(this).data('detail'), $(this).data('id'));
+        });
+
+        function fact(label, value) {
+            return '<div class="rp-fact"><span>' + esc(label) + '</span><strong>' + (value == null || value === '' ? '—' : esc(value)) + '</strong></div>';
+        }
+        function link(url, text, icon) {
+            return url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary btn-rounded mr-2 mb-2"><i class="fas ' + icon + ' mr-1"></i>' + esc(text) + '</a>' : '';
+        }
+
+        function openDetail(kind, id) {
+            var labels = { article: 'Artículo', unit: 'Unidad física', equipment: 'Equipo del catálogo' };
+            var handlers = { article: 'ArticleDetail', unit: 'UnitDetail', equipment: 'EquipmentDetail' };
+            $('#rp-drawer-kind').text(labels[kind]);
+            loading($('#rp-drawer-body'));
+            $('#rp-drawer').addClass('open').attr('aria-hidden', 'false');
+            api(handlers[kind], { id: id })
+                .done(function (d) { $('#rp-drawer-body').html(renderDetail(kind, d)); })
+                .fail(function () { $('#rp-drawer-body').html(empty('No se pudo cargar el detalle.')); });
+        }
+
+        function renderDetail(kind, d) {
+            var html = '';
+            if (kind === 'article') {
+                var total = d.stocks.reduce(function (sum, s) { return sum + s.available; }, 0);
+                html += '<div class="rp-code">' + esc(d.code) + '</div><div class="rp-detail-title">' + esc(d.name) + '</div>' +
+                    (d.pending ? '<span class="rp-badge rp-badge--pending ml-0">Por confirmar</span>' : '<span class="rp-badge rp-badge--ok ml-0">Confirmado</span>') +
+                    (d.equipmentId ? '<span class="rp-badge rp-badge--equipment">Vinculado a equipo</span>' : '') +
+                    '<div class="rp-facts">' + fact('Categoría', d.category) + fact('Unidad de medida', d.unit) +
+                    fact('Stock total', d.stocks.length ? fmt(total) : 'Sin registro') + fact('Uso', d.recipeCount + ' receta(s) · ' + d.kitCount + ' kit(s)') + '</div>';
+                if (d.equipmentName) html += '<div class="rp-detail-section">Equipo vinculado</div><div class="mb-2">' + esc(d.equipmentName) + '</div>';
+                html += '<div class="rp-detail-section">Existencias por laboratorio</div>';
+                html += d.stocks.length
+                    ? '<table class="table table-sm rp-table">' + d.stocks.map(function (s) {
+                        return '<tr><td class="small">' + esc(s.laboratory) + '</td><td class="text-right font-weight-bold">' + fmt(s.available) + '</td></tr>';
+                    }).join('') + '</table>'
+                    : '<p class="small text-muted">Este artículo no tiene existencias registradas.</p>';
+                html += '<div class="rp-detail-section">Agregar a la selección</div><div class="d-flex align-items-center mb-3">' + qtyControl('d' + d.id, 1) +
+                    '<button type="button" class="btn btn-primary btn-sm btn-rounded ml-2" data-drawer-add-article="' + d.id + '"><i class="fas fa-plus mr-1"></i>Agregar</button></div>';
+                html += link(d.editUrl, 'Abrir ficha del artículo', 'fa-external-link-alt') + link(d.equipmentUrl, 'Ficha del equipo', 'fa-blender');
+                $('#rp-drawer').data('article', { id: d.id, code: d.code, name: d.name });
+            } else if (kind === 'unit') {
+                var selected = !!cart.units[d.id];
+                html += '<div class="rp-code">' + esc(d.catalogCode || '') + '</div><div class="rp-detail-title">' + esc(d.equipmentName) + '</div>' +
+                    '<div class="text-muted small mb-1">' + esc([d.brand, d.model].filter(Boolean).join(' · ')) + '</div>' +
+                    '<div class="rp-facts">' + fact('N.º inventario', d.inventoryNumber) + fact('N.º serie', d.serialNumber || 'Sin serie') +
+                    fact('Estado', d.status) + fact('Condición', d.condition) + fact('Laboratorio', d.laboratory) + fact('Ubicación interna', d.internalLocation) +
+                    fact('Adquisición', d.acquisitionDate ? new Date(d.acquisitionDate).toLocaleDateString('es-BO') : null) + fact('Equipo', d.equipmentName) + '</div>';
+                if (d.description) html += '<div class="rp-detail-section">Descripción</div><p class="small">' + esc(d.description) + '</p>';
+                if (d.notes) html += '<div class="rp-detail-section">Notas</div><p class="small">' + esc(d.notes) + '</p>';
+                if (isUnits) {
+                    html += '<button type="button" class="btn btn-sm btn-rounded mb-3 ' + (selected ? 'btn-outline-danger' : 'btn-primary') + '" data-drawer-toggle-unit="' + d.id + '">' +
+                        (selected ? '<i class="fas fa-minus mr-1"></i>Quitar de la selección' : '<i class="fas fa-plus mr-1"></i>Agregar esta unidad') + '</button><br />';
+                }
+                html += link(d.detailsUrl, 'Ficha de la unidad', 'fa-external-link-alt') + link(d.equipmentUrl, 'Ficha del equipo', 'fa-blender');
+                $('#rp-drawer').data('unit', { id: d.id, inventoryNumber: d.inventoryNumber, serialNumber: d.serialNumber, name: d.equipmentName });
+            } else {
+                html += '<div class="rp-code">' + esc(d.catalogCode || '') + '</div><div class="rp-detail-title">' + esc(d.name) + '</div>' +
+                    '<div class="rp-facts">' + fact('Marca', d.brand) + fact('Modelo', d.model) + fact('Tipo', d.category) + fact('Unidades registradas', d.unitCount) + '</div>';
+                if (d.description) html += '<div class="rp-detail-section">Descripción</div><p class="small">' + esc(d.description) + '</p>';
+                if (!isUnits) {
+                    html += '<div class="rp-detail-section">Agregar al kit</div><div class="d-flex align-items-center mb-3">' + qtyControl('de' + d.id, 1) +
+                        '<button type="button" class="btn btn-primary btn-sm btn-rounded ml-2" data-drawer-add-equipment="' + d.id + '"><i class="fas fa-plus mr-1"></i>Agregar</button></div>';
+                    $('#rp-drawer').data('equipment', { equipmentId: d.id, catalogCode: d.catalogCode, name: d.name });
+                }
+                html += '<div class="rp-detail-section">Unidades (' + d.unitCount + ')</div>';
+                html += d.units.length
+                    ? '<table class="table table-sm rp-table"><thead><tr><th>Inventario</th><th>Serie</th><th>Laboratorio</th><th>Estado</th></tr></thead><tbody>' +
+                        d.units.map(function (u) {
+                            return '<tr><td class="rp-code text-dark">' + esc(u.inventoryNumber) + '</td><td class="rp-code">' + esc(u.serialNumber || '—') + '</td>' +
+                                '<td class="small">' + esc(u.laboratory || '—') + '</td><td><span class="rp-badge ml-0 ' + (u.available ? 'rp-badge--ok' : 'rp-badge--warn') + '">' + esc(u.status) + '</span></td></tr>';
+                        }).join('') + '</tbody></table>'
+                    : '<p class="small text-muted">Sin unidades físicas registradas.</p>';
+                html += link(d.equipmentUrl, 'Abrir ficha del equipo', 'fa-external-link-alt');
+            }
+            return html;
+        }
+
+        $('#rp-drawer-body')
+            .on('click', '[data-drawer-add-article]', function () {
+                addArticle($('#rp-drawer').data('article'), num($(this).siblings('.rp-qty').find('input').val()));
+            })
+            .on('click', '[data-drawer-add-equipment]', function () {
+                addEquipment($('#rp-drawer').data('equipment'), num($(this).siblings('.rp-qty').find('input').val()));
+            })
+            .on('click', '[data-drawer-toggle-unit]', function () {
+                var u = $('#rp-drawer').data('unit');
+                toggleUnit(u, u.name, !cart.units[u.id]);
+                openDetail('unit', u.id);
+            });
+
+        // ---------- tamaño, apertura y envío ----------
+        $('#rp-toggle-size').on('click', function () {
+            var max = !$modal.hasClass('rp-max');
+            $modal.toggleClass('rp-max', max);
+            $(this).attr('title', max ? 'Restaurar' : 'Maximizar').find('i').toggleClass('fa-expand', !max).toggleClass('fa-compress', max);
+        });
+
+        $modal.on('shown.bs.modal', function () {
+            if (!loaded.articles) { loaded.articles = true; searchArticles(); }
+            $('#rp-article-q').trigger('focus');
+        });
+
+        $('#rp-submit').on('click', function () {
+            var $form = $('#requirement-picker-form');
+            $form.find('input[name^="Batch."]').remove();
+            var i = 0;
+            $.each(cart.articles, function (_, a) {
+                $('<input type="hidden" />').attr('name', 'Batch.Articles[' + i + '].Id').val(a.id).appendTo($form);
+                $('<input type="hidden" />').attr('name', 'Batch.Articles[' + i + '].Quantity').val(fmt(a.quantity)).appendTo($form);
+                i++;
+            });
+            i = 0;
+            $.each(cart.equipment, function (_, e) {
+                $('<input type="hidden" />').attr('name', 'Batch.Equipments[' + i + '].Id').val(e.id).appendTo($form);
+                $('<input type="hidden" />').attr('name', 'Batch.Equipments[' + i + '].Quantity').val(fmt(e.quantity)).appendTo($form);
+                i++;
+            });
+            i = 0;
+            $.each(cart.units, function (_, u) {
+                $('<input type="hidden" />').attr('name', 'Batch.UnitIds[' + i + ']').val(u.id).appendTo($form);
+                i++;
+            });
+            $(this).prop('disabled', true).find('#rp-submit-label').text('Guardando…');
+            HTMLFormElement.prototype.submit.call($form[0]);
+        });
+
+        renderCart();
+    });
+</script>

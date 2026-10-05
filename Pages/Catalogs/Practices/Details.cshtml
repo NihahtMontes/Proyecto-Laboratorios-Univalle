@@ -16,11 +16,8 @@
                     <div>
                         <h4 class="card-title text-dark font-weight-bold">Receta de la Práctica</h4>
                         <h6 class="card-subtitle text-muted">
-                            Lista de artículos requeridos para: <span class="font-weight-bold text-dark">@Model.Practice.Code</span>
-                            @if (!string.IsNullOrWhiteSpace(Model.Practice.Number))
-                            {
-                                <span class="text-muted">· @Model.Practice.Number</span>
-                            }
+                            Lista de artículos requeridos para: <span class="font-weight-bold text-dark">@Model.Practice.Name</span>
+                            <span class="text-muted">· @Model.Practice.Code</span>
                         </h6>
                     </div>
                     <div class="ml-auto mt-2 mt-md-0">
@@ -36,11 +33,8 @@
                             </span>
                             <div>
                                 <small class="text-muted d-block uppercase font-weight-bold" style="font-size: 0.7rem;">Práctica</small>
-                                <h5 class="font-weight-bold text-dark mb-0">@Model.Practice.Code</h5>
-                                @if (!string.IsNullOrWhiteSpace(Model.Practice.Number))
-                                {
-                                    <small class="text-muted">N.º @Model.Practice.Number</small>
-                                }
+                                <h5 class="font-weight-bold text-dark mb-0">@Model.Practice.Name</h5>
+                                <small class="text-muted"><i class="fas fa-barcode mr-1"></i>@Model.Practice.Code</small>
                             </div>
                         </div>
 

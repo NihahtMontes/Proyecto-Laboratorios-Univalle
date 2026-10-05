@@ -18,6 +18,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("ManagementId")]
         public Management Management { get; set; } = null!;
 
+        /// <summary>Sede donde se ejecutan las prácticas; limita los laboratorios disponibles. Nullable solo por datos previos.</summary>
+        public int? CampusId { get; set; }
+        [ForeignKey("CampusId")]
+        public Campus? Campus { get; set; }
+
         [Required]
         public int FacultyId { get; set; }
         [ForeignKey("FacultyId")]

@@ -17,7 +17,9 @@ public sealed record PlanningSummary(
     string CareerName,
     DateTime StartDate,
     DateTime EndDate,
-    AcademicPlanningStatus Status)
+    AcademicPlanningStatus Status,
+    int? CampusId,
+    string? CampusName)
 {
     public bool IsActive => Status == AcademicPlanningStatus.Active;
 
@@ -107,5 +109,7 @@ public sealed class PlanningService : IPlanningService
             p.Career.Name,
             p.StartDate,
             p.EndDate,
-            p.Status));
+            p.Status,
+            p.CampusId,
+            p.Campus != null ? p.Campus.Name : null));
 }

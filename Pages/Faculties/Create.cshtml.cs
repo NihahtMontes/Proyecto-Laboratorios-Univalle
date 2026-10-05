@@ -37,10 +37,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             [StringLength(150, ErrorMessage = "El nombre no puede superar los 150 caracteres")]
             public string Name { get; set; } = string.Empty;
 
-            [Display(Name = "Sigla Oficial")]
-            [StringLength(10, ErrorMessage = "La sigla oficial no puede superar los 10 caracteres")]
-            public string? Code { get; set; }
-
             [Display(Name = "Descripción")]
             [StringLength(500, ErrorMessage = "La descripción no puede superar los 500 caracteres")]
             public string? Description { get; set; }
@@ -71,7 +67,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             var faculty = new Faculty
             {
                 Name = Input.Name.Clean(),
-                Code = Input.Code?.ToUpper().Trim(),
+                Code = null,
                 Description = Input.Description?.Clean(),
                 Status = GeneralStatus.Activo,
                 CreatedDate = DateTime.UtcNow
@@ -85,9 +81,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             }
 
             _context.Faculties.Add(faculty);
-            await _context.SaveChangesAsync();
+            await _context.SaveWithCodeAsync(
+                _context.Faculties.IgnoreQueryFilters().Select(x => (string?)x.Code),
+                CatalogCodes.Faculty,
+                code => faculty.Code = code);
 
-            TempData.Success($"Unidad Académica '{faculty.Name}' registrada exitosamente.");
+            TempData.Success($"Unidad Académica '{faculty.Code}' ({faculty.Name}) registrada exitosamente.");
             return RedirectToPage("/Laboratories/Index", null, "faculties");
         }
     }

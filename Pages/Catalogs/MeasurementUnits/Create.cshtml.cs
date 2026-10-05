@@ -38,9 +38,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
             [StringLength(60, ErrorMessage = "El nombre no puede superar los 60 caracteres")]
             public string Name { get; set; } = string.Empty;
 
-            [Display(Name = "Código")]
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
-            public string? Code { get; set; }
+            // Code lo asigna el sistema (formato UNI-00001); no se captura en el InputModel.
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -62,24 +60,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
                 return Page();
             }
 
-            // Unicidad por código
-            if (!string.IsNullOrWhiteSpace(Input.Code))
-            {
-                var normalizedCode = Input.Code.Trim().ToLower();
-                var codeExists = await _context.MeasurementUnits
-                    .AnyAsync(u => u.Code != null && u.Code.Trim().ToLower() == normalizedCode);
-
-                if (codeExists)
-                {
-                    ModelState.AddModelError("Input.Code", "Ya existe una unidad de medida con este código en el sistema.");
-                    return Page();
-                }
-            }
+            // Code lo asigna el sistema mediante CatalogCodes; no se valida unicidad aquí.
 
             var unit = new MeasurementUnit
             {
                 Name = Input.Name.Clean(),
-                Code = Input.Code?.ToUpper().Trim() ?? string.Empty,
+                // Code vacío: CatalogCodes asignará el siguiente UNI-00001 al persistir.
+                Code = string.Empty,
                 Status = GeneralStatus.Activo
                 // CreatedDate: el modelo tiene default = DateTime.UtcNow.
             };
@@ -88,15 +75,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
 
             try
             {
-                await _context.SaveChangesAsync();
-                TempData.Success($"Unidad de medida '{unit.Name}' registrada exitosamente.");
+                await _context.SaveWithCodeAsync(
+                    _context.MeasurementUnits.IgnoreQueryFilters().Select(x => (string?)x.Code),
+                    CatalogCodes.MeasurementUnit,
+                    code => unit.Code = code);
+                TempData.Success($"Unidad de medida '{unit.Code}' registrada exitosamente.");
                 return RedirectToPage("./Index");
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
                 _logger.LogWarning(ex, "Conflicto de unicidad al crear la unidad de medida {UnitName}.", unit.Name);
                 ModelState.AddModelError(string.Empty,
-                    "No se pudo registrar la unidad porque ya existe un registro con el mismo código o nombre.");
+                    "No se pudo registrar la unidad porque ya existe un registro con el mismo nombre.");
                 return Page();
             }
         }

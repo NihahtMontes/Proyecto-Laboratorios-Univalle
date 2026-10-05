@@ -33,15 +33,14 @@
                             </div>
 
                             <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-3 rounded shadow-none">
-                                <label asp-for="Input.Code" class="control-label font-weight-bold small text-warning uppercase mb-2">Código Institucional</label>
+                                <label class="control-label font-weight-bold small text-warning uppercase mb-2">Código Institucional</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
                                         <span class="input-group-text bg-white"><i class="fas fa-hashtag text-muted"></i></span>
                                     </div>
-                                    <input asp-for="Input.Code" class="form-control border-warning shadow-none" placeholder="Ej: BIO-310" maxlength="50" />
+                                    <input class="form-control bg-light border-warning shadow-none" value="Se generará automáticamente" disabled />
                                 </div>
-                                <small class="text-muted italic mt-2 d-block">Opcional. Si se define, debe ser único en el sistema institucional.</small>
-                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold d-block mt-1"></span>
+                                <small class="form-text text-muted"><i class="fas fa-magic mr-1"></i>Formato MAT-00001.</small>
                             </div>
                         </div>
 
@@ -127,7 +126,6 @@
                 });
             }
             setupBlocking('#Input_Name', textPattern);
-            setupBlocking('#Input_Code', textPattern);
         });
     </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

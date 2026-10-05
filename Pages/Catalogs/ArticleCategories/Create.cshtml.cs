@@ -38,9 +38,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
             [StringLength(100, ErrorMessage = "El nombre no puede superar los 100 caracteres")]
             public string Name { get; set; } = string.Empty;
 
-            [Display(Name = "Código")]
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
-            public string? Code { get; set; }
+            // Code lo asigna el sistema (formato CAT-00001); no se captura en el InputModel.
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -62,24 +60,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
                 return Page();
             }
 
-            // Validación de unicidad por Código (si se proporcionó)
-            if (!string.IsNullOrWhiteSpace(Input.Code))
-            {
-                var normalizedCode = Input.Code.Trim().ToLower();
-                var codeExists = await _context.ArticleCategories
-                    .AnyAsync(c => c.Code != null && c.Code.Trim().ToLower() == normalizedCode);
-
-                if (codeExists)
-                {
-                    ModelState.AddModelError("Input.Code", "Ya existe una categoría con este código en el sistema.");
-                    return Page();
-                }
-            }
+            // Code lo asigna el sistema mediante CatalogCodes; no se valida unicidad aquí.
 
             var category = new ArticleCategory
             {
                 Name = Input.Name.Clean(),
-                Code = Input.Code?.ToUpper().Trim() ?? string.Empty,
+                // Code vacío: CatalogCodes asignará el siguiente CAT-00001 al persistir.
+                Code = string.Empty,
                 Status = GeneralStatus.Activo
                 // CreatedDate: el modelo tiene default = DateTime.UtcNow.
             };
@@ -90,15 +77,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
 
             try
             {
-                await _context.SaveChangesAsync();
-                TempData.Success($"Categoría '{category.Name}' registrada exitosamente.");
+                await _context.SaveWithCodeAsync(
+                    _context.ArticleCategories.IgnoreQueryFilters().Select(x => (string?)x.Code),
+                    CatalogCodes.ArticleCategory,
+                    code => category.Code = code);
+                TempData.Success($"Categoría '{category.Code}' registrada exitosamente.");
                 return RedirectToPage("./Index");
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
                 _logger.LogWarning(ex, "Conflicto de unicidad al crear la categoría {CategoryName}.", category.Name);
                 ModelState.AddModelError(string.Empty,
-                    "No se pudo registrar la categoría porque ya existe un registro con el mismo código o nombre.");
+                    "No se pudo registrar la categoría porque ya existe un registro con el mismo nombre.");
                 return Page();
             }
         }

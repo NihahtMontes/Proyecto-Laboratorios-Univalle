@@ -47,8 +47,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
         {
             public int Id { get; set; }
 
-            [Required(ErrorMessage = "El código del grupo es obligatorio")]
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
+            /// <summary>Código asignado por el sistema. Solo se conserva para mostrarlo en la UI.</summary>
             [Display(Name = "Código")]
             public string Code { get; set; } = string.Empty;
 
@@ -148,6 +147,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
                 .FirstOrDefaultAsync(g => g.Id == Input.Id);
             if (groupToUpdate == null) return NotFound();
 
+            // El código no se envía desde el formulario: repoblar desde BD para mantenerlo visible.
+            Input.Code = groupToUpdate.Code;
+
             // Parsear horas a TimeSpan (la fuente HTML5 time envía HH:mm).
             if (!TryParseTime(Input.StartTime, out var startTime))
                 ModelState.AddModelError("Input.StartTime", "Formato de hora de inicio inválido (use HH:mm).");
@@ -180,7 +182,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
             }
 
             // Normalización
-            var codeNormalized = Regex.Replace(Input.Code.Trim().ToUpper(), @"\s+", "");
             var nameNormalized = Regex.Replace(Input.Name.Trim().ToUpper(), @"\s+", "");
 
             // Validación de FK: gestión
@@ -233,20 +234,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
                 }
             }
 
-            // Unicidad: Code (excluyendo el actual)
-            var codeExists = await _context.CourseGroups
-                .IgnoreQueryFilters()
-                .AnyAsync(g => g.Id != Input.Id
-                               && g.Code == codeNormalized
-                               && g.Status != GeneralStatus.Eliminado);
-            if (codeExists)
-            {
-                ModelState.AddModelError("Input.Code", "Ya existe otro grupo con este código en el sistema institucional.");
-                await LoadAuditAsync(groupToUpdate);
-                await LoadListsAsync();
-                return Page();
-            }
-
             // Unicidad: (ManagementId, SubjectId, Name) (excluyendo el actual)
             var nameExists = await _context.CourseGroups
                 .IgnoreQueryFilters()
@@ -264,7 +251,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
             }
 
             // Entity Mapping (preserva audit CreatedDate/CreatedById)
-            groupToUpdate.Code = Input.Code.Clean().ToUpper();
+            // Code no se modifica: lo asigna el sistema.
             groupToUpdate.ManagementId = Input.ManagementId!.Value;
             groupToUpdate.SubjectId = Input.SubjectId!.Value;
             groupToUpdate.Name = Input.Name.Clean();
@@ -281,7 +268,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success($"Grupo '{groupToUpdate.Name}' actualizado correctamente.");
+                TempData.Success($"Grupo '{groupToUpdate.Code}' ({groupToUpdate.Name}) actualizado correctamente.");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -291,7 +278,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
                 _logger.LogWarning(ex, "Conflicto de unicidad al actualizar grupo {Id}", Input.Id);
-                ModelState.AddModelError(string.Empty, "Ya existe un grupo con ese código o combinación de gestión/materia/nombre.");
+                ModelState.AddModelError(string.Empty, "Ya existe otro grupo con esa combinación de gestión/materia/nombre.");
                 await LoadAuditAsync(groupToUpdate);
                 await LoadListsAsync();
                 return Page();

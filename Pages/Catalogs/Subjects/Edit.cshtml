@@ -35,10 +35,9 @@
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-muted">Código Institucional</label>
-                                <input asp-for="Input.Code" class="form-control" maxlength="50" placeholder="Opcional" />
-                                <small class="text-muted italic mt-1 d-block">Si se define, debe ser único en el sistema institucional.</small>
-                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold d-block mt-1"></span>
+                                <label class="control-label font-weight-bold small uppercase text-muted">Código Institucional</label>
+                                <input class="form-control bg-light" value="@(Model.Input.Code ?? "—")" disabled />
+                                <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>El código lo asigna el sistema y no se modifica.</small>
                             </div>
                         </div>
 
@@ -129,6 +128,20 @@
                         <span class="font-weight-bold text-dark d-block">@(Model.Input.Semester.HasValue ? Model.Input.Semester.Value.ToString() + ".º" : "No definido")</span>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-toolbox mr-2 text-primary"></i> Acciones rápidas</h5>
+                <hr />
+                <a asp-page="./Kit" asp-route-id="@Model.Input.Id"
+                   class="btn btn-outline-primary btn-rounded btn-block shadow-sm font-weight-bold py-2">
+                    <i class="fas fa-toolbox mr-1"></i> Kit de la materia
+                </a>
+                <small class="form-text text-muted mt-2">
+                    <i class="fas fa-info-circle mr-1"></i>Lista base de artículos y equipos que esta materia usa habitualmente.
+                </small>
             </div>
         </div>
     </div>

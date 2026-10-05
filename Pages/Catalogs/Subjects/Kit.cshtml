@@ -1,0 +1,279 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects.KitModel
+@{
+    var totalItems = Model.Items.Count;
+    var totalEquipment = Model.Items.Count(i => i.IsEquipment);
+    var totalScalable = Model.Items.Count(i => i.IsScalable);
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <!-- Encabezado -->
+                <div class="d-md-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <nav aria-label="breadcrumb" class="mb-2">
+                            <ol class="breadcrumb bg-transparent p-0 mb-0 small">
+                                <li class="breadcrumb-item">
+                                    <a asp-page="./Index" class="text-muted text-decoration-none">
+                                        <i class="fas fa-arrow-left mr-1"></i>Volver a materias
+                                    </a>
+                                </li>
+                            </ol>
+                        </nav>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 mb-1">
+                            <i class="fas fa-toolbox text-warning mr-2"></i>Kit de la materia
+                        </h3>
+                        @if (Model.Subject != null)
+                        {
+                            <h6 class="card-subtitle text-muted mb-0">
+                                <span class="font-weight-bold text-dark">@Model.Subject.Name</span>
+                                @if (!string.IsNullOrWhiteSpace(Model.Subject.Code))
+                                {
+                                    <span class="badge badge-pill badge-light border text-muted ml-1 font-weight-bold">@Model.Subject.Code</span>
+                                }
+                                @if (Model.Subject.Career != null)
+                                {
+                                    <span class="ml-2"><i class="fas fa-graduation-cap mr-1"></i>@Model.Subject.Career.Name</span>
+                                }
+                            </h6>
+                        }
+                    </div>
+                    <div class="ml-auto mt-3 mt-md-0">
+                        @if (totalItems > 0)
+                        {
+                            <button type="button" class="btn btn-primary btn-rounded px-4 shadow-sm font-weight-bold"
+                                    data-toggle="modal" data-target="#requirement-picker">
+                                <i class="fas fa-plus-circle mr-1"></i> Agregar artículos o equipos
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <!-- Explicación breve -->
+                <div class="alert alert-light border-0 small p-3 mb-4 text-info italic shadow-none border-left border-info border-3">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Lista base de artículos y equipos que esta materia usa habitualmente. En Requerimientos de cada práctica podrás cargarla con un clic; las líneas escalables se multiplican por estudiantes ÷ factor del grupo.
+                </div>
+
+                @if (totalItems == 0)
+                {
+                    <!-- Estado vacío amable -->
+                    <div class="text-center py-5 my-3">
+                        <i class="fas fa-toolbox fa-4x text-muted opacity-2 mb-3 d-block"></i>
+                        <h5 class="font-weight-bold text-dark mb-2">Esta materia aún no tiene kit.</h5>
+                        <p class="text-muted mb-4">Agrega artículos y equipos para usarlo como base en los Requerimientos de cada práctica.</p>
+                        <button type="button" class="btn btn-primary btn-lg btn-rounded px-5 shadow-sm font-weight-bold"
+                                data-toggle="modal" data-target="#requirement-picker">
+                            <i class="fas fa-plus-circle mr-1"></i> Agregar artículos o equipos
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <!-- Resumen superior -->
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-2 mb-md-0">
+                            <div class="bg-light rounded p-3 d-flex align-items-center">
+                                <div class="btn btn-circle btn-info text-white mr-3"><i class="fas fa-list"></i></div>
+                                <div>
+                                    <small class="text-muted d-block uppercase">Total en el kit</small>
+                                    <strong class="text-dark">@totalItems @(totalItems == 1 ? "línea" : "líneas")</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-2 mb-md-0">
+                            <div class="bg-light rounded p-3 d-flex align-items-center">
+                                <div class="btn btn-circle btn-warning text-white mr-3"><i class="fas fa-tools"></i></div>
+                                <div>
+                                    <small class="text-muted d-block uppercase">Equipos</small>
+                                    <strong class="text-dark">@totalEquipment @(totalEquipment == 1 ? "equipo" : "equipos")</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="bg-light rounded p-3 d-flex align-items-center">
+                                <div class="btn btn-circle btn-success text-white mr-3"><i class="fas fa-users"></i></div>
+                                <div>
+                                    <small class="text-muted d-block uppercase">Escalables</small>
+                                    <strong class="text-dark">@totalScalable @(totalScalable == 1 ? "línea" : "líneas")</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabla del kit -->
+                    <div class="table-responsive">
+                        <table class="table table-hover v-middle">
+                            <thead class="bg-light">
+                                <tr class="small uppercase font-weight-bold">
+                                    <th style="width:12%;">Código</th>
+                                    <th>Artículo</th>
+                                    <th style="width:13%;">Categoría</th>
+                                    <th style="width:9%;">Unidad</th>
+                                    <th>Edición en línea</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Items)
+                                {
+                                    <tr>
+                                        <td class="small text-muted align-middle">@item.ArticleCode</td>
+                                        <td class="align-middle">
+                                            <div class="font-weight-bold text-dark">@item.ArticleName</div>
+                                            <div class="mt-1">
+                                                @if (item.IsEquipment)
+                                                {
+                                                    <span class="badge badge-pill badge-info px-2 py-1 small font-weight-bold mr-1">
+                                                        <i class="fas fa-tools mr-1"></i>Equipo
+                                                    </span>
+                                                }
+                                                @if (item.Pending)
+                                                {
+                                                    <span class="badge badge-pill badge-warning px-2 py-1 small font-weight-bold">
+                                                        <i class="fas fa-clock mr-1"></i>Por confirmar
+                                                    </span>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td class="small align-middle">@(item.Category ?? "—")</td>
+                                        <td class="small align-middle">@(item.Unit ?? "—")</td>
+                                        <td>
+                                            <form method="post" asp-page-handler="Update" asp-route-id="@Model.Id" class="kit-row-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="itemId" value="@item.Id" />
+                                                <div class="row align-items-end g-2">
+                                                    <div class="col-md-3">
+                                                        <label class="small text-muted d-block mb-1">Cantidad</label>
+                                                        <input type="number" name="quantity"
+                                                               value="@item.Quantity.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                               min="0.01" step="0.01" class="form-control form-control-sm text-center" required />
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="small text-muted d-block mb-1">Escalable</label>
+                                                        <div class="form-check form-switch mt-1 kit-scalable">
+                                                            <input type="checkbox" class="form-check-input" name="isScalable" value="true"
+                                                                   id="kit-scalable-@item.Id" @(item.IsScalable ? "checked" : "") />
+                                                            <input type="hidden" name="isScalable" value="false" />
+                                                            <label class="form-check-label small text-muted" for="kit-scalable-@item.Id">Por estudiantes</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="small text-muted d-block mb-1">Observaciones</label>
+                                                        <input type="text" name="observations" value="@item.Observations"
+                                                               maxlength="500" class="form-control form-control-sm" placeholder="Opcional" />
+                                                    </div>
+                                                    <div class="col-md-2 text-right">
+                                                        <button type="submit" class="btn btn-sm btn-success btn-rounded shadow-sm font-weight-bold"
+                                                                title="Guardar cambios">
+                                                            <i class="fas fa-save"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger btn-rounded shadow-sm font-weight-bold kit-btn-remove ml-1"
+                                                                title="Quitar del kit"
+                                                                data-item-id="@item.Id"
+                                                                data-item-name="@item.ArticleName">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                            <form method="post" asp-page-handler="Remove" asp-route-id="@Model.Id" class="d-none kit-remove-form">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="itemId" value="@item.Id" />
+                                            </form>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Subject != null)
+{
+    var pickerOptions = new Proyecto_Laboratorios_Univalle.Pages.Shared.RequirementPickerOptions(
+        Proyecto_Laboratorios_Univalle.Pages.Shared.RequirementPickerOptions.CatalogMode,
+        "Agregar al kit de la materia",
+        null,
+        Url.Page("./Kit", "AddBatch", new { id = Model.Id })!,
+        Model.Categories,
+        new List<Proyecto_Laboratorios_Univalle.Pages.Shared.RequirementPickerOptions.Option>(),
+        null);
+    <partial name="_RequirementPicker" model="pickerOptions" />
+}
+
+@section Styles {
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .uppercase { text-transform: uppercase; letter-spacing: 1px; }
+        .italic { font-style: italic; }
+        .opacity-2 { opacity: 0.2; }
+        .border-3 { border-left-width: 4px !important; }
+        .kit-row-form .form-check-input { cursor: pointer; }
+        .kit-scalable { padding-left: 2.25rem; }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(function () {
+            "use strict";
+
+            // Edit (Update): confirmación SweetAlert2 antes de guardar cambios de una línea.
+            $('.kit-row-form').on('submit', function (e) {
+                e.preventDefault();
+                var form = this;
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call(form);
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Guardar cambios de esta línea?',
+                    text: 'Se actualizará la cantidad, el escalado y las observaciones.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, guardar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#16a34a',
+                    cancelButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
+
+            // Delete/soft-delete (Remove): confirmación SweetAlert2 antes de retirar del kit.
+            $('.kit-btn-remove').on('click', function () {
+                var $btn = $(this);
+                var itemName = $btn.data('item-name') || 'este artículo';
+                var $row = $btn.closest('tr');
+                var $form = $row.find('.kit-remove-form');
+                if (!$form.length) return;
+                if (typeof Swal === 'undefined') {
+                    HTMLFormElement.prototype.submit.call($form.get(0));
+                    return;
+                }
+                Swal.fire({
+                    title: '¿Quitar del kit?',
+                    text: 'Se retirará ' + itemName + ' del kit.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, quitar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call($form.get(0));
+                    }
+                });
+            });
+        });
+    </script>
+}

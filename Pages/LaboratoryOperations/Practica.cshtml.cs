@@ -159,8 +159,9 @@ public class PracticaModel : PageModel
             ModelState.AddModelError("Input.EndTime", "La hora de finalización debe ser posterior a la de inicio.");
 
         if (!await _context.Laboratories.AsNoTracking()
-                .AnyAsync(l => l.Id == Input.LaboratoryId && l.FacultyId == Planning.FacultyId && l.Status == GeneralStatus.Activo))
-            ModelState.AddModelError("Input.LaboratoryId", "El laboratorio no pertenece a la facultad de la planificación.");
+                .AnyAsync(l => l.Id == Input.LaboratoryId && l.FacultyId == Planning.FacultyId && l.Status == GeneralStatus.Activo
+                    && (Planning.CampusId == null || l.CampusId == Planning.CampusId)))
+            ModelState.AddModelError("Input.LaboratoryId", "El laboratorio no pertenece a la sede y facultad de la planificación.");
         if (!await TeacherQuery().AnyAsync(t => t.Id == Input.TeacherPersonId))
             ModelState.AddModelError("Input.TeacherPersonId", "Selecciona un docente activo.");
         if (!await SubjectQuery(planning.CareerId).AnyAsync(s => s.Id == Input.SubjectId))
@@ -253,6 +254,7 @@ public class PracticaModel : PageModel
             request.ManagementId = planning.ManagementId;
             request.AcademicPlanningId = planning.Id;
             request.CareerId = planning.CareerId;
+            request.CampusId = planning.CampusId;
             request.AcademicWeekId = week.Id;
             request.AcademicWeek = week.Number;
             request.LaboratoryId = Input.LaboratoryId;
@@ -293,10 +295,62 @@ public class PracticaModel : PageModel
         return RedirectToPage("./Requerimientos", new { planId = requestId });
     }
 
+    /// <summary>Quien puede crear prácticas del catálogo (mismos roles que Catálogos › Prácticas › Crear).</summary>
+    public bool CanCreatePractice => User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
+
+    /// <summary>AJAX: crea una práctica del catálogo para una materia de la carrera de la planificación activa.</summary>
+    public async Task<IActionResult> OnPostCreatePracticeAsync(int subjectId, string? name, string? description)
+    {
+        if (!CanCreatePractice)
+            return new JsonResult(new { ok = false, message = "No tiene permisos para registrar prácticas del catálogo." }) { StatusCode = StatusCodes.Status403Forbidden };
+
+        if (!await LoadPlanningAsync() || !Planning!.IsActive)
+            return new JsonResult(new { ok = false, message = "Solo se registran prácticas en la planificación activa." }) { StatusCode = StatusCodes.Status400BadRequest };
+
+        var cleanName = name.Clean();
+        var cleanDescription = description.Clean();
+        if (string.IsNullOrWhiteSpace(cleanName) || cleanName.Length > 200)
+            return new JsonResult(new { ok = false, message = "El nombre de la práctica es obligatorio (máximo 200 caracteres)." }) { StatusCode = StatusCodes.Status400BadRequest };
+        if (cleanDescription?.Length > 2000)
+            return new JsonResult(new { ok = false, message = "La descripción no puede superar los 2000 caracteres." }) { StatusCode = StatusCodes.Status400BadRequest };
+
+        var careerId = await _context.AcademicPlannings.AsNoTracking()
+            .Where(p => p.Id == Planning.Id).Select(p => p.CareerId).FirstAsync();
+        if (!await SubjectQuery(careerId).AnyAsync(s => s.Id == subjectId))
+            return new JsonResult(new { ok = false, message = "La materia no es una materia activa de la carrera de la planificación." }) { StatusCode = StatusCodes.Status400BadRequest };
+
+        var practice = new Practice
+        {
+            Code = string.Empty,
+            SubjectId = subjectId,
+            Name = cleanName,
+            Description = string.IsNullOrWhiteSpace(cleanDescription) ? null : cleanDescription,
+            Status = GeneralStatus.Activo
+        };
+        _context.Practices.Add(practice);
+        try
+        {
+            await _context.SaveWithCodeAsync(
+                _context.Practices.IgnoreQueryFilters().Select(p => (string?)p.Code),
+                CatalogCodes.Practice,
+                code => practice.Code = code);
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "No se pudo crear la práctica del catálogo para la materia {SubjectId}", subjectId);
+            return new JsonResult(new { ok = false, message = "No se pudo registrar la práctica. Intente nuevamente." }) { StatusCode = StatusCodes.Status500InternalServerError };
+        }
+
+        return new JsonResult(new
+        {
+            ok = true,
+            practice = new { id = practice.Id, subjectId, code = practice.Code, label = $"{practice.Code} · {PracticeLabel(practice)}", requirementCount = 0 }
+        });
+    }
+
     public static string PracticeLabel(Practice practice)
     {
-        var label = string.Join(" · ", new[] { practice.Number, practice.Description }.Where(t => !string.IsNullOrWhiteSpace(t)));
-        if (string.IsNullOrWhiteSpace(label)) label = practice.Code;
+        var label = string.IsNullOrWhiteSpace(practice.Name) ? practice.Code : practice.Name.Trim();
         return label.Length <= 255 ? label : label[..255];
     }
 
@@ -319,7 +373,8 @@ public class PracticaModel : PageModel
     {
         var planning = await _context.AcademicPlannings.AsNoTracking().FirstAsync(p => p.Id == Planning!.Id);
         var laboratories = await _context.Laboratories.AsNoTracking()
-            .Where(l => l.FacultyId == Planning!.FacultyId && l.Status == GeneralStatus.Activo)
+            .Where(l => l.FacultyId == Planning!.FacultyId && l.Status == GeneralStatus.Activo
+                && (Planning.CampusId == null || l.CampusId == Planning.CampusId))
             .OrderBy(l => l.Name).Select(l => new { l.Id, Name = l.Code + " · " + l.Name }).ToListAsync();
         var teachers = await TeacherQuery().OrderBy(t => t.Name).Select(t => new { t.Id, t.Name }).ToListAsync();
         var subjects = await _context.Subjects.AsNoTracking()
@@ -400,7 +455,7 @@ public class PracticaModel : PageModel
         public int? ScalingFactor { get; set; }
 
         [Display(Name = "Demostrativa")]
-        public bool? IsDemonstrative { get; set; }
+        public bool IsDemonstrative { get; set; }
 
         [Range(1, int.MaxValue, ErrorMessage = "La semana académica es obligatoria")]
         [Display(Name = "Semana académica")]
@@ -431,7 +486,7 @@ public class PracticaModel : PageModel
             GroupName = practice.GroupName ?? string.Empty,
             StudentCount = practice.PracticeSchedule?.StudentCount,
             ScalingFactor = practice.PracticeSchedule?.ScalingFactor,
-            IsDemonstrative = practice.PracticeSchedule?.IsDemonstrative,
+            IsDemonstrative = practice.PracticeSchedule?.IsDemonstrative ?? false,
             AcademicWeekId = practice.AcademicWeekId ?? 0,
             Weekday = Math.Max(1, AcademicWeekGenerator.WeekdayOf(practice.ScheduledDate)),
             StartTime = practice.ScheduledDate.ToString("HH:mm", CultureInfo.InvariantCulture),

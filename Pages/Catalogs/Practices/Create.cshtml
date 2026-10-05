@@ -10,7 +10,7 @@
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
                         <h4 class="card-title text-dark font-weight-bold">Alta de Práctica Académica</h4>
-                        <h6 class="card-subtitle text-muted">Registre una nueva práctica (P1, E3P, PE3P…) asociada a una materia activa de la oferta curricular.</h6>
+                        <h6 class="card-subtitle text-muted">Registre una nueva práctica asociada a una materia activa de la oferta curricular.</h6>
                     </div>
                     <div class="ml-auto mt-2 mt-md-0">
                         <i class="fas fa-flask fa-2x text-info opacity-5"></i>
@@ -28,15 +28,15 @@
                             </h5>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-muted">Código <span class="text-danger">*</span></label>
-                                <input asp-for="Input.Code" class="form-control" placeholder="Ej: PR-FIE-001" required maxlength="50" />
-                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold"></span>
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre de la práctica <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" placeholder="Ej: Cortes básicos de vegetales" required maxlength="200" />
+                                <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Number" class="control-label font-weight-bold small uppercase text-muted">N.º de práctica</label>
-                                <input asp-for="Input.Number" class="form-control" placeholder="Ej: P1, E3P, PE3P…" maxlength="20" />
-                                <span asp-validation-for="Input.Number" class="text-danger small"></span>
+                                <label class="control-label font-weight-bold small uppercase text-muted">Código</label>
+                                <input class="form-control bg-light" value="Se generará automáticamente" disabled />
+                                <small class="form-text text-muted"><i class="fas fa-magic mr-1"></i>Formato PRC-00001.</small>
                             </div>
 
                             <div class="form-group mb-4">
@@ -77,7 +77,13 @@
                         <div class="col-md-4">
                             <div class="form-group mb-4">
                                 <label asp-for="Input.CoverageStatus" class="control-label font-weight-bold small uppercase text-muted">Estado de cobertura</label>
-                                <input asp-for="Input.CoverageStatus" class="form-control" placeholder="Ej: Cubierta, Parcial, Pendiente" maxlength="40" />
+                                <select asp-for="Input.CoverageStatus" class="form-control custom-select">
+                                    <option value="">-- Sin definir --</option>
+                                    @foreach (var status in Proyecto_Laboratorios_Univalle.Models.PracticeCoverageStatus.All)
+                                    {
+                                        <option value="@status">@status</option>
+                                    }
+                                </select>
                                 <span asp-validation-for="Input.CoverageStatus" class="text-danger small"></span>
                             </div>
                         </div>

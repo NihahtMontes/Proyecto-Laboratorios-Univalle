@@ -12,7 +12,7 @@
             <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
             <h2 class="font-weight-bold text-dark">@titleText</h2>
             <div class="text-muted small">
-                Registra gestión, facultad, carrera y rango de meses para generar las semanas académicas lunes a viernes.
+                Registra sede, gestión, facultad, carrera y rango de meses para generar las semanas académicas lunes a viernes.
             </div>
         </div>
         <div class="col-md-5 text-md-right mt-3 mt-md-0">
@@ -69,7 +69,7 @@
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
                         <div class="form-row">
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
                                 <label asp-for="Input.ManagementId" class="small font-weight-bold text-muted"></label>
                                 <select asp-for="Input.ManagementId" asp-items="Model.ManagementList" class="form-control select2" disabled="@(readOnly ? "disabled" : null)">
                                     <option value="0">— Seleccionar gestión —</option>
@@ -81,7 +81,19 @@
                                     <small class="text-warning d-block mt-1"><i class="fas fa-exclamation-triangle mr-1"></i> No hay gestiones semestrales registradas.</small>
                                 }
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
+                                <label asp-for="Input.CampusId" class="small font-weight-bold text-muted"></label>
+                                <select asp-for="Input.CampusId" asp-items="Model.CampusList" class="form-control select2" disabled="@((readOnly || Model.StructureLocked) ? "disabled" : null)">
+                                    <option value="0">— Seleccionar sede —</option>
+                                </select>
+                                @if (readOnly || Model.StructureLocked) { <input type="hidden" asp-for="Input.CampusId" /> }
+                                <span asp-validation-for="Input.CampusId" class="text-danger small"></span>
+                                @if (Model.StructureLocked)
+                                {
+                                    <small class="text-muted d-block mt-1"><i class="fas fa-lock mr-1"></i> La planificación ya tiene @Model.PracticeCount práctica(s): no se cambia la sede.</small>
+                                }
+                            </div>
+                            <div class="form-group col-md-3">
                                 <label asp-for="Input.FacultyId" class="small font-weight-bold text-muted"></label>
                                 <select asp-for="Input.FacultyId" asp-items="Model.FacultyList" class="form-control select2" id="facultySelect" disabled="@((readOnly || Model.StructureLocked) ? "disabled" : null)">
                                     <option value="0">— Seleccionar facultad —</option>
@@ -93,7 +105,7 @@
                                     <small class="text-muted d-block mt-1"><i class="fas fa-lock mr-1"></i> La planificación ya tiene @Model.PracticeCount práctica(s): no se cambian facultad ni carrera.</small>
                                 }
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
                                 <label asp-for="Input.CareerId" class="small font-weight-bold text-muted"></label>
                                 <select asp-for="Input.CareerId" asp-items="Model.CareerList" class="form-control select2" id="careerSelect" disabled="@((readOnly || Model.StructureLocked) ? "disabled" : null)">
                                     <option value="0">— Seleccionar carrera —</option>
@@ -231,6 +243,19 @@
                                 <input type="hidden" name="id" value="@Model.Id" />
                                 <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
+                                <div class="d-flex flex-wrap align-items-center mb-2">
+                                    <span class="badge badge-success px-3 py-2 mr-2 font-weight-bold">
+                                        <i class="fas fa-check mr-1"></i><span id="weeks-lective-count">0</span> lectivas
+                                    </span>
+                                    <span class="badge badge-secondary px-3 py-2 font-weight-bold">
+                                        <i class="fas fa-times mr-1"></i><span id="weeks-nonlective-count">0</span> no lectivas
+                                    </span>
+                                </div>
+                                <p class="small text-muted mb-3">
+                                    <i class="fas fa-info-circle text-primary mr-1"></i>
+                                    Las semanas lectivas reciben prácticas. Marca como no lectivas las de exámenes, feriados o receso.
+                                </p>
+
                                 <div class="table-responsive">
                                     <table class="table table-hover align-middle mb-0">
                                         <thead class="bg-dark text-white">
@@ -238,7 +263,7 @@
                                                 <th>SEMANA</th>
                                                 <th>RANGO</th>
                                                 <th class="text-center">PRÁCTICAS</th>
-                                                <th class="text-center">LECTIVA</th>
+                                                <th class="text-center">ESTADO</th>
                                                 <th>NOTA</th>
                                             </tr>
                                         </thead>
@@ -246,26 +271,44 @@
                                             @for (var i = 0; i < Model.Weeks.Count; i++)
                                             {
                                                 var week = Model.Weeks[i];
-                                                <tr class="@(week.IsLective ? string.Empty : "table-light")">
+                                                var isLective = week.IsLective;
+                                                var hasPractices = week.PracticeCount > 0;
+                                                var lockedNoLective = hasPractices && isLective;
+                                                string noLectiveTitle = lockedNoLective
+                                                    ? "Tiene " + week.PracticeCount + " práctica(s): muévalas antes de marcarla no lectiva"
+                                                    : null;
+                                                <tr class="week-row @(isLective ? string.Empty : "table-light text-muted")" data-lective="@(isLective ? "true" : "false")" data-week-id="@week.Id">
                                                     <td class="font-weight-bold">Semana @week.Number</td>
-                                                    <td class="small text-muted">@week.StartDate.ToString("dd/MM/yyyy") – @week.EndDate.ToString("dd/MM/yyyy")</td>
+                                                    <td class="small">@week.StartDate.ToString("dd/MM/yyyy") – @week.EndDate.ToString("dd/MM/yyyy")</td>
                                                     <td class="text-center">
                                                         <span class="badge badge-light border">@week.PracticeCount</span>
                                                     </td>
                                                     <td class="text-center">
                                                         <input type="hidden" name="WeekInputs[@i].Id" value="@week.Id" />
-                                                        <input type="hidden" name="WeekInputs[@i].IsLective" value="false" />
-                                                        <div class="custom-control custom-switch d-inline-block">
-                                                            <input type="checkbox" name="WeekInputs[@i].IsLective" value="true" class="custom-control-input" id="lective-@week.Id" @(week.IsLective ? "checked" : "") />
-                                                            <label class="custom-control-label" for="lective-@week.Id"></label>
+                                                        <div class="btn-group btn-group-sm week-toggle-solo" role="group" aria-label="Estado lectivo de la semana @week.Number">
+                                                            <input type="radio" name="WeekInputs[@i].IsLective" id="week-@week.Id-true" value="true"
+                                                                   class="d-none week-radio" data-row="@week.Id"
+                                                                   @(isLective ? "checked" : null) />
+                                                            <label for="week-@week.Id-true" class="btn week-toggle-btn @(isLective ? "btn-success" : "btn-outline-success")">
+                                                                <i class="fas fa-check mr-1"></i>Lectiva
+                                                            </label>
+
+                                                            <input type="radio" name="WeekInputs[@i].IsLective" id="week-@week.Id-false" value="false"
+                                                                   class="d-none week-radio" data-row="@week.Id"
+                                                                   @(!isLective ? "checked" : null)
+                                                                   @(lockedNoLective ? "disabled" : null) />
+                                                            <label for="week-@week.Id-false" class="btn week-toggle-btn @(isLective ? "btn-outline-secondary" : "btn-secondary")"
+                                                                   @(lockedNoLective ? "disabled" : null)
+                                                                   title="@noLectiveTitle">
+                                                                <i class="fas fa-times mr-1"></i>No lectiva
+                                                            </label>
                                                         </div>
-                                                        @if (!week.IsLective)
-                                                        {
-                                                            <span class="badge badge-secondary ml-2">No lectiva</span>
-                                                        }
                                                     </td>
                                                     <td>
-                                                        <input type="text" name="WeekInputs[@i].Note" class="form-control form-control-sm" maxlength="100" value="@(week.Note ?? string.Empty)" placeholder="Opcional" />
+                                                        <input type="text" name="WeekInputs[@i].Note" class="form-control form-control-sm week-note @(isLective ? string.Empty : "border-warning")"
+                                                               maxlength="100"
+                                                               value="@(week.Note ?? string.Empty)"
+                                                               placeholder="@(isLective ? "Opcional" : "Ej: Exámenes finales, feriado, receso")" />
                                                     </td>
                                                 </tr>
                                             }
@@ -273,8 +316,7 @@
                                     </table>
                                 </div>
 
-                                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                                    <span class="text-muted small">Las semanas con prácticas no se pueden marcar como no lectivas.</span>
+                                <div class="d-flex justify-content-end align-items-center mt-4 pt-3 border-top">
                                     <button type="submit" id="btnGuardarSemanas" class="btn btn-primary btn-rounded font-weight-bold px-4">
                                         <i class="fas fa-save mr-1"></i> Guardar semanas
                                     </button>
@@ -290,7 +332,7 @@
                                             <th>SEMANA</th>
                                             <th>RANGO</th>
                                             <th class="text-center">PRÁCTICAS</th>
-                                            <th class="text-center">LECTIVA</th>
+                                            <th class="text-center">ESTADO</th>
                                             <th>NOTA</th>
                                         </tr>
                                     </thead>
@@ -298,9 +340,9 @@
                                         @for (var i = 0; i < Model.Weeks.Count; i++)
                                         {
                                             var week = Model.Weeks[i];
-                                            <tr class="@(week.IsLective ? string.Empty : "table-light")">
+                                            <tr class="@(week.IsLective ? string.Empty : "table-light text-muted")">
                                                 <td class="font-weight-bold">Semana @week.Number</td>
-                                                <td class="small text-muted">@week.StartDate.ToString("dd/MM/yyyy") – @week.EndDate.ToString("dd/MM/yyyy")</td>
+                                                <td class="small">@week.StartDate.ToString("dd/MM/yyyy") – @week.EndDate.ToString("dd/MM/yyyy")</td>
                                                 <td class="text-center"><span class="badge badge-light border">@week.PracticeCount</span></td>
                                                 <td class="text-center">
                                                     @if (week.IsLective)
@@ -309,10 +351,16 @@
                                                     }
                                                     else
                                                     {
-                                                        <span class="badge badge-secondary">No lectiva</span>
+                                                        <span class="badge badge-secondary"><i class="fas fa-times mr-1"></i>No lectiva</span>
                                                     }
                                                 </td>
-                                                <td class="small text-muted">@(week.Note ?? "—")</td>
+                                                <td class="small">
+                                                    @if (!week.IsLective)
+                                                    {
+                                                        <span class="text-muted font-weight-bold mr-1">Motivo:</span>
+                                                    }
+                                                    @(week.Note ?? "—")
+                                                </td>
                                             </tr>
                                         }
                                     </tbody>
@@ -329,7 +377,7 @@
                 <div class="card-body p-4">
                     <span class="text-uppercase small text-primary font-weight-bold">Planificación académica</span>
                     <h5 class="font-weight-bold text-dark mt-2">Una planificación, cinco decisiones</h5>
-                    <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Planificación académica (gestión, carrera y semanas).</span></div>
+                    <div class="d-flex mb-3"><span class="badge badge-primary mr-2">1</span><span>Planificación académica (sede, gestión, facultad, carrera y semanas).</span></div>
                     <div class="d-flex mb-3"><span class="badge badge-info mr-2">2</span><span>Definir prácticas dentro de semanas lectivas.</span></div>
                     <div class="d-flex mb-3"><span class="badge badge-warning mr-2">3</span><span>Agregar requerimientos a cada práctica.</span></div>
                     <div class="d-flex mb-3"><span class="badge badge-dark mr-2">4</span><span>Validar disponibilidad, L-3 y devolución.</span></div>
@@ -346,7 +394,7 @@
                     {
                         <div class="alert alert-warning border-0 small mt-4 mb-0">
                             <i class="fas fa-lock mr-1"></i>
-                            <strong>Estructura bloqueada.</strong> La planificación ya tiene @Model.PracticeCount práctica(s) registrada(s); no se cambian facultad ni carrera ni mes de inicio.
+                            <strong>Estructura bloqueada.</strong> La planificación ya tiene @Model.PracticeCount práctica(s) registrada(s); no se cambian sede, facultad, carrera ni mes de inicio.
                         </div>
                     }
                     else
@@ -453,6 +501,19 @@
             border-bottom-left-radius: .5rem;
             border-bottom-right-radius: .5rem;
         }
+
+        /* Selector segmentado Lectiva / No lectiva */
+        .week-toggle-solo .week-toggle-btn {
+            border-radius: 0;
+            font-weight: 700;
+            letter-spacing: .02em;
+            transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+        }
+        .week-toggle-solo .week-toggle-btn:first-of-type { border-top-left-radius: .35rem; border-bottom-left-radius: .35rem; }
+        .week-toggle-solo .week-toggle-btn:last-of-type  { border-top-right-radius: .35rem; border-bottom-right-radius: .35rem; }
+        .week-toggle-solo .week-toggle-btn + .week-toggle-btn { margin-left: -1px; }
+        .week-toggle-solo label[disabled] { cursor: not-allowed; opacity: .65; }
+        .week-note.border-warning:focus { box-shadow: 0 0 0 .2rem rgba(255,193,7,.25); }
     </style>
 }
 
@@ -678,6 +739,53 @@
 
             render();
 
+            // =================== SELECTOR LECTIVA / NO LECTIVA ===================
+            // Una sola fuente de verdad: el radio value="true|false" con name WeekInputs[i].IsLective.
+            // El JS solo cambia la apariencia (clases btn-success / btn-outline-secondary, etc.)
+            // y los atributos visuales del input de nota; el POST envía exactamente un valor.
+            function syncWeekRow(row, isLective) {
+                var $row = $(row);
+                $row.attr('data-lective', isLective ? 'true' : 'false');
+                $row.toggleClass('table-light', !isLective);
+                $row.toggleClass('text-muted', !isLective);
+
+                var labels = $row.find('.week-toggle-btn');
+                var $btnLectiva = labels.eq(0);
+                var $btnNoLectiva = labels.eq(1);
+
+                if (isLective) {
+                    $btnLectiva.removeClass('btn-outline-success').addClass('btn-success');
+                    $btnNoLectiva.removeClass('btn-secondary').addClass('btn-outline-secondary');
+                } else {
+                    $btnLectiva.removeClass('btn-success').addClass('btn-outline-success');
+                    $btnNoLectiva.removeClass('btn-outline-secondary').addClass('btn-secondary');
+                }
+
+                var $note = $row.find('.week-note');
+                $note.toggleClass('border-warning', !isLective);
+                $note.attr('placeholder', isLective ? 'Opcional' : 'Ej: Exámenes finales, feriado, receso');
+            }
+
+            function updateWeekCounters() {
+                var $rows = $('.week-row');
+                var l = $rows.filter('[data-lective="true"]').length;
+                var n = $rows.filter('[data-lective="false"]').length;
+                var $l = $('#weeks-lective-count');
+                var $nl = $('#weeks-nonlective-count');
+                if ($l.length) $l.text(l);
+                if ($nl.length) $nl.text(n);
+            }
+
+            $(document).on('change', '.week-radio', function () {
+                if (this.disabled) return;
+                var isLective = $(this).val() === 'true';
+                var $row = $(this).closest('.week-row');
+                syncWeekRow($row, isLective);
+                updateWeekCounters();
+            });
+
+            updateWeekCounters();
+
             // =================== CONFIRMACIONES SWEETALERT ===================
             var formSemanas = document.getElementById('form-semanas');
             if (formSemanas) {
@@ -691,7 +799,7 @@
                     }
                     Swal.fire({
                         title: '¿Guardar semanas académicas?',
-                        text: 'Se actualizará el estado lectivo y las notas de cada semana.',
+                        text: 'Se guardará el estado lectivo y el motivo de cada semana.',
                         type: 'question',
                         showCancelButton: true,
                         confirmButtonColor: '#7460ee',

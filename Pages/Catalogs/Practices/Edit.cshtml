@@ -30,15 +30,15 @@
                             </h5>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Code" class="control-label font-weight-bold small uppercase text-muted">Código <span class="text-danger">*</span></label>
-                                <input asp-for="Input.Code" class="form-control" required maxlength="50" />
-                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold"></span>
+                                <label asp-for="Input.Name" class="control-label font-weight-bold small uppercase text-muted">Nombre de la práctica <span class="text-danger">*</span></label>
+                                <input asp-for="Input.Name" class="form-control" required maxlength="200" />
+                                <span asp-validation-for="Input.Name" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Number" class="control-label font-weight-bold small uppercase text-muted">N.º de práctica</label>
-                                <input asp-for="Input.Number" class="form-control" maxlength="20" />
-                                <span asp-validation-for="Input.Number" class="text-danger small"></span>
+                                <label class="control-label font-weight-bold small uppercase text-muted">Código</label>
+                                <input class="form-control bg-light" value="@Model.CurrentCode" disabled />
+                                <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>El código lo asigna el sistema y no se modifica.</small>
                             </div>
 
                             <div class="form-group mb-4">
@@ -79,7 +79,10 @@
                         <div class="col-md-4">
                             <div class="form-group mb-4">
                                 <label asp-for="Input.CoverageStatus" class="control-label font-weight-bold small uppercase text-muted">Estado de cobertura</label>
-                                <input asp-for="Input.CoverageStatus" class="form-control" maxlength="40" />
+                                <select asp-for="Input.CoverageStatus" class="form-control custom-select"
+                                        asp-items="@(ViewData["CoverageStatuses"] as SelectList ?? new SelectList(Enumerable.Empty<SelectListItem>()))">
+                                    <option value="">-- Sin definir --</option>
+                                </select>
                                 <span asp-validation-for="Input.CoverageStatus" class="text-danger small"></span>
                             </div>
                         </div>
@@ -134,7 +137,7 @@
                     <div class="btn btn-circle btn-lg btn-info mb-3">
                         <i class="fas fa-flask fa-lg"></i>
                     </div>
-                    <h5 class="font-weight-bold text-white mb-1">@(Model.Input.Code)</h5>
+                    <h5 class="font-weight-bold text-white mb-1">@Model.CurrentCode</h5>
                     <span class="badge badge-pill badge-warning px-3 small font-weight-bold">@Model.Input.Status</span>
                 </div>
             </div>

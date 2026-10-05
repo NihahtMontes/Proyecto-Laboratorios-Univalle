@@ -68,7 +68,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 
             // Entity Mapping
             facultyToUpdate.Name = Faculty.Name.Clean();
-            facultyToUpdate.Code = Faculty.Code?.Clean().ToUpper();
+            // Code no se modifica: lo asigna el sistema.
             facultyToUpdate.Description = Faculty.Description?.Clean();
             facultyToUpdate.Status = Faculty.Status;
             facultyToUpdate.LastModifiedDate = DateTime.UtcNow;
@@ -83,7 +83,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success($"Datos de la Facultad '{facultyToUpdate.Name}' actualizados correctamente.");
+                TempData.Success($"Datos de la Facultad '{facultyToUpdate.Code}' ({facultyToUpdate.Name}) actualizados correctamente.");
             }
             catch (DbUpdateConcurrencyException)
             {

@@ -40,11 +40,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
 
         public class InputModel
         {
-            [Required(ErrorMessage = "El código del grupo es obligatorio")]
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
-            [Display(Name = "Código")]
-            public string Code { get; set; } = string.Empty;
-
             [Required(ErrorMessage = "Debe seleccionar la gestión")]
             [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar una gestión válida")]
             [Display(Name = "Gestión")]
@@ -134,7 +129,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
             }
 
             // Normalización
-            var codeNormalized = Regex.Replace(Input.Code.Trim().ToUpper(), @"\s+", "");
             var nameNormalized = Regex.Replace(Input.Name.Trim().ToUpper(), @"\s+", "");
 
             // Validación de FK: gestión válida y no Deleted
@@ -183,17 +177,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
                 }
             }
 
-            // Unicidad: Code (índice único global)
-            var codeExists = await _context.CourseGroups
-                .IgnoreQueryFilters()
-                .AnyAsync(g => g.Code == codeNormalized && g.Status != GeneralStatus.Eliminado);
-            if (codeExists)
-            {
-                ModelState.AddModelError("Input.Code", "Ya existe un grupo con este código en el sistema institucional.");
-                await LoadListsAsync();
-                return Page();
-            }
-
             // Unicidad: (ManagementId, SubjectId, Name) entre no eliminados
             var nameExists = await _context.CourseGroups
                 .IgnoreQueryFilters()
@@ -210,7 +193,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
 
             var courseGroup = new CourseGroup
             {
-                Code = Input.Code.Clean().ToUpper(),
+                Code = string.Empty,
                 ManagementId = Input.ManagementId!.Value,
                 SubjectId = Input.SubjectId!.Value,
                 Name = Input.Name.Clean(),
@@ -229,14 +212,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
 
             try
             {
-                await _context.SaveChangesAsync();
-                TempData.Success($"Grupo '{courseGroup.Name}' registrado exitosamente.");
+                await _context.SaveWithCodeAsync(
+                    _context.CourseGroups.IgnoreQueryFilters().Select(x => (string?)x.Code),
+                    CatalogCodes.CourseGroup,
+                    code => courseGroup.Code = code);
+                TempData.Success($"Grupo '{courseGroup.Code}' ({courseGroup.Name}) registrado exitosamente.");
                 return RedirectToPage("./Index");
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
-                _logger.LogWarning(ex, "Conflicto de unicidad al crear grupo {Code}", courseGroup.Code);
-                ModelState.AddModelError(string.Empty, "Ya existe un grupo con ese código o combinación de gestión/materia/nombre.");
+                _logger.LogWarning(ex, "Conflicto de unicidad al crear grupo {Name}", courseGroup.Name);
+                ModelState.AddModelError(string.Empty, "Ya existe un grupo con esa combinación de gestión/materia/nombre.");
                 await LoadListsAsync();
                 return Page();
             }

@@ -34,14 +34,9 @@
                             </div>
 
                             <div class="form-group mb-4 border-left border-warning pl-3 bg-light p-3 rounded shadow-none">
-                                <label asp-for="Input.Code" class="control-label font-weight-bold small text-warning uppercase mb-2">Código Único</label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text bg-white"><i class="fas fa-hashtag text-muted"></i></span>
-                                    </div>
-                                    <input asp-for="Input.Code" class="form-control border-warning shadow-none" placeholder="Ej: PZA, KG, LIT" maxlength="50" />
-                                </div>
-                                <span asp-validation-for="Input.Code" class="text-danger small font-weight-bold d-block mt-1"></span>
+                                <label class="control-label font-weight-bold small text-warning uppercase mb-2">Código Único</label>
+                                <input class="form-control border-warning shadow-none bg-white" value="Se generará automáticamente" disabled />
+                                <small class="form-text text-muted"><i class="fas fa-magic mr-1"></i>Formato UNI-00001.</small>
                             </div>
                         </div>
                     </div>
@@ -81,7 +76,6 @@
                 });
             }
             setupBlocking('#Input_Name', alphaPattern);
-            setupBlocking('#Input_Code', alphanumericPattern);
         });
     </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

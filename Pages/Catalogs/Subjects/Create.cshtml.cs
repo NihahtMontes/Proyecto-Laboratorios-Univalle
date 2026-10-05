@@ -39,10 +39,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
             [Display(Name = "Nombre de la Materia")]
             public string Name { get; set; } = string.Empty;
 
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
-            [Display(Name = "Código")]
-            public string? Code { get; set; }
-
             [Required(ErrorMessage = "Debe seleccionar la carrera a la que pertenece la materia")]
             [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar una carrera válida")]
             [Display(Name = "Carrera")]
@@ -69,9 +65,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
 
             // Normalización
             var nameNormalized = Regex.Replace(Input.Name.Trim().ToLower(), @"\s+", " ");
-            var codeNormalized = string.IsNullOrWhiteSpace(Input.Code)
-                ? string.Empty
-                : Regex.Replace(Input.Code.Trim().ToUpper(), @"\s+", " ");
 
             // Validación de FK: la carrera debe existir y estar Activa
             var career = await _context.Careers.AsNoTracking()
@@ -81,22 +74,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
                 ModelState.AddModelError("Input.CareerId", "La carrera seleccionada no existe o no está activa.");
                 await LoadCareersAsync();
                 return Page();
-            }
-
-            // Unicidad: Code (si no está vacío) entre no eliminados
-            if (!string.IsNullOrWhiteSpace(codeNormalized))
-            {
-                var codeExists = await _context.Subjects
-                    .AsNoTracking()
-                    .AnyAsync(s => s.Code != null
-                                   && s.Code.Trim().ToUpper() == codeNormalized
-                                   && s.Status != GeneralStatus.Eliminado);
-                if (codeExists)
-                {
-                    ModelState.AddModelError("Input.Code", "Ya existe una materia con este código en el sistema.");
-                    await LoadCareersAsync();
-                    return Page();
-                }
             }
 
             // Unicidad: (CareerId, Name) entre no eliminados (índice único cuando CareerId no nulo)
@@ -115,7 +92,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
             var subject = new Subject
             {
                 Name = Input.Name.Clean(),
-                Code = string.IsNullOrWhiteSpace(Input.Code) ? string.Empty : Input.Code.Clean().ToUpper(),
+                Code = string.Empty,
                 CareerId = Input.CareerId,
                 Semester = Input.Semester,
                 Status = GeneralStatus.Activo
@@ -125,14 +102,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
 
             try
             {
-                await _context.SaveChangesAsync();
-                TempData.Success($"Materia '{subject.Name}' registrada exitosamente.");
+                await _context.SaveWithCodeAsync(
+                    _context.Subjects.IgnoreQueryFilters().Select(x => (string?)x.Code),
+                    CatalogCodes.Subject,
+                    code => subject.Code = code);
+                TempData.Success($"Materia '{subject.Code}' ({subject.Name}) registrada exitosamente.");
                 return RedirectToPage("./Index");
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
                 _logger.LogWarning(ex, "Conflicto de unicidad al crear materia {Name}", subject.Name);
-                ModelState.AddModelError(string.Empty, "Ya existe un registro con esos datos (código o nombre duplicado).");
+                ModelState.AddModelError(string.Empty, "Ya existe una materia con ese nombre en la carrera seleccionada.");
                 await LoadCareersAsync();
                 return Page();
             }

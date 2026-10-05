@@ -386,6 +386,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<CourseGroup> CourseGroups { get; set; } = null!;
         public DbSet<Practice> Practices { get; set; } = null!;
         public DbSet<PracticeRequirement> PracticeRequirements { get; set; } = null!;
+        public DbSet<SubjectKitItem> SubjectKitItems { get; set; } = null!;
         public DbSet<ArticleCategory> ArticleCategories { get; set; } = null!;
         public DbSet<MeasurementUnit> MeasurementUnits { get; set; } = null!;
         public DbSet<ArticleStock> ArticleStocks { get; set; } = null!;
@@ -456,6 +457,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<PracticeRequirement>().HasOne(r => r.Practice).WithMany(p => p.Requirements).HasForeignKey(r => r.PracticeId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PracticeRequirement>().HasOne(r => r.Article).WithMany().HasForeignKey(r => r.ArticleId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PracticeRequirement>().ToTable(t => t.HasCheckConstraint("CK_PracticeRequirements_Quantity", "[Quantity] IS NULL OR [Quantity] > 0"));
+            modelBuilder.Entity<SubjectKitItem>().HasIndex(k => new { k.SubjectId, k.ArticleId }).IsUnique().HasFilter("[IsRemoved] = 0");
+            modelBuilder.Entity<SubjectKitItem>().HasQueryFilter(k => !k.IsRemoved);
+            modelBuilder.Entity<SubjectKitItem>().Property(k => k.Quantity).HasPrecision(12, 2);
+            modelBuilder.Entity<SubjectKitItem>().HasOne(k => k.Subject).WithMany().HasForeignKey(k => k.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SubjectKitItem>().HasOne(k => k.Article).WithMany().HasForeignKey(k => k.ArticleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SubjectKitItem>().ToTable(t => t.HasCheckConstraint("CK_SubjectKitItems_Quantity", "[Quantity] > 0"));
 
             modelBuilder.Entity<ArticleCategory>().HasIndex(c => c.Code).IsUnique();
             modelBuilder.Entity<ArticleCategory>().HasIndex(c => c.Name).IsUnique();
@@ -865,11 +872,12 @@ namespace Proyecto_Laboratorios_Univalle.Data
             // Planificación académica: una por gestión y carrera; semanas lunes-viernes; prácticas = L3Request.
             modelBuilder.Entity<AcademicPlanning>().HasQueryFilter(p => !p.IsDeleted);
             modelBuilder.Entity<AcademicWeek>().HasQueryFilter(w => !w.AcademicPlanning.IsDeleted);
-            modelBuilder.Entity<AcademicPlanning>().HasIndex(p => new { p.ManagementId, p.CareerId }).IsUnique().HasFilter("[IsDeleted] = 0");
+            modelBuilder.Entity<AcademicPlanning>().HasIndex(p => new { p.ManagementId, p.CampusId, p.CareerId }).IsUnique().HasFilter("[IsDeleted] = 0");
             modelBuilder.Entity<AcademicPlanning>().HasIndex(p => p.Status).IsUnique().HasFilter("[Status] = 0 AND [IsDeleted] = 0").HasDatabaseName("UX_AcademicPlannings_SingleActive");
             modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Management).WithMany().HasForeignKey(p => p.ManagementId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Faculty).WithMany().HasForeignKey(p => p.FacultyId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Career).WithMany().HasForeignKey(p => p.CareerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Campus).WithMany().HasForeignKey(p => p.CampusId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<AcademicWeek>().HasIndex(w => new { w.AcademicPlanningId, w.Number }).IsUnique();
             modelBuilder.Entity<AcademicWeek>().HasOne(w => w.AcademicPlanning).WithMany(p => p.Weeks).HasForeignKey(w => w.AcademicPlanningId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<L3Request>().HasOne(r => r.AcademicPlanning).WithMany(p => p.Practices).HasForeignKey(r => r.AcademicPlanningId).OnDelete(DeleteBehavior.Restrict);

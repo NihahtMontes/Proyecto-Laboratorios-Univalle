@@ -20,7 +20,7 @@
                 <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
                     <div>
                         <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Catálogo de Prácticas Académicas</h3>
-                        <h6 class="card-subtitle text-muted ml-2">Administre las prácticas (P1, E3P, PE3P…) asociadas a las materias activas de la oferta académica.</h6>
+                        <h6 class="card-subtitle text-muted ml-2">Administre las prácticas académicas asociadas a las materias activas de la oferta académica.</h6>
                     </div>
                     <div class="ml-auto mt-3 mt-md-0">
                         <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
@@ -39,7 +39,7 @@
                             </div>
                             <input type="search" asp-for="SearchTerm"
                                    class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
-                                   placeholder="Buscar por código, número o descripción"
+                                   placeholder="Buscar por código, nombre o descripción"
                                    autocomplete="off"
                                    data-live-filter-search />
                         </div>
@@ -117,11 +117,17 @@
                                                 </div>
                                                 <div>
                                                     <h6 class="m-b-0 font-weight-bold text-dark">
-                                                        @(string.IsNullOrWhiteSpace(item.Number) ? item.Code : $"{item.Code} · {item.Number}")
+                                                        @item.Name
                                                     </h6>
                                                     <span class="text-muted small">
-                                                        @(string.IsNullOrWhiteSpace(item.Description) ? "Sin descripción registrada" : (item.Description.Length > 80 ? item.Description.Substring(0, 80) + "…" : item.Description))
+                                                        <i class="fas fa-barcode mr-1"></i>@item.Code
                                                     </span>
+                                                    @if (!string.IsNullOrWhiteSpace(item.Description))
+                                                    {
+                                                        <span class="text-muted small d-block">
+                                                            @(item.Description.Length > 80 ? item.Description.Substring(0, 80) + "…" : item.Description)
+                                                        </span>
+                                                    }
                                                 </div>
                                             </div>
                                         </td>

@@ -90,13 +90,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
                 query = query.Where(p => p.SubjectId == SubjectId.Value);
             }
 
-            // Búsqueda por texto (código, número y descripción).
+            // Búsqueda por texto (código, nombre y descripción).
             if (!string.IsNullOrWhiteSpace(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
                 query = query.Where(p =>
                     p.Code.ToLower().Contains(term) ||
-                    (p.Number != null && p.Number.ToLower().Contains(term)) ||
+                    p.Name.ToLower().Contains(term) ||
                     (p.Description != null && p.Description.ToLower().Contains(term)));
             }
 
@@ -107,7 +107,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             }
 
             Practices = await PaginatedList<Practice>.CreateAsync(
-                query.OrderBy(p => p.Subject!.Name).ThenBy(p => p.Number).ThenBy(p => p.Code),
+                query.OrderBy(p => p.Subject!.Name).ThenBy(p => p.Name).ThenBy(p => p.Code),
                 PageIndex ?? 1,
                 20);
 

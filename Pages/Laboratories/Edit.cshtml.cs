@@ -36,9 +36,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             [Display(Name = "Facultad")]
             public int FacultyId { get; set; }
 
-            [Required(ErrorMessage = "El código institucional es obligatorio")]
+            /// <summary>Código asignado por el sistema. Solo se conserva para mostrarlo en la UI.</summary>
             [Display(Name = "Código")]
-            [StringLength(20, ErrorMessage = "El código no puede superar los 20 caracteres")]
             public string Code { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "El nombre descriptivo es obligatorio")]
@@ -91,35 +90,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             if (!ModelState.IsValid)
             {
                 await LoadLaboratoryData(Input.Id);
+                // El código no se envía desde el formulario: repoblar desde BD para mantenerlo visible.
+                if (ExistingLaboratory != null) Input.Code = ExistingLaboratory.Code;
                 LoadFaculties(Input.FacultyId);
                 return Page();
             }
 
             // Normalization
             var normalizedName = Input.Name.Trim().ToLower();
-            var normalizedCode = Input.Code.Trim().ToUpper();
-
-            // Validate Duplicate Code (excluding current record)
-            bool codeExists = await _context.Laboratories
-                .IgnoreQueryFilters()
-                .AnyAsync(l => l.Id != Input.Id && 
-                               l.Code.ToUpper() == normalizedCode && 
-                               l.Status != GeneralStatus.Eliminado);
-
-            if (codeExists)
-            {
-                ModelState.AddModelError("Input.Code", $"El código institucional '{normalizedCode}' ya pertenece a otro laboratorio.");
-                await LoadLaboratoryData(Input.Id);
-                LoadFaculties(Input.FacultyId);
-                return Page();
-            }
 
             // Validate Duplicate Name within same Faculty (excluding current record)
             bool nameExists = await _context.Laboratories
                 .IgnoreQueryFilters()
-                .AnyAsync(l => l.Id != Input.Id && 
-                               l.FacultyId == Input.FacultyId && 
-                               l.Name.ToLower() == normalizedName && 
+                .AnyAsync(l => l.Id != Input.Id &&
+                               l.FacultyId == Input.FacultyId &&
+                               l.Name.ToLower() == normalizedName &&
                                l.Status != GeneralStatus.Eliminado);
 
             if (nameExists)
@@ -135,7 +120,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
             // Entity update
             laboratory.FacultyId = Input.FacultyId;
-            laboratory.Code = normalizedCode;
+            // Code no se modifica: lo asigna el sistema.
             laboratory.Name = Input.Name.Clean();
             laboratory.Floor = Input.Floor?.Clean();
             laboratory.Description = Input.Description?.Clean();
@@ -152,7 +137,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success($"Datos del Laboratorio '{laboratory.Name}' actualizados correctamente.");
+                TempData.Success($"Datos del Laboratorio '{laboratory.Code}' ({laboratory.Name}) actualizados correctamente.");
             }
             catch (DbUpdateConcurrencyException)
             {

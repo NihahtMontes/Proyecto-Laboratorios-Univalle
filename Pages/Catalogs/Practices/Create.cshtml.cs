@@ -28,18 +28,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
 
         public class InputModel
         {
-            [Required(ErrorMessage = "El código de la práctica es obligatorio")]
-            [StringLength(50, ErrorMessage = "El código no puede superar los 50 caracteres")]
-            [Display(Name = "Código")]
-            public string Code { get; set; } = string.Empty;
+            [Required(ErrorMessage = "El nombre de la práctica es obligatorio")]
+            [StringLength(200, ErrorMessage = "El nombre no puede superar los 200 caracteres")]
+            [Display(Name = "Nombre de la práctica")]
+            public string Name { get; set; } = string.Empty;
 
             [Required(ErrorMessage = "Debe seleccionar una materia")]
             [Display(Name = "Materia")]
             public int SubjectId { get; set; }
-
-            [StringLength(20, ErrorMessage = "El número no puede superar los 20 caracteres")]
-            [Display(Name = "N.º de práctica")]
-            public string? Number { get; set; }
 
             [StringLength(2000)]
             [Display(Name = "Descripción")]
@@ -76,16 +72,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
                 return Page();
             }
 
-            var normalizedCode = Input.Code.Trim().ToLower();
-
-            // Validación de unicidad (índice único global en Code).
-            var duplicate = await _context.Practices
-                .IgnoreQueryFilters()
-                .AnyAsync(p => p.Code.Trim().ToLower() == normalizedCode);
-
-            if (duplicate)
+            // Validar el valor de CoverageStatus contra el catálogo permitido.
+            if (!string.IsNullOrWhiteSpace(Input.CoverageStatus)
+                && Array.IndexOf(PracticeCoverageStatus.All, Input.CoverageStatus) < 0)
             {
-                ModelState.AddModelError("Input.Code", "Ya existe una práctica con este código en el sistema (incluyendo registros eliminados).");
+                ModelState.AddModelError("Input.CoverageStatus", "El estado de cobertura seleccionado no es válido.");
                 await LoadSubjectsAsync();
                 return Page();
             }
@@ -104,9 +95,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
 
             var practice = new Proyecto_Laboratorios_Univalle.Models.Practice
             {
-                Code = Input.Code.Clean().ToUpperInvariant(),
+                Code = string.Empty,
                 SubjectId = Input.SubjectId,
-                Number = Input.Number?.Clean().ToUpperInvariant(),
+                Name = Input.Name.Clean(),
                 Description = Input.Description?.Clean(),
                 CoverageStatus = Input.CoverageStatus?.Clean(),
                 CoverageMethod = Input.CoverageMethod?.Clean(),
@@ -119,12 +110,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
 
             try
             {
-                await _context.SaveChangesAsync();
+                await _context.SaveWithCodeAsync(
+                    _context.Practices.IgnoreQueryFilters().Select(x => (string?)x.Code),
+                    CatalogCodes.Practice,
+                    code => practice.Code = code);
             }
-            catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
+            catch (DbUpdateException ex)
             {
-                _logger.LogWarning(ex, "Concurrencia al registrar práctica {Code}", practice.Code);
-                ModelState.AddModelError("Input.Code", "Ya existe una práctica con este código en el sistema.");
+                _logger.LogWarning(ex, "No se pudo registrar la práctica {Name}", practice.Name);
+                ModelState.AddModelError(string.Empty, "Ya existe un registro con los mismos datos o no se pudo guardar la práctica. Intente nuevamente.");
                 await LoadSubjectsAsync();
                 return Page();
             }

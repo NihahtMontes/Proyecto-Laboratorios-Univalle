@@ -20,7 +20,7 @@
 
                 <h3 class="font-weight-bold text-dark mb-2">¿Dar de Baja la Práctica?</h3>
                 <p class="text-muted mb-4 opacity-7">
-                    Está a punto de retirar la práctica <span class="font-weight-bold text-dark">@Model.Practice.Code @(string.IsNullOrWhiteSpace(Model.Practice.Number) ? "" : "(" + Model.Practice.Number + ")")</span>.
+                    Está a punto de retirar la práctica <span class="font-weight-bold text-dark">@Model.Practice.Name (@Model.Practice.Code)</span>.
                     La práctica dejará de estar disponible para nuevos grupos. Esta acción es <span class="text-danger font-weight-bold">administrativa</span>.
                 </p>
 
@@ -32,8 +32,8 @@
                         </div>
                         <div>
                             <small class="text-uppercase text-muted font-weight-bold d-block" style="font-size: 0.7rem;">Práctica</small>
-                            <h6 class="font-weight-bold text-dark mb-0">@Model.Practice.Code</h6>
-                            <small class="text-muted">@(string.IsNullOrWhiteSpace(Model.Practice.Number) ? "Sin número" : "N.º " + Model.Practice.Number)</small>
+                            <h6 class="font-weight-bold text-dark mb-0">@Model.Practice.Name</h6>
+                            <small class="text-muted"><i class="fas fa-barcode mr-1"></i>@Model.Practice.Code</small>
                         </div>
                     </div>
 

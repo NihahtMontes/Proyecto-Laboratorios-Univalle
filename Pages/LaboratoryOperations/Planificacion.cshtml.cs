@@ -38,12 +38,13 @@ public class PlanificacionModel : PageModel
     public List<WeekInput> WeekInputs { get; set; } = [];
 
     public SelectList ManagementList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
+    public SelectList CampusList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList FacultyList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList CareerList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
 
     public string Code { get; private set; } = "Nueva planificación";
     public int PracticeCount { get; private set; }
-    /// <summary>Con prácticas registradas no se cambian facultad, carrera ni fecha de inicio.</summary>
+    /// <summary>Con prácticas registradas no se cambian sede, facultad, carrera ni fecha de inicio.</summary>
     public bool StructureLocked => PracticeCount > 0;
     /// <summary>Estado de la planificación editada (null al crear).</summary>
     public AcademicPlanningStatus? Status { get; private set; }
@@ -95,6 +96,8 @@ public class PlanificacionModel : PageModel
         if (management == null)
             ModelState.AddModelError("Input.ManagementId", "Selecciona una gestión semestral válida.");
 
+        if (!await _context.Campuses.AsNoTracking().AnyAsync(c => c.Id == Input.CampusId && c.Status == GeneralStatus.Activo))
+            ModelState.AddModelError("Input.CampusId", "Selecciona una sede activa.");
         if (!await _context.Faculties.AsNoTracking().AnyAsync(f => f.Id == Input.FacultyId && f.Status == GeneralStatus.Activo))
             ModelState.AddModelError("Input.FacultyId", "Selecciona una facultad activa.");
         if (!await _context.Careers.AsNoTracking()
@@ -114,8 +117,8 @@ public class PlanificacionModel : PageModel
         }
 
         if (await _context.AcademicPlannings.AsNoTracking()
-                .AnyAsync(p => p.Id != (Id ?? 0) && p.ManagementId == Input.ManagementId && p.CareerId == Input.CareerId))
-            ModelState.AddModelError(string.Empty, "Ya existe una planificación para esa gestión y carrera.");
+                .AnyAsync(p => p.Id != (Id ?? 0) && p.ManagementId == Input.ManagementId && p.CampusId == Input.CampusId && p.CareerId == Input.CareerId))
+            ModelState.AddModelError(string.Empty, "Ya existe una planificación para esa gestión, sede y carrera.");
 
         AcademicPlanning? planning = null;
         Dictionary<int, int> practicesByWeek = [];
@@ -140,8 +143,8 @@ public class PlanificacionModel : PageModel
                 .AnyAsync(r => r.AcademicPlanningId == planning.Id && r.Status != L3RequestStatus.Cancelled);
             if (hasPractices)
             {
-                if (planning.FacultyId != Input.FacultyId || planning.CareerId != Input.CareerId)
-                    ModelState.AddModelError(string.Empty, "La planificación ya tiene prácticas: no se puede cambiar la facultad ni la carrera.");
+                if (planning.CampusId != Input.CampusId || planning.FacultyId != Input.FacultyId || planning.CareerId != Input.CareerId)
+                    ModelState.AddModelError(string.Empty, "La planificación ya tiene prácticas: no se puede cambiar la sede, la facultad ni la carrera.");
                 if (Input.StartDate != null && AcademicWeekGenerator.MondayOf(planning.StartDate) != AcademicWeekGenerator.MondayOf(Input.StartDate.Value))
                     ModelState.AddModelError("Input.StartMonth", "La planificación ya tiene prácticas: no se puede cambiar el mes de inicio.");
             }
@@ -168,6 +171,7 @@ public class PlanificacionModel : PageModel
             var isNew = planning == null;
             planning ??= new AcademicPlanning();
             planning.ManagementId = Input.ManagementId;
+            planning.CampusId = Input.CampusId;
             planning.FacultyId = Input.FacultyId;
             planning.CareerId = Input.CareerId;
             planning.Name = Input.Name.Trim();
@@ -209,9 +213,9 @@ public class PlanificacionModel : PageModel
         }
         catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
         {
-            // Carrera concurrente: otra planificación ocupó la misma gestión y carrera.
+            // Carrera concurrente: otra planificación ocupó la misma gestión, sede y carrera.
             await transaction.RollbackAsync();
-            TempData.Error("Ya existe una planificación para esa gestión y carrera.");
+            TempData.Error("Ya existe una planificación para esa gestión, sede y carrera.");
             return Id.HasValue ? RedirectToPage(new { id = Id }) : RedirectToPage("./Planificacion");
         }
         catch (Exception ex)
@@ -288,6 +292,11 @@ public class PlanificacionModel : PageModel
             .OrderByDescending(m => m.Year).ThenByDescending(m => m.Semester)
             .Select(m => new { m.Id, m.Code })
             .ToListAsync();
+        var campuses = await _context.Campuses.AsNoTracking()
+            .Where(c => c.Status == GeneralStatus.Activo || c.Id == Input.CampusId)
+            .OrderBy(c => c.Name)
+            .Select(c => new { c.Id, c.Name })
+            .ToListAsync();
         var faculties = await _context.Faculties.AsNoTracking()
             .Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name).ToListAsync();
         var careers = await _context.Careers.AsNoTracking()
@@ -295,6 +304,7 @@ public class PlanificacionModel : PageModel
             .OrderBy(c => c.Name).ToListAsync();
 
         ManagementList = new SelectList(managements, "Id", "Code", Input.ManagementId);
+        CampusList = new SelectList(campuses, "Id", "Name", Input.CampusId);
         FacultyList = new SelectList(faculties, "Id", "Name", Input.FacultyId);
         CareerList = new SelectList(careers, "Id", "Name", Input.CareerId);
         HasActivePlanning = await _planning.GetActiveAsync() != null;
@@ -328,6 +338,10 @@ public class PlanificacionModel : PageModel
         [Range(1, int.MaxValue, ErrorMessage = "La gestión es obligatoria")]
         [Display(Name = "Gestión")]
         public int ManagementId { get; set; }
+
+        [Range(1, int.MaxValue, ErrorMessage = "La sede es obligatoria")]
+        [Display(Name = "Sede")]
+        public int CampusId { get; set; }
 
         [Range(1, int.MaxValue, ErrorMessage = "La facultad es obligatoria")]
         [Display(Name = "Facultad")]
@@ -369,6 +383,7 @@ public class PlanificacionModel : PageModel
         public static InputModel From(AcademicPlanning planning) => new()
         {
             ManagementId = planning.ManagementId,
+            CampusId = planning.CampusId ?? 0,
             FacultyId = planning.FacultyId,
             CareerId = planning.CareerId,
             Name = planning.Name,
