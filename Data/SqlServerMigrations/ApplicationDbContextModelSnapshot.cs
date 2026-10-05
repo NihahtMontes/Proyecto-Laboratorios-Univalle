@@ -3843,7 +3843,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.ToTable("Users", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 99)");
+                            t.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 3, 99)");
 
                             t.HasCheckConstraint("CK_Users_Status", "[Status] BETWEEN 0 AND 2");
                         });

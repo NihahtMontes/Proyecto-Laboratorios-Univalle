@@ -1,11 +1,19 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.L3Model
+@using Proyecto_Laboratorios_Univalle.Helpers
 @{
     ViewData["Title"] = "L-3 y devolución — Paso 4";
     var canWrite = Model.IsEditable && !(Model.Context?.IsReadOnly ?? false);
+    var closureOnly = PracticeClosureAccess.IsClosureOnly(User);
 }
 
 <div class="container-fluid mt-3">
+    <div class="mb-2">
+        <a asp-page="/Cierre/Index" class="btn btn-outline-primary btn-rounded btn-sm font-weight-bold">
+            <i class="mdi mdi-arrow-left mr-1"></i> Volver al cierre del día
+        </a>
+    </div>
+
     @if (Model.Context != null)
     {
         <partial name="_PlanningContext" model="Model.Context" />
@@ -158,10 +166,13 @@
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                            <a asp-page="./Disponibilidad" asp-route-planId="@Model.Id"
-                               class="btn btn-outline-secondary btn-rounded px-4">
-                                <i class="mdi mdi-arrow-left mr-1"></i> Atrás
-                            </a>
+                            @if (!closureOnly)
+                            {
+                                <a asp-page="./Disponibilidad" asp-route-planId="@Model.Id"
+                                   class="btn btn-outline-secondary btn-rounded px-4">
+                                    <i class="mdi mdi-arrow-left mr-1"></i> Atrás
+                                </a>
+                            }
                             <button type="submit" class="btn btn-warning btn-rounded font-weight-bold px-4 js-departure-confirm">
                                 <i class="fas fa-truck mr-1"></i> Registrar salida y descontar stock
                             </button>
@@ -371,10 +382,13 @@
                     }
 
                     <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                        <a asp-page="./Disponibilidad" asp-route-planId="@Model.Id"
-                           class="btn btn-outline-secondary btn-rounded px-4">
-                            <i class="mdi mdi-arrow-left mr-1"></i> Atrás
-                        </a>
+                        @if (!closureOnly)
+                        {
+                            <a asp-page="./Disponibilidad" asp-route-planId="@Model.Id"
+                               class="btn btn-outline-secondary btn-rounded px-4">
+                                <i class="mdi mdi-arrow-left mr-1"></i> Atrás
+                            </a>
+                        }
                         @if (Model.IsFinalized)
                         {
                             <span class="badge badge-success px-4 py-2"><i class="mdi mdi-check-decagram mr-1"></i> L-3 cerrado</span>

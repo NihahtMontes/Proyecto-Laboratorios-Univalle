@@ -11,17 +11,21 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         public const string RoleSupervisor = "Supervisor";
         public const string RoleAdministrator = "Administrator";
         public const string RoleSuperAdmin = "SuperAdmin";
+        public const string RolePracticeClosure = "PracticeClosure";
 
         // Combined role strings for common scenarios
         public const string AdminRoles = "Administrator,SuperAdmin";
         public const string ManagementRoles = "Supervisor,Administrator,SuperAdmin";
         public const string AllRoles = "Supervisor,Administrator,SuperAdmin";
+        /// <summary>Quien puede cerrar prácticas (L-3 entrega/devolución y L-5): el encargado y la gestión.</summary>
+        public const string ClosureRoles = "PracticeClosure,Supervisor,Administrator,SuperAdmin";
 
         public static readonly string[] ManagedIdentityRoles =
         {
             RoleSupervisor,
             RoleAdministrator,
-            RoleSuperAdmin
+            RoleSuperAdmin,
+            RolePracticeClosure
         };
 
         public static string ToIdentityRole(UserRole role)
@@ -31,6 +35,7 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
                 UserRole.Administrador => RoleAdministrator,
                 UserRole.Supervisor => RoleSupervisor,
                 UserRole.SuperAdmin => RoleSuperAdmin,
+                UserRole.PracticeClosure => RolePracticeClosure,
                 _ => throw new ArgumentOutOfRangeException(nameof(role), role, "Rol de usuario no soportado.")
             };
         }

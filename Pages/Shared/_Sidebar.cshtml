@@ -1,9 +1,17 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Helpers
+@{
+    var closureOnly = PracticeClosureAccess.IsClosureOnly(User);
+    var currentSidebarRoute = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
+    var isCierreActive = currentSidebarRoute.StartsWith("/Cierre", StringComparison.OrdinalIgnoreCase);
+}
 <aside class="left-sidebar" data-sidebarbg="skin5">
     <div class="scroll-sidebar">
         <nav class="sidebar-nav">
             <ul id="sidebarnav">
-                <li class="nav-small-cap">
+                @if (!closureOnly)
+                {
+                    <li class="nav-small-cap">
                     <i class="mdi mdi-dots-horizontal"></i>
                     <span class="hide-menu">Inicio</span>
                 </li>
@@ -41,6 +49,12 @@
                             <a asp-page="/LaboratoryOperations/Planificaciones" class="sidebar-link waves-effect waves-dark">
                                 <i class="mdi mdi-clipboard-text-outline"></i>
                                 <span class="hide-menu">Planificaciones</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item @(isCierreActive ? "selected" : null)">
+                            <a asp-page="/Cierre/Index" class="sidebar-link waves-effect waves-dark @(isCierreActive ? "active" : null)">
+                                <i class="mdi mdi-clipboard-check"></i>
+                                <span class="hide-menu">Cierre de práctica</span>
                             </a>
                         </li>
                         <li class="sidebar-item">
@@ -142,6 +156,7 @@
                         </li>
 
                 </ul>
+                </li>
 
 
                 <li class="nav-small-cap">
@@ -247,6 +262,16 @@
                        
                     </ul>
                 </li>
+                }
+                else
+                {
+                    <li class="sidebar-item selected">
+                        <a asp-page="/Cierre/Index" class="sidebar-link waves-effect waves-dark active">
+                            <i class="mdi mdi-clipboard-check"></i>
+                            <span class="hide-menu">Cierre de práctica</span>
+                        </a>
+                    </li>
+                }
             </ul>
         </nav>
     </div>

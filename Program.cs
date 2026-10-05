@@ -180,6 +180,8 @@ app.UseRouting();
 
 app.UseCookiePolicy();
 app.UseAuthentication();
+// El rol de cierre de prácticas solo ve su módulo (Cierre, L-3, L-5); antes de la autorización para redirigir siempre a /Cierre.
+app.UsePracticeClosureScope();
 app.UseAuthorization();
 
 app.MapRazorPages();

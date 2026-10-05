@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +16,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 /// Paso 5: incidente L-5 sobre un artículo entregado en la salida L-3 (y, si corresponde, la unidad física concreta).
 /// Con unidad física, ApplicationDbContext actualiza su historial y estado al guardar.
 /// </summary>
+[Authorize(Roles = AuthorizationHelper.ClosureRoles)]
 public class L5Model : PageModel
 {
     public static readonly string[] IncidentTypes = ["Daño", "Rotura", "Pérdida", "Faltante", "Otro"];
@@ -48,6 +51,23 @@ public class L5Model : PageModel
 
     /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
     public PlanningContextViewModel? Context { get; private set; }
+
+    /// <summary>El rol de cierre solo opera prácticas del día o con devoluciones pendientes (GET y POST).</summary>
+    public override async Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext context, PageHandlerExecutionDelegate next)
+    {
+        var denied = await PracticeClosureAccess.DenyReasonAsync(_context, User, PlanId);
+        if (denied != null)
+        {
+            TempData.Error(denied);
+            context.Result = RedirectToPage(PracticeClosureAccess.HomePage);
+            return;
+        }
+        await next();
+    }
+
+    /// <summary>Pantalla a la que se vuelve al terminar: el cierre del día o el panel de planificación.</summary>
+    private IActionResult RedirectToHome() =>
+        PracticeClosureAccess.IsClosureOnly(User) ? RedirectToPage(PracticeClosureAccess.HomePage) : RedirectToPage("./Index");
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -112,7 +132,7 @@ public class L5Model : PageModel
         if (Plan == null)
         {
             TempData.Error("La práctica no existe.");
-            return RedirectToPage("./Index");
+            return RedirectToHome();
         }
         if (Plan.Status != L3RequestStatus.Approved)
         {

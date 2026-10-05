@@ -26,7 +26,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             }
 
             // 1. Crear Roles si no existen
-            string[] roles = { AuthorizationHelper.RoleSupervisor, AuthorizationHelper.RoleAdministrator, AuthorizationHelper.RoleSuperAdmin };
+            var roles = AuthorizationHelper.ManagedIdentityRoles;
 
             foreach (var roleName in roles)
             {

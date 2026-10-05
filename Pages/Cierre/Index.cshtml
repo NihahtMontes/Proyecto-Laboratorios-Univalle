@@ -1,0 +1,413 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Cierre.IndexModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Cierre de práctica";
+
+    var es = CultureInfo.GetCultureInfo("es-BO");
+    var dateLabel = Model.SelectedDate.ToString("dddd, d 'de' MMMM 'de' yyyy", es);
+    var inputDate = Model.SelectedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    string StageBadgeClass(IndexModel.ClosureStage stage)
+    {
+        switch (stage)
+        {
+            case IndexModel.ClosureStage.NotApproved: return "badge-secondary";
+            case IndexModel.ClosureStage.ToDeliver:   return "badge-primary";
+            case IndexModel.ClosureStage.ToReturn:    return "badge-warning text-white";
+            case IndexModel.ClosureStage.ToFinalize:  return "badge-info";
+            default:                                 return "badge-success";
+        }
+    }
+
+    string StageBadgeText(IndexModel.ClosureStage stage)
+    {
+        switch (stage)
+        {
+            case IndexModel.ClosureStage.NotApproved: return "Planificación sin aprobar";
+            case IndexModel.ClosureStage.ToDeliver:   return "Por entregar";
+            case IndexModel.ClosureStage.ToReturn:    return "Material entregado · por devolver";
+            case IndexModel.ClosureStage.ToFinalize:  return "Devuelto · falta finalizar";
+            default:                                 return "Cerrada";
+        }
+    }
+
+    string StageMainBtnClass(IndexModel.ClosureStage stage)
+    {
+        switch (stage)
+        {
+            case IndexModel.ClosureStage.ToDeliver:   return "btn-primary";
+            case IndexModel.ClosureStage.ToReturn:    return "btn-warning text-white";
+            case IndexModel.ClosureStage.ToFinalize:  return "btn-info text-white";
+            default:                                 return "btn-success";
+        }
+    }
+
+    string StageMainBtnIcon(IndexModel.ClosureStage stage)
+    {
+        switch (stage)
+        {
+            case IndexModel.ClosureStage.ToDeliver:   return "fas fa-truck";
+            case IndexModel.ClosureStage.ToReturn:    return "fas fa-undo";
+            case IndexModel.ClosureStage.ToFinalize:  return "fas fa-check-double";
+            default:                                 return "fas fa-eye";
+        }
+    }
+
+    string StageMainBtnLabel(IndexModel.ClosureStage stage)
+    {
+        switch (stage)
+        {
+            case IndexModel.ClosureStage.ToDeliver:   return "Registrar entrega";
+            case IndexModel.ClosureStage.ToReturn:    return "Registrar devolución";
+            case IndexModel.ClosureStage.ToFinalize:  return "Finalizar";
+            default:                                 return "Ver cierre";
+        }
+    }
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
+            <h2 class="font-weight-bold text-dark">Cierre de práctica</h2>
+            <div class="text-muted small"><i class="far fa-calendar-alt mr-1"></i>@dateLabel</div>
+        </div>
+        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+            @if (!Model.IsClosureOnly)
+            {
+                <span class="badge badge-light border text-muted font-weight-bold">
+                    <i class="fas fa-filter mr-1 text-primary"></i> Consulta por fecha
+                </span>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+
+    @* ── Selector de fecha o aviso "solo hoy" ── *@
+    @if (Model.IsClosureOnly)
+    {
+        <div class="alert alert-light border rounded-lg d-flex align-items-center mb-3 shadow-sm">
+            <i class="fas fa-info-circle text-primary mr-2"></i>
+            <span class="small">Solo se muestran las prácticas de hoy.</span>
+        </div>
+    }
+    else
+    {
+        <form method="get" class="card border-0 shadow-sm rounded-lg mb-3">
+            <div class="card-body p-3">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-light-primary text-primary p-2 mr-2">
+                            <i class="far fa-calendar-alt"></i>
+                        </div>
+                        <div>
+                            <span class="small text-muted text-uppercase font-weight-bold">Fecha del cierre</span>
+                            <div class="font-weight-bold text-dark">@dateLabel</div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <input type="date" name="date" value="@inputDate"
+                               class="form-control" style="width: auto;" />
+                        <button type="submit" class="btn btn-primary font-weight-bold">
+                            <i class="fas fa-search mr-1"></i> Aplicar
+                        </button>
+                        <a asp-page="/Cierre/Index" class="btn btn-outline-secondary">
+                            <i class="fas fa-calendar-day mr-1"></i> Hoy
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    }
+
+    @* ── 3 tarjetas métricas ── *@
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm rounded-lg h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="ci-metric-icon bg-light-primary text-primary mr-3">
+                        <i class="fas fa-truck fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 font-weight-bold">@Model.ToDeliverCount</h3>
+                        <small class="text-muted">Por entregar</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm rounded-lg h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="ci-metric-icon bg-light-warning text-warning mr-3">
+                        <i class="fas fa-undo fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 font-weight-bold">@Model.ToReturnCount</h3>
+                        <small class="text-muted">Por devolver</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm rounded-lg h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="ci-metric-icon bg-light-success text-success mr-3">
+                        <i class="fas fa-check-circle fa-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0 font-weight-bold">@Model.ClosedCount</h3>
+                        <small class="text-muted">Cerradas</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── Prácticas del día ── *@
+    <div class="ci-section mb-4">
+        <div class="d-flex align-items-center mb-3">
+            <i class="fas fa-flask text-primary mr-2"></i>
+            <span class="text-uppercase small text-primary font-weight-bold mr-2">Prácticas del día</span>
+            <span class="badge badge-light border">@Model.Practices.Count</span>
+        </div>
+
+        @if (!Model.Practices.Any())
+        {
+            <div class="ci-empty">
+                <div class="ci-empty__icon"><i class="far fa-calendar-check"></i></div>
+                <h5 class="font-weight-bold mb-1">No hay prácticas programadas para este día</h5>
+                <p class="text-muted mb-0 small">
+                    Cuando la coordinación apruebe prácticas para esta fecha, aparecerán aquí
+                    para registrar la entrega y devolución de material.
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                @foreach (var p in Model.Practices)
+                {
+                    var stage = p.Stage;
+                    <div class="col-12 mb-3">
+                        <div class="card border-0 shadow-sm rounded-lg ci-card">
+                            <div class="card-body p-3 p-md-4">
+                                <div class="d-flex flex-wrap align-items-start">
+                                    <div class="ci-time mr-3 text-center">
+                                        <i class="far fa-clock text-muted"></i>
+                                        <div class="ci-time__text">@p.TimeText</div>
+                                    </div>
+                                    <div class="flex-grow-1 ci-card__body">
+                                        <div class="d-flex flex-wrap align-items-center mb-1">
+                                            <span class="font-weight-bold text-primary mr-2 ci-code">@p.Code</span>
+                                            <span class="font-weight-bold text-dark mr-2">@p.PracticeName</span>
+                                            <span class="badge @StageBadgeClass(stage) ml-auto ci-stage">@StageBadgeText(stage)</span>
+                                        </div>
+                                        <div class="small text-muted ci-card__meta">
+                                            @p.SubjectName@(string.IsNullOrEmpty(p.GroupName) ? "" : $" · {p.GroupName}")
+                                            @if (!string.IsNullOrEmpty(p.LaboratoryCode))
+                                            {
+                                                <span> · <i class="fas fa-map-marker-alt mr-1"></i>@p.LaboratoryCode</span>
+                                            }
+                                            @if (!string.IsNullOrEmpty(p.TeacherName))
+                                            {
+                                                <span> · <i class="fas fa-chalkboard-teacher mr-1"></i>@p.TeacherName</span>
+                                            }
+                                        </div>
+                                        <div class="d-flex flex-wrap align-items-center mt-2 ci-card__chips">
+                                            <span class="badge badge-light border mr-2 mb-1">
+                                                <i class="fas fa-boxes mr-1 text-primary"></i>@p.ItemCount artículo(s)
+                                            </span>
+                                            @if (p.IncidentCount > 0)
+                                            {
+                                                <span class="badge badge-danger mr-2 mb-1">
+                                                    <i class="fas fa-exclamation-triangle mr-1"></i>@p.IncidentCount incidente(s)
+                                                </span>
+                                            }
+                                        </div>
+
+                                        <div class="mt-3 ci-card__actions">
+                                            @if (stage == IndexModel.ClosureStage.NotApproved)
+                                            {
+                                                <small class="text-muted">
+                                                    <i class="fas fa-lock mr-1"></i>La coordinación debe aprobarla en Planificación.
+                                                </small>
+                                            }
+                                            else
+                                            {
+                                                <a asp-page="/LaboratoryOperations/L3" asp-route-id="@p.Id"
+                                                   class="btn @StageMainBtnClass(stage) font-weight-bold mr-2 mb-1">
+                                                    <i class="@StageMainBtnIcon(stage) mr-1"></i>@StageMainBtnLabel(stage)
+                                                </a>
+
+                                                @if (stage == IndexModel.ClosureStage.ToReturn || stage == IndexModel.ClosureStage.ToFinalize)
+                                                {
+                                                    <a asp-page="/LaboratoryOperations/L5" asp-route-planId="@p.Id"
+                                                       class="btn btn-outline-danger font-weight-bold mb-1">
+                                                        <i class="fas fa-exclamation-triangle mr-1"></i>Registrar incidente
+                                                    </a>
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @* ── Devoluciones pendientes de otros días ── *@
+    @if (Model.PendingReturns.Any())
+    {
+        <div class="ci-section">
+            <div class="d-flex align-items-center mb-3">
+                <i class="fas fa-history text-danger mr-2"></i>
+                <span class="text-uppercase small text-danger font-weight-bold mr-2">Devoluciones pendientes de otros días</span>
+                <span class="badge badge-light border">@Model.PendingReturns.Count</span>
+            </div>
+
+            <div class="row">
+                @foreach (var p in Model.PendingReturns)
+                {
+                    var stage = p.Stage;
+                    <div class="col-12 mb-3">
+                        <div class="card border-0 shadow-sm rounded-lg ci-card ci-card--pending">
+                            <div class="card-body p-3 p-md-4">
+                                <div class="d-flex flex-wrap align-items-start">
+                                    <div class="ci-time mr-3 text-center">
+                                        <i class="far fa-calendar text-muted"></i>
+                                        <div class="ci-time__text">@p.Date.ToString("dd/MM")</div>
+                                    </div>
+                                    <div class="flex-grow-1 ci-card__body">
+                                        <div class="d-flex flex-wrap align-items-center mb-1">
+                                            <span class="font-weight-bold text-primary mr-2 ci-code">@p.Code</span>
+                                            <span class="font-weight-bold text-dark mr-2">@p.PracticeName</span>
+                                            <span class="badge badge-danger ml-auto ci-stage">
+                                                <i class="fas fa-exclamation-circle mr-1"></i>Devolución pendiente
+                                            </span>
+                                        </div>
+                                        <div class="small text-muted ci-card__meta">
+                                            @p.SubjectName@(string.IsNullOrEmpty(p.GroupName) ? "" : $" · {p.GroupName}")
+                                            @if (!string.IsNullOrEmpty(p.LaboratoryCode))
+                                            {
+                                                <span> · <i class="fas fa-map-marker-alt mr-1"></i>@p.LaboratoryCode</span>
+                                            }
+                                            @if (!string.IsNullOrEmpty(p.TeacherName))
+                                            {
+                                                <span> · <i class="fas fa-chalkboard-teacher mr-1"></i>@p.TeacherName</span>
+                                            }
+                                        </div>
+                                        <div class="d-flex flex-wrap align-items-center mt-2 ci-card__chips">
+                                            <span class="badge badge-light border mr-2 mb-1">
+                                                <i class="fas fa-boxes mr-1 text-primary"></i>@p.ItemCount artículo(s)
+                                            </span>
+                                            @if (p.IncidentCount > 0)
+                                            {
+                                                <span class="badge badge-danger mr-2 mb-1">
+                                                    <i class="fas fa-exclamation-triangle mr-1"></i>@p.IncidentCount incidente(s)
+                                                </span>
+                                            }
+                                        </div>
+
+                                        <div class="mt-3 ci-card__actions">
+                                            <a asp-page="/LaboratoryOperations/L3" asp-route-id="@p.Id"
+                                               class="btn btn-warning text-white font-weight-bold mr-2 mb-1">
+                                                <i class="fas fa-undo mr-1"></i>Registrar devolución
+                                            </a>
+                                            <a asp-page="/LaboratoryOperations/L5" asp-route-planId="@p.Id"
+                                               class="btn btn-outline-danger font-weight-bold mb-1">
+                                                <i class="fas fa-exclamation-triangle mr-1"></i>Registrar incidente
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+</div>
+
+@section Styles {
+    <style>
+        /* Métricas */
+        .ci-metric-icon {
+            width: 42px; height: 42px;
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .bg-light-primary { background-color: #e8e7ff; }
+        .bg-light-warning { background-color: #fff8e1; }
+        .bg-light-success { background-color: #e6f4ea; }
+
+        /* Tarjetas de práctica */
+        .ci-card {
+            border-left: 3px solid #c8c0e8;
+            transition: box-shadow .15s ease, transform .15s ease;
+        }
+        .ci-card:hover {
+            box-shadow: 0 .5rem 1rem rgba(116, 96, 238, .08) !important;
+        }
+        .ci-card--pending {
+            border-left-color: #dc3545;
+            background: linear-gradient(180deg, #fff5f5 0%, #ffffff 60%);
+        }
+
+        .ci-time {
+            min-width: 86px;
+            padding: .35rem .5rem;
+            background: #f8f7ff;
+            border-radius: 10px;
+            border: 1px solid #ecebf6;
+        }
+        .ci-time__text {
+            font-weight: 800;
+            color: #2a1d6b;
+            font-size: .85rem;
+            line-height: 1.1;
+            margin-top: .15rem;
+        }
+
+        .ci-code {
+            font-size: .85rem;
+            letter-spacing: .04em;
+        }
+        .ci-stage {
+            font-weight: 700;
+            letter-spacing: .02em;
+            padding: .35rem .65rem;
+        }
+        .ci-card__meta i { font-size: .7rem; }
+        .ci-card__actions .btn { border-radius: 999px; }
+
+        @@media (max-width: 575.98px) {
+            .ci-time { min-width: 64px; }
+            .ci-time__text { font-size: .75rem; }
+            .ci-card__body { margin-top: .5rem; }
+        }
+
+        /* Estado vacío */
+        .ci-empty {
+            background: #ffffff;
+            border: 1px dashed #d2cbf3;
+            border-left: 4px solid #7460ee;
+            border-radius: 14px;
+            padding: 2.25rem 1.5rem;
+            text-align: center;
+            color: #5a4f8a;
+        }
+        .ci-empty__icon {
+            font-size: 2.5rem;
+            color: #c8c0e8;
+            margin-bottom: .75rem;
+        }
+    </style>
+}

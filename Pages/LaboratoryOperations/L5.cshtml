@@ -1,10 +1,17 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.L5Model
+@using Proyecto_Laboratorios_Univalle.Helpers
 @{
     ViewData["Title"] = "Incidencia L-5 — Paso 5";
+    var closureOnly = PracticeClosureAccess.IsClosureOnly(User);
 }
 
 <div class="container-fluid mt-3">
+    <div class="mb-2">
+        <a asp-page="/Cierre/Index" class="btn btn-outline-primary btn-rounded btn-sm font-weight-bold">
+            <i class="mdi mdi-arrow-left mr-1"></i> Cierre del día
+        </a>
+    </div>
     @if (Model.Context != null)
     {
         <partial name="_PlanningContext" model="Model.Context" />
