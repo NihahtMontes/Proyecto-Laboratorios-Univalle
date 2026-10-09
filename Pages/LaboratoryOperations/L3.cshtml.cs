@@ -25,8 +25,12 @@ public class L3Model : PageModel
     private readonly IL3CircuitService _circuit;
     private readonly ILogger<L3Model> _logger;
 
-    public L3Model(ApplicationDbContext context, IAcademicManagementService managements, IL3CircuitService circuit, ILogger<L3Model> logger)
+    private readonly IPlanningLock _lock;
+
+    public L3Model(ApplicationDbContext context, IAcademicManagementService managements, IL3CircuitService circuit, ILogger<L3Model> logger,
+        IPlanningLock planningLock)
     {
+        _lock = planningLock;
         _context = context;
         _managements = managements;
         _circuit = circuit;
@@ -150,6 +154,12 @@ public class L3Model : PageModel
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
+            // Mismo bloqueo que la reprogramación: finalizar no puede pisar un origen que se está reubicando.
+            if (!await _lock.TryAcquireAsync([PlanningLockResources.Planning(Id)]))
+            {
+                TempData.Error(PlanningLockResources.BusyMessage + ".");
+                return RedirectToPage(new { id = Id });
+            }
             var plan = await _context.Plannings.AsTracking().FirstOrDefaultAsync(r => r.Id == Id);
             if (plan == null || plan.Status != PlanningStatus.Approved)
             {

@@ -1,0 +1,78 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.ReposicionesModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Reposiciones de día";
+}
+
+<div class="page-breadcrumb"><div class="row align-items-center">
+    <div class="col-md-8"><h4 class="text-primary text-uppercase font-weight-bold">PLANIFICACIÓN</h4>
+        <h2 class="font-weight-bold text-dark">Reposiciones de día</h2>
+        <p class="text-muted mb-0">Reubique cada práctica de un día suspendido. Las devoluciones L-3 permanecen en su planificación de origen.</p>
+    </div>
+    <div class="col-md-4 text-md-right mt-3 mt-md-0"><a asp-page="./CalendarioAcademico" asp-route-managementId="@Model.ManagementId" class="btn btn-outline-primary btn-rounded">Calendario académico</a></div>
+</div></div>
+<div class="container-fluid mt-3">
+    <form method="get" class="card border-0 shadow-sm rounded-lg mb-4"><div class="card-body d-flex align-items-center flex-wrap">
+        <label for="managementId" class="font-weight-bold mr-2 mb-0">Gestión</label>
+        <select id="managementId" name="managementId" class="custom-select w-auto mr-2" onchange="this.form.submit()">
+            @foreach (var m in Model.Managements)
+            { <option value="@m.Id" selected="@(m.Id == Model.ManagementId)">@m.Code · @m.StatusText</option> }
+        </select>
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Consultar</button>
+    </div></form>
+    @if (Model.Management == null || Model.Recoveries.Count == 0)
+    {
+        <div class="card border-0 shadow-sm rounded-lg"><div class="card-body text-center py-5">
+            <i class="mdi mdi-calendar-check fa-3x text-muted" aria-hidden="true"></i>
+            <h5 class="font-weight-bold mt-3">No hay reposiciones de día en esta gestión</h5>
+            <p class="text-muted mb-0">Se crearán al suspender desde el calendario un día con planificaciones vigentes.</p>
+        </div></div>
+    }
+    else
+    {
+        <div class="row"><div class="col-lg-4 mb-3"><div class="card border-0 shadow-sm rounded-lg"><div class="card-body">
+            <h5 class="font-weight-bold text-primary">Días suspendidos</h5>
+            @foreach (var r in Model.Recoveries)
+            {
+                <a asp-page="./Reposiciones" asp-route-managementId="@Model.ManagementId" asp-route-recoveryId="@r.Id"
+                   class="d-block border rounded p-3 my-2 @(Model.Selected?.Id == r.Id ? "border-primary bg-light" : "")">
+                    <strong>@r.Date.ToString("dd/MM/yyyy")</strong>
+                    <span class="badge badge-@(r.Status == DayRecoveryStatus.Completed ? "success" : "warning") float-right">@(r.Status == DayRecoveryStatus.Completed ? "Completada" : "En reposición")</span>
+                    <span class="d-block small text-muted">@r.Reason</span>
+                    <span class="d-block small font-weight-bold">@r.Recovered de @r.Total repuestas</span>
+                </a>
+            }
+        </div></div></div>
+        <div class="col-lg-8 mb-3">
+            @if (Model.Selected is { } selected)
+            {
+                <div class="card border-0 shadow-sm rounded-lg"><div class="card-body">
+                    <h5 class="font-weight-bold text-dark">Reposición del @selected.Date.ToString("dd/MM/yyyy")</h5>
+                    <p class="text-muted">@selected.Recovered de @selected.Total repuestas · @selected.Pending pendientes</p>
+                    @if (!Model.CanRecover && selected.Pending > 0)
+                    { <div class="alert alert-info">Solo SuperAdmin puede reubicar bloques de una gestión editable.</div> }
+                    @if (selected.Pending == 0)
+                    { <p class="text-success font-weight-bold">No quedan planificaciones pendientes.</p> }
+                    @foreach (var group in Model.Groups)
+                    {
+                        <h6 class="font-weight-bold text-primary mt-4"><i class="fas fa-flask mr-1"></i>@group.Laboratory</h6>
+                        <div class="list-group">
+                            @foreach (var p in group.Plannings)
+                            {
+                                <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
+                                    <div><strong>@p.Code · @p.Subject (@p.Group)</strong>
+                                        <div class="small text-muted">@p.Name · @p.Teacher · @p.Periods · antes @p.PreviousStatus</div>
+                                    </div>
+                                    @if (Model.CanRecover)
+                                    { <a asp-page="./Grilla" asp-route-reponer="@p.Id" asp-route-recoveryId="@selected.Id"
+                                         class="btn btn-sm btn-outline-warning btn-rounded mt-1">Reubicar <span class="sr-only">@p.Code</span></a> }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div></div>
+            }
+        </div></div>
+    }
+</div>

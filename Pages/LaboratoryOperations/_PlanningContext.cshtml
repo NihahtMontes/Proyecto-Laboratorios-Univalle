@@ -277,6 +277,13 @@
                     <span class="pc-strip__eyebrow">Planificación</span>
                     <h5 class="font-weight-bold text-dark mb-0">@Model.Title</h5>
                 </div>
+                @if (Model.CanReschedule && User.IsInRole(Proyecto_Laboratorios_Univalle.Helpers.AuthorizationHelper.RoleSuperAdmin))
+                {
+                    <a href="/LaboratoryOperations/Grilla?reprogramar=@Model.PlanningId" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold"
+                       title="Mover esta planificación a otra fecha, periodo o ambiente">
+                        <i class="mdi mdi-calendar-sync mr-1"></i> Reprogramar
+                    </a>
+                }
             </div>
             <div class="pc-stepper">
                 @for (int i = 1; i <= PlanningContextViewModel.StepCount; i++)

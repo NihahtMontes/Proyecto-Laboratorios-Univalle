@@ -12,8 +12,13 @@ public sealed record PlanningContextViewModel(
     AcademicManagementSummary? Management,
     int? PlanningId,
     string Title,
-    int Step)
+    int Step,
+    string? Status = null)
 {
+    /// <summary>Se puede reprogramar (SuperAdmin): planificada, aprobada o finalizada. Sin estado conocido no se ofrece.</summary>
+    public bool CanReschedule => PlanningId.HasValue && !IsReadOnly
+        && Status is Models.PlanningStatus.Planned or Models.PlanningStatus.Approved or Models.PlanningStatus.Finalized;
+
     /// <summary>Las escrituras solo se permiten en gestiones activas o inactivas; las completadas solo se consultan.</summary>
     public bool IsReadOnly => Management is { IsEditable: false };
 
@@ -32,12 +37,12 @@ public static class PlanningContextLoader
     public static async Task<PlanningContextViewModel> ForPlanningAsync(
         ApplicationDbContext context, IAcademicManagementService managements, int planningId, int step)
     {
-        var managementId = await context.Plannings.AsNoTracking()
+        var row = await context.Plannings.AsNoTracking()
             .Where(p => p.Id == planningId)
-            .Select(p => (int?)p.ManagementId)
+            .Select(p => new { p.ManagementId, p.Status })
             .FirstOrDefaultAsync();
-        var summary = managementId.HasValue ? await managements.GetSummaryAsync(managementId.Value) : null;
-        return new PlanningContextViewModel(summary, planningId, $"Planificación {L3Codes.Format(planningId)}", step);
+        var summary = row != null ? await managements.GetSummaryAsync(row.ManagementId) : null;
+        return new PlanningContextViewModel(summary, planningId, $"Planificación {L3Codes.Format(planningId)}", step, row?.Status);
     }
 
     /// <summary>True si la planificación existe y su gestión admite cambios.</summary>

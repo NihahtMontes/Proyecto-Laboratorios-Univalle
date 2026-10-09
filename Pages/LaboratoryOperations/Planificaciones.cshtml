@@ -190,6 +190,22 @@
                                                     <i class="fas fa-edit mr-1"></i> Editar
                                                 </a>
                                             }
+                                            @if (management.IsEditable && Model.IsSuperAdmin
+                                                && (row.Status == PlanningStatus.Planned || row.Status == PlanningStatus.Approved || row.Status == PlanningStatus.Finalized))
+                                            {
+                                                <a href="/LaboratoryOperations/Grilla?reprogramar=@row.Id" class="btn btn-sm btn-outline-primary btn-rounded ml-1" title="Reprogramar">
+                                                    <i class="mdi mdi-calendar-sync mr-1"></i> Reprogramar
+                                                </a>
+                                            }
+                                            @if (management.IsEditable && Model.IsSuperAdmin && row.Status == PlanningStatus.Approved)
+                                            {
+                                                <form method="post" asp-page-handler="Reopen" asp-route-id="@row.Id" asp-route-managementId="@management.Id"
+                                                      class="d-inline js-reopen" data-code="@row.Code">
+                                                    <button type="submit" class="btn btn-sm btn-outline-info btn-rounded ml-1" title="Reabrir para editar">
+                                                        <i class="fas fa-unlock mr-1"></i> Reabrir
+                                                    </button>
+                                                </form>
+                                            }
                                         </td>
                                     </tr>
                                 }
@@ -231,6 +247,19 @@
             $('#ManagementId').on('select2:select', function () {
                 $('#WeekNumber, #LaboratoryId').val('');
                 this.form.submit();
+            });
+            document.querySelectorAll('.js-reopen').forEach(function (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (typeof Swal === 'undefined') { HTMLFormElement.prototype.submit.call(form); return; }
+                    Swal.fire({ title: '¿Reabrir para editar?', text: (form.dataset.code || 'La planificación') +
+                        ' volverá a Planificada para editar sus requerimientos. No se reabren planificaciones con salida L-3.',
+                        type: 'warning', showCancelButton: true, confirmButtonText: 'Sí, reabrir', cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true))
+                            HTMLFormElement.prototype.submit.call(form);
+                    });
+                });
             });
         })();
     </script>

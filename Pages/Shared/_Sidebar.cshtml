@@ -57,6 +57,12 @@
                                 <span class="hide-menu">Calendario académico</span>
                             </a>
                         </li>
+                        <li class="sidebar-item">
+                            <a asp-page="/LaboratoryOperations/Reposiciones" class="sidebar-link waves-effect waves-dark">
+                                <i class="mdi mdi-backup-restore"></i>
+                                <span class="hide-menu">Reposiciones de día</span>
+                            </a>
+                        </li>
                         <li class="sidebar-item @(isCierreActive ? "selected" : null)">
                             <a asp-page="/Cierre/Index" class="sidebar-link waves-effect waves-dark @(isCierreActive ? "active" : null)">
                                 <i class="mdi mdi-clipboard-check"></i>

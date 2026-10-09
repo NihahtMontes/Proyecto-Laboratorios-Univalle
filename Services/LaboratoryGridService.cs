@@ -102,12 +102,51 @@ public sealed record GridBlock(
     string NextUrl,
     string TimeText,
     int LaneIndex = 0,
-    int LaneCount = 1)
+    int LaneCount = 1,
+    GridRelocation? Relocation = null)
 {
     public int EndOrder => StartOrder is int s ? PlanningSlot.LastOrder(s, PeriodCount) : 0;
 
+    /// <summary>Se puede reprogramar (individualmente) desde la grilla: Planificada, Aprobada o Finalizada con periodos.</summary>
+    public bool IsReschedulable => StartOrder.HasValue && GridRelocation.ReschedulableStatuses.Contains(Status);
+
     public string Tooltip =>
-        $"{Code} · {PracticeName}\nMateria: {SubjectName}\nGrupo: {GroupName}\nDocente: {TeacherName}\nHorario: {Date:dd/MM/yyyy} · {TimeText}\nEstado: {StatusLabel}";
+        $"{Code} · {PracticeName}\nMateria: {SubjectName}\nGrupo: {GroupName}\nDocente: {TeacherName}\nHorario: {Date:dd/MM/yyyy} · {TimeText}\nEstado: {StatusLabel}"
+        + (Relocation is null ? string.Empty : $"\n{Relocation.Text}");
+}
+
+public enum GridRelocationKind
+{
+    /// <summary>El bloque es un origen ya reubicado: enlaza a su nueva ubicación.</summary>
+    MovedTo,
+    /// <summary>El bloque es el destino de una reprogramación o reposición: enlaza a su origen.</summary>
+    MovedFrom
+}
+
+/// <summary>Marca de reprogramación/reposición de un bloque, con enlace a la grilla del otro extremo.</summary>
+/// <param name="IsRecovery">True si el movimiento fue una reposición de día (Rescheduling con DayRecoveryId).</param>
+public sealed record GridRelocation(GridRelocationKind Kind, bool IsRecovery, string Text, string Url)
+{
+    /// <summary>Estados que se pueden reprogramar individualmente (PendienteReposicion solo vía reposición de día).</summary>
+    public static readonly string[] ReschedulableStatuses = [PlanningStatus.Planned, PlanningStatus.Approved, PlanningStatus.Finalized];
+
+    public static bool IsReschedulableStatus(string? status) => status != null && ReschedulableStatuses.Contains(status);
+
+    /// <summary>Sufijo de clase CSS: reprogramación (violeta) o reposición (naranja).</summary>
+    public string Css => IsRecovery ? "recovery" : "rescheduling";
+
+    public string Icon => Kind == GridRelocationKind.MovedTo
+        ? "mdi-arrow-right-bold"
+        : IsRecovery ? "mdi-backup-restore" : "mdi-calendar-clock";
+
+    /// <summary>URL de la grilla de un ambiente en la semana de una fecha.</summary>
+    public static string GridUrl(int managementId, int? laboratoryId, DateTime date) =>
+        $"/LaboratoryOperations/Grilla?managementId={managementId}"
+        + (laboratoryId.HasValue ? $"&laboratoryId={laboratoryId.Value}" : string.Empty)
+        + $"&date={date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}";
+
+    /// <summary>URL del modo reprogramación de la grilla para una planificación.</summary>
+    public static string RescheduleUrl(int planningId) => $"/LaboratoryOperations/Grilla?reprogramar={planningId}";
 }
 
 public interface ILaboratoryGridService
@@ -190,7 +229,7 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
         // Planificaciones de todos los laboratorios en el rango (permite elegir el laboratorio por defecto
         // y contar planificaciones por ambiente sin consultas adicionales).
         var plannings = await _context.Plannings.AsNoTracking()
-            .Where(p => !p.IsDeleted && p.Status != PlanningStatus.Cancelled
+            .Where(p => p.ManagementId == management.Id && !p.IsDeleted && p.Status != PlanningStatus.Cancelled
                 && p.ScheduledDate >= from && p.ScheduledDate < to
                 && (p.LaboratoryId != null || p.AllLaboratories))
             .OrderBy(p => p.ScheduledDate)
@@ -234,6 +273,8 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
                 .Where(i => teacherIds.Contains(i.Id))
                 .ToDictionaryAsync(i => i.Id, i => i.Name);
 
+        var relocations = await LoadRelocationsAsync(labPlannings.Select(p => p.Id).ToList());
+
         var days = await _context.AcademicDays.AsNoTracking()
             .Where(d => d.AcademicWeek.ManagementId == management.Id && d.Date >= from && d.Date < to)
             .Select(d => new { d.Date, d.Status, d.Reason })
@@ -264,7 +305,8 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
                     PlanningStatusView.Css(p.Status),
                     PlanningStatus.Occupies(p.Status),
                     PlanningStatusView.NextUrl(p.Id, p.Status, p.HasRequirements),
-                    PlanningStatusView.TimeText(p.StartOrder, p.PeriodCount, p.ScheduledDate, p.ScheduledEndDate));
+                    PlanningStatusView.TimeText(p.StartOrder, p.PeriodCount, p.ScheduledDate, p.ScheduledEndDate),
+                    Relocation: relocations.TryGetValue(p.Id, out var relocation) ? relocation : null);
             })
             .Where(b => b.Weekday >= 1) // los domingos no existen en el calendario académico
             .ToList();
@@ -308,6 +350,49 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
             selectedIndex + 1 < weeks.Count ? weeks[selectedIndex + 1].Number : null,
             twoWeeks,
             gridWeeks);
+    }
+
+    /// <summary>
+    /// Marcas de reprogramación/reposición de los bloques visibles, en una sola consulta a Reschedulings:
+    /// el origen enlaza a su destino y el destino a su origen. Si un bloque fuera ambas cosas, prima "nueva ubicación".
+    /// </summary>
+    private async Task<Dictionary<int, GridRelocation>> LoadRelocationsAsync(List<int> planningIds)
+    {
+        var result = new Dictionary<int, GridRelocation>();
+        if (planningIds.Count == 0) return result;
+
+        var rows = await _context.Reschedulings.AsNoTracking()
+            .Where(r => planningIds.Contains(r.OriginPlanningId) || planningIds.Contains(r.DestinationPlanningId))
+            .Select(r => new
+            {
+                r.OriginPlanningId,
+                r.DestinationPlanningId,
+                r.OriginDate,
+                r.OriginLaboratoryId,
+                r.DestinationDate,
+                r.DestinationLaboratoryId,
+                r.DayRecoveryId,
+                OriginManagementId = r.OriginPlanning.ManagementId,
+                DestinationManagementId = r.DestinationPlanning.ManagementId
+            })
+            .ToListAsync();
+
+        foreach (var r in rows.Where(r => planningIds.Contains(r.DestinationPlanningId)))
+        {
+            var isRecovery = r.DayRecoveryId.HasValue;
+            var text = isRecovery ? $"Reposición del {r.OriginDate:dd/MM}" : $"Reprogramada desde {r.OriginDate:dd/MM}";
+            result[r.DestinationPlanningId] = new GridRelocation(GridRelocationKind.MovedFrom, isRecovery, text,
+                GridRelocation.GridUrl(r.OriginManagementId, r.OriginLaboratoryId, r.OriginDate));
+        }
+
+        foreach (var r in rows.Where(r => planningIds.Contains(r.OriginPlanningId)))
+        {
+            result[r.OriginPlanningId] = new GridRelocation(GridRelocationKind.MovedTo, r.DayRecoveryId.HasValue,
+                $"Ver nueva ubicación: {L3Codes.Format(r.DestinationPlanningId)} {r.DestinationDate:dd/MM}",
+                GridRelocation.GridUrl(r.DestinationManagementId, r.DestinationLaboratoryId, r.DestinationDate));
+        }
+
+        return result;
     }
 
     private static List<GridLaboratoryOption> ToOptions(List<GridLaboratory> labs, IReadOnlyDictionary<int, int> counts) =>

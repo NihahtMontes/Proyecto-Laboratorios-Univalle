@@ -25,14 +25,16 @@ public class PlanificacionModel : PageModel
     private readonly IAcademicManagementService _managements;
     private readonly ILogger<PlanificacionModel> _logger;
     private readonly IOccupancyService _occupancy;
+    private readonly IPlanningLock _planningLock;
 
     public PlanificacionModel(ApplicationDbContext context, IAcademicManagementService managements, ILogger<PlanificacionModel> logger,
-        IOccupancyService occupancy)
+        IOccupancyService occupancy, IPlanningLock planningLock)
     {
         _context = context;
         _managements = managements;
         _logger = logger;
         _occupancy = occupancy;
+        _planningLock = planningLock;
     }
 
     /// <summary>Id de Plannings al editar una planificación.</summary>
@@ -61,7 +63,9 @@ public class PlanificacionModel : PageModel
     public AcademicManagementSummary? Management { get; private set; }
 
     /// <summary>Franja superior del wizard (gestión + planificación + paso 1).</summary>
-    public PlanningContextViewModel Context => new(Management, Id, Title, 1);
+    public PlanningContextViewModel Context => new(Management, Id, Title, 1, CurrentStatus);
+    /// <summary>Estado real de la planificación editada (null al crear).</summary>
+    public string? CurrentStatus { get; private set; }
     public string Title => Id.HasValue ? $"Planificación {Code}" : "Nueva planificación";
     public string Code => Id.HasValue ? L3Codes.Format(Id.Value) : "—";
     public string? ScheduleCode { get; private set; }
@@ -110,6 +114,7 @@ public class PlanificacionModel : PageModel
             Input = InputModel.From(planning);
             ScheduleCode = planning.PracticeSchedule?.Code;
             StatusText = PlanningStatus.Label(planning.Status);
+            CurrentStatus = planning.Status;
             IsReadOnly = planning.Status != PlanningStatus.Planned || !Management.IsEditable;
         }
         else
@@ -154,6 +159,7 @@ public class PlanificacionModel : PageModel
             ManagementId = existing.ManagementId;
             ScheduleCode = existing.PracticeSchedule?.Code;
             StatusText = PlanningStatus.Label(existing.Status);
+            CurrentStatus = existing.Status;
             if (existing.Status != PlanningStatus.Planned)
             {
                 IsReadOnly = true;
@@ -286,6 +292,57 @@ public class PlanificacionModel : PageModel
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
+            var resources = new List<string>
+            {
+                PlanningLockResources.ManagementDay(Management.Id, date),
+                PlanningLockResources.LaboratoryDay(Input.LaboratoryId, date),
+                PlanningLockResources.TeacherDay(Input.TeacherPersonId, date)
+            };
+            if (existing != null)
+            {
+                resources.Add(PlanningLockResources.Planning(existing.Id));
+                resources.Add(PlanningLockResources.ManagementDay(Management.Id, existing.ScheduledDate.Date));
+            }
+            if (!await _planningLock.TryAcquireAsync(resources))
+                ModelState.AddModelError(string.Empty, PlanningLockResources.BusyMessage);
+
+            // No confiar en la consulta anterior a la transacción: suspender el día o reservar el ambiente
+            // puede haber ocurrido mientras el formulario estaba abierto.
+            if (ModelState.IsValid)
+            {
+                var currentStatus = await _context.Managements.AsNoTracking()
+                    .Where(m => m.Id == Management.Id)
+                    .Select(m => (ManagementStatus?)m.Status).FirstOrDefaultAsync();
+                if (currentStatus is not (ManagementStatus.Active or ManagementStatus.Inactive))
+                    ModelState.AddModelError(string.Empty, AcademicManagementService.ReadOnlyMessage);
+
+                var currentDay = await _context.AcademicDays.AsNoTracking()
+                    .Where(d => d.Date == date && d.AcademicWeek.ManagementId == Management.Id)
+                    .Select(d => new { d.Id, d.Status, WeekNumber = d.AcademicWeek.Number })
+                    .FirstOrDefaultAsync();
+                if (currentDay == null || currentDay.Status != AcademicDayStatus.Enabled)
+                    ModelState.AddModelError("Input.Date", "El día académico ya no está habilitado; actualice el formulario.");
+                else
+                {
+                    day = await _context.AcademicDays.AsNoTracking().FirstAsync(d => d.Id == currentDay.Id);
+                    weekNumber = currentDay.WeekNumber;
+                }
+
+                if (existing != null && !await _context.Plannings.AsNoTracking()
+                    .AnyAsync(p => p.Id == existing.Id && p.Status == PlanningStatus.Planned))
+                    ModelState.AddModelError(string.Empty, "La planificación ya no está en estado Planificada.");
+
+                if (await _occupancy.FindConflictsAsync(Input.LaboratoryId, date, startPeriod!.Order, Input.PeriodCount,
+                    existing != null ? [existing.Id] : null) is { Count: > 0 } conflicts)
+                    ModelState.AddModelError(string.Empty,
+                        $"El laboratorio se ocupó mientras se guardaba: {string.Join("; ", conflicts.Select(c => c.Label))}.");
+            }
+            if (!ModelState.IsValid)
+            {
+                await LoadListsAsync();
+                return Page();
+            }
+
             var planning = isNew
                 ? new Planning { Status = PlanningStatus.Planned, RequestDate = DateTime.UtcNow }
                 : await _context.Plannings.AsTracking().FirstAsync(p => p.Id == existing!.Id);

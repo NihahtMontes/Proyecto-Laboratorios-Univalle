@@ -53,6 +53,7 @@ public class IndexModel : PageModel
     /// <summary>Orígenes reprogramados o repuestos y pendientes de reposición (no ocupan ambiente).</summary>
     public int MovedCount { get; private set; }
     public int IncidentCount { get; private set; }
+    public int RecoveriesInProgress { get; private set; }
 
     // Notificaciones al entrar al panel.
     public DateTime Today { get; private set; } = DateTime.Today;
@@ -111,6 +112,8 @@ public class IndexModel : PageModel
         PlanningCount = PlannedCount + ApprovedCount + FinalizedCount;
         IncidentCount = await _context.L5Incidents.AsNoTracking()
             .CountAsync(i => i.Planning != null && i.Planning.ManagementId == Management.Id);
+        RecoveriesInProgress = await _context.DayRecoveries.AsNoTracking()
+            .CountAsync(r => r.ManagementId == Management.Id && r.Status == DayRecoveryStatus.InProgress);
 
         var usage = await _availability.GetUsageAsync(UsageFrom, UsageTo);
         MostUsed = usage.OrderByDescending(u => u.PracticeCount).ThenByDescending(u => u.TotalRequested).Take(10).ToList();

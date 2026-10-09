@@ -25,13 +25,15 @@ public class CalendarioAcademicoModel : PageModel
     private readonly ApplicationDbContext _context;
     private readonly IAcademicManagementService _managements;
     private readonly IAcademicCalendarService _calendar;
+    private readonly IDayRecoveryService _recoveries;
 
     public CalendarioAcademicoModel(ApplicationDbContext context, IAcademicManagementService managements,
-        IAcademicCalendarService calendar)
+        IAcademicCalendarService calendar, IDayRecoveryService recoveries)
     {
         _context = context;
         _managements = managements;
         _calendar = calendar;
+        _recoveries = recoveries;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -44,6 +46,7 @@ public class CalendarioAcademicoModel : PageModel
     public bool CanWrite { get; private set; }
 
     public bool CanEditCalendar => CanWrite && Management is { IsEditable: true };
+    public bool CanRecover => User.IsInRole(AuthorizationHelper.RoleSuperAdmin) && Management is { IsEditable: true };
 
     public IReadOnlyList<WeekRow> Weeks { get; private set; } = [];
 
@@ -51,7 +54,7 @@ public class CalendarioAcademicoModel : PageModel
     public int SuspendedDays => Weeks.SelectMany(w => w.Days).Count(d => d.Status == AcademicDayStatus.Suspended);
 
     /// <summary>Día de una semana del calendario. Status null = el día no existe (queda fuera de la gestión).</summary>
-    public sealed record DayCell(int DayId, DateTime Date, AcademicDayStatus? Status, string? Reason, int PlanCount)
+    public sealed record DayCell(int DayId, DateTime Date, AcademicDayStatus? Status, string? Reason, int PlanCount, int LabCount, int? DayRecoveryId)
     {
         public bool Exists => Status.HasValue;
 
@@ -84,7 +87,7 @@ public class CalendarioAcademicoModel : PageModel
         }
 
         // Fechas de clases: definen la semana 1 (vacías = fechas de la gestión).
-        var management = await _context.Managements.AsTracking().FirstOrDefaultAsync(m => m.Id == input.ManagementId);
+        var management = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == input.ManagementId);
         if (management == null)
         {
             TempData.Error("La gestión no existe.");
@@ -103,14 +106,7 @@ public class CalendarioAcademicoModel : PageModel
             TempData.Error("Las fechas de clases deben estar dentro de las fechas de la gestión.");
             return RedirectToPage(new { managementId = input.ManagementId });
         }
-        if (management.ClassesStartDate != classesStart || management.ClassesEndDate != classesEnd)
-        {
-            management.ClassesStartDate = classesStart;
-            management.ClassesEndDate = classesEnd;
-            await _context.SaveChangesAsync();
-        }
-
-        var result = await _calendar.GenerateWeeksAsync(input.ManagementId);
+        var result = await _calendar.GenerateWeeksAsync(input.ManagementId, classesStart, classesEnd, updateClassDates: true);
         if (result.Ok) TempData.Success(result.Message);
         else TempData.Error(result.Message);
         return RedirectToPage(new { managementId = input.ManagementId });
@@ -129,6 +125,24 @@ public class CalendarioAcademicoModel : PageModel
         if (result.Ok) TempData.Success(result.Message);
         else TempData.Error(result.Message);
         return RedirectToPage(new { managementId = input.ManagementId });
+    }
+
+    /// <summary>Suspende un día con sesiones, crea una reposición y conserva el estado de cada origen.</summary>
+    public async Task<IActionResult> OnPostRecoverDayAsync(int dayId, string? reason, int managementId)
+    {
+        if (!User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+            return Forbid();
+        var result = await _recoveries.SuspendAsync(dayId, reason);
+        if (result.Ok)
+        {
+            TempData.Success(result.Message);
+            var actualManagementId = await _context.DayRecoveries.AsNoTracking()
+                .Where(r => r.Id == result.RecoveryId)
+                .Select(r => r.ManagementId).FirstAsync();
+            return RedirectToPage("./Reposiciones", new { managementId = actualManagementId, recoveryId = result.RecoveryId });
+        }
+        TempData.Error(result.Message);
+        return RedirectToPage(new { managementId });
     }
 
     private async Task<SelectList> BuildManagementListAsync()
@@ -162,9 +176,11 @@ public class CalendarioAcademicoModel : PageModel
             .Where(p => p.ManagementId == Management!.Id
                 && !PlanningStatus.NonOccupying.Contains(p.Status)
                 && p.ScheduledDate >= from && p.ScheduledDate < to.AddDays(1))
-            .Select(p => p.ScheduledDate)
+            .Select(p => new { p.ScheduledDate, p.LaboratoryId })
             .ToListAsync();
-        var planCounts = dates.GroupBy(d => d.Date).ToDictionary(g => g.Key, g => g.Count());
+        var planCounts = dates.GroupBy(d => d.ScheduledDate.Date).ToDictionary(g => g.Key, g => g.Count());
+        var labCounts = dates.GroupBy(d => d.ScheduledDate.Date)
+            .ToDictionary(g => g.Key, g => g.Select(p => p.LaboratoryId).Distinct().Count());
 
         Weeks = weeks.Select(w =>
         {
@@ -172,7 +188,8 @@ public class CalendarioAcademicoModel : PageModel
             {
                 var date = w.StartDate.Date.AddDays(i);
                 var day = w.Days.FirstOrDefault(d => d.Date == date);
-                return new DayCell(day?.Id ?? 0, date, day?.Status, day?.Reason, planCounts.GetValueOrDefault(date));
+                return new DayCell(day?.Id ?? 0, date, day?.Status, day?.Reason,
+                    planCounts.GetValueOrDefault(date), labCounts.GetValueOrDefault(date), day?.DayRecoveryId);
             }).ToList();
             return new WeekRow(w.Number, w.StartDate.Date, w.EndDate.Date, days);
         }).ToList();

@@ -90,6 +90,7 @@ public sealed class SlotValidationService : ISlotValidationService
             {
                 p.Id,
                 p.Status,
+                p.StatusBeforeRecovery,
                 p.ManagementId,
                 p.AcademicWeekId,
                 p.StartPeriodId,
@@ -215,7 +216,8 @@ public sealed class SlotValidationService : ISlotValidationService
         }
 
         // Advertencias.
-        if (origin.Status == PlanningStatus.Finalized)
+        if (origin.Status == PlanningStatus.Finalized
+            || origin.Status == PlanningStatus.PendingRecovery && origin.StatusBeforeRecovery == PlanningStatus.Finalized)
             issues.Add(Warning(Codes.Completed, "Esta planificación ya está completada. ¿Seguro que desea reprogramarla?"));
 
         if (targetWeekId.HasValue && origin.AcademicWeekId.HasValue && targetWeekId != origin.AcademicWeekId)

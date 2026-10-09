@@ -23,9 +23,12 @@ public class DisponibilidadModel : PageModel
     private readonly IArticleAvailabilityService _availability;
     private readonly ILogger<DisponibilidadModel> _logger;
 
+    private readonly IPlanningLock _lock;
+
     public DisponibilidadModel(ApplicationDbContext context, IAcademicManagementService managements, IL3CircuitService circuit,
-        IArticleAvailabilityService availability, ILogger<DisponibilidadModel> logger)
+        IArticleAvailabilityService availability, ILogger<DisponibilidadModel> logger, IPlanningLock planningLock)
     {
+        _lock = planningLock;
         _context = context;
         _managements = managements;
         _circuit = circuit;
@@ -118,8 +121,15 @@ public class DisponibilidadModel : PageModel
             return RedirectToPage(new { planId = PlanId });
         }
 
+        // Mismo bloqueo que la reprogramación: aprobar no puede pisar un origen que se está reubicando.
+        await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
+            if (!await _lock.TryAcquireAsync([PlanningLockResources.Planning(PlanId)]))
+            {
+                TempData.Error(PlanningLockResources.BusyMessage + ".");
+                return RedirectToPage(new { planId = PlanId });
+            }
             var plan = await _context.Plannings.AsTracking().FirstOrDefaultAsync(r => r.Id == PlanId);
             if (plan == null)
             {
@@ -128,7 +138,9 @@ public class DisponibilidadModel : PageModel
             }
             if (plan.Status != PlanningStatus.Planned)
             {
-                TempData.Warning("Esta planificación ya fue aprobada.");
+                TempData.Warning(plan.Status == PlanningStatus.Approved
+                    ? "Esta planificación ya fue aprobada."
+                    : $"La planificación está {PlanningStatus.Label(plan.Status)}: no se puede aprobar.");
                 return RedirectToPage(new { planId = PlanId });
             }
 
@@ -154,6 +166,7 @@ public class DisponibilidadModel : PageModel
 
             plan.Status = PlanningStatus.Approved;
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             TempData.Success("Planificación aprobada.");
             if (shortages > 0 || unregistered > 0 || issues > 0)

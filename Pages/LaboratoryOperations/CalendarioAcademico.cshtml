@@ -218,7 +218,7 @@
                                             }
                                             else if (day.Status == AcademicDayStatus.Suspended)
                                             {
-                                                <td class="calendario-suspendido">
+                                                 <td id="day-@day.Date.ToString("yyyy-MM-dd")" class="calendario-suspendido">
                                                     <div class="small font-weight-bold">@day.DateText</div>
                                                     <span class="badge badge-secondary" title="@day.Reason">Suspendido</span>
                                                     @if (!string.IsNullOrEmpty(day.Reason))
@@ -231,17 +231,25 @@
                                                     }
                                                     @if (canEdit)
                                                     {
+                                                        @if (day.DayRecoveryId.HasValue)
+                                                        {
+                                                            <a asp-page="./Reposiciones" asp-route-managementId="@management.Id" asp-route-recoveryId="@day.DayRecoveryId"
+                                                               class="btn btn-outline-warning btn-sm btn-rounded mt-1">Ver reposición</a>
+                                                        }
+                                                        else
+                                                        {
                                                         <button type="button" class="btn btn-outline-success btn-sm btn-rounded font-weight-bold mt-1 js-enable-day"
                                                                 data-day-id="@day.DayId" data-day-label="@day.DateText">
                                                             <i class="fas fa-check mr-1"></i>Habilitar
                                                         </button>
+                                                        }
                                                     }
                                                 </td>
                                             }
                                             else
                                             {
                                                 var dayLabel = day.Date.ToString("dddd d 'de' MMMM", System.Globalization.CultureInfo.GetCultureInfo("es-BO"));
-                                                <td class="calendario-habilitado">
+                                                 <td id="day-@day.Date.ToString("yyyy-MM-dd")" class="calendario-habilitado">
                                                     <div class="small font-weight-bold">@day.DateText</div>
                                                     <span class="badge badge-success">Habilitado</span>
                                                     @if (day.PlanCount > 0)
@@ -250,11 +258,25 @@
                                                     }
                                                     @if (canEdit)
                                                     {
-                                                        <button type="button" class="btn btn-outline-secondary btn-sm btn-rounded font-weight-bold mt-1"
-                                                                data-toggle="modal" data-target="#modal-suspender"
-                                                                data-day-id="@day.DayId" data-day-label="@dayLabel">
-                                                            <i class="fas fa-ban mr-1"></i>Suspender
-                                                        </button>
+                                                        @if (day.PlanCount > 0)
+                                                        {
+                                                            @if (Model.CanRecover)
+                                                            {
+                                                                <button type="button" class="btn btn-outline-warning btn-sm btn-rounded font-weight-bold mt-1"
+                                                                        data-toggle="modal" data-target="#modal-reponer-dia"
+                                                                        data-day-id="@day.DayId" data-day-label="@dayLabel" data-count="@day.PlanCount" data-labs="@day.LabCount">
+                                                                    <i class="mdi mdi-backup-restore mr-1"></i>Reponer día
+                                                                </button>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm btn-rounded font-weight-bold mt-1"
+                                                                    data-toggle="modal" data-target="#modal-suspender"
+                                                                    data-day-id="@day.DayId" data-day-label="@dayLabel">
+                                                                <i class="fas fa-ban mr-1"></i>Suspender
+                                                            </button>
+                                                        }
                                                     }
                                                 </td>
                                             }
@@ -296,7 +318,7 @@
                     <input type="hidden" name="DayId" id="suspend-day-id" value="" />
                     <p class="mb-2">
                         Suspenderás el día <strong id="suspend-day-label" class="text-dark"></strong>.
-                        Las planificaciones de ese día deberán reubicarse con una reposición de día.
+                         No hay planificaciones vigentes en este día.
                     </p>
                     <div class="form-group">
                         <label for="suspend-reason" class="small font-weight-bold">MOTIVO <span class="text-danger">*</span></label>
@@ -314,6 +336,30 @@
             </form>
         </div>
     </div>
+
+    @if (Model.CanRecover)
+    {
+        <div class="modal fade" id="modal-reponer-dia" tabindex="-1" role="dialog" aria-labelledby="modal-reponer-titulo" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <form method="post" asp-page-handler="RecoverDay" id="form-recover-day" class="modal-content border-0 shadow-lg rounded-lg">
+                    <div class="modal-header bg-light-warning">
+                        <h5 class="modal-title font-weight-bold" id="modal-reponer-titulo"><i class="mdi mdi-backup-restore mr-1"></i>Reponer día completo</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="managementId" value="@Model.Management.Id" />
+                        <input type="hidden" name="dayId" id="recover-day-id" />
+                        <p>Suspenderá <strong id="recover-day-label"></strong> y pondrá <strong id="recover-day-count"></strong> planificaciones de <strong id="recover-day-labs"></strong> ambientes en la bandeja de reposición.</p>
+                        <p class="small text-muted">Se conserva la práctica original y su salida de material L-3. Cada nueva ubicación se confirma por separado.</p>
+                        <label for="recover-day-reason" class="font-weight-bold">Motivo de suspensión</label>
+                        <textarea id="recover-day-reason" name="reason" class="form-control" maxlength="200" rows="3" required></textarea>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning font-weight-bold">Suspender y abrir reposición</button></div>
+                </form>
+            </div>
+        </div>
+    }
 
     @* ── Formulario oculto para habilitar (confirmación SweetAlert) ── *@
     <form method="post" asp-page-handler="SetDay" id="form-enable">
@@ -384,6 +430,35 @@
                     $('#suspend-reason').val('');
                 });
             }
+
+            var modalRecovery = document.getElementById('modal-reponer-dia');
+            if (modalRecovery) {
+                $(modalRecovery).on('show.bs.modal', function (event) {
+                    var button = $(event.relatedTarget);
+                    $('#recover-day-id').val(button.data('day-id'));
+                    $('#recover-day-label').text(button.data('day-label'));
+                    $('#recover-day-count').text(button.data('count'));
+                    $('#recover-day-labs').text(button.data('labs'));
+                    $('#recover-day-reason').val('');
+                });
+            }
+            ['form-suspend', 'form-recover-day'].forEach(function (id) {
+                var form = document.getElementById(id);
+                if (!form) return;
+                form.addEventListener('submit', function (e) {
+                    if (form.dataset.confirmed === '1') return;
+                    e.preventDefault();
+                    if (!form.reportValidity()) return;
+                    var send = function () { form.dataset.confirmed = '1'; HTMLFormElement.prototype.submit.call(form); };
+                    if (typeof Swal === 'undefined') { send(); return; }
+                    Swal.fire({ title: id === 'form-recover-day' ? '¿Suspender y reponer el día entero?' : '¿Suspender este día?',
+                        text: id === 'form-recover-day'
+                            ? 'Todas las planificaciones del día dejarán de ocupar el ambiente y quedarán pendientes de reubicación.'
+                            : 'El día dejará de admitir nuevas planificaciones.',
+                        type: 'warning', showCancelButton: true, confirmButtonText: 'Sí, suspender', cancelButtonText: 'Cancelar'
+                    }).then(function (result) { if (result && (result.isConfirmed === true || result.value === true)) send(); });
+                });
+            });
 
             // Habilitar día: confirmación SweetAlert v7 y submit del formulario oculto.
             var formEnable = document.getElementById('form-enable');

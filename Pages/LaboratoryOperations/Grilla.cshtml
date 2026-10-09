@@ -1,5 +1,6 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.GrillaModel
+@using System.Globalization
 @using Proyecto_Laboratorios_Univalle.Models
 @using Proyecto_Laboratorios_Univalle.Services
 @using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
@@ -7,12 +8,19 @@
     ViewData["Title"] = "Grilla por laboratorio";
     ViewData["HidePageTitle"] = true;
     var grid = Model.Grid;
-    string? twoWeeksRoute = grid is { TwoWeeks: true } ? "true" : null;
+    var origin = Model.Origin;
+    var mode = Model.IsRescheduleMode && grid != null;
+    // En modo reprogramación "dos semanas" es el valor por defecto: el "no" se envía explícito.
+    string? twoWeeksRoute = grid is { TwoWeeks: true } ? "true" : mode ? "false" : null;
+    int? reprogramarRoute = mode && !Model.IsRecoveryMode ? origin!.Id : null;
+    int? reponerRoute = mode && Model.IsRecoveryMode ? origin!.Id : null;
+    var canReschedule = Model.IsSuperAdmin && grid is { CanAdd: true };
     var legendStatuses = new[]
     {
         PlanningStatus.Planned, PlanningStatus.Approved, PlanningStatus.Finalized,
         PlanningStatus.Rescheduled, PlanningStatus.PendingRecovery, PlanningStatus.Recovered
     };
+    var inv = CultureInfo.InvariantCulture;
 }
 
 @section Styles {
@@ -25,7 +33,14 @@
         <div class="col-md-8">
             <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
             <h2 class="font-weight-bold text-dark">Grilla por laboratorio</h2>
-            <div class="text-muted small">Horario semanal de un ambiente: lunes a sábado por periodos académicos (solo consulta).</div>
+            @if (mode)
+            {
+                <div class="text-muted small">@(Model.IsRecoveryMode ? "Reposición de día" : "Reprogramación"): arrastre el bloque resaltado o elija el destino en el panel lateral.</div>
+            }
+            else
+            {
+                <div class="text-muted small">Horario semanal de un ambiente: lunes a sábado por periodos académicos.</div>
+            }
         </div>
         @if (grid != null)
         {
@@ -38,7 +53,7 @@
     </div>
 </div>
 
-<div class="container-fluid mt-3">
+<div class="container-fluid mt-3 @(mode ? "gr-mode-reschedule" : string.Empty)">
     @if (grid == null)
     {
         <div class="gr-empty-state">
@@ -55,6 +70,26 @@
         var management = grid.Management;
         var lab = grid.Laboratory;
 
+        @if (mode)
+        {
+            <!-- Banda del modo reprogramación -->
+            <div class="gr-rs-band shadow-sm rounded-lg mb-3 gr-noprint" role="status">
+                <i class="mdi mdi-calendar-clock gr-rs-band__icon" aria-hidden="true"></i>
+                <div class="gr-rs-band__text">
+                        <span class="gr-rs-band__eyebrow">@(Model.IsRecoveryMode ? "Reponiendo día" : "Reprogramando")</span>
+                    <span>
+                        <strong>@origin!.Code</strong> · @origin.SubjectName (@origin.GroupName)
+                        · origen @origin.Date.ToString("dd/MM") @origin.PeriodsText · @origin.LaboratoryLabel
+                    </span>
+                </div>
+                <a asp-page="./Grilla" asp-route-managementId="@origin.ManagementId" asp-route-laboratoryId="@origin.LaboratoryId"
+                   asp-route-date="@origin.Date.ToString("yyyy-MM-dd", inv)"
+                   class="btn btn-light btn-rounded btn-sm font-weight-bold ml-auto">
+                    <i class="fas fa-times mr-1"></i> Salir del modo de traslado
+                </a>
+            </div>
+        }
+
         @if (!grid.CanAdd)
         {
             <div class="alert border-0 shadow-sm rounded-lg d-flex align-items-center mb-3 gr-noprint gr-readonly">
@@ -70,9 +105,16 @@
         <div class="card border-0 shadow-sm rounded-lg mb-3 gr-noprint">
             <div class="card-body py-3">
                 <form method="get" id="gr-controls" class="gr-controls">
+                    @if (mode)
+                    {
+                         <input type="hidden" name="@(Model.IsRecoveryMode ? "reponer" : "reprogramar")" value="@origin!.Id" />
+                         @if (Model.IsRecoveryMode) { <input type="hidden" name="recoveryId" value="@Model.RecoveryId" /> }
+                        <input type="hidden" name="managementId" value="@management.Id" />
+                    }
                     <div class="gr-controls__field">
                         <label for="gr-management" class="gr-controls__label">Gestión</label>
-                        <select id="gr-management" name="managementId" class="custom-select custom-select-sm">
+                        <select id="gr-management" name="@(mode ? null : "managementId")" class="custom-select custom-select-sm" disabled="@mode"
+                                title="@(mode ? "La reprogramación se hace dentro de la gestión de la planificación." : null)">
                             @foreach (var m in grid.Managements)
                             {
                                 <option value="@m.Id" selected="@(m.Id == management.Id)">@m.Code · @m.StatusText@(m.IsCurrent ? " (actual)" : "")</option>
@@ -98,7 +140,7 @@
                                 @if (grid.PreviousWeekNumber.HasValue)
                                 {
                                     <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-laboratoryId="@lab?.Id"
-                                       asp-route-week="@grid.PreviousWeekNumber" asp-route-twoWeeks="@twoWeeksRoute"
+                                        asp-route-week="@grid.PreviousWeekNumber" asp-route-twoWeeks="@twoWeeksRoute" asp-route-reprogramar="@reprogramarRoute" asp-route-reponer="@reponerRoute" asp-route-recoveryId="@Model.RecoveryId"
                                        class="btn btn-outline-secondary btn-sm btn-rounded mr-1" title="Semana anterior" aria-label="Semana anterior">
                                         <i class="fas fa-chevron-left"></i>
                                     </a>
@@ -118,7 +160,7 @@
                                 @if (grid.NextWeekNumber.HasValue)
                                 {
                                     <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-laboratoryId="@lab?.Id"
-                                       asp-route-week="@grid.NextWeekNumber" asp-route-twoWeeks="@twoWeeksRoute"
+                                        asp-route-week="@grid.NextWeekNumber" asp-route-twoWeeks="@twoWeeksRoute" asp-route-reprogramar="@reprogramarRoute" asp-route-reponer="@reponerRoute" asp-route-recoveryId="@Model.RecoveryId"
                                        class="btn btn-outline-secondary btn-sm btn-rounded ml-1" title="Semana siguiente" aria-label="Semana siguiente">
                                         <i class="fas fa-chevron-right"></i>
                                     </a>
@@ -137,6 +179,11 @@
                                 <input type="checkbox" class="custom-control-input" id="gr-two-weeks" name="twoWeeks" value="true" checked="@grid.TwoWeeks">
                                 <label class="custom-control-label" for="gr-two-weeks">Ver dos semanas</label>
                             </div>
+                            @if (mode)
+                            {
+                                @* Va después de la casilla: si está marcada se toma "true" (primer valor), si no, "false". *@
+                                <input type="hidden" name="twoWeeks" value="false" />
+                            }
                         </div>
                     }
 
@@ -144,7 +191,7 @@
                         <button type="button" class="btn btn-outline-primary btn-rounded btn-sm" id="gr-print">
                             <i class="fas fa-print mr-1"></i> Imprimir
                         </button>
-                        @if (grid.CanAdd)
+                        @if (grid.CanAdd && !mode)
                         {
                             <a asp-page="./Planificacion" asp-route-managementId="@management.Id" asp-route-laboratoryId="@lab?.Id"
                                class="btn btn-primary btn-rounded btn-sm font-weight-bold shadow-sm gr-btn-primary">
@@ -178,171 +225,367 @@
         }
         else if (lab != null)
         {
-            @foreach (var week in grid.Weeks)
-            {
-                <section class="gr-sheet card border-0 shadow-sm rounded-lg mb-4" aria-label="Semana académica @week.Number">
-                    <!-- Encabezado del formulario oficial -->
-                    <header class="gr-sheet__head">
-                        <div class="gr-sheet__brand">
-                            <strong>UNIVALLE</strong>
-                            <span>Laboratorios</span>
-                        </div>
-                        <div class="gr-sheet__title">
-                            <span>REGISTRO DE HORARIOS — HORARIO POR AULA</span>
-                        </div>
-                        <div class="gr-sheet__code">
-                            <span>Código</span>
-                            <strong>RE-10-VAC-007</strong>
-                        </div>
-                    </header>
-                    <dl class="gr-sheet__meta">
-                        <div><dt>Gestión</dt><dd>@management.Code</dd></div>
-                        <div class="gr-sheet__meta-wide"><dt>Ambiente</dt><dd>@lab.Label</dd></div>
-                        <div><dt>Piso / ubicación</dt><dd>@lab.LocationText</dd></div>
-                        <div><dt>Capacidad</dt><dd>@lab.CapacityText</dd></div>
-                        <div><dt>Semana académica</dt><dd>@week.Number (@week.RangeText)</dd></div>
-                    </dl>
-
-                    <!-- Grilla: columna de periodos + lunes a sábado; filas = cabecera + periodos -->
-                    <div class="gr-scroll">
-                        <div class="gr-grid" style="grid-template-rows: auto repeat(@grid.Periods.Count, minmax(var(--gr-row-height), auto));"
-                             data-laboratory-id="@lab.Id" data-week="@week.Number">
-                            <div class="gr-corner" style="grid-column: 1; grid-row: 1;">Periodo</div>
-
-                            @foreach (var day in week.Days)
-                            {
-                                var headCss = !day.InManagement ? "gr-dayhead--out" : day.IsSuspended ? "gr-dayhead--suspended" : string.Empty;
-                                <div class="gr-dayhead @headCss" style="grid-column: @(day.Weekday + 1); grid-row: 1;"
-                                     data-date="@day.Date.ToString("yyyy-MM-dd")">
-                                    <span class="gr-dayhead__name">@day.Name</span>
-                                    <span class="gr-dayhead__date">@day.Date.ToString("dd/MM")</span>
-                                    @if (!day.InManagement)
-                                    {
-                                        <span class="gr-dayhead__note">Fuera de la gestión</span>
-                                    }
-                                    else if (day.IsSuspended)
-                                    {
-                                        <span class="gr-dayhead__note gr-dayhead__note--suspended" title="@day.Reason">
-                                            <i class="mdi mdi-calendar-remove"></i> Suspendido@(string.IsNullOrWhiteSpace(day.Reason) ? "" : ": " + day.Reason)
-                                        </span>
-                                    }
+            <div class="gr-layout @(mode ? "gr-layout--rs" : string.Empty)">
+                <div class="gr-layout__main">
+                    @foreach (var week in grid.Weeks)
+                    {
+                        <section class="gr-sheet card border-0 shadow-sm rounded-lg mb-4" aria-label="Semana académica @week.Number">
+                            <!-- Encabezado del formulario oficial -->
+                            <header class="gr-sheet__head">
+                                <div class="gr-sheet__brand">
+                                    <strong>UNIVALLE</strong>
+                                    <span>Laboratorios</span>
                                 </div>
-                            }
-
-                            @foreach (var period in grid.Periods)
-                            {
-                                var row = period.Order + 1;
-                                <div class="gr-period" style="grid-column: 1; grid-row: @row;">
-                                    <strong>P@(period.Order)</strong>
-                                    <span>@period.Label</span>
+                                <div class="gr-sheet__title">
+                                    <span>REGISTRO DE HORARIOS — HORARIO POR AULA</span>
                                 </div>
+                                <div class="gr-sheet__code">
+                                    <span>Código</span>
+                                    <strong>RE-10-VAC-007</strong>
+                                </div>
+                            </header>
+                            <dl class="gr-sheet__meta">
+                                <div><dt>Gestión</dt><dd>@management.Code</dd></div>
+                                <div class="gr-sheet__meta-wide"><dt>Ambiente</dt><dd>@lab.Label</dd></div>
+                                <div><dt>Piso / ubicación</dt><dd>@lab.LocationText</dd></div>
+                                <div><dt>Capacidad</dt><dd>@lab.CapacityText</dd></div>
+                                <div><dt>Semana académica</dt><dd>@week.Number (@week.RangeText)</dd></div>
+                            </dl>
 
-                                @foreach (var day in week.Days)
-                                {
-                                    var dateValue = day.Date.ToString("yyyy-MM-dd");
-                                    var busy = day.IsBusy(period.Order);
-                                    var cellCss = !day.InManagement ? "gr-cell--out" : day.IsSuspended ? "gr-cell--suspended" : string.Empty;
-                                    <div class="gr-cell @cellCss @(busy ? "gr-cell--busy" : string.Empty)"
-                                         style="grid-column: @(day.Weekday + 1); grid-row: @row;"
-                                         data-date="@dateValue" data-order="@period.Order" data-laboratory-id="@lab.Id"
-                                         data-suspended="@(day.IsSuspended ? "true" : null)">
-                                        @if (grid.CanAdd && day.AcceptsBlocks && !busy)
+                            <!-- Grilla: columna de periodos + lunes a sábado; filas = cabecera + periodos -->
+                            <div class="gr-scroll">
+                                <div class="gr-grid" style="grid-template-rows: auto repeat(@grid.Periods.Count, minmax(var(--gr-row-height), auto));"
+                                     data-laboratory-id="@lab.Id" data-week="@week.Number">
+                                    <div class="gr-corner" style="grid-column: 1; grid-row: 1;">Periodo</div>
+
+                                    @foreach (var day in week.Days)
+                                    {
+                                        var headCss = !day.InManagement ? "gr-dayhead--out" : day.IsSuspended ? "gr-dayhead--suspended" : string.Empty;
+                                        <div class="gr-dayhead @headCss" style="grid-column: @(day.Weekday + 1); grid-row: 1;"
+                                             data-date="@day.Date.ToString("yyyy-MM-dd", inv)">
+                                            <span class="gr-dayhead__name">@day.Name</span>
+                                            <span class="gr-dayhead__date">@day.Date.ToString("dd/MM")</span>
+                                            @if (!day.InManagement)
+                                            {
+                                                <span class="gr-dayhead__note">Fuera de la gestión</span>
+                                            }
+                                             else if (day.IsSuspended)
+                                             {
+                                                 <span class="gr-dayhead__note gr-dayhead__note--suspended" title="@day.Reason">
+                                                     <i class="mdi mdi-calendar-remove"></i> Suspendido@(string.IsNullOrWhiteSpace(day.Reason) ? "" : ": " + day.Reason)
+                                                 </span>
+                                                 <a asp-page="./Reposiciones" asp-route-managementId="@management.Id" class="small gr-noprint">Ver reposiciones</a>
+                                             }
+                                             else if (Model.IsSuperAdmin && !mode && grid.CanAdd && day.Blocks.Any(b => b.Occupies))
+                                             {
+                                                 <a asp-page="./CalendarioAcademico" asp-route-managementId="@management.Id"
+                                                    asp-fragment="day-@day.Date.ToString("yyyy-MM-dd", inv)" class="small gr-noprint">Reponer día</a>
+                                             }
+                                        </div>
+                                    }
+
+                                    @foreach (var period in grid.Periods)
+                                    {
+                                        var row = period.Order + 1;
+                                        <div class="gr-period" style="grid-column: 1; grid-row: @row;">
+                                            <strong>P@(period.Order)</strong>
+                                            <span>@period.Label</span>
+                                        </div>
+
+                                        @foreach (var day in week.Days)
                                         {
-                                            <a asp-page="./Planificacion" asp-route-managementId="@management.Id" asp-route-date="@dateValue"
-                                               asp-route-periodId="@period.Id" asp-route-laboratoryId="@lab.Id"
-                                               class="gr-cell__add" title="Nueva planificación: @day.Name @day.Date.ToString("dd/MM"), P@(period.Order) (@period.Label)"
-                                               aria-label="Nueva planificación el @day.Name @day.Date.ToString("dd/MM") en el periodo @period.Order">
-                                                <i class="fas fa-plus"></i>
-                                            </a>
+                                            var dateValue = day.Date.ToString("yyyy-MM-dd", inv);
+                                            var busy = day.IsBusy(period.Order);
+                                            var cellCss = !day.InManagement ? "gr-cell--out" : day.IsSuspended ? "gr-cell--suspended" : string.Empty;
+                                            <div class="gr-cell @cellCss @(busy ? "gr-cell--busy" : string.Empty)"
+                                                 style="grid-column: @(day.Weekday + 1); grid-row: @row;"
+                                                 data-date="@dateValue" data-order="@period.Order" data-laboratory-id="@lab.Id" data-col="@(day.Weekday + 1)"
+                                                 data-suspended="@(day.IsSuspended ? "true" : null)" data-out="@(day.InManagement ? null : "true")">
+                                                @if (grid.CanAdd && !mode && day.AcceptsBlocks && !busy)
+                                                {
+                                                    <a asp-page="./Planificacion" asp-route-managementId="@management.Id" asp-route-date="@dateValue"
+                                                       asp-route-periodId="@period.Id" asp-route-laboratoryId="@lab.Id"
+                                                       class="gr-cell__add" title="Nueva planificación: @day.Name @day.Date.ToString("dd/MM"), P@(period.Order) (@period.Label)"
+                                                       aria-label="Nueva planificación el @day.Name @day.Date.ToString("dd/MM") en el periodo @period.Order">
+                                                        <i class="fas fa-plus"></i>
+                                                    </a>
+                                                }
+                                            </div>
                                         }
-                                    </div>
-                                }
-                            }
+                                    }
 
-                            @foreach (var day in week.Days)
+                                    @foreach (var day in week.Days)
+                                    {
+                                        @foreach (var b in day.Blocks)
+                                        {
+                                            var isOrigin = mode && b.PlanningId == origin!.Id;
+                                            var relocCss = b.Relocation is { Kind: GridRelocationKind.MovedFrom } ? $"gr-block--reloc-{b.Relocation.Css}" : string.Empty;
+                                            var rescheduleUrl = canReschedule && b.IsReschedulable && !isOrigin ? Url.Page("./Grilla", new { reprogramar = b.PlanningId }) : null;
+                                            <div class="gr-block gr-block--@b.StatusCss @(b.Occupies ? string.Empty : "gr-block--inactive") @(b.LaneCount > 1 ? "gr-block--lane" : string.Empty) @relocCss @(isOrigin ? "gr-block--origin" : string.Empty) @(Model.Resaltar == b.PlanningId ? "gr-block--highlight" : string.Empty)"
+                                                 style="grid-column: @(day.Weekday + 1); grid-row: @(b.StartOrder!.Value + 1) / span @b.PeriodCount; --gr-lane: @b.LaneIndex; --gr-lanes: @b.LaneCount;"
+                                                 title="@b.Tooltip"
+                                                 draggable="@(isOrigin ? "true" : null)"
+                                                 data-planning-id="@b.PlanningId" data-code="@b.Code" data-date="@b.Date.ToString("yyyy-MM-dd", inv)"
+                                                 data-start-order="@b.StartOrder" data-period-count="@b.PeriodCount"
+                                                 data-laboratory-id="@b.LaboratoryId" data-status="@b.Status"
+                                                 data-next-url="@b.NextUrl" data-reschedule-url="@rescheduleUrl">
+                                                <a href="@b.NextUrl" class="gr-block__open" draggable="false" aria-label="Abrir @b.Code: @b.SubjectName (@b.GroupName)"></a>
+                                                <span class="gr-block__title">@b.SubjectShort (@b.GroupName)</span>
+                                                <span class="gr-block__teacher"><i class="fas fa-user-tie mr-1"></i>@b.TeacherName</span>
+                                                @if (b.Relocation != null)
+                                                {
+                                                    <a href="@b.Relocation.Url" class="gr-block__reloc gr-block__reloc--@b.Relocation.Css" draggable="false" title="@b.Relocation.Text">
+                                                        <i class="mdi @b.Relocation.Icon" aria-hidden="true"></i> @b.Relocation.Text
+                                                    </a>
+                                                }
+                                                <span class="gr-block__foot">
+                                                    <span class="gr-block__code">@b.Code</span>
+                                                    <span class="badge badge-@b.StatusCss gr-block__badge @(b.StatusCss == "light" ? "border" : string.Empty)">@b.StatusLabel</span>
+                                                </span>
+                                                @if (isOrigin)
+                                                {
+                                                    <span class="gr-block__drag-hint"><i class="mdi mdi-cursor-move" aria-hidden="true"></i> Arrástrelo</span>
+                                                }
+                                                <button type="button" class="gr-block__menu-btn gr-noprint" aria-haspopup="true" aria-label="Acciones de @b.Code" title="Acciones">
+                                                    <i class="mdi mdi-dots-vertical" aria-hidden="true"></i>
+                                                </button>
+                                            </div>
+                                        }
+                                    }
+                                </div>
+                            </div>
+
+                            @if (week.Unscheduled.Count > 0)
                             {
-                                @foreach (var b in day.Blocks)
-                                {
-                                    <a href="@b.NextUrl"
-                                       class="gr-block gr-block--@b.StatusCss @(b.Occupies ? string.Empty : "gr-block--inactive") @(b.LaneCount > 1 ? "gr-block--lane" : string.Empty)"
-                                       style="grid-column: @(day.Weekday + 1); grid-row: @(b.StartOrder!.Value + 1) / span @b.PeriodCount; --gr-lane: @b.LaneIndex; --gr-lanes: @b.LaneCount;"
-                                       title="@b.Tooltip"
-                                       data-planning-id="@b.PlanningId" data-date="@b.Date.ToString("yyyy-MM-dd")"
-                                       data-start-order="@b.StartOrder" data-period-count="@b.PeriodCount"
-                                       data-laboratory-id="@b.LaboratoryId" data-status="@b.Status">
-                                        <span class="gr-block__title">@b.SubjectShort (@b.GroupName)</span>
-                                        <span class="gr-block__teacher"><i class="fas fa-user-tie mr-1"></i>@b.TeacherName</span>
-                                        <span class="gr-block__foot">
-                                            <span class="gr-block__code">@b.Code</span>
-                                            <span class="badge badge-@b.StatusCss gr-block__badge @(b.StatusCss == "light" ? "border" : string.Empty)">@b.StatusLabel</span>
-                                        </span>
-                                    </a>
-                                }
+                                <div class="gr-unscheduled">
+                                    <h6 class="font-weight-bold text-dark mb-2">
+                                        <i class="fas fa-clock text-warning mr-1"></i> Sin periodo asignado
+                                        <small class="text-muted font-weight-normal ml-1">Planificaciones anteriores al registro por periodos; se muestran con su horario original.</small>
+                                    </h6>
+                                    <ul class="list-unstyled mb-0">
+                                        @foreach (var b in week.Unscheduled)
+                                        {
+                                            <li>
+                                                <a href="@b.NextUrl" class="gr-unscheduled__item @(b.Occupies ? string.Empty : "gr-block--inactive")" title="@b.Tooltip"
+                                                   data-planning-id="@b.PlanningId" data-date="@b.Date.ToString("yyyy-MM-dd", inv)"
+                                                   data-laboratory-id="@b.LaboratoryId" data-status="@b.Status">
+                                                    <span class="gr-unscheduled__when">@b.Date.ToString("ddd dd/MM", CultureInfo.GetCultureInfo("es-BO")) · @b.TimeText</span>
+                                                    <strong>@b.SubjectShort (@b.GroupName)</strong>
+                                                    <span class="text-muted">@b.TeacherName</span>
+                                                    <span class="gr-block__code">@b.Code</span>
+                                                    <span class="badge badge-@b.StatusCss @(b.StatusCss == "light" ? "border" : string.Empty)">@b.StatusLabel</span>
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
                             }
-                        </div>
-                    </div>
 
-                    @if (week.Unscheduled.Count > 0)
-                    {
-                        <div class="gr-unscheduled">
-                            <h6 class="font-weight-bold text-dark mb-2">
-                                <i class="fas fa-clock text-warning mr-1"></i> Sin periodo asignado
-                                <small class="text-muted font-weight-normal ml-1">Planificaciones anteriores al registro por periodos; se muestran con su horario original.</small>
-                            </h6>
-                            <ul class="list-unstyled mb-0">
-                                @foreach (var b in week.Unscheduled)
+                            @if (week.BlockCount == 0)
+                            {
+                                <div class="gr-week-empty">
+                                    <i class="far fa-calendar-check mr-1"></i> Sin planificaciones de @lab.Code en esta semana.
+                                </div>
+                            }
+                        </section>
+                    }
+
+                    <!-- Leyenda de estados -->
+                    <div class="card border-0 shadow-sm rounded-lg mb-4 gr-legend-card">
+                        <div class="card-body py-3">
+                            <div class="d-flex flex-wrap align-items-center gr-legend">
+                                <span class="font-weight-bold text-dark mr-2">Estados:</span>
+                                @foreach (var status in legendStatuses)
                                 {
-                                    <li>
-                                        <a href="@b.NextUrl" class="gr-unscheduled__item @(b.Occupies ? string.Empty : "gr-block--inactive")" title="@b.Tooltip"
-                                           data-planning-id="@b.PlanningId" data-date="@b.Date.ToString("yyyy-MM-dd")"
-                                           data-laboratory-id="@b.LaboratoryId" data-status="@b.Status">
-                                            <span class="gr-unscheduled__when">@b.Date.ToString("ddd dd/MM", System.Globalization.CultureInfo.GetCultureInfo("es-BO")) · @b.TimeText</span>
-                                            <strong>@b.SubjectShort (@b.GroupName)</strong>
-                                            <span class="text-muted">@b.TeacherName</span>
-                                            <span class="gr-block__code">@b.Code</span>
-                                            <span class="badge badge-@b.StatusCss @(b.StatusCss == "light" ? "border" : string.Empty)">@b.StatusLabel</span>
-                                        </a>
-                                    </li>
+                                    var css = PlanningStatusView.Css(status);
+                                    <span class="gr-legend__item">
+                                        <span class="gr-legend__swatch gr-block--@css @(PlanningStatus.Occupies(status) ? string.Empty : "gr-block--inactive")"></span>
+                                        @PlanningStatus.Label(status)
+                                    </span>
                                 }
-                            </ul>
+                                <span class="gr-legend__item">
+                                    <span class="gr-legend__swatch gr-legend__swatch--rescheduling"></span>
+                                    <i class="mdi mdi-calendar-clock gr-legend__icon--rescheduling" aria-hidden="true"></i> Reprogramada desde otra fecha
+                                </span>
+                                <span class="gr-legend__item">
+                                    <span class="gr-legend__swatch gr-legend__swatch--recovery"></span>
+                                    <i class="mdi mdi-backup-restore gr-legend__icon--recovery" aria-hidden="true"></i> Reposición de un día suspendido
+                                </span>
+                                <span class="gr-legend__item">
+                                    <span class="gr-legend__swatch gr-legend__swatch--suspended"></span> Día suspendido
+                                </span>
+                                <span class="gr-legend__item">
+                                    <span class="gr-legend__swatch gr-legend__swatch--out"></span> Fuera de la gestión
+                                </span>
+                                <span class="gr-legend__note text-muted small">Los estados atenuados no ocupan el ambiente; <i class="mdi mdi-arrow-right-bold" aria-hidden="true"></i> lleva a su nueva ubicación.</span>
+                            </div>
                         </div>
-                    }
-
-                    @if (week.BlockCount == 0)
-                    {
-                        <div class="gr-week-empty">
-                            <i class="far fa-calendar-check mr-1"></i> Sin planificaciones de @lab.Code en esta semana.
-                        </div>
-                    }
-                </section>
-            }
-
-            <!-- Leyenda de estados -->
-            <div class="card border-0 shadow-sm rounded-lg mb-4 gr-legend-card">
-                <div class="card-body py-3">
-                    <div class="d-flex flex-wrap align-items-center gr-legend">
-                        <span class="font-weight-bold text-dark mr-2">Estados:</span>
-                        @foreach (var status in legendStatuses)
-                        {
-                            var css = PlanningStatusView.Css(status);
-                            <span class="gr-legend__item">
-                                <span class="gr-legend__swatch gr-block--@css @(PlanningStatus.Occupies(status) ? string.Empty : "gr-block--inactive")"></span>
-                                @PlanningStatus.Label(status)
-                            </span>
-                        }
-                        <span class="gr-legend__item">
-                            <span class="gr-legend__swatch gr-legend__swatch--suspended"></span> Día suspendido
-                        </span>
-                        <span class="gr-legend__item">
-                            <span class="gr-legend__swatch gr-legend__swatch--out"></span> Fuera de la gestión
-                        </span>
-                        <span class="gr-legend__note text-muted small">Los estados atenuados no ocupan el ambiente.</span>
                     </div>
                 </div>
+
+                @if (mode)
+                {
+                    var o = origin!;
+                    var firstWeek = grid.WeekOptions.First();
+                    var lastWeek = grid.WeekOptions.Last();
+                    var selectedPeriodId = Model.DestPeriodId ?? o.StartPeriodId;
+                    var selectedTeacherId = Model.DestTeacherId ?? o.TeacherPersonId;
+                    <aside class="gr-layout__side gr-noprint" aria-label="Panel de reprogramación">
+                        <div class="card border-0 shadow-sm rounded-lg gr-rs-panel" id="gr-rs-panel">
+                            <div class="card-body p-3">
+                                 <h5 class="font-weight-bold text-dark mb-3"><i class="mdi mdi-calendar-clock gr-rs-violet mr-1"></i> @(Model.IsRecoveryMode ? "Reposición de día" : "Reprogramación")</h5>
+
+                                <!-- Ficha del origen (arrastrable si el bloque no está en la vista) -->
+                                <div class="gr-rs-card @(Model.OriginInView ? string.Empty : "gr-rs-card--draggable")" id="gr-rs-origin-card"
+                                     draggable="@(Model.OriginInView ? null : "true")" tabindex="@(Model.OriginInView ? null : "0")">
+                                    <div class="gr-rs-card__eyebrow">Origen @(o.IsCompleted ? "· completada" : string.Empty)</div>
+                                    <div class="font-weight-bold text-dark">@o.Code · @o.SubjectName (@o.GroupName)</div>
+                                    <div class="small text-muted text-truncate" title="@o.PracticeName">@o.PracticeName</div>
+                                    <div class="small mt-1"><i class="far fa-calendar mr-1"></i>@GrillaModel.LongDate(o.Date)</div>
+                                    <div class="small"><i class="far fa-clock mr-1"></i>@o.TimeText</div>
+                                    <div class="small"><i class="fas fa-flask mr-1"></i>@o.LaboratoryLabel</div>
+                                    <div class="small"><i class="fas fa-user-tie mr-1"></i>@o.TeacherName</div>
+                                    <div class="gr-rs-card__hint">
+                                        @if (Model.OriginInView)
+                                        {
+                                            <span><i class="mdi mdi-cursor-move"></i> Arrastre el bloque resaltado de la grilla a una celda libre.</span>
+                                        }
+                                        else
+                                        {
+                                            <span><i class="mdi mdi-cursor-move"></i> El bloque no está en esta vista: arrastre esta ficha a una celda de la grilla.</span>
+                                        }
+                                    </div>
+                                 </div>
+
+                                 @if (Model.IsRecoveryMode)
+                                 {
+                                     <div class="border-top mt-3 pt-3 gr-rs-pending" aria-label="Bandeja de planificaciones pendientes">
+                                         <h6 class="font-weight-bold text-dark">Bandeja · @Model.RecoveryPending.Count pendiente(s)</h6>
+                                         @foreach (var group in Model.RecoveryPending.GroupBy(p => p.Laboratory))
+                                         {
+                                             <div class="small font-weight-bold text-muted mt-2">@group.Key</div>
+                                             @foreach (var pending in group)
+                                             {
+                                                 <a asp-page="./Grilla" asp-route-reponer="@pending.Id" asp-route-recoveryId="@Model.RecoveryId"
+                                                    class="d-block small rounded border px-2 py-1 mb-1 @(pending.Id == o.Id ? "border-warning bg-light" : "")">
+                                                     @pending.Code · @pending.Subject (@pending.Group) · @pending.PeriodCount periodo(s)
+                                                 </a>
+                                             }
+                                         }
+                                     </div>
+                                 }
+
+                                 <form method="post" asp-page-handler="Reprogramar" id="gr-rs-form" class="mt-3" novalidate
+                                      asp-route-managementId="@management.Id" asp-route-laboratoryId="@lab.Id"
+                                       asp-route-week="@grid.SelectedWeekNumber" asp-route-twoWeeks="@twoWeeksRoute" asp-route-reprogramar="@reprogramarRoute" asp-route-reponer="@reponerRoute" asp-route-recoveryId="@Model.RecoveryId">
+                                     <input type="hidden" name="Move.PlanningId" value="@o.Id" />
+                                     @if (Model.IsRecoveryMode) { <input type="hidden" name="Move.DayRecoveryId" value="@Model.RecoveryId" /> }
+
+                                    <!-- Destino (alternativa sin arrastre) -->
+                                    <fieldset class="gr-rs-fieldset">
+                                        <legend class="gr-rs-legend">Destino</legend>
+                                        <div class="form-row">
+                                            <div class="form-group col-7 mb-2">
+                                                <label for="gr-rs-date" class="gr-controls__label">Fecha</label>
+                                                <input type="date" id="gr-rs-date" name="Move.Date" class="form-control form-control-sm"
+                                                       min="@firstWeek.StartDate.ToString("yyyy-MM-dd", inv)" max="@lastWeek.EndDate.ToString("yyyy-MM-dd", inv)"
+                                                       value="@Model.DestDate" />
+                                            </div>
+                                            <div class="form-group col-5 mb-2">
+                                                <label for="gr-rs-period" class="gr-controls__label">Periodo inicial</label>
+                                                <select id="gr-rs-period" name="Move.StartPeriodId" class="custom-select custom-select-sm">
+                                                    @foreach (var p in grid.Periods)
+                                                    {
+                                                        <option value="@p.Id" selected="@(p.Id == selectedPeriodId)">P@(p.Order) · @p.Label</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="gr-rs-lab" class="gr-controls__label">Ambiente</label>
+                                            <select id="gr-rs-lab" name="Move.LaboratoryId" class="custom-select custom-select-sm">
+                                                @foreach (var l in grid.Laboratories)
+                                                {
+                                                    <option value="@l.Id" selected="@(l.Id == lab.Id)">@l.Label</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="form-group mb-2">
+                                            <label for="gr-rs-teacher" class="gr-controls__label">Docente</label>
+                                            <select id="gr-rs-teacher" name="Move.TeacherPersonId" class="form-control form-control-sm">
+                                                @foreach (var t in Model.Teachers)
+                                                {
+                                                    <option value="@t.Id" selected="@(t.Id == selectedTeacherId)">@t.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <small class="form-text text-muted mb-2">El bloque se mueve completo: @o.PeriodCount periodo(s).</small>
+                                        <button type="button" id="gr-rs-preview-btn" class="btn btn-outline-primary btn-sm btn-rounded btn-block">
+                                            <i class="mdi mdi-eye mr-1"></i> Previsualizar
+                                        </button>
+                                    </fieldset>
+
+                                    <!-- Previsualización (la llena grilla-reprogramar.js con la respuesta del servidor) -->
+                                    <div id="gr-rs-preview" class="gr-rs-preview" aria-live="polite">
+                                        <div class="gr-rs-preview__empty">
+                                            <i class="mdi mdi-hand-pointing-right" aria-hidden="true"></i>
+                                            Arrastre el bloque a una celda o elija el destino y pulse <strong>Previsualizar</strong>.
+                                        </div>
+                                    </div>
+
+                                    <!-- Confirmación: visible cuando el destino quedó fijado sin bloqueos -->
+                                    <div id="gr-rs-confirm" class="gr-rs-confirm" hidden>
+                                        <div class="form-group mb-2">
+                                            <label for="gr-rs-reason" class="gr-controls__label">Motivo <span class="text-danger">*</span></label>
+                                            <textarea id="gr-rs-reason" name="Move.Reason" class="form-control form-control-sm" rows="3"
+                                                      maxlength="@ReschedulingService.MaxReasonLength" required
+                                                      placeholder="Ej.: el docente tiene un congreso ese día">@Model.PreviousReason</textarea>
+                                        </div>
+                                        <div class="custom-control custom-checkbox mb-2" id="gr-rs-accept-wrap" hidden>
+                                            <input type="checkbox" class="custom-control-input" id="gr-rs-accept" />
+                                            <label class="custom-control-label font-weight-bold text-dark" for="gr-rs-accept">Acepto las advertencias</label>
+                                        </div>
+                                        <div id="gr-rs-accepted"></div>
+                                        <button type="submit" class="btn btn-block btn-rounded font-weight-bold gr-rs-submit">
+                                             <i class="mdi mdi-check mr-1"></i> @(Model.IsRecoveryMode ? "Confirmar reposición" : "Confirmar reprogramación")
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </aside>
+                }
             </div>
         }
     }
 </div>
+
+<!-- Menú contextual de los bloques (uno solo, posicionado junto al botón "⋮") -->
+<div id="gr-block-menu" class="dropdown-menu gr-ctx-menu" role="menu" aria-hidden="true"></div>
+
+@if (mode && grid?.Laboratory != null && grid.HasWeeks)
+{
+    var rsConfig = new
+    {
+        planningId = origin!.Id,
+        code = origin.Code,
+        periodCount = origin.PeriodCount,
+        originDate = origin.Date.ToString("yyyy-MM-dd", inv),
+        originStartOrder = origin.StartOrder,
+        originLabId = origin.LaboratoryId,
+        originTeacherId = origin.TeacherPersonId,
+        maxOrder = grid.Periods.Count > 0 ? grid.Periods.Max(p => p.Order) : PlanningSlot.MaxPeriods,
+        validateUrl = Url.Page("/Api/SlotValidation"),
+        periods = grid.Periods.Select(p => new { id = p.Id, order = p.Order, label = p.Label }),
+        labs = grid.Laboratories.Select(l => new { id = l.Id, label = l.Label }),
+        completedText = "Esta planificación ya está completada. ¿Seguro que desea reprogramarla?",
+        recovery = Model.IsRecoveryMode,
+        initial = !string.IsNullOrWhiteSpace(Model.DestDate) && Model.DestPeriodId.HasValue
+            ? new { date = Model.DestDate, periodId = Model.DestPeriodId.Value }
+            : null
+    };
+    <script type="application/json" id="gr-rs-config">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(rsConfig))</script>
+}
 
 @section Scripts {
     <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
@@ -384,4 +627,5 @@
             if (print) print.addEventListener('click', function () { window.print(); });
         })();
     </script>
+    <script src="~/js/grilla-reprogramar.js" asp-append-version="true"></script>
 }

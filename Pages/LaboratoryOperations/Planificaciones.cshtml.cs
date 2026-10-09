@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
+using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Services;
 
@@ -12,15 +15,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 /// Listado de planificaciones (sesiones de práctica, código PRA) de una gestión: la actual por defecto
 /// o la indicada por ?managementId=. Filtros por semana, estado y laboratorio. Solo lectura.
 /// </summary>
+[Authorize(Roles = AuthorizationHelper.ManagementRoles)]
 public class PlanificacionesModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly IAcademicManagementService _managements;
+    private readonly IPlanningLock _planningLock;
 
-    public PlanificacionesModel(ApplicationDbContext context, IAcademicManagementService managements)
+    public PlanificacionesModel(ApplicationDbContext context, IAcademicManagementService managements, IPlanningLock planningLock)
     {
         _context = context;
         _managements = managements;
+        _planningLock = planningLock;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -41,6 +47,43 @@ public class PlanificacionesModel : PageModel
     public IReadOnlyList<SelectListItem> StatusOptions { get; private set; } = [];
     public SelectList LaboratoryOptions { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public IReadOnlyList<PlanningRow> Rows { get; private set; } = [];
+    public bool IsSuperAdmin => User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
+
+    /// <summary>Solo SuperAdmin puede volver una Aprobada a Planificada para editar sus requerimientos.</summary>
+    public async Task<IActionResult> OnPostReopenAsync(int id, int? managementId)
+    {
+        if (!IsSuperAdmin) return Forbid();
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        if (!await _planningLock.TryAcquireAsync([PlanningLockResources.Planning(id)]))
+        {
+            TempData.Warning(PlanningLockResources.BusyMessage);
+            return RedirectToPage(new { managementId });
+        }
+        var planning = await _context.Plannings.AsTracking().FirstOrDefaultAsync(p => p.Id == id);
+        if (planning == null || (managementId.HasValue && managementId != planning.ManagementId))
+        {
+            TempData.Error("La planificación no existe en esa gestión.");
+            return RedirectToPage(new { managementId });
+        }
+        if (planning.Status != PlanningStatus.Approved
+            || !await _managements.IsPlanningWritableAsync(id))
+        {
+            TempData.Error("Solo se puede reabrir una planificación aprobada en una gestión editable.");
+            return RedirectToPage(new { managementId = planning.ManagementId });
+        }
+        if (await _context.Departures.AsNoTracking().AnyAsync(d => d.PlanningId == id && d.Status != LoanStatus.Cancelled)
+            || await _context.L5Incidents.AsNoTracking().AnyAsync(i => i.PlanningId == id))
+        {
+            TempData.Error("No se puede reabrir: la planificación tiene una salida L-3 o un incidente L-5.");
+            return RedirectToPage(new { managementId = planning.ManagementId });
+        }
+
+        planning.Status = PlanningStatus.Planned;
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+        TempData.Success($"{L3Codes.Format(planning.Id)} se reabrió para editar.");
+        return RedirectToPage("./Requerimientos", new { planId = planning.Id });
+    }
 
     public async Task OnGetAsync()
     {

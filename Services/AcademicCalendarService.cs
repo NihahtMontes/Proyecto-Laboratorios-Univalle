@@ -10,7 +10,8 @@ public sealed record CalendarResult(bool Ok, string Message);
 public interface IAcademicCalendarService
 {
     /// <summary>Genera/actualiza semanas (lun-sáb) y días de la gestión desde el inicio y fin de clases (o las fechas de la gestión).</summary>
-    Task<CalendarResult> GenerateWeeksAsync(int managementId);
+    Task<CalendarResult> GenerateWeeksAsync(int managementId, DateTime? classesStartDate = null,
+        DateTime? classesEndDate = null, bool updateClassDates = false);
 
     /// <summary>Suspende (motivo obligatorio) o habilita un día sin planificaciones vigentes.</summary>
     Task<CalendarResult> SetDayStatusAsync(int dayId, AcademicDayStatus status, string? reason);
@@ -25,20 +26,30 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<AcademicCalendarService> _logger;
+    private readonly IPlanningLock _lock;
 
-    public AcademicCalendarService(ApplicationDbContext context, ILogger<AcademicCalendarService> logger)
+    public AcademicCalendarService(ApplicationDbContext context, ILogger<AcademicCalendarService> logger, IPlanningLock planningLock)
     {
         _context = context;
         _logger = logger;
+        _lock = planningLock;
     }
 
-    public async Task<CalendarResult> GenerateWeeksAsync(int managementId)
+    public async Task<CalendarResult> GenerateWeeksAsync(int managementId, DateTime? classesStartDate = null,
+        DateTime? classesEndDate = null, bool updateClassDates = false)
     {
         var management = await _context.Managements.AsTracking()
             .FirstOrDefaultAsync(m => m.Id == managementId);
         if (management == null || management.Semester <= 0
             || management.Status is not (ManagementStatus.Active or ManagementStatus.Inactive))
             return Fail("La gestión está completada o no existe.");
+
+        // Las fechas solo se persisten si el calendario se genera correctamente en esta misma transacción.
+        if (updateClassDates)
+        {
+            management.ClassesStartDate = classesStartDate?.Date;
+            management.ClassesEndDate = classesEndDate?.Date;
+        }
 
         // Las semanas se numeran desde el inicio de clases; sin fechas de clases se usan las de la gestión.
         var startDate = management.ClassesStartDate ?? management.StartDate;
@@ -65,6 +76,23 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
+            // Generar, suspender y reservar usan los mismos recursos de día. Incluir todo el semestre
+            // (también los días que todavía no existen) impide crear una reserva entre la comprobación
+            // del historial y el borrado/recreación del calendario.
+            var existingDates = await _context.AcademicDays.AsNoTracking()
+                .Where(d => d.AcademicWeek.ManagementId == managementId)
+                .Select(d => d.Date).ToListAsync();
+            var firstProtected = (management.StartDate ?? start).Date;
+            var lastProtected = (management.PlannedEndDate ?? end).Date;
+            if (lastProtected < firstProtected || (lastProtected - firstProtected).TotalDays > 370)
+                return Fail("El rango de la gestión no es válido para generar el calendario semestral.");
+            var resources = Enumerable.Range(0, (lastProtected - firstProtected).Days + 1)
+                .Select(i => PlanningLockResources.ManagementDay(managementId, firstProtected.AddDays(i)))
+                .Concat(existingDates.Select(d => PlanningLockResources.ManagementDay(managementId, d)))
+                .Append(PlanningLockResources.ManagementCalendar(managementId));
+            if (!await _lock.TryAcquireAsync(resources))
+                return Fail(PlanningLockResources.BusyMessage);
+
             var weeks = await _context.AcademicWeeks.AsTracking()
                 .Include(w => w.Days)
                 .Where(w => w.ManagementId == managementId)
@@ -96,7 +124,7 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
             {
                 foreach (var day in week.Days.Where(d => d.Date < from || d.Date > to).ToList())
                 {
-                    if (day.DayRecoveryId != null || await HasOccupyingPlanningsAsync(day.Date))
+                    if (day.DayRecoveryId != null || await HasOccupyingPlanningsAsync(managementId, day.Date))
                         return Fail($"El {day.Date:dd/MM/yyyy} quedó fuera de las fechas de clases y tiene planificaciones vigentes o una reposición asociada: ajuste las fechas o reubique esas planificaciones.");
                     // Día de configuración sin uso: eliminación física.
                     _context.AcademicDays.Remove(day);
@@ -161,7 +189,7 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
         }
         catch (DbUpdateException ex)
         {
-            await transaction.RollbackAsync();
+            await transaction.SafeRollbackAsync();
             _logger.LogError(ex, "No se pudo actualizar el calendario académico de la gestión {ManagementId}", managementId);
             return Fail("No se pudo actualizar el calendario académico. Intente nuevamente.");
         }
@@ -169,14 +197,25 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
 
     public async Task<CalendarResult> SetDayStatusAsync(int dayId, AcademicDayStatus status, string? reason)
     {
-        var day = await _context.AcademicDays.AsTracking()
-            .Include(d => d.AcademicWeek)
-            .FirstOrDefaultAsync(d => d.Id == dayId);
-        if (day == null || day.AcademicWeek == null)
+        if (status is not (AcademicDayStatus.Enabled or AcademicDayStatus.Suspended))
+            return Fail("El estado del día académico no es válido.");
+        var scope = await _context.AcademicDays.AsNoTracking()
+            .Where(d => d.Id == dayId)
+            .Select(d => new { d.Date, d.AcademicWeek.ManagementId })
+            .FirstOrDefaultAsync();
+        if (scope == null)
             return Fail("El día académico no existe.");
 
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        if (!await _lock.TryAcquireAsync([PlanningLockResources.ManagementDay(scope.ManagementId, scope.Date)]))
+            return Fail(PlanningLockResources.BusyMessage);
+
+        var day = await _context.AcademicDays.AsTracking()
+            .FirstOrDefaultAsync(d => d.Id == dayId && d.Date == scope.Date && d.AcademicWeek.ManagementId == scope.ManagementId);
+        if (day == null)
+            return Fail("El día académico cambió; actualice el calendario.");
         var managementStatus = await _context.Managements.AsNoTracking()
-            .Where(m => m.Id == day.AcademicWeek.ManagementId)
+            .Where(m => m.Id == scope.ManagementId)
             .Select(m => (ManagementStatus?)m.Status)
             .FirstOrDefaultAsync();
         if (managementStatus is not (ManagementStatus.Active or ManagementStatus.Inactive))
@@ -191,7 +230,8 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
                 return Fail("El motivo de la suspensión no puede superar 200 caracteres.");
 
             var count = await _context.Plannings
-                .CountAsync(p => p.ScheduledDate >= day.Date && p.ScheduledDate < day.Date.AddDays(1)
+                .CountAsync(p => p.ManagementId == scope.ManagementId
+                    && p.ScheduledDate >= day.Date && p.ScheduledDate < day.Date.AddDays(1)
                     && !PlanningStatus.NonOccupying.Contains(p.Status));
             if (count > 0)
                 return Fail($"Hay {count} planificaciones ese día: use la reposición de día para reubicarlas.");
@@ -208,7 +248,18 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
             day.Reason = null;
         }
 
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            await transaction.SafeRollbackAsync();
+            _context.ChangeTracker.Clear();
+            _logger.LogError(ex, "No se pudo cambiar el estado del día académico {DayId}", dayId);
+            return Fail("No se pudo actualizar el día académico. Intente nuevamente.");
+        }
         return status == AcademicDayStatus.Suspended
             ? new CalendarResult(true, $"Día {day.Date:dd/MM/yyyy} suspendido.")
             : new CalendarResult(true, $"Día {day.Date:dd/MM/yyyy} habilitado.");
@@ -239,9 +290,10 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
     }
 
     /// <summary>True si la fecha tiene planificaciones no borradas con estado que ocupa ambiente/material.</summary>
-    private Task<bool> HasOccupyingPlanningsAsync(DateTime date) =>
+    private Task<bool> HasOccupyingPlanningsAsync(int managementId, DateTime date) =>
         _context.Plannings
-            .AnyAsync(p => p.ScheduledDate >= date && p.ScheduledDate < date.AddDays(1)
+            .AnyAsync(p => p.ManagementId == managementId
+                && p.ScheduledDate >= date && p.ScheduledDate < date.AddDays(1)
                 && !PlanningStatus.NonOccupying.Contains(p.Status));
 
     /// <summary>Fechas lunes-sábado del slot que caen dentro de [from, to].</summary>
