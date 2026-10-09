@@ -213,8 +213,9 @@ public class L3CircuitService : IL3CircuitService
             if (departure.Status is LoanStatus.Returned or LoanStatus.Cancelled)
                 return L3CircuitResult.Fail("La salida ya fue devuelta por completo o está anulada.");
             var request = await _context.Plannings.AsNoTracking().FirstOrDefaultAsync(r => r.Id == departure.PlanningId);
-            if (request == null || request.Status != PlanningStatus.Approved)
-                return L3CircuitResult.Fail("Solo se registran devoluciones de una planificación aprobada y no finalizada.");
+            // La salida está abierta (validado arriba): un origen reprogramado o en reposición también cierra su material.
+            if (request == null || !PlanningStatus.AllowsL3Return(request.Status, hasOpenDeparture: true))
+                return L3CircuitResult.Fail("Solo se registran devoluciones de una planificación aprobada (o reubicada con material pendiente) y no finalizada.");
 
             var items = departure.Items.ToDictionary(i => i.Id);
             if (wanted.Any(l => !items.ContainsKey(l.DepartureItemId)))

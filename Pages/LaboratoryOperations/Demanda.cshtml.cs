@@ -90,6 +90,7 @@ public class DemandaModel : PageModel
         var demandRows = await _context.PlanningRequirements.AsNoTracking()
             .Where(d => d.Planning!.ManagementId == Management!.Id
                         && !PlanningStatus.NonOccupying.Contains(d.Planning!.Status)
+                        && d.Planning!.Status != PlanningStatus.Finalized
                         && d.Planning!.ScheduledDate >= today
                         && (!LaboratoryId.HasValue || d.Planning!.LaboratoryId == LaboratoryId.Value))
             .GroupBy(d => d.ArticleId)

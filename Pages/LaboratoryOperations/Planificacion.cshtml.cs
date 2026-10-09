@@ -9,6 +9,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
+using Proyecto_Laboratorios_Univalle.Services.Occupancy;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
@@ -23,12 +24,15 @@ public class PlanificacionModel : PageModel
     private readonly ApplicationDbContext _context;
     private readonly IAcademicManagementService _managements;
     private readonly ILogger<PlanificacionModel> _logger;
+    private readonly IOccupancyService _occupancy;
 
-    public PlanificacionModel(ApplicationDbContext context, IAcademicManagementService managements, ILogger<PlanificacionModel> logger)
+    public PlanificacionModel(ApplicationDbContext context, IAcademicManagementService managements, ILogger<PlanificacionModel> logger,
+        IOccupancyService occupancy)
     {
         _context = context;
         _managements = managements;
         _logger = logger;
+        _occupancy = occupancy;
     }
 
     /// <summary>Id de Plannings al editar una planificación.</summary>
@@ -151,7 +155,10 @@ public class PlanificacionModel : PageModel
             ScheduleCode = existing.PracticeSchedule?.Code;
             StatusText = PlanningStatus.Label(existing.Status);
             if (existing.Status != PlanningStatus.Planned)
+            {
+                IsReadOnly = true;
                 ModelState.AddModelError(string.Empty, "Solo se puede editar una planificación en estado Planificada.");
+            }
         }
 
         Management = await _managements.ResolveAsync(ManagementId);
@@ -251,46 +258,14 @@ public class PlanificacionModel : PageModel
                 adoptScheduleId = match.Id;
         }
 
-        // Choque de ambiente (provisional; TODO fase 4: servicio de ocupación por periodos).
+        // Choque de ambiente: servicio único de ocupación (mismo criterio que la reprogramación y la reposición).
         if (ModelState.IsValid && laboratory != null && startPeriod != null && day != null)
         {
-            var lastOrder = PlanningSlot.LastOrder(startPeriod.Order, Input.PeriodCount);
-            var lastPeriod = Periods.FirstOrDefault(p => p.Order == lastOrder);
-            if (lastPeriod == null)
-            {
-                ModelState.AddModelError("Input.PeriodCount", $"El catálogo de periodos no contiene el periodo {lastOrder}.");
-            }
-            else
-            {
-                var blockStart = date.Date + startPeriod.StartTime;
-                var blockEnd = date.Date + lastPeriod.EndTime;
-                var sameDay = await _context.Plannings.AsNoTracking()
-                    .Where(r => r.Id != (Id ?? 0)
-                        && r.LaboratoryId == Input.LaboratoryId
-                        && r.ScheduledDate.Date == date.Date
-                        && !PlanningStatus.NonOccupying.Contains(r.Status))
-                    .Select(r => new
-                    {
-                        r.Id, r.PracticeName, r.StartPeriodId,
-                        StartOrder = r.StartPeriod != null ? r.StartPeriod.Order : 0,
-                        r.PeriodCount, r.ScheduledDate, r.ScheduledEndDate, r.StartTime, r.EndTime
-                    })
-                    .ToListAsync();
-                var hit = sameDay.FirstOrDefault(r =>
-                    r.StartPeriodId.HasValue && r.StartOrder >= 1 && r.PeriodCount is >= 1
-                        ? PlanningSlot.Overlaps(startPeriod.Order, Input.PeriodCount, r.StartOrder, r.PeriodCount.Value)
-                        : r.ScheduledDate < blockEnd && blockStart < (r.ScheduledEndDate ?? r.ScheduledDate.AddHours(1)));
-                if (hit != null)
-                {
-                    var from = hit.StartTime ?? hit.ScheduledDate.TimeOfDay;
-                    var to = hit.EndTime ?? (hit.ScheduledEndDate ?? hit.ScheduledDate.AddHours(1)).TimeOfDay;
-                    var range = hit.StartPeriodId.HasValue && hit.StartOrder >= 1 && hit.PeriodCount is >= 1
-                        ? $" (periodos P{hit.StartOrder}–{PlanningSlot.LastOrder(hit.StartOrder, hit.PeriodCount.Value)}, {from:hh\\:mm} – {to:hh\\:mm})"
-                        : $" ({from:hh\\:mm} – {to:hh\\:mm})";
-                    ModelState.AddModelError(string.Empty,
-                        $"El laboratorio ya está reservado por {L3Codes.Format(hit.Id)} ({hit.PracticeName}){range}.");
-                }
-            }
+            var conflicts = await _occupancy.FindConflictsAsync(Input.LaboratoryId, date.Date, startPeriod.Order, Input.PeriodCount,
+                Id.HasValue ? [Id.Value] : null);
+            if (conflicts.Count > 0)
+                ModelState.AddModelError(string.Empty,
+                    $"El laboratorio ya está ocupado en esos periodos: {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
         }
 
         if (!ModelState.IsValid)

@@ -83,6 +83,33 @@ public class CalendarioAcademicoModel : PageModel
             return RedirectToPage(new { managementId = input.ManagementId });
         }
 
+        // Fechas de clases: definen la semana 1 (vacías = fechas de la gestión).
+        var management = await _context.Managements.AsTracking().FirstOrDefaultAsync(m => m.Id == input.ManagementId);
+        if (management == null)
+        {
+            TempData.Error("La gestión no existe.");
+            return RedirectToPage();
+        }
+        var classesStart = input.ClassesStartDate?.Date;
+        var classesEnd = input.ClassesEndDate?.Date;
+        if (classesStart.HasValue && classesEnd.HasValue && classesEnd < classesStart)
+        {
+            TempData.Error("El fin de clases no puede ser anterior al inicio de clases.");
+            return RedirectToPage(new { managementId = input.ManagementId });
+        }
+        if ((classesStart.HasValue && management.StartDate.HasValue && classesStart < management.StartDate.Value.Date)
+            || (classesEnd.HasValue && management.PlannedEndDate.HasValue && classesEnd > management.PlannedEndDate.Value.Date))
+        {
+            TempData.Error("Las fechas de clases deben estar dentro de las fechas de la gestión.");
+            return RedirectToPage(new { managementId = input.ManagementId });
+        }
+        if (management.ClassesStartDate != classesStart || management.ClassesEndDate != classesEnd)
+        {
+            management.ClassesStartDate = classesStart;
+            management.ClassesEndDate = classesEnd;
+            await _context.SaveChangesAsync();
+        }
+
         var result = await _calendar.GenerateWeeksAsync(input.ManagementId);
         if (result.Ok) TempData.Success(result.Message);
         else TempData.Error(result.Message);
@@ -155,6 +182,12 @@ public class CalendarioAcademicoModel : PageModel
     public sealed class GenerateInput
     {
         public int ManagementId { get; set; }
+
+        /// <summary>Primer día de clases (vacío = inicio de la gestión).</summary>
+        public DateTime? ClassesStartDate { get; set; }
+
+        /// <summary>Último día de clases (vacío = fin planificado de la gestión).</summary>
+        public DateTime? ClassesEndDate { get; set; }
     }
 
     /// <summary>Entrada de suspender/habilitar un día (status: 0 habilitado, 1 suspendido).</summary>

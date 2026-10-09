@@ -52,6 +52,16 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [DataType(DataType.Date)]
         public DateTime? ActualClosedDate { get; set; }
 
+        /// <summary>Primer día de clases: la semana académica 1 es la que lo contiene (null = fecha de inicio de la gestión).</summary>
+        [Display(Name = "Inicio de clases")]
+        [Column(TypeName = "date")]
+        public DateTime? ClassesStartDate { get; set; }
+
+        /// <summary>Último día de clases del calendario académico (null = fecha de cierre planificada de la gestión).</summary>
+        [Display(Name = "Fin de clases")]
+        [Column(TypeName = "date")]
+        public DateTime? ClassesEndDate { get; set; }
+
         // ========================================
         // ESTADO Y RESPONSABILIDAD
         // ========================================

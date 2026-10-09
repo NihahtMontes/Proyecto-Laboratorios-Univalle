@@ -2625,6 +2625,12 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Property<DateTime?>("ActualClosedDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("ClassesEndDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("ClassesStartDate")
+                        .HasColumnType("date");
+
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -2697,6 +2703,8 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.ToTable("Managements", t =>
                         {
+                            t.HasCheckConstraint("CK_Managements_ClassDates", "[ClassesStartDate] IS NULL OR [ClassesEndDate] IS NULL OR [ClassesEndDate] >= [ClassesStartDate]");
+
                             t.HasCheckConstraint("CK_Managements_Semester", "[Semester] IN (0, 1, 2)");
 
                             t.HasCheckConstraint("CK_Managements_Status", "[Status] IN (0, 1, 2, 99)");
@@ -3191,6 +3199,10 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.Property<string>("Status")
                         .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("StatusBeforeRecovery")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 

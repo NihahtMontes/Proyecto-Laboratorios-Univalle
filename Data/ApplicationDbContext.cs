@@ -772,6 +772,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 table.HasCheckConstraint("CK_Managements_Semester", "[Semester] IN (0, 1, 2)");
                 table.HasCheckConstraint("CK_Managements_Status", "[Status] IN (0, 1, 2, 99)");
                 table.HasCheckConstraint("CK_Managements_Type", "[Type] IN (0, 1, 9)");
+                table.HasCheckConstraint("CK_Managements_ClassDates", "[ClassesStartDate] IS NULL OR [ClassesEndDate] IS NULL OR [ClassesEndDate] >= [ClassesStartDate]");
             });
             modelBuilder.Entity<ManagementPlan>().ToTable(table =>
             {

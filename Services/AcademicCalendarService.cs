@@ -9,7 +9,7 @@ public sealed record CalendarResult(bool Ok, string Message);
 
 public interface IAcademicCalendarService
 {
-    /// <summary>Genera/actualiza semanas (lun-sáb) y días de la gestión a partir de Management.StartDate y PlannedEndDate.</summary>
+    /// <summary>Genera/actualiza semanas (lun-sáb) y días de la gestión desde el inicio y fin de clases (o las fechas de la gestión).</summary>
     Task<CalendarResult> GenerateWeeksAsync(int managementId);
 
     /// <summary>Suspende (motivo obligatorio) o habilita un día sin planificaciones vigentes.</summary>
@@ -39,8 +39,15 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
         if (management == null || management.Semester <= 0
             || management.Status is not (ManagementStatus.Active or ManagementStatus.Inactive))
             return Fail("La gestión está completada o no existe.");
-        if (management.StartDate is not DateTime start || management.PlannedEndDate is not DateTime end)
-            return Fail("Registre las fechas de inicio y fin de la gestión antes de generar el calendario.");
+
+        // Las semanas se numeran desde el inicio de clases; sin fechas de clases se usan las de la gestión.
+        var startDate = management.ClassesStartDate ?? management.StartDate;
+        var endDate = management.ClassesEndDate ?? management.PlannedEndDate;
+        if (startDate is not DateTime start || endDate is not DateTime end)
+            return Fail("Registre las fechas de inicio y fin de la gestión (o de clases) antes de generar el calendario.");
+        if ((management.StartDate is DateTime managementStart && start.Date < managementStart.Date)
+            || (management.PlannedEndDate is DateTime managementEnd && end.Date > managementEnd.Date))
+            return Fail($"Las fechas de clases deben estar dentro de las fechas de la gestión ({management.StartDate:dd/MM/yyyy} – {management.PlannedEndDate:dd/MM/yyyy}).");
 
         List<AcademicWeekGenerator.WeekSlot> slots;
         try
@@ -61,60 +68,58 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
             var weeks = await _context.AcademicWeeks.AsTracking()
                 .Include(w => w.Days)
                 .Where(w => w.ManagementId == managementId)
-                .OrderBy(w => w.Number)
+                .OrderBy(w => w.StartDate)
                 .ToListAsync();
 
             var historyWeekIds = await HistoryWeekIdsAsync(weeks);
+            var slotByMonday = slots.ToDictionary(s => s.Monday.Date);
 
-            // La fecha de inicio cambió de semana: el calendario entero se corrió de lugar.
-            if (weeks.Count > 0 && weeks[0].StartDate.Date != slots[0].Monday.Date)
+            // Las semanas se emparejan por su lunes (no por número): si cambia el inicio de clases, las semanas
+            // existentes conservan su Id y sus días (incluidos los suspendidos), y solo cambia su número.
+            var outside = weeks.Where(w => !slotByMonday.ContainsKey(w.StartDate.Date)).ToList();
+            var outsideWithHistory = outside.Where(w => historyWeekIds.Contains(w.Id)).ToList();
+            if (outsideWithHistory.Count > 0)
+                return Fail("No se puede ajustar el calendario: las semanas del "
+                    + string.Join(", ", outsideWithHistory.Select(w => w.StartDate.ToString("dd/MM/yyyy")))
+                    + " tienen planificaciones y quedarían fuera de las fechas de clases.");
+
+            // Semanas de configuración sin historial que quedan fuera del rango: eliminación física de sus días y de la semana.
+            foreach (var week in outside)
             {
-                if (weeks.Any(w => historyWeekIds.Contains(w.Id)))
-                    return Fail("La gestión ya tiene planificaciones: no se puede cambiar la fecha de inicio del calendario.");
-
-                // Semanas y días sin historial son filas de configuración derivadas de las fechas de la
-                // gestión (no datos de negocio): se eliminan físicamente y se regeneran desde cero.
-                _context.AcademicDays.RemoveRange(weeks.SelectMany(w => w.Days));
-                _context.AcademicWeeks.RemoveRange(weeks);
-                await _context.SaveChangesAsync();
-                weeks = [];
+                _context.AcademicDays.RemoveRange(week.Days);
+                _context.AcademicWeeks.Remove(week);
             }
-
-            // Calendario más corto: las semanas que sobran solo se eliminan si nadie las referencia.
-            var extra = weeks.Where(w => w.Number > slots.Count).OrderBy(w => w.Number).ToList();
-            if (extra.Count > 0)
-            {
-                var withHistory = extra.Where(w => historyWeekIds.Contains(w.Id)).Select(w => w.Number).ToList();
-                if (withHistory.Count > 0)
-                    return Fail($"No se puede acortar el calendario: las semanas {string.Join(", ", withHistory)} tienen planificaciones.");
-
-                // Semanas de configuración sin historial: eliminación física de sus días y de la semana.
-                foreach (var week in extra)
-                {
-                    _context.AcademicDays.RemoveRange(week.Days);
-                    _context.AcademicWeeks.Remove(week);
-                }
-                await _context.SaveChangesAsync();
-                weeks = weeks.Where(w => w.Number <= slots.Count).ToList();
-            }
+            var kept = weeks.Except(outside).ToList();
 
             // Días existentes que quedaron fuera de [inicio, fin]: se quitan salvo que alguien los use.
-            foreach (var week in weeks)
+            foreach (var week in kept)
             {
                 foreach (var day in week.Days.Where(d => d.Date < from || d.Date > to).ToList())
                 {
                     if (day.DayRecoveryId != null || await HasOccupyingPlanningsAsync(day.Date))
-                        return Fail($"El {day.Date:dd/MM/yyyy} quedó fuera de las fechas de la gestión y tiene planificaciones vigentes o una reposición asociada: ajuste las fechas o reubique esas planificaciones.");
+                        return Fail($"El {day.Date:dd/MM/yyyy} quedó fuera de las fechas de clases y tiene planificaciones vigentes o una reposición asociada: ajuste las fechas o reubique esas planificaciones.");
                     // Día de configuración sin uso: eliminación física.
                     _context.AcademicDays.Remove(day);
                 }
             }
 
+            // Renumeración en dos pasos para no chocar con el índice único (gestión, número).
+            var renumbered = kept.Where(w => w.Number != slotByMonday[w.StartDate.Date].Number).ToList();
+            if (renumbered.Count > 0)
+            {
+                foreach (var week in renumbered)
+                    week.Number = -week.Number;
+                await _context.SaveChangesAsync();
+                foreach (var week in renumbered)
+                    week.Number = slotByMonday[week.StartDate.Date].Number;
+            }
+            await _context.SaveChangesAsync();
+
             // Crear las semanas y días que falten (solo fechas lun-sáb dentro del rango).
-            var weeksByNumber = weeks.ToDictionary(w => w.Number);
+            var weeksByMonday = kept.ToDictionary(w => w.StartDate.Date);
             foreach (var slot in slots)
             {
-                if (!weeksByNumber.TryGetValue(slot.Number, out var week))
+                if (!weeksByMonday.TryGetValue(slot.Monday.Date, out var week))
                 {
                     week = new AcademicWeek
                     {
@@ -124,7 +129,7 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
                         EndDate = slot.Saturday
                     };
                     _context.AcademicWeeks.Add(week);
-                    weeksByNumber[slot.Number] = week;
+                    weeksByMonday[slot.Monday.Date] = week;
                 }
 
                 foreach (var date in SlotDates(slot, from, to))
@@ -133,12 +138,26 @@ public sealed class AcademicCalendarService : IAcademicCalendarService
                         week.Days.Add(new AcademicDay { Date = date, Status = AcademicDayStatus.Enabled });
                 }
             }
-
             await _context.SaveChangesAsync();
+
+            // El número de semana copiado en las planificaciones sigue al calendario (incluidas las borradas).
+            if (renumbered.Count > 0)
+            {
+                var numberById = weeksByMonday.Values.ToDictionary(w => w.Id, w => w.Number);
+                var weekIds = numberById.Keys.ToList();
+                var plannings = await _context.Plannings.IgnoreQueryFilters().AsTracking()
+                    .Where(p => p.AcademicWeekId != null && weekIds.Contains(p.AcademicWeekId.Value))
+                    .ToListAsync();
+                foreach (var planning in plannings)
+                    planning.AcademicWeek = numberById[planning.AcademicWeekId!.Value];
+                await _context.SaveChangesAsync();
+            }
+
             await transaction.CommitAsync();
 
             var dayCount = slots.Sum(slot => SlotDates(slot, from, to).Count);
-            return new CalendarResult(true, $"Calendario académico actualizado: {slots.Count} semanas y {dayCount} días.");
+            return new CalendarResult(true, $"Calendario académico actualizado: {slots.Count} semanas y {dayCount} días"
+                + (renumbered.Count > 0 ? $"; se renumeraron {renumbered.Count} semanas existentes." : "."));
         }
         catch (DbUpdateException ex)
         {

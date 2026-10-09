@@ -52,7 +52,11 @@ public class L3Model : PageModel
     public List<IncidentRow> Incidents { get; private set; } = [];
     public SelectList OriginList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList ResponsibleList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
-    public bool IsEditable => Plan?.Status == PlanningStatus.Approved;
+    /// <summary>Devoluciones e incidentes: planificación aprobada, o un origen reprogramado/en reposición con material sin devolver.</summary>
+    public bool IsEditable => Plan != null && PlanningStatus.AllowsL3Return(Plan.Status,
+        CurrentDeparture?.Status is LoanStatus.Active or LoanStatus.Overdue);
+    /// <summary>Solo una planificación aprobada se finaliza; un origen movido solo cierra su material.</summary>
+    public bool CanFinalize => Plan?.Status == PlanningStatus.Approved;
     public bool IsFinalized => Plan?.Status == PlanningStatus.Finalized;
     public bool HasDeparture => CurrentDeparture != null;
     public bool CanReturn => IsEditable && HasDeparture && Items.Any(i => i.Pending > 0);

@@ -393,7 +393,7 @@
                         {
                             <span class="badge badge-success px-4 py-2"><i class="mdi mdi-check-decagram mr-1"></i> L-3 cerrado</span>
                         }
-                        else if (canWrite)
+                        else if (canWrite && Model.CanFinalize)
                         {
                             <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0">
                                 <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2"

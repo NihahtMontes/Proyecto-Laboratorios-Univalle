@@ -104,6 +104,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(50)]
         public string Status { get; set; } = PlanningStatus.Planned;
 
+        /// <summary>Estado que tenía antes de pasar a PendienteReposicion (el destino de la reposición lo hereda).</summary>
+        [StringLength(50)]
+        public string? StatusBeforeRecovery { get; set; }
+
         public ICollection<PlanningRequirement> Requirements { get; set; } = new List<PlanningRequirement>();
         public ICollection<L5Incident> Incidents { get; set; } = new List<L5Incident>();
         public ICollection<Departure> Departures { get; set; } = new List<Departure>();
@@ -134,6 +138,14 @@ namespace Proyecto_Laboratorios_Univalle.Models
         /// <summary>Estados que NO ocupan ambiente ni docente ni demandan material.</summary>
         public static readonly string[] NonOccupying = [Cancelled, Rescheduled, PendingRecovery, Recovered];
         public static bool Occupies(string status) => !NonOccupying.Contains(status);
+        /// <summary>Orígenes ya reubicados (o esperando reposición): su L-3 se sigue cerrando en ellos.</summary>
+        public static readonly string[] Moved = [Rescheduled, PendingRecovery, Recovered];
+        /// <summary>Se registran devoluciones del L-3: aprobada, o un origen movido con material entregado sin devolver.</summary>
+        public static bool AllowsL3Return(string status, bool hasOpenDeparture) =>
+            status == Approved || (hasOpenDeparture && Moved.Contains(status));
+        /// <summary>Se registran incidentes L-5: aprobada, o un origen movido que tuvo salida de material.</summary>
+        public static bool AllowsIncidents(string status, bool hasDeparture) =>
+            status == Approved || (hasDeparture && Moved.Contains(status));
         public static string Label(string status) => status switch
         {
             PendingRecovery => "Pendiente de reposición",

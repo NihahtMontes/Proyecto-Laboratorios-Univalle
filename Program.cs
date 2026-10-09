@@ -116,6 +116,10 @@ builder.Services.AddScoped<IManagementContextService, ManagementContextService>(
 builder.Services.AddScoped<IManagementActivationService, ManagementActivationService>();
 builder.Services.AddScoped<IAcademicManagementService, AcademicManagementService>();
 builder.Services.AddScoped<IAcademicCalendarService, AcademicCalendarService>();
+builder.Services.AddScoped<ILaboratoryGridService, LaboratoryGridService>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.IOccupancySource, Proyecto_Laboratorios_Univalle.Services.Occupancy.PlanningOccupancySource>();
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Occupancy.IOccupancyService, Proyecto_Laboratorios_Univalle.Services.Occupancy.OccupancyService>();
+builder.Services.AddScoped<ISlotValidationService, SlotValidationService>();
 builder.Services.AddScoped<RequirementPickerService>();
 builder.Services.AddScoped<IL3CircuitService, L3CircuitService>();
 builder.Services.AddScoped<IArticleAvailabilityService, ArticleAvailabilityService>();

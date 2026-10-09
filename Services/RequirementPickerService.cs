@@ -97,8 +97,9 @@ public sealed class RequirementPickerService
             })
             .FirstOrDefaultAsync();
         if (row == null) return null;
-        if (row.SubjectFaculty is int faculty) return (faculty, row.PlanningCampus ?? row.LabCampus);
-        return row.LabFaculty is int labFaculty ? (labFaculty, row.LabCampus) : null;
+        // Las unidades físicas están en el laboratorio de la sesión: su facultad manda; la de la materia es respaldo.
+        if (row.LabFaculty is int labFaculty) return (labFaculty, row.LabCampus ?? row.PlanningCampus);
+        return row.SubjectFaculty is int faculty ? (faculty, row.PlanningCampus) : null;
     }
 
     /// <summary>Laboratorios donde se buscan unidades físicas: los de la facultad (y sede, si la hay).</summary>

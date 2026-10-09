@@ -1,0 +1,387 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.GrillaModel
+@using Proyecto_Laboratorios_Univalle.Models
+@using Proyecto_Laboratorios_Univalle.Services
+@using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
+@{
+    ViewData["Title"] = "Grilla por laboratorio";
+    ViewData["HidePageTitle"] = true;
+    var grid = Model.Grid;
+    string? twoWeeksRoute = grid is { TwoWeeks: true } ? "true" : null;
+    var legendStatuses = new[]
+    {
+        PlanningStatus.Planned, PlanningStatus.Approved, PlanningStatus.Finalized,
+        PlanningStatus.Rescheduled, PlanningStatus.PendingRecovery, PlanningStatus.Recovered
+    };
+}
+
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <link href="~/css/grilla.css" rel="stylesheet" asp-append-version="true">
+}
+
+<div class="page-breadcrumb gr-noprint">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
+            <h2 class="font-weight-bold text-dark">Grilla por laboratorio</h2>
+            <div class="text-muted small">Horario semanal de un ambiente: lunes a sábado por periodos académicos (solo consulta).</div>
+        </div>
+        @if (grid != null)
+        {
+            <div class="col-md-4 mt-2 mt-md-0 text-md-right">
+                <a asp-page="./Index" asp-route-managementId="@grid.Management.Id" class="btn btn-light border btn-rounded btn-sm">
+                    <i class="mdi mdi-view-dashboard mr-1"></i> Panel de planificación
+                </a>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    @if (grid == null)
+    {
+        <div class="gr-empty-state">
+            <i class="mdi mdi-table-large gr-empty-state__icon"></i>
+            <h3 class="font-weight-bold text-dark mb-2">No hay una gestión académica activa</h3>
+            <p class="text-muted mb-4">Active una gestión semestral o abra la grilla desde una gestión para consultar el horario de sus laboratorios.</p>
+            <a asp-page="/Managements/Index" class="btn btn-primary btn-rounded px-4 shadow-sm gr-btn-primary">
+                <i class="fas fa-university mr-2"></i> Ir a Gestiones
+            </a>
+        </div>
+    }
+    else
+    {
+        var management = grid.Management;
+        var lab = grid.Laboratory;
+
+        @if (!grid.CanAdd)
+        {
+            <div class="alert border-0 shadow-sm rounded-lg d-flex align-items-center mb-3 gr-noprint gr-readonly">
+                <i class="fas fa-eye text-warning fa-lg mr-3"></i>
+                <div class="flex-grow-1">
+                    <strong class="text-dark">Consultando la gestión @management.Code (@management.StatusText): solo lectura.</strong>
+                    <div class="small text-muted">Esta gestión no admite nuevas planificaciones.</div>
+                </div>
+            </div>
+        }
+
+        <!-- Barra de controles -->
+        <div class="card border-0 shadow-sm rounded-lg mb-3 gr-noprint">
+            <div class="card-body py-3">
+                <form method="get" id="gr-controls" class="gr-controls">
+                    <div class="gr-controls__field">
+                        <label for="gr-management" class="gr-controls__label">Gestión</label>
+                        <select id="gr-management" name="managementId" class="custom-select custom-select-sm">
+                            @foreach (var m in grid.Managements)
+                            {
+                                <option value="@m.Id" selected="@(m.Id == management.Id)">@m.Code · @m.StatusText@(m.IsCurrent ? " (actual)" : "")</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="gr-controls__field gr-controls__field--lab">
+                        <label for="gr-lab" class="gr-controls__label">Ambiente</label>
+                        <select id="gr-lab" name="laboratoryId" class="form-control form-control-sm" disabled="@(!grid.HasLaboratories)">
+                            @foreach (var l in grid.Laboratories)
+                            {
+                                <option value="@l.Id" selected="@(lab != null && l.Id == lab.Id)">@l.Label@(l.PlanningCount > 0 ? $" ({l.PlanningCount})" : "")</option>
+                            }
+                        </select>
+                    </div>
+
+                    @if (grid.HasWeeks)
+                    {
+                        <div class="gr-controls__field">
+                            <span class="gr-controls__label">Semana académica</span>
+                            <div class="d-flex align-items-center">
+                                @if (grid.PreviousWeekNumber.HasValue)
+                                {
+                                    <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-laboratoryId="@lab?.Id"
+                                       asp-route-week="@grid.PreviousWeekNumber" asp-route-twoWeeks="@twoWeeksRoute"
+                                       class="btn btn-outline-secondary btn-sm btn-rounded mr-1" title="Semana anterior" aria-label="Semana anterior">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-secondary btn-sm btn-rounded mr-1" disabled aria-label="Semana anterior">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                }
+                                <select id="gr-week" name="week" class="custom-select custom-select-sm gr-controls__week" aria-label="Ir a la semana">
+                                    @foreach (var w in grid.WeekOptions)
+                                    {
+                                        <option value="@w.Number" selected="@(w.Number == grid.SelectedWeekNumber)">Semana @w.Number · @w.RangeText</option>
+                                    }
+                                </select>
+                                @if (grid.NextWeekNumber.HasValue)
+                                {
+                                    <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-laboratoryId="@lab?.Id"
+                                       asp-route-week="@grid.NextWeekNumber" asp-route-twoWeeks="@twoWeeksRoute"
+                                       class="btn btn-outline-secondary btn-sm btn-rounded ml-1" title="Semana siguiente" aria-label="Semana siguiente">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-secondary btn-sm btn-rounded ml-1" disabled aria-label="Semana siguiente">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="gr-controls__field gr-controls__field--switch">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="gr-two-weeks" name="twoWeeks" value="true" checked="@grid.TwoWeeks">
+                                <label class="custom-control-label" for="gr-two-weeks">Ver dos semanas</label>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="gr-controls__actions">
+                        <button type="button" class="btn btn-outline-primary btn-rounded btn-sm" id="gr-print">
+                            <i class="fas fa-print mr-1"></i> Imprimir
+                        </button>
+                        @if (grid.CanAdd)
+                        {
+                            <a asp-page="./Planificacion" asp-route-managementId="@management.Id" asp-route-laboratoryId="@lab?.Id"
+                               class="btn btn-primary btn-rounded btn-sm font-weight-bold shadow-sm gr-btn-primary">
+                                <i class="fas fa-plus mr-1"></i> Nueva planificación
+                            </a>
+                        }
+                    </div>
+                    <noscript><button type="submit" class="btn btn-sm btn-secondary">Aplicar</button></noscript>
+                </form>
+            </div>
+        </div>
+
+        @if (!grid.HasLaboratories)
+        {
+            <div class="gr-empty-state">
+                <i class="fas fa-flask gr-empty-state__icon"></i>
+                <h4 class="font-weight-bold text-dark mb-2">No hay ambientes activos</h4>
+                <p class="text-muted mb-0">Registre o active un laboratorio para consultar su horario.</p>
+            </div>
+        }
+        else if (!grid.HasWeeks)
+        {
+            <div class="gr-empty-state">
+                <i class="far fa-calendar gr-empty-state__icon"></i>
+                <h4 class="font-weight-bold text-dark mb-2">La gestión @management.Code no tiene semanas académicas</h4>
+                <p class="text-muted mb-4">Genere el calendario académico de la gestión para ver la grilla semanal de los laboratorios.</p>
+                <a asp-page="./CalendarioAcademico" asp-route-managementId="@management.Id" class="btn btn-outline-primary btn-rounded px-4">
+                    <i class="mdi mdi-calendar-month mr-1"></i> Calendario académico
+                </a>
+            </div>
+        }
+        else if (lab != null)
+        {
+            @foreach (var week in grid.Weeks)
+            {
+                <section class="gr-sheet card border-0 shadow-sm rounded-lg mb-4" aria-label="Semana académica @week.Number">
+                    <!-- Encabezado del formulario oficial -->
+                    <header class="gr-sheet__head">
+                        <div class="gr-sheet__brand">
+                            <strong>UNIVALLE</strong>
+                            <span>Laboratorios</span>
+                        </div>
+                        <div class="gr-sheet__title">
+                            <span>REGISTRO DE HORARIOS — HORARIO POR AULA</span>
+                        </div>
+                        <div class="gr-sheet__code">
+                            <span>Código</span>
+                            <strong>RE-10-VAC-007</strong>
+                        </div>
+                    </header>
+                    <dl class="gr-sheet__meta">
+                        <div><dt>Gestión</dt><dd>@management.Code</dd></div>
+                        <div class="gr-sheet__meta-wide"><dt>Ambiente</dt><dd>@lab.Label</dd></div>
+                        <div><dt>Piso / ubicación</dt><dd>@lab.LocationText</dd></div>
+                        <div><dt>Capacidad</dt><dd>@lab.CapacityText</dd></div>
+                        <div><dt>Semana académica</dt><dd>@week.Number (@week.RangeText)</dd></div>
+                    </dl>
+
+                    <!-- Grilla: columna de periodos + lunes a sábado; filas = cabecera + periodos -->
+                    <div class="gr-scroll">
+                        <div class="gr-grid" style="grid-template-rows: auto repeat(@grid.Periods.Count, minmax(var(--gr-row-height), auto));"
+                             data-laboratory-id="@lab.Id" data-week="@week.Number">
+                            <div class="gr-corner" style="grid-column: 1; grid-row: 1;">Periodo</div>
+
+                            @foreach (var day in week.Days)
+                            {
+                                var headCss = !day.InManagement ? "gr-dayhead--out" : day.IsSuspended ? "gr-dayhead--suspended" : string.Empty;
+                                <div class="gr-dayhead @headCss" style="grid-column: @(day.Weekday + 1); grid-row: 1;"
+                                     data-date="@day.Date.ToString("yyyy-MM-dd")">
+                                    <span class="gr-dayhead__name">@day.Name</span>
+                                    <span class="gr-dayhead__date">@day.Date.ToString("dd/MM")</span>
+                                    @if (!day.InManagement)
+                                    {
+                                        <span class="gr-dayhead__note">Fuera de la gestión</span>
+                                    }
+                                    else if (day.IsSuspended)
+                                    {
+                                        <span class="gr-dayhead__note gr-dayhead__note--suspended" title="@day.Reason">
+                                            <i class="mdi mdi-calendar-remove"></i> Suspendido@(string.IsNullOrWhiteSpace(day.Reason) ? "" : ": " + day.Reason)
+                                        </span>
+                                    }
+                                </div>
+                            }
+
+                            @foreach (var period in grid.Periods)
+                            {
+                                var row = period.Order + 1;
+                                <div class="gr-period" style="grid-column: 1; grid-row: @row;">
+                                    <strong>P@(period.Order)</strong>
+                                    <span>@period.Label</span>
+                                </div>
+
+                                @foreach (var day in week.Days)
+                                {
+                                    var dateValue = day.Date.ToString("yyyy-MM-dd");
+                                    var busy = day.IsBusy(period.Order);
+                                    var cellCss = !day.InManagement ? "gr-cell--out" : day.IsSuspended ? "gr-cell--suspended" : string.Empty;
+                                    <div class="gr-cell @cellCss @(busy ? "gr-cell--busy" : string.Empty)"
+                                         style="grid-column: @(day.Weekday + 1); grid-row: @row;"
+                                         data-date="@dateValue" data-order="@period.Order" data-laboratory-id="@lab.Id"
+                                         data-suspended="@(day.IsSuspended ? "true" : null)">
+                                        @if (grid.CanAdd && day.AcceptsBlocks && !busy)
+                                        {
+                                            <a asp-page="./Planificacion" asp-route-managementId="@management.Id" asp-route-date="@dateValue"
+                                               asp-route-periodId="@period.Id" asp-route-laboratoryId="@lab.Id"
+                                               class="gr-cell__add" title="Nueva planificación: @day.Name @day.Date.ToString("dd/MM"), P@(period.Order) (@period.Label)"
+                                               aria-label="Nueva planificación el @day.Name @day.Date.ToString("dd/MM") en el periodo @period.Order">
+                                                <i class="fas fa-plus"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            }
+
+                            @foreach (var day in week.Days)
+                            {
+                                @foreach (var b in day.Blocks)
+                                {
+                                    <a href="@b.NextUrl"
+                                       class="gr-block gr-block--@b.StatusCss @(b.Occupies ? string.Empty : "gr-block--inactive") @(b.LaneCount > 1 ? "gr-block--lane" : string.Empty)"
+                                       style="grid-column: @(day.Weekday + 1); grid-row: @(b.StartOrder!.Value + 1) / span @b.PeriodCount; --gr-lane: @b.LaneIndex; --gr-lanes: @b.LaneCount;"
+                                       title="@b.Tooltip"
+                                       data-planning-id="@b.PlanningId" data-date="@b.Date.ToString("yyyy-MM-dd")"
+                                       data-start-order="@b.StartOrder" data-period-count="@b.PeriodCount"
+                                       data-laboratory-id="@b.LaboratoryId" data-status="@b.Status">
+                                        <span class="gr-block__title">@b.SubjectShort (@b.GroupName)</span>
+                                        <span class="gr-block__teacher"><i class="fas fa-user-tie mr-1"></i>@b.TeacherName</span>
+                                        <span class="gr-block__foot">
+                                            <span class="gr-block__code">@b.Code</span>
+                                            <span class="badge badge-@b.StatusCss gr-block__badge @(b.StatusCss == "light" ? "border" : string.Empty)">@b.StatusLabel</span>
+                                        </span>
+                                    </a>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    @if (week.Unscheduled.Count > 0)
+                    {
+                        <div class="gr-unscheduled">
+                            <h6 class="font-weight-bold text-dark mb-2">
+                                <i class="fas fa-clock text-warning mr-1"></i> Sin periodo asignado
+                                <small class="text-muted font-weight-normal ml-1">Planificaciones anteriores al registro por periodos; se muestran con su horario original.</small>
+                            </h6>
+                            <ul class="list-unstyled mb-0">
+                                @foreach (var b in week.Unscheduled)
+                                {
+                                    <li>
+                                        <a href="@b.NextUrl" class="gr-unscheduled__item @(b.Occupies ? string.Empty : "gr-block--inactive")" title="@b.Tooltip"
+                                           data-planning-id="@b.PlanningId" data-date="@b.Date.ToString("yyyy-MM-dd")"
+                                           data-laboratory-id="@b.LaboratoryId" data-status="@b.Status">
+                                            <span class="gr-unscheduled__when">@b.Date.ToString("ddd dd/MM", System.Globalization.CultureInfo.GetCultureInfo("es-BO")) · @b.TimeText</span>
+                                            <strong>@b.SubjectShort (@b.GroupName)</strong>
+                                            <span class="text-muted">@b.TeacherName</span>
+                                            <span class="gr-block__code">@b.Code</span>
+                                            <span class="badge badge-@b.StatusCss @(b.StatusCss == "light" ? "border" : string.Empty)">@b.StatusLabel</span>
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    }
+
+                    @if (week.BlockCount == 0)
+                    {
+                        <div class="gr-week-empty">
+                            <i class="far fa-calendar-check mr-1"></i> Sin planificaciones de @lab.Code en esta semana.
+                        </div>
+                    }
+                </section>
+            }
+
+            <!-- Leyenda de estados -->
+            <div class="card border-0 shadow-sm rounded-lg mb-4 gr-legend-card">
+                <div class="card-body py-3">
+                    <div class="d-flex flex-wrap align-items-center gr-legend">
+                        <span class="font-weight-bold text-dark mr-2">Estados:</span>
+                        @foreach (var status in legendStatuses)
+                        {
+                            var css = PlanningStatusView.Css(status);
+                            <span class="gr-legend__item">
+                                <span class="gr-legend__swatch gr-block--@css @(PlanningStatus.Occupies(status) ? string.Empty : "gr-block--inactive")"></span>
+                                @PlanningStatus.Label(status)
+                            </span>
+                        }
+                        <span class="gr-legend__item">
+                            <span class="gr-legend__swatch gr-legend__swatch--suspended"></span> Día suspendido
+                        </span>
+                        <span class="gr-legend__item">
+                            <span class="gr-legend__swatch gr-legend__swatch--out"></span> Fuera de la gestión
+                        </span>
+                        <span class="gr-legend__note text-muted small">Los estados atenuados no ocupan el ambiente.</span>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script>
+        (function () {
+            var form = document.getElementById('gr-controls');
+            if (!form) return;
+
+            function submitControls() {
+                HTMLFormElement.prototype.submit.call(form);
+            }
+
+            var management = document.getElementById('gr-management');
+            if (management) {
+                management.addEventListener('change', function () {
+                    // La numeración de semanas es propia de cada gestión: se elige la semana por defecto.
+                    var week = document.getElementById('gr-week');
+                    if (week) week.disabled = true;
+                    submitControls();
+                });
+            }
+
+            var lab = $('#gr-lab');
+            if (lab.length && $.fn.select2) {
+                lab.select2({
+                    width: '100%',
+                    language: { noResults: function () { return 'Sin coincidencias'; } }
+                });
+            }
+            lab.on('change', submitControls);
+
+            var week = document.getElementById('gr-week');
+            if (week) week.addEventListener('change', submitControls);
+
+            var twoWeeks = document.getElementById('gr-two-weeks');
+            if (twoWeeks) twoWeeks.addEventListener('change', submitControls);
+
+            var print = document.getElementById('gr-print');
+            if (print) print.addEventListener('click', function () { window.print(); });
+        })();
+    </script>
+}

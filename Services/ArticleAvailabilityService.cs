@@ -374,39 +374,10 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
         return new WeekAvailability(from, to, weekNumber, weekPractices, demands);
     }
 
-    /// <summary>
-    /// Máxima cantidad pedida a la vez (barrido por horario). Una práctica sin horario ocupa todo el día;
-    /// una que termina a la hora en que otra empieza no se cruza con ella.
-    /// </summary>
+    /// <summary>Pico de demanda simultánea de las prácticas del día (ver <see cref="DemandPeak.Compute"/>).</summary>
     private static (decimal Peak, TimeSpan? Start, TimeSpan? End) ComputePeak(
         IReadOnlyList<PracticeDemand> demands, IReadOnlyDictionary<int, WeekPractice> practices)
-    {
-        var events = new List<(TimeSpan Time, decimal Delta)>();
-        foreach (var demand in demands)
-        {
-            var p = practices[demand.PracticeId];
-            var start = p.StartTime ?? TimeSpan.Zero;
-            var end = p.EndTime is TimeSpan e && e > start ? e : (p.StartTime.HasValue ? start.Add(TimeSpan.FromMinutes(1)) : TimeSpan.FromDays(1));
-            events.Add((start, demand.Quantity));
-            events.Add((end, -demand.Quantity));
-        }
-
-        decimal current = 0, peak = 0;
-        TimeSpan? peakStart = null, peakEnd = null;
-        var ordered = events.OrderBy(e => e.Time).ThenBy(e => e.Delta).ToList(); // salidas antes que entradas a la misma hora
-        for (var i = 0; i < ordered.Count; i++)
-        {
-            current += ordered[i].Delta;
-            if (current > peak)
-            {
-                peak = current;
-                peakStart = ordered[i].Time;
-                peakEnd = i + 1 < ordered.Count ? ordered[i + 1].Time : null;
-            }
-        }
-
-        // Si todas son de día completo, no tiene sentido mostrar 00:00–24:00.
-        if (demands.All(d => !practices[d.PracticeId].StartTime.HasValue)) return (peak, null, null);
-        return (peak, peakStart, peakEnd);
-    }
+        => DemandPeak.Compute(demands
+            .Select(d => new TimedDemand(d.Quantity, practices[d.PracticeId].StartTime, practices[d.PracticeId].EndTime))
+            .ToList());
 }

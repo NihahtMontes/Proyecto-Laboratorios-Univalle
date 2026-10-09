@@ -13,12 +13,18 @@ public sealed record AcademicManagementSummary(
     DateTime? StartDate,
     DateTime? EndDate,
     ManagementStatus Status,
-    bool IsCurrent)
+    bool IsCurrent,
+    DateTime? ClassesStartDate = null,
+    DateTime? ClassesEndDate = null)
 {
     /// <summary>Se planifica en gestiones activas o inactivas (preparación de la siguiente); las completadas solo se consultan.</summary>
     public bool IsEditable => Status is ManagementStatus.Active or ManagementStatus.Inactive;
 
     public bool HasDates => StartDate.HasValue && EndDate.HasValue;
+
+    /// <summary>Rango que numera las semanas académicas: el de clases si está definido, si no el de la gestión.</summary>
+    public DateTime? CalendarStart => ClassesStartDate ?? StartDate;
+    public DateTime? CalendarEnd => ClassesEndDate ?? EndDate;
 
     public string StatusText => Status switch
     {
@@ -97,5 +103,6 @@ public sealed class AcademicManagementService : IAcademicManagementService
 
     private static IQueryable<AcademicManagementSummary> Project(IQueryable<Models.Management> query, int? currentId) =>
         query.Select(m => new AcademicManagementSummary(
-            m.Id, m.Code, m.Year, m.Semester, m.StartDate, m.PlannedEndDate, m.Status, m.Id == currentId));
+            m.Id, m.Code, m.Year, m.Semester, m.StartDate, m.PlannedEndDate, m.Status, m.Id == currentId,
+            m.ClassesStartDate, m.ClassesEndDate));
 }

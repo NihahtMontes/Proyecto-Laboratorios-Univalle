@@ -76,7 +76,14 @@
                         {
                             <div class="text-muted small mt-2">
                                 <i class="far fa-calendar mr-1"></i>
-                                @management.StartDate!.Value.ToString("dd/MM/yyyy") – @management.EndDate!.Value.ToString("dd/MM/yyyy")
+                                Gestión @management.StartDate!.Value.ToString("dd/MM/yyyy") – @management.EndDate!.Value.ToString("dd/MM/yyyy")
+                                <span class="mx-2">·</span>
+                                <i class="fas fa-chalkboard-teacher mr-1"></i>
+                                Clases @management.CalendarStart!.Value.ToString("dd/MM/yyyy") – @management.CalendarEnd!.Value.ToString("dd/MM/yyyy")
+                                @if (management.ClassesStartDate == null && management.ClassesEndDate == null)
+                                {
+                                    <span class="text-warning">(sin fechas de clases: se usan las de la gestión)</span>
+                                }
                                 <span class="mx-2">·</span>
                                 <i class="far fa-calendar-plus mr-1"></i>@Model.Weeks.Count semana(s)
                                 <span class="mx-2">·</span>
@@ -92,12 +99,29 @@
                     </div>
                     @if (canEdit && management.HasDates)
                     {
-                        <form method="post" asp-page-handler="Generate" id="form-generate" class="mb-0">
+                        <form method="post" asp-page-handler="Generate" id="form-generate" class="mb-0 mt-3 mt-lg-0">
                             <input type="hidden" name="ManagementId" value="@management.Id" />
-                            <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm"
-                                    style="background: #7460ee; border: none;">
-                                <i class="fas fa-sync-alt mr-1"></i> Generar / actualizar semanas
-                            </button>
+                            <div class="form-row align-items-end">
+                                <div class="col-auto">
+                                    <label for="ClassesStartDate" class="small font-weight-bold text-muted mb-1">INICIO DE CLASES</label>
+                                    <input type="date" id="ClassesStartDate" name="ClassesStartDate" class="form-control form-control-sm"
+                                           value="@management.ClassesStartDate?.ToString("yyyy-MM-dd")"
+                                           min="@management.StartDate!.Value.ToString("yyyy-MM-dd")" max="@management.EndDate!.Value.ToString("yyyy-MM-dd")" />
+                                </div>
+                                <div class="col-auto">
+                                    <label for="ClassesEndDate" class="small font-weight-bold text-muted mb-1">FIN DE CLASES</label>
+                                    <input type="date" id="ClassesEndDate" name="ClassesEndDate" class="form-control form-control-sm"
+                                           value="@management.ClassesEndDate?.ToString("yyyy-MM-dd")"
+                                           min="@management.StartDate!.Value.ToString("yyyy-MM-dd")" max="@management.EndDate!.Value.ToString("yyyy-MM-dd")" />
+                                </div>
+                                <div class="col-auto">
+                                    <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm"
+                                            style="background: #7460ee; border: none;">
+                                        <i class="fas fa-sync-alt mr-1"></i> Generar / actualizar semanas
+                                    </button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">La semana 1 es la que contiene el inicio de clases. Vacío = fechas de la gestión.</small>
                         </form>
                     }
                 </div>
@@ -147,7 +171,14 @@
                     </div>
                     <h3 class="font-weight-bold text-dark mb-2">Esta gestión todavía no tiene semanas generadas</h3>
                     <p class="text-muted mb-0">
-                        Genere el calendario para crear las semanas académicas (lunes a sábado) entre @management.StartDate!.Value.ToString("dd/MM/yyyy") y @management.EndDate!.Value.ToString("dd/MM/yyyy").
+                        @if (management.HasDates)
+                        {
+                            <text>Genere el calendario para crear las semanas académicas (lunes a sábado) entre @management.CalendarStart!.Value.ToString("dd/MM/yyyy") y @management.CalendarEnd!.Value.ToString("dd/MM/yyyy").</text>
+                        }
+                        else
+                        {
+                            <text>Registre primero las fechas de la gestión para poder generar el calendario.</text>
+                        }
                     </p>
                 </div>
             </div>
@@ -327,7 +358,7 @@
                     }
                     Swal.fire({
                         title: '¿Generar / actualizar semanas?',
-                        text: 'Se crearán las semanas y días que falten y se quitarán los que queden fuera de la gestión.',
+                        text: 'Se guardarán las fechas de clases, se crearán las semanas y días que falten, se quitarán los que queden fuera del rango y se renumerarán las semanas si cambió el inicio.',
                         type: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: '#7460ee',

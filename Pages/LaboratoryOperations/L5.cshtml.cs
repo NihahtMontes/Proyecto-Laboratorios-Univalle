@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
@@ -134,9 +135,11 @@ public class L5Model : PageModel
             TempData.Error("La planificación no existe.");
             return RedirectToHome();
         }
-        if (Plan.Status != PlanningStatus.Approved)
+        var hasDeparture = await _context.Departures.AsNoTracking()
+            .AnyAsync(d => d.PlanningId == PlanId && d.Status != LoanStatus.Cancelled);
+        if (!PlanningStatus.AllowsIncidents(Plan.Status, hasDeparture))
         {
-            TempData.Error("Solo se registran incidentes L-5 de una planificación aprobada y no finalizada.");
+            TempData.Error("Solo se registran incidentes L-5 de una planificación aprobada (o reubicada con salida de material) y no finalizada.");
             return RedirectToPage("./L3", new { id = PlanId });
         }
 
