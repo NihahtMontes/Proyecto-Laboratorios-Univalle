@@ -10,19 +10,19 @@ using Proyecto_Laboratorios_Univalle.Services;
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Demanda agregada por artículo para las prácticas L-3 de la planificación activa:
-/// suma RequestedQuantity de los detalles y compara contra el stock del Economato (laboratorio "ECONO").
-/// Solo considera prácticas Planificadas/Aprobadas y con fecha igual o posterior a hoy.
+/// Demanda agregada por artículo para las planificaciones de una gestión académica:
+/// suma RequestedQuantity de los requerimientos y compara contra el stock del Economato (laboratorio "ECONO").
+/// Solo considera planificaciones vigentes (estado que ocupa material) y con fecha igual o posterior a hoy.
 /// </summary>
 public class DemandaModel : PageModel
 {
     private readonly ApplicationDbContext _context;
-    private readonly IPlanningService _planning;
+    private readonly IAcademicManagementService _managements;
 
-    public DemandaModel(ApplicationDbContext context, IPlanningService planning)
+    public DemandaModel(ApplicationDbContext context, IAcademicManagementService managements)
     {
         _context = context;
-        _planning = planning;
+        _managements = managements;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -34,24 +34,38 @@ public class DemandaModel : PageModel
     [BindProperty(SupportsGet = true)]
     public int? LaboratoryId { get; set; }
 
+    [BindProperty(SupportsGet = true)]
+    public int? ManagementId { get; set; }
+
+    public SelectList ManagementList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList LaboratoryList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public IReadOnlyList<DemandRow> Rows { get; private set; } = [];
     public IReadOnlyList<string> Categories { get; private set; } = [];
     public decimal TotalRequested { get; private set; }
     public int DeficitCount { get; private set; }
     public int SurplusCount { get; private set; }
-    public bool HasActivePlanning { get; private set; }
-    public PlanningSummary? ActivePlanning { get; private set; }
+    public bool HasManagement { get; private set; }
+    public AcademicManagementSummary? Management { get; private set; }
     public string? OriginLaboratoryCode { get; private set; }
 
     public async Task OnGetAsync()
     {
         var today = DateTime.Today;
 
-        ActivePlanning = await _planning.GetActiveAsync();
-        HasActivePlanning = ActivePlanning != null;
+        Management = await _managements.ResolveAsync(ManagementId);
+        ManagementId = Management?.Id;
+        HasManagement = Management != null;
 
-        if (!HasActivePlanning)
+        var managements = await _managements.ListAsync();
+        ManagementList = new SelectList(
+            managements.Select(m => new SelectListItem
+            {
+                Value = m.Id.ToString(),
+                Text = $"{m.Code} · {m.StatusText}{(m.IsCurrent ? " (actual)" : "")}"
+            }),
+            "Value", "Text", ManagementId);
+
+        if (!HasManagement)
         {
             Rows = [];
             Categories = [];
@@ -72,13 +86,12 @@ public class DemandaModel : PageModel
         OriginLaboratoryCode = econo?.Code;
 
         // Demanda agregada por artículo (RequestedQuantity es decimal). Una sola consulta,
-        // acotada a prácticas de la planificación activa.
-        var demandRows = await _context.L3RequestDetails.AsNoTracking()
-            .Where(d => d.L3Request!.AcademicPlanningId == ActivePlanning!.Id
-                        && (d.L3Request!.Status == L3RequestStatus.Planned
-                         || d.L3Request!.Status == L3RequestStatus.Approved)
-                        && d.L3Request!.ScheduledDate >= today
-                        && (!LaboratoryId.HasValue || d.L3Request!.LaboratoryId == LaboratoryId.Value))
+        // acotada a las planificaciones de la gestión; los estados no ocupantes no demandan material.
+        var demandRows = await _context.PlanningRequirements.AsNoTracking()
+            .Where(d => d.Planning!.ManagementId == Management!.Id
+                        && !PlanningStatus.NonOccupying.Contains(d.Planning!.Status)
+                        && d.Planning!.ScheduledDate >= today
+                        && (!LaboratoryId.HasValue || d.Planning!.LaboratoryId == LaboratoryId.Value))
             .GroupBy(d => d.ArticleId)
             .Select(g => new
             {

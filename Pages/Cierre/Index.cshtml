@@ -91,7 +91,7 @@
     {
         <div class="alert alert-light border rounded-lg d-flex align-items-center mb-3 shadow-sm">
             <i class="fas fa-info-circle text-primary mr-2"></i>
-            <span class="small">Solo se muestran las prácticas de hoy.</span>
+            <span class="small">Solo se muestran las planificaciones de hoy.</span>
         </div>
     }
     else
@@ -166,11 +166,11 @@
         </div>
     </div>
 
-    @* ── Prácticas del día ── *@
+    @* ── Planificaciones del día ── *@
     <div class="ci-section mb-4">
         <div class="d-flex align-items-center mb-3">
             <i class="fas fa-flask text-primary mr-2"></i>
-            <span class="text-uppercase small text-primary font-weight-bold mr-2">Prácticas del día</span>
+            <span class="text-uppercase small text-primary font-weight-bold mr-2">Planificaciones del día</span>
             <span class="badge badge-light border">@Model.Practices.Count</span>
         </div>
 
@@ -178,9 +178,9 @@
         {
             <div class="ci-empty">
                 <div class="ci-empty__icon"><i class="far fa-calendar-check"></i></div>
-                <h5 class="font-weight-bold mb-1">No hay prácticas programadas para este día</h5>
+                <h5 class="font-weight-bold mb-1">No hay planificaciones programadas para este día</h5>
                 <p class="text-muted mb-0 small">
-                    Cuando la coordinación apruebe prácticas para esta fecha, aparecerán aquí
+                    Cuando la coordinación apruebe planificaciones para esta fecha, aparecerán aquí
                     para registrar la entrega y devolución de material.
                 </p>
             </div>
@@ -203,6 +203,7 @@
                                         <div class="d-flex flex-wrap align-items-center mb-1">
                                             <span class="font-weight-bold text-primary mr-2 ci-code">@p.Code</span>
                                             <span class="font-weight-bold text-dark mr-2">@p.PracticeName</span>
+                                            <span class="badge badge-light border mr-2">@p.StatusText</span>
                                             <span class="badge @StageBadgeClass(stage) ml-auto ci-stage">@StageBadgeText(stage)</span>
                                         </div>
                                         <div class="small text-muted ci-card__meta">
@@ -232,7 +233,7 @@
                                             @if (stage == IndexModel.ClosureStage.NotApproved)
                                             {
                                                 <small class="text-muted">
-                                                    <i class="fas fa-lock mr-1"></i>La coordinación debe aprobarla en Planificación.
+                                                    <i class="fas fa-lock mr-1"></i>La coordinación debe aprobarla en Planificaciones.
                                                 </small>
                                             }
                                             else
@@ -261,13 +262,13 @@
         }
     </div>
 
-    @* ── Devoluciones pendientes de otros días ── *@
+    @* ── Devoluciones pendientes (otros días o planificaciones sin sesión vigente) ── *@
     @if (Model.PendingReturns.Any())
     {
         <div class="ci-section">
             <div class="d-flex align-items-center mb-3">
                 <i class="fas fa-history text-danger mr-2"></i>
-                <span class="text-uppercase small text-danger font-weight-bold mr-2">Devoluciones pendientes de otros días</span>
+                <span class="text-uppercase small text-danger font-weight-bold mr-2">Devoluciones pendientes</span>
                 <span class="badge badge-light border">@Model.PendingReturns.Count</span>
             </div>
 
@@ -287,6 +288,7 @@
                                         <div class="d-flex flex-wrap align-items-center mb-1">
                                             <span class="font-weight-bold text-primary mr-2 ci-code">@p.Code</span>
                                             <span class="font-weight-bold text-dark mr-2">@p.PracticeName</span>
+                                            <span class="badge badge-light border mr-2">@p.StatusText</span>
                                             <span class="badge badge-danger ml-auto ci-stage">
                                                 <i class="fas fa-exclamation-circle mr-1"></i>Devolución pendiente
                                             </span>

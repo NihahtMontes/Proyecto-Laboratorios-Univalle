@@ -10,24 +10,24 @@ using Proyecto_Laboratorios_Univalle.Services;
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Paso 2: requerimientos L-3 por artículo. Se precargan desde la receta de la práctica o el kit de la materia
-/// (cantidad escalada por estudiantes ÷ factor en las líneas escalables) y se agregan con el buscador:
-/// artículos por categoría/nombre y equipos por nombre, inventario o serie (cada unidad física es una línea).
-/// Los artículos "Por confirmar" se pueden pedir (D1) y se muestran con su etiqueta.
+/// Paso 2: requerimientos por artículo de la planificación. Se precargan desde la receta de la práctica del
+/// catálogo o el kit de la materia (cantidad escalada por estudiantes ÷ factor en las líneas escalables) y se
+/// agregan con el buscador: artículos por categoría/nombre y equipos por nombre, inventario o serie (cada unidad
+/// física es una línea). Los artículos "Por confirmar" se pueden pedir (D1) y se muestran con su etiqueta.
 /// </summary>
 public class RequerimientosModel : PageModel
 {
     private readonly ApplicationDbContext _context;
-    private readonly IPlanningService _planningService;
+    private readonly IAcademicManagementService _managements;
     private readonly RequirementPickerService _picker;
     private readonly IArticleAvailabilityService _availability;
     private readonly IL3CircuitService _circuit;
 
-    public RequerimientosModel(ApplicationDbContext context, IPlanningService planningService, RequirementPickerService picker,
+    public RequerimientosModel(ApplicationDbContext context, IAcademicManagementService managements, RequirementPickerService picker,
         IArticleAvailabilityService availability, IL3CircuitService circuit)
     {
         _context = context;
-        _planningService = planningService;
+        _managements = managements;
         _picker = picker;
         _availability = availability;
         _circuit = circuit;
@@ -43,9 +43,9 @@ public class RequerimientosModel : PageModel
     [BindProperty]
     public BatchInput Batch { get; set; } = new();
 
-    public L3Request? Plan { get; private set; }
+    public Planning? Plan { get; private set; }
     public string Code => L3Codes.Format(PlanId);
-    public bool IsEditable => Plan?.Status == L3RequestStatus.Planned;
+    public bool IsEditable => Plan?.Status == PlanningStatus.Planned;
     public List<RequirementRow> Items { get; private set; } = [];
 
     /// <summary>Líneas de la receta de la práctica (para mostrar qué se precargará).</summary>
@@ -53,7 +53,7 @@ public class RequerimientosModel : PageModel
     public int? StudentCount { get; private set; }
     public int? ScalingFactor { get; private set; }
 
-    /// <summary>Kit de la materia de la práctica (vacío si no tiene).</summary>
+    /// <summary>Kit de la materia de la planificación (vacío si no tiene).</summary>
     public List<KitRow> Kit { get; private set; } = [];
     public string? SubjectName { get; private set; }
     /// <summary>Guardar las líneas como kit requiere los roles del catálogo de materias.</summary>
@@ -82,12 +82,12 @@ public class RequerimientosModel : PageModel
         bool IsScalable, decimal? ComputedQuantity, string? Note, bool AlreadyInRequest);
     public sealed record LaboratoryOption(int Id, string Name);
 
-    /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
+    /// <summary>Franja superior del wizard: gestión de la planificación y paso actual.</summary>
     public PlanningContextViewModel? Context { get; private set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
-        Context = await PlanningContextLoader.ForPracticeAsync(_context, _planningService, PlanId, 2);
+        Context = await PlanningContextLoader.ForPlanningAsync(_context, _managements, PlanId, 2);
         return await LoadPageAsync();
     }
 
@@ -102,7 +102,7 @@ public class RequerimientosModel : PageModel
             : null;
         if (schedule == null)
         {
-            TempData.Warning("La práctica no está vinculada a una práctica del catálogo: agrega los artículos manualmente.");
+            TempData.Warning("La planificación no está vinculada a una práctica del catálogo: agrega los artículos manualmente.");
             return RedirectToPage(new { planId = PlanId });
         }
 
@@ -116,8 +116,8 @@ public class RequerimientosModel : PageModel
             return RedirectToPage(new { planId = PlanId });
         }
 
-        var present = await _context.L3RequestDetails.AsNoTracking()
-            .Where(d => d.L3RequestId == plan.Id).Select(d => d.ArticleId).ToListAsync();
+        var present = await _context.PlanningRequirements.AsNoTracking()
+            .Where(d => d.PlanningId == plan.Id).Select(d => d.ArticleId).ToListAsync();
         int added = 0, skipped = 0;
         var warnings = new List<string>();
         foreach (var line in recipe.Where(r => !present.Contains(r.ArticleId)))
@@ -129,9 +129,9 @@ public class RequerimientosModel : PageModel
                 warnings.Add($"{line.Article!.Code}: {note}");
                 continue;
             }
-            _context.L3RequestDetails.Add(new L3RequestDetail
+            _context.PlanningRequirements.Add(new PlanningRequirement
             {
-                L3RequestId = plan.Id,
+                PlanningId = plan.Id,
                 ArticleId = line.ArticleId,
                 RequestedQuantity = quantity,
                 ExpectedQuantity = (int)Math.Ceiling(quantity.Value),
@@ -154,7 +154,7 @@ public class RequerimientosModel : PageModel
         if (plan == null) return RedirectToPage(new { planId = PlanId });
         if (!plan.SubjectId.HasValue)
         {
-            TempData.Warning("La práctica no tiene materia: agrega los artículos con el buscador.");
+            TempData.Warning("La planificación no tiene materia: agrega los artículos con el buscador.");
             return RedirectToPage(new { planId = PlanId });
         }
 
@@ -171,8 +171,8 @@ public class RequerimientosModel : PageModel
             ? await _context.PracticeSchedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == plan.PracticeScheduleId.Value)
             : null;
         // Un artículo ya pedido (por cantidad o como unidades físicas) no se vuelve a cargar.
-        var present = await _context.L3RequestDetails.AsNoTracking()
-            .Where(d => d.L3RequestId == plan.Id)
+        var present = await _context.PlanningRequirements.AsNoTracking()
+            .Where(d => d.PlanningId == plan.Id)
             .Select(d => d.ArticleId).ToListAsync();
 
         var added = 0;
@@ -180,9 +180,9 @@ public class RequerimientosModel : PageModel
         {
             var (quantity, note) = RequirementPickerService.Scale(item.Quantity, item.IsScalable, schedule?.StudentCount, schedule?.ScalingFactor);
             var observations = string.Join(" · ", new[] { item.Observations, note }.Where(t => !string.IsNullOrWhiteSpace(t)));
-            _context.L3RequestDetails.Add(new L3RequestDetail
+            _context.PlanningRequirements.Add(new PlanningRequirement
             {
-                L3RequestId = plan.Id,
+                PlanningId = plan.Id,
                 ArticleId = item.ArticleId,
                 RequestedQuantity = quantity,
                 ExpectedQuantity = (int)Math.Ceiling(quantity ?? 0),
@@ -234,7 +234,7 @@ public class RequerimientosModel : PageModel
             var scope = await ScopeAsync(plan.Id);
             if (scope == null)
             {
-                TempData.Error("La práctica no tiene facultad para ubicar unidades de equipo.");
+                TempData.Error("La planificación no tiene facultad para ubicar unidades de equipo.");
                 return RedirectToPage(new { planId = PlanId });
             }
             var labIds = _picker.ScopeLaboratories(scope.Value.FacultyId, scope.Value.CampusId).Select(l => l.Id);
@@ -249,7 +249,7 @@ public class RequerimientosModel : PageModel
                 .ToList();
             if (units.Count != unitIds.Count)
             {
-                TempData.Error("Alguna unidad seleccionada no está disponible en la sede y facultad de la práctica.");
+                TempData.Error("Alguna unidad seleccionada no está disponible en la sede y facultad de la planificación.");
                 return RedirectToPage(new { planId = PlanId });
             }
         }
@@ -263,8 +263,8 @@ public class RequerimientosModel : PageModel
             foreach (var equipmentId in units.Select(u => u.EquipmentId).Distinct())
                 articleByEquipment[equipmentId] = await _picker.ResolveEquipmentArticleAsync(equipmentId);
 
-            var existing = await _context.L3RequestDetails.AsTracking()
-                .Where(d => d.L3RequestId == plan.Id)
+            var existing = await _context.PlanningRequirements.AsTracking()
+                .Where(d => d.PlanningId == plan.Id)
                 .ToListAsync();
 
             foreach (var unit in units)
@@ -274,15 +274,15 @@ public class RequerimientosModel : PageModel
                     skipped++;
                     continue;
                 }
-                var detail = new L3RequestDetail
+                var detail = new PlanningRequirement
                 {
-                    L3RequestId = plan.Id,
+                    PlanningId = plan.Id,
                     ArticleId = articleByEquipment[unit.EquipmentId],
                     EquipmentUnitId = unit.Id,
                     RequestedQuantity = 1,
                     ExpectedQuantity = 1
                 };
-                _context.L3RequestDetails.Add(detail);
+                _context.PlanningRequirements.Add(detail);
                 existing.Add(detail);
                 added++;
             }
@@ -298,14 +298,14 @@ public class RequerimientosModel : PageModel
                 }
                 else
                 {
-                    var detail = new L3RequestDetail
+                    var detail = new PlanningRequirement
                     {
-                        L3RequestId = plan.Id,
+                        PlanningId = plan.Id,
                         ArticleId = line.ArticleId,
                         RequestedQuantity = line.Quantity,
                         ExpectedQuantity = (int)Math.Ceiling(line.Quantity)
                     };
-                    _context.L3RequestDetails.Add(detail);
+                    _context.PlanningRequirements.Add(detail);
                     existing.Add(detail);
                     added++;
                 }
@@ -340,15 +340,15 @@ public class RequerimientosModel : PageModel
             TempData.Error("No tiene permisos para modificar el kit de la materia.");
             return RedirectToPage(new { planId = PlanId });
         }
-        var plan = await _context.L3Requests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == PlanId);
+        var plan = await _context.Plannings.AsNoTracking().FirstOrDefaultAsync(r => r.Id == PlanId);
         if (plan?.SubjectId is not int subjectId)
         {
-            TempData.Error("La práctica no tiene materia.");
+            TempData.Error("La planificación no tiene materia.");
             return RedirectToPage(new { planId = PlanId });
         }
 
-        var lines = (await _context.L3RequestDetails.AsNoTracking()
-                .Where(d => d.L3RequestId == plan.Id)
+        var lines = (await _context.PlanningRequirements.AsNoTracking()
+                .Where(d => d.PlanningId == plan.Id)
                 .Select(d => new { d.ArticleId, Quantity = d.RequestedQuantity ?? d.ExpectedQuantity })
                 .ToListAsync())
             .GroupBy(d => d.ArticleId)
@@ -394,11 +394,11 @@ public class RequerimientosModel : PageModel
             return RedirectToPage(new { planId = PlanId });
         }
 
-        var detail = await _context.L3RequestDetails.AsTracking()
-            .FirstOrDefaultAsync(d => d.Id == detailId && d.L3RequestId == plan.Id);
+        var detail = await _context.PlanningRequirements.AsTracking()
+            .FirstOrDefaultAsync(d => d.Id == detailId && d.PlanningId == plan.Id);
         if (detail == null)
         {
-            TempData.Error("El requerimiento no pertenece a esta práctica.");
+            TempData.Error("El requerimiento no pertenece a esta planificación.");
             return RedirectToPage(new { planId = PlanId });
         }
         if (detail.EquipmentUnitId.HasValue && newQuantity != 1)
@@ -419,12 +419,12 @@ public class RequerimientosModel : PageModel
         var plan = await GuardAsync();
         if (plan == null) return RedirectToPage(new { planId = PlanId });
 
-        var detail = await _context.L3RequestDetails.AsTracking()
-            .FirstOrDefaultAsync(d => d.Id == detailId && d.L3RequestId == plan.Id);
+        var detail = await _context.PlanningRequirements.AsTracking()
+            .FirstOrDefaultAsync(d => d.Id == detailId && d.PlanningId == plan.Id);
         if (detail != null)
         {
-            // Línea de borrador de una solicitud aún no aprobada: no tiene salidas ni historial que preservar.
-            _context.L3RequestDetails.Remove(detail);
+            // Línea de borrador de una planificación aún no aprobada: no tiene salidas ni historial que preservar.
+            _context.PlanningRequirements.Remove(detail);
             await _context.SaveChangesAsync();
             TempData.Success("Requerimiento retirado.");
         }
@@ -436,7 +436,7 @@ public class RequerimientosModel : PageModel
         var plan = await GuardAsync();
         if (plan == null) return RedirectToPage(new { planId = PlanId });
 
-        if (!await _context.L3RequestDetails.AsNoTracking().AnyAsync(d => d.L3RequestId == plan.Id))
+        if (!await _context.PlanningRequirements.AsNoTracking().AnyAsync(d => d.PlanningId == plan.Id))
         {
             TempData.Error("Agrega al menos un requerimiento antes de validar disponibilidad.");
             return RedirectToPage(new { planId = PlanId });
@@ -453,22 +453,22 @@ public class RequerimientosModel : PageModel
 
     private Task<(int FacultyId, int? CampusId)?> ScopeAsync(int practiceId) => _picker.PracticeScopeAsync(practiceId);
 
-    private async Task<L3Request?> GuardAsync()
+    private async Task<Planning?> GuardAsync()
     {
-        if (!await PlanningContextLoader.IsWritableAsync(_context, PlanId))
+        if (!await PlanningContextLoader.IsWritableAsync(_managements, PlanId))
         {
             TempData.Error(PlanningContextLoader.ReadOnlyMessage);
             return null;
         }
-        var plan = await _context.L3Requests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == PlanId);
+        var plan = await _context.Plannings.AsNoTracking().FirstOrDefaultAsync(r => r.Id == PlanId);
         if (plan == null)
         {
-            TempData.Error("La práctica no existe.");
+            TempData.Error("La planificación no existe.");
             return null;
         }
-        if (plan.Status != L3RequestStatus.Planned)
+        if (plan.Status != PlanningStatus.Planned)
         {
-            TempData.Error("La solicitud ya fue aprobada; sus requerimientos no se pueden modificar.");
+            TempData.Error("La planificación ya fue aprobada; sus requerimientos no se pueden modificar.");
             return null;
         }
         return plan;
@@ -476,7 +476,7 @@ public class RequerimientosModel : PageModel
 
     private async Task<IActionResult> LoadPageAsync()
     {
-        Plan = await _context.L3Requests.AsNoTracking()
+        Plan = await _context.Plannings.AsNoTracking()
             .Include(r => r.Laboratory)
             .Include(r => r.Subject)
             .Include(r => r.TeacherPerson)
@@ -484,15 +484,15 @@ public class RequerimientosModel : PageModel
             .FirstOrDefaultAsync(r => r.Id == PlanId);
         if (Plan == null)
         {
-            TempData.Error("La práctica no existe.");
+            TempData.Error("La planificación no existe.");
             return RedirectToPage("./Index");
         }
 
         StudentCount = Plan.PracticeSchedule?.StudentCount;
         ScalingFactor = Plan.PracticeSchedule?.ScalingFactor;
 
-        Items = await _context.L3RequestDetails.AsNoTracking()
-            .Where(d => d.L3RequestId == Plan.Id)
+        Items = await _context.PlanningRequirements.AsNoTracking()
+            .Where(d => d.PlanningId == Plan.Id)
             .OrderBy(d => d.Article!.Name)
             .ThenBy(d => d.EquipmentUnit != null ? d.EquipmentUnit.InventoryNumber : null)
             .Select(d => new RequirementRow(d.Id, d.ArticleId, d.Article!.Code, d.Article.Name,

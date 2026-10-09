@@ -13,8 +13,8 @@ using Proyecto_Laboratorios_Univalle.Services;
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Paso 5: incidente L-5 sobre un artículo entregado en la salida L-3 (y, si corresponde, la unidad física concreta).
-/// Con unidad física, ApplicationDbContext actualiza su historial y estado al guardar.
+/// Paso 5: incidente L-5 sobre un artículo entregado en la salida L-3 de una planificación (y, si corresponde,
+/// la unidad física concreta). Con unidad física, ApplicationDbContext actualiza su historial y estado al guardar.
 /// </summary>
 [Authorize(Roles = AuthorizationHelper.ClosureRoles)]
 public class L5Model : PageModel
@@ -23,12 +23,12 @@ public class L5Model : PageModel
     public static readonly string[] ResponsibleTypes = ["ESTUDIANTE", "DOCENTE"];
 
     private readonly ApplicationDbContext _context;
-    private readonly IPlanningService _planningService;
+    private readonly IAcademicManagementService _managements;
 
-    public L5Model(ApplicationDbContext context, IPlanningService planningService)
+    public L5Model(ApplicationDbContext context, IAcademicManagementService managements)
     {
         _context = context;
-        _planningService = planningService;
+        _managements = managements;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -41,7 +41,7 @@ public class L5Model : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
-    public L3Request? Plan { get; private set; }
+    public Planning? Plan { get; private set; }
     public string Code => L3Codes.Format(PlanId);
     public List<SelectListItem> ArticleOptions { get; private set; } = [];
     public List<SelectListItem> UnitOptions { get; private set; } = [];
@@ -49,10 +49,10 @@ public class L5Model : PageModel
     /// <summary>Cantidad entregada por artículo (tope de la cantidad afectada).</summary>
     public Dictionary<int, decimal> DeliveredByArticle { get; private set; } = [];
 
-    /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
+    /// <summary>Franja superior del wizard: gestión de la planificación y paso actual.</summary>
     public PlanningContextViewModel? Context { get; private set; }
 
-    /// <summary>El rol de cierre solo opera prácticas del día o con devoluciones pendientes (GET y POST).</summary>
+    /// <summary>El rol de cierre solo opera planificaciones del día o con devoluciones pendientes (GET y POST).</summary>
     public override async Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext context, PageHandlerExecutionDelegate next)
     {
         var denied = await PracticeClosureAccess.DenyReasonAsync(_context, User, PlanId);
@@ -71,7 +71,7 @@ public class L5Model : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        Context = await PlanningContextLoader.ForPracticeAsync(_context, _planningService, PlanId, 5);
+        Context = await PlanningContextLoader.ForPlanningAsync(_context, _managements, PlanId, 5);
         if (ArticleId.HasValue) Input.ArticleId = ArticleId.Value;
         var redirect = await LoadAsync();
         if (redirect != null) return redirect;
@@ -80,7 +80,7 @@ public class L5Model : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
-        if (!await PlanningContextLoader.IsWritableAsync(_context, PlanId))
+        if (!await PlanningContextLoader.IsWritableAsync(_managements, PlanId))
         {
             TempData.Error(PlanningContextLoader.ReadOnlyMessage);
             return RedirectToPage(new { planId = PlanId });
@@ -90,11 +90,11 @@ public class L5Model : PageModel
         if (redirect != null) return redirect;
 
         if (!DeliveredByArticle.TryGetValue(Input.ArticleId, out var delivered))
-            ModelState.AddModelError("Input.ArticleId", "El artículo no fue entregado en la salida de esta práctica.");
+            ModelState.AddModelError("Input.ArticleId", "El artículo no fue entregado en la salida de esta planificación.");
         else if (Input.AffectedQuantity > Math.Ceiling(delivered))
             ModelState.AddModelError("Input.AffectedQuantity", $"La cantidad afectada no puede superar lo entregado ({delivered:0.##}).");
         if (Input.EquipmentUnitId.HasValue && !UnitOptions.Any(o => o.Value == Input.EquipmentUnitId.Value.ToString()))
-            ModelState.AddModelError("Input.EquipmentUnitId", "La unidad no corresponde a las solicitadas en esta práctica.");
+            ModelState.AddModelError("Input.EquipmentUnitId", "La unidad no corresponde a las solicitadas en esta planificación.");
         if (!IncidentTypes.Contains(Input.IncidentType))
             ModelState.AddModelError("Input.IncidentType", "Selecciona un tipo de incidente válido.");
         if (!ResponsibleTypes.Contains(Input.ResponsibleType))
@@ -104,7 +104,7 @@ public class L5Model : PageModel
 
         _context.L5Incidents.Add(new L5Incident
         {
-            L3RequestId = PlanId,
+            PlanningId = PlanId,
             ArticleId = Input.ArticleId,
             EquipmentUnitId = Input.EquipmentUnitId,
             ResponsibleName = Input.ResponsibleName.Trim(),
@@ -125,24 +125,24 @@ public class L5Model : PageModel
 
     private async Task<IActionResult?> LoadAsync()
     {
-        Plan = await _context.L3Requests.AsNoTracking()
+        Plan = await _context.Plannings.AsNoTracking()
             .Include(r => r.Laboratory)
             .Include(r => r.Subject)
             .FirstOrDefaultAsync(r => r.Id == PlanId);
         if (Plan == null)
         {
-            TempData.Error("La práctica no existe.");
+            TempData.Error("La planificación no existe.");
             return RedirectToHome();
         }
-        if (Plan.Status != L3RequestStatus.Approved)
+        if (Plan.Status != PlanningStatus.Approved)
         {
-            TempData.Error("Solo se registran incidentes L-5 de una solicitud aprobada y no finalizada.");
+            TempData.Error("Solo se registran incidentes L-5 de una planificación aprobada y no finalizada.");
             return RedirectToPage("./L3", new { id = PlanId });
         }
 
-        // Artículos entregados en la salida de esta práctica.
+        // Artículos entregados en la salida de esta planificación.
         var delivered = await _context.DepartureItems.AsNoTracking()
-            .Where(i => i.Departure!.L3RequestId == PlanId && i.ArticleId != null)
+            .Where(i => i.Departure!.PlanningId == PlanId && i.ArticleId != null)
             .GroupBy(i => new { ArticleId = i.ArticleId!.Value, i.Article!.Code, i.Article.Name })
             .Select(g => new { g.Key.ArticleId, g.Key.Code, g.Key.Name, Quantity = g.Sum(i => i.Quantity ?? 0) })
             .ToListAsync();
@@ -156,9 +156,9 @@ public class L5Model : PageModel
             .Select(d => new SelectListItem($"{d.Code} · {d.Name} (entregado {d.Quantity:0.##})", d.ArticleId.ToString(), d.ArticleId == Input.ArticleId))
             .ToList();
 
-        // Unidades físicas indicadas en los requerimientos de la práctica.
-        var units = await _context.L3RequestDetails.AsNoTracking()
-            .Where(d => d.L3RequestId == PlanId && d.EquipmentUnitId != null)
+        // Unidades físicas indicadas en los requerimientos de la planificación.
+        var units = await _context.PlanningRequirements.AsNoTracking()
+            .Where(d => d.PlanningId == PlanId && d.EquipmentUnitId != null)
             .Select(d => new
             {
                 Id = d.EquipmentUnitId!.Value,

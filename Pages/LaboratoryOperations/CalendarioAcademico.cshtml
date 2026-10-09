@@ -1,0 +1,391 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.CalendarioAcademicoModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@using Proyecto_Laboratorios_Univalle.Services
+@{
+    ViewData["Title"] = "Calendario académico";
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
+            <h2 class="font-weight-bold text-dark">Calendario académico</h2>
+            <div class="text-muted small">Semanas de lunes a sábado y estado de cada día de la gestión (habilitado o suspendido).</div>
+        </div>
+        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+            @if (Model.Management != null)
+            {
+                <form method="get" class="form-inline justify-content-md-end">
+                    <label class="small font-weight-bold mr-2 mb-0" for="managementSelector">GESTIÓN</label>
+                    <select id="managementSelector" asp-for="ManagementId" asp-items="Model.ManagementList"
+                            class="custom-select custom-select-sm mr-2" onchange="this.form.submit()"></select>
+                    <button type="submit" class="btn btn-sm btn-outline-primary font-weight-bold">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+
+    @if (Model.Management == null)
+    {
+        <div class="card border-0 shadow-sm rounded-lg">
+            <div class="card-body text-center p-5">
+                <div class="mb-3">
+                    <i class="fas fa-calendar-times text-primary opacity-50" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="font-weight-bold text-dark mb-2">No hay una gestión académica disponible</h3>
+                <p class="text-muted mb-4">
+                    El calendario académico depende de las fechas de una gestión. Cree o active una gestión para generar sus semanas.
+                </p>
+                <a asp-page="/Managements/Index" asp-route-type="Preventive" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm">
+                    <i class="fas fa-calendar-plus mr-2"></i> Ver gestiones
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        var management = Model.Management;
+        var canEdit = Model.CanEditCalendar;
+
+        @* ── Cabecera de la gestión ── *@
+        <div class="card border-0 shadow-sm rounded-lg mb-4"
+             style="background: linear-gradient(135deg, #f4f3ff, #ffffff); border-left: 4px solid #7460ee !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start flex-wrap">
+                    <div class="rounded-circle p-3 mr-3" style="background: rgba(116, 96, 238, 0.12); color: #7460ee;">
+                        <i class="fas fa-calendar-alt fa-lg"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex flex-wrap align-items-center">
+                            <h3 class="font-weight-bold text-dark mb-0 mr-2">Gestión @management.Code</h3>
+                            <span class="badge @(management.Status == ManagementStatus.Active ? "badge-success" : "badge-light border text-muted") px-2 py-1">
+                                @management.StatusText
+                            </span>
+                            @if (management.IsCurrent)
+                            {
+                                <span class="badge badge-primary px-2 py-1 ml-1">Actual</span>
+                            }
+                        </div>
+                        @if (management.HasDates)
+                        {
+                            <div class="text-muted small mt-2">
+                                <i class="far fa-calendar mr-1"></i>
+                                @management.StartDate!.Value.ToString("dd/MM/yyyy") – @management.EndDate!.Value.ToString("dd/MM/yyyy")
+                                <span class="mx-2">·</span>
+                                <i class="far fa-calendar-plus mr-1"></i>@Model.Weeks.Count semana(s)
+                                <span class="mx-2">·</span>
+                                <span class="text-success font-weight-bold">@Model.EnabledDays habilitados</span>
+                                <span class="mx-1">·</span>
+                                <span class="text-secondary font-weight-bold">@Model.SuspendedDays suspendidos</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-muted small mt-2">La gestión todavía no tiene fechas de inicio y fin.</div>
+                        }
+                    </div>
+                    @if (canEdit && management.HasDates)
+                    {
+                        <form method="post" asp-page-handler="Generate" id="form-generate" class="mb-0">
+                            <input type="hidden" name="ManagementId" value="@management.Id" />
+                            <button type="submit" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm"
+                                    style="background: #7460ee; border: none;">
+                                <i class="fas fa-sync-alt mr-1"></i> Generar / actualizar semanas
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @if (!management.HasDates)
+        {
+            <div class="alert alert-warning border-0 shadow-sm rounded-lg d-flex align-items-center mb-4">
+                <i class="fas fa-exclamation-triangle text-warning fa-lg mr-3"></i>
+                <div class="flex-grow-1">
+                    <strong class="text-dark">Registre las fechas de la gestión.</strong>
+                    <div class="small text-muted">Las semanas académicas se generan a partir de la fecha de inicio y la fecha de fin planificada.</div>
+                </div>
+                <a href="/Managements/Edit?id=@management.Id" class="btn btn-warning btn-rounded font-weight-bold px-3 shadow-sm">
+                    <i class="fas fa-edit mr-1"></i> Editar gestión
+                </a>
+            </div>
+        }
+        else if (!management.IsEditable)
+        {
+            <div class="alert alert-secondary border-0 shadow-sm rounded-lg d-flex align-items-center mb-4">
+                <i class="fas fa-eye text-muted fa-lg mr-3"></i>
+                <div class="flex-grow-1">
+                    <strong class="text-dark">Gestión @management.StatusText: solo consulta.</strong>
+                    <div class="small text-muted">El calendario de una gestión completada no admite cambios.</div>
+                </div>
+            </div>
+        }
+        else if (!Model.CanWrite)
+        {
+            <div class="alert alert-info border-0 shadow-sm rounded-lg d-flex align-items-center mb-4">
+                <i class="fas fa-info-circle text-info fa-lg mr-3"></i>
+                <div class="flex-grow-1">
+                    <strong class="text-dark">Vista de solo lectura.</strong>
+                    <div class="small text-muted">Solo un administrador puede generar semanas o suspender días del calendario.</div>
+                </div>
+            </div>
+        }
+
+        @if (Model.Weeks.Count == 0)
+        {
+            <div class="card border-0 shadow-sm rounded-lg">
+                <div class="card-body text-center p-5">
+                    <div class="mb-3">
+                        <i class="fas fa-calendar-week text-primary opacity-50" style="font-size: 4rem;"></i>
+                    </div>
+                    <h3 class="font-weight-bold text-dark mb-2">Esta gestión todavía no tiene semanas generadas</h3>
+                    <p class="text-muted mb-0">
+                        Genere el calendario para crear las semanas académicas (lunes a sábado) entre @management.StartDate!.Value.ToString("dd/MM/yyyy") y @management.EndDate!.Value.ToString("dd/MM/yyyy").
+                    </p>
+                </div>
+            </div>
+        }
+        else
+        {
+            @* ── Tabla de semanas: fila por semana, columnas Lun..Sáb ── *@
+            <div class="card border-0 shadow-sm rounded-lg mb-4">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle text-center mb-0 calendario-table">
+                            <thead>
+                                <tr class="small uppercase font-weight-bold text-white bg-dark">
+                                    <th class="border-0" style="min-width: 130px;">Semana</th>
+                                    @for (var d = 1; d <= 6; d++)
+                                    {
+                                        <th class="border-0">@AcademicWeekGenerator.ShortWeekdayNames[d]</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var week in Model.Weeks)
+                                {
+                                    <tr>
+                                        <td class="text-left bg-light">
+                                            <div class="font-weight-bold text-dark">Semana @week.Number</div>
+                                            <div class="text-muted small">@week.Monday.ToString("dd/MM") – @week.Saturday.ToString("dd/MM")</div>
+                                        </td>
+                                        @foreach (var day in week.Days)
+                                        {
+                                            @if (!day.Exists)
+                                            {
+                                                <td class="calendario-fuera">
+                                                    <div class="small text-muted font-weight-bold">@day.DateText</div>
+                                                    <span class="badge badge-light text-muted">Fuera de la gestión</span>
+                                                </td>
+                                            }
+                                            else if (day.Status == AcademicDayStatus.Suspended)
+                                            {
+                                                <td class="calendario-suspendido">
+                                                    <div class="small font-weight-bold">@day.DateText</div>
+                                                    <span class="badge badge-secondary" title="@day.Reason">Suspendido</span>
+                                                    @if (!string.IsNullOrEmpty(day.Reason))
+                                                    {
+                                                        <div class="calendario-motivo text-muted" title="@day.Reason">@day.Reason</div>
+                                                    }
+                                                    @if (day.PlanCount > 0)
+                                                    {
+                                                        <div class="calendario-planificaciones"><i class="fas fa-flask mr-1"></i>@day.PlanCount planificación(es)</div>
+                                                    }
+                                                    @if (canEdit)
+                                                    {
+                                                        <button type="button" class="btn btn-outline-success btn-sm btn-rounded font-weight-bold mt-1 js-enable-day"
+                                                                data-day-id="@day.DayId" data-day-label="@day.DateText">
+                                                            <i class="fas fa-check mr-1"></i>Habilitar
+                                                        </button>
+                                                    }
+                                                </td>
+                                            }
+                                            else
+                                            {
+                                                var dayLabel = day.Date.ToString("dddd d 'de' MMMM", System.Globalization.CultureInfo.GetCultureInfo("es-BO"));
+                                                <td class="calendario-habilitado">
+                                                    <div class="small font-weight-bold">@day.DateText</div>
+                                                    <span class="badge badge-success">Habilitado</span>
+                                                    @if (day.PlanCount > 0)
+                                                    {
+                                                        <div class="calendario-planificaciones"><i class="fas fa-flask mr-1"></i>@day.PlanCount planificación(es)</div>
+                                                    }
+                                                    @if (canEdit)
+                                                    {
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm btn-rounded font-weight-bold mt-1"
+                                                                data-toggle="modal" data-target="#modal-suspender"
+                                                                data-day-id="@day.DayId" data-day-label="@dayLabel">
+                                                            <i class="fas fa-ban mr-1"></i>Suspender
+                                                        </button>
+                                                    }
+                                                </td>
+                                            }
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex flex-wrap mt-3 small text-muted">
+                        <span class="mr-3"><span class="badge badge-success">Habilitado</span> el día tiene actividades académicas.</span>
+                        <span class="mr-3"><span class="badge badge-secondary">Suspendido</span> feriado o día sin actividades (con motivo).</span>
+                        <span><span class="badge badge-light text-muted">Fuera de la gestión</span> el día no pertenece al rango de fechas.</span>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@if (Model.Management != null && Model.CanEditCalendar)
+{
+    @* ── Modal de suspensión de día (motivo obligatorio) ── *@
+    <div class="modal fade" id="modal-suspender" tabindex="-1" role="dialog" aria-labelledby="modal-suspender-titulo" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <form method="post" asp-page-handler="SetDay" id="form-suspend" class="modal-content border-0 shadow-lg rounded-lg">
+                <div class="modal-header" style="background: linear-gradient(135deg, #f4f3ff, #ffffff); border-bottom: 1px solid #ecebf6;">
+                    <h5 class="modal-title font-weight-bold text-dark" id="modal-suspender-titulo">
+                        <i class="fas fa-ban text-secondary mr-2"></i>Suspender día
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="ManagementId" value="@Model.Management.Id" />
+                    <input type="hidden" name="Status" value="@((int)AcademicDayStatus.Suspended)" />
+                    <input type="hidden" name="DayId" id="suspend-day-id" value="" />
+                    <p class="mb-2">
+                        Suspenderás el día <strong id="suspend-day-label" class="text-dark"></strong>.
+                        Las planificaciones de ese día deberán reubicarse con una reposición de día.
+                    </p>
+                    <div class="form-group">
+                        <label for="suspend-reason" class="small font-weight-bold">MOTIVO <span class="text-danger">*</span></label>
+                        <textarea id="suspend-reason" name="Reason" class="form-control" rows="3" maxlength="200"
+                                  required placeholder="Ej. Feriado institucional, evento académico..." data-msg-required="Indique el motivo de la suspensión."></textarea>
+                        <small class="text-muted">Obligatorio, máximo 200 caracteres.</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary btn-rounded font-weight-bold" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-dark btn-rounded font-weight-bold px-4">
+                        <i class="fas fa-ban mr-1"></i>Suspender día
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* ── Formulario oculto para habilitar (confirmación SweetAlert) ── *@
+    <form method="post" asp-page-handler="SetDay" id="form-enable">
+        <input type="hidden" name="ManagementId" value="@Model.Management.Id" />
+        <input type="hidden" name="DayId" id="enable-day-id" value="" />
+        <input type="hidden" name="Status" value="@((int)AcademicDayStatus.Enabled)" />
+    </form>
+}
+
+@section Styles {
+    <style>
+        .calendario-table td { vertical-align: top !important; padding: .55rem .5rem; }
+        .calendario-fuera { background: #f2f3f5; }
+        .calendario-suspendido { background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 70%); }
+        .calendario-habilitado { background: #ffffff; }
+        .calendario-motivo {
+            font-size: .68rem; line-height: 1.15; margin-top: .15rem;
+            max-width: 120px; margin-left: auto; margin-right: auto;
+            overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        }
+        .calendario-planificaciones { font-size: .68rem; margin-top: .2rem; color: #5a4f8a; }
+        @@media (max-width: 575.98px) {
+            .calendario-table { font-size: .78rem; }
+            .calendario-motivo { max-width: 84px; }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(function () {
+            // Confirmación SweetAlert v7 para "Generar / actualizar semanas" (modifica datos existentes).
+            var formGenerate = document.getElementById('form-generate');
+            if (formGenerate) {
+                formGenerate.addEventListener('submit', function (e) {
+                    if (formGenerate.dataset.confirmed === '1') return true;
+                    e.preventDefault();
+                    if (typeof Swal === 'undefined') {
+                        formGenerate.dataset.confirmed = '1';
+                        HTMLFormElement.prototype.submit.call(formGenerate);
+                        return;
+                    }
+                    Swal.fire({
+                        title: '¿Generar / actualizar semanas?',
+                        text: 'Se crearán las semanas y días que falten y se quitarán los que queden fuera de la gestión.',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#7460ee',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, actualizar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            formGenerate.dataset.confirmed = '1';
+                            HTMLFormElement.prototype.submit.call(formGenerate);
+                        }
+                    });
+                });
+            }
+
+            // Modal de suspensión: carga el día elegido y limpia el motivo anterior.
+            var modalSuspender = document.getElementById('modal-suspender');
+            if (modalSuspender) {
+                $(modalSuspender).on('show.bs.modal', function (event) {
+                    var button = $(event.relatedTarget);
+                    $('#suspend-day-id').val(button.data('day-id'));
+                    $('#suspend-day-label').text(button.data('day-label'));
+                    $('#suspend-reason').val('');
+                });
+            }
+
+            // Habilitar día: confirmación SweetAlert v7 y submit del formulario oculto.
+            var formEnable = document.getElementById('form-enable');
+            if (formEnable) {
+                document.querySelectorAll('.js-enable-day').forEach(function (btn) {
+                    btn.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        var dayId = btn.getAttribute('data-day-id');
+                        var doEnable = function () {
+                            document.getElementById('enable-day-id').value = dayId;
+                            HTMLFormElement.prototype.submit.call(formEnable);
+                        };
+                        if (typeof Swal === 'undefined') {
+                            doEnable();
+                            return;
+                        }
+                        Swal.fire({
+                            title: '¿Habilitar este día?',
+                            text: 'El día volverá a tener actividades académicas.',
+                            type: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#28a745',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: 'Sí, habilitar',
+                            cancelButtonText: 'Cancelar'
+                        }).then(function (result) {
+                            if (result && (result.isConfirmed === true || result.value === true)) {
+                                doEnable();
+                            }
+                        });
+                    });
+                });
+            }
+        });
+    </script>
+}

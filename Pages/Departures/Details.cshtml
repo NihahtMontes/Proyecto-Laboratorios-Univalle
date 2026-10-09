@@ -59,17 +59,17 @@
                     </div>
                 </div>
 
-                @if (d.L3RequestId.HasValue)
+                @if (d.PlanningId.HasValue)
                 {
                     <div class="alert alert-info border-0 shadow-sm mb-4 d-flex align-items-center" style="background: #f0f9ff; border-left: 4px solid #0284c7 !important;">
                         <i class="fas fa-link mr-2 text-info"></i>
                         <div class="flex-grow-1">
-                            <small class="uppercase text-muted font-weight-bold d-block">Solicitud L-3 de Origen</small>
-                            <strong class="text-dark">@(string.IsNullOrEmpty(d.L3Request?.Code) ? $"L3-{d.L3RequestId:0000}" : d.L3Request.Code)</strong>
-                            <span class="text-muted">· @(d.L3Request?.PracticeName ?? "Práctica")</span>
+                            <small class="uppercase text-muted font-weight-bold d-block">Planificación de Origen</small>
+                            <strong class="text-dark">@(string.IsNullOrEmpty(d.Planning?.Code) ? $"PRA-{d.PlanningId:00000}" : d.Planning.Code)</strong>
+                            <span class="text-muted">· @(d.Planning?.PracticeName ?? "Planificación")</span>
                         </div>
-                        <a href="/LaboratoryOperations/L3?id=@d.L3RequestId" class="btn btn-sm btn-outline-info btn-rounded font-weight-bold shadow-sm">
-                            <i class="fas fa-external-link-alt mr-1"></i> Abrir solicitud
+                        <a href="/LaboratoryOperations/L3?id=@d.PlanningId" class="btn btn-sm btn-outline-info btn-rounded font-weight-bold shadow-sm">
+                            <i class="fas fa-external-link-alt mr-1"></i> Abrir planificación
                         </a>
                     </div>
                 }

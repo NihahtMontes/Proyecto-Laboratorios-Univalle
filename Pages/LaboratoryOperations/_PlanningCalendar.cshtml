@@ -1,6 +1,6 @@
 @*
     Partial: _PlanningCalendar.cshtml
-    Calendario visual de la planificación: navegación de meses + semanas lectivas + días lunes a viernes.
+    Calendario resumen de la gestión: navegación de meses + semanas académicas + días lunes a sábado.
     Model: Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanningCalendar
 *@
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanningCalendar
@@ -12,7 +12,7 @@
             <div class="d-flex align-items-center">
                 @if (!string.IsNullOrEmpty(Model.PreviousMonth))
                 {
-                    <a asp-page="./Index" asp-route-planningId="@Model.PlanningId" asp-route-month="@Model.PreviousMonth"
+                    <a asp-page="./Index" asp-route-managementId="@Model.ManagementId" asp-route-month="@Model.PreviousMonth"
                        class="btn btn-outline-secondary btn-rounded btn-sm mr-2" title="Mes anterior" aria-label="Mes anterior">
                         <i class="fas fa-chevron-left"></i>
                     </a>
@@ -26,7 +26,7 @@
                 <h5 class="font-weight-bold text-dark mb-0 mx-2 pl-month-title">@Model.MonthLabel</h5>
                 @if (!string.IsNullOrEmpty(Model.NextMonth))
                 {
-                    <a asp-page="./Index" asp-route-planningId="@Model.PlanningId" asp-route-month="@Model.NextMonth"
+                    <a asp-page="./Index" asp-route-managementId="@Model.ManagementId" asp-route-month="@Model.NextMonth"
                        class="btn btn-outline-secondary btn-rounded btn-sm ml-2" title="Mes siguiente" aria-label="Mes siguiente">
                         <i class="fas fa-chevron-right"></i>
                     </a>
@@ -41,14 +41,14 @@
             <div class="ml-auto mt-2 mt-md-0">
                 <span class="badge badge-light border px-3 py-2">
                     <i class="fas fa-flask mr-1 text-primary"></i>
-                    <strong>@Model.PracticesInMonth</strong> prácticas en el mes
+                    <strong>@Model.PlanningsInMonth</strong> planificaciones en el mes
                 </span>
             </div>
         </div>
-        <div class="pl-month-pills mt-3" role="navigation" aria-label="Meses de la planificación">
+        <div class="pl-month-pills mt-3" role="navigation" aria-label="Meses de la gestión">
             @foreach (var m in Model.Months)
             {
-                <a asp-page="./Index" asp-route-planningId="@Model.PlanningId" asp-route-month="@m.Value"
+                <a asp-page="./Index" asp-route-managementId="@Model.ManagementId" asp-route-month="@m.Value"
                    class="pl-month-pill @(m.Selected ? "pl-month-pill--active" : string.Empty)"
                    aria-current="@(m.Selected ? "true" : "false")">@m.Label</a>
             }
@@ -63,7 +63,10 @@
         <div class="card-body text-center py-5">
             <i class="far fa-calendar fa-3x text-muted mb-3"></i>
             <h5 class="font-weight-bold text-dark">No hay semanas académicas en este mes</h5>
-            <p class="text-muted mb-0">Cambia de mes o revisa la planificación para verificar el rango de fechas.</p>
+            <p class="text-muted mb-3">Cambia de mes o genera el calendario de la gestión.</p>
+            <a asp-page="./CalendarioAcademico" asp-route-managementId="@Model.ManagementId" class="btn btn-outline-primary btn-rounded btn-sm">
+                <i class="mdi mdi-calendar-month mr-1"></i> Calendario académico
+            </a>
         </div>
     </div>
 }
@@ -71,7 +74,7 @@ else
 {
     @foreach (var week in Model.Weeks)
     {
-        <div class="card border-0 shadow-sm rounded-lg mb-3 @(week.IsLective ? string.Empty : "pl-week--non-lective")">
+        <div class="card border-0 shadow-sm rounded-lg mb-3">
             <div class="card-body p-3">
                 <div class="d-flex align-items-center mb-3 flex-wrap">
                     <div class="rounded-circle bg-light-primary text-primary p-2 mr-3"><i class="fas fa-calendar-week"></i></div>
@@ -79,62 +82,59 @@ else
                         <h6 class="font-weight-bold text-primary mb-0">Semana académica @week.Number</h6>
                         <small class="text-muted">@week.StartDate.ToString("dd/MM") – @week.EndDate.ToString("dd/MM")</small>
                     </div>
-                    @if (!week.IsLective)
-                    {
-                        <div class="ml-auto text-right">
-                            <span class="badge badge-secondary px-3 py-2">No lectiva</span>
-                            @if (!string.IsNullOrWhiteSpace(week.Note))
-                            {
-                                <div class="small text-muted mt-1">@week.Note</div>
-                            }
-                        </div>
-                    }
                 </div>
 
                 <div class="pl-week-grid">
                     @foreach (var day in week.Days)
                     {
-                        <div class="pl-day @(day.InMonth ? string.Empty : "pl-day--out")">
+                        var dayCss = !day.Exists ? "pl-day--none" : day.IsSuspended ? "pl-day--suspended" : string.Empty;
+                        <div class="pl-day @(day.InMonth ? string.Empty : "pl-day--out") @dayCss">
                             <div class="pl-day__head">
                                 <strong class="pl-day__name">@day.Name</strong>
                                 <span class="pl-day__date">@day.Date.ToString("dd/MM")</span>
                             </div>
                             <div class="pl-day__body">
-                                @if (day.Practices.Count == 0)
+                                @if (!day.Exists)
                                 {
-                                    <div class="pl-empty">Sin prácticas</div>
-                                    @if (day.CanAdd)
-                                    {
-                                        <a asp-page="./Practica" asp-route-planningId="@Model.PlanningId" asp-route-weekId="@week.Id" asp-route-day="@day.Weekday"
-                                           class="btn btn-sm btn-outline-primary btn-rounded pl-add">
-                                            <i class="fas fa-plus mr-1"></i> Práctica
-                                        </a>
-                                    }
+                                    <div class="pl-empty">Fuera de la gestión</div>
                                 }
-                                else
+                                else if (day.IsSuspended)
                                 {
-                                    @foreach (var p in day.Practices)
-                                    {
-                                        <a href="@p.NextUrl" class="pl-card" title="Abrir práctica @p.Code">
-                                            <div class="pl-card__time">@p.Start.ToString("HH:mm")–@p.End.ToString("HH:mm")</div>
-                                            <div class="pl-card__title">@p.PracticeName</div>
-                                            <div class="pl-card__sub"><i class="fas fa-book mr-1"></i>@p.SubjectName</div>
-                                            <div class="pl-card__sub"><i class="fas fa-flask mr-1"></i>@p.LaboratoryName</div>
-                                            <div class="pl-card__sub"><i class="fas fa-users mr-1"></i>Grupo @p.GroupName</div>
-                                            <div class="pl-card__sub"><i class="fas fa-user-tie mr-1"></i>@p.TeacherName</div>
-                                            <div class="pl-card__foot">
-                                                <span class="badge badge-@p.StatusCss">@p.Status</span>
-                                                <span class="pl-card__code">@p.Code</span>
-                                            </div>
-                                        </a>
-                                    }
-                                    @if (day.CanAdd)
-                                    {
-                                        <a asp-page="./Practica" asp-route-planningId="@Model.PlanningId" asp-route-weekId="@week.Id" asp-route-day="@day.Weekday"
-                                           class="btn btn-sm btn-outline-primary btn-rounded pl-add">
-                                            <i class="fas fa-plus mr-1"></i> Práctica
-                                        </a>
-                                    }
+                                    <div class="pl-suspended" title="@day.Reason">
+                                        <i class="mdi mdi-calendar-remove mr-1"></i><strong>Suspendido</strong>
+                                        @if (!string.IsNullOrWhiteSpace(day.Reason))
+                                        {
+                                            <div>@day.Reason</div>
+                                        }
+                                    </div>
+                                }
+                                else if (day.Plannings.Count == 0)
+                                {
+                                    <div class="pl-empty">Sin planificaciones</div>
+                                }
+
+                                @foreach (var p in day.Plannings)
+                                {
+                                    <a href="@p.NextUrl" class="pl-card @(p.Occupies ? string.Empty : "pl-card--inactive")" title="Abrir planificación @p.Code">
+                                        <div class="pl-card__time">@p.TimeText</div>
+                                        <div class="pl-card__title">@p.PracticeName</div>
+                                        <div class="pl-card__sub"><i class="fas fa-book mr-1"></i>@p.SubjectName</div>
+                                        <div class="pl-card__sub"><i class="fas fa-flask mr-1"></i>@p.LaboratoryName</div>
+                                        <div class="pl-card__sub"><i class="fas fa-users mr-1"></i>Grupo @p.GroupName</div>
+                                        <div class="pl-card__sub"><i class="fas fa-user-tie mr-1"></i>@p.TeacherName</div>
+                                        <div class="pl-card__foot">
+                                            <span class="badge badge-@p.StatusCss @(p.StatusCss == "light" ? "border" : string.Empty)">@p.StatusLabel</span>
+                                            <span class="pl-card__code">@p.Code</span>
+                                        </div>
+                                    </a>
+                                }
+
+                                @if (day.CanAdd)
+                                {
+                                    <a asp-page="./Planificacion" asp-route-managementId="@Model.ManagementId" asp-route-date="@day.Date.ToString("yyyy-MM-dd")"
+                                       class="btn btn-sm btn-outline-primary btn-rounded pl-add">
+                                        <i class="fas fa-plus mr-1"></i> Planificación
+                                    </a>
                                 }
                             </div>
                         </div>
@@ -166,12 +166,9 @@ else
     .pl-month-pill--active { background: #7460ee; border-color: #7460ee; color: #fff; }
     .pl-month-pill--active:hover { background: #5d4dd1; color: #fff; }
 
-    .pl-week--non-lective { background: #fafafa; }
-    .pl-week--non-lective .pl-day__head { background: #f1f1f1; }
-
     .pl-week-grid {
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(6, minmax(0, 1fr));
         gap: 10px;
     }
     .pl-day {
@@ -183,6 +180,12 @@ else
         flex-direction: column;
     }
     .pl-day--out { opacity: 0.45; }
+    .pl-day--none { background: #fafafa; }
+    .pl-day--none .pl-day__head { background: #f1f1f1; }
+    .pl-day--suspended {
+        background: repeating-linear-gradient(45deg, #f5f5f5, #f5f5f5 8px, #ebebeb 8px, #ebebeb 16px);
+    }
+    .pl-day--suspended .pl-day__head { background: #e2e2e2; }
     .pl-day__head {
         background: #f4f3ff;
         color: #555;
@@ -198,6 +201,7 @@ else
     .pl-day__body { padding: 8px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
 
     .pl-empty { font-size: 11px; color: #b3b3b3; font-style: italic; }
+    .pl-suspended { font-size: 11px; color: #555; background: rgba(255,255,255,.85); border-radius: 6px; padding: 4px 6px; }
 
     .pl-card {
         display: block;
@@ -212,6 +216,7 @@ else
         transition: all .2s;
     }
     .pl-card:hover { background: #faf9ff; box-shadow: 0 2px 6px rgba(116,96,238,.15); text-decoration: none; color: #333; }
+    .pl-card--inactive { opacity: .55; border-left-color: #b3b3b3; }
     .pl-card__time { color: #7460ee; font-weight: 700; font-size: 11px; }
     .pl-card__title { font-weight: 700; color: #1a1a1a; margin: 1px 0 2px 0; line-height: 1.2; }
     .pl-card__sub { color: #777; line-height: 1.25; font-size: 11px; }
@@ -220,6 +225,9 @@ else
 
     .pl-add { align-self: flex-start; font-size: 11px; padding: 2px 8px; }
 
+    @@media (max-width: 992px) {
+        .pl-week-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
     @@media (max-width: 768px) {
         .pl-week-grid { grid-template-columns: 1fr; }
     }

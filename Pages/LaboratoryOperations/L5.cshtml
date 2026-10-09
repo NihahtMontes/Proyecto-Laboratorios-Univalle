@@ -24,7 +24,7 @@
                         <i class="fas fa-eye fa-2x mr-3"></i>
                         <div>
                             <strong>Solo consulta.</strong><br />
-                            <span>La planificación no admite el registro de incidentes L-5.</span>
+                            <span>La gestión de esta planificación no admite el registro de incidentes L-5.</span>
                         </div>
                     </div>
                 </div>
@@ -139,7 +139,7 @@
 
                         <p class="small mb-1"><strong>Laboratorio:</strong> @(Model.Plan?.Laboratory?.Name ?? "—")</p>
                         <p class="small mb-1"><strong>Materia:</strong> @(Model.Plan?.Subject?.Name ?? "—")</p>
-                        <p class="small mb-3"><strong>Fecha práctica:</strong> @(Model.Plan?.ScheduledDate.ToString("dd/MM/yyyy HH:mm") ?? "—")</p>
+                        <p class="small mb-3"><strong>Fecha planificada:</strong> @(Model.Plan?.ScheduledDate.ToString("dd/MM/yyyy HH:mm") ?? "—")</p>
 
                         @if (!Model.Context.IsReadOnly)
                         {

@@ -104,6 +104,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual ICollection<ManagementPlan> ManagementPlans { get; set; } = new List<ManagementPlan>();
         public virtual ICollection<MaintenancePlan> HistoricalMaintenancePlans { get; set; } = [];
 
+        // Semanas académicas (lunes a sábado) del calendario de esta gestión.
+        public virtual ICollection<AcademicWeek> AcademicWeeks { get; set; } = [];
+
         // ========================================
         // PROPIEDADES CALCULADAS
         // ========================================

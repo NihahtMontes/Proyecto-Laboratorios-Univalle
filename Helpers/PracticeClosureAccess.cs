@@ -52,8 +52,9 @@ public static class PracticeClosureAccess
         });
 
     /// <summary>
-    /// Para el rol de cierre: la práctica debe estar aprobada o finalizada y ser de hoy, o tener una salida
-    /// con devolución pendiente. Devuelve el motivo del rechazo o null si puede abrirla.
+    /// Para el rol de cierre: con una salida abierta (Active/Overdue) puede abrir la planificación en cualquier
+    /// estado (el L-3 queda en la planificación de origen aunque se haya reprogramado o esté en reposición);
+    /// si no, debe estar aprobada o finalizada y ser de hoy. Devuelve el motivo del rechazo o null si puede abrirla.
     /// </summary>
     public static async Task<string?> DenyReasonAsync(ApplicationDbContext context, ClaimsPrincipal user, int practiceId)
     {
@@ -61,20 +62,21 @@ public static class PracticeClosureAccess
 
         var today = DateTime.Today;
         var openStatuses = new[] { LoanStatus.Active, LoanStatus.Overdue };
-        var practice = await context.L3Requests.AsNoTracking()
-            .Where(r => r.Id == practiceId)
-            .Select(r => new
+        var planning = await context.Plannings.AsNoTracking()
+            .Where(p => p.Id == practiceId)
+            .Select(p => new
             {
-                r.ScheduledDate,
-                r.Status,
-                HasOpenDeparture = context.Departures.Any(d => d.L3RequestId == r.Id && openStatuses.Contains(d.Status))
+                p.ScheduledDate,
+                p.Status,
+                HasOpenDeparture = context.Departures.Any(d => d.PlanningId == p.Id && openStatuses.Contains(d.Status))
             })
             .FirstOrDefaultAsync();
 
-        if (practice == null) return "La práctica no existe.";
-        if (practice.Status != L3RequestStatus.Approved && practice.Status != L3RequestStatus.Finalized)
-            return "La práctica todavía no tiene la planificación aprobada.";
-        if (practice.ScheduledDate.Date == today || practice.HasOpenDeparture) return null;
-        return "Solo puedes cerrar las prácticas del día o las que tienen devoluciones pendientes.";
+        if (planning == null) return "La planificación no existe.";
+        if (planning.HasOpenDeparture) return null;
+        if (planning.Status != PlanningStatus.Approved && planning.Status != PlanningStatus.Finalized)
+            return "La planificación todavía no está aprobada.";
+        if (planning.ScheduledDate.Date == today) return null;
+        return "Solo puedes cerrar las planificaciones del día o las que tienen devoluciones pendientes.";
     }
 }

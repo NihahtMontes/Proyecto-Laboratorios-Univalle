@@ -111,7 +111,7 @@ def issue(code, entity, key, field, original, normalized, desc, severity, sheet_
 
 # ---------- 0. Dependencias de los datos demo (reporte previo) ----------
 w("""-- 0. Dependencias de los datos demo antes de retirarlos
-SELECT 'L3Requests sobre materias demo' k, COUNT(*) n FROM dbo.L3Requests r JOIN dbo.Subjects s ON s.Id = r.SubjectId WHERE s.Code LIKE N'GAS-%'
+SELECT 'L3Requests sobre materias demo' k, COUNT(*) n FROM dbo.Plannings r JOIN dbo.Subjects s ON s.Id = r.SubjectId WHERE s.Code LIKE N'GAS-%'
 UNION ALL SELECT 'PracticeSchedules sobre materias demo', COUNT(*) FROM dbo.PracticeSchedules p JOIN dbo.Subjects s ON s.Id = p.SubjectId WHERE s.Code LIKE N'GAS-%'
 UNION ALL SELECT 'Articulos demo usados en salidas', COUNT(*) FROM dbo.DepartureItems i JOIN dbo.Articles a ON a.Id = i.ArticleId WHERE a.Code LIKE N'ART-000%';""")
 
@@ -274,8 +274,7 @@ BEGIN
     INSERT dbo.PracticeSchedules(Code, ManagementId, SubjectId, PracticeId, CourseGroupId, GroupName, TeacherPersonId, LaboratoryId, WeekNumber, AcademicWeekId,
         ExecutionDate, StartTime, EndTime, StudentCount, IsDemonstrative, ScalingFactor, Status, ImportBatchId, CreatedDate)
     SELECT TOP (100) s.Code, m.Id, x.Id, pr.Id, cg.Id, s.Grp, pe.Id, l.Id, s.Week,
-        (SELECT TOP 1 w.Id FROM dbo.AcademicWeeks w JOIN dbo.AcademicPlannings ap ON ap.Id = w.AcademicPlanningId
-         WHERE ap.ManagementId = m.Id AND ap.CareerId = x.CareerId AND w.Number = s.Week),
+        (SELECT TOP 1 w.Id FROM dbo.AcademicWeeks w WHERE w.ManagementId = m.Id AND w.Number = s.Week),
         s.ExecDate, s.T1, s.T2, s.Students, s.Demo, s.Factor, s.St, @Batch, @Now
     FROM #Sch s JOIN dbo.Managements m ON m.Code = s.Mgmt JOIN dbo.Subjects x ON x.Code = s.Subj JOIN dbo.Practices pr ON pr.Code = s.Prac AND pr.SubjectId = x.Id
     JOIN dbo.People pe ON pe.ActorCode = s.Teacher LEFT JOIN dbo.Laboratories l ON l.Code = s.Lab

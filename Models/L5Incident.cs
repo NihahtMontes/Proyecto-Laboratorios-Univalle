@@ -9,9 +9,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Key]
         public int Id { get; set; }
 
-        public int? L3RequestId { get; set; }
-        [ForeignKey("L3RequestId")]
-        public L3Request? L3Request { get; set; }
+        /// <summary>Planificación (práctica) con la que se relaciona la incidencia, si aplica.</summary>
+        public int? PlanningId { get; set; }
+        [ForeignKey("PlanningId")]
+        public Planning? Planning { get; set; }
 
         /// <summary>Unidad física afectada (equipos con inventario). Al menos uno de EquipmentUnitId / ArticleId.</summary>
         public int? EquipmentUnitId { get; set; }

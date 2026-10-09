@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
-/// <summary>El calendario ahora vive en el panel de la planificación (Index); se conserva la ruta por enlaces antiguos.</summary>
+/// <summary>El calendario vive en el panel de planificación (Index); se conserva la ruta por enlaces antiguos.</summary>
 public class CalendarioModel : PageModel
 {
-    public IActionResult OnGet(int? planningId, string? month) =>
-        RedirectToPage("./Index", new { planningId, month });
+    public IActionResult OnGet(int? managementId, string? month) =>
+        RedirectToPage("./Index", new { managementId, month });
 }

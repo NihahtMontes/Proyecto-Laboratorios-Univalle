@@ -13,7 +13,7 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         public const string Laboratory = "LAB";
         public const string Subject = "MAT";
         public const string CourseGroup = "GRP";
-        /// <summary>PRC y no PRA: PRA-00001 ya identifica a las prácticas planificadas (L3Requests).</summary>
+        /// <summary>PRC y no PRA: PRA-00001 ya identifica a las planificaciones (Plannings).</summary>
         public const string Practice = "PRC";
         public const string Article = "ART";
         public const string ArticleCategory = "CAT";

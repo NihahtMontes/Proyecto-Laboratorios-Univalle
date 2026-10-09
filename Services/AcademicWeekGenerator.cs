@@ -1,14 +1,15 @@
 namespace Proyecto_Laboratorios_Univalle.Services;
 
 /// <summary>
-/// Genera las semanas académicas (lunes a viernes) de un rango de fechas.
+/// Genera las semanas académicas (lunes a sábado) de un rango de fechas.
 /// La semana 1 es la que contiene la fecha de inicio; la última, la que contiene la fecha de fin.
+/// Los domingos no existen en el calendario académico.
 /// </summary>
 public static class AcademicWeekGenerator
 {
     public const int MaxWeeks = 60;
 
-    public sealed record WeekSlot(int Number, DateTime Monday, DateTime Friday);
+    public sealed record WeekSlot(int Number, DateTime Monday, DateTime Saturday);
 
     public static DateTime MondayOf(DateTime date)
     {
@@ -28,20 +29,12 @@ public static class AcademicWeekGenerator
         {
             if (number > MaxWeeks)
                 throw new ArgumentException($"El rango supera {MaxWeeks} semanas académicas.");
-            weeks.Add(new WeekSlot(number, monday, monday.AddDays(4)));
+            weeks.Add(new WeekSlot(number, monday, monday.AddDays(5)));
         }
         return weeks;
     }
 
-    /// <summary>Fecha y hora de una práctica a partir del lunes de su semana, el día (1 = lunes ... 5 = viernes) y la hora.</summary>
-    public static DateTime PracticeDate(DateTime weekMonday, int weekday, TimeSpan time)
-    {
-        if (weekday is < 1 or > 5)
-            throw new ArgumentOutOfRangeException(nameof(weekday), "El día debe estar entre lunes (1) y viernes (5).");
-        return weekMonday.Date.AddDays(weekday - 1) + time;
-    }
-
-    /// <summary>Día hábil (1 = lunes ... 5 = viernes) de una fecha; 0 si es fin de semana.</summary>
+    /// <summary>Día académico (1 = lunes ... 6 = sábado) de una fecha; 0 si es domingo.</summary>
     public static int WeekdayOf(DateTime date) => date.DayOfWeek switch
     {
         DayOfWeek.Monday => 1,
@@ -49,8 +42,13 @@ public static class AcademicWeekGenerator
         DayOfWeek.Wednesday => 3,
         DayOfWeek.Thursday => 4,
         DayOfWeek.Friday => 5,
+        DayOfWeek.Saturday => 6,
         _ => 0
     };
 
-    public static readonly string[] WeekdayNames = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+    /// <summary>Nombres largos de los días académicos; el índice 0 no se usa (domingo).</summary>
+    public static readonly string[] WeekdayNames = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+    /// <summary>Nombres cortos de los días académicos; el índice 0 no se usa (domingo).</summary>
+    public static readonly string[] ShortWeekdayNames = ["", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 }

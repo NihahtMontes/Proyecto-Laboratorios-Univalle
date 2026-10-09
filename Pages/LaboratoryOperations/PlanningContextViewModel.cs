@@ -5,20 +5,20 @@ using Proyecto_Laboratorios_Univalle.Services;
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Franja de contexto que encabeza todos los pasos del wizard de la práctica
-/// (partial _PlanningContext): planificación, código de práctica y paso actual.
+/// Franja de contexto que encabeza todos los pasos del wizard de la planificación
+/// (partial _PlanningContext): gestión académica, código PRA y paso actual.
 /// </summary>
 public sealed record PlanningContextViewModel(
-    PlanningSummary? Planning,
-    int? PracticeId,
-    string PracticeTitle,
+    AcademicManagementSummary? Management,
+    int? PlanningId,
+    string Title,
     int Step)
 {
-    /// <summary>Las escrituras solo se permiten en la planificación activa (o en prácticas legadas sin planificación).</summary>
-    public bool IsReadOnly => Planning is { IsActive: false };
+    /// <summary>Las escrituras solo se permiten en gestiones activas o inactivas; las completadas solo se consultan.</summary>
+    public bool IsReadOnly => Management is { IsEditable: false };
 
-    /// <summary>Pasos del wizard de planificación. L-3 y L-5 son el cierre de la práctica (proceso aparte, Step 4/5).</summary>
-    public static readonly string[] StepNames = ["", "Práctica", "Requerimientos", "Disponibilidad"];
+    /// <summary>Pasos del wizard de planificación. L-3 y L-5 son el cierre de la sesión (proceso aparte, Step 4/5).</summary>
+    public static readonly string[] StepNames = ["", "Planificación", "Requerimientos", "Disponibilidad"];
 
     public const int StepCount = 3;
 
@@ -28,33 +28,21 @@ public sealed record PlanningContextViewModel(
 
 public static class PlanningContextLoader
 {
-    /// <summary>Contexto de una práctica existente (paso 2-5).</summary>
-    public static async Task<PlanningContextViewModel> ForPracticeAsync(
-        ApplicationDbContext context, IPlanningService planning, int practiceId, int step)
+    /// <summary>Contexto de una planificación existente (pasos 1 a 5): carga la gestión a la que pertenece.</summary>
+    public static async Task<PlanningContextViewModel> ForPlanningAsync(
+        ApplicationDbContext context, IAcademicManagementService managements, int planningId, int step)
     {
-        var planningId = await context.L3Requests.AsNoTracking()
-            .Where(r => r.Id == practiceId)
-            .Select(r => r.AcademicPlanningId)
+        var managementId = await context.Plannings.AsNoTracking()
+            .Where(p => p.Id == planningId)
+            .Select(p => (int?)p.ManagementId)
             .FirstOrDefaultAsync();
-        var summary = planningId.HasValue ? await planning.GetSummaryAsync(planningId.Value) : null;
-        return new PlanningContextViewModel(summary, practiceId, $"Práctica {L3Codes.Format(practiceId)}", step);
+        var summary = managementId.HasValue ? await managements.GetSummaryAsync(managementId.Value) : null;
+        return new PlanningContextViewModel(summary, planningId, $"Planificación {L3Codes.Format(planningId)}", step);
     }
 
-    /// <summary>
-    /// True si la práctica admite escrituras: pertenece a la planificación activa o es legada (sin planificación).
-    /// </summary>
-    public static async Task<bool> IsWritableAsync(ApplicationDbContext context, int practiceId)
-    {
-        var row = await context.L3Requests.AsNoTracking()
-            .Where(r => r.Id == practiceId)
-            .Select(r => new
-            {
-                r.AcademicPlanningId,
-                Active = r.AcademicPlanning != null && r.AcademicPlanning.Status == Models.Enums.AcademicPlanningStatus.Active
-            })
-            .FirstOrDefaultAsync();
-        return row != null && (!row.AcademicPlanningId.HasValue || row.Active);
-    }
+    /// <summary>True si la planificación existe y su gestión admite cambios.</summary>
+    public static Task<bool> IsWritableAsync(IAcademicManagementService managements, int planningId) =>
+        managements.IsPlanningWritableAsync(planningId);
 
-    public const string ReadOnlyMessage = "La planificación de esta práctica no está activa: solo se puede consultar.";
+    public const string ReadOnlyMessage = AcademicManagementService.ReadOnlyMessage;
 }

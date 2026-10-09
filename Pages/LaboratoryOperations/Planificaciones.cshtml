@@ -1,210 +1,236 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanificacionesModel
+@using Proyecto_Laboratorios_Univalle.Models
 @{
     ViewData["Title"] = "Planificaciones";
+    var statusText = string.IsNullOrEmpty(Model.Status) ? string.Empty : PlanningStatus.Label(Model.Status);
+    var management = Model.Management;
 }
 
 <div class="page-breadcrumb">
     <div class="row align-items-center">
         <div class="col-md-8">
-            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">PLANIFICACIÓN</h4>
             <h2 class="font-weight-bold text-dark">Planificaciones</h2>
-            <div class="text-muted small">
-                Historial de planificaciones académicas. Solo puede existir una planificación activa en todo el sistema.
-            </div>
+            @if (management != null)
+            {
+                <div class="text-muted small">
+                    <span class="font-weight-bold text-dark">Gestión @management.Code</span>
+                    @if (management.HasDates)
+                    {
+                        <span> · @management.StartDate!.Value.ToString("dd/MM/yyyy") – @management.EndDate!.Value.ToString("dd/MM/yyyy")</span>
+                    }
+                    <span class="badge badge-@(management.IsEditable ? "success" : "secondary") px-2 py-1 rounded-pill ml-1">@management.StatusText</span>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted small">Sesiones de práctica planificadas por gestión académica.</div>
+            }
         </div>
         <div class="col-md-4 text-md-right mt-3 mt-md-0">
-            <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded px-3 mr-1">
+            <a asp-page="./Index" asp-route-managementId="@Model.ManagementId" class="btn btn-outline-secondary btn-rounded px-3 mr-1">
                 <i class="fas fa-tachometer-alt mr-1"></i> Panel de planificación
             </a>
-            <a asp-page="./Planificacion" class="btn btn-primary btn-rounded font-weight-bold px-4">
-                <i class="fas fa-plus mr-1"></i> Nueva planificación
-            </a>
+            @if (management?.IsEditable == true)
+            {
+                <a asp-page="./Planificacion" asp-route-managementId="@management.Id" class="btn btn-primary btn-rounded font-weight-bold px-4">
+                    <i class="fas fa-plus mr-1"></i> Nueva planificación
+                </a>
+            }
         </div>
     </div>
 </div>
 
 <div class="container-fluid mt-3">
 
-    @if (Model.Active == null)
+    <div class="card border-0 shadow-sm rounded-lg mb-4">
+        <div class="card-body py-3">
+            <form method="get" class="form-row align-items-end">
+                <div class="col-md-3">
+                    <label asp-for="ManagementId" class="small font-weight-bold text-muted">GESTIÓN</label>
+                    <select asp-for="ManagementId" asp-items="Model.ManagementOptions" class="form-control select2"></select>
+                </div>
+                @if (management != null)
+                {
+                    <div class="col-md-2 mt-3 mt-md-0">
+                        <label asp-for="WeekNumber" class="small font-weight-bold text-muted">SEMANA</label>
+                        <select asp-for="WeekNumber" asp-items="Model.WeekOptions" class="form-control select2">
+                            <option value="">Todas las semanas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mt-3 mt-md-0">
+                        <label asp-for="Status" class="small font-weight-bold text-muted">ESTADO</label>
+                        <select asp-for="Status" asp-items="Model.StatusOptions" class="form-control select2">
+                            <option value="">Todos los estados</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mt-3 mt-md-0">
+                        <label asp-for="LaboratoryId" class="small font-weight-bold text-muted">LABORATORIO</label>
+                        <select asp-for="LaboratoryId" asp-items="Model.LaboratoryOptions" class="form-control select2">
+                            <option value="">Todos los laboratorios</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mt-3 mt-md-0 d-flex">
+                        <button type="submit" class="btn btn-dark font-weight-bold flex-grow-1 mr-1" title="Aplicar filtros">
+                            <i class="fas fa-filter mr-1"></i> Filtrar
+                        </button>
+                        <a asp-page="./Planificaciones" asp-route-managementId="@management.Id" class="btn btn-outline-secondary" title="Limpiar filtros">
+                            <i class="fas fa-undo"></i>
+                        </a>
+                    </div>
+                }
+            </form>
+        </div>
+    </div>
+
+    @if (management == null)
     {
-        <div class="card border-0 shadow-sm rounded-lg mb-4">
+        <div class="card border-0 shadow-sm rounded-lg">
             <div class="card-body text-center p-5">
                 <div class="mb-3">
                     <i class="fas fa-folder-open text-primary opacity-50" style="font-size: 4rem;"></i>
                 </div>
-                <h3 class="font-weight-bold text-dark mb-2">No tiene ninguna planificación activa</h3>
-                <p class="text-muted mb-4">
-                    Cree una nueva planificación académica o active una existente para comenzar a registrar prácticas en el flujo.
-                </p>
-                <div class="d-flex justify-content-center gap-2 flex-wrap">
-                    <a asp-page="./Planificacion" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm">
-                        <i class="fas fa-plus mr-2"></i> Crear planificación
-                    </a>
-                </div>
+                <h3 class="font-weight-bold text-dark mb-2">No hay una gestión académica activa</h3>
+                <p class="text-muted mb-0">Elija una gestión en el selector o active una gestión semestral para registrar planificaciones.</p>
             </div>
         </div>
     }
     else
     {
-        <div class="alert alert-success border-0 rounded-lg shadow-sm mb-4 d-flex align-items-center">
-            <div class="rounded-circle bg-success text-white p-2 mr-3"><i class="fas fa-check-circle"></i></div>
-            <div class="flex-grow-1">
-                <strong>Planificación activa:</strong>
-                <span class="ml-1">@Model.Active.Name</span>
-                <small class="text-muted ml-2">· @Model.Active.ManagementCode · @Model.Active.FacultyName · @Model.Active.CareerName</small>
-            </div>
-            <a asp-page="./Planificacion" asp-route-id="@Model.Active.Id" class="btn btn-sm btn-outline-success btn-rounded font-weight-bold">
-                <i class="fas fa-edit mr-1"></i> Editar
-            </a>
-        </div>
-    }
-
-    <div class="card border-0 shadow-sm rounded-lg">
-        <div class="card-body p-4">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div>
-                    <h5 class="font-weight-bold text-primary mb-1">PLANIFICACIONES REGISTRADAS</h5>
-                    <small class="text-muted">Total: @Model.Plannings.Count</small>
-                </div>
-            </div>
-
-            @if (Model.Plannings.Count == 0)
-            {
-                <div class="text-center border rounded-lg p-5 bg-light">
-                    <i class="far fa-calendar-plus fa-3x text-muted mb-3"></i>
-                    <h5 class="font-weight-bold">Aún no hay planificaciones registradas</h5>
-                    <p class="text-muted mb-3">Comience creando una planificación para la gestión vigente.</p>
-                    <a asp-page="./Planificacion" class="btn btn-primary btn-rounded">Crear planificación</a>
-                </div>
-            }
-            else
-            {
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-dark text-white">
-                            <tr>
-                                <th>CÓDIGO</th>
-                                <th>PLANIFICACIÓN</th>
-                                <th>GESTIÓN · FACULTAD · CARRERA</th>
-                                <th>RANGO</th>
-                                <th class="text-center">SEMANAS</th>
-                                <th class="text-center">PRÁCTICAS</th>
-                                <th>ESTADO</th>
-                                <th class="text-right">ACCIONES</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in Model.Plannings)
+        <div class="card border-0 shadow-sm rounded-lg">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h5 class="font-weight-bold text-primary mb-1">PLANIFICACIONES REGISTRADAS</h5>
+                        <small class="text-muted">
+                            @if (!string.IsNullOrEmpty(statusText))
                             {
-                                var isActive = row.Status == Proyecto_Laboratorios_Univalle.Models.Enums.AcademicPlanningStatus.Active;
-                                var isClosed = row.Status == Proyecto_Laboratorios_Univalle.Models.Enums.AcademicPlanningStatus.Completed;
-                                <tr class="@(isActive ? "table-success" : string.Empty)">
-                                    <td class="small font-weight-bold text-primary">@row.Code</td>
-                                    <td>
-                                        <strong class="text-dark">@row.Name</strong>
-                                    </td>
-                                    <td class="small">
-                                        <div><i class="fas fa-calendar mr-1 text-muted"></i>@row.ManagementCode</div>
-                                        <div><i class="fas fa-university mr-1 text-muted"></i>@row.FacultyName</div>
-                                        <div><i class="fas fa-graduation-cap mr-1 text-muted"></i>@row.CareerName</div>
-                                    </td>
-                                    <td class="small text-nowrap">
-                                        @row.StartDate.ToString("MMM yyyy", new System.Globalization.CultureInfo("es-BO"))
-                                        <span class="text-muted mx-1">→</span>
-                                        @row.EndDate.ToString("MMM yyyy", new System.Globalization.CultureInfo("es-BO"))
-                                    </td>
-                                    <td class="text-center"><span class="badge badge-light border">@row.WeekCount</span></td>
-                                    <td class="text-center"><span class="badge badge-light border">@row.PracticeCount</span></td>
-                                    <td>
-                                        <span class="badge badge-@row.StatusCss px-2 py-1 rounded-pill">@row.StatusText</span>
-                                    </td>
-                                    <td class="text-right text-nowrap">
-                                        <a asp-page="./Index" asp-route-planningId="@row.Id" class="btn btn-sm btn-outline-info btn-rounded" title="Ver planificación">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        @if (!isClosed)
-                                        {
-                                            <a asp-page="./Planificacion" asp-route-id="@row.Id" class="btn btn-sm btn-outline-warning btn-rounded mx-1" title="Editar planificación">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                        }
-                                        @if (!isActive)
-                                        {
-                                            <form method="post" asp-page-handler="Activate" asp-route-id="@row.Id" class="d-inline form-activate" data-name="@row.Name">
-                                                <button type="submit" class="btn btn-sm btn-success btn-rounded" title="Activar planificación">
-                                                    <i class="fas fa-bolt"></i>
-                                                </button>
-                                            </form>
-                                        }
-                                        @if (isActive)
-                                        {
-                                            <form method="post" asp-page-handler="Close" asp-route-id="@row.Id" class="d-inline form-close" data-name="@row.Name">
-                                                <button type="submit" class="btn btn-sm btn-outline-dark btn-rounded ml-1" title="Cerrar planificación">
-                                                    <i class="fas fa-lock"></i>
-                                                </button>
-                                            </form>
-                                        }
-                                    </td>
-                                </tr>
+                                <span>Filtrando por estado <strong>@statusText</strong>.</span>
                             }
-                        </tbody>
-                    </table>
+                            else
+                            {
+                                <span>Listado completo de la gestión seleccionada.</span>
+                            }
+                        </small>
+                    </div>
+                    <span class="badge badge-light border">@Model.Rows.Count planificación(es)</span>
                 </div>
-            }
+
+                @if (Model.Rows.Count == 0)
+                {
+                    <div class="text-center border rounded-lg p-5 bg-light">
+                        <i class="far fa-calendar-plus fa-3x text-muted mb-3"></i>
+                        <h5 class="font-weight-bold">No hay planificaciones que coincidan con los filtros</h5>
+                        @if (management.IsEditable)
+                        {
+                            <p class="text-muted mb-3">Ajuste los filtros o registre una nueva planificación en la gestión.</p>
+                            <a asp-page="./Planificacion" asp-route-managementId="@management.Id" class="btn btn-primary btn-rounded">
+                                <i class="fas fa-plus mr-1"></i> Nueva planificación
+                            </a>
+                        }
+                        else
+                        {
+                            <p class="text-muted mb-0">La gestión está completada: solo se permite consulta.</p>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-dark text-white">
+                                <tr>
+                                    <th class="border-0">CÓDIGO</th>
+                                    <th class="border-0">PRÁCTICA</th>
+                                    <th class="border-0">DOCENTE · GRUPO</th>
+                                    <th class="border-0">AMBIENTE</th>
+                                    <th class="border-0">SEMANA · DÍA</th>
+                                    <th class="border-0">FECHA · PERIODOS</th>
+                                    <th class="border-0 text-center">ESTADO</th>
+                                    <th class="border-0 text-right">ACCIONES</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.Rows)
+                                {
+                                    <tr>
+                                        <td class="small font-weight-bold text-primary">@row.Code</td>
+                                        <td>
+                                            <strong class="text-dark">@row.PracticeName</strong>
+                                            <div class="text-muted">@row.SubjectName</div>
+                                        </td>
+                                        <td class="small">
+                                            <div class="font-weight-bold">@row.TeacherName</div>
+                                            <div class="text-muted">Grupo @row.GroupName</div>
+                                        </td>
+                                        <td class="small text-muted">@row.LaboratoryName</td>
+                                        <td class="small">
+                                            <div class="font-weight-bold">Semana @row.AcademicWeek</div>
+                                            <div class="text-muted">@row.WeekdayName</div>
+                                        </td>
+                                        <td class="small">
+                                            <div>@row.ScheduledDate.ToString("dd/MM/yyyy")</div>
+                                            <div class="text-muted">@row.TimeText</div>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge badge-@row.StatusCss @(row.StatusCss == "light" ? "border" : string.Empty) px-2 py-1 rounded-pill">@row.StatusLabel</span>
+                                            @if (row.HasIncident)
+                                            {
+                                                <div class="small text-danger mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Incidente L-5</div>
+                                            }
+                                        </td>
+                                        <td class="text-right text-nowrap">
+                                            <a href="@row.NextUrl" class="btn btn-sm btn-outline-primary btn-rounded" title="Abrir planificación">
+                                                <i class="fas fa-folder-open mr-1"></i> Abrir
+                                            </a>
+                                            @if (management.IsEditable && row.Status == PlanningStatus.Planned)
+                                            {
+                                                <a asp-page="./Planificacion" asp-route-id="@row.Id" class="btn btn-sm btn-outline-warning btn-rounded ml-1" title="Editar planificación">
+                                                    <i class="fas fa-edit mr-1"></i> Editar
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
         </div>
-    </div>
+
+        @if (!management.IsEditable)
+        {
+            <div class="alert alert-warning border-0 rounded-lg shadow-sm mt-4 mb-0">
+                <i class="fas fa-lock mr-1"></i>
+                <strong>Solo consulta.</strong> La gestión está completada; no se pueden editar registros.
+            </div>
+        }
+    }
 </div>
 
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <style>
+        .bg-light-primary { background-color: #e8e7ff; }
+    </style>
+}
+
 @section Scripts {
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         (function () {
-            function bindConfirm(form, title, text, type) {
-                if (!form) return;
-                form.addEventListener('submit', function (e) {
-                    if (form.dataset.confirmed === '1') return true;
-                    e.preventDefault();
-                    var name = form.dataset.name || '';
-                    var fullText = text.replace('{name}', name);
-
-                    if (typeof Swal === 'undefined') {
-                        form.dataset.confirmed = '1';
-                        HTMLFormElement.prototype.submit.call(form);
-                        return;
-                    }
-                    Swal.fire({
-                        type: type,
-                        title: title,
-                        text: fullText,
-                        showCancelButton: true,
-                        confirmButtonColor: type === 'warning' ? '#ffc107' : '#7460ee',
-                        cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Sí, continuar',
-                        cancelButtonText: 'Cancelar'
-                    }).then(function (result) {
-                        if (result && (result.isConfirmed === true || result.value === true)) {
-                            form.dataset.confirmed = '1';
-                            HTMLFormElement.prototype.submit.call(form);
-                        }
-                    });
-                });
-            }
-
-            document.querySelectorAll('form.form-activate').forEach(function (f) {
-                bindConfirm(
-                    f,
-                    'Activar planificación',
-                    '«{name}» se activará. Se cerrará la planificación activa actual (si existe). ¿Continuar?',
-                    'warning'
-                );
+            $('.select2').select2({
+                width: '100%',
+                language: {
+                    noResults: function () { return 'Sin coincidencias'; }
+                }
             });
-            document.querySelectorAll('form.form-close').forEach(function (f) {
-                bindConfirm(
-                    f,
-                    'Cerrar planificación',
-                    '«{name}» quedará en modo consulta y no podrá modificarse. ¿Continuar?',
-                    'warning'
-                );
+            // Cambiar de gestión recarga el listado; semana y laboratorio son de la gestión anterior.
+            $('#ManagementId').on('select2:select', function () {
+                $('#WeekNumber, #LaboratoryId').val('');
+                this.form.submit();
             });
         })();
     </script>

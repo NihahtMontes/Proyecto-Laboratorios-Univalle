@@ -21,19 +21,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 public class L3Model : PageModel
 {
     private readonly ApplicationDbContext _context;
-    private readonly IPlanningService _planningService;
+    private readonly IAcademicManagementService _managements;
     private readonly IL3CircuitService _circuit;
     private readonly ILogger<L3Model> _logger;
 
-    public L3Model(ApplicationDbContext context, IPlanningService planningService, IL3CircuitService circuit, ILogger<L3Model> logger)
+    public L3Model(ApplicationDbContext context, IAcademicManagementService managements, IL3CircuitService circuit, ILogger<L3Model> logger)
     {
         _context = context;
-        _planningService = planningService;
+        _managements = managements;
         _circuit = circuit;
         _logger = logger;
     }
 
-    /// <summary>Id de L3Requests (se conserva el nombre de ruta de RamaDani).</summary>
+    /// <summary>Id de Plannings (se conserva el nombre de ruta de RamaDani).</summary>
     [BindProperty(SupportsGet = true)]
     public int Id { get; set; }
 
@@ -43,7 +43,7 @@ public class L3Model : PageModel
     [BindProperty]
     public ReturnInput Return { get; set; } = new();
 
-    public L3Request? Plan { get; private set; }
+    public Planning? Plan { get; private set; }
     public string Code => L3Codes.Format(Id);
     public DepartureView? CurrentDeparture { get; private set; }
     public List<DeliveryRow> DeliveryRows { get; private set; } = [];
@@ -52,8 +52,8 @@ public class L3Model : PageModel
     public List<IncidentRow> Incidents { get; private set; } = [];
     public SelectList OriginList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList ResponsibleList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
-    public bool IsEditable => Plan?.Status == L3RequestStatus.Approved;
-    public bool IsFinalized => Plan?.Status == L3RequestStatus.Finalized;
+    public bool IsEditable => Plan?.Status == PlanningStatus.Approved;
+    public bool IsFinalized => Plan?.Status == PlanningStatus.Finalized;
     public bool HasDeparture => CurrentDeparture != null;
     public bool CanReturn => IsEditable && HasDeparture && Items.Any(i => i.Pending > 0);
     public bool BlockFinalization => !HasDeparture || Items.Any(i => i.Uncovered > 0);
@@ -71,10 +71,10 @@ public class L3Model : PageModel
     public sealed record IncidentRow(int Id, string Target, string IncidentType, int AffectedQuantity, string ResponsibleName,
         string RepositionStatus, DateTime RecordDate);
 
-    /// <summary>Franja superior del wizard: planificación de la práctica y paso actual.</summary>
+    /// <summary>Franja superior del wizard: gestión de la planificación y paso actual.</summary>
     public PlanningContextViewModel? Context { get; private set; }
 
-    /// <summary>El rol de cierre solo opera prácticas del día o con devoluciones pendientes (GET y POST).</summary>
+    /// <summary>El rol de cierre solo opera planificaciones del día o con devoluciones pendientes (GET y POST).</summary>
     public override async Task OnPageHandlerExecutionAsync(PageHandlerExecutingContext context, PageHandlerExecutionDelegate next)
     {
         var denied = await PracticeClosureAccess.DenyReasonAsync(_context, User, Id);
@@ -93,14 +93,14 @@ public class L3Model : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        Context = await PlanningContextLoader.ForPracticeAsync(_context, _planningService, Id, 4);
+        Context = await PlanningContextLoader.ForPlanningAsync(_context, _managements, Id, 4);
         var redirect = await LoadAsync();
         return redirect ?? Page();
     }
 
     public async Task<IActionResult> OnPostDepartureAsync()
     {
-        if (!await PlanningContextLoader.IsWritableAsync(_context, Id))
+        if (!await PlanningContextLoader.IsWritableAsync(_managements, Id))
         {
             TempData.Error(PlanningContextLoader.ReadOnlyMessage);
             return RedirectToPage(new { id = Id });
@@ -114,14 +114,14 @@ public class L3Model : PageModel
 
     public async Task<IActionResult> OnPostReturnAsync()
     {
-        if (!await PlanningContextLoader.IsWritableAsync(_context, Id))
+        if (!await PlanningContextLoader.IsWritableAsync(_managements, Id))
         {
             TempData.Error(PlanningContextLoader.ReadOnlyMessage);
             return RedirectToPage(new { id = Id });
         }
 
         var departureId = await _context.Departures.AsNoTracking()
-            .Where(d => d.L3RequestId == Id).Select(d => (int?)d.Id).FirstOrDefaultAsync();
+            .Where(d => d.PlanningId == Id).Select(d => (int?)d.Id).FirstOrDefaultAsync();
         if (departureId == null)
         {
             TempData.Error("Primero registra la salida de los artículos.");
@@ -137,7 +137,7 @@ public class L3Model : PageModel
 
     public async Task<IActionResult> OnPostFinalizeAsync()
     {
-        if (!await PlanningContextLoader.IsWritableAsync(_context, Id))
+        if (!await PlanningContextLoader.IsWritableAsync(_managements, Id))
         {
             TempData.Error(PlanningContextLoader.ReadOnlyMessage);
             return RedirectToPage(new { id = Id });
@@ -146,14 +146,14 @@ public class L3Model : PageModel
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
-            var plan = await _context.L3Requests.AsTracking().FirstOrDefaultAsync(r => r.Id == Id);
-            if (plan == null || plan.Status != L3RequestStatus.Approved)
+            var plan = await _context.Plannings.AsTracking().FirstOrDefaultAsync(r => r.Id == Id);
+            if (plan == null || plan.Status != PlanningStatus.Approved)
             {
                 TempData.Error("La solicitud no está en condiciones de finalizarse.");
                 return RedirectToPage(new { id = Id });
             }
 
-            var departure = await _context.Departures.AsTracking().FirstOrDefaultAsync(d => d.L3RequestId == Id);
+            var departure = await _context.Departures.AsTracking().FirstOrDefaultAsync(d => d.PlanningId == Id);
             if (departure == null)
             {
                 TempData.Error("No se puede finalizar sin registrar la salida de los artículos.");
@@ -173,7 +173,7 @@ public class L3Model : PageModel
                 departure.Status = LoanStatus.Returned;
                 departure.ActualReturnDate ??= DateTime.UtcNow;
             }
-            plan.Status = L3RequestStatus.Finalized;
+            plan.Status = PlanningStatus.Finalized;
             if (plan.PracticeScheduleId.HasValue)
             {
                 var schedule = await _context.PracticeSchedules.AsTracking().FirstOrDefaultAsync(s => s.Id == plan.PracticeScheduleId);
@@ -190,7 +190,7 @@ public class L3Model : PageModel
             return RedirectToPage(new { id = Id });
         }
 
-        TempData.Success($"Práctica {Code} finalizada.");
+        TempData.Success($"Planificación {Code} finalizada.");
         return RedirectToHome();
     }
 
@@ -204,17 +204,17 @@ public class L3Model : PageModel
 
     private async Task<IActionResult?> LoadAsync()
     {
-        Plan = await _context.L3Requests.AsNoTracking()
+        Plan = await _context.Plannings.AsNoTracking()
             .Include(r => r.Laboratory)
             .Include(r => r.Subject)
             .Include(r => r.TeacherPerson)
             .FirstOrDefaultAsync(r => r.Id == Id);
         if (Plan == null)
         {
-            TempData.Error("La práctica no existe.");
+            TempData.Error("La planificación no existe.");
             return RedirectToHome();
         }
-        if (Plan.Status == L3RequestStatus.Planned)
+        if (Plan.Status == PlanningStatus.Planned)
         {
             TempData.Warning("Primero aprueba la solicitud en Disponibilidad.");
             return RedirectToPage("./Disponibilidad", new { planId = Id });
@@ -222,7 +222,7 @@ public class L3Model : PageModel
 
         var departure = await _context.Departures.AsNoTracking()
             .Include(d => d.OriginLaboratory)
-            .FirstOrDefaultAsync(d => d.L3RequestId == Id);
+            .FirstOrDefaultAsync(d => d.PlanningId == Id);
 
         if (departure == null)
         {
@@ -233,8 +233,8 @@ public class L3Model : PageModel
                 .Select(l => new { l.Id, Name = l.Code + " · " + l.Name }).ToListAsync();
             OriginList = new SelectList(labs, "Id", "Name", originId);
 
-            var details = await _context.L3RequestDetails.AsNoTracking()
-                .Where(d => d.L3RequestId == Id)
+            var details = await _context.PlanningRequirements.AsNoTracking()
+                .Where(d => d.PlanningId == Id)
                 .OrderBy(d => d.Article!.Name)
                 .Select(d => new
                 {
@@ -291,7 +291,7 @@ public class L3Model : PageModel
         }
 
         Incidents = await _context.L5Incidents.AsNoTracking()
-            .Where(i => i.L3RequestId == Id)
+            .Where(i => i.PlanningId == Id)
             .OrderByDescending(i => i.RecordDate)
             .Select(i => new IncidentRow(i.Id,
                 i.Article != null ? i.Article.Code + " · " + i.Article.Name
@@ -318,9 +318,9 @@ public class L3Model : PageModel
             .GroupBy(r => r.DepartureItemId)
             .Select(g => new { g.Key, Total = g.Sum(r => r.ReturnedQuantity) })
             .ToDictionaryAsync(x => x.Key, x => x.Total);
-        // Faltantes cubiertos por incidentes L-5 del artículo en esta práctica.
+        // Faltantes cubiertos por incidentes L-5 del artículo en esta planificación.
         var covered = await _context.L5Incidents.AsNoTracking()
-            .Where(i => i.L3RequestId == Id && i.ArticleId != null)
+            .Where(i => i.PlanningId == Id && i.ArticleId != null)
             .GroupBy(i => i.ArticleId!.Value)
             .Select(g => new { g.Key, Quantity = g.Sum(i => i.AffectedQuantity) })
             .ToDictionaryAsync(x => x.Key, x => x.Quantity);

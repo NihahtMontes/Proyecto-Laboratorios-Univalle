@@ -25,7 +25,7 @@
                 <i class="fas fa-eye fa-2x mr-3"></i>
                 <div>
                     <strong>Solo consulta.</strong><br />
-                    <span>La planificación no admite devoluciones, finalización ni registro de incidentes L-5.</span>
+                    <span>La gestión de esta planificación no admite devoluciones, finalización ni registro de incidentes L-5.</span>
                 </div>
             </div>
         }
@@ -35,9 +35,9 @@
             <div class="alert alert-success border-0 rounded-lg d-flex align-items-center mb-4 shadow-sm">
                 <i class="mdi mdi-check-decagram mdi-36px mr-3"></i>
                 <div>
-                    <strong>Práctica finalizada.</strong>
+                    <strong>Planificación finalizada.</strong>
                     <span class="badge badge-success badge-pill ml-2"><i class="mdi mdi-check-decagram mr-1"></i> FINALIZADA</span><br />
-                    Esta práctica L-3 fue cerrada y ya no admite cambios. Los registros L-5 asociados se conservan como historial.
+                    Esta planificación fue cerrada y ya no admite cambios. Los registros L-5 asociados se conservan como historial.
                 </div>
             </div>
         }
@@ -47,7 +47,7 @@
                 <i class="mdi mdi-lock-alert mdi-36px mr-3"></i>
                 <div>
                     <strong>Hay faltantes sin incidente L-5 registrado.</strong><br />
-                    Registra cada faltante como L-5 antes de poder finalizar la práctica.
+                    Registra cada faltante como L-5 antes de poder finalizar la planificación.
                 </div>
             </div>
         }
@@ -56,7 +56,7 @@
             <div class="alert alert-light border rounded-lg d-flex align-items-center mb-4">
                 <i class="fas fa-info-circle text-primary mr-2"></i>
                 <div class="small">
-                    Actualiza la cantidad devuelta por artículo. Una vez que todos los faltantes estén cubiertos por un L-5, podrás finalizar la práctica.
+                    Actualiza la cantidad devuelta por artículo. Una vez que todos los faltantes estén cubiertos por un L-5, podrás finalizar la planificación.
                 </div>
             </div>
         }
@@ -211,7 +211,7 @@
                                     <tr>
                                         <td colspan="7" class="text-center text-muted py-4">
                                             <i class="mdi mdi-package-variant mdi-36px d-block mb-2"></i>
-                                            Esta práctica no tiene artículos registrados.
+                                            Esta planificación no tiene artículos registrados.
                                         </td>
                                     </tr>
                                 }
@@ -398,7 +398,7 @@
                             <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0">
                                 <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2"
                                         disabled="@(Model.BlockFinalization ? "disabled" : null)"
-                                        title="@(Model.BlockFinalization ? "Hay faltantes sin incidente L-5" : "Cerrar la práctica L-3")">
+                                        title="@(Model.BlockFinalization ? "Hay faltantes sin incidente L-5" : "Cerrar la planificación")">
                                     <i class="mdi mdi-check-all mr-1"></i> Finalizar L-3
                                 </button>
                             </form>
@@ -419,7 +419,7 @@
                     {
                         <div class="text-center text-muted py-4">
                             <i class="mdi mdi-shield-off-outline mdi-36px d-block mb-2"></i>
-                            Aún no se registraron incidentes L-5 para esta práctica.
+                            Aún no se registraron incidentes L-5 para esta planificación.
                         </div>
                     }
                     else
@@ -547,7 +547,7 @@
                 }
                 Swal.fire({
                     title: '¿Finalizar L-3?',
-                    text: 'Se cerrará la práctica. Esta acción no se puede deshacer.',
+                    text: 'Se cerrará la planificación. Esta acción no se puede deshacer.',
                     type: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#343a40',

@@ -34,9 +34,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(50)]
         public string? Code { get; set; }
 
-        /// <summary>Solicitud L-3 que origina la salida (null en salidas manuales).</summary>
-        [Display(Name = "Solicitud L-3")]
-        public int? L3RequestId { get; set; }
+        /// <summary>Planificación que origina la salida (null en salidas manuales).</summary>
+        [Display(Name = "Planificación")]
+        public int? PlanningId { get; set; }
 
         /// <summary>RetornoEstimado de la fuente cuando no es una fecha.</summary>
         [StringLength(200)]
@@ -114,8 +114,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
 
         public virtual ICollection<DepartureItem> Items { get; set; } = new List<DepartureItem>();
 
-        [ForeignKey(nameof(L3RequestId))]
-        public virtual L3Request? L3Request { get; set; }
+        [ForeignKey(nameof(PlanningId))]
+        public virtual Planning? Planning { get; set; }
 
         public virtual ICollection<DepartureReturn> Returns { get; set; } = new List<DepartureReturn>();
     }

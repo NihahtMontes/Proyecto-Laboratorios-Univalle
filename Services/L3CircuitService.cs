@@ -24,7 +24,7 @@ public sealed record ReturnLine(int DepartureItemId, decimal Quantity);
 public interface IL3CircuitService
 {
     Task<int?> GetDefaultOriginLaboratoryIdAsync();
-    Task<L3CircuitResult> CreateDepartureAsync(int l3RequestId, int originLaboratoryId, IReadOnlyList<DepartureLine> lines, string? observations);
+    Task<L3CircuitResult> CreateDepartureAsync(int planningId, int originLaboratoryId, IReadOnlyList<DepartureLine> lines, string? observations);
     Task<L3CircuitResult> RegisterReturnAsync(int departureId, int responsiblePersonId, DateTime returnDate, IReadOnlyList<ReturnLine> lines, string? observations);
 }
 
@@ -48,31 +48,31 @@ public class L3CircuitService : IL3CircuitService
             .Select(l => (int?)l.Id)
             .FirstOrDefaultAsync();
 
-    public async Task<L3CircuitResult> CreateDepartureAsync(int l3RequestId, int originLaboratoryId,
+    public async Task<L3CircuitResult> CreateDepartureAsync(int planningId, int originLaboratoryId,
         IReadOnlyList<DepartureLine> lines, string? observations)
     {
-        var request = await _context.L3Requests.AsNoTracking()
+        var request = await _context.Plannings.AsNoTracking()
             .Include(r => r.Laboratory)
-            .FirstOrDefaultAsync(r => r.Id == l3RequestId);
-        if (request == null) return L3CircuitResult.Fail("La solicitud L-3 no existe.");
-        if (request.Status != L3RequestStatus.Approved)
-            return L3CircuitResult.Fail("Solo se registra la salida de una solicitud aprobada.");
-        if (await _context.Departures.AsNoTracking().AnyAsync(d => d.L3RequestId == l3RequestId))
-            return L3CircuitResult.Fail("La solicitud ya tiene una salida registrada.");
+            .FirstOrDefaultAsync(r => r.Id == planningId);
+        if (request == null) return L3CircuitResult.Fail("La planificación no existe.");
+        if (request.Status != PlanningStatus.Approved)
+            return L3CircuitResult.Fail("Solo se registra la salida de una planificación aprobada.");
+        if (await _context.Departures.AsNoTracking().AnyAsync(d => d.PlanningId == planningId))
+            return L3CircuitResult.Fail("La planificación ya tiene una salida registrada.");
 
         var origin = await _context.Laboratories.AsNoTracking()
             .FirstOrDefaultAsync(l => l.Id == originLaboratoryId && l.Status == GeneralStatus.Activo);
         if (origin == null) return L3CircuitResult.Fail("Selecciona un laboratorio de origen activo.");
 
-        var details = await _context.L3RequestDetails.AsNoTracking()
+        var details = await _context.PlanningRequirements.AsNoTracking()
             .Include(d => d.Article)
             .Include(d => d.EquipmentUnit)
-            .Where(d => d.L3RequestId == l3RequestId)
+            .Where(d => d.PlanningId == planningId)
             .ToDictionaryAsync(d => d.Id);
         var wanted = lines.Where(l => l.Quantity > 0).ToList();
         if (wanted.Count == 0) return L3CircuitResult.Fail("Indica al menos una cantidad a entregar.");
         if (wanted.Select(l => l.DetailId).Distinct().Count() != wanted.Count || wanted.Any(l => !details.ContainsKey(l.DetailId)))
-            return L3CircuitResult.Fail("Hay líneas que no pertenecen a esta solicitud.");
+            return L3CircuitResult.Fail("Hay líneas que no pertenecen a esta planificación.");
         if (wanted.Any(l => decimal.Round(l.Quantity, 2) != l.Quantity || l.Quantity > 999999))
             return L3CircuitResult.Fail("Las cantidades admiten hasta 2 decimales.");
 
@@ -101,7 +101,7 @@ public class L3CircuitService : IL3CircuitService
             var departure = new Departure
             {
                 ManagementId = request.ManagementId,
-                L3RequestId = request.Id,
+                PlanningId = request.Id,
                 OriginLaboratoryId = originLaboratoryId,
                 BorrowerId = request.TeacherPersonId,
                 Destination = request.Laboratory?.Name ?? "Todos los laboratorios",
@@ -183,7 +183,7 @@ public class L3CircuitService : IL3CircuitService
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            _logger.LogError(ex, "No se pudo registrar la salida de la solicitud L-3 {RequestId}", l3RequestId);
+            _logger.LogError(ex, "No se pudo registrar la salida de la planificación {PlanningId}", planningId);
             return L3CircuitResult.Fail("No se pudo registrar la salida. Intente nuevamente.");
         }
     }
@@ -208,13 +208,13 @@ public class L3CircuitService : IL3CircuitService
             var departure = await _context.Departures.AsTracking()
                 .Include(d => d.Items)
                 .FirstOrDefaultAsync(d => d.Id == departureId);
-            if (departure == null || !departure.L3RequestId.HasValue)
+            if (departure == null || !departure.PlanningId.HasValue)
                 return L3CircuitResult.Fail("La salida L-3 no existe.");
             if (departure.Status is LoanStatus.Returned or LoanStatus.Cancelled)
                 return L3CircuitResult.Fail("La salida ya fue devuelta por completo o está anulada.");
-            var request = await _context.L3Requests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == departure.L3RequestId);
-            if (request == null || request.Status != L3RequestStatus.Approved)
-                return L3CircuitResult.Fail("Solo se registran devoluciones de una solicitud aprobada y no finalizada.");
+            var request = await _context.Plannings.AsNoTracking().FirstOrDefaultAsync(r => r.Id == departure.PlanningId);
+            if (request == null || request.Status != PlanningStatus.Approved)
+                return L3CircuitResult.Fail("Solo se registran devoluciones de una planificación aprobada y no finalizada.");
 
             var items = departure.Items.ToDictionary(i => i.Id);
             if (wanted.Any(l => !items.ContainsKey(l.DepartureItemId)))

@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Proyecto_Laboratorios_Univalle.Models
 {
-    /// <summary>Línea de la solicitud L-3 (= SolicitudL3Detalles): artículo pedido y, opcionalmente, la unidad física.</summary>
-    public class L3RequestDetail
+    /// <summary>Requerimiento (línea de material) de una planificación (antes L3RequestDetail) (= SolicitudL3Detalles): artículo pedido y, opcionalmente, la unidad física.</summary>
+    public class PlanningRequirement
     {
         [Key]
         public int Id { get; set; }
@@ -13,9 +13,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public string? Code { get; set; }
 
         [Required]
-        public int L3RequestId { get; set; }
-        [ForeignKey("L3RequestId")]
-        public L3Request L3Request { get; set; } = null!;
+        public int PlanningId { get; set; }
+        [ForeignKey("PlanningId")]
+        public Planning Planning { get; set; } = null!;
 
         public int ArticleId { get; set; }
         [ForeignKey("ArticleId")]

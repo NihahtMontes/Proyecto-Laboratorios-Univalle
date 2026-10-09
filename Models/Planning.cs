@@ -5,9 +5,9 @@ using Proyecto_Laboratorios_Univalle.Models.Interfaces;
 namespace Proyecto_Laboratorios_Univalle.Models
 {
     /// <summary>
-    /// Solicitud L-3 (= SolicitudesL3): pedido de artículos de una práctica programada o extraordinaria.
+    /// Planificación: sesión concreta de práctica de laboratorio (antes L3Request). Código PRA-{Id}.
     /// </summary>
-    public class L3Request : IAuditable
+    public class Planning : IAuditable
     {
         [Key]
         public int Id { get; set; }
@@ -30,10 +30,6 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int? CampusId { get; set; }
         [ForeignKey("CampusId")]
         public Campus? Campus { get; set; }
-
-        public int? CareerId { get; set; }
-        [ForeignKey("CareerId")]
-        public Career? Career { get; set; }
 
         public int? SubjectId { get; set; }
         [ForeignKey("SubjectId")]
@@ -78,14 +74,21 @@ namespace Proyecto_Laboratorios_Univalle.Models
         /// <summary>Número de semana académica (se mantiene sincronizado con AcademicWeekRef).</summary>
         public int AcademicWeek { get; set; }
 
-        /// <summary>Planificación a la que pertenece la práctica (null en prácticas legadas).</summary>
-        public int? AcademicPlanningId { get; set; }
-        [ForeignKey("AcademicPlanningId")]
-        public AcademicPlanning? AcademicPlanning { get; set; }
-
         public int? AcademicWeekId { get; set; }
         [ForeignKey("AcademicWeekId")]
         public AcademicWeek? AcademicWeekRef { get; set; }
+
+        /// <summary>
+        /// Fuente de verdad del horario: fecha (ScheduledDate.Date) + StartPeriod + PeriodCount.
+        /// ScheduledDate/ScheduledEndDate/StartTime/EndTime son derivados que solo escribe PlanningSlot.Apply.
+        /// </summary>
+        public int? StartPeriodId { get; set; }
+        [ForeignKey("StartPeriodId")]
+        public ClassPeriod? StartPeriod { get; set; }
+
+        /// <summary>Cantidad de periodos consecutivos que ocupa la práctica desde StartPeriod.</summary>
+        [Range(1, 12)]
+        public int? PeriodCount { get; set; }
 
         public DateTime ScheduledDate { get; set; }
 
@@ -99,9 +102,9 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public string? Observations { get; set; }
 
         [StringLength(50)]
-        public string Status { get; set; } = L3RequestStatus.Planned;
+        public string Status { get; set; } = PlanningStatus.Planned;
 
-        public ICollection<L3RequestDetail> Details { get; set; } = new List<L3RequestDetail>();
+        public ICollection<PlanningRequirement> Requirements { get; set; } = new List<PlanningRequirement>();
         public ICollection<L5Incident> Incidents { get; set; } = new List<L5Incident>();
         public ICollection<Departure> Departures { get; set; } = new List<Departure>();
 
@@ -113,12 +116,28 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public bool IsDeleted { get; set; }
         public DateTime? DeletedDate { get; set; }
     }
-    /// <summary>Estados de la planificación L-3 (se guardan como texto, compatibles con RamaDani).</summary>
-    public static class L3RequestStatus
+    /// <summary>Estados de la planificación (se guardan como texto, compatibles con RamaDani).</summary>
+    public static class PlanningStatus
     {
-        public const string Planned = "Planificado";
-        public const string Approved = "Aprobado";
-        public const string Finalized = "Finalizado";
-        public const string Cancelled = "Cancelado";
+        public const string Planned = "Planificada";
+        public const string Approved = "Aprobada";
+        public const string Finalized = "Finalizada";
+        /// <summary>Legado: una planificación nunca se cancela; se conserva por datos previos.</summary>
+        public const string Cancelled = "Cancelada";
+        /// <summary>Origen de una reprogramación individual (visible atenuado, enlazado al destino).</summary>
+        public const string Rescheduled = "Reprogramada";
+        /// <summary>Planificación de un día suspendido que espera en la bandeja de reposición.</summary>
+        public const string PendingRecovery = "PendienteReposicion";
+        /// <summary>Origen ya reubicado dentro de una reposición de día.</summary>
+        public const string Recovered = "Repuesta";
+        public static readonly string[] All = [Planned, Approved, Finalized, Cancelled, Rescheduled, PendingRecovery, Recovered];
+        /// <summary>Estados que NO ocupan ambiente ni docente ni demandan material.</summary>
+        public static readonly string[] NonOccupying = [Cancelled, Rescheduled, PendingRecovery, Recovered];
+        public static bool Occupies(string status) => !NonOccupying.Contains(status);
+        public static string Label(string status) => status switch
+        {
+            PendingRecovery => "Pendiente de reposición",
+            _ => status
+        };
     }
 }

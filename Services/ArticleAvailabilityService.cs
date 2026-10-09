@@ -160,10 +160,10 @@ public interface IArticleAvailabilityService
     /// </summary>
     Task<Dictionary<int, ArticleStockInfo>> GetStockAsync(IEnumerable<int> articleIds, int? originLaboratoryId);
 
-    /// <summary>Demanda por día y artículo de todas las prácticas (no canceladas) entre las fechas, contra el stock (total si no hay origen).</summary>
+    /// <summary>Demanda por día y artículo de todas las planificaciones vigentes (que ocupan material) entre las fechas, contra el stock (total si no hay origen).</summary>
     Task<WeekAvailability> GetRangeAsync(DateTime startDate, DateTime endDate, int? weekNumber = null, int? originLaboratoryId = null);
 
-    /// <summary>Semana académica de la práctica (o lunes a domingo de su fecha si no tiene semana asignada).</summary>
+    /// <summary>Semana académica de la planificación (o lunes a domingo de su fecha si no tiene semana asignada).</summary>
     Task<WeekAvailability?> GetWeekForPracticeAsync(int practiceId, int? originLaboratoryId = null);
 }
 
@@ -291,7 +291,7 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
 
     public async Task<WeekAvailability?> GetWeekForPracticeAsync(int practiceId, int? originLaboratoryId = null)
     {
-        var practice = await _context.L3Requests.AsNoTracking()
+        var practice = await _context.Plannings.AsNoTracking()
             .Where(r => r.Id == practiceId)
             .Select(r => new
             {
@@ -316,8 +316,9 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
         var from = startDate.Date;
         var to = endDate.Date;
 
-        var practices = await _context.L3Requests.AsNoTracking()
-            .Where(r => !r.IsDeleted && r.Status != L3RequestStatus.Cancelled
+        // Los estados no ocupantes (cancelada, reprogramada, reposición) no demandan material.
+        var practices = await _context.Plannings.AsNoTracking()
+            .Where(r => !r.IsDeleted && !PlanningStatus.NonOccupying.Contains(r.Status)
                 && r.ScheduledDate >= from && r.ScheduledDate < to.AddDays(1))
             .OrderBy(r => r.ScheduledDate).ThenBy(r => r.StartTime)
             .Select(r => new
@@ -343,19 +344,19 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
 
         var lines = practiceIds.Count == 0
             ? []
-            : await _context.L3RequestDetails.AsNoTracking()
-                .Where(d => practiceIds.Contains(d.L3RequestId) && d.RequestedQuantity > 0)
-                .Select(d => new { d.L3RequestId, d.ArticleId, d.Article!.Code, d.Article.Name, Quantity = d.RequestedQuantity!.Value })
+            : await _context.PlanningRequirements.AsNoTracking()
+                .Where(d => practiceIds.Contains(d.PlanningId) && d.RequestedQuantity > 0)
+                .Select(d => new { d.PlanningId, d.ArticleId, d.Article!.Code, d.Article.Name, Quantity = d.RequestedQuantity!.Value })
                 .ToListAsync();
 
         var stock = await GetStockAsync(lines.Select(l => l.ArticleId), originLaboratoryId);
 
         var demands = lines
-            .GroupBy(l => new { Date = practiceById[l.L3RequestId].Date, l.ArticleId })
+            .GroupBy(l => new { Date = practiceById[l.PlanningId].Date, l.ArticleId })
             .Select(g =>
             {
-                // Varias líneas del mismo artículo en una práctica se suman.
-                var perPractice = g.GroupBy(l => l.L3RequestId)
+                // Varias líneas del mismo artículo en una planificación se suman.
+                var perPractice = g.GroupBy(l => l.PlanningId)
                     .Select(p => new PracticeDemand(p.Key, p.Sum(l => l.Quantity)))
                     .ToList();
                 var (peak, peakStart, peakEnd) = ComputePeak(perPractice, practiceById);

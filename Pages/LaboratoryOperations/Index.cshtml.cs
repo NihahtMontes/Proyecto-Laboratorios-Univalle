@@ -10,20 +10,19 @@ using Proyecto_Laboratorios_Univalle.Services;
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Panel "Planificación activa": cabecera de contexto + calendario (mes → semanas → días).
-/// Sin planificación activa muestra el estado vacío, igual que la gestión.
-/// Con ?planningId= se consulta otra planificación en solo lectura.
+/// Panel de planificación de una gestión: cabecera, métricas y calendario resumen (mes → semanas → días lunes a sábado).
+/// Por defecto muestra la gestión actual; con ?managementId= se consulta otra (de solo lectura si está completada).
 /// </summary>
 public class IndexModel : PageModel
 {
     private readonly ApplicationDbContext _context;
-    private readonly IPlanningService _planning;
+    private readonly IAcademicManagementService _managements;
     private readonly IArticleAvailabilityService _availability;
 
-    public IndexModel(ApplicationDbContext context, IPlanningService planning, IArticleAvailabilityService availability)
+    public IndexModel(ApplicationDbContext context, IAcademicManagementService managements, IArticleAvailabilityService availability)
     {
         _context = context;
-        _planning = planning;
+        _managements = managements;
         _availability = availability;
     }
 
@@ -32,35 +31,38 @@ public class IndexModel : PageModel
     public string? UsagePeriod { get; set; }
 
     [BindProperty(SupportsGet = true)]
-    public int? PlanningId { get; set; }
+    public int? ManagementId { get; set; }
 
     [BindProperty(SupportsGet = true)]
     public string? Month { get; set; }
 
-    /// <summary>Planificación mostrada (la activa o la pedida por ?planningId=).</summary>
-    public PlanningSummary? Planning { get; private set; }
-    public bool HasActivePlanning { get; private set; }
-    /// <summary>True si se consulta una planificación que no es la activa.</summary>
-    public bool IsReadOnly => Planning is { IsActive: false };
+    /// <summary>Gestión mostrada (la actual o la pedida por ?managementId=).</summary>
+    public AcademicManagementSummary? Management { get; private set; }
+    public List<AcademicManagementSummary> Managements { get; private set; } = [];
+    /// <summary>True si la gestión mostrada está completada (solo consulta).</summary>
+    public bool IsReadOnly => Management is { IsEditable: false };
     public PlanningCalendar? Calendar { get; private set; }
 
     public int WeekCount { get; private set; }
-    public int LectiveWeekCount { get; private set; }
-    public int PracticeCount { get; private set; }
+    public int EnabledDayCount { get; private set; }
+    public int SuspendedDayCount { get; private set; }
+    public int PlanningCount { get; private set; }
     public int PlannedCount { get; private set; }
     public int ApprovedCount { get; private set; }
     public int FinalizedCount { get; private set; }
+    /// <summary>Orígenes reprogramados o repuestos y pendientes de reposición (no ocupan ambiente).</summary>
+    public int MovedCount { get; private set; }
     public int IncidentCount { get; private set; }
 
     // Notificaciones al entrar al panel.
     public DateTime Today { get; private set; } = DateTime.Today;
-    /// <summary>Prácticas de hoy (todas las planificaciones: el material es compartido).</summary>
+    /// <summary>Planificaciones de hoy (todas las gestiones: el material es compartido).</summary>
     public List<WeekPractice> TodayPractices { get; private set; } = [];
     /// <summary>Semana calendario actual (lunes a domingo) con conflictos y rotaciones.</summary>
     public WeekAvailability? CurrentWeek { get; private set; }
     public List<PendingReturn> PendingReturns { get; private set; } = [];
 
-    public sealed record PendingReturn(int DepartureId, string? Code, int? PracticeId, string? PracticeName,
+    public sealed record PendingReturn(int DepartureId, string? Code, int? PlanningId, string? PracticeName,
         DateTime DepartureDate, DateTime? EstimatedReturnDate, bool IsOverdue);
 
     // Pestaña "Uso de artículos".
@@ -72,48 +74,43 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnGetAsync()
     {
-        var active = await _planning.GetActiveAsync();
-        HasActivePlanning = active != null;
-
-        if (PlanningId.HasValue && PlanningId != active?.Id)
+        Managements = await _managements.ListAsync();
+        Management = await _managements.ResolveAsync(ManagementId);
+        if (ManagementId.HasValue && Management == null)
         {
-            Planning = await _planning.GetSummaryAsync(PlanningId.Value);
-            if (Planning == null)
-            {
-                TempData.Error("La planificación solicitada no existe.");
-                return RedirectToPage();
-            }
-        }
-        else
-        {
-            Planning = active;
+            TempData.Error("La gestión solicitada no existe.");
+            return RedirectToPage();
         }
 
         await LoadNotificationsAsync();
 
-        if (Planning == null) return Page();
+        if (Management == null) return Page();
 
-        Calendar = await PlanningCalendar.BuildAsync(_context, Planning, Month, allowAdd: Planning.IsActive);
+        Calendar = await PlanningCalendar.BuildAsync(_context, Management, Month, allowAdd: Management.IsEditable);
 
-        var weeks = await _context.AcademicWeeks.AsNoTracking()
-            .Where(w => w.AcademicPlanningId == Planning.Id)
-            .GroupBy(w => 1)
-            .Select(g => new { Total = g.Count(), Lective = g.Count(w => w.IsLective) })
-            .FirstOrDefaultAsync();
-        WeekCount = weeks?.Total ?? 0;
-        LectiveWeekCount = weeks?.Lective ?? 0;
+        WeekCount = await _context.AcademicWeeks.AsNoTracking().CountAsync(w => w.ManagementId == Management.Id);
+        var days = await _context.AcademicDays.AsNoTracking()
+            .Where(d => d.AcademicWeek.ManagementId == Management.Id)
+            .GroupBy(d => d.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count);
+        EnabledDayCount = days.GetValueOrDefault(AcademicDayStatus.Enabled);
+        SuspendedDayCount = days.GetValueOrDefault(AcademicDayStatus.Suspended);
 
-        var byStatus = await _context.L3Requests.AsNoTracking()
-            .Where(r => r.AcademicPlanningId == Planning.Id && r.Status != L3RequestStatus.Cancelled)
+        var byStatus = await _context.Plannings.AsNoTracking()
+            .Where(r => r.ManagementId == Management.Id && r.Status != PlanningStatus.Cancelled)
             .GroupBy(r => r.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Status, x => x.Count);
-        PlannedCount = byStatus.GetValueOrDefault(L3RequestStatus.Planned);
-        ApprovedCount = byStatus.GetValueOrDefault(L3RequestStatus.Approved);
-        FinalizedCount = byStatus.GetValueOrDefault(L3RequestStatus.Finalized);
-        PracticeCount = PlannedCount + ApprovedCount + FinalizedCount;
+        PlannedCount = byStatus.GetValueOrDefault(PlanningStatus.Planned);
+        ApprovedCount = byStatus.GetValueOrDefault(PlanningStatus.Approved);
+        FinalizedCount = byStatus.GetValueOrDefault(PlanningStatus.Finalized);
+        MovedCount = byStatus.GetValueOrDefault(PlanningStatus.Rescheduled)
+            + byStatus.GetValueOrDefault(PlanningStatus.Recovered)
+            + byStatus.GetValueOrDefault(PlanningStatus.PendingRecovery);
+        PlanningCount = PlannedCount + ApprovedCount + FinalizedCount;
         IncidentCount = await _context.L5Incidents.AsNoTracking()
-            .CountAsync(i => i.L3Request != null && i.L3Request.AcademicPlanningId == Planning.Id);
+            .CountAsync(i => i.Planning != null && i.Planning.ManagementId == Management.Id);
 
         var usage = await _availability.GetUsageAsync(UsageFrom, UsageTo);
         MostUsed = usage.OrderByDescending(u => u.PracticeCount).ThenByDescending(u => u.TotalRequested).Take(10).ToList();
@@ -134,16 +131,16 @@ public class IndexModel : PageModel
 
         var openStatuses = new[] { LoanStatus.Active, LoanStatus.Overdue };
         PendingReturns = (await _context.Departures.AsNoTracking()
-            .Where(d => d.L3RequestId != null && openStatuses.Contains(d.Status))
+            .Where(d => d.PlanningId != null && openStatuses.Contains(d.Status))
             .OrderBy(d => d.EstimatedReturnDate ?? d.DepartureDate)
             .Take(20)
             .Select(d => new
             {
-                d.Id, d.Code, d.L3RequestId, d.DepartureDate, d.EstimatedReturnDate, d.Status,
-                Practice = _context.L3Requests.Where(r => r.Id == d.L3RequestId).Select(r => r.PracticeName).FirstOrDefault()
+                d.Id, d.Code, d.PlanningId, d.DepartureDate, d.EstimatedReturnDate, d.Status,
+                Practice = _context.Plannings.Where(r => r.Id == d.PlanningId).Select(r => r.PracticeName).FirstOrDefault()
             })
             .ToListAsync())
-            .Select(d => new PendingReturn(d.Id, d.Code, d.L3RequestId, d.Practice, d.DepartureDate, d.EstimatedReturnDate,
+            .Select(d => new PendingReturn(d.Id, d.Code, d.PlanningId, d.Practice, d.DepartureDate, d.EstimatedReturnDate,
                 d.Status == LoanStatus.Overdue || (d.EstimatedReturnDate.HasValue && d.EstimatedReturnDate.Value.Date < Today)))
             .ToList();
     }

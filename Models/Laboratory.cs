@@ -63,6 +63,11 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // ========================================
         // ADDITIONAL INFO
         // ========================================
+        /// <summary>Capacidad de estudiantes del ambiente (null = no registrada).</summary>
+        [Range(1, 1000)]
+        [Display(Name = "Capacidad")]
+        public int? Capacity { get; set; }
+
         [StringLength(1000)]
         [Display(Name = "Descripción")]
         public string? Description { get; set; }

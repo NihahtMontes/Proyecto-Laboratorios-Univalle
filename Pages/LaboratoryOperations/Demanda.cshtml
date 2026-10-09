@@ -1,5 +1,6 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.DemandaModel
+@using Proyecto_Laboratorios_Univalle.Services
 @{ ViewData["Title"] = "Demanda"; }
 
 <div class="page-breadcrumb">
@@ -7,20 +8,14 @@
         <div class="col-md-8">
             <h4 class="page-title text-uppercase text-primary font-weight-bold mb-1">PRÁCTICAS FUTURAS</h4>
             <h2 class="font-weight-bold text-dark mb-1">Demanda de utensilios y materiales</h2>
-            <div class="text-muted small">Consolidado de los requerimientos registrados en prácticas L-3 planificadas o aprobadas con fecha igual o posterior a hoy.</div>
+            <div class="text-muted small">Consolidado de los requerimientos registrados en planificaciones L-3 vigentes con fecha igual o posterior a hoy.</div>
         </div>
         <div class="col-md-4 text-md-right mt-3 mt-md-0">
-            @if (Model.HasActivePlanning)
+            @if (Model.HasManagement)
             {
-                <a asp-page="./Planificacion" class="btn btn-outline-primary font-weight-bold">
-                    <i class="fas fa-edit mr-1"></i> Editar planificación activa
-                </a>
-            }
-            else
-            {
-                <a asp-page="./Planificacion" class="btn btn-primary font-weight-bold">
-                    <i class="fas fa-plus mr-1"></i> Nueva planificación
-                </a>
+                <span class="badge badge-light border text-muted font-weight-bold px-3 py-2">
+                    <i class="fas fa-calendar-alt mr-1 text-primary"></i> Gestión @Model.Management!.Code
+                </span>
             }
         </div>
     </div>
@@ -28,23 +23,20 @@
 
 <div class="container-fluid mt-3">
 
-    @if (!Model.HasActivePlanning)
+    @if (!Model.HasManagement)
     {
         <div class="card border-0 shadow-sm rounded-lg">
             <div class="card-body text-center p-5">
                 <div class="mb-3">
-                    <i class="fas fa-folder-open text-primary opacity-50" style="font-size: 4rem;"></i>
+                    <i class="fas fa-calendar-times text-primary opacity-50" style="font-size: 4rem;"></i>
                 </div>
-                <h3 class="font-weight-bold text-dark mb-2">No tiene ninguna planificación activa</h3>
+                <h3 class="font-weight-bold text-dark mb-2">No hay una gestión académica disponible</h3>
                 <p class="text-muted mb-4">
-                    La demanda se calcula sobre las prácticas de la planificación académica activa. Cree o active una para ver los requerimientos consolidados.
+                    La demanda se calcula sobre las planificaciones de una gestión académica. Cree o active una gestión para ver los requerimientos consolidados.
                 </p>
                 <div class="d-flex justify-content-center gap-2 flex-wrap">
-                    <a asp-page="./Planificacion" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm">
-                        <i class="fas fa-plus mr-2"></i> Crear planificación
-                    </a>
-                    <a asp-page="./Planificaciones" class="btn btn-outline-primary btn-rounded font-weight-bold px-4 shadow-sm">
-                        <i class="fas fa-list mr-2"></i> Ver planificaciones
+                    <a asp-page="/Managements/Index" asp-route-type="Preventive" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm">
+                        <i class="fas fa-calendar-plus mr-2"></i> Ver gestiones
                     </a>
                 </div>
             </div>
@@ -55,24 +47,28 @@
         <div class="alert alert-light border rounded-lg d-flex align-items-center mb-4 shadow-sm">
             <div class="rounded-circle bg-light-primary text-primary p-2 mr-3"><i class="fas fa-university"></i></div>
             <div class="flex-grow-1">
-                <strong class="text-dark">@Model.ActivePlanning!.Name</strong>
-                <small class="text-muted ml-1">— @Model.ActivePlanning.ManagementCode · @Model.ActivePlanning.FacultyName · @Model.ActivePlanning.CareerName</small>
+                <strong class="text-dark">Gestión @Model.Management!.Code</strong>
+                <small class="text-muted ml-1">— @Model.Management.StatusText@if (Model.Management.StartDate.HasValue && Model.Management.EndDate.HasValue) {<text> · @Model.Management.StartDate.Value.ToString("dd/MM/yyyy") – @Model.Management.EndDate.Value.ToString("dd/MM/yyyy")</text>}</small>
             </div>
-            <a asp-page="./Planificaciones" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold">
-                <i class="fas fa-list mr-1"></i> Ver planificaciones
-            </a>
+            <span class="badge @(Model.Management.IsCurrent ? "badge-success" : "badge-light border text-muted") font-weight-bold">
+                @(Model.Management.IsCurrent ? "Gestión actual" : "Histórica")
+            </span>
         </div>
 
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body py-3">
             <form method="get" class="form-row align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label asp-for="ManagementId" class="small font-weight-bold">GESTIÓN</label>
+                    <select asp-for="ManagementId" asp-items="Model.ManagementList" class="custom-select"></select>
+                </div>
+                <div class="col-md-3 mt-3 mt-md-0">
                     <label asp-for="LaboratoryId" class="small font-weight-bold">LABORATORIO</label>
                     <select asp-for="LaboratoryId" asp-items="Model.LaboratoryList" class="custom-select">
                         <option value="">Todos los laboratorios</option>
                     </select>
                 </div>
-                <div class="col-md-3 mt-3 mt-md-0">
+                <div class="col-md-2 mt-3 mt-md-0">
                     <label asp-for="Category" class="small font-weight-bold">CATEGORÍA</label>
                     <select asp-for="Category" class="custom-select">
                         <option value="todos">Todas las categorías</option>
@@ -82,7 +78,7 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-3 mt-3 mt-md-0">
+                <div class="col-md-2 mt-3 mt-md-0">
                     <label asp-for="Order" class="small font-weight-bold">ORDENAR POR</label>
                     <select asp-for="Order" class="custom-select">
                         <option value="mas">Mayor cantidad solicitada</option>
@@ -167,8 +163,8 @@
                 <div class="text-center py-5">
                     <i class="fas fa-chart-line text-muted mb-3" style="font-size:36px;"></i>
                     <h5 class="font-weight-bold">Todavía no hay requerimientos consolidados</h5>
-                    <p class="text-muted mb-3">Crea una práctica y agrega artículos para ver su demanda aquí.</p>
-                    <a asp-page="./Planificacion" class="btn btn-primary">Crear planificación</a>
+                    <p class="text-muted mb-3">Crea una planificación y agrega artículos para ver su demanda aquí.</p>
+                    <a asp-page="./Planificaciones" class="btn btn-primary">Ver planificaciones</a>
                 </div>
             }
             else
@@ -203,7 +199,7 @@
                                                 </span>
                                             }
                                         </div>
-                                        <div class="text-muted small">@row.Code · @row.PlanCount práctica(s)</div>
+                                        <div class="text-muted small">@row.Code · @row.PlanCount planificación(es)</div>
                                     </td>
                                     <td class="text-center">
                                         @if (!string.IsNullOrEmpty(row.Category))
@@ -238,7 +234,7 @@
 
     <div class="alert alert-info border-0 shadow-sm mt-4 mb-0">
         <i class="fas fa-info-circle mr-2"></i>
-        Esta pantalla agrega los requerimientos de las prácticas L-3 activas a partir del flujo persistido (planificación, requerimientos, disponibilidad y devolución). El stock proviene de los registros de existencias del Economato.
+        Esta pantalla agrega los requerimientos de las planificaciones L-3 de la gestión seleccionada a partir del flujo persistido (planificación, requerimientos, disponibilidad y devolución). El stock proviene de los registros de existencias del Economato.
     </div>
     }
 </div>

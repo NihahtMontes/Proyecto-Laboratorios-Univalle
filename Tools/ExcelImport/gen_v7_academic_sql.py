@@ -341,7 +341,7 @@ IF EXISTS (SELECT 1 FROM #Issue WHERE IssueCode = N'SUBJECT_MISSING')
 # ---------- 2. Limpieza de artículos (D8 + D9) ----------
 w("-- 2. Limpieza de artículos: 24 fusiones + 1 nota L-3 → baja lógica; 4 nuevos → alta")
 w("BEGIN TRANSACTION;")
-# 2a. Mover referencias de PracticeRequirements / ArticleStocks / SubjectKitItems / DepartureItems / L3RequestDetails
+# 2a. Mover referencias de PracticeRequirements / ArticleStocks / SubjectKitItems / DepartureItems / PlanningRequirements
 #     del código eliminado al conservado, evitando choque con índices únicos y registrando duplicados.
 w("CREATE TABLE #Merge(KEEP_CODE nvarchar(30), DROP_CODE nvarchar(30) PRIMARY KEY);")
 for keep, drop in ARTICLE_MERGES:
@@ -417,21 +417,21 @@ WHERE x.IsRemoved = 0
   AND EXISTS (SELECT 1 FROM dbo.DepartureItems y JOIN dbo.Articles k ON k.Id = y.ArticleId
               WHERE y.DepartureId = x.DepartureId AND y.ArticleId <> x.ArticleId AND k.Code = m.KEEP_CODE AND y.IsRemoved = 0);
 
--- 2e. L3RequestDetails
+-- 2e. PlanningRequirements
 UPDATE x SET ArticleId = k.Id
-FROM dbo.L3RequestDetails x JOIN dbo.Articles d ON d.Id = x.ArticleId
+FROM dbo.PlanningRequirements x JOIN dbo.Articles d ON d.Id = x.ArticleId
 JOIN #Merge m ON m.DROP_CODE = d.Code
 JOIN dbo.Articles k ON k.Code = m.KEEP_CODE
 WHERE NOT EXISTS (
-      SELECT 1 FROM dbo.L3RequestDetails y JOIN dbo.Articles k2 ON k2.Id = y.ArticleId
-      WHERE y.L3RequestId = x.L3RequestId AND y.ArticleId = k.Id AND y.Id <> x.Id);
+      SELECT 1 FROM dbo.PlanningRequirements y JOIN dbo.Articles k2 ON k2.Id = y.ArticleId
+      WHERE y.PlanningId = x.PlanningId AND y.ArticleId = k.Id AND y.Id <> x.Id);
 
-INSERT #Issue SELECT 'CONTENT_CONFLICT', 'L3RequestDetail', d.Code, 'ArticleId', m.DROP_CODE, m.KEEP_CODE,
-   N'Una solicitud L-3 apuntaba a un artículo que se elimina; ya existe otra línea con el mismo par solicitud+artículo. No se reasigna.', 1, 'RequerimientosPractica', NULL
-FROM dbo.L3RequestDetails x JOIN dbo.Articles d ON d.Id = x.ArticleId
+INSERT #Issue SELECT 'CONTENT_CONFLICT', 'PlanningRequirement', d.Code, 'ArticleId', m.DROP_CODE, m.KEEP_CODE,
+   N'Una planificación apuntaba a un artículo que se elimina; ya existe otra línea con el mismo par planificación+artículo. No se reasigna.', 1, 'RequerimientosPractica', NULL
+FROM dbo.PlanningRequirements x JOIN dbo.Articles d ON d.Id = x.ArticleId
 JOIN #Merge m ON m.DROP_CODE = d.Code
-WHERE EXISTS (SELECT 1 FROM dbo.L3RequestDetails y JOIN dbo.Articles k ON k.Id = y.ArticleId
-              WHERE y.L3RequestId = x.L3RequestId AND y.ArticleId <> x.ArticleId AND k.Code = m.KEEP_CODE);""")
+WHERE EXISTS (SELECT 1 FROM dbo.PlanningRequirements y JOIN dbo.Articles k ON k.Id = y.ArticleId
+              WHERE y.PlanningId = x.PlanningId AND y.ArticleId <> x.ArticleId AND k.Code = m.KEEP_CODE);""")
 
 # 2f. Baja lógica de los 25 códigos (los 24 fusionados + la nota L-3) — preservar LastModifiedDate.
 w("""UPDATE a SET Status = 2, LastModifiedDate = @Now
@@ -687,8 +687,7 @@ BEGIN
         IsDemonstrative, ScalingFactor, Status, ImportBatchId, CreatedDate, IsDeleted)
     SELECT TOP (100) s.Code, m.Id, x.Id, pr.Id, cg.Id, s.Grp, pe.Id, l.Id, s.Week,
         (SELECT TOP 1 w.Id FROM dbo.AcademicWeeks w
-         JOIN dbo.AcademicPlannings ap ON ap.Id = w.AcademicPlanningId
-         WHERE ap.ManagementId = m.Id AND ap.CareerId = x.CareerId AND w.Number = s.Week),
+         WHERE w.ManagementId = m.Id AND w.Number = s.Week),
         s.ExecDate, s.T1, s.T2, s.Students, s.Demo, s.Factor, s.St, @Batch, @Now, 0
     FROM #Sch s JOIN dbo.Managements m ON m.Code = s.Mgmt
                JOIN dbo.Subjects x ON x.Code = s.Subj AND x.Status = 0

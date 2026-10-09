@@ -1,119 +1,159 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
-using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
-using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
-/// <summary>Historial de planificaciones académicas: activar (cierra la activa actual) o cerrar.</summary>
+/// <summary>
+/// Listado de planificaciones (sesiones de práctica, código PRA) de una gestión: la actual por defecto
+/// o la indicada por ?managementId=. Filtros por semana, estado y laboratorio. Solo lectura.
+/// </summary>
 public class PlanificacionesModel : PageModel
 {
     private readonly ApplicationDbContext _context;
-    private readonly IPlanningService _planning;
-    private readonly ILogger<PlanificacionesModel> _logger;
+    private readonly IAcademicManagementService _managements;
 
-    public PlanificacionesModel(ApplicationDbContext context, IPlanningService planning, ILogger<PlanificacionesModel> logger)
+    public PlanificacionesModel(ApplicationDbContext context, IAcademicManagementService managements)
     {
         _context = context;
-        _planning = planning;
-        _logger = logger;
+        _managements = managements;
     }
 
-    public List<PlanningRow> Plannings { get; private set; } = [];
-    public PlanningRow? Active => Plannings.FirstOrDefault(p => p.Status == AcademicPlanningStatus.Active);
+    [BindProperty(SupportsGet = true)]
+    public int? ManagementId { get; set; }
 
-    public sealed record PlanningRow(int Id, string Code, string Name, string ManagementCode, string FacultyName, string CareerName,
-        DateTime StartDate, DateTime EndDate, AcademicPlanningStatus Status, int WeekCount, int PracticeCount)
-    {
-        public string StatusText => Status switch
-        {
-            AcademicPlanningStatus.Active => "Activa",
-            AcademicPlanningStatus.Completed => "Cerrada",
-            _ => "Inactiva"
-        };
-        public string StatusCss => Status switch
-        {
-            AcademicPlanningStatus.Active => "success",
-            AcademicPlanningStatus.Completed => "secondary",
-            _ => "warning"
-        };
-    }
+    [BindProperty(SupportsGet = true)]
+    public int? WeekNumber { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? Status { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public int? LaboratoryId { get; set; }
+
+    public AcademicManagementSummary? Management { get; private set; }
+    public IReadOnlyList<SelectListItem> ManagementOptions { get; private set; } = [];
+    public IReadOnlyList<SelectListItem> WeekOptions { get; private set; } = [];
+    public IReadOnlyList<SelectListItem> StatusOptions { get; private set; } = [];
+    public SelectList LaboratoryOptions { get; private set; } = new(Enumerable.Empty<SelectListItem>());
+    public IReadOnlyList<PlanningRow> Rows { get; private set; } = [];
 
     public async Task OnGetAsync()
     {
-        Plannings = await _context.AcademicPlannings.AsNoTracking()
-            .OrderBy(p => p.Status == AcademicPlanningStatus.Active ? 0 : 1)
-            .ThenByDescending(p => p.StartDate)
-            .Select(p => new PlanningRow(
-                p.Id,
-                p.Management.Code + " · " + (p.Career.Code ?? ("PLAN-" + p.Id)),
-                p.Name, p.Management.Code, p.Faculty.Name, p.Career.Name, p.StartDate, p.EndDate, p.Status,
-                p.Weeks.Count(),
-                p.Practices.Count(r => r.Status != L3RequestStatus.Cancelled)))
+        var managements = await _managements.ListAsync();
+        Management = await _managements.ResolveAsync(ManagementId);
+        ManagementId = Management?.Id;
+        ManagementOptions = managements
+            .Select(m => new SelectListItem($"{m.Code} · {m.StatusText}{(m.IsCurrent ? " (actual)" : "")}", m.Id.ToString(), m.Id == ManagementId))
+            .ToList();
+
+        // Opciones de filtro (independientes de los resultados para no obligar a seleccionar).
+        StatusOptions = PlanningStatus.All
+            .Select(s => new SelectListItem(PlanningStatus.Label(s), s))
+            .ToList();
+
+        if (Management == null) return;
+
+        var weeks = await _context.AcademicWeeks.AsNoTracking()
+            .Where(w => w.ManagementId == Management.Id)
+            .OrderBy(w => w.Number)
+            .Select(w => new { w.Number, w.StartDate, w.EndDate })
             .ToListAsync();
-    }
+        WeekOptions = weeks
+            .Select(w => new SelectListItem($"Semana {w.Number} ({w.StartDate:dd/MM} – {w.EndDate:dd/MM})", w.Number.ToString()))
+            .ToList();
 
-    public async Task<IActionResult> OnPostActivateAsync(int id)
-    {
-        await using var transaction = await _context.Database.BeginTransactionAsync();
-        try
-        {
-            var planning = await _context.AcademicPlannings.AsTracking().FirstOrDefaultAsync(p => p.Id == id);
-            if (planning == null)
+        // Laboratorios presentes en planificaciones de la gestión (más estable que todo el catálogo).
+        var labIds = await _context.Plannings.AsNoTracking()
+            .Where(r => r.ManagementId == Management.Id && r.LaboratoryId != null)
+            .Select(r => r.LaboratoryId!.Value)
+            .Distinct()
+            .ToListAsync();
+        LaboratoryOptions = new SelectList(
+            await _context.Laboratories.AsNoTracking()
+                .Where(l => labIds.Contains(l.Id))
+                .OrderBy(l => l.Code)
+                .Select(l => new { l.Id, Name = l.Code + " · " + l.Name })
+                .ToListAsync(),
+            "Id", "Name", LaboratoryId);
+
+        var query = _context.Plannings.AsNoTracking().Where(r => r.ManagementId == Management.Id);
+        if (WeekNumber.HasValue)
+            query = query.Where(r => r.AcademicWeek == WeekNumber.Value);
+        if (!string.IsNullOrWhiteSpace(Status))
+            query = query.Where(r => r.Status == Status);
+        if (LaboratoryId.HasValue)
+            query = query.Where(r => r.LaboratoryId == LaboratoryId.Value);
+
+        var projections = await query
+            .OrderBy(r => r.ScheduledDate)
+            .Select(r => new
             {
-                TempData.Error("La planificación no existe.");
-                return RedirectToPage();
-            }
-            if (planning.Status == AcademicPlanningStatus.Active)
-            {
-                TempData.Info("La planificación ya está activa.");
-                return RedirectToPage("./Index");
-            }
+                r.Id,
+                r.PracticeName,
+                r.AcademicWeek,
+                r.ScheduledDate,
+                r.ScheduledEndDate,
+                r.Status,
+                r.TeacherPersonId,
+                StartOrder = r.StartPeriod != null ? (int?)r.StartPeriod.Order : null,
+                r.PeriodCount,
+                SubjectName = r.Subject != null ? r.Subject.Name : "Sin materia",
+                GroupLabel = !string.IsNullOrEmpty(r.GroupName) ? r.GroupName : (r.Group != null ? r.Group.Name : "—"),
+                LaboratoryName = r.AllLaboratories ? "Todos los laboratorios"
+                    : (r.Laboratory != null ? r.Laboratory.Code + " · " + r.Laboratory.Name : "—"),
+                HasRequirements = r.Requirements.Any(),
+                HasIncident = r.Incidents.Any()
+            })
+            .ToListAsync();
 
-            var closed = await _planning.ActivateAsync(planning);
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-            _planning.InvalidateCache();
+        // Docentes: una sola consulta complementaria para evitar N+1.
+        var teacherIds = projections.Select(p => p.TeacherPersonId).Distinct().ToList();
+        var teachers = teacherIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await _context.Interns.AsNoTracking()
+                .Where(i => teacherIds.Contains(i.Id))
+                .Select(i => new { i.Id, i.Name })
+                .ToDictionaryAsync(i => i.Id, i => i.Name);
 
-            TempData.Success(closed > 0
-                ? $"Planificación «{planning.Name}» activada. Se cerró la planificación que estaba activa."
-                : $"Planificación «{planning.Name}» activada.");
-            return RedirectToPage("./Index");
-        }
-        catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 })
-        {
-            // Otra activación concurrente ganó el índice único de "una sola activa".
-            await transaction.RollbackAsync();
-            _planning.InvalidateCache();
-            TempData.Warning("Otra planificación se activó al mismo tiempo. Revise cuál quedó activa e intente nuevamente.");
-            return RedirectToPage();
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            _logger.LogError(ex, "No se pudo activar la planificación {PlanningId}", id);
-            TempData.Error("No se pudo activar la planificación. Intente nuevamente.");
-            return RedirectToPage();
-        }
+        Rows = projections.Select(p => new PlanningRow(
+            p.Id,
+            L3Codes.Format(p.Id),
+            p.PracticeName,
+            p.SubjectName,
+            p.GroupLabel,
+            p.LaboratoryName,
+            teachers.TryGetValue(p.TeacherPersonId, out var t) ? t : "Sin docente",
+            p.AcademicWeek,
+            AcademicWeekGenerator.WeekdayOf(p.ScheduledDate) is var wd and >= 1 and <= 6 ? AcademicWeekGenerator.WeekdayNames[wd] : "—",
+            p.ScheduledDate,
+            PlanningStatusView.TimeText(p.StartOrder, p.PeriodCount, p.ScheduledDate, p.ScheduledEndDate),
+            p.Status,
+            PlanningStatus.Label(p.Status),
+            PlanningStatusView.Css(p.Status),
+            PlanningStatusView.NextUrl(p.Id, p.Status, p.HasRequirements),
+            p.HasIncident)).ToList();
     }
 
-    public async Task<IActionResult> OnPostCloseAsync(int id)
-    {
-        var planning = await _context.AcademicPlannings.AsTracking().FirstOrDefaultAsync(p => p.Id == id);
-        if (planning == null || planning.Status != AcademicPlanningStatus.Active)
-        {
-            TempData.Error("Solo se puede cerrar la planificación activa.");
-            return RedirectToPage();
-        }
-
-        _planning.Close(planning);
-        await _context.SaveChangesAsync();
-        _planning.InvalidateCache();
-        TempData.Success($"Planificación «{planning.Name}» cerrada. Queda disponible en modo consulta.");
-        return RedirectToPage();
-    }
+    public sealed record PlanningRow(
+        int Id,
+        string Code,
+        string PracticeName,
+        string SubjectName,
+        string GroupName,
+        string LaboratoryName,
+        string TeacherName,
+        int AcademicWeek,
+        string WeekdayName,
+        DateTime ScheduledDate,
+        string TimeText,
+        string Status,
+        string StatusLabel,
+        string StatusCss,
+        string NextUrl,
+        bool HasIncident);
 }

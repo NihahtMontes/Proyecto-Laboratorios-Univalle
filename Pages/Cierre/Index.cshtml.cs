@@ -11,7 +11,7 @@ using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 namespace Proyecto_Laboratorios_Univalle.Pages.Cierre;
 
 /// <summary>
-/// Cierre de práctica: prácticas del día (y las de días anteriores con devolución pendiente) para registrar
+/// Cierre de práctica: planificaciones del día (y las de otros días con devolución pendiente) para registrar
 /// la entrega y devolución de material (L-3) y los incidentes (L-5). Proceso aparte de la planificación.
 /// El encargado de cierre solo ve el día de hoy; la gestión puede consultar otra fecha.
 /// </summary>
@@ -44,9 +44,9 @@ public class IndexModel : PageModel
         ToDeliver,
         /// <summary>Material entregado, devolución pendiente.</summary>
         ToReturn,
-        /// <summary>Material devuelto, falta finalizar la práctica.</summary>
+        /// <summary>Material devuelto, falta finalizar la planificación.</summary>
         ToFinalize,
-        /// <summary>Práctica finalizada.</summary>
+        /// <summary>Planificación finalizada.</summary>
         Closed
     }
 
@@ -57,15 +57,22 @@ public class IndexModel : PageModel
     {
         public string Code => L3Codes.Format(Id);
 
+        public string StatusText => PlanningStatus.Label(Status);
+
         public string TimeText => StartTime.HasValue
             ? $"{StartTime.Value:hh\\:mm}–{(EndTime ?? StartTime.Value):hh\\:mm}"
             : "Sin horario";
 
+        /// <summary>
+        /// Finalizada → cerrada; con salida abierta → por devolver (cualquier estado: el L-3 queda en la
+        /// planificación de origen aunque se haya reprogramado o esté en reposición); sin aprobar → bloqueada;
+        /// sin salida → por entregar; devuelta → por finalizar.
+        /// </summary>
         public ClosureStage Stage =>
-            Status == L3RequestStatus.Finalized ? ClosureStage.Closed
-            : Status != L3RequestStatus.Approved ? ClosureStage.NotApproved
-            : !HasDeparture ? ClosureStage.ToDeliver
+            Status == PlanningStatus.Finalized ? ClosureStage.Closed
             : HasOpenDeparture ? ClosureStage.ToReturn
+            : Status != PlanningStatus.Approved ? ClosureStage.NotApproved
+            : !HasDeparture ? ClosureStage.ToDeliver
             : ClosureStage.ToFinalize;
     }
 
@@ -77,16 +84,20 @@ public class IndexModel : PageModel
 
         var day = SelectedDate;
         var next = day.AddDays(1);
-        Practices = await Project(_context.L3Requests
-                .Where(r => r.ScheduledDate >= day && r.ScheduledDate < next && r.Status != L3RequestStatus.Cancelled))
+        // Planificaciones del día con estado que ocupa (las reprogramadas o en reposición no se cierran aquí).
+        Practices = await Project(_context.Plannings
+                .Where(r => r.ScheduledDate >= day && r.ScheduledDate < next
+                    && !PlanningStatus.NonOccupying.Contains(r.Status)))
             .ToListAsync();
         Practices = Practices.OrderBy(p => p.StartTime ?? TimeSpan.MaxValue).ThenBy(p => p.Id).ToList();
 
-        // Otros días con material sin devolver (anteriores o adelantados): también se cierran desde aquí.
+        // Material sin devolver de otros días o de planificaciones sin sesión vigente (reprogramadas o en
+        // reposición, nunca canceladas): también se cierra desde aquí.
         var openStatuses = new[] { LoanStatus.Active, LoanStatus.Overdue };
-        PendingReturns = (await Project(_context.L3Requests
-                    .Where(r => (r.ScheduledDate < day || r.ScheduledDate >= next) && r.Status == L3RequestStatus.Approved
-                        && _context.Departures.Any(d => d.L3RequestId == r.Id && openStatuses.Contains(d.Status))))
+        PendingReturns = (await Project(_context.Plannings
+                    .Where(r => _context.Departures.Any(d => d.PlanningId == r.Id && openStatuses.Contains(d.Status))
+                        && ((r.ScheduledDate < day || r.ScheduledDate >= next)
+                            || (PlanningStatus.NonOccupying.Contains(r.Status) && r.Status != PlanningStatus.Cancelled))))
                 .ToListAsync())
             .OrderBy(p => p.Date).ThenBy(p => p.StartTime ?? TimeSpan.MaxValue)
             .ToList();
@@ -94,8 +105,8 @@ public class IndexModel : PageModel
         return Page();
     }
 
-    /// <summary>Proyección común de una práctica planificada para el cierre.</summary>
-    private IQueryable<ClosureRow> Project(IQueryable<L3Request> source)
+    /// <summary>Proyección común de una planificación para el cierre.</summary>
+    private IQueryable<ClosureRow> Project(IQueryable<Planning> source)
     {
         var openStatuses = new[] { LoanStatus.Active, LoanStatus.Overdue };
         return source.AsNoTracking()
@@ -110,9 +121,9 @@ public class IndexModel : PageModel
                 r.Laboratory != null ? r.Laboratory.Code : null,
                 _context.Interns.Where(i => i.Id == r.TeacherPersonId).Select(i => i.Name).FirstOrDefault(),
                 r.Status,
-                r.Details.Count,
-                _context.Departures.Any(d => d.L3RequestId == r.Id && d.Status != LoanStatus.Cancelled),
-                _context.Departures.Any(d => d.L3RequestId == r.Id && openStatuses.Contains(d.Status)),
+                r.Requirements.Count,
+                _context.Departures.Any(d => d.PlanningId == r.Id && d.Status != LoanStatus.Cancelled),
+                _context.Departures.Any(d => d.PlanningId == r.Id && openStatuses.Contains(d.Status)),
                 r.Incidents.Count));
     }
 }

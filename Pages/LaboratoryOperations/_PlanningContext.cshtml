@@ -1,15 +1,17 @@
 @* Partial: _PlanningContext.cshtml
-   Franja superior del wizard de la práctica: planificación, código de práctica y stepper de 5 pasos.
+   Franja superior del wizard de la planificación: gestión académica (código, estado, fechas),
+   código PRA y stepper de 3 pasos (L-3 y L-5 son el cierre, proceso aparte).
    Modelo: Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanningContextViewModel
    Uso: <partial name="_PlanningContext" model="Model.Context" />
 
    Clases prefijadas con .pc- para no chocar con .wizard-stepper de Pages/Index.cshtml.
 *@
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.PlanningContextViewModel
+@using Proyecto_Laboratorios_Univalle.Services
 
 @{
-    var planning = Model.Planning;
-    var stepIcons = new[] { "fa-flask", "fa-list-check", "fa-boxes", "fa-exchange-alt", "fa-exclamation-triangle" };
+    var management = Model.Management;
+    var stepIcons = new[] { "fa-calendar-check", "fa-list-check", "fa-boxes" };
 }
 
 <style>
@@ -207,7 +209,7 @@
 </style>
 
 <div class="mb-4">
-    @if (planning != null)
+    @if (management != null)
     {
         <div class="pc-strip @(Model.IsReadOnly ? "pc-strip--readonly" : "")">
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -216,22 +218,28 @@
                         <i class="fas fa-university"></i>
                     </div>
                     <div class="mr-3">
-                        <div class="pc-strip__eyebrow">Planificación académica</div>
-                        <div class="pc-strip__title">Planificación: <b>@planning.Name</b></div>
+                        <div class="pc-strip__eyebrow">Gestión académica</div>
+                        <div class="pc-strip__title">Gestión: <b>@management.Code</b></div>
                     </div>
                     <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <span class="pc-chip"><i class="fas fa-calendar-alt"></i> Gestión @planning.ManagementCode</span>
-                        @if (!string.IsNullOrWhiteSpace(planning.CampusName))
+                        <span class="pc-chip"><i class="fas fa-calendar-alt"></i> @(management.Year)-@(management.Semester)</span>
+                        @if (management.HasDates)
                         {
-                            <span class="pc-chip"><i class="fas fa-map-marker-alt"></i> @planning.CampusName</span>
+                            <span class="pc-chip"><i class="fas fa-calendar-week"></i> @(management.StartDate?.ToString("dd/MM/yyyy")) – @(management.EndDate?.ToString("dd/MM/yyyy"))</span>
                         }
-                        <span class="pc-chip"><i class="fas fa-graduation-cap"></i> @planning.FacultyName</span>
-                        <span class="pc-chip"><i class="fas fa-book"></i> @planning.CareerName</span>
+                        else
+                        {
+                            <span class="pc-chip"><i class="fas fa-calendar-week"></i> Sin fechas definidas</span>
+                        }
+                        @if (management.IsCurrent)
+                        {
+                            <span class="pc-chip"><i class="fas fa-star"></i> Actual</span>
+                        }
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="pc-badge @(planning.IsActive ? "pc-badge--active" : "pc-badge--inactive")">
-                        <i class="fas @(planning.IsActive ? "fa-check-circle" : "fa-circle")"></i> @planning.StatusText
+                    <span class="pc-badge @(management.IsEditable ? "pc-badge--active" : "pc-badge--inactive")">
+                        <i class="fas @(management.IsEditable ? "fa-check-circle" : "fa-circle")"></i> @management.StatusText
                     </span>
                     <a asp-page="./Index" class="pc-panel-link">
                         <i class="fas fa-th-large"></i> Panel
@@ -242,7 +250,7 @@
             {
                 <div class="pc-warn">
                     <i class="fas fa-lock"></i>
-                    <span>Planificación no activa: solo consulta. Las prácticas, requerimientos y registros se conservan para auditoría.</span>
+                    <span>Solo lectura: la gestión de esta planificación está completada. Los datos se conservan para auditoría.</span>
                 </div>
             }
         </div>
@@ -252,7 +260,7 @@
         <div class="pc-empty d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div class="d-flex align-items-center gap-2">
                 <i class="fas fa-info-circle" style="color:#7460ee;font-size:1.1rem;"></i>
-                <span>Práctica sin planificación académica (registro anterior al módulo de planificación).</span>
+                <span>La gestión académica de esta planificación no está disponible (registro anterior o eliminado).</span>
             </div>
             <a asp-page="./Index" class="pc-panel-link">
                 <i class="fas fa-th-large"></i> Panel
@@ -266,8 +274,8 @@
         <div class="p-3 p-md-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
                 <div>
-                    <span class="pc-strip__eyebrow">Práctica</span>
-                    <h5 class="font-weight-bold text-dark mb-0">@Model.PracticeTitle</h5>
+                    <span class="pc-strip__eyebrow">Planificación</span>
+                    <h5 class="font-weight-bold text-dark mb-0">@Model.Title</h5>
                 </div>
             </div>
             <div class="pc-stepper">
@@ -302,7 +310,7 @@
     {
         <div class="alert alert-light border mt-3 mb-0 small">
             <i class="fas fa-clipboard-check mr-1"></i>
-            <strong>Cierre de práctica:</strong> entrega, devolución e incidentes son un proceso aparte de la planificación.
+            <strong>Cierre de la planificación:</strong> entrega, devolución e incidentes son un proceso aparte de la planificación.
         </div>
     }
 </div>

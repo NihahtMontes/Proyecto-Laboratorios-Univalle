@@ -2,13 +2,14 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
+using Proyecto_Laboratorios_Univalle.Models.Enums;
 using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
-/// <summary>Calendario de una planificación: mes → semanas académicas → días lunes a viernes. Solo lectura.</summary>
+/// <summary>Calendario de una gestión: mes → semanas académicas → días lunes a sábado. Solo lectura (vista resumen).</summary>
 public sealed record PlanningCalendar(
-    int PlanningId,
+    int ManagementId,
     bool AllowAdd,
     string Month,
     string MonthLabel,
@@ -17,22 +18,39 @@ public sealed record PlanningCalendar(
     IReadOnlyList<PlanningCalendar.MonthOption> Months,
     IReadOnlyList<PlanningCalendar.WeekView> Weeks)
 {
-    public int PracticesInMonth => Weeks.Sum(w => w.Days.Sum(d => d.Practices.Count));
+    /// <summary>Planificaciones vigentes (que ocupan ambiente) en los días del mes.</summary>
+    public int PlanningsInMonth => Weeks.Sum(w => w.Days.Where(d => d.InMonth).Sum(d => d.Plannings.Count(p => p.Occupies)));
 
     public sealed record MonthOption(string Value, string Label, bool Selected);
-    public sealed record WeekView(int Id, int Number, DateTime StartDate, DateTime EndDate, bool IsLective, string? Note, List<DayView> Days);
-    public sealed record DayView(int Weekday, string Name, DateTime Date, bool InMonth, bool CanAdd, List<PracticeCard> Practices);
-    public sealed record PracticeCard(int Id, string Code, string PracticeName, string SubjectName, string LaboratoryName,
-        string GroupName, string TeacherName, DateTime Start, DateTime End, string Status, string StatusCss, string NextUrl);
+    public sealed record WeekView(int Id, int Number, DateTime StartDate, DateTime EndDate, List<DayView> Days);
+
+    /// <param name="Exists">False si el día cae fuera de las fechas de la gestión (no hay día académico).</param>
+    public sealed record DayView(int Weekday, string Name, DateTime Date, bool InMonth, bool Exists, bool IsSuspended,
+        string? Reason, bool CanAdd, List<PlanningCard> Plannings);
+
+    public sealed record PlanningCard(int Id, string Code, string PracticeName, string SubjectName, string LaboratoryName,
+        string GroupName, string TeacherName, string TimeText, string Status, string StatusLabel, string StatusCss,
+        bool Occupies, string NextUrl);
 
     private static readonly CultureInfo Es = CultureInfo.GetCultureInfo("es-BO");
 
-    /// <param name="allowAdd">Solo la planificación activa permite "+ Práctica".</param>
-    public static async Task<PlanningCalendar> BuildAsync(ApplicationDbContext context, PlanningSummary planning, string? month, bool allowAdd)
+    /// <param name="allowAdd">Solo una gestión editable permite "+ Planificación".</param>
+    public static async Task<PlanningCalendar> BuildAsync(ApplicationDbContext context, AcademicManagementSummary management, string? month, bool allowAdd)
     {
+        var weeks = await context.AcademicWeeks.AsNoTracking()
+            .Where(w => w.ManagementId == management.Id)
+            .OrderBy(w => w.Number)
+            .Select(w => new { w.Id, w.Number, w.StartDate, w.EndDate })
+            .ToListAsync();
+
+        // Rango de meses: las fechas de la gestión o, si faltan, las semanas generadas.
+        var rangeStart = management.StartDate ?? weeks.Select(w => (DateTime?)w.StartDate).FirstOrDefault() ?? DateTime.Today;
+        var rangeEnd = management.EndDate ?? weeks.Select(w => (DateTime?)w.EndDate).LastOrDefault() ?? rangeStart;
+        if (rangeEnd < rangeStart) rangeEnd = rangeStart;
+
         var today = DateTime.Today;
-        var firstMonth = new DateTime(planning.StartDate.Year, planning.StartDate.Month, 1);
-        var lastMonth = new DateTime(planning.EndDate.Year, planning.EndDate.Month, 1);
+        var firstMonth = new DateTime(rangeStart.Year, rangeStart.Month, 1);
+        var lastMonth = new DateTime(rangeEnd.Year, rangeEnd.Month, 1);
         var currentMonth = new DateTime(today.Year, today.Month, 1);
         var monthStart = DateTime.TryParseExact(month, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
             && parsed >= firstMonth && parsed <= lastMonth
@@ -44,58 +62,60 @@ public sealed record PlanningCalendar(
             months.Add(new MonthOption(Key(m), Label(m), m == monthStart));
 
         var monthEnd = monthStart.AddMonths(1).AddDays(-1);
-        var weeks = await context.AcademicWeeks.AsNoTracking()
-            .Where(w => w.AcademicPlanningId == planning.Id && w.StartDate <= monthEnd && w.EndDate >= monthStart)
-            .OrderBy(w => w.Number)
-            .ToListAsync();
-        var weekIds = weeks.Select(w => w.Id).ToList();
+        var monthWeeks = weeks.Where(w => w.StartDate <= monthEnd && w.EndDate >= monthStart).ToList();
+        var weekIds = monthWeeks.Select(w => w.Id).ToList();
 
-        var practices = await context.L3Requests.AsNoTracking()
-            .Where(r => r.AcademicPlanningId == planning.Id && r.AcademicWeekId != null && weekIds.Contains(r.AcademicWeekId.Value)
-                && r.Status != L3RequestStatus.Cancelled)
+        var days = await context.AcademicDays.AsNoTracking()
+            .Where(d => weekIds.Contains(d.AcademicWeekId))
+            .Select(d => new { d.Date, d.Status, d.Reason })
+            .ToListAsync();
+        var dayByDate = days.ToDictionary(d => d.Date.Date);
+
+        var from = monthWeeks.Count > 0 ? monthWeeks.Min(w => w.StartDate) : monthStart;
+        var to = (monthWeeks.Count > 0 ? monthWeeks.Max(w => w.EndDate) : monthEnd).AddDays(1);
+        var plannings = await context.Plannings.AsNoTracking()
+            .Where(r => r.ManagementId == management.Id && r.ScheduledDate >= from && r.ScheduledDate < to
+                && r.Status != PlanningStatus.Cancelled)
             .OrderBy(r => r.ScheduledDate)
             .Select(r => new
             {
-                r.Id, r.AcademicWeekId, r.PracticeName, r.SubjectId, r.LaboratoryId, r.AllLaboratories, r.GroupId, r.GroupName,
+                r.Id, r.PracticeName, r.ScheduledDate, r.ScheduledEndDate, r.Status, r.TeacherPersonId,
+                StartOrder = r.StartPeriod != null ? (int?)r.StartPeriod.Order : null,
+                r.PeriodCount,
                 SubjectName = r.Subject != null ? r.Subject.Name : "Sin materia",
                 LaboratoryName = r.AllLaboratories ? "Todos los laboratorios"
-                    : (r.Laboratory != null ? r.Laboratory.Name : "—"),
+                    : (r.Laboratory != null ? r.Laboratory.Code + " · " + r.Laboratory.Name : "—"),
                 GroupLabel = !string.IsNullOrEmpty(r.GroupName) ? r.GroupName
                     : (r.Group != null ? r.Group.Name : "—"),
-                r.TeacherPersonId, r.ScheduledDate, r.ScheduledEndDate, r.Status,
-                HasDetails = r.Details.Any()
+                HasRequirements = r.Requirements.Any()
             })
             .ToListAsync();
 
-        var teacherIds = practices.Select(p => p.TeacherPersonId).Distinct().ToList();
+        var teacherIds = plannings.Select(p => p.TeacherPersonId).Distinct().ToList();
         var teachers = await context.Interns.AsNoTracking()
             .Where(i => teacherIds.Contains(i.Id))
             .ToDictionaryAsync(i => i.Id, i => i.Name);
 
-        var cards = practices
-            .Select(p => new
-            {
-                WeekId = p.AcademicWeekId!.Value,
-                Weekday = AcademicWeekGenerator.WeekdayOf(p.ScheduledDate),
-                Card = new PracticeCard(p.Id, L3Codes.Format(p.Id), p.PracticeName, p.SubjectName, p.LaboratoryName, p.GroupLabel,
-                    teachers.TryGetValue(p.TeacherPersonId, out var t) ? t : "—",
-                    p.ScheduledDate, p.ScheduledEndDate ?? p.ScheduledDate.AddHours(1), p.Status,
-                    PracticeStatus.Css(p.Status), PracticeStatus.NextUrl(p.Id, p.Status, p.HasDetails))
-            })
-            .ToLookup(x => (x.WeekId, x.Weekday), x => x.Card);
+        var cards = plannings.ToLookup(p => p.ScheduledDate.Date, p => new PlanningCard(
+            p.Id, L3Codes.Format(p.Id), p.PracticeName, p.SubjectName, p.LaboratoryName, p.GroupLabel,
+            teachers.TryGetValue(p.TeacherPersonId, out var t) ? t : "—",
+            PlanningStatusView.TimeText(p.StartOrder, p.PeriodCount, p.ScheduledDate, p.ScheduledEndDate),
+            p.Status, PlanningStatus.Label(p.Status), PlanningStatusView.Css(p.Status), PlanningStatus.Occupies(p.Status),
+            PlanningStatusView.NextUrl(p.Id, p.Status, p.HasRequirements)));
 
-        var weekViews = weeks.Select(w => new WeekView(w.Id, w.Number, w.StartDate, w.EndDate, w.IsLective, w.Note,
-                Enumerable.Range(1, 5).Select(d =>
+        var weekViews = monthWeeks.Select(w => new WeekView(w.Id, w.Number, w.StartDate, w.EndDate,
+                Enumerable.Range(1, 6).Select(d =>
                 {
-                    var date = w.StartDate.AddDays(d - 1);
+                    var date = w.StartDate.AddDays(d - 1).Date;
                     var inMonth = date.Month == monthStart.Month && date.Year == monthStart.Year;
-                    var inRange = date >= planning.StartDate && date <= planning.EndDate;
-                    return new DayView(d, AcademicWeekGenerator.WeekdayNames[d], date, inMonth,
-                        allowAdd && w.IsLective && inRange, cards[(w.Id, d)].ToList());
+                    var exists = dayByDate.TryGetValue(date, out var day);
+                    var suspended = exists && day!.Status == AcademicDayStatus.Suspended;
+                    return new DayView(d, AcademicWeekGenerator.WeekdayNames[d], date, inMonth, exists, suspended,
+                        suspended ? day!.Reason : null, allowAdd && exists && !suspended, cards[date].ToList());
                 }).ToList()))
             .ToList();
 
-        return new PlanningCalendar(planning.Id, allowAdd, Key(monthStart), Label(monthStart),
+        return new PlanningCalendar(management.Id, allowAdd, Key(monthStart), Label(monthStart),
             monthStart > firstMonth ? Key(monthStart.AddMonths(-1)) : null,
             monthStart < lastMonth ? Key(monthStart.AddMonths(1)) : null,
             months, weekViews);
@@ -110,21 +130,32 @@ public sealed record PlanningCalendar(
     }
 }
 
-/// <summary>Presentación común del estado de una práctica (colores y siguiente paso).</summary>
-public static class PracticeStatus
+/// <summary>Presentación común del estado de una planificación (colores, horario y siguiente paso).</summary>
+public static class PlanningStatusView
 {
     public static string Css(string status) => status switch
     {
-        L3RequestStatus.Approved => "info",
-        L3RequestStatus.Finalized => "success",
-        L3RequestStatus.Cancelled => "secondary",
+        PlanningStatus.Approved => "info",
+        PlanningStatus.Finalized => "success",
+        PlanningStatus.Cancelled => "secondary",
+        PlanningStatus.Rescheduled or PlanningStatus.Recovered => "light",
+        PlanningStatus.PendingRecovery => "danger",
         _ => "warning"
     };
 
-    public static string NextUrl(int id, string status, bool hasDetails) => status switch
+    /// <summary>"P1–P4 · 07:35–11:15", o solo las horas en planificaciones sin periodo (legado).</summary>
+    public static string TimeText(int? startOrder, int? periodCount, DateTime start, DateTime? end)
     {
-        L3RequestStatus.Planned when !hasDetails => $"/LaboratoryOperations/Requerimientos?planId={id}",
-        L3RequestStatus.Planned => $"/LaboratoryOperations/Disponibilidad?planId={id}",
+        var hours = $"{start:HH\\:mm}–{(end ?? start.AddHours(1)):HH\\:mm}";
+        if (startOrder is not int first || periodCount is not int count) return hours;
+        var periods = count == 1 ? $"P{first}" : $"P{first}–P{PlanningSlot.LastOrder(first, count)}";
+        return $"{periods} · {hours}";
+    }
+
+    public static string NextUrl(int id, string status, bool hasRequirements) => status switch
+    {
+        PlanningStatus.Planned when !hasRequirements => $"/LaboratoryOperations/Requerimientos?planId={id}",
+        PlanningStatus.Planned => $"/LaboratoryOperations/Disponibilidad?planId={id}",
         _ => $"/LaboratoryOperations/L3?id={id}"
     };
 }

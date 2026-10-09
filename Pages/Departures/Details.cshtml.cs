@@ -32,7 +32,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 .Include(d => d.CreatedBy)
                 .Include(d => d.ModifiedBy)
                 .Include(d => d.Items)
-                .Include(d => d.L3Request)
+                .Include(d => d.Planning)
                 .Include(d => d.Returns)
                     .ThenInclude(r => r.Items)
                         .ThenInclude(ri => ri.DepartureItem)

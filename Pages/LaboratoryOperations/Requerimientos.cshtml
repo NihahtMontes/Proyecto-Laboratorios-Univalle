@@ -240,7 +240,7 @@
                         {
                             <div class="text-center rounded-lg p-5 bg-light">
                                 <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-                                <p class="text-muted mb-0">Aún no hay artículos en esta práctica.</p>
+                                <p class="text-muted mb-0">Aún no hay artículos en esta planificación.</p>
                                 @if (canWrite && Model.Recipe.Count > 0)
                                 {
                                     <small class="d-block text-info mt-2">
@@ -385,7 +385,7 @@
                         }
 
                         <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top flex-wrap">
-                            <a asp-page="./Practica" asp-route-id="@Model.PlanId" class="btn btn-outline-secondary btn-rounded px-4 mb-2">
+                            <a asp-page="./Planificacion" asp-route-id="@Model.PlanId" class="btn btn-outline-secondary btn-rounded px-4 mb-2">
                                 <i class="mdi mdi-arrow-left mr-1"></i> Atrás
                             </a>
                             <div class="d-flex flex-wrap align-items-center">
@@ -457,7 +457,7 @@
                     }
                     Swal.fire({
                         title: '¿Retirar requerimiento?',
-                        text: 'Esta acción elimina el artículo de la práctica en estado Planificado.',
+                        text: 'Esta acción elimina el artículo de la planificación en estado Planificada.',
                         type: 'warning',
                         showCancelButton: true,
                         confirmButtonText: 'Sí, retirar',

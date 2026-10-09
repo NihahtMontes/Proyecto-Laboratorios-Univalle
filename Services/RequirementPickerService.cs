@@ -83,22 +83,22 @@ public sealed class RequirementPickerService
         return new SearchPage<ArticleResult>(rows, total > PageSize, total);
     }
 
-    /// <summary>Facultad y sede de una práctica (de su planificación; en prácticas legadas, del laboratorio).</summary>
+    /// <summary>Facultad y sede de una planificación: de la carrera de su materia y, si no tiene, del laboratorio.</summary>
     public async Task<(int FacultyId, int? CampusId)?> PracticeScopeAsync(int practiceId)
     {
-        var row = await _context.L3Requests.AsNoTracking()
+        var row = await _context.Plannings.AsNoTracking()
             .Where(r => r.Id == practiceId)
             .Select(r => new
             {
-                PlanningFaculty = r.AcademicPlanning != null ? (int?)r.AcademicPlanning.FacultyId : null,
-                PlanningCampus = r.AcademicPlanning != null ? r.AcademicPlanning.CampusId : null,
+                SubjectFaculty = r.Subject != null && r.Subject.Career != null ? r.Subject.Career.FacultadId : null,
+                PlanningCampus = r.CampusId,
                 LabFaculty = r.Laboratory != null ? (int?)r.Laboratory.FacultyId : null,
-                r.CampusId
+                LabCampus = r.Laboratory != null ? r.Laboratory.CampusId : null
             })
             .FirstOrDefaultAsync();
         if (row == null) return null;
-        if (row.PlanningFaculty is int faculty) return (faculty, row.PlanningCampus);
-        return row.LabFaculty is int labFaculty ? (labFaculty, row.CampusId) : null;
+        if (row.SubjectFaculty is int faculty) return (faculty, row.PlanningCampus ?? row.LabCampus);
+        return row.LabFaculty is int labFaculty ? (labFaculty, row.LabCampus) : null;
     }
 
     /// <summary>Laboratorios donde se buscan unidades físicas: los de la facultad (y sede, si la hay).</summary>

@@ -45,7 +45,7 @@
                 <i class="fas fa-eye fa-2x mr-3"></i>
                 <div>
                     <strong>Solo consulta.</strong><br />
-                    <span>La planificación no admite aprobar esta práctica; el detalle de disponibilidad se conserva para auditoría.</span>
+                    <span>La gestión no admite aprobar esta planificación; el detalle de disponibilidad se conserva para auditoría.</span>
                 </div>
             </div>
         }
@@ -84,7 +84,7 @@
                     <div class="alert alert-success border-0 rounded d-flex align-items-center mb-0">
                         <i class="fas fa-check-circle fa-2x mr-3"></i>
                         <div>
-                            <strong>La planificación de esta práctica está aprobada.</strong><br />
+                            <strong>La planificación está aprobada.</strong><br />
                             <span>El detalle siguiente se conserva como auditoría. La entrega y los incidentes se registran como proceso aparte.</span>
                         </div>
                     </div>
@@ -132,8 +132,8 @@
                     <div class="flex-grow-1">
                         <strong>@alertTitle</strong>
                         <div class="small mt-1 mb-2">
-                            <span><strong>Conflicto</strong> = prácticas al mismo tiempo piden más unidades que el stock disponible. </span>
-                            <span><strong>Rotación</strong> = el total del día supera el stock pero en horarios distintos: hay que pasarse el material entre prácticas.</span>
+                            <span><strong>Conflicto</strong> = planificaciones al mismo tiempo piden más unidades que el stock disponible. </span>
+                            <span><strong>Rotación</strong> = el total del día supera el stock pero en horarios distintos: hay que pasarse el material entre planificaciones.</span>
                         </div>
                         <ul class="mb-0 pl-3">
                             @foreach (var issue in Model.PracticeIssues)
@@ -373,7 +373,7 @@
                                 <div class="av-week-day-body">
                                     @if (!hasDayPractices)
                                     {
-                                        <div class="text-muted small text-center py-3">Sin prácticas</div>
+                                        <div class="text-muted small text-center py-3">Sin planificaciones</div>
                                     }
                                     else
                                     {
@@ -401,7 +401,7 @@
                                                 }
                                                 @if (isCurrent)
                                                 {
-                                                    <span class="badge badge-primary badge-pill mt-1">Esta práctica</span>
+                                                    <span class="badge badge-primary badge-pill mt-1">Esta planificación</span>
                                                 }
                                             </a>
                                         }
@@ -620,7 +620,7 @@
                     }
                     Swal.fire({
                         title: '¿Aprobar planificación?',
-                        text: 'La planificación de esta práctica se aprobará. La entrega de artículos se realiza como proceso aparte.',
+                        text: 'Esta planificación se aprobará. La entrega de artículos se realiza como proceso aparte.',
                         type: 'question',
                         showCancelButton: true,
                         confirmButtonText: 'Sí, aprobar',

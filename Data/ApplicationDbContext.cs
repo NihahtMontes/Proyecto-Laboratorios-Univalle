@@ -377,11 +377,14 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<EquipmentClassificationDecision> EquipmentClassificationDecisions { get; set; } = null!;
         public DbSet<Subject> Subjects { get; set; } = null!;
         public DbSet<Group> Groups { get; set; } = null!;
-        public DbSet<L3Request> L3Requests { get; set; } = null!;
-        public DbSet<L3RequestDetail> L3RequestDetails { get; set; } = null!;
+        public DbSet<Planning> Plannings { get; set; } = null!;
+        public DbSet<PlanningRequirement> PlanningRequirements { get; set; } = null!;
         public DbSet<L5Incident> L5Incidents { get; set; } = null!;
-        public DbSet<AcademicPlanning> AcademicPlannings { get; set; } = null!;
         public DbSet<AcademicWeek> AcademicWeeks { get; set; } = null!;
+        public DbSet<AcademicDay> AcademicDays { get; set; } = null!;
+        public DbSet<ClassPeriod> ClassPeriods { get; set; } = null!;
+        public DbSet<Rescheduling> Reschedulings { get; set; } = null!;
+        public DbSet<DayRecovery> DayRecoveries { get; set; } = null!;
         public DbSet<Campus> Campuses { get; set; } = null!;
         public DbSet<CourseGroup> CourseGroups { get; set; } = null!;
         public DbSet<Practice> Practices { get; set; } = null!;
@@ -823,37 +826,41 @@ namespace Proyecto_Laboratorios_Univalle.Data
                     "AND LEN(LTRIM(RTRIM(COALESCE([OtherDetail], '')))) > 0)))");
             });
             // Operación de laboratorios (L-3/L-5): borrado lógico y sin cascadas sobre maestros ni equipos.
-            modelBuilder.Entity<L3Request>().HasQueryFilter(r => !r.IsDeleted);
+            modelBuilder.Entity<Planning>().HasQueryFilter(r => !r.IsDeleted);
             modelBuilder.Entity<L5Incident>().HasQueryFilter(i => !i.IsDeleted);
-            modelBuilder.Entity<L3RequestDetail>().HasQueryFilter(d => !d.L3Request.IsDeleted);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.Subject).WithMany().HasForeignKey(r => r.SubjectId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.Group).WithMany().HasForeignKey(r => r.GroupId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.Teacher).WithMany().HasForeignKey(r => r.TeacherId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.TeacherPerson).WithMany().HasForeignKey(r => r.TeacherPersonId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.Laboratory).WithMany().HasForeignKey(r => r.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3RequestDetail>().HasOne(d => d.EquipmentUnit).WithMany().HasForeignKey(d => d.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanningRequirement>().HasQueryFilter(d => !d.Planning.IsDeleted);
+            modelBuilder.Entity<Planning>().HasOne(r => r.Subject).WithMany().HasForeignKey(r => r.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Planning>().HasOne(r => r.Group).WithMany().HasForeignKey(r => r.GroupId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Planning>().HasOne(r => r.Teacher).WithMany().HasForeignKey(r => r.TeacherId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Planning>().HasOne(r => r.TeacherPerson).WithMany().HasForeignKey(r => r.TeacherPersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Planning>().HasOne(r => r.Laboratory).WithMany().HasForeignKey(r => r.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanningRequirement>().HasOne(d => d.EquipmentUnit).WithMany().HasForeignKey(d => d.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<L5Incident>().HasOne(i => i.EquipmentUnit).WithMany().HasForeignKey(i => i.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L5Incident>().HasOne(i => i.L3Request).WithMany(r => r.Incidents).HasForeignKey(i => i.L3RequestId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<L5Incident>().HasOne(i => i.Planning).WithMany(r => r.Incidents).HasForeignKey(i => i.PlanningId).OnDelete(DeleteBehavior.Restrict);
 
-            // Circuito L-3 por artículo (V4): solicitud -> salida -> devolución -> L-5.
-            modelBuilder.Entity<L3Request>().HasIndex(r => r.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
-            modelBuilder.Entity<L3Request>().HasOne(r => r.Management).WithMany().HasForeignKey(r => r.ManagementId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.PracticeSchedule).WithMany().HasForeignKey(r => r.PracticeScheduleId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.Campus).WithMany().HasForeignKey(r => r.CampusId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.Career).WithMany().HasForeignKey(r => r.CareerId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.CourseGroup).WithMany().HasForeignKey(r => r.CourseGroupId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().Property(r => r.AllLaboratories).HasDefaultValue(false);
-            modelBuilder.Entity<L3Request>().ToTable(t =>
+            // Circuito L-3 por artículo (V4): planificación -> salida -> devolución -> L-5.
+            modelBuilder.Entity<Planning>().HasIndex(r => r.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            modelBuilder.Entity<Planning>().HasOne(r => r.Management).WithMany().HasForeignKey(r => r.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Planning>().HasOne(r => r.PracticeSchedule).WithMany().HasForeignKey(r => r.PracticeScheduleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Planning>().HasOne(r => r.Campus).WithMany().HasForeignKey(r => r.CampusId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Planning>().HasOne(r => r.CourseGroup).WithMany().HasForeignKey(r => r.CourseGroupId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Planning>().Property(r => r.AllLaboratories).HasDefaultValue(false);
+            modelBuilder.Entity<Planning>().ToTable(t =>
             {
-                t.HasCheckConstraint("CK_L3Requests_Laboratory", "[AllLaboratories] = 1 OR [LaboratoryId] IS NOT NULL");
-                t.HasCheckConstraint("CK_L3Requests_Status", "[Status] IN (N'Planificado', N'Aprobado', N'Finalizado', N'Cancelado')");
+                t.HasCheckConstraint("CK_Plannings_Laboratory", "[AllLaboratories] = 1 OR [LaboratoryId] IS NOT NULL");
+                t.HasCheckConstraint("CK_Plannings_Status", "[Status] IN (N'Planificada', N'Aprobada', N'Finalizada', N'Cancelada', N'Reprogramada', N'PendienteReposicion', N'Repuesta')");
+                t.HasCheckConstraint("CK_Plannings_Periods", "([StartPeriodId] IS NULL AND [PeriodCount] IS NULL) OR ([StartPeriodId] IS NOT NULL AND [PeriodCount] BETWEEN 1 AND 12)");
             });
-            modelBuilder.Entity<L3RequestDetail>().HasIndex(d => d.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
-            modelBuilder.Entity<L3RequestDetail>().HasOne(d => d.Article).WithMany().HasForeignKey(d => d.ArticleId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3RequestDetail>().ToTable(t =>
-                t.HasCheckConstraint("CK_L3RequestDetails_RequestedQuantity", "[RequestedQuantity] IS NULL OR [RequestedQuantity] > 0"));
+            modelBuilder.Entity<Planning>().HasOne(r => r.StartPeriod).WithMany().HasForeignKey(r => r.StartPeriodId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Planning>().HasIndex(r => new { r.LaboratoryId, r.ScheduledDate });
+            modelBuilder.Entity<Planning>().HasIndex(r => new { r.TeacherPersonId, r.ScheduledDate });
+            modelBuilder.Entity<PlanningRequirement>().HasIndex(d => d.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
+            modelBuilder.Entity<PlanningRequirement>().HasOne(d => d.Article).WithMany().HasForeignKey(d => d.ArticleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanningRequirement>().HasOne(d => d.Planning).WithMany(p => p.Requirements).HasForeignKey(d => d.PlanningId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanningRequirement>().ToTable(t =>
+                t.HasCheckConstraint("CK_PlanningRequirements_RequestedQuantity", "[RequestedQuantity] IS NULL OR [RequestedQuantity] > 0"));
             modelBuilder.Entity<Departure>().HasIndex(d => d.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
-            modelBuilder.Entity<Departure>().HasOne(d => d.L3Request).WithMany(r => r.Departures).HasForeignKey(d => d.L3RequestId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Departure>().HasOne(d => d.Planning).WithMany(p => p.Departures).HasForeignKey(d => d.PlanningId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<DepartureItem>().HasIndex(i => i.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
             modelBuilder.Entity<DepartureItem>().HasOne(i => i.MeasurementUnit).WithMany().HasForeignKey(i => i.MeasurementUnitId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<DepartureReturn>().HasQueryFilter(r => r.Departure!.Status != LoanStatus.Cancelled);
@@ -869,19 +876,56 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<L5Incident>().HasOne(i => i.Article).WithMany().HasForeignKey(i => i.ArticleId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<L5Incident>().ToTable(t =>
                 t.HasCheckConstraint("CK_L5Incidents_Target", "[EquipmentUnitId] IS NOT NULL OR [ArticleId] IS NOT NULL"));
-            // Planificación académica: una por gestión y carrera; semanas lunes-viernes; prácticas = L3Request.
-            modelBuilder.Entity<AcademicPlanning>().HasQueryFilter(p => !p.IsDeleted);
-            modelBuilder.Entity<AcademicWeek>().HasQueryFilter(w => !w.AcademicPlanning.IsDeleted);
-            modelBuilder.Entity<AcademicPlanning>().HasIndex(p => new { p.ManagementId, p.CampusId, p.CareerId }).IsUnique().HasFilter("[IsDeleted] = 0");
-            modelBuilder.Entity<AcademicPlanning>().HasIndex(p => p.Status).IsUnique().HasFilter("[Status] = 0 AND [IsDeleted] = 0").HasDatabaseName("UX_AcademicPlannings_SingleActive");
-            modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Management).WithMany().HasForeignKey(p => p.ManagementId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Faculty).WithMany().HasForeignKey(p => p.FacultyId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Career).WithMany().HasForeignKey(p => p.CareerId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<AcademicPlanning>().HasOne(p => p.Campus).WithMany().HasForeignKey(p => p.CampusId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<AcademicWeek>().HasIndex(w => new { w.AcademicPlanningId, w.Number }).IsUnique();
-            modelBuilder.Entity<AcademicWeek>().HasOne(w => w.AcademicPlanning).WithMany(p => p.Weeks).HasForeignKey(w => w.AcademicPlanningId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.AcademicPlanning).WithMany(p => p.Practices).HasForeignKey(r => r.AcademicPlanningId).OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<L3Request>().HasOne(r => r.AcademicWeekRef).WithMany().HasForeignKey(r => r.AcademicWeekId).OnDelete(DeleteBehavior.Restrict);
+            // Calendario académico por gestión: semanas lunes-sábado, días habilitados/suspendidos y reposiciones de día.
+            modelBuilder.Entity<AcademicWeek>().HasOne(w => w.Management).WithMany(m => m.AcademicWeeks).HasForeignKey(w => w.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AcademicWeek>().HasIndex(w => new { w.ManagementId, w.Number }).IsUnique();
+            modelBuilder.Entity<AcademicWeek>().HasIndex(w => new { w.ManagementId, w.StartDate }).IsUnique();
+            modelBuilder.Entity<AcademicDay>().HasOne(d => d.AcademicWeek).WithMany(w => w.Days).HasForeignKey(d => d.AcademicWeekId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AcademicDay>().HasIndex(d => new { d.AcademicWeekId, d.Date }).IsUnique();
+            modelBuilder.Entity<AcademicDay>().HasIndex(d => d.Date);
+            modelBuilder.Entity<AcademicDay>().HasOne(d => d.DayRecovery).WithMany().HasForeignKey(d => d.DayRecoveryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AcademicDay>().ToTable(t => t.HasCheckConstraint("CK_AcademicDays_Status", "[Status] IN (0, 1)"));
+            modelBuilder.Entity<Planning>().HasOne(r => r.AcademicWeekRef).WithMany().HasForeignKey(r => r.AcademicWeekId).OnDelete(DeleteBehavior.Restrict);
+
+            // Catálogo fijo de periodos de clase (50 minutos, igual de lunes a sábado).
+            modelBuilder.Entity<ClassPeriod>().HasIndex(p => p.Order).IsUnique();
+            modelBuilder.Entity<ClassPeriod>().ToTable(t => t.HasCheckConstraint("CK_ClassPeriods_Times", "[EndTime] > [StartTime]"));
+            modelBuilder.Entity<ClassPeriod>().HasData(
+                new ClassPeriod { Id = 1, Order = 1, StartTime = new TimeSpan(7, 35, 0), EndTime = new TimeSpan(8, 25, 0) },
+                new ClassPeriod { Id = 2, Order = 2, StartTime = new TimeSpan(8, 35, 0), EndTime = new TimeSpan(9, 25, 0) },
+                new ClassPeriod { Id = 3, Order = 3, StartTime = new TimeSpan(9, 25, 0), EndTime = new TimeSpan(10, 15, 0) },
+                new ClassPeriod { Id = 4, Order = 4, StartTime = new TimeSpan(10, 25, 0), EndTime = new TimeSpan(11, 15, 0) },
+                new ClassPeriod { Id = 5, Order = 5, StartTime = new TimeSpan(11, 15, 0), EndTime = new TimeSpan(12, 5, 0) },
+                new ClassPeriod { Id = 6, Order = 6, StartTime = new TimeSpan(12, 15, 0), EndTime = new TimeSpan(13, 5, 0) },
+                new ClassPeriod { Id = 7, Order = 7, StartTime = new TimeSpan(13, 5, 0), EndTime = new TimeSpan(13, 55, 0) },
+                new ClassPeriod { Id = 8, Order = 8, StartTime = new TimeSpan(14, 5, 0), EndTime = new TimeSpan(14, 55, 0) },
+                new ClassPeriod { Id = 9, Order = 9, StartTime = new TimeSpan(14, 55, 0), EndTime = new TimeSpan(15, 45, 0) },
+                new ClassPeriod { Id = 10, Order = 10, StartTime = new TimeSpan(15, 55, 0), EndTime = new TimeSpan(16, 45, 0) },
+                new ClassPeriod { Id = 11, Order = 11, StartTime = new TimeSpan(16, 45, 0), EndTime = new TimeSpan(17, 35, 0) },
+                new ClassPeriod { Id = 12, Order = 12, StartTime = new TimeSpan(17, 45, 0), EndTime = new TimeSpan(18, 35, 0) }
+            );
+
+            // Reprogramaciones individuales y reposiciones de día completo.
+            modelBuilder.Entity<Rescheduling>().HasOne(r => r.OriginPlanning).WithMany().HasForeignKey(r => r.OriginPlanningId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Rescheduling>().HasOne(r => r.DestinationPlanning).WithMany().HasForeignKey(r => r.DestinationPlanningId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Rescheduling>().HasOne(r => r.OriginStartPeriod).WithMany().HasForeignKey(r => r.OriginStartPeriodId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Rescheduling>().HasOne(r => r.OriginLaboratory).WithMany().HasForeignKey(r => r.OriginLaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Rescheduling>().HasOne(r => r.OriginTeacherPerson).WithMany().HasForeignKey(r => r.OriginTeacherPersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Rescheduling>().HasOne(r => r.DestinationStartPeriod).WithMany().HasForeignKey(r => r.DestinationStartPeriodId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Rescheduling>().HasOne(r => r.DestinationLaboratory).WithMany().HasForeignKey(r => r.DestinationLaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Rescheduling>().HasOne(r => r.DestinationTeacherPerson).WithMany().HasForeignKey(r => r.DestinationTeacherPersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Rescheduling>().HasOne(r => r.DayRecovery).WithMany(d => d.Reschedulings).HasForeignKey(r => r.DayRecoveryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Rescheduling>().HasIndex(r => r.OriginPlanningId).IsUnique();
+            modelBuilder.Entity<Rescheduling>().HasIndex(r => r.DestinationPlanningId).IsUnique();
+            modelBuilder.Entity<Rescheduling>().HasIndex(r => r.DayRecoveryId);
+            modelBuilder.Entity<Rescheduling>().ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Reschedulings_DestinationPeriods", "[DestinationPeriodCount] BETWEEN 1 AND 12");
+                t.HasCheckConstraint("CK_Reschedulings_DistinctPlannings", "[OriginPlanningId] <> [DestinationPlanningId]");
+            });
+            modelBuilder.Entity<DayRecovery>().HasOne(d => d.Management).WithMany().HasForeignKey(d => d.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<DayRecovery>().HasIndex(d => new { d.ManagementId, d.Date }).IsUnique();
+            modelBuilder.Entity<DayRecovery>().ToTable(t => t.HasCheckConstraint("CK_DayRecoveries_Status", "[Status] IN (0, 1)"));
 
             modelBuilder.Entity<User>().ToTable("Users", table =>
             {
@@ -893,7 +937,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 table.HasCheckConstraint("CK_People_Status", "[Status] BETWEEN 0 AND 2");
                 table.HasCheckConstraint("CK_People_Category", "[Category] IN (1, 2, 3, 4, 5, 99)");
             });
-            modelBuilder.Entity<Laboratory>().ToTable(table => table.HasCheckConstraint("CK_Laboratories_Status", "[Status] BETWEEN 0 AND 2"));
+            modelBuilder.Entity<Laboratory>().ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Laboratories_Status", "[Status] BETWEEN 0 AND 2");
+                table.HasCheckConstraint("CK_Laboratories_Capacity", "[Capacity] IS NULL OR [Capacity] > 0");
+            });
             modelBuilder.Entity<Faculty>().ToTable(table => table.HasCheckConstraint("CK_Faculties_Status", "[Status] BETWEEN 0 AND 2"));
             modelBuilder.Entity<Career>().ToTable(table => table.HasCheckConstraint("CK_Careers_Status", "[Status] BETWEEN 0 AND 2"));
             modelBuilder.Entity<Country>().ToTable(table => table.HasCheckConstraint("CK_Countries_Status", "[Status] BETWEEN 0 AND 2"));
