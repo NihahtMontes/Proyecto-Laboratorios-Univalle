@@ -18,11 +18,18 @@
                             </div>
                         </div>
 
-                        <div id="localNotificationsArea" class="mb-4" style="display: none;">
-                            <h5 class="font-weight-bold text-info mb-3 border-bottom pb-2">
-                                <i class="fas fa-bell mr-2"></i> Nuevas Asignaciones
-                            </h5>
-                            <div id="localNotificationsList">
+                        <div id="maintenanceAlertsArea" class="mb-4" style="display: none;">
+                            <div class="card shadow-sm border-0" style="border-left: 4px solid #f59e0b !important;">
+                                <div class="card-body py-3">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <h5 class="font-weight-bold text-warning mb-0">
+                                            <i class="fas fa-bell mr-2"></i> Alertas de mantenimiento
+                                        </h5>
+                                        <span class="badge badge-warning badge-pill ml-2" id="maintenanceAlertsTotal" style="display: none;">0</span>
+                                    </div>
+                                    <div id="maintenanceAlertChips" class="d-flex flex-wrap mb-3"></div>
+                                    <div id="maintenanceAlertList"></div>
+                                </div>
                             </div>
                         </div>
                         <div class="bg-light p-3 mb-4 rounded border-left border-info">
@@ -119,6 +126,21 @@
                                                 <td class="text-center">
                                                     <div class="small font-weight-bold">@(item.ScheduledDate?.ToString("dd/MM/yyyy") ?? "-")</div>
                                                     <small class="text-muted">Programado</small>
+                                                    @if (item.ScheduledDate.HasValue && item.Status != MaintenanceStatus.Completed && item.Status != MaintenanceStatus.Cancelled)
+                                                    {
+                                                        if (item.ScheduledDate.Value.Date < DateTime.Today)
+                                                        {
+                                                            <div class="mt-1">
+                                                                <span class="badge badge-danger px-2 font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i>VENCIDO</span>
+                                                            </div>
+                                                        }
+                                                        else if (item.ScheduledDate.Value.Date == DateTime.Today)
+                                                        {
+                                                            <div class="mt-1">
+                                                                <span class="badge badge-warning px-2 font-weight-bold"><i class="fas fa-calendar-day mr-1"></i>HOY</span>
+                                                            </div>
+                                                        }
+                                                    }
                                                 </td>
                                                 <td class="text-center">
                                                     @{
@@ -218,63 +240,148 @@
              function getSafeNotificationUrl(url) {
                  return url && typeof url === 'string' && url.indexOf('/') === 0 && url.indexOf('//') !== 0 ? url : '';
              }
-             
-             function loadLocalMaintenanceNotifications() {
-                 $.get('/Api/Notifications?handler=Unread&scope=maintenance', function(data) {
-                     const $area = $('#localNotificationsArea');
-                     const $list = $('#localNotificationsList');
-                     
-                     if (data.items && data.items.length > 0) {
-                         $list.empty();
-                         $.each(data.items, function(i, item) {
-                             const id = parseInt(item.id, 10) || 0;
-                             const icon = sanitizeIconClass(item.icon);
-                             const url = getSafeNotificationUrl(item.url);
-                             
-                             $list.append(`
-                                 <div class="alert alert-light border border-info shadow-sm d-flex align-items-center mb-2" id="local-notif-${id}">
-                                     <div class="mr-3"><i class="${icon} fa-2x"></i></div>
-                                     <div class="flex-grow-1">
-                                         <h6 class="alert-heading font-weight-bold mb-1 text-dark">${escapeHtml(item.title || 'Notificación')}</h6>
-                                         <p class="mb-0 small text-muted">${escapeHtml(item.message)}</p>
-                                         <small class="text-muted italic"><i class="far fa-clock mr-1"></i> ${escapeHtml(item.time)}</small>
-                                     </div>
-                                     <div class="ml-3">
-                                         <a href="${url || 'javascript:void(0)'}" class="btn btn-sm btn-info btn-rounded px-3 font-weight-bold shadow-sm js-local-notification-link" data-notification-id="${id}" data-notification-url="${escapeHtml(url)}">
-                                             Ir a la Tarea <i class="fas fa-arrow-right ml-1"></i>
-                                         </a>
-                                     </div>
-                                 </div>
-                             `);
-                         });
-                         $area.slideDown();
-                     } else {
-                         $area.slideUp();
+
+             function urgencyColor(urgency) {
+                 return urgency === 'danger' ? '#ef4444'
+                     : urgency === 'warning' ? '#f59e0b'
+                     : urgency === 'success' ? '#22c55e'
+                     : urgency === 'secondary' ? '#6c757d'
+                     : '#3b82f6';
+             }
+
+             function isVisibleItem(item) {
+                 return !(window.LabNotifications && item.id < 0 && item.syntheticKey && window.LabNotifications.isSnoozed(item.syntheticKey));
+             }
+
+             // ─── Fila de chips/contadores ───
+             function renderAlertChips(groupCounts, items) {
+                 const $chips = $('#maintenanceAlertChips');
+                 $chips.empty();
+
+                 const chipDefs = [
+                     { key: 'vencidos',   label: 'Vencidos',            color: 'danger',  icon: 'fas fa-exclamation-triangle' },
+                     { key: 'hoy',        label: 'Para hoy',            color: 'warning', icon: 'fas fa-calendar-day' },
+                     { key: 'proximos',   label: 'Próximos 7 días',     color: 'info',    icon: 'fas fa-tools' },
+                     { key: 'preventivo', label: 'Preventivo sugerido', color: 'primary', icon: 'fas fa-calendar-check' }
+                 ];
+
+                 chipDefs.forEach(function(def) {
+                     const count = (groupCounts && groupCounts[def.key]) || 0;
+                     if (count <= 0) return;
+                     $chips.append(
+                         '<span class="badge badge-' + def.color + ' px-3 py-2 mb-1 mr-2 font-weight-bold" style="font-size: 0.8rem;">' +
+                         '<i class="' + def.icon + ' mr-1"></i>' + escapeHtml(def.label) + ': ' + count +
+                         '</span>'
+                     );
+                 });
+
+                 const assignedCount = items.filter(function(item) { return item.id > 0; }).length;
+                 if (assignedCount > 0) {
+                     $chips.append(
+                         '<span class="badge badge-dark px-3 py-2 mb-1 mr-2 font-weight-bold" style="font-size: 0.8rem;">' +
+                         '<i class="fas fa-clipboard-check mr-1"></i>Asignaciones: ' + assignedCount +
+                         '</span>'
+                     );
+                 }
+             }
+
+             // ─── Lista de avisos (hasta 8) ───
+             function appendAlertItem(item) {
+                 const id = parseInt(item.id, 10) || 0;
+                 const isPersisted = id > 0;
+                 const safeUrl = getSafeNotificationUrl(item.url);
+                 const borderColor = urgencyColor(item.urgency);
+
+                 const $row = $('<div/>', {
+                     class: 'd-flex align-items-start px-3 py-2 mb-2 rounded js-maintenance-alert',
+                     style: 'border-left: 4px solid ' + borderColor + '; background: ' + (item.urgency === 'danger' ? '#fef2f2' : '#f8f9fa') + ';'
+                 });
+                 $row.attr('data-notification-id', id);
+                 if (item.syntheticKey) $row.attr('data-synthetic-key', item.syntheticKey);
+
+                 // Icono
+                 const $iconWrap = $('<span/>', {
+                     class: 'btn btn-circle btn-light-info mr-3 flex-shrink-0',
+                     style: 'width:42px; height:42px; line-height:42px; text-align:center;'
+                 });
+                 $('<i/>', { class: sanitizeIconClass(item.icon) }).appendTo($iconWrap);
+
+                 // Cuerpo
+                 const $body = $('<div/>', { class: 'flex-grow-1' });
+                 $('<h6/>', { class: 'font-weight-bold mb-1 text-dark' }).text(item.title || 'Notificación').appendTo($body);
+                 $('<p/>', { class: 'mb-0 small text-muted' }).text(item.message || '').appendTo($body);
+                 $('<small/>', { class: 'text-muted' })
+                     .append($('<i/>', { class: 'far fa-clock mr-1' }))
+                     .append(document.createTextNode(item.time || ''))
+                     .appendTo($body);
+
+                 // Acciones
+                 const $actions = $('<div/>', { class: 'ml-3 d-flex align-items-center flex-shrink-0' });
+
+                 if (safeUrl) {
+                     $('<a/>', {
+                         href: safeUrl,
+                         class: 'btn btn-sm btn-info btn-rounded px-3 font-weight-bold shadow-sm mr-1',
+                         title: 'Ver detalle'
+                     }).text('Ver').append($('<i/>', { class: 'fas fa-arrow-right ml-1' })).appendTo($actions);
+                 }
+
+                 const $actionBtn = $('<button/>', {
+                     type: 'button',
+                     class: 'btn btn-sm btn-outline-secondary btn-rounded',
+                     title: isPersisted ? 'Marcar como leída' : 'Posponer hasta mañana'
+                 }).html('<i class="' + (isPersisted ? 'fas fa-check' : 'far fa-clock') + '"></i>');
+                 $actionBtn.on('click', function(e) {
+                     e.preventDefault();
+                     if (isPersisted) {
+                         if (window.LabNotifications) {
+                             window.LabNotifications.markAsRead(id).always(function() { refreshAfterAction($row); });
+                         } else {
+                             refreshAfterAction($row);
+                         }
+                     } else if (item.syntheticKey) {
+                         if (window.LabNotifications) window.LabNotifications.snooze(item.syntheticKey);
+                         refreshAfterAction($row);
                      }
+                 });
+                 $actions.append($actionBtn);
+
+                 $row.append($iconWrap, $body, $actions);
+                 $('#maintenanceAlertList').append($row);
+             }
+
+             function refreshAfterAction($row) {
+                 $row.fadeOut(200, function() { $(this).remove(); });
+                 setTimeout(loadMaintenanceAlerts, 250);
+             }
+
+             // ─── Carga de alertas ───
+             function loadMaintenanceAlerts() {
+                 $.get('/Api/Notifications?handler=Unread&scope=maintenance&take=50', function(data) {
+                     const $area = $('#maintenanceAlertsArea');
+                     const $list = $('#maintenanceAlertList');
+                     const $chips = $('#maintenanceAlertChips');
+
+                     const items = (data.items || []).filter(isVisibleItem);
+                     if (items.length === 0) {
+                         $list.empty();
+                         $chips.empty();
+                         $area.slideUp();
+                         return;
+                     }
+
+                     $list.empty();
+                     renderAlertChips(data.groupCounts || {}, items);
+
+                     const $total = $('#maintenanceAlertsTotal');
+                     $total.text(data.count || items.length).show();
+
+                     items.slice(0, 8).forEach(appendAlertItem);
+                     $area.slideDown();
                  });
              }
 
-             loadLocalMaintenanceNotifications();
-
-             window.markLocalAsRead = function(e, id, url) {
-                 if (e) e.preventDefault();
-                 $.get('/Api/Notifications?handler=MarkAsRead&id=' + encodeURIComponent(id), function() {
-                     if (url && url !== 'javascript:void(0)') {
-                         window.location.href = url;
-                     } else {
-                         $(`#local-notif-${id}`).fadeOut(300, function() {
-                             $(this).remove();
-                             if ($('#localNotificationsList').children().length === 0) {
-                                 $('#localNotificationsArea').slideUp();
-                             }
-                         });
-                     }
-                 });
-             };
-
-             $('#localNotificationsList').on('click', '.js-local-notification-link', function(e) {
-                 markLocalAsRead(e, $(this).data('notification-id'), $(this).data('notification-url'));
-             });
+             loadMaintenanceAlerts();
         });
     </script>
 }

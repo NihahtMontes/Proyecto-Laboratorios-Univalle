@@ -362,8 +362,16 @@
                             <div class="card-body p-4 text-center">
                                 <i class="fas fa-cog fa-3x mb-3 opacity-7"></i>
                                 <h5 class="card-title text-white font-weight-bold small uppercase mb-1">En Operacion</h5>
-                                <span class="font-weight-bold h3 mb-0">@(Model.EquipmentUnit.YearsInOperation ?? 0)</span>
-                                <span class="text-white-50 d-block">años desde fabricacion</span>
+                                @if (Model.EquipmentUnit.YearsInOperation is int yearsInService)
+                                {
+                                    <span class="font-weight-bold h3 mb-0">@yearsInService</span>
+                                    <span class="text-white-50 d-block">años desde @(Model.EquipmentUnit.AcquisitionDate.HasValue ? "la adquisición" : "la fabricación")</span>
+                                }
+                                else
+                                {
+                                    <span class="font-weight-bold h5 mb-0">Sin fecha</span>
+                                    <span class="text-white-50 d-block">registre la fecha de adquisición</span>
+                                }
                             </div>
                         </div>
                     </div>
@@ -380,14 +388,19 @@
                     </div>
                     <div class="col-md-4 mb-3">
                         <label class="text-muted small uppercase d-block mb-1 font-weight-bold">Vida Util Restante (Est.)</label>
-                        @{
-                            var usefulLife = Model.EquipmentUnit.Equipment?.UsefulLifeYears ?? 0;
-                            var yearsInOp = Model.EquipmentUnit.YearsInOperation ?? 0;
-                            var remaining = usefulLife - yearsInOp;
+                        @if (Model.EquipmentUnit.RemainingUsefulLifeYears is int remaining)
+                        {
+                            <span class="font-weight-bold h4 mb-0 @(remaining <= 0 ? "text-danger" : remaining <= 2 ? "text-warning" : "text-success")">
+                                @(remaining > 0 ? $"{remaining} años" : "Excedido")
+                            </span>
                         }
-                        <span class="font-weight-bold h4 mb-0 @(remaining <= 0 ? "text-danger" : remaining <= 2 ? "text-warning" : "text-success")">
-                            @(remaining > 0 ? $"{remaining} años" : "Excedido")
-                        </span>
+                        else
+                        {
+                            <span class="font-weight-bold text-muted mb-0" title="Requiere la vida útil del equipo y la fecha de adquisición (o de fabricación) de la unidad">
+                                Sin datos
+                            </span>
+                            <small class="d-block text-muted">@(Model.EquipmentUnit.Equipment?.UsefulLifeYears == null ? "falta vida útil del equipo" : "falta fecha de adquisición")</small>
+                        }
                     </div>
                 </div>
             </div>

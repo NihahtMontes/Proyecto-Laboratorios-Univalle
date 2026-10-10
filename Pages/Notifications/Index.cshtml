@@ -1,0 +1,341 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Notifications.IndexModel
+@using Proyecto_Laboratorios_Univalle.Services.Notifications
+@{
+    ViewData["Title"] = "Centro de notificaciones";
+}
+
+@functions {
+    private static (string Label, string Color, string Icon) GroupConfig(string group) => group switch
+    {
+        NotificationGroups.Overdue => ("Vencidos", "danger", "fas fa-exclamation-triangle"),
+        NotificationGroups.Today => ("Para hoy", "warning", "fas fa-calendar-day"),
+        NotificationGroups.Upcoming => ("Próximos", "info", "fas fa-tools"),
+        NotificationGroups.Preventive => ("Preventivo sugerido", "primary", "fas fa-calendar-check"),
+        NotificationGroups.Planning => ("Planificación", "primary", "fas fa-flask"),
+        NotificationGroups.Departures => ("Préstamos", "warning", "fas fa-exchange-alt"),
+        NotificationGroups.Acquisitions => ("Adquisiciones", "success", "fas fa-shopping-cart"),
+        _ => ("Otros", "secondary", "fas fa-bell")
+    };
+
+    private static string UrgencyColor(string? urgency) => urgency switch
+    {
+        NotificationUrgency.Danger => "#ef4444",
+        NotificationUrgency.Warning => "#f59e0b",
+        NotificationUrgency.Success => "#22c55e",
+        NotificationUrgency.Secondary => "#6c757d",
+        _ => "#3b82f6"
+    };
+
+    private static string UrgencyBadge(string? urgency) => urgency switch
+    {
+        NotificationUrgency.Danger => "danger",
+        NotificationUrgency.Warning => "warning",
+        NotificationUrgency.Success => "success",
+        NotificationUrgency.Secondary => "secondary",
+        _ => "info"
+    };
+
+    private static string SafeIcon(string? icon) =>
+        !string.IsNullOrWhiteSpace(icon) && System.Text.RegularExpressions.Regex.IsMatch(icon, "^[a-z0-9\\-\\s]+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
+            ? icon
+            : "fas fa-info-circle text-info";
+
+    private static bool IsSafeUrl(string? url) =>
+        !string.IsNullOrEmpty(url) && url.StartsWith('/') && !url.StartsWith("//");
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">
+                            <i class="fas fa-bell text-warning mr-2"></i> Centro de notificaciones
+                        </h3>
+                        <h6 class="card-subtitle text-muted ml-2">Todo lo que requiere tu atención, en un solo lugar.</h6>
+                    </div>
+                    <div class="ml-auto mt-3 mt-md-0 mr-2">
+                        <form asp-page-handler="MarkAllAsRead" asp-route-domain="@Model.Domain" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-outline-primary btn-rounded font-weight-bold shadow-sm">
+                                <i class="fas fa-check-double mr-1"></i> Marcar todas como leídas
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- KPI -->
+                <div class="row mb-4">
+                    <div class="col-lg-3 col-6">
+                        <div class="card border-0 shadow-sm mb-0" style="border-left: 4px solid #2962ff !important;">
+                            <div class="card-body py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3"><i class="fas fa-inbox fa-2x text-info"></i></div>
+                                    <div>
+                                        <div class="h3 font-weight-bold text-dark mb-0">@Model.KpiPending</div>
+                                        <div class="small text-muted font-weight-bold">Pendientes</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="card border-0 shadow-sm mb-0" style="border-left: 4px solid #ef4444 !important;">
+                            <div class="card-body py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3"><i class="fas fa-exclamation-circle fa-2x text-danger"></i></div>
+                                    <div>
+                                        <div class="h3 font-weight-bold text-dark mb-0">@Model.KpiCritical</div>
+                                        <div class="small text-muted font-weight-bold">Críticos</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="card border-0 shadow-sm mb-0" style="border-left: 4px solid #dc3545 !important;">
+                            <div class="card-body py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3"><i class="fas fa-exclamation-triangle fa-2x text-danger"></i></div>
+                                    <div>
+                                        <div class="h3 font-weight-bold text-dark mb-0">@Model.KpiOverdue</div>
+                                        <div class="small text-muted font-weight-bold">Vencidos</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-6">
+                        <div class="card border-0 shadow-sm mb-0" style="border-left: 4px solid #f59e0b !important;">
+                            <div class="card-body py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3"><i class="fas fa-calendar-day fa-2x text-warning"></i></div>
+                                    <div>
+                                        <div class="h3 font-weight-bold text-dark mb-0">@Model.KpiToday</div>
+                                        <div class="small text-muted font-weight-bold">Para hoy</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtro por dominio -->
+                <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                    <div class="d-flex flex-wrap align-items-center">
+                        <span class="small font-weight-bold text-muted mr-2"><i class="fas fa-filter mr-1"></i> Dominio:</span>
+                        <a asp-page="./Index" class="badge @(string.IsNullOrEmpty(Model.Domain) ? "badge-primary" : "badge-light border") px-3 py-2 mb-1 mr-2 font-weight-bold" style="font-size: 0.8rem;">
+                            Todos
+                        </a>
+                        <a asp-page="./Index" asp-route-domain="@NotificationDomains.Maintenance" class="badge @(Model.Domain == NotificationDomains.Maintenance ? "badge-primary" : "badge-light border") px-3 py-2 mb-1 mr-2 font-weight-bold" style="font-size: 0.8rem;">
+                            <i class="fas fa-tools mr-1"></i> Mantenimiento
+                        </a>
+                        <a asp-page="./Index" asp-route-domain="@NotificationDomains.Planning" class="badge @(Model.Domain == NotificationDomains.Planning ? "badge-primary" : "badge-light border") px-3 py-2 mb-1 mr-2 font-weight-bold" style="font-size: 0.8rem;">
+                            <i class="fas fa-flask mr-1"></i> Planificación
+                        </a>
+                        <a asp-page="./Index" asp-route-domain="@NotificationDomains.Departure" class="badge @(Model.Domain == NotificationDomains.Departure ? "badge-primary" : "badge-light border") px-3 py-2 mb-1 mr-2 font-weight-bold" style="font-size: 0.8rem;">
+                            <i class="fas fa-exchange-alt mr-1"></i> Préstamos
+                        </a>
+                        <a asp-page="./Index" asp-route-domain="@NotificationDomains.Acquisition" class="badge @(Model.Domain == NotificationDomains.Acquisition ? "badge-primary" : "badge-light border") px-3 py-2 mb-1 mr-2 font-weight-bold" style="font-size: 0.8rem;">
+                            <i class="fas fa-shopping-cart mr-1"></i> Adquisiciones
+                        </a>
+                        <a asp-page="./Index" asp-route-domain="@NotificationDomains.General" class="badge @(Model.Domain == NotificationDomains.General ? "badge-primary" : "badge-light border") px-3 py-2 mb-1 mr-2 font-weight-bold" style="font-size: 0.8rem;">
+                            <i class="fas fa-bell mr-1"></i> General
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Pendientes ahora -->
+                <h5 class="font-weight-bold text-dark border-bottom pb-2">
+                    <i class="fas fa-inbox text-info mr-2"></i> Pendientes ahora
+                </h5>
+
+                @if (!Model.PendingItems.Any())
+                {
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-check-circle fa-3x mb-3 text-success opacity-2"></i>
+                        <div class="font-weight-bold">Todo al día</div>
+                        <div class="small">No tienes notificaciones pendientes en este dominio.</div>
+                    </div>
+                }
+                else
+                {
+                    foreach (var group in NotificationGroups.Order)
+                    {
+                        var groupItems = Model.PendingItems.Where(i => i.Group == group).ToList();
+                        if (!groupItems.Any()) { continue; }
+                        var (groupLabel, groupColor, groupIcon) = GroupConfig(group);
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="font-weight-bold text-uppercase text-@groupColor small mr-2">
+                                    <i class="@groupIcon mr-1"></i> @groupLabel
+                                </span>
+                                <span class="badge badge-@groupColor badge-pill" style="font-size: 0.7rem;">@groupItems.Count</span>
+                            </div>
+
+                            @foreach (var item in groupItems)
+                            {
+                                <div class="d-flex align-items-start px-3 py-2 mb-2 rounded js-notif-item" style="border-left: 4px solid @UrgencyColor(item.Urgency); background: @(item.Urgency == NotificationUrgency.Danger ? "#fef2f2" : "#f8f9fa");"
+                                     data-synthetic-key="@(item.SyntheticKey ?? "")">
+                                    <span class="btn btn-circle btn-light-@UrgencyBadge(item.Urgency) mr-3 flex-shrink-0" style="width: 38px; height: 38px; line-height: 38px; text-align: center;">
+                                        <i class="@SafeIcon(item.Icon)"></i>
+                                    </span>
+                                    <div class="flex-grow-1">
+                                        @if (IsSafeUrl(item.Url))
+                                        {
+                                            <a href="@item.Url" class="font-weight-bold text-dark d-inline-block mb-1">@item.Title</a>
+                                        }
+                                        else
+                                        {
+                                            <div class="font-weight-bold text-dark mb-1">@item.Title</div>
+                                        }
+                                        <div class="small text-muted">@item.Message</div>
+                                        <small class="text-muted"><i class="far fa-clock mr-1"></i> @item.Time</small>
+                                    </div>
+                                    <div class="ml-3 d-flex align-items-center flex-shrink-0">
+                                        @if (IsSafeUrl(item.Url))
+                                        {
+                                            <a href="@item.Url" class="btn btn-sm btn-outline-info btn-rounded mr-1" title="Ver detalle">
+                                                <i class="fas fa-arrow-right"></i>
+                                            </a>
+                                        }
+                                        @if (item.IsPersisted)
+                                        {
+                                            <form asp-page-handler="MarkAsRead" asp-route-id="@item.Id" asp-route-domain="@Model.Domain" method="post" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary btn-rounded" title="Marcar como leída">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            </form>
+                                        }
+                                        else if (!string.IsNullOrEmpty(item.SyntheticKey))
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary btn-rounded js-snooze-btn" title="Posponer hasta mañana">
+                                                <i class="far fa-clock"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+
+                <!-- Historial -->
+                <h5 class="font-weight-bold text-dark border-bottom pb-2 mt-4">
+                    <i class="fas fa-history text-muted mr-2"></i> Historial
+                </h5>
+
+                @if (!Model.History.Any())
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-2 opacity-2"></i>
+                        <div class="small">Aún no tienes notificaciones en el historial.</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover v-middle mb-0">
+                            <thead class="bg-light">
+                                <tr class="small uppercase font-weight-bold">
+                                    <th>Notificación</th>
+                                    <th>Detalle</th>
+                                    <th class="text-center">Recepción</th>
+                                    <th class="text-center">Estado</th>
+                                    <th class="text-center">Opciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.History)
+                                {
+                                    <tr class="@(item.IsRead ? "text-muted" : "")">
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <span class="btn btn-circle btn-light-@UrgencyBadge(item.Urgency) mr-2 flex-shrink-0" style="width: 32px; height: 32px; line-height: 32px; text-align: center;">
+                                                    <i class="@SafeIcon(item.Icon)"></i>
+                                                </span>
+                                                @if (IsSafeUrl(item.Url))
+                                                {
+                                                    <a href="@item.Url" class="font-weight-bold @(item.IsRead ? "text-muted" : "text-dark")">@item.Title</a>
+                                                }
+                                                else
+                                                {
+                                                    <span class="font-weight-bold @(item.IsRead ? "" : "text-dark")">@item.Title</span>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <small class="@(item.IsRead ? "text-muted" : "text-secondary")">@item.Message</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <small class="text-muted"><i class="far fa-clock mr-1"></i> @item.Time</small>
+                                        </td>
+                                        <td class="text-center">
+                                            @if (item.IsRead)
+                                            {
+                                                <span class="badge badge-light border px-2 font-weight-bold">Leída</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-@UrgencyBadge(item.Urgency) px-2 font-weight-bold">Pendiente</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (!item.IsRead)
+                                            {
+                                                <form asp-page-handler="MarkAsRead" asp-route-id="@item.Id" asp-route-domain="@Model.Domain" method="post" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-outline-secondary btn-rounded" title="Marcar como leída">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .v-middle td { vertical-align: middle !important; }
+        .uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+        .opacity-2 { opacity: 0.2; }
+        a.font-weight-bold:hover { text-decoration: none; }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(function () {
+            function hideSnoozedItems() {
+                if (!window.LabNotifications) return;
+                $('.js-notif-item[data-synthetic-key]').each(function () {
+                    const key = $(this).attr('data-synthetic-key');
+                    if (key && window.LabNotifications.isSnoozed(key)) {
+                        $(this).hide();
+                    }
+                });
+            }
+
+            // El layout define window.LabNotifications en su propio $(ready); se difiere un tick
+            // para que exista antes de ocultar los calculados pospuestos.
+            setTimeout(hideSnoozedItems, 0);
+
+            $(document).on('click', '.js-snooze-btn', function () {
+                const $row = $(this).closest('.js-notif-item');
+                const key = $row.attr('data-synthetic-key');
+                if (window.LabNotifications && key) {
+                    window.LabNotifications.snooze(key);
+                }
+                $row.fadeOut(200);
+            });
+        });
+    </script>
+}

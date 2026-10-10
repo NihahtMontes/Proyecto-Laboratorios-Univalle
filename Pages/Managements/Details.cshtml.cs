@@ -18,15 +18,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         private readonly ApplicationDbContext _context;
         private readonly IManagementActivationService _managementActivation;
         private readonly IManagementContextService _managementContext;
+        private readonly ICourseGroupPurgeService _courseGroupPurge;
 
         public DetailsModel(
             ApplicationDbContext context,
             IManagementActivationService managementActivation,
-            IManagementContextService managementContext)
+            IManagementContextService managementContext,
+            ICourseGroupPurgeService courseGroupPurge)
         {
             _context = context;
             _managementActivation = managementActivation;
             _managementContext = managementContext;
+            _courseGroupPurge = courseGroupPurge;
         }
 
         public Management Management { get; set; } = default!;
@@ -347,14 +350,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             }
 
             await _context.SaveChangesAsync();
+            var activeCode = activationResult.ActiveManagement.Code;
+            var activeId = activationResult.ActiveManagement.Id;
+
+            // Las gestiones cerradas pierden sus grupos de trabajo (la purga limpia el ChangeTracker).
+            var purgedGroups = 0;
+            foreach (var closedId in activationResult.ClosedManagementIds)
+                purgedGroups += await _courseGroupPurge.PurgeManagementAsync(closedId);
             _managementContext.InvalidateCache();
 
             var closedMessage = activationResult.ClosedCount > 0
                 ? $" Se cerro {activationResult.ClosedCount} gestion activa duplicada."
                 : string.Empty;
+            var purgedMessage = purgedGroups > 0
+                ? $" Se eliminaron {purgedGroups} grupo(s) de la gestión."
+                : string.Empty;
 
-            TempData.Success($"Gestion actualizada correctamente. Ahora estas en {activationResult.ActiveManagement.Code}.{closedMessage}");
-            return RedirectToPage("./Details", new { id = activationResult.ActiveManagement.Id, ActiveTab = "dashboard" });
+            TempData.Success($"Gestion actualizada correctamente. Ahora estas en {activeCode}.{closedMessage}{purgedMessage}");
+            return RedirectToPage("./Details", new { id = activeId, ActiveTab = "dashboard" });
         }
 
         public async Task<IActionResult> OnPostSyncEquipmentsAsync(int id)

@@ -8,6 +8,7 @@ using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
+using Proyecto_Laboratorios_Univalle.Services.Notifications;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
@@ -16,15 +17,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly IMaintenanceNotificationWriter _maintenanceNotifications;
         private readonly ILogger<EditModel> _logger;
 
         public EditModel(
             Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
             UserManager<User> userManager,
+            IMaintenanceNotificationWriter maintenanceNotifications,
             ILogger<EditModel> logger)
         {
             _context = context;
             _userManager = userManager;
+            _maintenanceNotifications = maintenanceNotifications;
             _logger = logger;
         }
 
@@ -321,6 +325,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             try
             {
                 await _context.SaveChangesAsync();
+                await _maintenanceNotifications.NotifyAssignmentAsync(maintenanceDB.Id);
                 TempData.Success(NotificationHelper.Maintenances.Updated(maintenanceDB.EquipmentUnit?.Equipment?.Name));
                 
                 // Solo redirigir al wizard si ManagementPlanId fue explícito (desde wizard)

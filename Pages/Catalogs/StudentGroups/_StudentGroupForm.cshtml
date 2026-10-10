@@ -1,0 +1,170 @@
+@* Formulario de grupo (Crear/Editar): identidad del grupo + materias del semestre con su docente.
+   Las filas de materias las arma wwwroot/js/student-group-form.js a partir de #sgConfig. *@
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.StudentGroups.StudentGroupFormView
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+<form method="post" id="sgForm" novalidate data-edit="@(Model.IsEdit ? "true" : "false")">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+    <input type="hidden" name="Input.ManagementId" value="@Model.Input.ManagementId" />
+    @if (Model.IsEdit)
+    {
+        <input type="hidden" name="Input.CareerId" value="@Model.Input.CareerId" />
+        <input type="hidden" name="Input.Semester" value="@Model.Input.Semester" />
+    }
+
+    <div class="row">
+        <!-- Identidad del grupo -->
+        <div class="col-lg-5 border-right pr-lg-4">
+            <h5 class="font-weight-bold text-info mb-3"><i class="fas fa-users mr-2"></i> Identidad del grupo</h5>
+
+            <div class="sg-name-card rounded p-3 mb-4 text-center">
+                <small class="text-uppercase text-muted font-weight-bold d-block">Nombre del grupo</small>
+                <span class="sg-name-preview" id="sgNamePreview">—</span>
+                <small class="d-block text-muted" id="sgNameHint">Letra + semestre. Ej.: A + 1.er semestre = A1</small>
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="control-label font-weight-bold small text-uppercase text-muted">Gestión <span class="text-danger">*</span></label>
+                @if (Model.IsEdit || Model.Managements.Count <= 1)
+                {
+                    <input class="form-control bg-light font-weight-bold" value="@Model.ManagementLabel" disabled />
+                }
+                else
+                {
+                    <select id="sgManagement" class="form-control custom-select">
+                        @foreach (var m in Model.Managements)
+                        {
+                            <option value="@m.Id" selected="@(m.Id == Model.Input.ManagementId)">@m.Code@(m.IsCurrent ? " (actual)" : "")</option>
+                        }
+                    </select>
+                }
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-7 mb-3">
+                    <label class="control-label font-weight-bold small text-uppercase text-muted">Carrera <span class="text-danger">*</span></label>
+                    @if (Model.IsEdit)
+                    {
+                        <input class="form-control bg-light font-weight-bold" value="@Model.CareerName" disabled />
+                    }
+                    else
+                    {
+                        <select id="sgCareer" name="Input.CareerId" class="form-control custom-select" required>
+                            <option value="">-- Seleccione --</option>
+                            @foreach (var c in Model.Options.Careers)
+                            {
+                                <option value="@c.Id" selected="@(c.Id == Model.Input.CareerId)">@c.Name</option>
+                            }
+                        </select>
+                    }
+                </div>
+                <div class="form-group col-md-5 mb-3">
+                    <label class="control-label font-weight-bold small text-uppercase text-muted">Semestre <span class="text-danger">*</span></label>
+                    @if (Model.IsEdit)
+                    {
+                        <input class="form-control bg-light font-weight-bold" value="@(Model.Input.Semester).º semestre" disabled />
+                    }
+                    else
+                    {
+                        <select id="sgSemester" name="Input.Semester" class="form-control custom-select" required>
+                            <option value="">-- Semestre --</option>
+                        </select>
+                    }
+                </div>
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="sgLetter" class="control-label font-weight-bold small text-uppercase text-muted">Letra del grupo <span class="text-danger">*</span></label>
+                <input id="sgLetter" name="Input.Letter" value="@Model.Input.Letter" class="form-control font-weight-bold text-uppercase"
+                       maxlength="3" autocomplete="off" placeholder="A, B, C..." required />
+                <small class="text-muted d-block mt-1" id="sgExisting"></small>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-6 mb-3">
+                    <label class="control-label font-weight-bold small text-uppercase text-muted">N.º de estudiantes</label>
+                    <input name="Input.StudentCount" value="@Model.Input.StudentCount" type="number" min="0" max="1000" class="form-control" />
+                </div>
+                <div class="form-group col-md-6 mb-3">
+                    <label class="control-label font-weight-bold small text-uppercase text-muted">Factor de escalamiento</label>
+                    <input name="Input.ScalingFactor" value="@Model.Input.ScalingFactor" type="number" min="0" max="1000" class="form-control" />
+                </div>
+            </div>
+            <small class="text-muted italic d-block mb-3 mt-n2">Se aplican a todas las materias del grupo (recetas y capacidad).</small>
+
+            <div class="form-group mb-3">
+                <label class="control-label font-weight-bold small text-uppercase text-muted">Laboratorio habitual</label>
+                <select id="sgLaboratory" name="Input.LaboratoryId" class="form-control custom-select sg-select2">
+                    <option value="">-- Sin laboratorio definido --</option>
+                    @foreach (var l in Model.Options.Laboratories)
+                    {
+                        <option value="@l.Id" selected="@(l.Id == Model.Input.LaboratoryId)">@l.Name</option>
+                    }
+                </select>
+                <small class="text-muted italic d-block mt-1">Cada materia puede usar otro laboratorio.</small>
+            </div>
+
+            @if (Model.IsEdit)
+            {
+                <div class="form-group mb-3 bg-light p-3 rounded border-left border-warning">
+                    <label class="text-warning small text-uppercase font-weight-bold mb-2 d-block">Estado</label>
+                    <select name="Input.Status" class="form-control custom-select border-warning font-weight-bold">
+                        <option value="@((int)GeneralStatus.Activo)" selected="@(Model.Input.Status == GeneralStatus.Activo)">Activo</option>
+                        <option value="@((int)GeneralStatus.Inactivo)" selected="@(Model.Input.Status == GeneralStatus.Inactivo)">Inactivo</option>
+                    </select>
+                    <small class="text-muted d-block mt-1">Un grupo inactivo no aparece en el horario ni en la planificación.</small>
+                </div>
+            }
+        </div>
+
+        <!-- Materias del semestre -->
+        <div class="col-lg-7 pl-lg-4">
+            <div class="d-flex flex-wrap align-items-center mb-3">
+                <h5 class="font-weight-bold text-info mb-0 mr-2"><i class="fas fa-book mr-2"></i> Materias del semestre</h5>
+                <span class="badge badge-light border text-dark px-3 py-2" id="sgSubjectCount">—</span>
+                <div class="ml-auto">
+                    <button type="button" class="btn btn-sm btn-link text-muted" id="sgCheckAll"><i class="far fa-check-square mr-1"></i>Todas</button>
+                    <button type="button" class="btn btn-sm btn-link text-muted" id="sgCheckNone"><i class="far fa-square mr-1"></i>Ninguna</button>
+                </div>
+            </div>
+            <p class="small text-muted mb-3">
+                Marque las materias que cursa el grupo y asigne el docente de cada una. Todas comparten el nombre, los estudiantes y un solo horario semanal.
+            </p>
+
+            <div id="sgSubjectsEmpty" class="text-center text-muted bg-light rounded p-5">
+                <i class="fas fa-layer-group fa-2x mb-2 d-block"></i>
+                Elija la carrera y el semestre para ver sus materias.
+            </div>
+            <div class="table-responsive" id="sgSubjectsTable" style="display: none;">
+                <table class="table table-sm table-hover mb-0 sg-subjects">
+                    <thead class="bg-light">
+                        <tr>
+                            <th style="width: 36px;"></th>
+                            <th>Materia</th>
+                            <th style="min-width: 210px;">Docente <span class="text-danger">*</span></th>
+                            <th style="min-width: 180px;">Laboratorio</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sgSubjectRows"></tbody>
+                </table>
+            </div>
+
+            <div class="alert alert-light border-0 border-left border-info small mt-3 mb-0" style="border-left-width: 4px !important;">
+                <i class="far fa-calendar-alt mr-1 text-info"></i>
+                @(Model.IsEdit
+                    ? "El horario del grupo se arma en «Horario por semestre»: una sola grilla con todas sus materias."
+                    : "Al crear el grupo irá a su horario semanal para acomodar todas sus materias en una sola grilla.")
+            </div>
+        </div>
+    </div>
+
+    <hr />
+    <div class="form-actions text-right mt-4">
+        <button type="submit" class="btn @(Model.IsEdit ? "btn-warning text-white" : "btn-info") btn-rounded px-5 shadow-sm font-weight-bold py-2">
+            <i class="fas fa-save mr-1"></i> @(Model.IsEdit ? "Guardar cambios" : "Crear grupo y armar horario")
+        </button>
+        <a href="@Model.CancelUrl" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">Cancelar</a>
+    </div>
+</form>
+
+<script type="application/json" id="sgConfig">@Html.Raw(Model.ConfigJson)</script>

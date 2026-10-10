@@ -86,7 +86,7 @@ internal sealed class TestDb : IDisposable
 
     /// <summary>Agrega una planificación con horario derivado por PlanningSlot.Apply (periodo Id = Order).</summary>
     public Planning AddPlanning(int id, DateTime date, int startOrder, int count, int laboratoryId = LabA, int teacherPersonId = Teacher1,
-        string status = PlanningStatus.Planned, int? weekId = Week1Id, int? students = 15, string subject = "Química")
+        string status = PlanningStatus.Planned, int? weekId = Week1Id, int? students = 15, string subject = "Química", int? courseGroupId = null)
     {
         var planning = new Planning
         {
@@ -99,6 +99,7 @@ internal sealed class TestDb : IDisposable
             Status = status,
             AcademicWeekId = weekId,
             RequestDate = date,
+            CourseGroupId = courseGroupId,
             Subject = new Subject { Id = id * 10, Name = subject },
             PracticeSchedule = students.HasValue ? new PracticeSchedule { Id = id * 10, Code = $"PP-{id}", StudentCount = students } : null
         };
@@ -159,7 +160,64 @@ internal sealed class TestDb : IDisposable
     public SlotValidationService Validation() => new(
         Context,
         Occupancy(),
-        new ArticleAvailabilityService(Context, new L3CircuitService(Context, NullLogger<L3CircuitService>.Instance)));
+        new ArticleAvailabilityService(Context, new L3CircuitService(Context, NullLogger<L3CircuitService>.Instance)),
+        new GroupScheduleService(Context));
+
+    public GroupScheduleService GroupSchedule() => new(Context);
+
+    // ==================== Siembra académica: carrera, materia, grupos y horarios ====================
+
+    public const int CareerId = 10;
+    public const int Management2Id = 2;
+
+    public void AddManagement(int id, string code, int year = 2026, int semester = 2)
+    {
+        Context.Managements.Add(new Management { Id = id, Code = code, Year = year, Semester = semester });
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+    }
+
+    public Intern AddIntern(int id, string name)
+    {
+        var intern = new Intern { Id = id, Name = name };
+        Context.Interns.Add(intern);
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+        return intern;
+    }
+
+    public Subject AddSubject(int id, string name, int? careerId = null, int? semester = null, GeneralStatus status = GeneralStatus.Activo)
+    {
+        var subject = new Subject { Id = id, Name = name, CareerId = careerId, Semester = semester, Status = status };
+        Context.Subjects.Add(subject);
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+        return subject;
+    }
+
+    public CourseGroup AddGroup(int id, string code, string name, int subjectId, int teacherPersonId = Teacher1,
+        int managementId = ManagementId, GeneralStatus status = GeneralStatus.Activo)
+    {
+        var group = new CourseGroup { Id = id, Code = code, Name = name, SubjectId = subjectId, TeacherPersonId = teacherPersonId, ManagementId = managementId, Status = status };
+        Context.CourseGroups.Add(group);
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+        return group;
+    }
+
+    /// <summary>Agrega celdas de horario semanal al grupo (periodo Id = Order, como en el catálogo sembrado).</summary>
+    public void AddGroupSlots(int groupId, params (int Weekday, int PeriodOrder)[] cells)
+    {
+        foreach (var (weekday, periodOrder) in cells)
+            Context.CourseGroupScheduleSlots.Add(new CourseGroupScheduleSlot
+            {
+                CourseGroupId = groupId,
+                Weekday = weekday,
+                ClassPeriodId = periodOrder   // el catálogo sembrado usa Id = Order (1..12)
+            });
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+    }
 
     public void Dispose() => Context.Dispose();
 }

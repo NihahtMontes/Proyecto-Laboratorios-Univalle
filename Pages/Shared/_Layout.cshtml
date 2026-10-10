@@ -84,10 +84,7 @@
 
                                 @{
                                     var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
-                                    bool showBell = currentPage == "/Index" || currentPage == "/" || currentPage == "" ||
-                                                    currentPage.StartsWith("/Managements") || currentPage.StartsWith("/Acquisitions") ||
-                                                    currentPage.StartsWith("/Requests") || currentPage.StartsWith("/Maintenances") ||
-                                                    currentPage.StartsWith("/Departures");
+                                    bool showBell = User.Identity != null && User.Identity.IsAuthenticated;
 
                                     var notificationManagementId = ViewData["ManagementId"]?.ToString() ?? "";
                                     if (string.IsNullOrWhiteSpace(notificationManagementId) && currentPage.StartsWith("/Managements"))
@@ -97,11 +94,13 @@
                                     var notificationManagementType = ViewData["ManagementType"]?.ToString() ?? Context.Request.Query["ManagementType"].ToString();
                                     var notificationScope =
                                         currentPage == "/Index" || currentPage == "/" || currentPage == "" || currentPage.StartsWith("/Managements") ? "dashboard" :
-                                        currentPage.StartsWith("/Maintenances") ? "maintenance" :
+                                        currentPage.StartsWith("/Maintenances") || currentPage.StartsWith("/Kardex") || currentPage.EndsWith("/Kardex") ? "maintenance" :
+                                        currentPage.StartsWith("/LaboratoryOperations") ? "planning" :
                                         currentPage.StartsWith("/Acquisitions") ? "acquisition" :
                                         currentPage.StartsWith("/Departures") ? "departure" :
                                         currentPage.StartsWith("/Requests") ? "request" :
-                                        "";
+                                        currentPage.StartsWith("/Notifications") ? "all" :
+                                        "dashboard";
                                 }
 
                                 <ul class="navbar-nav float-right">
@@ -113,6 +112,7 @@
                                                 <span class="badge badge-danger badge-pill rounded-circle" id="notificationCount" style="position: absolute; top: 15px; right: 5px; font-size: 10px; display: none;">0</span>
                                             </a>
                                             <div class="dropdown-menu dropdown-menu-right mailbox animated bounceInDown" style="min-width: 380px; max-width: 420px;">
+                                                @Html.AntiForgeryToken()
                                                 <div class="p-3 border-bottom">
                                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                                         <h6 class="font-weight-bold mb-0"><i class="fas fa-bell mr-2 text-warning"></i> Notificaciones</h6>
@@ -127,6 +127,11 @@
                                                         <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
                                                         <div class="mt-2">Cargando notificaciones...</div>
                                                     </div>
+                                                </div>
+                                                <div class="text-center border-top py-2">
+                                                    <a href="/Notifications" class="small font-weight-bold text-primary text-decoration-none">
+                                                        <i class="fas fa-chevron-right mr-1"></i> Ver todas las notificaciones
+                                                    </a>
                                                 </div>
                                             </div>
                                         </li>
@@ -252,39 +257,76 @@
                                     const managementId = '@notificationManagementId';
                                     const managementType = '@notificationManagementType';
                                     const notificationScope = '@notificationScope';
-                                    const LS_KEY = 'dismissed_notifications';
-                                    const LS_TTL = 24 * 60 * 60 * 1000; // 24 hours
+                                    const LS_SNOOZE_KEY = 'postponed_notifications';
 
-                                    // ─── localStorage helpers ───
-                                    function getDismissed() {
+                                    // ─── Fecha local (yyyy-mm-dd) ───
+                                    function localDateKey() {
+                                        return new Date().toLocaleDateString('en-CA');
+                                    }
+
+                                    // ─── Posponer calculados: ocultos solo el día en que se pospusieron ───
+                                    function getSnoozedMap() {
                                         try {
-                                            const raw = localStorage.getItem(LS_KEY);
+                                            const raw = localStorage.getItem(LS_SNOOZE_KEY);
                                             if (!raw) return {};
                                             const data = JSON.parse(raw);
-                                            const now = Date.now();
+                                            if (!data || typeof data !== 'object') return {};
+                                            const today = localDateKey();
                                             const clean = {};
-                                            for (const [key, ts] of Object.entries(data)) {
-                                                if (now - ts < LS_TTL) clean[key] = ts;
+                                            for (const [key, date] of Object.entries(data)) {
+                                                if (typeof date === 'string' && date === today) clean[key] = date;
                                             }
-                                            localStorage.setItem(LS_KEY, JSON.stringify(clean));
                                             return clean;
                                         } catch { return {}; }
                                     }
 
-                                    function dismissSynthetic(syntheticKey) {
+                                    function snoozeSynthetic(syntheticKey) {
+                                        if (!syntheticKey) return;
                                         try {
-                                            const data = getDismissed();
-                                            data[syntheticKey] = Date.now();
-                                            localStorage.setItem(LS_KEY, JSON.stringify(data));
-                                        } catch {}
+                                            const data = getSnoozedMap();
+                                            data[syntheticKey] = localDateKey();
+                                            localStorage.setItem(LS_SNOOZE_KEY, JSON.stringify(data));
+                                        } catch { }
                                     }
+
+                                    // ─── API global reutilizable por las páginas ───
+                                    window.LabNotifications = {
+                                        token: function() {
+                                            const $input = $('#notificationDropdown input[name="__RequestVerificationToken"]').first();
+                                            if ($input.length && $input.val()) return $input.val();
+                                            return $('meta[name="request-verification-token"]').attr('content') || '';
+                                        },
+                                        markAsRead: function(id) {
+                                            id = parseInt(id, 10) || 0;
+                                            if (id <= 0) return $.Deferred().resolve().promise();
+                                            return $.ajax({
+                                                url: '/Api/Notifications?handler=MarkAsRead',
+                                                type: 'POST',
+                                                data: { id: id },
+                                                headers: { 'RequestVerificationToken': window.LabNotifications.token() }
+                                            });
+                                        },
+                                        markAllAsRead: function() {
+                                            return $.ajax({
+                                                url: '/Api/Notifications?handler=MarkAllAsRead',
+                                                type: 'POST',
+                                                headers: { 'RequestVerificationToken': window.LabNotifications.token() }
+                                            });
+                                        },
+                                        snooze: function(syntheticKey) { snoozeSynthetic(syntheticKey); },
+                                        isSnoozed: function(syntheticKey) {
+                                            if (!syntheticKey) return false;
+                                            return !!getSnoozedMap()[syntheticKey];
+                                        }
+                                    };
 
                                     // ─── URL builder ───
                                     function getNotificationsUrl() {
                                         let url = '/Api/Notifications?handler=Unread';
-                                        if (notificationScope) url += '&scope=' + encodeURIComponent(notificationScope);
+                                        url += '&scope=' + encodeURIComponent(notificationScope);
                                         if (managementId) url += '&managementId=' + encodeURIComponent(managementId);
                                         if (managementType) url += '&managementType=' + encodeURIComponent(managementType);
+                                        url += '&take=30';
                                         return url;
                                     }
 
@@ -299,23 +341,35 @@
                                         return url.indexOf('/') === 0 && url.indexOf('//') !== 0 ? url : '';
                                     }
 
+                                    const groupOrder = ['vencidos', 'hoy', 'proximos', 'preventivo', 'planificacion', 'prestamos', 'adquisiciones', 'otros'];
                                     const groupConfig = {
-                                        vencidos:      { label: 'Vencidos',      color: 'danger',  icon: 'fas fa-exclamation-triangle' },
-                                        proximos:      { label: 'Pr\u00f3ximos',       color: 'info',    icon: 'fas fa-tools' },
-                                        prestamos:     { label: 'Pr\u00e9stamos',      color: 'warning', icon: 'fas fa-exchange-alt' },
-                                        adquisiciones: { label: 'Adquisiciones', color: 'success', icon: 'fas fa-shopping-cart' },
-                                        otros:         { label: 'Otros',         color: 'secondary', icon: 'fas fa-bell' }
+                                        vencidos:      { label: 'Vencidos',            color: 'danger',    icon: 'fas fa-exclamation-triangle' },
+                                        hoy:           { label: 'Para hoy',            color: 'warning',   icon: 'fas fa-calendar-day' },
+                                        proximos:      { label: 'Próximos',            color: 'info',      icon: 'fas fa-tools' },
+                                        preventivo:    { label: 'Preventivo sugerido', color: 'primary',   icon: 'fas fa-calendar-check' },
+                                        planificacion: { label: 'Planificación',       color: 'primary',   icon: 'fas fa-flask' },
+                                        prestamos:     { label: 'Préstamos',           color: 'warning',   icon: 'fas fa-exchange-alt' },
+                                        adquisiciones: { label: 'Adquisiciones',       color: 'success',   icon: 'fas fa-shopping-cart' },
+                                        otros:         { label: 'Otros',               color: 'secondary', icon: 'fas fa-bell' }
                                     };
+
+                                    function urgencyColor(urgency) {
+                                        return urgency === 'danger' ? '#ef4444'
+                                            : urgency === 'warning' ? '#f59e0b'
+                                            : urgency === 'success' ? '#22c55e'
+                                            : urgency === 'secondary' ? '#6c757d'
+                                            : '#3b82f6';
+                                    }
 
                                     // ─── Render single notification ───
                                     function renderNotificationItem(item) {
                                         const safeUrl = getSafeUrl(item.url);
                                         const cfg = groupConfig[item.group] || groupConfig.otros;
-                                        const borderColor = item.urgency === 'danger' ? '#ef4444' : item.urgency === 'warning' ? '#f59e0b' : item.urgency === 'success' ? '#22c55e' : '#3b82f6';
+                                        const isPersisted = (parseInt(item.id, 10) || 0) > 0;
 
                                         const $wrap = $('<div/>', {
-                                            class: 'd-flex align-items-start px-3 py-2',
-                                            style: 'border-left: 4px solid ' + borderColor + '; background: ' + (item.urgency === 'danger' ? '#fef2f2' : 'transparent') + ';'
+                                            class: 'd-flex align-items-start px-3 py-2 js-notification-item',
+                                            style: 'border-left: 4px solid ' + urgencyColor(item.urgency) + '; background: ' + (item.urgency === 'danger' ? '#fef2f2' : 'transparent') + ';'
                                         });
                                         $wrap.attr('data-notification-id', item.id || 0);
                                         if (item.syntheticKey) {
@@ -331,7 +385,7 @@
 
                                         // Body
                                         const $body = $('<div/>', { class: 'flex-grow-1' });
-                                        $('<div/>', { class: 'font-weight-bold text-dark small text-truncate' }).text(item.title || 'Notificaci\u00f3n').appendTo($body);
+                                        $('<div/>', { class: 'font-weight-bold text-dark small text-truncate' }).text(item.title || 'Notificación').appendTo($body);
                                         $('<div/>', { class: 'text-muted small text-truncate' }).text(item.message || '').appendTo($body);
                                         $('<div/>', { class: 'text-muted', style: 'font-size: 0.7rem;' })
                                             .append($('<i/>', { class: 'far fa-clock mr-1' }))
@@ -341,37 +395,62 @@
                                         // Actions
                                         const $actions = $('<div/>', { class: 'ml-2 d-flex align-items-start flex-shrink-0' });
 
-                                        // Dismiss button
-                                        const $dismissBtn = $('<button/>', {
+                                        // Posponer (calculado) o marcar leída (persistido)
+                                        const $actionBtn = $('<button/>', {
+                                            type: 'button',
                                             class: 'btn btn-sm btn-link text-muted p-0 ml-1',
-                                            title: 'Descartar',
-                                            style: 'font-size: 0.7rem; line-height: 1;'
-                                        }).html('<i class="fas fa-times"></i>');
-                                        $dismissBtn.on('click', function(e) {
+                                            title: isPersisted ? 'Marcar como leída' : 'Posponer hasta mañana',
+                                            style: 'font-size: 0.8rem; line-height: 1;'
+                                        }).html('<i class="' + (isPersisted ? 'fas fa-check' : 'far fa-clock') + '"></i>');
+                                        $actionBtn.on('click', function(e) {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            dismissNotification(item.id, item.syntheticKey, $wrap);
+                                            if (isPersisted) {
+                                                window.LabNotifications.markAsRead(item.id).always(function() {
+                                                    $wrap.fadeOut(200, function() { $(this).remove(); });
+                                                    setTimeout(loadNotifications, 250);
+                                                });
+                                            } else if (item.syntheticKey) {
+                                                window.LabNotifications.snooze(item.syntheticKey);
+                                                $wrap.fadeOut(200, function() { $(this).remove(); });
+                                                setTimeout(loadNotifications, 250);
+                                            }
                                         });
-                                        $actions.append($dismissBtn);
+                                        $actions.append($actionBtn);
 
                                         $wrap.append($iconWrap, $body, $actions);
 
-                                        // Click on body navigates
+                                        // Click on body navigates (persistido: marca leída y luego navega; calculado: navega directo)
                                         if (safeUrl) {
                                             $body.css('cursor', 'pointer').on('click', function(e) {
                                                 e.preventDefault();
-                                                markSingleAsRead(item.id, safeUrl);
+                                                if (isPersisted) {
+                                                    window.LabNotifications.markAsRead(item.id).always(function() {
+                                                        window.location.href = safeUrl;
+                                                    });
+                                                } else {
+                                                    window.location.href = safeUrl;
+                                                }
                                             });
                                         }
 
                                         return $wrap;
                                     }
 
-                                    // ─── Group and render all notifications ───
+                                    // ─── Pospuestos presentes en la lista ───
+                                    function snoozedKeysIn(items) {
+                                        const snoozed = getSnoozedMap();
+                                        const keys = {};
+                                        (items || []).forEach(function(item) {
+                                            if (item.syntheticKey && snoozed[item.syntheticKey]) keys[item.syntheticKey] = true;
+                                        });
+                                        return keys;
+                                    }
+
                                     function getVisibleNotifications(items) {
-                                        const dismissed = getDismissed();
+                                        const snoozed = getSnoozedMap();
                                         return (items || []).filter(function(item) {
-                                            if (item.syntheticKey && dismissed[item.syntheticKey]) return false;
+                                            if (item.syntheticKey && snoozed[item.syntheticKey]) return false;
                                             return true;
                                         });
                                     }
@@ -385,18 +464,21 @@
                                         }
                                     }
 
-                                    function renderNotifications(items) {
+                                    // ─── Group and render all notifications ───
+                                    function renderNotifications(items, groupCounts, totalCount) {
                                         const $list = $('#notificationList');
                                         $list.empty();
 
-                                        const filtered = getVisibleNotifications(items);
-                                        updateBadge(filtered.length);
+                                        const snoozedKeys = snoozedKeysIn(items);
+                                        const snoozedCount = Object.keys(snoozedKeys).length;
+                                        updateBadge(Math.max(0, (totalCount || 0) - snoozedCount));
 
+                                        const filtered = getVisibleNotifications(items);
                                         if (filtered.length === 0) {
                                             $list.html(
                                                 '<div class="text-center text-muted p-5">' +
                                                 '<i class="fas fa-check-circle fa-3x mb-3 text-success opacity-5"></i>' +
-                                                '<div class="font-weight-bold">Todo al d\u00eda</div>' +
+                                                '<div class="font-weight-bold">Todo al día</div>' +
                                                 '<div class="small">No tienes notificaciones nuevas.</div>' +
                                                 '</div>'
                                             );
@@ -405,7 +487,6 @@
 
                                         // Group by group
                                         const groups = {};
-                                        const groupOrder = ['vencidos', 'proximos', 'prestamos', 'adquisiciones', 'otros'];
                                         filtered.forEach(function(item) {
                                             const g = item.group || 'otros';
                                             if (!groups[g]) groups[g] = [];
@@ -416,6 +497,13 @@
                                         groupOrder.forEach(function(gKey) {
                                             if (!groups[gKey] || groups[gKey].length === 0) return;
                                             const cfg = groupConfig[gKey] || groupConfig.otros;
+
+                                            // Contador del grupo (total del servidor menos pospuestos de ese grupo)
+                                            var snoozedInGroup = 0;
+                                            filtered.filter(function(i) { return (i.group || 'otros') === gKey; }).forEach(function(i) {
+                                                if (i.syntheticKey && snoozedKeys[i.syntheticKey]) snoozedInGroup++;
+                                            });
+                                            const groupCount = Math.max(0, ((groupCounts && groupCounts[gKey]) || groups[gKey].length) - snoozedInGroup);
 
                                             // Group header
                                             var $header = $('<div/>', {
@@ -428,7 +516,7 @@
                                             $('<span/>', {
                                                 class: 'badge badge-' + cfg.color + ' badge-pill ml-auto',
                                                 style: 'font-size: 0.65rem;'
-                                            }).text(groups[gKey].length).appendTo($header);
+                                            }).text(groupCount).appendTo($header);
                                             $list.append($header);
 
                                             // Items
@@ -438,78 +526,119 @@
                                         });
                                     }
 
-                                    // ─── Update counters ───
-                                    function updateCounters(items) {
-                                        const counters = {};
-                                        getVisibleNotifications(items).forEach(function(item) {
-                                            const g = item.group || 'otros';
-                                            counters[g] = (counters[g] || 0) + 1;
-                                        });
-
+                                    // ─── Update counters (chips por grupo) ───
+                                    function updateCounters(items, groupCounts) {
+                                        const snoozedKeys = snoozedKeysIn(items);
                                         const $el = $('#notificationCounters');
                                         $el.empty();
-                                        const groupOrder = ['vencidos', 'proximos', 'prestamos', 'adquisiciones'];
                                         var hasCounters = false;
                                         groupOrder.forEach(function(gKey) {
-                                            if (!counters[gKey]) return;
+                                            const total = (groupCounts && groupCounts[gKey]) || 0;
+                                            if (!total) return;
+                                            var snoozedInGroup = 0;
+                                            (items || []).forEach(function(i) {
+                                                if ((i.group || 'otros') === gKey && i.syntheticKey && snoozedKeys[i.syntheticKey]) snoozedInGroup++;
+                                            });
+                                            const visible = Math.max(0, total - snoozedInGroup);
+                                            if (visible <= 0) return;
                                             hasCounters = true;
-                                            const cfg = groupConfig[gKey];
+                                            const cfg = groupConfig[gKey] || groupConfig.otros;
                                             $('<span/>', {
                                                 class: 'text-' + cfg.color
-                                            }).html('<i class="' + cfg.icon + ' mr-1"></i>' + counters[gKey]).appendTo($el);
+                                            }).html('<i class="' + cfg.icon + ' mr-1"></i>' + visible).appendTo($el);
                                         });
                                         $el.css('display', hasCounters ? 'flex' : 'none');
                                     }
 
+                                    // ─── Toast "en pantalla": una vez por día y ámbito ───
+                                    function maybeShowCriticalToast(items, groupCounts, data) {
+                                        try {
+                                            const today = localDateKey();
+                                            // La página de planificación muestra su propio aviso.
+                                            if (sessionStorage.getItem('lab-planning-notif-' + today)) return;
+
+                                            const toastMarkKey = 'notif-toast-' + notificationScope + '-' + today;
+                                            if (sessionStorage.getItem(toastMarkKey)) return;
+
+                                            const snoozedKeys = snoozedKeysIn(items);
+                                            var snoozedCritical = 0;
+                                            var snoozedOverdue = 0;
+                                            (items || []).forEach(function(item) {
+                                                if (!item.syntheticKey || !snoozedKeys[item.syntheticKey]) return;
+                                                if (item.urgency === 'danger' || item.urgency === 'warning') snoozedCritical++;
+                                                if (item.group === 'vencidos') snoozedOverdue++;
+                                            });
+
+                                            const criticalCount = Math.max(0, ((data && data.criticalCount) || 0) - snoozedCritical);
+                                            if (criticalCount <= 0) return;
+
+                                            const overdueCount = Math.max(0, ((groupCounts && groupCounts.vencidos) || 0) - snoozedOverdue);
+                                            const restCount = Math.max(0, criticalCount - overdueCount);
+
+                                            const parts = [];
+                                            if (overdueCount > 0) parts.push(overdueCount + ' vencido(s)');
+                                            if (restCount > 0) parts.push(restCount + ' para hoy');
+                                            const summary = parts.length > 0 ? parts.join(' · ') : criticalCount + ' requiere(n) atención';
+
+                                            const openBell = function() {
+                                                $('#notificationDropdown [data-toggle="dropdown"]').dropdown('toggle');
+                                            };
+
+                                            const CriticalToast = Swal.mixin({
+                                                toast: true,
+                                                position: 'top-end',
+                                                timer: 7000,
+                                                showConfirmButton: false,
+                                                timerProgressBar: true,
+                                                onOpen: function(el) { if (el && el.addEventListener) el.addEventListener('click', openBell); },
+                                                didOpen: function(el) { if (el && el.addEventListener) el.addEventListener('click', openBell); }
+                                            });
+
+                                            CriticalToast.fire({
+                                                icon: overdueCount > 0 ? 'error' : 'warning',
+                                                title: 'Tienes ' + criticalCount + ' aviso' + (criticalCount === 1 ? '' : 's') + ' que ' + (criticalCount === 1 ? 'requiere' : 'requieren') + ' atención',
+                                                text: summary
+                                            });
+
+                                            sessionStorage.setItem(toastMarkKey, '1');
+                                        } catch { }
+                                    }
+
                                     // ─── Load notifications ───
+                                    var firstLoadDone = false;
                                     function loadNotifications() {
                                         $.get(getNotificationsUrl(), function(data) {
                                             const items = data.items || [];
-                                            renderNotifications(items);
-                                            updateCounters(items);
+                                            const groupCounts = data.groupCounts || {};
+                                            renderNotifications(items, groupCounts, data.count || 0);
+                                            updateCounters(items, groupCounts);
+                                            if (!firstLoadDone) {
+                                                firstLoadDone = true;
+                                                maybeShowCriticalToast(items, groupCounts, data);
+                                            }
                                         });
                                     }
 
                                     // ─── Actions ───
-                                    window.markSingleAsRead = function(id, url) {
-                                        $.get('/Api/Notifications?handler=MarkAsRead&id=' + encodeURIComponent(id), function() {
-                                            loadNotifications();
-                                            if (url) window.location.href = url;
-                                        });
-                                    };
-
-                                    function dismissNotification(id, syntheticKey, $element) {
-                                        $element.fadeOut(200, function() {
-                                            $(this).remove();
-                                        });
-                                        if (id < 0 && syntheticKey) {
-                                            dismissSynthetic(syntheticKey);
-                                        } else {
-                                            $.get('/Api/Notifications?handler=MarkAsRead&id=' + encodeURIComponent(id));
-                                        }
-                                        // Refresh badge, groups and counters after the fade animation.
-                                        setTimeout(function() {
-                                            loadNotifications();
-                                        }, 250);
-                                    }
-
                                     $('#btnMarkAllRead').on('click', function() {
-                                        // Mark all real notifications as read on server
-                                        $.get('/Api/Notifications?handler=MarkAllAsRead', function() {
-                                            // Dismiss all visible synthetic notifications
-                                            const dismissed = getDismissed();
+                                        window.LabNotifications.markAllAsRead().always(function() {
+                                            // Posponer los calculados visibles.
                                             $('#notificationList [data-synthetic-key]').each(function() {
                                                 const key = $(this).attr('data-synthetic-key');
-                                                if (key) dismissed[key] = Date.now();
+                                                if (key) snoozeSynthetic(key);
                                             });
-                                            try { localStorage.setItem(LS_KEY, JSON.stringify(dismissed)); } catch {}
                                             loadNotifications();
                                         });
                                     });
 
-                                    // ─── Init ───
+                                    // ─── Init: recarga cada 60 s solo con pestaña visible; recarga al volver ───
                                     loadNotifications();
-                                    setInterval(loadNotifications, 30000);
+                                    setInterval(function() {
+                                        if (document.visibilityState === 'visible') loadNotifications();
+                                    }, 60000);
+                                    document.addEventListener('visibilitychange', function() {
+                                        if (document.visibilityState === 'visible') loadNotifications();
+                                    });
                                 });
                         </script>
                     }

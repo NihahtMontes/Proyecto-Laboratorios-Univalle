@@ -76,6 +76,21 @@ public class RequerimientosModel : PageModel
     /// <summary>True si el total pedido de este artículo supera su stock registrado.</summary>
     public bool IsShort(RequirementRow row) =>
         row.Stock?.Available is decimal available && RequestedByArticle.GetValueOrDefault(row.ArticleId) > available;
+
+    /// <summary>Artículos de inventario sin stock (sin registro o en 0): bloquean "Validar disponibilidad".</summary>
+    public List<PlanningStockGate.MissingStock> MissingStock { get; private set; } = [];
+
+    /// <summary>Laboratorio donde se registra el stock faltante (Economato).</summary>
+    public int? StockLaboratoryId { get; private set; }
+
+    public bool IsMissingStock(RequirementRow row) => PlanningStockGate.IsMissing(row.Stock);
+
+    /// <summary>Registrar el stock de un artículo y volver a estos requerimientos al guardar o cancelar.</summary>
+    public string? StockUrl(int articleId) => StockLaboratoryId is int labId
+        ? PlanningStockGate.StockEditUrl(labId, articleId, ReturnHereUrl)
+        : null;
+
+    private string ReturnHereUrl => Url.Page("./Requerimientos", new { planId = PlanId }) ?? $"/LaboratoryOperations/Requerimientos?planId={PlanId}";
     public sealed record RecipeRow(string ArticleCode, string ArticleName, bool ArticlePending, decimal? BaseQuantity,
         bool IsScalable, decimal? ComputedQuantity, string? Note);
     public sealed record KitRow(string ArticleCode, string ArticleName, string? Category, bool IsEquipment, decimal BaseQuantity,
@@ -442,6 +457,19 @@ public class RequerimientosModel : PageModel
             return RedirectToPage(new { planId = PlanId });
         }
 
+        // No se planifica lo que no tiene stock: se lleva al usuario a registrar la existencia del primero
+        // y la pantalla de existencias lo devuelve aquí al guardar o cancelar.
+        var missing = await PlanningStockGate.FindAsync(_context, _availability, plan.Id);
+        if (missing.Count > 0)
+        {
+            StockLaboratoryId = await PlanningStockGate.StockLaboratoryIdAsync(_context, plan.Id);
+            var names = string.Join(", ", missing.Take(5).Select(m => m.ArticleName)) + (missing.Count > 5 ? "…" : "");
+            TempData.Warning($"Registre el stock antes de continuar. Sin stock: {names}.");
+            return StockUrl(missing[0].ArticleId) is string url
+                ? LocalRedirect(url)
+                : RedirectToPage(new { planId = PlanId });
+        }
+
         return RedirectToPage("./Disponibilidad", new { planId = PlanId });
     }
 
@@ -507,6 +535,14 @@ public class RequerimientosModel : PageModel
         var stock = await _availability.GetStockAsync(Items.Select(i => i.ArticleId), null); // total institucional (D12)
         Items = Items.Select(i => i with { Stock = stock.GetValueOrDefault(i.ArticleId) }).ToList();
         RequestedByArticle = Items.GroupBy(i => i.ArticleId).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity ?? 0));
+        MissingStock = Items
+            .Where(IsMissingStock)
+            .GroupBy(i => i.ArticleId)
+            .Select(g => new PlanningStockGate.MissingStock(g.Key, g.First().ArticleCode, g.First().ArticleName))
+            .OrderBy(m => m.ArticleName)
+            .ToList();
+        if (MissingStock.Count > 0)
+            StockLaboratoryId = await PlanningStockGate.StockLaboratoryIdAsync(_context, Plan.Id);
 
         if (IsEditable)
         {

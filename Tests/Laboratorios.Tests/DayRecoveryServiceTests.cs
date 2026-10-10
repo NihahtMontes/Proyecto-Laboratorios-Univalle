@@ -10,6 +10,9 @@ public class DayRecoveryServiceTests
 {
     private static readonly DateTime Day = TestDb.Week1Monday.AddDays(1);
 
+    private static DayRecoveryService Service(TestDb db) =>
+        new(db.Context, new NoOpPlanningLock(), NullLogger<DayRecoveryService>.Instance);
+
     [Fact]
     public async Task Suspend_MarksAllOccupyingPlansAndPreservesTheirPreviousStatus()
     {
@@ -68,5 +71,88 @@ public class DayRecoveryServiceTests
 
         Assert.True(result.Ok, result.Message);
         Assert.Equal(AcademicDayStatus.Suspended, db.Context.AcademicDays.AsNoTracking().Single(d => d.Id == dayId).Status);
+    }
+
+    [Fact]
+    public async Task SuspendByDate_WithCalendarDate_SuspendsDay()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(50, Day, 1, 2);
+
+        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, Day, "Feriado");
+
+        Assert.True(result.Ok, result.Message);
+        var academicDay = db.Context.AcademicDays.AsNoTracking().Single(d => d.Date == Day);
+        Assert.Equal(AcademicDayStatus.Suspended, academicDay.Status);
+        Assert.Equal(result.RecoveryId, academicDay.DayRecoveryId);
+        Assert.Equal(PlanningStatus.PendingRecovery, db.Context.Plannings.AsNoTracking().Single(p => p.Id == 50).Status);
+    }
+
+    [Fact]
+    public async Task SuspendByDate_OutsideCalendar_FailsWithExplicitMessage()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(51, Day, 1, 2);
+        var outside = TestDb.Week2Monday.AddDays(7);   // domingo de la semana 3: sin calendario
+
+        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, outside, "Feriado");
+
+        Assert.False(result.Ok);
+        Assert.Contains($"La fecha {outside:dd/MM/yyyy} no pertenece al calendario académico", result.Message);
+        Assert.Empty(db.Context.DayRecoveries.AsNoTracking());
+        Assert.Equal(AcademicDayStatus.Enabled, db.Context.AcademicDays.AsNoTracking().Single(d => d.Date == Day).Status);
+    }
+
+    [Fact]
+    public async Task SuspendByDate_AlreadySuspended_FailsWithExplicitMessage()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(52, Day, 1, 2);
+
+        var result = await Service(db).SuspendByDateAsync(TestDb.ManagementId, TestDb.SuspendedDay, "Otro motivo");
+
+        Assert.False(result.Ok);
+        Assert.Contains("ya está suspendido o tiene una reposición", result.Message);
+        Assert.Empty(db.Context.DayRecoveries.AsNoTracking());
+    }
+
+    [Fact]
+    public async Task Preview_CountsPlanningsByLaboratory()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(53, Day, 1, 2);
+        db.AddPlanning(54, Day, 3, 2, laboratoryId: TestDb.LabB);
+        db.AddPlanning(55, Day, 5, 2);
+
+        var preview = await Service(db).PreviewAsync(TestDb.ManagementId, Day);
+
+        Assert.True(preview.Ok, preview.Message);
+        Assert.Equal(Day.Date, preview.Date);
+        Assert.Equal(3, preview.Total);
+        Assert.Equal(2, preview.Labs.Count);
+        var labA = preview.Labs.Single(l => l.LaboratoryId == TestDb.LabA);
+        var labB = preview.Labs.Single(l => l.LaboratoryId == TestDb.LabB);
+        Assert.Equal(2, labA.Count);
+        Assert.Equal("LAB-A · Laboratorio A", labA.Label);
+        Assert.Equal(1, labB.Count);
+        Assert.Empty(preview.Blockers);
+    }
+
+    [Fact]
+    public async Task Preview_WithIncompatibleStatus_ListsBlockersAndFails()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(56, Day, 1, 2);
+        db.AddPlanning(57, Day, 3, 2, status: "EnRevisión");   // ocupa ambiente pero no es compatible
+
+        var preview = await Service(db).PreviewAsync(TestDb.ManagementId, Day);
+
+        Assert.False(preview.Ok);
+        Assert.Single(preview.Blockers);
+        Assert.Equal(57, preview.Blockers[0].PlanningId);
+        Assert.Equal("PRA-00057", preview.Blockers[0].Code);
+        Assert.Equal("EnRevisión", preview.Blockers[0].StatusLabel);
+        Assert.Contains("1 planificación(es) en estado no compatible", preview.Message);
+        Assert.Contains("PRA-00057", preview.Message);
     }
 }

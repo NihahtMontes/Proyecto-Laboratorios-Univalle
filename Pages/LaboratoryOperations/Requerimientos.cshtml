@@ -251,7 +251,34 @@
                         }
                         else
                         {
-                            var shortArticleIds = Model.Items.Where(i => Model.IsShort(i)).Select(i => i.ArticleId).ToHashSet();
+                            if (Model.MissingStock.Count > 0)
+                            {
+                                <div class="alert alert-danger border-0 rounded mb-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-box-open fa-2x mr-3"></i>
+                                        <div>
+                                            <strong>Hay @Model.MissingStock.Count artículo(s) sin stock.</strong><br />
+                                            <span>Registre su existencia para poder validar la disponibilidad. Al guardar volverá a esta pantalla.</span>
+                                        </div>
+                                    </div>
+                                    @if (canWrite)
+                                    {
+                                        <div class="d-flex flex-wrap">
+                                            @foreach (var missing in Model.MissingStock)
+                                            {
+                                                var url = Model.StockUrl(missing.ArticleId);
+                                                if (url != null)
+                                                {
+                                                    <a href="@url" class="btn btn-sm btn-light border border-danger text-danger font-weight-bold btn-rounded mr-2 mb-1">
+                                                        <i class="fas fa-plus-circle mr-1"></i>@missing.ArticleName
+                                                    </a>
+                                                }
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            var shortArticleIds = Model.Items.Where(i => Model.IsShort(i) && !Model.IsMissingStock(i)).Select(i => i.ArticleId).ToHashSet();
                             if (shortArticleIds.Count > 0)
                             {
                                 <div class="alert alert-warning border-0 rounded d-flex align-items-center mb-3">
@@ -341,6 +368,10 @@
                                                         <span class="badge badge-secondary"><i class="fas fa-question-circle mr-1"></i>Sin stock</span>
                                                         <small class="d-block text-muted">sin registro</small>
                                                     }
+                                                    else if (Model.IsMissingStock(item))
+                                                    {
+                                                        <span class="badge badge-danger"><i class="fas fa-box-open mr-1"></i>Stock en 0</span>
+                                                    }
                                                     else if (itemIsShort)
                                                     {
                                                         <span class="text-danger font-weight-bold" title="@stockTitle">
@@ -354,6 +385,12 @@
                                                             <i class="fas fa-check-circle mr-1"></i>@itemAvailable.Value.ToString("0.##")
                                                         </span>
                                                         <small class="d-block text-muted">@itemStock!.SourceText</small>
+                                                    }
+                                                    @if (canWrite && Model.IsMissingStock(item) && Model.StockUrl(item.ArticleId) is string stockUrl)
+                                                    {
+                                                        <a href="@stockUrl" class="btn btn-sm btn-outline-danger btn-rounded mt-1 px-2 py-0 small font-weight-bold">
+                                                            <i class="fas fa-plus mr-1"></i>Registrar stock
+                                                        </a>
                                                     }
                                                 </td>
                                                 <td class="small text-muted">
@@ -400,9 +437,19 @@
                                 @if (canWrite)
                                 {
                                     <form method="post" asp-page-handler="Continue" asp-route-planId="@Model.PlanId" class="d-inline">
-                                        <button type="submit" class="btn btn-dark btn-rounded font-weight-bold px-4 mb-2">
-                                            Validar disponibilidad <i class="mdi mdi-arrow-right ml-1"></i>
-                                        </button>
+                                        @if (Model.MissingStock.Count > 0)
+                                        {
+                                            <button type="submit" class="btn btn-danger btn-rounded font-weight-bold px-4 mb-2"
+                                                    title="Hay artículos sin stock: se abrirá el registro de existencias">
+                                                <i class="fas fa-box-open mr-1"></i> Registrar stock faltante (@Model.MissingStock.Count)
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="btn btn-dark btn-rounded font-weight-bold px-4 mb-2">
+                                                Validar disponibilidad <i class="mdi mdi-arrow-right ml-1"></i>
+                                            </button>
+                                        }
                                     </form>
                                 }
                                 else

@@ -60,6 +60,9 @@ public sealed class SlotValidationService : ISlotValidationService
         public const string Completed = "COMPLETED";
         public const string TeacherBusy = "TEACHER_BUSY";
         public const string OpenDeparture = "OPEN_DEPARTURE";
+        public const string GroupInClass = "GROUP_IN_CLASS";
+        public const string GroupNoSchedule = "GROUP_NO_SCHEDULE";
+        public const string GroupOwnClass = "GROUP_OWN_CLASS";
     }
 
     /// <summary>Estados de origen que ya fueron reubicados (o anulados) y no se pueden volver a mover.</summary>
@@ -70,12 +73,15 @@ public sealed class SlotValidationService : ISlotValidationService
     private readonly ApplicationDbContext _context;
     private readonly IOccupancyService _occupancy;
     private readonly IArticleAvailabilityService _availability;
+    private readonly IGroupScheduleService _schedules;
 
-    public SlotValidationService(ApplicationDbContext context, IOccupancyService occupancy, IArticleAvailabilityService availability)
+    public SlotValidationService(ApplicationDbContext context, IOccupancyService occupancy, IArticleAvailabilityService availability,
+        IGroupScheduleService schedules)
     {
         _context = context;
         _occupancy = occupancy;
         _availability = availability;
+        _schedules = schedules;
     }
 
     public async Task<SlotValidationResult> ValidateAsync(SlotRequest request, CancellationToken ct = default)
@@ -92,6 +98,7 @@ public sealed class SlotValidationService : ISlotValidationService
                 p.Status,
                 p.StatusBeforeRecovery,
                 p.ManagementId,
+                p.CourseGroupId,
                 p.AcademicWeekId,
                 p.StartPeriodId,
                 p.PeriodCount,
@@ -141,7 +148,7 @@ public sealed class SlotValidationService : ISlotValidationService
             var lastOrder = PlanningSlot.LastOrder(startPeriod.Order, count);
             lastPeriod = await _context.ClassPeriods.AsNoTracking().FirstOrDefaultAsync(c => c.Order == lastOrder, ct);
             if (lastPeriod == null)
-                issues.Add(Block(Codes.OutOfRange, $"El catálogo de periodos no contiene el periodo P{lastOrder}."));
+                issues.Add(Block(Codes.OutOfRange, $"El catálogo de periodos no contiene el periodo {lastOrder}."));
             else
                 fits = true;
         }
@@ -192,8 +199,14 @@ public sealed class SlotValidationService : ISlotValidationService
                 var conflicts = await _occupancy.FindConflictsAsync(laboratory.Id, date, startPeriod!.Order, count, excluded, ct);
                 if (conflicts.Count > 0)
                 {
+                    // La regla del ambiente exige un periodo libre: se bloquean solapamientos y bloques contiguos,
+                    // con un mensaje distinto cuando el único problema es la contigüidad.
+                    var overlaps = conflicts.Any(c =>
+                        PlanningSlot.Overlaps(c.StartOrder, c.PeriodCount, startPeriod!.Order, count));
                     issues.Add(new SlotIssue(Codes.LabOccupied, SlotSeverity.Block,
-                        $"El ambiente {laboratory.Code} ya está ocupado el {date:dd/MM/yyyy} en alguno de esos periodos.",
+                        overlaps
+                            ? $"El ambiente {laboratory.Code} ya está ocupado el {date:dd/MM/yyyy} en alguno de esos periodos."
+                            : $"Debe quedar un periodo libre entre prácticas del ambiente {laboratory.Code}: hay otra práctica justo antes o después.",
                         conflicts.Select(c => $"{c.Label} · {c.PeriodsText}").ToList()));
                 }
             }
@@ -232,6 +245,39 @@ public sealed class SlotValidationService : ISlotValidationService
                 issues.Add(new SlotIssue(Codes.TeacherBusy, SlotSeverity.Warning,
                     "El docente elegido tiene otra planificación en alguno de esos periodos.",
                     teacherConflicts.Select(c => $"{c.Label} · {c.PeriodsText}").ToList()));
+            }
+        }
+
+        // Horario de clases del grupo: choques con otras materias y clases propias del grupo.
+        if (fits && origin.CourseGroupId is int courseGroupId)
+        {
+            var groupCheck = await _schedules.CheckDestinationAsync(courseGroupId, date, startPeriod!.Order, count, ct);
+            // Los choques dependen del horario de las OTRAS materias del grupo: se evalúan aunque el grupo
+            // todavía no tenga su propio horario cargado.
+            {
+                if (groupCheck.Collisions.Count > 0)
+                {
+                    var collisions = groupCheck.Collisions
+                        .GroupBy(c => c.SubjectName)
+                        .OrderBy(g => g.Key, StringComparer.CurrentCulture)
+                        .Select(g => $"{g.Key} ({g.First().GroupName}) · {string.Join(" · ", PeriodRuns(g.Select(c => c.PeriodOrder)))}")
+                        .ToList();
+                    issues.Add(new SlotIssue(Codes.GroupInClass, SlotSeverity.Block,
+                        $"El grupo {groupCheck.Collisions[0].GroupName} tiene clase de otra materia en ese horario: no puede asistir al laboratorio.",
+                        collisions));
+                }
+
+                if (groupCheck.OwnClassOrders.Count > 0)
+                {
+                    issues.Add(new SlotIssue(Codes.GroupOwnClass, SlotSeverity.Info,
+                        "El destino coincide con el horario de clases del grupo en esta materia.", []));
+                }
+
+                if (!groupCheck.HasSchedule)
+                {
+                    issues.Add(new SlotIssue(Codes.GroupNoSchedule, SlotSeverity.Info,
+                        "El grupo no tiene horario de clases registrado en esta materia: regístrelo en Materias → Horario.", []));
+                }
             }
         }
 
@@ -314,6 +360,25 @@ public sealed class SlotValidationService : ISlotValidationService
     }
 
     private static string Qty(decimal value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Une órdenes de periodo consecutivos en tramos "Periodo 3" / "Periodos 4–6".</summary>
+    private static IEnumerable<string> PeriodRuns(IEnumerable<int> orders)
+    {
+        var start = 0;
+        var count = 0;
+        foreach (var order in orders.Distinct().OrderBy(o => o))
+        {
+            if (count > 0 && order == start + count)
+            {
+                count++;
+                continue;
+            }
+            if (count > 0) yield return PlanningSlot.PeriodsText(start, count);
+            start = order;
+            count = 1;
+        }
+        if (count > 0) yield return PlanningSlot.PeriodsText(start, count);
+    }
 
     private static SlotIssue Block(string code, string message) => new(code, SlotSeverity.Block, message, []);
 

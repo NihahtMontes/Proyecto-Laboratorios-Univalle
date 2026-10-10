@@ -10,10 +10,13 @@ using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
-/// <summary>Bandeja y avance de reposiciones de días suspendidos; solo SuperAdmin puede trasladar bloques.</summary>
+/// <summary>Bandeja y avance de reposiciones de días suspendidos; Supervisor/Admin/SuperAdmin pueden trasladar bloques.</summary>
 [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
 public class ReposicionesModel : PageModel
 {
+    private static readonly string[] ManagerRoles = AuthorizationHelper.ManagementRoles
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     private readonly ApplicationDbContext _context;
     private readonly IAcademicManagementService _managements;
 
@@ -27,10 +30,12 @@ public class ReposicionesModel : PageModel
     [BindProperty(SupportsGet = true)] public int? RecoveryId { get; set; }
     public AcademicManagementSummary? Management { get; private set; }
     public IReadOnlyList<AcademicManagementSummary> Managements { get; private set; } = [];
-    public bool CanRecover => User.IsInRole(AuthorizationHelper.RoleSuperAdmin) && Management?.IsEditable == true;
+    public bool CanRecover => ManagerRoles.Any(User.IsInRole) && Management?.IsEditable == true;
     public IReadOnlyList<RecoveryRow> Recoveries { get; private set; } = [];
     public RecoveryRow? Selected { get; private set; }
     public IReadOnlyList<PendingGroup> Groups { get; private set; } = [];
+    /// <summary>Bloques ya repuestos de la reposición seleccionada (desde Reschedulings).</summary>
+    public IReadOnlyList<RescheduledRow> RescheduledRows { get; private set; } = [];
 
     public sealed record RecoveryRow(int Id, DateTime Date, string Reason, DayRecoveryStatus Status, int Pending, int Recovered)
     {
@@ -39,6 +44,8 @@ public class ReposicionesModel : PageModel
     public sealed record PendingPlanning(int Id, string Code, string Name, string Subject, string Group,
         string Teacher, int PeriodCount, string Periods, string PreviousStatus);
     public sealed record PendingGroup(string Laboratory, IReadOnlyList<PendingPlanning> Plannings);
+    public sealed record RescheduledRow(int PlanningId, string Code, string Subject, string Group,
+        DateTime Date, string Periods, string Laboratory);
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -66,10 +73,36 @@ public class ReposicionesModel : PageModel
         Selected = Recoveries.FirstOrDefault(r => r.Id == RecoveryId)
             ?? Recoveries.FirstOrDefault(r => r.Status == DayRecoveryStatus.InProgress)
             ?? Recoveries.FirstOrDefault();
-        if (Selected == null || Selected.Pending == 0) return Page();
+        if (Selected == null) return Page();
 
         var from = Selected.Date.Date;
         var to = from.AddDays(1);
+
+        // Lo ya repuesto de esta reposición: cada Rescheduling apunta al bloque destino aplicado.
+        var rescheduled = await _context.Reschedulings.AsNoTracking()
+            .Where(x => x.DayRecoveryId == Selected.Id)
+            .OrderBy(x => x.DestinationLaboratory!.Code).ThenBy(x => x.DestinationDate).ThenBy(x => x.DestinationStartPeriod!.Order)
+            .Select(x => new
+            {
+                x.OriginPlanningId,
+                x.DestinationDate,
+                StartOrder = x.DestinationStartPeriod != null ? (int?)x.DestinationStartPeriod.Order : null,
+                x.DestinationPeriodCount,
+                Laboratory = x.DestinationLaboratory != null
+                    ? x.DestinationLaboratory.Code + " · " + x.DestinationLaboratory.Name : "Sin ambiente",
+                Subject = x.DestinationPlanning.Subject != null
+                    ? x.DestinationPlanning.Subject.Name : x.DestinationPlanning.PracticeName,
+                Group = x.DestinationPlanning.GroupName
+            })
+            .ToListAsync();
+        RescheduledRows = rescheduled.Select(x => new RescheduledRow(x.OriginPlanningId, L3Codes.Format(x.OriginPlanningId),
+            x.Subject ?? "Sin materia", x.Group ?? "—", x.DestinationDate.Date,
+            x.StartOrder is int order && x.DestinationPeriodCount > 0
+                ? PlanningSlot.PeriodsText(order, x.DestinationPeriodCount) : "Sin periodos",
+            x.Laboratory)).ToList();
+
+        if (Selected.Pending == 0) return Page();
+
         var rows = await _context.Plannings.AsNoTracking()
             .Where(p => p.ManagementId == Management.Id && p.Status == PlanningStatus.PendingRecovery
                 && p.ScheduledDate >= from && p.ScheduledDate < to)
@@ -88,7 +121,7 @@ public class ReposicionesModel : PageModel
             new PendingPlanning(p.Id, L3Codes.Format(p.Id), p.PracticeName, p.Subject,
                 p.GroupName ?? "—", teachers.GetValueOrDefault(p.TeacherPersonId, "—"), p.PeriodCount ?? 0,
                 p.StartOrder is int order && p.PeriodCount is int count
-                    ? count == 1 ? $"P{order}" : $"P{order}–P{PlanningSlot.LastOrder(order, count)}" : "Sin periodos",
+                    ? PlanningSlot.PeriodsText(order, count) : "Sin periodos",
                 PlanningStatus.Label(p.StatusBeforeRecovery ?? PlanningStatus.PendingRecovery))).ToList())).ToList();
         return Page();
     }

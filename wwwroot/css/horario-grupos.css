@@ -1,0 +1,235 @@
+/* ==========================================================================
+   Horario semanal de clases por grupo de materia
+   Pages/Catalogs/Subjects/Horario.cshtml + wwwroot/js/horario-grupos.js
+
+   Complementa grilla.css (misma hoja visual RE-10-VAC-007): reutiliza
+   .gr-grid/.gr-cell/.gr-period y agrega chips, tints por grupo, mini
+   etiquetas, choques rayados y el pie de guardado. NO modifica grilla.css.
+   ========================================================================== */
+
+:root {
+    --hg-primary: #7460ee;
+    --hg-danger: #f62d51;
+}
+
+/* ---------- Paleta suave de 8 colores (uno por grupo, por posición) ---------- */
+.hg-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.hg-dot--c0 { background: #7460ee; }
+.hg-dot--c1 { background: #2962ff; }
+.hg-dot--c2 { background: #36bea6; }
+.hg-dot--c3 { background: #ffbc34; }
+.hg-dot--c4 { background: var(--hg-danger); }
+.hg-dot--c5 { background: #6f42c1; }
+.hg-dot--c6 { background: #fd7e14; }
+.hg-dot--c7 { background: #20c997; }
+
+.hg-tint--c0 { background: #f4f3ff; color: #4b3a8f; border-color: #cdbdee; }
+.hg-tint--c1 { background: #eef3ff; color: #1c46a0; border-color: #b9c8f2; }
+.hg-tint--c2 { background: #ebf8f5; color: #1c6f60; border-color: #b5e4db; }
+.hg-tint--c3 { background: #fff8e8; color: #8a6d00; border-color: #f1dcae; }
+.hg-tint--c4 { background: #fdecef; color: #a71d3a; border-color: #f5c3cd; }
+.hg-tint--c5 { background: #f3edfc; color: #55338a; border-color: #d8c8f0; }
+.hg-tint--c6 { background: #fff1e5; color: #9a5410; border-color: #f4d0ae; }
+.hg-tint--c7 { background: #e6faf4; color: #147a5c; border-color: #b2e9d8; }
+
+/* ---------- Chips de grupos ---------- */
+.hg-chips { gap: 6px; }
+.hg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border: 1px solid #ddd;
+    border-radius: 999px;
+    background: #fff;
+    color: #2b2b3a;
+    font-size: 12.5px;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
+.hg-chip:hover { border-color: #b9b3e6; background: #faf9ff; }
+.hg-chip:focus { outline: none; box-shadow: 0 0 0 3px rgba(116, 96, 238, .15); }
+.hg-chip--active {
+    border-color: var(--hg-primary);
+    box-shadow: 0 0 0 3px rgba(116, 96, 238, .18);
+    font-weight: 700;
+}
+.hg-chip--c0 { background: #f4f3ff; }
+.hg-chip--c1 { background: #eef3ff; }
+.hg-chip--c2 { background: #ebf8f5; }
+.hg-chip--c3 { background: #fff8e8; }
+.hg-chip--c4 { background: #fdecef; }
+.hg-chip--c5 { background: #f3edfc; }
+.hg-chip--c6 { background: #fff1e5; }
+.hg-chip--c7 { background: #e6faf4; }
+.hg-chip__meta { color: #6c757d; font-size: 11.5px; font-weight: 400; }
+
+/* ---------- Resumen en vivo por grupo ---------- */
+.hg-summaries { display: flex; flex-direction: column; gap: 4px; }
+.hg-summary { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #444; }
+.hg-summary__name { color: #2b2b3a; font-weight: 700; }
+.hg-summary__text--empty { color: #999; font-style: italic; }
+
+/* ---------- Indicador "Cambios sin guardar" ---------- */
+.hg-unsaved {
+    background: #fff4d6;
+    border: 1px solid #f1d38a;
+    color: #8a6d00;
+    font-size: 12px;
+}
+.hg-unsaved i { animation: hg-pulse 1.6s ease-in-out infinite; }
+@keyframes hg-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .35; }
+}
+
+/* ---------- Celdas (botones) ---------- */
+.hg-cell {
+    appearance: none;
+    -webkit-appearance: none;
+    border-top: 0;
+    border-left: 0;
+    background: #fff;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+.hg-cell:hover { background: #faf9ff; }
+.hg-cell:disabled { cursor: default; }
+.hg-cell:disabled:hover { background: #fff; }
+.hg-cell:focus-visible { outline: 2px solid var(--hg-primary); outline-offset: -2px; z-index: 1; }
+
+/* Marcadas: tinte del color del grupo (celda con un solo grupo). */
+.hg-cell--c0 { background: #f4f3ff; }
+.hg-cell--c1 { background: #eef3ff; }
+.hg-cell--c2 { background: #ebf8f5; }
+.hg-cell--c3 { background: #fff8e8; }
+.hg-cell--c4 { background: #fdecef; }
+.hg-cell--c5 { background: #f3edfc; }
+.hg-cell--c6 { background: #fff1e5; }
+.hg-cell--c7 { background: #e6faf4; }
+.hg-cell--c0:hover, .hg-cell--c1:hover, .hg-cell--c2:hover, .hg-cell--c3:hover,
+.hg-cell--c4:hover, .hg-cell--c5:hover, .hg-cell--c6:hover, .hg-cell--c7:hover {
+    filter: brightness(.97);
+}
+
+/* Varias grupos en la misma celda: fondo blanco y mini-etiquetas. */
+.hg-cell--multi { background: #fff; }
+.hg-cell__tags {
+    position: absolute;
+    inset: 3px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    align-content: flex-start;
+    justify-content: center;
+    pointer-events: none;
+}
+.hg-cell__tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 1.4;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Clase de OTRA materia del mismo grupo de estudiantes: rayado rojo suave, no marcable.
+   Va al final para ganar el orden de cascada sobre los tints (misma especificidad). */
+.hg-cell--sibling {
+    background: repeating-linear-gradient(45deg, #ffffff, #ffffff 7px,
+        rgba(246, 45, 81, .12) 7px, rgba(246, 45, 81, .12) 14px);
+    cursor: not-allowed;
+}
+.hg-cell--sibling:hover { background: repeating-linear-gradient(45deg, #ffffff, #ffffff 7px,
+    rgba(246, 45, 81, .12) 7px, rgba(246, 45, 81, .12) 14px); }
+.hg-cell--sibling:disabled { cursor: not-allowed; }
+
+/* ---------- Pie del formulario (guardar) ---------- */
+.hg-form-foot { background: #fbfaff; }
+.hg-form-foot .btn:disabled { opacity: .65; }
+
+/* ==========================================================================
+   Horario por cohorte (Pages/Catalogs/CourseGroups/Horario + horario-cohorte.js)
+   Misma hoja y paleta: los bloques usan los tints .hg-tint--cN y el modo
+   mover sigue el patrón de grilla-reprogramar (bloque resaltado + celdas
+   destino marcadas). TeacherBusy = aviso rojo suave que no bloquea en JS.
+   ========================================================================== */
+
+/* ---------- Bloques de materia (overlay sobre las celdas de la grilla) ---------- */
+.hc-block {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    margin: 2px;
+    padding: 2px 4px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1.25;
+    text-align: center;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(43, 43, 58, .08);
+    transition: box-shadow .15s;
+}
+.hc-block:hover { box-shadow: 0 2px 8px rgba(43, 43, 58, .18); }
+.hc-block:focus-visible { outline: 2px solid var(--hg-primary); outline-offset: 1px; }
+.hc-block__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hc-block__sub { font-size: 9px; font-weight: 600; opacity: .75; }
+
+.hc-block--c0 { background: #f4f3ff; color: #4b3a8f; border-color: #cdbdee; }
+.hc-block--c1 { background: #eef3ff; color: #1c46a0; border-color: #b9c8f2; }
+.hc-block--c2 { background: #ebf8f5; color: #1c6f60; border-color: #b5e4db; }
+.hc-block--c3 { background: #fff8e8; color: #8a6d00; border-color: #f1dcae; }
+.hc-block--c4 { background: #fdecef; color: #a71d3a; border-color: #f5c3cd; }
+.hc-block--c5 { background: #f3edfc; color: #55338a; border-color: #d8c8f0; }
+.hc-block--c6 { background: #fff1e5; color: #9a5410; border-color: #f4d0ae; }
+.hc-block--c7 { background: #e6faf4; color: #147a5c; border-color: #b2e9d8; }
+
+/* Bloque "en mano" en el modo mover (como el arrastre de grilla-reprogramar). */
+.hc-block--moving {
+    outline: 2px dashed var(--hg-primary);
+    outline-offset: 1px;
+    opacity: .8;
+    box-shadow: 0 0 0 6px rgba(116, 96, 238, .12);
+}
+
+/* ---------- Celdas destino válidas del modo mover ---------- */
+.hc-cell--target {
+    background: #ebf8f5;
+    box-shadow: inset 0 0 0 2px #36bea6;
+    cursor: copy !important;
+}
+.hc-cell--target:hover { background: #d8f2ec; }
+
+/* ---------- TeacherBusy: el docente ya da clase en otro grupo (aviso, no bloquea) ----------
+   Va al final para ganar el orden de cascada sobre los tints y los targets (misma especificidad). */
+.hc-cell--busy {
+    background: repeating-linear-gradient(45deg, #ffffff, #ffffff 6px,
+        rgba(246, 45, 81, .10) 6px, rgba(246, 45, 81, .10) 12px);
+}
+.hc-cell--busy.hc-cell--target {
+    background: repeating-linear-gradient(45deg, #ebf8f5, #ebf8f5 6px,
+        rgba(246, 45, 81, .12) 6px, rgba(246, 45, 81, .12) 12px);
+}
+
+/* ---------- Impresión ---------- */
+@media print {
+    .hg-form-foot, .hg-unsaved { display: none !important; }
+    .hg-chip { box-shadow: none !important; }
+}

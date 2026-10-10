@@ -22,6 +22,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
         [BindProperty]
         public InputModel Input { get; set; } = new InputModel();
 
+        /// <summary>
+        /// Pantalla de origen (p. ej. los requerimientos de una planificación): Guardar y Cancelar vuelven ahí.
+        /// Solo se aceptan rutas locales.
+        /// </summary>
+        [BindProperty(SupportsGet = true)]
+        public string? ReturnUrl { get; set; }
+
+        /// <summary>ReturnUrl validado (local) o null si no se indicó o no es seguro.</summary>
+        public string? SafeReturnUrl => !string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl) ? ReturnUrl : null;
+
+        /// <summary>Vuelve a la pantalla de origen o, sin origen, al listado de existencias con sus filtros.</summary>
+        private IActionResult BackToOrigin(int? laboratoryFilter, string? searchTerm) =>
+            SafeReturnUrl is string url
+                ? LocalRedirect(url)
+                : RedirectToPage("./Index", new { laboratoryFilter, searchTerm });
+
         public Laboratory? Laboratory { get; set; }
         public Article? Article { get; set; }
 
@@ -67,7 +83,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
             if (lab == null)
             {
                 TempData.Error("El laboratorio seleccionado no existe o no está activo.");
-                return RedirectToPage("./Index", new { laboratoryFilter, searchTerm });
+                return BackToOrigin(laboratoryFilter, searchTerm);
             }
 
             var article = await _context.Articles
@@ -78,7 +94,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
             if (article == null)
             {
                 TempData.Error("El artículo seleccionado no existe o no está activo.");
-                return RedirectToPage("./Index", new { laboratoryFilter, searchTerm });
+                return BackToOrigin(laboratoryFilter, searchTerm);
             }
 
             Laboratory = lab;
@@ -168,7 +184,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
                 if (stockToUpdate == null)
                 {
                     TempData.Error("La existencia que intenta modificar ya no existe.");
-                    return RedirectToPage("./Index", new { laboratoryFilter = Input.LaboratoryFilter, searchTerm = Input.SearchTerm });
+                    return BackToOrigin(Input.LaboratoryFilter, Input.SearchTerm);
                 }
 
                 RowExists = true;
@@ -223,7 +239,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
                     ? $"Existencia registrada para «{article.Name}» en «{LaboratoryDisplayHelper.Format(lab)}»."
                     : $"Existencia actualizada para «{article.Name}» en «{LaboratoryDisplayHelper.Format(lab)}».");
 
-                return RedirectToPage("./Index", new { laboratoryFilter = Input.LaboratoryFilter, searchTerm = Input.SearchTerm });
+                return BackToOrigin(Input.LaboratoryFilter, Input.SearchTerm);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -233,7 +249,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
                     laboratoryId = Input.LaboratoryId,
                     articleId = Input.ArticleId,
                     laboratoryFilter = Input.LaboratoryFilter,
-                    searchTerm = Input.SearchTerm
+                    searchTerm = Input.SearchTerm,
+                    returnUrl = SafeReturnUrl
                 });
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))

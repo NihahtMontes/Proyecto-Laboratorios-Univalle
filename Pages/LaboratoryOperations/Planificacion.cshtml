@@ -6,6 +6,9 @@
     var readonlyClass = Model.IsReadOnly ? "bg-light" : null;
     var isEdit = Model.Id.HasValue && !Model.IsReadOnly;
 
+    // Hora completa de un periodo (ej. "07:35 – 08:25") para las fichas del selector.
+    string FormatPeriod(TimeSpan s, TimeSpan e) => $"{s.ToString(@"hh\:mm")} – {e.ToString(@"hh\:mm")}";
+
     // Serializamos las opciones de práctica para que el JS filtre por materia en el cliente.
     var practiceJson = JsonSerializer.Serialize(
         Model.PracticeOptions.Select(m => new
@@ -24,6 +27,7 @@
         {
             subjectId = g.SubjectId,
             name = g.Name,
+            label = g.Label,
             studentCount = g.StudentCount,
             scalingFactor = g.ScalingFactor
         }),
@@ -188,20 +192,55 @@
                                     <span asp-validation-for="Input.Date" class="text-danger small"></span>
                                     <small class="form-text text-muted"><i class="fas fa-info-circle mr-1"></i>Lunes a sábado, dentro del calendario de la gestión.</small>
                                 </div>
-                                <div class="form-group col-md-4">
-                                    <label asp-for="Input.StartPeriodId" class="small font-weight-bold text-muted"></label>
-                                    <select asp-for="Input.StartPeriodId" asp-items="Model.PeriodList" class="form-control select2" id="period-start" disabled="@(Model.IsReadOnly ? "disabled" : null)">
-                                        <option value="0">— Seleccionar periodo —</option>
-                                    </select>
-                                    <span asp-validation-for="Input.StartPeriodId" class="text-danger small"></span>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label asp-for="Input.PeriodCount" class="small font-weight-bold text-muted"></label>
-                                    <select asp-for="Input.PeriodCount" asp-items="Model.PeriodCountList" class="form-control select2" id="period-count" disabled="@(Model.IsReadOnly ? "disabled" : null)"></select>
-                                    <span asp-validation-for="Input.PeriodCount" class="text-danger small"></span>
+                                <div class="form-group col-md-8">
+                                    <label class="small font-weight-bold text-muted d-block">Periodos de la sesión <span class="text-danger">*</span></label>
+                                    @* Campos enviados al servidor: el selector visual los sincroniza. *@
+                                    <input type="hidden" asp-for="Input.StartPeriodId" id="period-start" />
+                                    <input type="hidden" asp-for="Input.PeriodCount" id="period-count" />
+                                    @if (Model.Periods.Count == 0)
+                                    {
+                                        <div class="alert alert-warning border-0 small py-2 mb-2">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i>El catálogo de periodos académicos no está configurado.
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="pp-grid @(Model.IsReadOnly ? "pp-grid--readonly" : null)" id="period-grid" role="group" aria-label="Selector visual de periodos">
+                                            @foreach (var p in Model.Periods.OrderBy(x => x.Order))
+                                            {
+                                                <button type="button" class="pp-slot" data-period-id="@p.Id" data-order="@p.Order"
+                                                        title="Periodo @p.Order · @FormatPeriod(p.StartTime, p.EndTime)"
+                                                        disabled="@(Model.IsReadOnly ? "disabled" : null)">
+                                                    <span class="pp-slot__num">@p.Order</span>
+                                                    <span class="pp-slot__time">@FormatPeriod(p.StartTime, p.EndTime)</span>
+                                                </button>
+                                            }
+                                        </div>
+                                        <div class="d-flex flex-wrap align-items-center mt-2">
+                                            <span class="small font-weight-bold text-muted mr-2">Cantidad de periodos</span>
+                                            <div class="pp-stepper" id="period-stepper" role="group" aria-label="Cantidad de periodos">
+                                                <button type="button" class="pp-stepper__btn" data-step="-1" aria-label="Quitar un periodo" disabled="@(Model.IsReadOnly ? "disabled" : null)">&minus;</button>
+                                                <span class="pp-stepper__value" id="period-count-label">@Math.Max(1, Model.Input.PeriodCount)</span>
+                                                <button type="button" class="pp-stepper__btn" data-step="1" aria-label="Agregar un periodo" disabled="@(Model.IsReadOnly ? "disabled" : null)">+</button>
+                                            </div>
+                                            <small class="text-muted ml-2"><i class="fas fa-hand-pointer mr-1"></i>Toca una ficha para elegir el periodo de inicio.</small>
+                                        </div>
+                                        <div class="pp-legend mt-2">
+                                            <span class="pp-legend__item"><span class="pp-legend__swatch pp-legend__swatch--free"></span>Disponible</span>
+                                            <span class="pp-legend__item"><span class="pp-legend__swatch pp-legend__swatch--block"></span>Sesión elegida</span>
+                                            <span class="pp-legend__item"><span class="pp-legend__swatch pp-legend__swatch--occupied"></span>Ocupado</span>
+                                            <span class="pp-legend__item"><span class="pp-legend__swatch pp-legend__swatch--gap"></span>Separación entre prácticas</span>
+                                            <span class="pp-legend__item"><span class="pp-legend__swatch pp-legend__swatch--group-own"></span>Clase del grupo (esta materia)</span>
+                                            <span class="pp-legend__item"><span class="pp-legend__swatch pp-legend__swatch--group-busy"></span>El grupo tiene clase de otra materia</span>
+                                        </div>
+                                    }
+                                    <span asp-validation-for="Input.StartPeriodId" class="text-danger small d-block"></span>
+                                    <span asp-validation-for="Input.PeriodCount" class="text-danger small d-block"></span>
+                                    <div id="slot-range" class="small font-weight-bold text-primary mt-1" style="display:none;"></div>
+                                    <div id="period-occupancy" class="small mt-1" style="display:none;"></div>
+                                    <div id="period-group" class="small mt-1" style="display:none;"></div>
                                 </div>
                             </div>
-                            <div id="slot-range" class="small font-weight-bold text-primary mt-1" style="display:none;"></div>
                         </div>
 
                         <div class="form-row">
@@ -251,7 +290,7 @@
 
                         <div class="alert alert-light border mt-4 mb-0 small">
                             <i class="fas fa-info-circle text-primary mr-1"></i>
-                            El horario se define con la fecha, el periodo de inicio y la cantidad de periodos: la hora de inicio y de fin se calculan del catálogo de periodos académicos.
+                            El horario se define tocando la ficha del periodo de inicio y ajustando la cantidad de periodos: la hora de inicio y de fin se calculan del catálogo de periodos académicos. Las fichas grises muestran la ocupación del ambiente elegido; entre prácticas del mismo ambiente debe quedar un periodo libre.
                         </div>
                     </div>
                 </div>
@@ -305,6 +344,7 @@
 
 @section Styles {
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <link href="~/css/planificacion.css" rel="stylesheet">
     <style>
         .bg-light-primary { background-color: #e8e7ff; }
     </style>
@@ -313,12 +353,12 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/js/planificacion-periodos.js"></script>
     <script>
         (function () {
             var practices = @Html.Raw(practiceJson);
             var groups = @Html.Raw(groupJson);
             var periods = @Html.Raw(periodJson);
-            var maxPeriods = 12;
             var canCreatePractice = @(Model.CanCreatePractice ? "true" : "false");
             var isReadOnly = @(Model.IsReadOnly ? "true" : "false");
             var managementId = @(Model.ManagementId ?? 0);
@@ -334,9 +374,6 @@
             var $factor = $('#scaling-factor');
             var $datalist = $('#group-options');
             var $newPracticeLink = $('#new-practice-link');
-            var $periodStart = $('#period-start');
-            var $periodCount = $('#period-count');
-            var $slotRange = $('#slot-range');
 
             // Mapa de id -> texto de materia (para mostrar la materia seleccionada dentro del modal).
             $subject.find('option').each(function () {
@@ -346,48 +383,29 @@
                 }
             });
 
-            // ── Horario: periodo inicial + cantidad → rango resultante ──
-            function periodById(id) {
-                return periods.find(function (p) { return String(p.id) === String(id); });
-            }
-
-            function periodByOrder(order) {
-                return periods.find(function (p) { return p.order === order; });
-            }
-
-            function updateSlot() {
-                var start = periodById($periodStart.val());
-                if (!start) {
-                    $slotRange.hide();
-                    return;
-                }
-                // Deshabilitar las cantidades que no caben en la jornada (Order + N - 1 > 12).
-                var selected = Number($periodCount.val() || 1);
-                var largestFitting = 0;
-                $periodCount.find('option').each(function () {
-                    var n = Number($(this).val());
-                    var fits = start.order + n - 1 <= maxPeriods;
-                    $(this).prop('disabled', !fits);
-                    if (fits) largestFitting = n;
+            // ── Selector visual de periodos (fichas + stepper + ocupación del ambiente + horario del grupo) ──
+            if (window.PeriodSelector) {
+                window.PeriodSelector.create({
+                    grid: '#period-grid',
+                    startInput: '#period-start',
+                    countInput: '#period-count',
+                    countLabel: '#period-count-label',
+                    stepper: '#period-stepper',
+                    range: '#slot-range',
+                    occupancyBox: '#period-occupancy',
+                    groupBox: '#period-group',
+                    dateInput: '#Input_Date',
+                    laboratorySelect: '#Input_LaboratoryId',
+                    subjectSelect: '#subject-select',
+                    groupInput: '#group-name',
+                    periods: periods,
+                    readOnly: isReadOnly,
+                    excludeId: @(Model.Id ?? 0),
+                    managementId: managementId,
+                    occupancyUrl: window.location.pathname,
+                    groupScheduleUrl: window.location.pathname
                 });
-                var count = selected;
-                if (start.order + count - 1 > maxPeriods) {
-                    count = largestFitting;
-                    $periodCount.val(String(count)).trigger('change.select2');
-                }
-                var lastOrder = start.order + count - 1;
-                var last = periodByOrder(lastOrder);
-                if (!last) {
-                    $slotRange.hide();
-                    return;
-                }
-                $slotRange.html('<i class="far fa-clock mr-1"></i>Horario resultante: <strong>' + start.start + ' – ' + last.end +
-                    '</strong> <span class="text-muted font-weight-normal">(periodos P' + start.order + '–P' + lastOrder + ')</span>');
-                $slotRange.show();
             }
-
-            $periodStart.on('change', updateSlot);
-            $periodCount.on('change', updateSlot);
 
             function renderPracticeStatus(subjectId) {
                 if (!subjectId || Number(subjectId) === 0) {
@@ -474,6 +492,7 @@
                     .forEach(function (g) {
                         var opt = document.createElement('option');
                         opt.value = g.name;
+                        opt.label = g.label || g.name;
                         opt.dataset.student = g.studentCount != null ? g.studentCount : '';
                         opt.dataset.factor = g.scalingFactor != null ? g.scalingFactor : '';
                         $datalist.append(opt);
@@ -515,7 +534,6 @@
             renderGroupOptions(initialSubject);
             renderPracticeStatus(initialSubject);
             updatePracticeHint();
-            updateSlot();
 
             // Confirmación previa al guardar una edición.
             var form = document.getElementById('form-planificacion');

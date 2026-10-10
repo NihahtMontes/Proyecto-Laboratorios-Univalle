@@ -2,7 +2,10 @@ using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
+using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Services;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Api
@@ -11,15 +14,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
     /// Validación JSON de un destino (reprogramación/reposición) para una planificación. Solo lectura: la UI consulta
     /// aquí para mostrar avisos, pero la confirmación vuelve a validar en el servidor con <see cref="ISlotValidationService"/>.
     /// GET /Api/SlotValidation?planningId=..&amp;date=yyyy-MM-dd&amp;startPeriodId=..&amp;laboratoryId=..&amp;teacherPersonId=..
+    /// Reprogramar es solo de SuperAdmin; los roles de gestión pueden validar únicamente bloques pendientes de reposición.
     /// </summary>
-    [Authorize(Roles = AuthorizationHelper.RoleSuperAdmin)]
+    [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
     public class SlotValidationModel : PageModel
     {
         private static readonly string[] DateFormats = ["yyyy-MM-dd", "dd/MM/yyyy"];
 
         private readonly ISlotValidationService _validation;
+        private readonly ApplicationDbContext _context;
 
-        public SlotValidationModel(ISlotValidationService validation) => _validation = validation;
+        public SlotValidationModel(ISlotValidationService validation, ApplicationDbContext context)
+        {
+            _validation = validation;
+            _context = context;
+        }
 
         public async Task<IActionResult> OnGetAsync(int planningId, string? date, int startPeriodId, int laboratoryId, int teacherPersonId, CancellationToken ct)
         {
@@ -28,6 +37,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Api
             {
                 return BadRequest(new { message = "La fecha no es válida: use el formato aaaa-mm-dd." });
             }
+
+            if (!User.IsInRole(AuthorizationHelper.RoleSuperAdmin)
+                && !await _context.Plannings.AsNoTracking().AnyAsync(p => p.Id == planningId && p.Status == PlanningStatus.PendingRecovery, ct))
+                return Forbid();
 
             var result = await _validation.ValidateAsync(new SlotRequest(planningId, parsed.Date, startPeriodId, laboratoryId, teacherPersonId), ct);
 

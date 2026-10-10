@@ -4,6 +4,11 @@
     var closureOnly = PracticeClosureAccess.IsClosureOnly(User);
     var currentSidebarRoute = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
     var isCierreActive = currentSidebarRoute.StartsWith("/Cierre", StringComparison.OrdinalIgnoreCase);
+    // Los grupos (CourseGroups) se gestionan como pestañas de Materias: la entrada de Materias
+    // queda marcada también cuando la ruta está bajo /Catalogs/CourseGroups.
+    var isMateriasActive = currentSidebarRoute.StartsWith("/Catalogs/Subjects", StringComparison.OrdinalIgnoreCase)
+        || currentSidebarRoute.StartsWith("/Catalogs/CourseGroups", StringComparison.OrdinalIgnoreCase)
+        || currentSidebarRoute.StartsWith("/Catalogs/StudentGroups", StringComparison.OrdinalIgnoreCase);
 }
 <aside class="left-sidebar" data-sidebarbg="skin5">
     <div class="scroll-sidebar">
@@ -84,16 +89,10 @@
                         <span class="hide-menu">Catálogos académicos</span>
                     </a>
                     <ul aria-expanded="false" class="collapse first-level">
-                        <li class="sidebar-item">
-                            <a asp-page="/Catalogs/Subjects/Index" class="sidebar-link waves-effect waves-dark">
+                        <li class="sidebar-item @(isMateriasActive ? "selected" : null)">
+                            <a asp-page="/Catalogs/Subjects/Index" class="sidebar-link waves-effect waves-dark @(isMateriasActive ? "active" : null)">
                                 <i class="mdi mdi-book-open-variant"></i>
                                 <span class="hide-menu">Materias</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a asp-page="/Catalogs/CourseGroups/Index" class="sidebar-link waves-effect waves-dark">
-                                <i class="mdi mdi-account-group"></i>
-                                <span class="hide-menu">Grupos de materia</span>
                             </a>
                         </li>
                         <li class="sidebar-item">

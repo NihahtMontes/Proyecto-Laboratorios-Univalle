@@ -387,6 +387,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<DayRecovery> DayRecoveries { get; set; } = null!;
         public DbSet<Campus> Campuses { get; set; } = null!;
         public DbSet<CourseGroup> CourseGroups { get; set; } = null!;
+        public DbSet<StudentGroup> StudentGroups { get; set; } = null!;
+        public DbSet<CourseGroupScheduleSlot> CourseGroupScheduleSlots { get; set; } = null!;
         public DbSet<Practice> Practices { get; set; } = null!;
         public DbSet<PracticeRequirement> PracticeRequirements { get; set; } = null!;
         public DbSet<SubjectKitItem> SubjectKitItems { get; set; } = null!;
@@ -441,12 +443,37 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<CourseGroup>().HasOne(g => g.Subject).WithMany().HasForeignKey(g => g.SubjectId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<CourseGroup>().HasOne(g => g.TeacherPerson).WithMany().HasForeignKey(g => g.TeacherPersonId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<CourseGroup>().HasOne(g => g.Laboratory).WithMany().HasForeignKey(g => g.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CourseGroup>().HasOne(g => g.StudentGroup).WithMany(s => s.Subjects)
+                .HasForeignKey(g => g.StudentGroupId).OnDelete(DeleteBehavior.Restrict);
+
+            // Grupo de estudiantes (carrera + semestre + letra): nombre único por gestión, carrera y semestre.
+            modelBuilder.Entity<StudentGroup>().HasIndex(g => g.Code).IsUnique();
+            modelBuilder.Entity<StudentGroup>().HasIndex(g => new { g.ManagementId, g.CareerId, g.Semester, g.Name }).IsUnique().HasFilter("[Status] <> 2");
+            modelBuilder.Entity<StudentGroup>().HasOne(g => g.Management).WithMany().HasForeignKey(g => g.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<StudentGroup>().HasOne(g => g.Career).WithMany().HasForeignKey(g => g.CareerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<StudentGroup>().HasOne(g => g.Laboratory).WithMany().HasForeignKey(g => g.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<StudentGroup>().ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_StudentGroups_Status", "[Status] BETWEEN 0 AND 2");
+                t.HasCheckConstraint("CK_StudentGroups_Semester", "[Semester] BETWEEN 1 AND 12");
+            });
+
             modelBuilder.Entity<CourseGroup>().ToTable(t =>
             {
                 t.HasCheckConstraint("CK_CourseGroups_Status", "[Status] BETWEEN 0 AND 2");
                 t.HasCheckConstraint("CK_CourseGroups_Weekday", "[Weekday] IS NULL OR [Weekday] BETWEEN 1 AND 6");
                 t.HasCheckConstraint("CK_CourseGroups_Times", "[StartTime] IS NULL OR [EndTime] IS NULL OR [EndTime] > [StartTime]");
             });
+
+            // Horario semanal del grupo: un registro por (grupo, día, periodo).
+            modelBuilder.Entity<CourseGroupScheduleSlot>().HasIndex(s => new { s.CourseGroupId, s.Weekday, s.ClassPeriodId }).IsUnique();
+            modelBuilder.Entity<CourseGroupScheduleSlot>().HasOne(s => s.CourseGroup).WithMany(g => g.ScheduleSlots)
+                .HasForeignKey(s => s.CourseGroupId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<CourseGroupScheduleSlot>().HasOne(s => s.ClassPeriod).WithMany()
+                .HasForeignKey(s => s.ClassPeriodId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CourseGroupScheduleSlot>().HasQueryFilter(s => s.CourseGroup!.Status != GeneralStatus.Eliminado);
+            modelBuilder.Entity<CourseGroupScheduleSlot>().ToTable(t =>
+                t.HasCheckConstraint("CK_CourseGroupScheduleSlots_Weekday", "[Weekday] BETWEEN 1 AND 6"));
 
             modelBuilder.Entity<Practice>().HasIndex(x => x.Code).IsUnique();
             modelBuilder.Entity<Practice>().HasQueryFilter(x => x.Status != GeneralStatus.Eliminado);

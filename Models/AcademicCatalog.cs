@@ -42,6 +42,12 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [ForeignKey("LaboratoryId")]
         public virtual Laboratory? Laboratory { get; set; }
 
+        /// <summary>Grupo de estudiantes (carrera + semestre + letra) al que pertenece esta materia. Null en grupos antiguos sin carrera/semestre.</summary>
+        [Display(Name = "Grupo")]
+        public int? StudentGroupId { get; set; }
+        [ForeignKey("StudentGroupId")]
+        public virtual StudentGroup? StudentGroup { get; set; }
+
         /// <summary>Día habitual: 1 = lunes ... 6 = sábado.</summary>
         [Range(1, 6)]
         [Display(Name = "Día")]
@@ -66,6 +72,36 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public int? ScalingFactor { get; set; }
 
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
+
+        public int? CreatedById { get; set; }
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+        public int? ModifiedById { get; set; }
+        public DateTime? LastModifiedDate { get; set; }
+
+        /// <summary>Horario semanal de clases del grupo (un registro por día y periodo).</summary>
+        public virtual ICollection<CourseGroupScheduleSlot> ScheduleSlots { get; set; } = new List<CourseGroupScheduleSlot>();
+    }
+
+    /// <summary>
+    /// Periodo de clase del horario semanal de un grupo: día (1 = lunes ... 6 = sábado) + periodo académico.
+    /// La gestión se hereda del grupo. Es configuración: al quitar una celda del horario se elimina su registro.
+    /// </summary>
+    public class CourseGroupScheduleSlot : IAuditable
+    {
+        [Key]
+        public int Id { get; set; }
+
+        public int CourseGroupId { get; set; }
+        [ForeignKey("CourseGroupId")]
+        public virtual CourseGroup? CourseGroup { get; set; }
+
+        /// <summary>1 = lunes ... 6 = sábado.</summary>
+        [Range(1, 6)]
+        public int Weekday { get; set; }
+
+        public int ClassPeriodId { get; set; }
+        [ForeignKey("ClassPeriodId")]
+        public virtual ClassPeriod? ClassPeriod { get; set; }
 
         public int? CreatedById { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

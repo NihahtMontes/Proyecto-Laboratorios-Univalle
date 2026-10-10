@@ -15,6 +15,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 /// lunes a sábado × 12 periodos, con las planificaciones del ambiente elegido.
 /// Con ?reprogramar={planningId} (solo SuperAdmin) entra en modo reprogramación: se arrastra el bloque origen a su
 /// nuevo destino, se previsualizan las validaciones del servidor y se confirma con motivo (OnPostReprogramarAsync).
+/// Con ?reponer={planningId}&recoveryId={id} (Supervisor/Administrator/SuperAdmin) repone un bloque de un día
+/// suspendido; con ?recoveryId= (sin reponer) muestra el panel de afectados de la reposición en curso.
 /// </summary>
 [Authorize(Roles = AuthorizationHelper.ManagementRoles)]
 public class GrillaModel : PageModel
@@ -23,12 +25,15 @@ public class GrillaModel : PageModel
 
     private readonly ILaboratoryGridService _grid;
     private readonly IReschedulingService _rescheduling;
+    private readonly IGroupScheduleService _schedules;
     private readonly ApplicationDbContext _context;
 
-    public GrillaModel(ILaboratoryGridService grid, IReschedulingService rescheduling, ApplicationDbContext context)
+    public GrillaModel(ILaboratoryGridService grid, IReschedulingService rescheduling, IGroupScheduleService schedules,
+        ApplicationDbContext context)
     {
         _grid = grid;
         _rescheduling = rescheduling;
+        _schedules = schedules;
         _context = context;
     }
 
@@ -82,11 +87,24 @@ public class GrillaModel : PageModel
 
     public bool IsSuperAdmin => User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
 
+    /// <summary>True para Supervisor/Administrator/SuperAdmin: pueden reponer días suspendidos (no reprogramar a mano).</summary>
+    public bool CanRecover => AuthorizationHelper.ManagementRoles
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Any(User.IsInRole);
+
     /// <summary>Origen del modo reprogramación (null = grilla normal).</summary>
     public RescheduleOrigin? Origin { get; private set; }
 
     public bool IsRescheduleMode => Origin != null;
     public bool IsRecoveryMode => Origin != null && Reponer.HasValue;
+
+    /// <summary>Reposición de día en curso mostrada sin planificación elegida (?recoveryId= sin reponer).</summary>
+    public RecoveryOverviewInfo? RecoveryOverview { get; private set; }
+
+    public sealed record RecoveryOverviewInfo(int Id, DateTime Date, string Reason, int Recovered, int Pending)
+    {
+        public int Total => Recovered + Pending;
+    }
 
     /// <summary>True si el bloque origen está en la vista actual (ambiente y semanas visibles).</summary>
     public bool OriginInView => Origin != null && Grid != null
@@ -96,7 +114,17 @@ public class GrillaModel : PageModel
     public IReadOnlyList<TeacherOption> Teachers { get; private set; } = [];
     public IReadOnlyList<RecoverySibling> RecoveryPending { get; private set; } = [];
 
-    public sealed record RecoverySibling(int Id, string Code, string Laboratory, string Subject, string Group, int PeriodCount);
+    /// <summary>Horario semanal del grupo de la planificación origen (solo en modo reprogramación).</summary>
+    public IReadOnlyList<WeekSlot> GroupSlots { get; private set; } = [];
+
+    /// <summary>Clases de OTRAS materias del mismo grupo de estudiantes (solo en modo reprogramación).</summary>
+    public IReadOnlyList<SiblingClass> GroupSiblings { get; private set; } = [];
+
+    /// <summary>True si el grupo tiene celdas de horario propias registradas en esta materia.</summary>
+    public bool HasGroupSchedule { get; private set; }
+
+    public sealed record RecoverySibling(int Id, string Code, string Laboratory, int? LaboratoryId, string Subject,
+        string Group, string Teacher, int PeriodCount, string Periods, string PreviousStatus);
 
     /// <summary>Motivo escrito en un intento fallido (se devuelve al formulario).</summary>
     public string? PreviousReason { get; private set; }
@@ -121,9 +149,11 @@ public class GrillaModel : PageModel
         string LaboratoryLabel,
         int TeacherPersonId,
         string TeacherName,
-        string Status)
+        string Status,
+        int? CourseGroupId,
+        int? SubjectId)
     {
-        public string PeriodsText => PeriodCount == 1 ? $"P{StartOrder}" : $"P{StartOrder}–P{PlanningSlot.LastOrder(StartOrder, PeriodCount)}";
+        public string PeriodsText => PlanningSlot.PeriodsText(StartOrder, PeriodCount);
         public bool IsCompleted => Status == PlanningStatus.Finalized;
     }
 
@@ -151,9 +181,11 @@ public class GrillaModel : PageModel
         {
             if (Reprogramar.HasValue && Reponer.HasValue)
                 return BadRequest();
-            if (!IsSuperAdmin)
+            if (Reponer.HasValue ? !CanRecover : !IsSuperAdmin)
             {
-                TempData.Error("Solo el SuperAdmin puede reprogramar planificaciones.");
+                TempData.Error(Reponer.HasValue
+                    ? "No tiene permiso para reponer planificaciones de un día suspendido."
+                    : "Solo el SuperAdmin puede reprogramar planificaciones.");
                 return RedirectToPage(new { managementId = ManagementId, laboratoryId = LaboratoryId, week = Week, date = Date, twoWeeks = TwoWeeks });
             }
 
@@ -172,21 +204,38 @@ public class GrillaModel : PageModel
                 Date = origin.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
             Teachers = await LoadTeachersAsync(origin.TeacherPersonId);
+            // Horario de clases del grupo de la planificación: marca las celdas de la grilla (clase propia
+            // sugerida en verde, clase de otra materia del grupo en rojo) y alimenta el rechazo local del JS.
+            if (origin.CourseGroupId is int courseGroupId)
+            {
+                GroupSlots = await _schedules.GetGroupSlotsAsync(courseGroupId);
+                GroupSiblings = await _schedules.GetSiblingClassesAsync(courseGroupId);
+                HasGroupSchedule = GroupSlots.Count > 0;
+            }
             if (Reponer.HasValue)
             {
-                var from = origin.Date.Date;
-                var to = from.AddDays(1);
-                var siblings = await _context.Plannings.AsNoTracking()
-                    .Where(p => p.ManagementId == origin.ManagementId && p.Status == PlanningStatus.PendingRecovery
-                        && p.ScheduledDate >= from && p.ScheduledDate < to)
-                    .OrderBy(p => p.Laboratory!.Code).ThenBy(p => p.ScheduledDate)
-                    .Select(p => new { p.Id, Laboratory = p.Laboratory != null ? p.Laboratory.Code : "Sin ambiente",
-                        Subject = p.Subject != null ? p.Subject.Name : p.PracticeName, p.GroupName, p.PeriodCount })
-                    .ToListAsync();
-                RecoveryPending = siblings.Select(p => new RecoverySibling(p.Id, L3Codes.Format(p.Id), p.Laboratory,
-                    p.Subject, p.GroupName ?? "—", p.PeriodCount ?? 0)).ToList();
+                // Afectados del día suspendido: alimentan la bandeja lateral y el marcador de ambientes con pendientes.
+                RecoveryPending = await LoadRecoveryPendingAsync(origin.ManagementId, origin.Date.Date);
             }
             PreviousReason = TempData["RescheduleReason"] as string;
+        }
+        else if (RecoveryId.HasValue)
+        {
+            // Modo reposición general: ?recoveryId= sin reponer muestra los afectados del día para elegir a cuál saltar.
+            var recovery = await _context.DayRecoveries.AsNoTracking()
+                .Where(r => r.Id == RecoveryId && r.Status == Models.Enums.DayRecoveryStatus.InProgress)
+                .Select(r => new { r.Id, r.ManagementId, r.Date, r.Reason })
+                .FirstOrDefaultAsync();
+            if (recovery == null)
+            {
+                TempData.Error("La reposición indicada no existe o ya no está en curso.");
+                return RedirectToPage(new { managementId = ManagementId, laboratoryId = LaboratoryId, week = Week, date = Date, twoWeeks = TwoWeeks });
+            }
+            ManagementId ??= recovery.ManagementId;
+            RecoveryPending = await LoadRecoveryPendingAsync(recovery.ManagementId, recovery.Date.Date);
+            var recovered = await _context.Reschedulings.AsNoTracking()
+                .CountAsync(x => x.DayRecoveryId == recovery.Id);
+            RecoveryOverview = new RecoveryOverviewInfo(recovery.Id, recovery.Date.Date, recovery.Reason, recovered, RecoveryPending.Count);
         }
 
         Grid = await _grid.BuildAsync(ManagementId, LaboratoryId, Week, Date, EffectiveTwoWeeks);
@@ -195,9 +244,11 @@ public class GrillaModel : PageModel
 
     public async Task<IActionResult> OnPostReprogramarAsync(CancellationToken ct)
     {
-        if (!IsSuperAdmin)
+        if (Move.DayRecoveryId.HasValue ? !CanRecover : !IsSuperAdmin)
         {
-            TempData.Error("Solo el SuperAdmin puede reprogramar planificaciones.");
+            TempData.Error(Move.DayRecoveryId.HasValue
+                ? "No tiene permiso para reponer planificaciones de un día suspendido."
+                : "Solo el SuperAdmin puede reprogramar planificaciones.");
             return RedirectToPage(new { managementId = ManagementId, laboratoryId = LaboratoryId, date = Date });
         }
 
@@ -248,7 +299,19 @@ public class GrillaModel : PageModel
             .Where(p => p.Id == result.DestinationPlanningId)
             .Select(p => p.ManagementId).FirstAsync(ct);
         if (Move.DayRecoveryId.HasValue)
-            return RedirectToPage("./Reposiciones", new { managementId = destinationManagementId, recoveryId = Move.DayRecoveryId });
+        {
+            // Reposición de día: seguir en la grilla con el siguiente pendiente (mismo ambiente primero).
+            var next = await FindNextRecoveryPendingAsync(destinationManagementId, Move.DayRecoveryId.Value, Move.LaboratoryId, ct);
+            return next == null
+                ? RedirectToPage("./Grilla", new { managementId = destinationManagementId, recoveryId = Move.DayRecoveryId })
+                : RedirectToPage("./Grilla", new
+                {
+                    managementId = destinationManagementId,
+                    recoveryId = Move.DayRecoveryId,
+                    reponer = next.Id,
+                    laboratoryId = next.LaboratoryId
+                });
+        }
         return RedirectToPage(new
         {
             managementId = destinationManagementId,
@@ -256,6 +319,53 @@ public class GrillaModel : PageModel
             date = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             resaltar = result.DestinationPlanningId
         });
+    }
+
+    /// <summary>Planificaciones PendienteReposicion del día suspendido, agrupadas por ambiente y con su contexto.</summary>
+    private async Task<IReadOnlyList<RecoverySibling>> LoadRecoveryPendingAsync(int managementId, DateTime date, CancellationToken ct = default)
+    {
+        var from = date.Date;
+        var to = from.AddDays(1);
+        var rows = await _context.Plannings.AsNoTracking()
+            .Where(p => p.ManagementId == managementId && p.Status == PlanningStatus.PendingRecovery
+                && p.ScheduledDate >= from && p.ScheduledDate < to)
+            .OrderBy(p => p.Laboratory!.Code).ThenBy(p => p.ScheduledDate)
+            .Select(p => new
+            {
+                p.Id,
+                p.GroupName,
+                p.TeacherPersonId,
+                p.PeriodCount,
+                p.StatusBeforeRecovery,
+                LaboratoryId = (int?)p.LaboratoryId,
+                Laboratory = p.Laboratory != null ? p.Laboratory.Code : "Sin ambiente",
+                Subject = p.Subject != null ? p.Subject.Name : p.PracticeName,
+                StartOrder = p.StartPeriod != null ? (int?)p.StartPeriod.Order : null
+            })
+            .ToListAsync(ct);
+        var teacherIds = rows.Select(p => p.TeacherPersonId).Distinct().ToList();
+        var teachers = teacherIds.Count == 0
+            ? []
+            : await _context.Interns.AsNoTracking().Where(t => teacherIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t.Name, ct);
+        return rows.Select(p => new RecoverySibling(p.Id, L3Codes.Format(p.Id), p.Laboratory, p.LaboratoryId,
+            p.Subject, p.GroupName ?? "—", teachers.GetValueOrDefault(p.TeacherPersonId, "—"), p.PeriodCount ?? 0,
+            p.StartOrder is int order && p.PeriodCount is int count ? PlanningSlot.PeriodsText(order, count) : "Sin periodos",
+            PlanningStatus.Label(p.StatusBeforeRecovery ?? PlanningStatus.PendingRecovery))).ToList();
+    }
+
+    /// <summary>Siguiente planificación pendiente de la reposición (primero del ambiente recién usado, si no el primero).</summary>
+    private async Task<RecoverySibling?> FindNextRecoveryPendingAsync(int managementId, int recoveryId, int preferredLabId, CancellationToken ct)
+    {
+        var date = await _context.DayRecoveries.AsNoTracking()
+            .Where(r => r.Id == recoveryId)
+            .Select(r => (DateTime?)r.Date)
+            .FirstOrDefaultAsync(ct);
+        if (date == null) return null;
+        var pendings = await LoadRecoveryPendingAsync(managementId, date.Value.Date, ct);
+        return pendings
+            .OrderBy(p => p.LaboratoryId == preferredLabId ? 0 : 1)
+            .ThenBy(p => p.Laboratory).ThenBy(p => p.Id)
+            .FirstOrDefault();
     }
 
     /// <summary>Vuelve al modo reprogramación mostrando el destino intentado (y conserva el motivo escrito).</summary>
@@ -297,6 +407,8 @@ public class GrillaModel : PageModel
                 x.PracticeName,
                 SubjectName = x.Subject != null ? x.Subject.Name : null,
                 GroupLabel = !string.IsNullOrEmpty(x.GroupName) ? x.GroupName : (x.Group != null ? x.Group.Name : null),
+                x.CourseGroupId,
+                x.SubjectId,
                 x.ScheduledDate,
                 x.ScheduledEndDate,
                 x.StartPeriodId,
@@ -347,7 +459,9 @@ public class GrillaModel : PageModel
             p.LabCode != null ? $"{p.LabCode} – {p.LabName}" : "Todos los laboratorios",
             p.TeacherPersonId,
             string.IsNullOrWhiteSpace(teacherName) ? "—" : teacherName!,
-            p.Status), null);
+            p.Status,
+            p.CourseGroupId,
+            p.SubjectId), null);
     }
 
     private async Task<IReadOnlyList<TeacherOption>> LoadTeachersAsync(int currentTeacherId)

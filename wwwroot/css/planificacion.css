@@ -1,0 +1,190 @@
+/* ==========================================================================
+   Selector visual de periodos (fichas 1-12 + stepper + ocupación)
+   Pages/LaboratoryOperations/Planificacion.cshtml
+   ========================================================================== */
+
+:root {
+    --pp-primary: #7460ee;
+    --pp-primary-dark: #5d4dd1;
+    --pp-border: #e3e3ea;
+    --pp-muted: #8a8a99;
+}
+
+/* ---------- Grilla de fichas: 2 filas de 6 en escritorio ---------- */
+.pp-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 8px;
+}
+
+/* ---------- Ficha de periodo ---------- */
+.pp-slot {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 4px 6px;
+    background: #fff;
+    border: 1px solid var(--pp-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease, opacity .15s ease;
+}
+.pp-slot:hover:not(:disabled):not(.pp-slot--covered):not(.pp-slot--occupied):not(.pp-slot--gap):not(.pp-slot--disabled) {
+    border-color: var(--pp-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(116, 96, 238, .15);
+}
+.pp-slot:focus { outline: none; box-shadow: 0 0 0 3px rgba(116, 96, 238, .25); }
+.pp-slot__num {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #f1effd;
+    color: var(--pp-primary);
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+.pp-slot__time {
+    font-size: 10.5px;
+    color: var(--pp-muted);
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+/* ---------- Bloque elegido: continuo, morado primario ---------- */
+.pp-slot--covered {
+    z-index: 2;
+    margin-left: -9px;
+    margin-right: -9px;
+    border: none;
+    border-radius: 0;
+    background: linear-gradient(180deg, #7f6ff0, var(--pp-primary));
+    box-shadow: 0 6px 14px rgba(116, 96, 238, .28);
+}
+.pp-slot--covered .pp-slot__num { background: #fff; color: var(--pp-primary); }
+.pp-slot--covered .pp-slot__time { color: #ece9fd; }
+.pp-slot--block-start { margin-left: 0; border-radius: 12px 0 0 12px; }
+.pp-slot--block-end { margin-right: 0; border-radius: 0 12px 12px 0; }
+.pp-slot--block-start.pp-slot--block-end { border-radius: 12px; }
+/* Ficha de inicio: aro blanco en el círculo. */
+.pp-slot--start .pp-slot__num { box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(255, 255, 255, .35); }
+
+/* ---------- Ocupado por otra práctica ---------- */
+.pp-slot--occupied {
+    background: #f3f4f6;
+    border-color: #e0e0e6;
+    cursor: not-allowed;
+}
+.pp-slot--occupied .pp-slot__num { background: #e0e0e6; color: var(--pp-muted); }
+.pp-slot--occupied .pp-slot__time { color: #a5a5b3; }
+
+/* ---------- Periodo de separación entre prácticas (rayado suave) ---------- */
+.pp-slot--gap {
+    background-image: repeating-linear-gradient(45deg, #faf9ff 0 6px, #efedfb 6px 12px);
+    border-style: dashed;
+    border-color: #d8d4f2;
+    cursor: not-allowed;
+}
+.pp-slot--gap .pp-slot__num { background: #fff; color: #a89ff0; }
+
+/* ---------- Horario del grupo de estudiantes ---------- */
+/* Clase propia del grupo en esta materia: verde suave (sugerido para dar la sesión ahí).
+   El bloque elegido (pp-slot--covered) manda sobre las marcas. */
+.pp-slot--group-own:not(.pp-slot--covered) { background: #eaf7ef; border-color: #b7e4c7; }
+.pp-slot--group-own:not(.pp-slot--covered) .pp-slot__num { background: #fff; color: #2f9e5f; }
+/* Clase de OTRA materia del mismo grupo: rojo rayado (bloquea; el servidor confirma al guardar). */
+.pp-slot--group-busy:not(.pp-slot--covered) {
+    background-image: repeating-linear-gradient(45deg, #fdecef 0 6px, #f9d5db 6px 12px);
+    border-color: #f2b8c4;
+    cursor: not-allowed;
+}
+.pp-slot--group-busy:not(.pp-slot--covered) .pp-slot__num { background: #fff; color: #d6336c; }
+/* Inicio que haría tocar al bloque una clase del grupo (aunque la ficha no sea de clase). */
+.pp-slot--group-warn { cursor: not-allowed; }
+.pp-slot--group-warn:hover { transform: none; box-shadow: none; }
+.pp-slot--group-warn .pp-slot__num { color: #d6336c; }
+
+/* ---------- Inicio inválido: el bloque no cabría (>12) ---------- */
+.pp-slot--disabled { opacity: .45; cursor: not-allowed; }
+.pp-slot--disabled:hover { transform: none; box-shadow: none; border-color: var(--pp-border); }
+
+/* ---------- Modo solo lectura ---------- */
+.pp-grid--readonly .pp-slot { cursor: default; }
+.pp-grid--readonly .pp-slot:hover { transform: none; box-shadow: none; border-color: var(--pp-border); }
+.pp-grid--readonly .pp-slot--covered:hover { box-shadow: 0 6px 14px rgba(116, 96, 238, .28); }
+
+/* ---------- Stepper "− N +" ---------- */
+.pp-stepper {
+    display: inline-flex;
+    align-items: stretch;
+    background: #fff;
+    border: 1px solid var(--pp-border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.pp-stepper__btn {
+    width: 34px;
+    border: none;
+    background: #f6f5fd;
+    color: var(--pp-primary);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color .15s ease;
+}
+.pp-stepper__btn:hover:not(:disabled) { background: #ebe8fb; }
+.pp-stepper__btn:disabled { opacity: .4; cursor: not-allowed; }
+.pp-stepper__value {
+    min-width: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #444;
+}
+
+/* ---------- Leyenda ---------- */
+.pp-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.pp-legend__item { display: inline-flex; align-items: center; font-size: 11px; color: var(--pp-muted); }
+.pp-legend__swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    margin-right: 5px;
+    border: 1px solid var(--pp-border);
+    display: inline-block;
+}
+.pp-legend__swatch--free { background: #fff; }
+.pp-legend__swatch--block { background: linear-gradient(180deg, #7f6ff0, var(--pp-primary)); border: none; }
+.pp-legend__swatch--occupied { background: #f3f4f6; }
+.pp-legend__swatch--gap {
+    background-image: repeating-linear-gradient(45deg, #faf9ff 0 4px, #efedfb 4px 8px);
+    border: 1px dashed #d8d4f2;
+}
+.pp-legend__swatch--group-own { background: #eaf7ef; border-color: #b7e4c7; }
+.pp-legend__swatch--group-busy {
+    background-image: repeating-linear-gradient(45deg, #fdecef 0 4px, #f9d5db 4px 8px);
+    border-color: #f2b8c4;
+}
+
+/* ---------- Advertencia de ocupación sobre la selección ---------- */
+#period-occupancy { line-height: 1.4; }
+
+/* ---------- Adaptable ---------- */
+@media (max-width: 991.98px) {
+    .pp-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+@media (max-width: 767.98px) {
+    .pp-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 479.98px) {
+    .pp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .pp-slot__time { font-size: 9.5px; }
+}

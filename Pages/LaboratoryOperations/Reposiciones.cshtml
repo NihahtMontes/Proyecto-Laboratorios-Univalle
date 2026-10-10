@@ -48,12 +48,27 @@
             @if (Model.Selected is { } selected)
             {
                 <div class="card border-0 shadow-sm rounded-lg"><div class="card-body">
-                    <h5 class="font-weight-bold text-dark">Reposición del @selected.Date.ToString("dd/MM/yyyy")</h5>
-                    <p class="text-muted">@selected.Recovered de @selected.Total repuestas · @selected.Pending pendientes</p>
+                    <div class="d-flex align-items-center flex-wrap mb-2">
+                        <h5 class="font-weight-bold text-dark mb-0 mr-2">Reposición del @selected.Date.ToString("dd/MM/yyyy")</h5>
+                        @if (Model.CanRecover)
+                        {
+                            <a asp-page="./Grilla" asp-route-managementId="@Model.ManagementId" asp-route-recoveryId="@selected.Id"
+                               class="btn btn-sm btn-outline-primary btn-rounded ml-auto">
+                                <i class="mdi mdi-table-large mr-1"></i>Abrir en grilla
+                            </a>
+                        }
+                    </div>
+                    <p class="text-muted mb-1">@selected.Recovered de @selected.Total repuestas · @selected.Pending pendientes</p>
+                    <div class="progress mb-3" style="height: 8px;" aria-hidden="true">
+                        <div class="progress-bar bg-warning" role="progressbar"
+                             aria-valuenow="@(selected.Total > 0 ? (int)Math.Round(selected.Recovered * 100.0 / selected.Total) : 100)"
+                             aria-valuemin="0" aria-valuemax="100"
+                             style="width: @(selected.Total > 0 ? (int)Math.Round(selected.Recovered * 100.0 / selected.Total) : 100)%;"></div>
+                    </div>
                     @if (!Model.CanRecover && selected.Pending > 0)
-                    { <div class="alert alert-info">Solo SuperAdmin puede reubicar bloques de una gestión editable.</div> }
+                    { <div class="alert alert-info">Su rol no permite reubicar bloques de una gestión editable.</div> }
                     @if (selected.Pending == 0)
-                    { <p class="text-success font-weight-bold">No quedan planificaciones pendientes.</p> }
+                    { <p class="text-success font-weight-bold"><i class="fas fa-check-circle mr-1"></i>No quedan planificaciones pendientes.</p> }
                     @foreach (var group in Model.Groups)
                     {
                         <h6 class="font-weight-bold text-primary mt-4"><i class="fas fa-flask mr-1"></i>@group.Laboratory</h6>
@@ -69,6 +84,37 @@
                                          class="btn btn-sm btn-outline-warning btn-rounded mt-1">Reubicar <span class="sr-only">@p.Code</span></a> }
                                 </div>
                             }
+                        </div>
+                    }
+                    @if (Model.RescheduledRows.Count > 0)
+                    {
+                        <h6 class="font-weight-bold text-primary mt-4"><i class="mdi mdi-backup-restore mr-1"></i>Ya repuestas (@Model.RescheduledRows.Count)</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead>
+                                    <tr class="small text-muted text-uppercase">
+                                        <th>Código</th>
+                                        <th>Materia</th>
+                                        <th>Grupo</th>
+                                        <th>Nueva fecha</th>
+                                        <th>Periodos</th>
+                                        <th>Ambiente</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in Model.RescheduledRows)
+                                    {
+                                        <tr>
+                                            <td class="font-weight-bold">@row.Code</td>
+                                            <td>@row.Subject</td>
+                                            <td>@row.Group</td>
+                                            <td>@row.Date.ToString("dd/MM/yyyy")</td>
+                                            <td>@row.Periods</td>
+                                            <td>@row.Laboratory</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
                         </div>
                     }
                 </div></div>

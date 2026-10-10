@@ -1,0 +1,44 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.StudentGroups.CreateModel
+@using Proyecto_Laboratorios_Univalle.Pages.Catalogs.StudentGroups
+@{
+    ViewData["Title"] = "Nuevo grupo";
+    var cancelUrl = Url.Page("./Index", new { managementId = Model.Input.ManagementId, careerId = Model.CareerId }) ?? "/Catalogs/StudentGroups";
+    var form = new StudentGroupFormView(
+        Model.Input,
+        Model.Options,
+        IsEdit: false,
+        ManagementLabel: Model.Management?.Code,
+        Managements: Model.Managements,
+        CareerName: null,
+        CancelUrl: cancelUrl,
+        ConfigJson: Model.Options.ToJson(Model.Input, null));
+}
+
+<partial name="../Subjects/_SubjectsTabs" model='(ActiveTab: "grupos", ManagementId: (int?)Model.Input.ManagementId)' />
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Nuevo grupo</h4>
+                        <h6 class="card-subtitle text-muted">Un grupo es un paralelo de estudiantes de un semestre (A1, B1...) con todas las materias que cursa y su docente.</h6>
+                    </div>
+                    <div class="ml-auto"><i class="fas fa-users fa-2x text-info opacity-5"></i></div>
+                </div>
+                <partial name="_StudentGroupForm" model="form" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <link href="~/css/student-groups.css" rel="stylesheet" asp-append-version="true">
+}
+
+@section Scripts {
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/js/student-group-form.js" asp-append-version="true"></script>
+}

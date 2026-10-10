@@ -20,6 +20,20 @@ public static class PlanningSlot
             && aStart <= LastOrder(bStart, bCount)
             && bStart <= LastOrder(aStart, aCount);
 
+    /// <summary>
+    /// True si dos bloques se solapan o la distancia entre ellos es menor que gap+1 periodos:
+    /// con gap = 1 (por defecto) también son conflicto los bloques contiguos, porque entre prácticas
+    /// del mismo ambiente debe quedar al menos un periodo libre.
+    /// </summary>
+    public static bool OverlapsWithGap(int aStart, int aCount, int bStart, int bCount, int gap = 1)
+        => aCount >= 1 && bCount >= 1
+            && aStart <= LastOrder(bStart, bCount) + gap
+            && bStart <= LastOrder(aStart, aCount) + gap;
+
+    /// <summary>Texto visible de un bloque: "Periodo 3" o "Periodos 1–4" (sin la abreviatura "P").</summary>
+    public static string PeriodsText(int startOrder, int count)
+        => count <= 1 ? $"Periodo {startOrder}" : $"Periodos {startOrder}–{LastOrder(startOrder, count)}";
+
     /// <summary>Día 1=lunes..6=sábado; 0 si es domingo.</summary>
     public static int WeekdayOf(DateTime date) => (int)date.DayOfWeek;
 

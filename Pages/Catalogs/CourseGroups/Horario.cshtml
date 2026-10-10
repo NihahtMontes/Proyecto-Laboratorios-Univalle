@@ -1,0 +1,264 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups.HorarioModel
+@using Proyecto_Laboratorios_Univalle.Pages.Shared
+@{
+    ViewData["Title"] = "Horario por semestre-grupo";
+    ViewData["HidePageTitle"] = true;
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <nav aria-label="breadcrumb" class="mb-2">
+                <ol class="breadcrumb bg-transparent p-0 mb-0 small">
+                    <li class="breadcrumb-item">
+                        <a asp-page="/Catalogs/Subjects/Index" class="text-muted text-decoration-none">
+                            <i class="fas fa-arrow-left mr-1"></i>Volver a Materias
+                        </a>
+                    </li>
+                </ol>
+            </nav>
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0 mt-1">Catálogo de materias</h4>
+            <h2 class="font-weight-bold text-dark mb-0">Horario semanal por cohorte (semestre-grupo)</h2>
+            <div class="text-muted small mt-1">
+                Una sola grilla para todas las materias que comparten carrera, semestre y nombre de grupo.
+            </div>
+        </div>
+        @if (Model.Managements.Count > 0)
+        {
+            <div class="col-md-4 mt-2 mt-md-0">
+                <form method="get" class="d-flex align-items-center justify-content-md-end">
+                    <label for="hc-management" class="small text-muted mb-0 mr-2">Gestión</label>
+                    <select id="hc-management" name="managementId" class="custom-select custom-select-sm w-auto"
+                            onchange="this.form.submit()"
+                            title="Cambiar la gestión consultada">
+                        @foreach (var m in Model.Managements)
+                        {
+                            <option value="@m.Id" selected="@(Model.Management?.Id == m.Id)">@m.Code · @m.StatusText@(m.IsCurrent ? " (actual)" : "")</option>
+                        }
+                    </select>
+                </form>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    <partial name="../Subjects/_SubjectsTabs" model='(ActiveTab: "horario", ManagementId: Model.Management?.Id ?? Model.ManagementId)' />
+    @if (Model.Management == null)
+    {
+        <div class="gr-empty-state">
+            <i class="mdi mdi-table-large gr-empty-state__icon"></i>
+            <h3 class="font-weight-bold text-dark mb-2">No hay una gestión académica activa</h3>
+            <p class="text-muted mb-4">Active una gestión semestral o elija una en el selector para consultar o editar el horario de los cohortes.</p>
+            <a asp-page="/Managements/Index" class="btn btn-primary btn-rounded px-4 shadow-sm gr-btn-primary">
+                <i class="fas fa-university mr-2"></i> Ir a Gestiones
+            </a>
+        </div>
+    }
+    else
+    {
+        var management = Model.Management;
+
+        @if (Model.IsReadOnly)
+        {
+            <div class="alert border-0 shadow-sm rounded-lg d-flex align-items-center mb-3 gr-readonly">
+                <i class="fas fa-eye text-warning fa-lg mr-3"></i>
+                <div class="flex-grow-1">
+                    <strong class="text-dark">Consultando la gestión @management.Code (@management.StatusText): solo lectura.</strong>
+                    <div class="small text-muted">El horario de esta gestión no admite cambios.</div>
+                </div>
+            </div>
+        }
+
+        @if (Model.CareerOptions.Count == 0)
+        {
+            <div class="gr-empty-state">
+                <i class="mdi mdi-account-group-outline gr-empty-state__icon"></i>
+                <h4 class="font-weight-bold text-dark mb-2">No hay cohortes en la gestión @management.Code</h4>
+                <p class="text-muted mb-0">Un cohorte agrupa las materias de una carrera, semestre y nombre de grupo con grupos activos; registre grupos con materia, carrera y semestre para armar el horario.</p>
+            </div>
+        }
+        else
+        {
+            <!-- Filtros: carrera y cohorte (la gestión va en el encabezado) -->
+            <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                <form method="get" class="d-flex flex-wrap align-items-center">
+                    <input type="hidden" name="managementId" value="@management.Id" />
+                    <label for="hc-career" class="small text-muted mb-0 mr-2">Carrera</label>
+                    <select id="hc-career" name="careerId" class="custom-select custom-select-sm w-auto mr-3 mb-1 mb-md-0"
+                            onchange="this.form.submit()" title="Carrera de los cohortes">
+                        <option value="">Todas las carreras</option>
+                        @foreach (var c in Model.CareerOptions)
+                        {
+                            <option value="@c.Id" selected="@(Model.CareerId == c.Id)">@c.Name</option>
+                        }
+                    </select>
+
+                    <label for="hc-cohort" class="small text-muted mb-0 mr-2">Cohorte</label>
+                    <select id="hc-cohort" name="cohort" class="custom-select custom-select-sm w-auto mr-3 mb-1 mb-md-0"
+                            onchange="this.form.submit()" title="Semestre y grupo del cohorte">
+                        <option value="">Elija un cohorte…</option>
+                        @foreach (var o in Model.Cohorts)
+                        {
+                            var value = $"{o.Semester}|{o.GroupName}";
+                            <option value="@value" selected="@(Model.Cohort == value)">@(o.Label) (@(o.SubjectCount) materia@(o.SubjectCount == 1 ? "" : "s"))</option>
+                        }
+                    </select>
+
+                    @if (Model.Selected != null)
+                    {
+                        <span class="badge badge-pill badge-light border text-muted ml-auto mb-1 mb-md-0 font-weight-bold">
+                            <i class="fas fa-layer-group mr-1"></i>@Model.Selected.Label · @Model.Selected.Subjects.Count materia@(Model.Selected.Subjects.Count == 1 ? "" : "s")
+                        </span>
+                    }
+                </form>
+            </div>
+
+            @if (Model.Selected == null)
+            {
+                <div class="gr-empty-state">
+                    <i class="far fa-calendar-alt gr-empty-state__icon"></i>
+                    <h4 class="font-weight-bold text-dark mb-2">Elija una carrera y un cohorte</h4>
+                    <p class="text-muted mb-0">El cohorte reúne a todos los grupos que comparten estudiantes: carrera + semestre + nombre de grupo. Su horario se edita en una sola grilla.</p>
+                </div>
+            }
+            else if (Model.Periods.Count == 0)
+            {
+                <div class="gr-empty-state">
+                    <i class="far fa-clock gr-empty-state__icon"></i>
+                    <h4 class="font-weight-bold text-dark mb-2">No hay periodos académicos configurados</h4>
+                    <p class="text-muted mb-0">La grilla usa el catálogo de periodos de clase (1 a 12) para armar las filas del horario.</p>
+                </div>
+            }
+            else
+            {
+                <form method="post" asp-page="./Horario"
+                      asp-route-managementId="@Model.ManagementId"
+                      asp-route-careerId="@Model.CareerId"
+                      asp-route-cohort="@Model.Cohort"
+                      id="hc-form" novalidate>
+                    <input type="hidden" asp-for="SlotsJson" />
+
+                    <!-- Chips de materias del cohorte, resumen en vivo e indicador de cambios -->
+                    <div class="card border-0 shadow-sm rounded-lg mb-4">
+                        <div class="card-body py-3">
+                            <div class="d-flex flex-wrap align-items-center">
+                                <h6 class="font-weight-bold text-dark mb-0 mr-3">
+                                    <i class="fas fa-layer-group mr-1"></i> Materias del cohorte
+                                </h6>
+                                <div class="d-flex flex-wrap hg-chips" id="hc-chips" role="group" aria-label="Materias del cohorte"></div>
+                                <span class="badge ml-auto px-3 py-2 hg-unsaved" id="hc-unsaved" hidden>
+                                    <i class="mdi mdi-circle-edit-outline mr-1"></i> Cambios sin guardar
+                                </span>
+                            </div>
+                            <div class="hg-summaries mt-3" id="hc-summaries" aria-live="polite"></div>
+                        </div>
+                    </div>
+
+                    <!-- Hoja del horario (mismo formato que la Grilla por laboratorio) -->
+                    <section class="card border-0 shadow-sm rounded-lg mb-4" aria-label="Horario semanal del cohorte">
+                        <header class="gr-sheet__head">
+                            <div class="gr-sheet__brand">
+                                <strong>UNIVALLE</strong>
+                                <span>Laboratorios</span>
+                            </div>
+                            <div class="gr-sheet__title">
+                                <span>HORARIO SEMANAL DE CLASES — POR SEMESTRE-GRUPO</span>
+                            </div>
+                            <div class="gr-sheet__code">
+                                <span>Gestión</span>
+                                <strong>@management.Code</strong>
+                            </div>
+                        </header>
+                        <dl class="gr-sheet__meta">
+                            <div class="gr-sheet__meta-wide"><dt>Cohorte</dt><dd>@Model.Selected.Label</dd></div>
+                            <div><dt>Carrera</dt><dd>@Model.Selected.CareerName</dd></div>
+                            <div><dt>Semestre</dt><dd>@($"{Model.Selected.Semester}.º")</dd></div>
+                            <div><dt>Grupo</dt><dd>@Model.Selected.GroupName</dd></div>
+                            <div><dt>Estado</dt><dd>@(Model.IsReadOnly ? "Solo lectura" : "Editable")</dd></div>
+                        </dl>
+
+                        <div class="gr-scroll">
+                            <div class="gr-grid" id="hc-grid"
+                                 style="grid-template-rows: auto repeat(@Model.Periods.Count, minmax(var(--gr-row-height), auto));">
+                                <partial name="_PeriodWeekGrid" model="Model.GridModel" />
+                                @foreach (var period in Model.Periods)
+                                {
+                                    @for (var weekday = 1; weekday <= 6; weekday++)
+                                    {
+                                        <button type="button"
+                                                class="gr-cell hg-cell hc-cell"
+                                                style="grid-column: @(weekday + 1); grid-row: @(period.Order + 1);"
+                                                data-weekday="@weekday" data-order="@period.Order"
+                                                aria-label="@PeriodWeekGridModel.DefaultDayNames[weekday - 1], periodo @period.Order (@period.Label)"
+                                                aria-pressed="false"
+                                                disabled="@Model.IsReadOnly"></button>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        @if (!Model.IsReadOnly)
+                        {
+                            <div class="hg-form-foot d-flex align-items-center border-top px-4 py-3">
+                                <span class="small text-muted">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    Haga clic en una celda libre para agregar clase; clic sobre un bloque para cambiar materia, duración, moverlo o quitarlo.
+                                </span>
+                                <button type="button" id="hc-save" class="btn btn-primary btn-rounded font-weight-bold px-4 ml-auto gr-btn-primary">
+                                    <i class="mdi mdi-content-save mr-1"></i> Guardar horario
+                                </button>
+                            </div>
+                        }
+                    </section>
+                </form>
+            }
+        }
+    }
+</div>
+
+<!-- Modal Bootstrap 4: agregar / editar bloque de clase -->
+<div class="modal fade" id="hc-modal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm" role="document">
+        <div class="modal-content border-0 shadow rounded-lg">
+            <div class="modal-header py-2">
+                <h6 class="modal-title font-weight-bold text-dark" id="hc-modal-title">Agregar clase</h6>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body pb-2">
+                <div class="form-group">
+                    <label class="small font-weight-bold text-muted" for="hc-modal-subject">Materia del cohorte</label>
+                    <select class="custom-select custom-select-sm" id="hc-modal-subject"></select>
+                </div>
+                <div class="form-group">
+                    <label class="small font-weight-bold text-muted" for="hc-modal-count">Cantidad de periodos</label>
+                    <select class="custom-select custom-select-sm" id="hc-modal-count"></select>
+                </div>
+                <div class="alert alert-warning py-2 px-3 small mb-0" id="hc-modal-warning" hidden></div>
+            </div>
+            <div class="modal-footer py-2 border-top-0">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-rounded mr-auto" id="hc-modal-remove" hidden>
+                    <i class="fas fa-trash mr-1"></i>Quitar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary btn-rounded" id="hc-modal-move" hidden>
+                    <i class="mdi mdi-cursor-move mr-1"></i>Mover
+                </button>
+                <button type="button" class="btn btn-sm btn-light btn-rounded" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-primary btn-rounded font-weight-bold gr-btn-primary" id="hc-modal-accept">Agregar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="hc-config">@Html.Raw(Model.ConfigJson)</script>
+
+@section Styles {
+    <link href="~/css/grilla.css" rel="stylesheet" asp-append-version="true">
+    <link href="~/css/horario-grupos.css" rel="stylesheet" asp-append-version="true">
+}
+@section Scripts {
+    <script src="~/js/horario-cohorte.js" asp-append-version="true"></script>
+}

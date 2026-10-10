@@ -7,6 +7,7 @@
         || Model.SemesterFilter.HasValue
         || Model.StatusFilter.HasValue;
 }
+<partial name="_SubjectsTabs" model='(ActiveTab: "materias", ManagementId: (int?)null)' />
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm border-0">
@@ -147,6 +148,9 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group">
+                                            <a asp-page="./Horario" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mr-1 shadow-none" title="Horario de la materia">
+                                                <i class="mdi mdi-calendar-clock"></i>
+                                            </a>
                                             <a asp-page="./Kit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary btn-rounded mr-1 shadow-none" title="Kit de la materia">
                                                 <i class="fas fa-toolbox"></i>
                                             </a>

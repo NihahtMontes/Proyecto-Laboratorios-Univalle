@@ -46,7 +46,11 @@ public class CalendarioAcademicoModel : PageModel
     public bool CanWrite { get; private set; }
 
     public bool CanEditCalendar => CanWrite && Management is { IsEditable: true };
-    public bool CanRecover => User.IsInRole(AuthorizationHelper.RoleSuperAdmin) && Management is { IsEditable: true };
+
+    /// <summary>True para Supervisor/Administrator/SuperAdmin (ManagementRoles) con gestión editable: pueden reponer días.</summary>
+    public bool CanRecover => AuthorizationHelper.ManagementRoles
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Any(User.IsInRole) && Management is { IsEditable: true };
 
     public IReadOnlyList<WeekRow> Weeks { get; private set; } = [];
 
@@ -130,7 +134,9 @@ public class CalendarioAcademicoModel : PageModel
     /// <summary>Suspende un día con sesiones, crea una reposición y conserva el estado de cada origen.</summary>
     public async Task<IActionResult> OnPostRecoverDayAsync(int dayId, string? reason, int managementId)
     {
-        if (!User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+        if (!AuthorizationHelper.ManagementRoles
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(User.IsInRole))
             return Forbid();
         var result = await _recoveries.SuspendAsync(dayId, reason);
         if (result.Ok)

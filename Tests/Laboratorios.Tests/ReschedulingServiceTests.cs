@@ -148,6 +148,20 @@ public class ReschedulingServiceTests
     }
 
     [Fact]
+    public async Task MovingSamePracticeOnePeriodLater_Succeeds()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(OriginId, OriginDate, 1, 4);
+
+        // La propia planificación está excluida: moverla 1–4 → 2–5 en el mismo ambiente y fecha es válido.
+        var result = await Service(db).ExecuteAsync(Command(OriginDate, 2));
+
+        Assert.True(result.Ok, result.Message);
+        Assert.NotNull(result.Validation);
+        Assert.DoesNotContain(result.Validation!.Issues, i => i.Code == Codes.LabOccupied);
+    }
+
+    [Fact]
     public async Task WarningNotAccepted_Fails()
     {
         using var db = new TestDb();
@@ -243,7 +257,9 @@ public class ReschedulingServiceTests
         Assert.Equal(1, db.Context.Reschedulings.AsNoTracking().Single().DayRecoveryId);
         Assert.Equal(DayRecoveryStatus.InProgress, db.Context.DayRecoveries.AsNoTracking().Single().Status);
 
-        var second = await Service(db).ExecuteAsync(Command(thursday, 3, dayRecoveryId: 1, planningId: SecondId));
+        // P4–5 y no P3–4: debe quedar un periodo libre entre prácticas del ambiente y la primera
+        // reposición ya ocupa P1–2 ese jueves.
+        var second = await Service(db).ExecuteAsync(Command(thursday, 4, dayRecoveryId: 1, planningId: SecondId));
 
         Assert.True(second.Ok, second.Message);
         Assert.Equal(PlanningStatus.Recovered, Load(db, SecondId).Status);

@@ -126,16 +126,34 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public virtual ICollection<RequestEquipmentUnit> RequestLinks { get; set; } = [];
 
         // Calculated Properties
+
+        /// <summary>
+        /// Inicio del ciclo de vida útil: la fecha de adquisición (puesta en servicio en la institución);
+        /// si falta, la de fabricación. Null si la unidad no tiene ninguna de las dos.
+        /// </summary>
+        [NotMapped]
+        public DateTime? ServiceStartDate => AcquisitionDate ?? ManufacturingDate;
+
+        /// <summary>Años completos desde el inicio del ciclo de vida (<see cref="ServiceStartDate"/>); null sin fecha.</summary>
         [NotMapped]
         public int? YearsInOperation
         {
             get
             {
-                if (!ManufacturingDate.HasValue) return null;
-                var years = DateTime.UtcNow.Year - ManufacturingDate.Value.Year;
-                if (DateTime.UtcNow < ManufacturingDate.Value.AddYears(years)) years--;
-                return years;
+                if (ServiceStartDate is not DateTime start) return null;
+                var today = DateTime.Today;
+                var years = today.Year - start.Year;
+                if (today < start.Date.AddYears(years)) years--;
+                return Math.Max(years, 0);
             }
         }
+
+        /// <summary>
+        /// Vida útil restante en años (puede ser negativa si se excedió). Null si el equipo no define vida útil
+        /// o la unidad no tiene fecha de adquisición ni de fabricación (requiere Equipment cargado).
+        /// </summary>
+        [NotMapped]
+        public int? RemainingUsefulLifeYears =>
+            Equipment?.UsefulLifeYears is int life && YearsInOperation is int used ? life - used : null;
     }
 }

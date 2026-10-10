@@ -9,12 +9,14 @@
     ViewData["HidePageTitle"] = true;
     var grid = Model.Grid;
     var origin = Model.Origin;
+    var overview = Model.RecoveryOverview;
     var mode = Model.IsRescheduleMode && grid != null;
     // En modo reprogramación "dos semanas" es el valor por defecto: el "no" se envía explícito.
     string? twoWeeksRoute = grid is { TwoWeeks: true } ? "true" : mode ? "false" : null;
     int? reprogramarRoute = mode && !Model.IsRecoveryMode ? origin!.Id : null;
     int? reponerRoute = mode && Model.IsRecoveryMode ? origin!.Id : null;
-    var canReschedule = Model.IsSuperAdmin && grid is { CanAdd: true };
+    // Reprogramar a mano sigue siendo exclusivo del SuperAdmin; en reposición de día alcanza con CanRecover.
+    var canReschedule = (Model.IsRecoveryMode ? Model.CanRecover : Model.IsSuperAdmin) && grid is { CanAdd: true };
     var legendStatuses = new[]
     {
         PlanningStatus.Planned, PlanningStatus.Approved, PlanningStatus.Finalized,
@@ -84,9 +86,12 @@
                 </div>
                 <a asp-page="./Grilla" asp-route-managementId="@origin.ManagementId" asp-route-laboratoryId="@origin.LaboratoryId"
                    asp-route-date="@origin.Date.ToString("yyyy-MM-dd", inv)"
+                   id="gr-rs-exit"
                    class="btn btn-light btn-rounded btn-sm font-weight-bold ml-auto">
                     <i class="fas fa-times mr-1"></i> Salir del modo de traslado
                 </a>
+                @* Chips de ambientes: visibles solo durante un arrastre (los llena grilla-reprogramar.js) *@
+                <div class="gr-rs-chips" id="gr-rs-chips" hidden aria-label="Cambiar de ambiente durante el arrastre"></div>
             </div>
         }
 
@@ -98,6 +103,30 @@
                     <strong class="text-dark">Consultando la gestión @management.Code (@management.StatusText): solo lectura.</strong>
                     <div class="small text-muted">Esta gestión no admite nuevas planificaciones.</div>
                 </div>
+            </div>
+        }
+
+        @if (overview != null && !mode)
+        {
+            <!-- Banda de reposición de día en curso (sin planificación elegida) -->
+            <div class="gr-rs-band shadow-sm rounded-lg mb-3 gr-noprint" role="status">
+                <i class="mdi mdi-backup-restore gr-rs-band__icon" aria-hidden="true"></i>
+                <div class="gr-rs-band__text">
+                    <span class="gr-rs-band__eyebrow">Reposición de día en curso</span>
+                    <span>
+                        <strong>Afectados del @overview.Date.ToString("dd/MM/yyyy")</strong>
+                        · @overview.Recovered de @overview.Total repuestas
+                        · @overview.Pending pendiente(s)
+                    </span>
+                </div>
+                <a asp-page="./Reposiciones" asp-route-managementId="@management.Id" asp-route-recoveryId="@overview.Id"
+                   class="btn btn-light btn-rounded btn-sm font-weight-bold ml-auto">
+                    <i class="fas fa-clipboard-list mr-1"></i> Ver detalle
+                </a>
+                <a asp-page="./Grilla" asp-route-managementId="@management.Id" id="gr-rec-exit"
+                   class="btn btn-light btn-rounded btn-sm font-weight-bold">
+                    <i class="fas fa-times mr-1"></i> Salir
+                </a>
             </div>
         }
 
@@ -127,7 +156,8 @@
                         <select id="gr-lab" name="laboratoryId" class="form-control form-control-sm" disabled="@(!grid.HasLaboratories)">
                             @foreach (var l in grid.Laboratories)
                             {
-                                <option value="@l.Id" selected="@(lab != null && l.Id == lab.Id)">@l.Label@(l.PlanningCount > 0 ? $" ({l.PlanningCount})" : "")</option>
+                                var pendingInLab = Model.RecoveryPending.Count(p => p.LaboratoryId == l.Id);
+                                <option value="@l.Id" selected="@(lab != null && l.Id == lab.Id)">@l.Label@(l.PlanningCount > 0 ? $" ({l.PlanningCount})" : "")@(pendingInLab > 0 ? $" · {pendingInLab} pendiente(s)" : "")</option>
                             }
                         </select>
                     </div>
@@ -225,7 +255,7 @@
         }
         else if (lab != null)
         {
-            <div class="gr-layout @(mode ? "gr-layout--rs" : string.Empty)">
+            <div class="gr-layout @((mode || overview != null) ? "gr-layout--rs" : string.Empty)">
                 <div class="gr-layout__main">
                     @foreach (var week in grid.Weeks)
                     {
@@ -276,7 +306,7 @@
                                                  </span>
                                                  <a asp-page="./Reposiciones" asp-route-managementId="@management.Id" class="small gr-noprint">Ver reposiciones</a>
                                              }
-                                             else if (Model.IsSuperAdmin && !mode && grid.CanAdd && day.Blocks.Any(b => b.Occupies))
+                                             else if (Model.CanRecover && !mode && grid.CanAdd && day.Blocks.Any(b => b.Occupies))
                                              {
                                                  <a asp-page="./CalendarioAcademico" asp-route-managementId="@management.Id"
                                                     asp-fragment="day-@day.Date.ToString("yyyy-MM-dd", inv)" class="small gr-noprint">Reponer día</a>
@@ -288,25 +318,27 @@
                                     {
                                         var row = period.Order + 1;
                                         <div class="gr-period" style="grid-column: 1; grid-row: @row;">
-                                            <strong>P@(period.Order)</strong>
-                                            <span>@period.Label</span>
+                                            <span class="gr-period__badge" aria-hidden="true">@period.Order</span>
+                                            <span class="gr-period__time">@period.Label</span>
                                         </div>
 
                                         @foreach (var day in week.Days)
                                         {
                                             var dateValue = day.Date.ToString("yyyy-MM-dd", inv);
                                             var busy = day.IsBusy(period.Order);
+                                            var buffer = day.AcceptsBlocks && day.IsBuffer(period.Order);
                                             var cellCss = !day.InManagement ? "gr-cell--out" : day.IsSuspended ? "gr-cell--suspended" : string.Empty;
-                                            <div class="gr-cell @cellCss @(busy ? "gr-cell--busy" : string.Empty)"
+                                            <div class="gr-cell @cellCss @(busy ? "gr-cell--busy" : string.Empty) @(buffer ? "gr-cell--buffer" : string.Empty)"
                                                  style="grid-column: @(day.Weekday + 1); grid-row: @row;"
                                                  data-date="@dateValue" data-order="@period.Order" data-laboratory-id="@lab.Id" data-col="@(day.Weekday + 1)"
-                                                 data-suspended="@(day.IsSuspended ? "true" : null)" data-out="@(day.InManagement ? null : "true")">
-                                                @if (grid.CanAdd && !mode && day.AcceptsBlocks && !busy)
+                                                 data-suspended="@(day.IsSuspended ? "true" : null)" data-out="@(day.InManagement ? null : "true")"
+                                                 title="@(buffer ? "Periodo de separación entre prácticas" : null)">
+                                                @if (grid.CanAdd && !mode && day.AcceptsBlocks && !busy && !buffer)
                                                 {
                                                     <a asp-page="./Planificacion" asp-route-managementId="@management.Id" asp-route-date="@dateValue"
                                                        asp-route-periodId="@period.Id" asp-route-laboratoryId="@lab.Id"
-                                                       class="gr-cell__add" title="Nueva planificación: @day.Name @day.Date.ToString("dd/MM"), P@(period.Order) (@period.Label)"
-                                                       aria-label="Nueva planificación el @day.Name @day.Date.ToString("dd/MM") en el periodo @period.Order">
+                                                       class="gr-cell__add" title="Nueva planificación: @day.Name @day.Date.ToString("dd/MM"), Periodo @period.Order (@period.Label)"
+                                                       aria-label="Nueva planificación el @day.Name @day.Date.ToString("dd/MM") en el Periodo @period.Order (@period.Label)">
                                                         <i class="fas fa-plus"></i>
                                                     </a>
                                                 }
@@ -417,6 +449,15 @@
                                 <span class="gr-legend__item">
                                     <span class="gr-legend__swatch gr-legend__swatch--out"></span> Fuera de la gestión
                                 </span>
+                                @if (mode)
+                                {
+                                    <span class="gr-legend__item">
+                                        <span class="gr-legend__swatch gr-legend__swatch--group-own"></span> Clase del grupo (esta materia)
+                                    </span>
+                                    <span class="gr-legend__item">
+                                        <span class="gr-legend__swatch gr-legend__swatch--group-busy"></span> Clase de otra materia del grupo
+                                    </span>
+                                }
                                 <span class="gr-legend__note text-muted small">Los estados atenuados no ocupan el ambiente; <i class="mdi mdi-arrow-right-bold" aria-hidden="true"></i> lleva a su nueva ubicación.</span>
                             </div>
                         </div>
@@ -457,20 +498,40 @@
                                     </div>
                                  </div>
 
+                                 @if (o.CourseGroupId is int && o.SubjectId is int horarioSubjectId && !Model.HasGroupSchedule)
+                                 {
+                                     <div class="gr-rs-noschedule small mt-2" role="note">
+                                         <i class="mdi mdi-information-outline" aria-hidden="true"></i>
+                                         El grupo no tiene horario de clases registrado; regístralo en
+                                         <a href="@Url.Page("/Catalogs/Subjects/Horario", new { id = horarioSubjectId, managementId = o.ManagementId })">Materias → Horario</a>.
+                                     </div>
+                                 }
+
+                                  @* "Tomar bloque": pone la planificación en mano para soltarla en cualquier celda (sobrevive al cambio de ambiente) *@
+                                 <button type="button" id="gr-rs-pick" class="btn btn-outline-primary btn-sm btn-rounded btn-block mt-2">
+                                     <i class="mdi mdi-cursor-move mr-1"></i> Tomar bloque
+                                 </button>
+
                                  @if (Model.IsRecoveryMode)
                                  {
                                      <div class="border-top mt-3 pt-3 gr-rs-pending" aria-label="Bandeja de planificaciones pendientes">
-                                         <h6 class="font-weight-bold text-dark">Bandeja · @Model.RecoveryPending.Count pendiente(s)</h6>
+                                         <h6 class="font-weight-bold text-dark">Afectados del @o.Date.ToString("dd/MM") · @Model.RecoveryPending.Count pendiente(s)</h6>
                                          @foreach (var group in Model.RecoveryPending.GroupBy(p => p.Laboratory))
                                          {
-                                             <div class="small font-weight-bold text-muted mt-2">@group.Key</div>
+                                             <div class="small font-weight-bold text-muted mt-2"><i class="fas fa-flask mr-1"></i>@group.Key</div>
                                              @foreach (var pending in group)
                                              {
                                                  <a asp-page="./Grilla" asp-route-reponer="@pending.Id" asp-route-recoveryId="@Model.RecoveryId"
+                                                    asp-route-laboratoryId="@pending.LaboratoryId"
                                                     class="d-block small rounded border px-2 py-1 mb-1 @(pending.Id == o.Id ? "border-warning bg-light" : "")">
-                                                     @pending.Code · @pending.Subject (@pending.Group) · @pending.PeriodCount periodo(s)
+                                                     <strong>@pending.Code</strong> · @pending.Subject (@pending.Group) · @pending.Periods
+                                                     <span class="d-block text-muted">@pending.Teacher · antes @pending.PreviousStatus</span>
                                                  </a>
                                              }
+                                         }
+                                         @if (Model.RecoveryPending.Count == 0)
+                                         {
+                                             <div class="gr-rec-done mt-2"><i class="fas fa-check-circle mr-1"></i> Todas las planificaciones del día fueron repuestas.</div>
                                          }
                                      </div>
                                  }
@@ -496,7 +557,7 @@
                                                 <select id="gr-rs-period" name="Move.StartPeriodId" class="custom-select custom-select-sm">
                                                     @foreach (var p in grid.Periods)
                                                     {
-                                                        <option value="@p.Id" selected="@(p.Id == selectedPeriodId)">P@(p.Order) · @p.Label</option>
+                                                        <option value="@p.Id" selected="@(p.Id == selectedPeriodId)">@PlanningSlot.PeriodsText(p.Order, 1) · @p.Label</option>
                                                     }
                                                 </select>
                                             </div>
@@ -555,6 +616,50 @@
                         </div>
                     </aside>
                 }
+
+                @if (overview != null && !mode)
+                {
+                    <!-- Panel lateral: afectados del día en reposición (para saltar a otro bloque) -->
+                    <aside class="gr-layout__side gr-noprint" aria-label="Planificaciones afectadas por la reposición del día">
+                        <div class="card border-0 shadow-sm rounded-lg gr-rs-panel">
+                            <div class="card-body p-3">
+                                <h5 class="font-weight-bold text-dark mb-1">
+                                    <i class="mdi mdi-backup-restore gr-rs-violet mr-1"></i> Afectados del @overview.Date.ToString("dd/MM")
+                                </h5>
+                                <div class="small text-muted mb-2">@overview.Reason</div>
+                                <div class="small font-weight-bold text-dark">@overview.Recovered de @overview.Total repuestas</div>
+                                <span class="gr-rec-progress mt-1" aria-hidden="true">
+                                    <span class="gr-rec-progress__fill" style="width: @(overview.Total > 0 ? (int)Math.Round(overview.Recovered * 100.0 / overview.Total) : 100)%;"></span>
+                                </span>
+                                @if (Model.RecoveryPending.Count == 0)
+                                {
+                                    <div class="gr-rec-done mt-3">
+                                        <i class="fas fa-check-circle mr-1"></i> Todas las planificaciones del día fueron repuestas.
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var group in Model.RecoveryPending.GroupBy(p => p.Laboratory))
+                                    {
+                                        <div class="small font-weight-bold text-muted mt-3 mb-1"><i class="fas fa-flask mr-1"></i>@group.Key</div>
+                                        @foreach (var pending in group)
+                                        {
+                                            <div class="gr-rec-item rounded @(Model.Resaltar == pending.Id ? "gr-rec-item--current" : string.Empty)">
+                                                <div class="small font-weight-bold text-dark">@pending.Code · @pending.Subject (@pending.Group)</div>
+                                                <div class="small text-muted">@pending.Teacher · @pending.Periods · antes @pending.PreviousStatus</div>
+                                                <a asp-page="./Grilla" asp-route-reponer="@pending.Id" asp-route-recoveryId="@overview.Id"
+                                                   asp-route-laboratoryId="@pending.LaboratoryId" asp-route-managementId="@management.Id"
+                                                   class="btn btn-sm btn-outline-warning btn-rounded mt-1">
+                                                    <i class="mdi mdi-arrow-right-bold mr-1"></i>Reubicar
+                                                </a>
+                                            </div>
+                                        }
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </aside>
+                }
             </div>
         }
     }
@@ -569,6 +674,7 @@
     {
         planningId = origin!.Id,
         code = origin.Code,
+        subject = origin.SubjectName,
         periodCount = origin.PeriodCount,
         originDate = origin.Date.ToString("yyyy-MM-dd", inv),
         originStartOrder = origin.StartOrder,
@@ -578,8 +684,13 @@
         validateUrl = Url.Page("/Api/SlotValidation"),
         periods = grid.Periods.Select(p => new { id = p.Id, order = p.Order, label = p.Label }),
         labs = grid.Laboratories.Select(l => new { id = l.Id, label = l.Label }),
+        groupSlots = Model.GroupSlots.Select(s => new { weekday = s.Weekday, order = s.PeriodOrder }),
+        siblingClasses = Model.GroupSiblings.Select(s => new { weekday = s.Weekday, order = s.PeriodOrder, subject = s.SubjectName, group = s.GroupName }),
+        groupName = origin.GroupName,
+        hasGroupSchedule = Model.HasGroupSchedule,
         completedText = "Esta planificación ya está completada. ¿Seguro que desea reprogramarla?",
         recovery = Model.IsRecoveryMode,
+        recoveryId = Model.RecoveryId,
         initial = !string.IsNullOrWhiteSpace(Model.DestDate) && Model.DestPeriodId.HasValue
             ? new { date = Model.DestDate, periodId = Model.DestPeriodId.Value }
             : null

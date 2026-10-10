@@ -21,6 +21,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
         private readonly IManagementActivationService _managementActivation;
+        private readonly ICourseGroupPurgeService _courseGroupPurge;
         private readonly ILogger<EditModel> _logger;
 
         public EditModel(
@@ -28,12 +29,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             UserManager<User> userManager,
             IManagementContextService managementContext,
             IManagementActivationService managementActivation,
+            ICourseGroupPurgeService courseGroupPurge,
             ILogger<EditModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
             _managementActivation = managementActivation;
+            _courseGroupPurge = courseGroupPurge;
             _logger = logger;
         }
 
@@ -224,10 +227,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
                 var closedCount = 0;
+                IReadOnlyList<int> closedIds = [];
                 if (shouldActivate)
                 {
                     var activationResult = await _managementActivation.ActivateAsync(management);
                     closedCount = activationResult.ClosedCount;
+                    closedIds = activationResult.ClosedManagementIds;
                 }
                 else if (Input.Status == ManagementStatus.Completed)
                 {
@@ -235,13 +240,30 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 }
 
                 await _context.SaveChangesAsync();
+
+                // Los grupos son datos de trabajo de una gestión desechables al completarla (borrado
+                // físico aprobado por el usuario). La purga corre dentro de esta transacción, DESPUÉS
+                // de persistir el cambio de estado, porque limpia el ChangeTracker.
+                var purgedGroups = 0;
+                if (Input.Status == ManagementStatus.Completed)
+                {
+                    purgedGroups += await _courseGroupPurge.PurgeManagementAsync(management.Id);
+                }
+                foreach (var closedId in closedIds)
+                {
+                    purgedGroups += await _courseGroupPurge.PurgeManagementAsync(closedId);
+                }
+
                 await transaction.CommitAsync();
                 _managementContext.InvalidateCache();
 
                 var handoffMessage = closedCount > 0
                     ? $" Se cerró {closedCount} gestión activa anterior del mismo tipo."
                     : string.Empty;
-                TempData.Success($"Gestión actualizada correctamente.{handoffMessage}");
+                var purgedMessage = purgedGroups > 0
+                    ? $" Se eliminaron {purgedGroups} grupo(s) de la gestión."
+                    : string.Empty;
+                TempData.Success($"Gestión actualizada correctamente.{handoffMessage}{purgedMessage}");
             }
             catch (Exception ex)
             {

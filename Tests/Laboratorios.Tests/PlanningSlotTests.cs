@@ -27,6 +27,15 @@ public class PlanningSlotTests
     [Fact]
     public void Overlaps_SharedLastPeriodOverlaps() => Assert.True(PlanningSlot.Overlaps(4, 1, 1, 4));
 
+    [Theory]
+    [InlineData(1, 4, 5, 1, true)]    // contiguo por detrás: entre prácticas del ambiente debe quedar un periodo libre
+    [InlineData(1, 4, 6, 1, false)]   // queda un periodo libre entre ambos
+    [InlineData(6, 2, 1, 4, false)]   // 6–7 empieza dos periodos después del final de 1–4
+    [InlineData(5, 2, 1, 4, true)]    // 5–6 es contiguo a 1–4
+    [InlineData(3, 2, 1, 4, true)]    // solapamiento real
+    public void OverlapsWithGap(int aStart, int aCount, int bStart, int bCount, bool expected)
+        => Assert.Equal(expected, PlanningSlot.OverlapsWithGap(aStart, aCount, bStart, bCount));
+
     [Fact]
     public void Apply_WritesDerivedHours()
     {

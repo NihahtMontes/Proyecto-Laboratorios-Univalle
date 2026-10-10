@@ -7,7 +7,8 @@
     --gr-primary: #7460ee;
     --gr-border: #e3e3ea;
     --gr-row-height: 58px;
-    --gr-period-col: 118px;
+    /* Columna de periodos: insignia (26px) + hora completa en una línea, sin cortes. */
+    --gr-period-col: 158px;
 }
 
 .gr-btn-primary { background: var(--gr-primary); border: none; }
@@ -115,9 +116,23 @@
 .gr-dayhead--out { background: #f5f5f5; }
 .gr-dayhead--out .gr-dayhead__name { color: #9a9a9a; }
 
-.gr-period { display: flex; flex-direction: column; justify-content: center; background: #fbfaff; }
-.gr-period strong { color: var(--gr-primary); font-size: 12px; }
-.gr-period span { color: #666; font-size: 11px; white-space: nowrap; }
+.gr-period { display: flex; flex-direction: row; align-items: center; gap: 8px; background: #fbfaff; }
+.gr-period__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    border-radius: 50%;
+    background: var(--gr-primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(116, 96, 238, .35);
+}
+.gr-period__time { color: #555; font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 .gr-cell {
     position: relative;
@@ -130,6 +145,38 @@
     background: repeating-linear-gradient(45deg, #f3f3f3, #f3f3f3 7px, #e6e6e6 7px, #e6e6e6 14px);
 }
 .gr-cell--out { background: #f7f7f7; }
+/* Periodo de separación entre prácticas: libre, contiguo a un bloque; rayado diagonal muy suave. */
+.gr-cell--buffer {
+    background: repeating-linear-gradient(45deg, #ffffff, #ffffff 8px, rgba(116, 96, 238, .05) 8px, rgba(116, 96, 238, .05) 16px);
+}
+/* Horario de clases del grupo (modo reprogramación): clase propia (verde, sugerido) y clase de
+   otra materia del mismo grupo de estudiantes (rojo rayado, bloquea). */
+.gr-cell--group-own {
+    background: #eaf7ef;
+    box-shadow: inset 0 0 0 2px #b7e4c7;
+}
+.gr-cell__group-label {
+    position: absolute;
+    top: 3px;
+    left: 4px;
+    z-index: 1;
+    max-width: calc(100% - 8px);
+    padding: 0 5px;
+    border-radius: 4px;
+    background: #dff3e6;
+    color: #1e7e34;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+.gr-cell--group-busy {
+    background: repeating-linear-gradient(45deg, #fdecef, #fdecef 7px, #f7ccd5 7px, #f7ccd5 14px);
+    box-shadow: inset 0 0 0 2px rgba(246, 45, 81, .22);
+}
 
 .gr-cell__add {
     position: absolute;
@@ -310,6 +357,17 @@
 .gr-rs-card__eyebrow { font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #6f42c1; }
 .gr-rs-card__hint { margin-top: 6px; font-size: 11px; color: #6f42c1; font-weight: 600; }
 
+/* Aviso: el grupo de la planificación no tiene horario de clases registrado. */
+.gr-rs-noschedule {
+    padding: 8px 10px;
+    border: 1px solid #ffe08a;
+    border-radius: 8px;
+    background: #fff8e1;
+    color: #7a5b00;
+    line-height: 1.4;
+}
+.gr-rs-noschedule a { color: #6f42c1; font-weight: 700; }
+
 .gr-rs-fieldset { border: 1px solid var(--gr-border); border-radius: 8px; padding: 8px 12px 12px; }
 .gr-rs-legend { width: auto; padding: 0 6px; margin-bottom: 4px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #6c6c80; }
 .gr-rs-fieldset .select2-container .select2-selection--single { height: 31px; border-color: #ced4da; }
@@ -370,6 +428,133 @@
 .gr-ghost--invalid { border-color: #dc3545; background: rgba(220, 53, 69, .16); color: #a71d2a; }
 .gr-ghost--fixed { border-style: solid; box-shadow: 0 2px 10px rgba(111, 66, 193, .25); }
 
+/* ---------- Reposición de día: panel de afectados y bandeja ---------- */
+.gr-rec-progress {
+    display: block;
+    height: 8px;
+    background: #efece2;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.gr-rec-progress__fill {
+    display: block;
+    height: 100%;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #f6c343, #e0a800);
+    transition: width .3s ease;
+}
+.gr-rec-item {
+    border: 1px solid #e3dcf6;
+    border-left: 3px solid #e3dcf6;
+    background: #fdfcff;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+}
+.gr-rec-item--current { border-color: #6f42c1; border-left: 4px solid #6f42c1; background: #faf8ff; }
+.gr-rec-done {
+    padding: 10px 12px;
+    border: 1px dashed #bfe6cf;
+    border-radius: 8px;
+    background: #f2faf5;
+    color: #2e8b60;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+/* ---------- Modo "llevar": bloque en mano (sobrevive al cambio de ambiente) ---------- */
+body.gr-carrying, body.gr-carrying * { cursor: move !important; }
+
+.gr-carry-ghost {
+    position: fixed;
+    z-index: 1999;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px;
+    border: 2px dashed #6f42c1;
+    border-radius: 8px;
+    background: rgba(111, 66, 193, .12);
+    color: #4b3a8f;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.2;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(111, 66, 193, .28);
+}
+.gr-carry-ghost strong { font-size: 12.5px; color: #6f42c1; }
+.gr-carry-ghost span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.gr-carry-bar {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: min(92vw, 640px);
+    padding: 8px 10px 8px 16px;
+    border-radius: 999px;
+    background: #6f42c1;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 6px 18px rgba(111, 66, 193, .4);
+    animation: gr-carry-in .18s ease-out;
+}
+.gr-carry-bar i { font-size: 18px; line-height: 1; }
+.gr-carry-bar strong { font-weight: 800; }
+.gr-carry-bar__text { min-width: 0; }
+.gr-carry-bar .btn {
+    background: rgba(255, 255, 255, .15);
+    border: 1px solid rgba(255, 255, 255, .55);
+    color: #fff;
+}
+.gr-carry-bar .btn:hover, .gr-carry-bar .btn:focus { background: rgba(255, 255, 255, .3); color: #fff; }
+@keyframes gr-carry-in {
+    from { opacity: 0; transform: translate(-50%, -8px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Chips de ambientes para llevar el bloque a otro laboratorio */
+.gr-rs-chips {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-top: 10px;
+    border-top: 1px dashed rgba(111, 66, 193, .35);
+    overflow-x: auto;
+    max-width: 100%;
+}
+.gr-rs-chips[hidden] { display: none !important; }
+.gr-rs-chips__label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: #6f42c1; white-space: nowrap; }
+.gr-chip {
+    flex: 0 0 auto;
+    border: 1px solid #cdbdee;
+    background: #fff;
+    color: #4b3a8f;
+    border-radius: 999px;
+    padding: 3px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: grab;
+    transition: background-color .15s, box-shadow .15s, border-color .15s, transform .15s;
+}
+.gr-chip:hover { background: #f4effd; border-color: #6f42c1; }
+.gr-chip--armed {
+    background: #6f42c1;
+    border-color: #6f42c1;
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(111, 66, 193, .25);
+    transform: scale(1.05);
+}
+
 /* ---------- Sin periodo asignado ---------- */
 .gr-unscheduled { padding: 12px 16px; border-top: 1px solid var(--gr-border); background: #fffdf6; }
 .gr-unscheduled__item {
@@ -399,6 +584,8 @@
 .gr-legend__swatch--out { background: #f7f7f7; border-left-color: #e3e3e3; }
 .gr-legend__swatch--rescheduling { background: #f3edfc; border-left-color: #6f42c1; }
 .gr-legend__swatch--recovery { background: #fff1e5; border-left-color: #fd7e14; }
+.gr-legend__swatch--group-own { background: #eaf7ef; border-left-color: #36bea6; }
+.gr-legend__swatch--group-busy { background: repeating-linear-gradient(45deg, #fdecef, #fdecef 3px, #f7ccd5 3px, #f7ccd5 6px); border-left-color: #f62d51; }
 .gr-legend__icon--rescheduling { color: #6f42c1; font-size: 15px; }
 .gr-legend__icon--recovery { color: #fd7e14; font-size: 15px; }
 .gr-legend__note { margin-left: auto; }
@@ -409,6 +596,13 @@
     .gr-sheet__brand, .gr-sheet__code { border: 0; text-align: center; }
     .gr-sheet__meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .gr-controls__actions { margin-left: 0; }
+}
+
+/* Pantallas angostas: la hora baja bajo la insignia, pero siempre completa. */
+@media (max-width: 575.98px) {
+    :root { --gr-period-col: 110px; }
+    .gr-period { flex-direction: column; align-items: flex-start; gap: 3px; }
+    .gr-period__time { white-space: normal; font-size: 11px; }
 }
 
 @media (max-width: 1199.98px) {
@@ -422,7 +616,7 @@
     @page { size: A4 landscape; margin: 8mm; }
 
     .left-sidebar, .topbar, .footer, .preloader, .gr-noprint, .gr-cell__add, .gr-legend-card .gr-legend__note,
-    .gr-ghost, .gr-ctx-menu, .gr-block__drag-hint {
+    .gr-ghost, .gr-ctx-menu, .gr-block__drag-hint, .gr-carry-bar, .gr-carry-ghost, .gr-rs-chips {
         display: none !important;
     }
     .page-wrapper { margin-left: 0 !important; padding-top: 0 !important; background: #fff !important; }
@@ -434,7 +628,10 @@
     .gr-sheet { box-shadow: none !important; border: 1px solid #999 !important; break-after: page; page-break-after: always; }
     .gr-sheet:last-of-type { break-after: auto; page-break-after: auto; }
     .gr-scroll { overflow: visible; }
-    .gr-grid { min-width: 0; grid-template-columns: 90px repeat(6, minmax(0, 1fr)); --gr-row-height: 40px; }
+    .gr-grid { min-width: 0; grid-template-columns: 96px repeat(6, minmax(0, 1fr)); --gr-row-height: 40px; }
+    .gr-period { flex-direction: column; align-items: flex-start; gap: 2px; padding: 4px 6px; }
+    .gr-period__badge { width: 20px; height: 20px; min-width: 20px; font-size: 11px; box-shadow: none; }
+    .gr-period__time { font-size: 9.5px; }
     .gr-block { box-shadow: none; font-size: 9.5px; outline: none; }
     .gr-layout--rs { display: block; }
     .gr-legend-card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }

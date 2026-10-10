@@ -9,6 +9,7 @@ using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
 using System.ComponentModel.DataAnnotations;
 using Proyecto_Laboratorios_Univalle.Services;
+using Proyecto_Laboratorios_Univalle.Services.Notifications;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 {
@@ -18,16 +19,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
+        private readonly IMaintenanceNotificationWriter _maintenanceNotifications;
         private readonly ILogger<CreateModel> _logger;
 
-        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, 
+        public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
             UserManager<User> userManager,
             IManagementContextService managementContext,
+            IMaintenanceNotificationWriter maintenanceNotifications,
             ILogger<CreateModel> logger)
         {
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
+            _maintenanceNotifications = maintenanceNotifications;
             _logger = logger;
         }
 
@@ -505,7 +509,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 if (!saveDraft)
                 {
-                    await TryCreateMaintenanceNotificationAsync(maintenance, equipmentUnit);
+                    await TryCreateMaintenanceNotificationAsync(maintenance);
                 }
 
                 TempData.Success(saveDraft
@@ -718,74 +722,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 : MaintenanceType.Preventivo;
         }
 
-        private async Task TryCreateMaintenanceNotificationAsync(Maintenance maintenance, EquipmentUnit? equipmentUnit)
+        /// <summary>
+        /// Delega en el escritor único de avisos de mantenimiento. El aviso nunca forma parte
+        /// del guardado crítico: el escritor captura sus propios errores.
+        /// </summary>
+        private async Task TryCreateMaintenanceNotificationAsync(Maintenance maintenance)
         {
-            if (!maintenance.ScheduledDate.HasValue || !maintenance.TechnicianId.HasValue)
-                return;
-
-            var daysUntil = (maintenance.ScheduledDate.Value.Date - DateTime.UtcNow.Date).TotalDays;
-            if (daysUntil < 0 || daysUntil > 7)
-                return;
-
-            try
-            {
-                var technician = await _context.People
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.Id == maintenance.TechnicianId.Value);
-
-                if (string.IsNullOrWhiteSpace(technician?.Email))
-                    return;
-
-                var recipient = await _context.Users
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(u => u.Email == technician.Email);
-
-                if (recipient == null)
-                    return;
-
-                var managementType = await _context.Managements
-                    .AsNoTracking()
-                    .Where(m => m.Id == maintenance.ManagementId)
-                    .Select(m => (ManagementType?)m.Type)
-                    .FirstOrDefaultAsync();
-
-                var actionUrl = $"/Maintenances/Details/{maintenance.Id}?ManagementId={maintenance.ManagementId}&ManagementType={managementType}";
-                var message = $"El mantenimiento de la unidad {equipmentUnit?.InventoryNumber} debe realizarse el {maintenance.ScheduledDate.Value:dd/MM/yyyy}.";
-                var notification = await _context.Notifications.AsTracking()
-                    .Where(n => n.UserId == recipient.Id && n.Scope == "maintenance" && n.ActionUrl == actionUrl)
-                    .OrderByDescending(n => n.CreatedAt)
-                    .FirstOrDefaultAsync();
-
-                if (notification != null)
-                {
-                    if (notification.Message == message) return;
-                    notification.Message = message;
-                    notification.IsRead = false;
-                }
-                else
-                {
-                    _context.Notifications.Add(new Notification
-                    {
-                        UserId = recipient.Id,
-                        Title = "Mantenimiento Próximo a Vencer",
-                        Message = message,
-                        ActionUrl = actionUrl,
-                        IconClass = "fas fa-exclamation-triangle text-warning",
-                        ManagementId = maintenance.ManagementId,
-                        ManagementType = managementType,
-                        Scope = "maintenance",
-                        IsRead = false,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "No se pudo guardar el aviso para mantenimiento {MaintenanceId}", maintenance.Id);
-                // El aviso no forma parte del guardado crítico de L-8.
-            }
+            await _maintenanceNotifications.NotifyAssignmentAsync(maintenance.Id);
         }
 
         private void LoadLists(int facultyId = 0, int labId = 0, int equipUnitId = 0, int? technicianId = null, int? requestId = null)

@@ -6,6 +6,7 @@
         || Model.ManagementFilter.HasValue
         || Model.SubjectFilter.HasValue
         || Model.TeacherFilter.HasValue
+        || Model.SemesterFilter.HasValue
         || Model.StatusFilter.HasValue;
 
     string WeekdayName(int? wd) => wd switch
@@ -31,6 +32,7 @@
         return $"{day} · {s} – {e}";
     }
 }
+<partial name="../Subjects/_SubjectsTabs" model='(ActiveTab: "grupos", ManagementId: Model.ManagementFilter)' />
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm border-0">
@@ -38,11 +40,16 @@
                 <!-- Header section -->
                 <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Catálogo de Grupos de Materia</h3>
-                        <h6 class="card-subtitle text-muted ml-2">Maestro de paralelos (G1, A1...) por gestión, materia, docente, laboratorio y horario.</h6>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Catálogo de materias</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Grupos de trabajo de la gestión: paralelos (G1, A1...) por materia, docente, laboratorio y horario.</h6>
                     </div>
-                    <div class="ml-auto mt-3 mt-md-0">
-                        <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                    <div class="ml-auto mt-3 mt-md-0 d-flex align-items-center">
+                        <a asp-page="/Catalogs/StudentGroups/Index" asp-route-managementId="@Model.ManagementFilter"
+                           class="btn btn-link text-muted mr-2">
+                            <i class="fas fa-users mr-1"></i> Ver por grupo
+                        </a>
+                        <a asp-page="/Catalogs/StudentGroups/Create" asp-route-managementId="@Model.ManagementFilter"
+                           class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
                             <i class="fas fa-plus-circle mr-1 text-info"></i> Nuevo Grupo
                         </a>
                     </div>
@@ -86,6 +93,14 @@
                                     aria-label="Docente"
                                     data-live-filter-control>
                                 <option value="">Docente</option>
+                            </select>
+
+                            <select asp-for="SemesterFilter"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.SemesterFilter.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="Model.SemesterOptions"
+                                    aria-label="Semestre"
+                                    data-live-filter-control>
+                                <option value="">Semestre</option>
                             </select>
 
                             <select asp-for="StatusFilter"
@@ -145,6 +160,13 @@
                                             <div>
                                                 <h6 class="m-b-0 font-weight-bold text-dark">@item.Name</h6>
                                                 <span class="text-muted small">Cód: @(string.IsNullOrWhiteSpace(item.Code) ? "—" : item.Code)</span>
+                                                <div class="mt-1">
+                                                    <span class="badge badge-pill badge-light border text-muted small font-weight-bold"
+                                                          title="Cohorte: materias de la misma carrera, semestre y grupo"
+                                                          data-toggle="tooltip">
+                                                        <i class="fas fa-layer-group mr-1"></i>@Proyecto_Laboratorios_Univalle.Services.GroupScheduleService.CohortLabel(item.Subject?.Semester, item.Name)
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -157,7 +179,17 @@
                                     </td>
                                     <td>
                                         <div class="small">
+                                        @{
+                                            var scheduleSummary = Model.GetScheduleSummary(item.Id);
+                                        }
+                                        @if (scheduleSummary != null)
+                                        {
+                                            <div class="text-dark"><i class="far fa-calendar-alt text-muted mr-1"></i>@scheduleSummary</div>
+                                        }
+                                        else
+                                        {
                                             <div class="text-dark"><i class="far fa-clock text-muted mr-1"></i>@FormatSchedule(item.Weekday, item.StartTime, item.EndTime)</div>
+                                        }
                                             @if (item.Laboratory != null)
                                             {
                                                 <div class="text-muted"><i class="fas fa-flask mr-1"></i>@item.Laboratory.Code · @item.Laboratory.Name</div>
@@ -200,6 +232,7 @@
                                        asp-route-ManagementFilter="@Model.ManagementFilter"
                                        asp-route-SubjectFilter="@Model.SubjectFilter"
                                        asp-route-TeacherFilter="@Model.TeacherFilter"
+                                       asp-route-SemesterFilter="@Model.SemesterFilter"
                                        asp-route-StatusFilter="@Model.StatusFilter">Anterior</a>
                                 </li>
                             }
@@ -211,18 +244,20 @@
                                        asp-route-ManagementFilter="@Model.ManagementFilter"
                                        asp-route-SubjectFilter="@Model.SubjectFilter"
                                        asp-route-TeacherFilter="@Model.TeacherFilter"
+                                       asp-route-SemesterFilter="@Model.SemesterFilter"
                                        asp-route-StatusFilter="@Model.StatusFilter">@i</a>
                                 </li>
                             }
                             @if (Model.CourseGroups.HasNextPage)
                             {
                                 <li class="page-item">
-                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.CourseGroups.PageIndex + 1)"
-                                       asp-route-SearchTerm="@Model.SearchTerm"
-                                       asp-route-ManagementFilter="@Model.ManagementFilter"
-                                       asp-route-SubjectFilter="@Model.SubjectFilter"
-                                       asp-route-TeacherFilter="@Model.TeacherFilter"
-                                       asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
+                                        <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.CourseGroups.PageIndex + 1)"
+                                           asp-route-SearchTerm="@Model.SearchTerm"
+                                           asp-route-ManagementFilter="@Model.ManagementFilter"
+                                           asp-route-SubjectFilter="@Model.SubjectFilter"
+                                           asp-route-TeacherFilter="@Model.TeacherFilter"
+                                           asp-route-SemesterFilter="@Model.SemesterFilter"
+                                           asp-route-StatusFilter="@Model.StatusFilter">Siguiente</a>
                                 </li>
                             }
                         </ul>

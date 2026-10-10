@@ -1,0 +1,125 @@
+@* Campo "Horario de clases" por periodos (Crear/Editar grupo). Requiere grilla.css en la página. *@
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups.GroupScheduleField
+@using Proyecto_Laboratorios_Univalle.Pages.Shared
+
+<div class="cg-schedule card border-0 shadow-none mb-0" id="cgSchedule">
+    <div class="d-flex flex-wrap align-items-center mb-2">
+        <h5 class="font-weight-bold text-info mb-0 mr-3">
+            <i class="far fa-calendar-alt mr-2"></i> Horario de clases
+        </h5>
+        <span class="badge badge-light border text-dark px-3 py-2" id="cgScheduleCount">Sin periodos</span>
+        <button type="button" class="btn btn-sm btn-link text-muted ml-auto" id="cgScheduleClear">
+            <i class="fas fa-eraser mr-1"></i> Limpiar
+        </button>
+    </div>
+    <p class="text-muted small mb-2">
+        <i class="fas fa-mouse-pointer mr-1"></i>
+        Haga clic en las celdas (día × periodo) en que el grupo pasa clases; vuelva a hacer clic para quitarlas. Es opcional.
+    </p>
+    <div class="small text-dark font-weight-bold mb-3" id="cgScheduleSummary"></div>
+
+    @if (Model.Periods.Count == 0)
+    {
+        <div class="alert alert-warning small mb-0">
+            <i class="fas fa-exclamation-triangle mr-1"></i> No hay periodos de clase registrados en el catálogo.
+        </div>
+    }
+    else
+    {
+        <div class="gr-scroll border rounded">
+            <div class="gr-grid cg-grid" style="grid-template-rows: auto repeat(@Model.Periods.Count, minmax(40px, auto));">
+                <partial name="_PeriodWeekGrid" model="Model.GridModel" />
+                @foreach (var period in Model.Periods)
+                {
+                    @for (var weekday = 1; weekday <= 6; weekday++)
+                    {
+                        <button type="button"
+                                class="gr-cell cg-cell"
+                                style="grid-column: @(weekday + 1); grid-row: @(period.Order + 1);"
+                                data-weekday="@weekday" data-order="@period.Order"
+                                aria-label="@PeriodWeekGridModel.DefaultDayNames[weekday - 1], periodo @period.Order (@period.Label)"
+                                aria-pressed="false"></button>
+                    }
+                }
+            </div>
+        </div>
+    }
+
+    <input type="hidden" name="@Model.InputName" id="cgScheduleJson" value="@Model.SlotsJson" />
+</div>
+
+<style>
+    .cg-grid { --gr-row-height: 40px; --gr-period-col: 132px; grid-template-columns: var(--gr-period-col) repeat(6, minmax(72px, 1fr)); min-width: 600px; }
+    .cg-grid .gr-period__time { font-size: 11px; }
+    .cg-cell { appearance: none; -webkit-appearance: none; border-top: 0; border-left: 0; background: #fff; padding: 0; cursor: pointer; min-height: 40px; }
+    .cg-cell:hover { background: #f4f3ff; }
+    .cg-cell:focus-visible { outline: 2px solid #7460ee; outline-offset: -2px; z-index: 1; }
+    .cg-cell--on { background: #7460ee !important; box-shadow: inset 0 0 0 1px #5d4dd1; }
+    .cg-cell--on::after { content: "\f00c"; font-family: "Font Awesome 5 Free"; font-weight: 900; color: #fff; font-size: 13px; }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var root = document.getElementById('cgSchedule');
+        if (!root) return;
+        var input = document.getElementById('cgScheduleJson');
+        var cells = Array.prototype.slice.call(root.querySelectorAll('.cg-cell'));
+        var dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        var selected = {};
+
+        function key(w, o) { return w + '-' + o; }
+
+        try {
+            (JSON.parse(input.value || '[]') || []).forEach(function (s) {
+                if (s && s.weekday && s.order) selected[key(s.weekday, s.order)] = { weekday: s.weekday, order: s.order };
+            });
+        } catch (e) { selected = {}; }
+
+        function ranges(orders) {
+            orders.sort(function (a, b) { return a - b; });
+            var out = [], start = null, prev = null;
+            orders.forEach(function (o) {
+                if (start === null) { start = prev = o; return; }
+                if (o === prev + 1) { prev = o; return; }
+                out.push(start === prev ? String(start) : start + '–' + prev);
+                start = prev = o;
+            });
+            if (start !== null) out.push(start === prev ? String(start) : start + '–' + prev);
+            return out.join(', ');
+        }
+
+        function refresh() {
+            var list = Object.keys(selected).map(function (k) { return selected[k]; });
+            input.value = JSON.stringify(list);
+            cells.forEach(function (cell) {
+                var on = !!selected[key(cell.dataset.weekday, cell.dataset.order)];
+                cell.classList.toggle('cg-cell--on', on);
+                cell.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            var byDay = {};
+            list.forEach(function (s) { (byDay[s.weekday] = byDay[s.weekday] || []).push(Number(s.order)); });
+            var parts = Object.keys(byDay).sort().map(function (d) {
+                var n = byDay[d].length;
+                return dayNames[d - 1] + ': periodo' + (n > 1 ? 's ' : ' ') + ranges(byDay[d]);
+            });
+            document.getElementById('cgScheduleSummary').textContent = parts.join(' · ');
+            document.getElementById('cgScheduleCount').textContent =
+                list.length === 0 ? 'Sin periodos' : list.length + ' periodo' + (list.length === 1 ? '' : 's') + ' por semana';
+        }
+
+        cells.forEach(function (cell) {
+            cell.addEventListener('click', function () {
+                var w = Number(cell.dataset.weekday), o = Number(cell.dataset.order), k = key(w, o);
+                if (selected[k]) delete selected[k]; else selected[k] = { weekday: w, order: o };
+                refresh();
+            });
+        });
+
+        document.getElementById('cgScheduleClear').addEventListener('click', function () {
+            selected = {};
+            refresh();
+        });
+
+        refresh();
+    });
+</script>

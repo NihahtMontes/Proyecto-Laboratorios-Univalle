@@ -1,0 +1,17 @@
+/* Grupos de estudiantes (Pages/Catalogs/StudentGroups) */
+.sg-name-card { background: linear-gradient(135deg, #f4f3ff, #ffffff); border: 1px dashed #cdbdee; }
+.sg-name-preview { display: block; font-size: 2rem; font-weight: 800; color: #7460ee; letter-spacing: .5px; line-height: 1.2; }
+.sg-subjects td { vertical-align: middle; }
+.sg-row--off td:not(:first-child) { opacity: .45; }
+.sg-row--error td { background: #fdecef !important; }
+.italic { font-style: italic; }
+
+/* Listado: tarjeta por grupo */
+.sg-semester-title { font-size: .8rem; letter-spacing: 1px; text-transform: uppercase; color: #8a8a99; font-weight: 800; }
+.sg-card { border: 1px solid #e9e9f2 !important; border-top: 4px solid #7460ee !important; transition: box-shadow .15s ease; }
+.sg-card:hover { box-shadow: 0 6px 18px rgba(116, 96, 238, .12) !important; }
+.sg-card--inactive { border-top-color: #adb5bd !important; opacity: .8; }
+.sg-card__name { font-size: 1.6rem; font-weight: 800; color: #7460ee; line-height: 1; }
+.sg-card__subject { border-bottom: 1px dashed #eee; padding: 4px 0; }
+.sg-card__subject:last-child { border-bottom: 0; }
+.sg-progress { height: 6px; }

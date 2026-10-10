@@ -151,7 +151,16 @@ public class DisponibilidadModel : PageModel
                 return RedirectToPage("./Requerimientos", new { planId = PlanId, conflict = true });
             }
 
-            // La aprobación no exige stock (D2): solo se informa. La salida valida y descuenta.
+            // No se aprueba lo que no tiene stock registrado (o en 0): se vuelve a Requerimientos para registrarlo.
+            // Un stock insuficiente (pero existente) solo se informa: la salida valida y descuenta.
+            var missing = await PlanningStockGate.FindAsync(_context, _availability, plan.Id);
+            if (missing.Count > 0)
+            {
+                var names = string.Join(", ", missing.Take(5).Select(m => m.ArticleName)) + (missing.Count > 5 ? "…" : "");
+                TempData.Error($"No se puede aprobar: hay artículos sin stock ({names}). Registre su existencia primero.");
+                return RedirectToPage("./Requerimientos", new { planId = PlanId });
+            }
+
             var originId = OriginLabId is 0 ? null : OriginLabId;
             var rows = await BuildRowsAsync(plan.Id, originId);
             var week = await _availability.GetWeekForPracticeAsync(plan.Id);

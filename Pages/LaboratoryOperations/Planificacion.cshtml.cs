@@ -26,15 +26,17 @@ public class PlanificacionModel : PageModel
     private readonly ILogger<PlanificacionModel> _logger;
     private readonly IOccupancyService _occupancy;
     private readonly IPlanningLock _planningLock;
+    private readonly IGroupScheduleService _schedules;
 
     public PlanificacionModel(ApplicationDbContext context, IAcademicManagementService managements, ILogger<PlanificacionModel> logger,
-        IOccupancyService occupancy, IPlanningLock planningLock)
+        IOccupancyService occupancy, IPlanningLock planningLock, IGroupScheduleService schedules)
     {
         _context = context;
         _managements = managements;
         _logger = logger;
         _occupancy = occupancy;
         _planningLock = planningLock;
+        _schedules = schedules;
     }
 
     /// <summary>Id de Plannings al editar una planificación.</summary>
@@ -76,8 +78,6 @@ public class PlanificacionModel : PageModel
     public List<SelectListItem> SubjectList { get; private set; } = [];
     public SelectList LaboratoryList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList TeacherList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
-    public SelectList PeriodList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
-    public SelectList PeriodCountList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
 
     /// <summary>Catálogo de periodos (para el rango resultante en el cliente).</summary>
     public List<ClassPeriod> Periods { get; private set; } = [];
@@ -89,7 +89,11 @@ public class PlanificacionModel : PageModel
     public List<GroupOption> GroupOptions { get; private set; } = [];
 
     public sealed record PracticeOption(int Id, int SubjectId, string Code, string Label, int RequirementCount);
-    public sealed record GroupOption(int SubjectId, string Name, int? StudentCount, int? ScalingFactor);
+    public sealed record GroupOption(int SubjectId, string Name, int? StudentCount, int? ScalingFactor, int? Semester = null)
+    {
+        /// <summary>Etiqueta visible "Sem N · Grupo X" (el valor enviado sigue siendo Name).</summary>
+        public string Label => GroupScheduleService.CohortLabel(Semester, Name);
+    }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -271,7 +275,7 @@ public class PlanificacionModel : PageModel
                 Id.HasValue ? [Id.Value] : null);
             if (conflicts.Count > 0)
                 ModelState.AddModelError(string.Empty,
-                    $"El laboratorio ya está ocupado en esos periodos: {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
+                    $"El laboratorio está ocupado o no queda un periodo libre entre prácticas: {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
         }
 
         if (!ModelState.IsValid)
@@ -284,6 +288,33 @@ public class PlanificacionModel : PageModel
             .Where(g => g.ManagementId == Management.Id && g.SubjectId == Input.SubjectId && g.Name == Input.GroupName)
             .Select(g => (int?)g.Id)
             .FirstOrDefaultAsync();
+
+        // Horario de clases del grupo de estudiantes: el destino no puede coincidir con clases de OTRAS
+        // materias del mismo grupo (las clases propias de la materia solo se sugieren, no bloquean).
+        // Mismo criterio que la reprogramación (SlotValidationService → GROUP_IN_CLASS).
+        // Al editar solo se revisa si cambia el horario (fecha, periodo inicial o cantidad): una clase cargada
+        // después no debe impedir corregir observaciones o docente de una sesión que ya existía.
+        var scheduleChanged = existing == null
+            || existing.ScheduledDate.Date != date.Date
+            || existing.StartPeriodId != Input.StartPeriodId
+            || existing.PeriodCount != Input.PeriodCount
+            || existing.CourseGroupId != courseGroupId;
+        if (scheduleChanged && courseGroupId is int groupId && hasDate && startPeriod != null)
+        {
+            var groupCheck = await _schedules.CheckDestinationAsync(groupId, date.Date, startPeriod.Order, Input.PeriodCount);
+            if (groupCheck.Collisions.Count > 0)
+            {
+                var subjects = groupCheck.Collisions
+                    .Select(c => c.SubjectName)
+                    .Distinct(StringComparer.CurrentCulture)
+                    .ToList();
+                ModelState.AddModelError(string.Empty,
+                    $"El grupo {groupCheck.Collisions[0].GroupName} tiene clase de {string.Join(", ", subjects)} en ese horario: elija otro periodo.");
+                await LoadListsAsync();
+                return Page();
+            }
+        }
+
         var practiceLabel = PracticeLabel(catalogPractice!);
         var observations = string.IsNullOrWhiteSpace(Input.Observations) ? null : Input.Observations.Trim();
         var isNew = existing == null;
@@ -335,7 +366,7 @@ public class PlanificacionModel : PageModel
                 if (await _occupancy.FindConflictsAsync(Input.LaboratoryId, date, startPeriod!.Order, Input.PeriodCount,
                     existing != null ? [existing.Id] : null) is { Count: > 0 } conflicts)
                     ModelState.AddModelError(string.Empty,
-                        $"El laboratorio se ocupó mientras se guardaba: {string.Join("; ", conflicts.Select(c => c.Label))}.");
+                        $"El laboratorio se ocupó mientras se guardaba (ocupado o sin periodo libre entre prácticas): {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
             }
             if (!ModelState.IsValid)
             {
@@ -523,21 +554,69 @@ public class PlanificacionModel : PageModel
         GroupOptions = await _context.CourseGroups.AsNoTracking()
             .Where(g => g.ManagementId == Management!.Id && subjectIds.Contains(g.SubjectId) && g.Status == GeneralStatus.Activo)
             .OrderBy(g => g.Name)
-            .Select(g => new GroupOption(g.SubjectId, g.Name, g.StudentCount, g.ScalingFactor))
+            .Select(g => new GroupOption(g.SubjectId, g.Name, g.StudentCount, g.ScalingFactor, g.Subject!.Semester))
             .ToListAsync();
 
         Periods = await _context.ClassPeriods.AsNoTracking().OrderBy(p => p.Order).ToListAsync();
         if (Input.StartPeriodId == 0 && Periods.Count > 0)
             Input.StartPeriodId = Periods[0].Id;
-        PeriodList = new SelectList(
-            Periods.Select(p => new { p.Id, Name = $"P{p.Order} · {p.StartTime:hh\\:mm} – {p.EndTime:hh\\:mm}" }),
-            "Id", "Name", Input.StartPeriodId);
-        PeriodCountList = new SelectList(
-            Enumerable.Range(1, 12).Select(n => new { Id = n, Name = n.ToString() }),
-            "Id", "Name", Input.PeriodCount);
 
         LaboratoryList = new SelectList(laboratories, "Id", "Name", Input.LaboratoryId);
         TeacherList = new SelectList(teachers, "Id", "Name", Input.TeacherPersonId);
+    }
+
+    /// <summary>
+    /// AJAX (GET): bloques ocupados del ambiente en la fecha para pintar las fichas del selector de
+    /// periodos (ocupadas, gris) y las de separación contiguas (rayado). Solo lectura; al editar se
+    /// excluye la planificación actual para no marcarse a sí misma.
+    /// </summary>
+    public async Task<IActionResult> OnGetOccupancyAsync(int laboratoryId, string date, int? excludeId)
+    {
+        if (laboratoryId < 1
+            || !DateTime.TryParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day))
+            return new JsonResult(Array.Empty<object>());
+
+        var blocks = await _occupancy.GetAsync(new OccupancyQuery(day.Date, day.Date, [laboratoryId], null,
+            excludeId is > 0 ? [excludeId.Value] : null));
+
+        return new JsonResult(blocks.Select(b => new
+        {
+            startOrder = b.StartOrder,
+            periodCount = b.PeriodCount,
+            label = b.Label
+        }));
+    }
+
+    /// <summary>
+    /// AJAX (GET): horario semanal del grupo de la materia para marcar las fichas del selector de periodos:
+    /// own = clases de esta misma materia (sugeridas, verde) y busy = clases de OTRAS materias del mismo
+    /// grupo de estudiantes (bloquean, rojo). Resuelve el grupo por gestión + materia + nombre, el mismo
+    /// criterio del guardado (nombre en mayúsculas y sin espacios extremos). Solo lectura.
+    /// </summary>
+    public async Task<IActionResult> OnGetGroupScheduleAsync(int subjectId, string? groupName, int? managementId)
+    {
+        var empty = new { hasSchedule = false, own = Array.Empty<object>(), busy = Array.Empty<object>() };
+        var management = await _managements.ResolveAsync(managementId ?? ManagementId);
+        var name = (groupName ?? string.Empty).Trim().ToUpperInvariant();
+        if (management == null || subjectId < 1 || name.Length == 0)
+            return new JsonResult(empty);
+
+        var courseGroupId = await _context.CourseGroups.AsNoTracking()
+            .Where(g => g.ManagementId == management.Id && g.SubjectId == subjectId && g.Name == name)
+            .Select(g => (int?)g.Id)
+            .FirstOrDefaultAsync();
+        if (courseGroupId is not int groupId)
+            return new JsonResult(empty);
+
+        var own = await _schedules.GetGroupSlotsAsync(groupId);
+        var busy = await _schedules.GetSiblingClassesAsync(groupId);
+
+        return new JsonResult(new
+        {
+            hasSchedule = own.Count > 0,
+            own = own.Select(s => new { weekday = s.Weekday, order = s.PeriodOrder }),
+            busy = busy.Select(s => new { weekday = s.Weekday, order = s.PeriodOrder, subject = s.SubjectName })
+        });
     }
 
     private static string TemporaryCode() => "TMP-" + Guid.NewGuid().ToString("N")[..20];

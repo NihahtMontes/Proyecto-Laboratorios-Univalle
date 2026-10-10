@@ -1,0 +1,203 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.StudentGroups.IndexModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Grupos";
+    string SemesterLabel(int n) => n + (n == 1 || n == 3 ? ".er" : ".º") + " semestre";
+}
+
+<partial name="../Subjects/_SubjectsTabs" model='(ActiveTab: "grupos", ManagementId: Model.Management?.Id ?? Model.ManagementId)' />
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Grupos de la gestión</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Cada grupo (A1, B1...) reúne las materias de un semestre con su docente y un solo horario semanal.</h6>
+                    </div>
+                    <div class="ml-auto mt-3 mt-md-0 d-flex align-items-center flex-wrap">
+                        <a asp-page="/Catalogs/CourseGroups/Index" asp-route-ManagementFilter="@Model.Management?.Id"
+                           class="btn btn-link text-muted mr-2" title="Listado de grupos por materia">
+                            <i class="fas fa-list mr-1"></i> Ver por materia
+                        </a>
+                        @if (Model.IsEditable)
+                        {
+                            <a asp-page="./Create" asp-route-managementId="@Model.Management!.Id" asp-route-careerId="@Model.CareerId"
+                               class="btn btn-info btn-rounded shadow-sm px-4 font-weight-bold">
+                                <i class="fas fa-plus-circle mr-1"></i> Nuevo grupo
+                            </a>
+                        }
+                    </div>
+                </div>
+
+                <form method="get" class="bg-light p-3 mb-4 rounded border-left border-info d-flex flex-wrap align-items-center">
+                    <select name="managementId" class="custom-select btn-rounded w-auto mr-2 mb-2" onchange="this.form.submit()" aria-label="Gestión">
+                        @foreach (var m in Model.Managements)
+                        {
+                            <option value="@m.Id" selected="@(m.Id == Model.Management?.Id)">@m.Code@(m.IsCurrent ? " (actual)" : "")</option>
+                        }
+                    </select>
+                    <select name="careerId" class="custom-select btn-rounded w-auto mr-2 mb-2 @(Model.CareerId.HasValue ? "border-info text-info font-weight-bold" : "")"
+                            onchange="this.form.submit()" aria-label="Carrera">
+                        <option value="">Todas las carreras</option>
+                        @foreach (var c in Model.Careers)
+                        {
+                            <option value="@c.Id" selected="@(c.Id == Model.CareerId)">@c.Name</option>
+                        }
+                    </select>
+                    <span class="text-muted small mb-2 ml-auto">
+                        <i class="fas fa-users mr-1"></i>@Model.Groups.Count grupo(s)
+                        @if (Model.Management is { IsEditable: false })
+                        {
+                            <span class="badge badge-warning ml-2"><i class="fas fa-lock mr-1"></i>Solo lectura</span>
+                        }
+                    </span>
+                </form>
+
+                @if (Model.Management == null)
+                {
+                    <div class="text-center text-muted p-5 bg-light rounded">
+                        <i class="fas fa-calendar-times fa-3x mb-3 d-block"></i>
+                        Active una gestión semestral o elija una para ver sus grupos.
+                    </div>
+                }
+                else if (Model.Groups.Count == 0)
+                {
+                    <div class="text-center p-5 bg-light rounded">
+                        <i class="fas fa-users fa-3x text-muted mb-3 d-block"></i>
+                        <h5 class="font-weight-bold text-dark">Aún no hay grupos en @Model.Management.Code</h5>
+                        <p class="text-muted mb-3">Cree el grupo (por ejemplo, A de 1.er semestre) y el sistema le mostrará todas las materias de ese semestre para asignar sus docentes.</p>
+                        @if (Model.IsEditable)
+                        {
+                            <a asp-page="./Create" asp-route-managementId="@Model.Management.Id" class="btn btn-info btn-rounded px-4 font-weight-bold">
+                                <i class="fas fa-plus-circle mr-1"></i> Nuevo grupo
+                            </a>
+                        }
+                    </div>
+                }
+                else
+                {
+                    foreach (var career in Model.Groups.GroupBy(g => new { g.CareerId, g.CareerName }))
+                    {
+                        <h5 class="font-weight-bold text-dark mt-2 mb-3"><i class="fas fa-graduation-cap text-info mr-2"></i>@career.Key.CareerName</h5>
+                        foreach (var semester in career.GroupBy(g => g.Semester).OrderBy(s => s.Key))
+                        {
+                            <div class="sg-semester-title mb-2">@SemesterLabel(semester.Key)</div>
+                            <div class="row">
+                                @foreach (var g in semester)
+                                {
+                                    var inactive = g.Status != GeneralStatus.Activo;
+                                    var progress = g.SemesterSubjectCount > 0 ? Math.Min(100, g.Subjects.Count * 100 / g.SemesterSubjectCount) : 0;
+                                    <div class="col-xl-4 col-lg-6 mb-4">
+                                        <div class="card sg-card h-100 shadow-sm @(inactive ? "sg-card--inactive" : "")">
+                                            <div class="card-body pb-2">
+                                                <div class="d-flex align-items-start mb-2">
+                                                    <div>
+                                                        <span class="sg-card__name">@g.Name</span>
+                                                        <small class="d-block text-muted">@g.Code · Grupo @g.Letter · @SemesterLabel(g.Semester)</small>
+                                                    </div>
+                                                    <div class="ml-auto text-right">
+                                                        <span class="badge @(inactive ? "badge-secondary" : "badge-success")">@(inactive ? "Inactivo" : "Activo")</span>
+                                                    </div>
+                                                </div>
+                                                <div class="small text-muted mb-2">
+                                                    <i class="fas fa-user-graduate mr-1"></i>@(g.StudentCount?.ToString() ?? "—") estudiantes
+                                                    <span class="mx-1">·</span><i class="fas fa-balance-scale mr-1"></i>factor @(g.ScalingFactor?.ToString() ?? "—")
+                                                    @if (g.LaboratoryName != null)
+                                                    {
+                                                        <span class="mx-1">·</span><i class="fas fa-flask mr-1"></i>@g.LaboratoryName
+                                                    }
+                                                </div>
+
+                                                <div class="d-flex justify-content-between small font-weight-bold mb-1">
+                                                    <span>Materias @g.Subjects.Count/@g.SemesterSubjectCount</span>
+                                                    <span class="@(g.PeriodsPerWeek == 0 ? "text-danger" : "text-info")"><i class="far fa-clock mr-1"></i>@g.PeriodsPerWeek periodos/semana</span>
+                                                </div>
+                                                <div class="progress sg-progress mb-3">
+                                                    <div class="progress-bar @(progress >= 100 ? "bg-success" : "bg-warning")" style="width: @progress%"></div>
+                                                </div>
+
+                                                @foreach (var s in g.Subjects)
+                                                {
+                                                    <div class="sg-card__subject small d-flex align-items-center">
+                                                        <div class="flex-grow-1">
+                                                            <span class="font-weight-bold text-dark">@s.SubjectName</span>
+                                                            <span class="d-block text-muted"><i class="fas fa-chalkboard-teacher mr-1"></i>@s.TeacherName</span>
+                                                        </div>
+                                                        @if (s.PeriodsPerWeek == 0)
+                                                        {
+                                                            <span class="badge badge-light border border-danger text-danger">Sin horario</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge badge-light border text-dark">@s.PeriodsPerWeek per.</span>
+                                                        }
+                                                    </div>
+                                                }
+                                                @if (g.Subjects.Count < g.SemesterSubjectCount)
+                                                {
+                                                    <div class="small text-warning mt-2"><i class="fas fa-exclamation-circle mr-1"></i>Faltan @(g.SemesterSubjectCount - g.Subjects.Count) materia(s) del semestre.</div>
+                                                }
+                                            </div>
+                                            <div class="card-footer bg-white border-top d-flex align-items-center">
+                                                <a asp-page="/Catalogs/CourseGroups/Horario" asp-route-managementId="@g.ManagementId"
+                                                   asp-route-careerId="@g.CareerId" asp-route-cohort="@g.CohortKey"
+                                                   class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold mr-2">
+                                                    <i class="far fa-calendar-alt mr-1"></i> Horario
+                                                </a>
+                                                @if (Model.IsEditable)
+                                                {
+                                                    <a asp-page="./Edit" asp-route-id="@g.Id" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold mr-2">
+                                                        <i class="fas fa-pen mr-1"></i> Editar
+                                                    </a>
+                                                    <form method="post" asp-page-handler="Delete" asp-route-id="@g.Id" asp-route-careerId="@Model.CareerId"
+                                                          class="ml-auto js-delete-group" data-group="@g.Name">
+                                                        <button type="submit" class="btn btn-sm btn-link text-danger" title="Eliminar grupo">
+                                                            <i class="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link href="~/css/student-groups.css" rel="stylesheet" asp-append-version="true">
+}
+
+@section Scripts {
+    <script>
+        $(function () {
+            $('.js-delete-group').on('submit', function (e) {
+                e.preventDefault();
+                var form = this;
+                var name = $(form).data('group');
+                if (typeof Swal === 'undefined') { HTMLFormElement.prototype.submit.call(form); return; }
+                Swal.fire({
+                    title: '¿Eliminar el grupo ' + name + '?',
+                    text: 'Se quitarán sus materias y su horario. Las planificaciones conservan el nombre del grupo.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+            });
+        });
+    </script>
+}

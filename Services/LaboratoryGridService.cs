@@ -78,6 +78,14 @@ public sealed record GridDay(int Weekday, string Name, DateTime Date, bool InMan
 
     /// <summary>True si algún bloque posicionado cubre el periodo indicado.</summary>
     public bool IsBusy(int order) => Blocks.Any(b => b.StartOrder is int s && order >= s && order <= b.EndOrder);
+
+    /// <summary>
+    /// True si el periodo está libre pero contiguo a algún bloque con periodo inicial:
+    /// es el periodo de separación que debe quedar libre entre prácticas del ambiente.
+    /// </summary>
+    public bool IsBuffer(int order)
+        => !IsBusy(order)
+        && Blocks.Any(b => b.Occupies && b.StartOrder is int s && (order == s - 1 || order == b.EndOrder + 1));
 }
 
 /// <param name="StartOrder">Orden del periodo inicial (null = planificación legada sin periodo).</param>

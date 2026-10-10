@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 // Evitar colisión con el namespace Pages.Career
@@ -17,15 +18,26 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
     public class CreateModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly IAcademicManagementService _managements;
+        private readonly IGroupScheduleService _schedules;
         private readonly ILogger<CreateModel> _logger;
 
         public CreateModel(
             Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            IAcademicManagementService managements,
+            IGroupScheduleService schedules,
             ILogger<CreateModel> logger)
         {
             _context = context;
+            _managements = managements;
+            _schedules = schedules;
             _logger = logger;
         }
+
+        /// <summary>Catálogo de periodos de clase (filas de la grilla de horario).</summary>
+        public IReadOnlyList<ClassPeriod> Periods { get; private set; } = [];
+
+        public GroupScheduleField ScheduleField => new(Periods, Input.SlotsJson, "Input.SlotsJson");
 
         public SelectList ManagementOptions { get; set; } = new(Enumerable.Empty<Management>(), "Id", "Code");
         public SelectList TeacherOptions { get; set; } = new(Enumerable.Empty<Intern>(), "Id", "Name");
@@ -37,6 +49,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
 
         [BindProperty]
         public InputModel Input { get; set; } = new();
+
+        /// <summary>Gestión pedida por query (pestañas de Materias); vacío = la gestión actual.</summary>
+        [BindProperty(SupportsGet = true)]
+        public int? ManagementId { get; set; }
+
+        /// <summary>Materia pedida por query (crear grupo desde el horario de la materia).</summary>
+        [BindProperty(SupportsGet = true)]
+        public int? SubjectId { get; set; }
 
         public class InputModel
         {
@@ -63,22 +83,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
             [Display(Name = "Laboratorio")]
             public int? LaboratoryId { get; set; }
 
-            [Range(1, 6, ErrorMessage = "El día debe estar entre 1 (Lunes) y 6 (Sábado)")]
-            [Display(Name = "Día")]
-            public int? Weekday { get; set; }
-
-            [Display(Name = "Hora de inicio")]
-            public string? StartTime { get; set; }
-
-            [Display(Name = "Hora de fin")]
-            public string? EndTime { get; set; }
+            /// <summary>Horario semanal por periodos: JSON [{"weekday":1,"order":3}, ...].</summary>
+            [Display(Name = "Horario de clases")]
+            public string? SlotsJson { get; set; }
 
             [Range(0, 1000, ErrorMessage = "El número de estudiantes debe estar entre 0 y 1000")]
             [Display(Name = "Estudiantes")]
             public int? StudentCount { get; set; }
-
-            [Display(Name = "Demostrativa")]
-            public bool IsDemonstrative { get; set; }
 
             [Range(0, 1000, ErrorMessage = "El factor debe estar entre 0 y 1000")]
             [Display(Name = "Factor")]
@@ -92,38 +103,41 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
             public int? CareerId { get; set; }
         }
 
-        public async Task<IActionResult> OnGetAsync()
+        /// <summary>Los grupos se registran completos (carrera + semestre + letra, con todas sus materias).</summary>
+        public IActionResult OnGet() =>
+            RedirectToPage("/Catalogs/StudentGroups/Create", new { managementId = ManagementId, subjectId = SubjectId });
+
+        /// <summary>Formulario anterior (grupo de una sola materia); se conserva por compatibilidad del POST.</summary>
+        public async Task<IActionResult> OnGetLegacyAsync()
         {
+            // ?managementId= (pestañas de Materias) preselecciona esa gestión; si falta, la gestión actual.
+            var management = await _managements.ResolveAsync(ManagementId);
+            if (ManagementId.HasValue && management == null)
+            {
+                TempData.Error("La gestión solicitada no existe.");
+                return RedirectToPage("./Index");
+            }
+            Input.ManagementId ??= management?.Id;
+
+            // ?subjectId= (crear grupo desde el horario de una materia) preselecciona la materia.
+            if (SubjectId > 0)
+            {
+                Input.SubjectId ??= SubjectId;
+            }
+
             await LoadListsAsync();
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Parsear horas a TimeSpan (la fuente HTML5 time envía HH:mm).
-            if (!TryParseTime(Input.StartTime, out var startTime))
-                ModelState.AddModelError("Input.StartTime", "Formato de hora de inicio inválido (use HH:mm).");
-            if (!TryParseTime(Input.EndTime, out var endTime))
-                ModelState.AddModelError("Input.EndTime", "Formato de hora de fin inválido (use HH:mm).");
+            // Horario por periodos (grilla día × periodo).
+            var slots = GroupScheduleField.Parse(Input.SlotsJson);
+            if (slots == null)
+                ModelState.AddModelError("Input.SlotsJson", "El horario enviado no es válido: vuelva a marcar los periodos.");
 
             if (!ModelState.IsValid)
             {
-                await LoadListsAsync();
-                return Page();
-            }
-
-            // Si ambas vienen vacías, son nulas. Si una viene y la otra no, exigimos paridad.
-            if ((Input.StartTime is { Length: > 0 }) != (Input.EndTime is { Length: > 0 }))
-            {
-                ModelState.AddModelError("Input.EndTime", "Si define un horario, debe registrar hora de inicio y de fin.");
-                await LoadListsAsync();
-                return Page();
-            }
-
-            // Validación adicional de horario (check constraint ya valida, pero mostramos error claro)
-            if (startTime.HasValue && endTime.HasValue && endTime <= startTime)
-            {
-                ModelState.AddModelError("Input.EndTime", "La hora de fin debe ser posterior a la hora de inicio.");
                 await LoadListsAsync();
                 return Page();
             }
@@ -199,11 +213,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
                 Name = Input.Name.Clean(),
                 TeacherPersonId = Input.TeacherPersonId!.Value,
                 LaboratoryId = Input.LaboratoryId,
-                Weekday = Input.Weekday,
-                StartTime = startTime,
-                EndTime = endTime,
                 StudentCount = Input.StudentCount,
-                IsDemonstrative = Input.IsDemonstrative,
                 ScalingFactor = Input.ScalingFactor,
                 Status = GeneralStatus.Activo
             };
@@ -212,12 +222,31 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
 
             try
             {
+                // Grupo y horario se guardan juntos: si el horario choca con otra materia del mismo cohorte, no se crea nada.
+                await using var transaction = await _context.Database.BeginTransactionAsync();
                 await _context.SaveWithCodeAsync(
                     _context.CourseGroups.IgnoreQueryFilters().Select(x => (string?)x.Code),
                     CatalogCodes.CourseGroup,
                     code => courseGroup.Code = code);
+
+                if (slots!.Count > 0)
+                {
+                    var scheduleError = await _schedules.SaveSubjectScheduleAsync(
+                        courseGroup.SubjectId, courseGroup.ManagementId,
+                        new Dictionary<int, IReadOnlyCollection<WeekSlot>> { [courseGroup.Id] = slots });
+                    if (scheduleError != null)
+                    {
+                        await transaction.RollbackAsync();
+                        _context.ChangeTracker.Clear();
+                        ModelState.AddModelError("Input.SlotsJson", scheduleError);
+                        await LoadListsAsync();
+                        return Page();
+                    }
+                }
+
+                await transaction.CommitAsync();
                 TempData.Success($"Grupo '{courseGroup.Code}' ({courseGroup.Name}) registrado exitosamente.");
-                return RedirectToPage("./Index");
+                return RedirectToPage("./Index", new { ManagementFilter = courseGroup.ManagementId });
             }
             catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
@@ -250,11 +279,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
                 .Select(i => new { i.Id, i.Name })
                 .ToListAsync();
 
+            // Solo carreras con materias activas: filtrar por una carrera vacía dejaba la lista de materias sin opciones.
+            var careerIds = subjects.Where(s => s.CareerId.HasValue).Select(s => s.CareerId!.Value).Distinct().ToList();
             var careers = await _context.Careers.AsNoTracking()
-                .Where(c => c.Status == GeneralStatus.Activo)
+                .Where(c => c.Status == GeneralStatus.Activo && careerIds.Contains(c.Id))
                 .OrderBy(c => c.Name)
                 .Select(c => new { c.Id, c.Name })
                 .ToListAsync();
+
+            Periods = await _context.ClassPeriods.AsNoTracking().OrderBy(p => p.Order).ToListAsync();
 
             var laboratories = await _context.Laboratories.AsNoTracking()
                 .Where(l => l.Status == GeneralStatus.Activo)
@@ -280,24 +313,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
                     return true;
                 }
                 inner = inner.InnerException;
-            }
-            return false;
-        }
-
-        private static bool TryParseTime(string? value, out TimeSpan? result)
-        {
-            result = null;
-            if (string.IsNullOrWhiteSpace(value)) return true;
-            if (TimeSpan.TryParseExact(value, [@"hh\:mm", @"h\:mm", @"hh\:mm\:ss"],
-                    System.Globalization.CultureInfo.InvariantCulture, out var parsed))
-            {
-                result = parsed;
-                return true;
-            }
-            if (TimeSpan.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out parsed))
-            {
-                result = parsed;
-                return true;
             }
             return false;
         }

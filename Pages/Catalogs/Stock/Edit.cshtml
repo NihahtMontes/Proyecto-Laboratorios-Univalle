@@ -40,6 +40,15 @@
                     <input type="hidden" asp-for="Input.RowVersionBase64" />
                     <input type="hidden" asp-for="Input.LaboratoryFilter" />
                     <input type="hidden" asp-for="Input.SearchTerm" />
+                    <input type="hidden" name="ReturnUrl" value="@Model.SafeReturnUrl" />
+
+                    @if (Model.SafeReturnUrl != null)
+                    {
+                        <div class="alert alert-light border-0 border-left border-info shadow-none small mb-4" style="border-left-width: 4px !important;">
+                            <i class="fas fa-undo-alt mr-1 text-info"></i>
+                            Al guardar o cancelar volverá a la pantalla en la que estaba.
+                        </div>
+                    }
 
                     <div class="row">
                         <!-- Identidad del contexto -->
@@ -127,12 +136,21 @@
                         <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> @(isNew ? "Registrar Existencia" : "Actualizar Existencia")
                         </button>
-                        <a asp-page="./Index"
-                           asp-route-laboratoryFilter="@Model.Input.LaboratoryFilter"
-                           asp-route-searchTerm="@Model.Input.SearchTerm"
-                           class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
-                            Cancelar
-                        </a>
+                        @if (Model.SafeReturnUrl != null)
+                        {
+                            <a href="@Model.SafeReturnUrl" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                                Cancelar
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-page="./Index"
+                               asp-route-laboratoryFilter="@Model.Input.LaboratoryFilter"
+                               asp-route-searchTerm="@Model.Input.SearchTerm"
+                               class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                                Cancelar
+                            </a>
+                        }
                     </div>
                 </form>
             </div>

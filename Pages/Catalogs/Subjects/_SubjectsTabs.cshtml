@@ -1,0 +1,37 @@
+@* Pestañas de la gestión de materias: Materias | Grupos de la gestión | Horario por semestre.
+   Cada pestaña es una página real; solo se resalta la activa y se conserva la gestión en los enlaces. *@
+@model (string ActiveTab, int? ManagementId)
+@inject Proyecto_Laboratorios_Univalle.Services.IAcademicManagementService AcademicManagements
+@{
+    // Sin gestión explícita (p. ej. desde Materias) se usa la gestión actual para armar los enlaces.
+    var managementId = Model.ManagementId ?? (await AcademicManagements.GetCurrentAsync())?.Id;
+}
+<ul class="nav nav-tabs subjects-tabs px-4 pt-3 border-0" role="tablist">
+    <li class="nav-item">
+        <a asp-page="/Catalogs/Subjects/Index"
+           class="nav-link font-weight-bold @(Model.ActiveTab == "materias" ? "active" : "")"
+           title="Catálogo de materias">
+            <i class="mdi mdi-book-open-variant"></i> Materias
+        </a>
+    </li>
+    <li class="nav-item">
+        <a asp-page="/Catalogs/StudentGroups/Index"
+           asp-route-managementId="@managementId"
+           class="nav-link font-weight-bold @(Model.ActiveTab == "grupos" ? "active" : "")"
+           title="Grupos (A1, B1...) con sus materias y docentes">
+            <i class="mdi mdi-account-group"></i> Grupos de la gestión
+        </a>
+    </li>
+    <li class="nav-item">
+        <a asp-page="/Catalogs/CourseGroups/Horario"
+           asp-route-managementId="@managementId"
+           class="nav-link font-weight-bold @(Model.ActiveTab == "horario" ? "active" : "")"
+           title="Horario semanal por cohorte (semestre-grupo)">
+            <i class="far fa-calendar-alt"></i> Horario por semestre
+        </a>
+    </li>
+</ul>
+<div class="subjects-tabs-help small text-muted px-4">
+    <i class="fas fa-info-circle mr-1"></i>Los grupos son datos de trabajo de la gestión: al completarla se eliminan y las planificaciones conservan el nombre del grupo.
+</div>
+<link href="~/css/subjects-tabs.css" rel="stylesheet" asp-append-version="true" />

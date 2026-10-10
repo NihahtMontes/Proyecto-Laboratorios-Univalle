@@ -9,7 +9,7 @@
         <div class="col-md-8">
             <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
             <h2 class="font-weight-bold text-dark">Panel de planificación</h2>
-            <div class="text-muted small">Resumen de la gestión académica, métricas de planificaciones y calendario semanal.</div>
+            <div class="text-muted small">Resumen de la gestión académica, métricas y avisos accionables; el detalle por ambiente vive en la Grilla.</div>
         </div>
         @if (Model.Managements.Count > 0)
         {
@@ -103,6 +103,13 @@
                                     <i class="fas fa-plus mr-1"></i> Nueva planificación
                                 </a>
                             }
+                            @if (Model.CanRecover)
+                            {
+                                <button type="button" class="btn btn-warning btn-rounded font-weight-bold px-4 shadow-sm"
+                                        data-toggle="modal" data-target="#modal-reponer-dia">
+                                    <i class="mdi mdi-backup-restore mr-1"></i> Reponer día
+                                </button>
+                            }
                             <a asp-page="./Grilla" asp-route-managementId="@management.Id" class="btn btn-outline-primary btn-rounded font-weight-bold px-4">
                                 <i class="mdi mdi-table-large mr-1"></i> Grilla por laboratorio
                             </a>
@@ -112,6 +119,13 @@
                             <a asp-page="./CalendarioAcademico" asp-route-managementId="@management.Id" class="btn btn-outline-primary btn-rounded font-weight-bold px-4">
                                 <i class="mdi mdi-calendar-month mr-1"></i> Calendario académico
                             </a>
+                            @if (User.IsInRole(Proyecto_Laboratorios_Univalle.Helpers.AuthorizationHelper.RoleAdministrator)
+                                || User.IsInRole(Proyecto_Laboratorios_Univalle.Helpers.AuthorizationHelper.RoleSuperAdmin))
+                            {
+                                <a asp-page="/Catalogs/CourseGroups/Horario" asp-route-managementId="@management.Id" class="btn btn-outline-primary btn-rounded font-weight-bold px-4">
+                                    <i class="far fa-calendar-alt mr-1"></i> Horario por semestre
+                                </a>
+                            }
                         </div>
                     </div>
                 </div>
@@ -366,36 +380,329 @@
             </div>
         </div>
 
-        <a asp-page="./Reposiciones" asp-route-managementId="@management.Id"
-           class="card border-0 shadow-sm rounded-lg mb-4 text-decoration-none" aria-label="Abrir reposiciones de día de la gestión">
-            <div class="card-body d-flex align-items-center flex-wrap">
-                <span class="metric-icon bg-light-warning text-warning mr-3"><i class="mdi mdi-backup-restore fa-lg" aria-hidden="true"></i></span>
-                <span class="font-weight-bold text-dark">Reposiciones en curso</span>
-                <span class="badge badge-@(Model.RecoveriesInProgress > 0 ? "warning" : "light") ml-2">@Model.RecoveriesInProgress</span>
-                <span class="small text-muted ml-auto">Ver pendientes por ambiente <i class="fas fa-arrow-right ml-1"></i></span>
-            </div>
-        </a>
-
-        @if (Model.Calendar != null)
-        {
-            <!-- Pestañas: Calendario / Uso de artículos -->
-            <ul class="nav nav-tabs pn-tabs" id="pn-view-tabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link active" id="pn-tab-calendar-tab" data-toggle="tab" href="#pn-tab-calendar" role="tab" aria-controls="pn-tab-calendar" aria-selected="true">
-                        <i class="far fa-calendar mr-1"></i> Calendario
+        <!-- Reposiciones en curso: una tarjeta por día InProgress + completadas de los últimos 30 días -->
+        <div class="card border-0 shadow-sm rounded-lg mb-4"
+             style="background: linear-gradient(135deg, #fffdf5, #ffffff); border-left: 4px solid #f6c343 !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3 flex-wrap">
+                    <div class="rounded-circle bg-light-warning text-warning p-2 mr-2">
+                        <i class="mdi mdi-backup-restore" aria-hidden="true"></i>
+                    </div>
+                    <h5 class="font-weight-bold text-dark mb-0 mr-2">Reposiciones en curso</h5>
+                    <span class="badge badge-@(Model.Recoveries.Count > 0 ? "warning" : "light border text-dark") px-2 py-1">@Model.Recoveries.Count</span>
+                    <a asp-page="./Reposiciones" asp-route-managementId="@management.Id" class="small ml-auto text-warning font-weight-bold">
+                        Ir a la bandeja de reposiciones <i class="fas fa-arrow-right ml-1"></i>
                     </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" id="pn-tab-usage-tab" data-toggle="tab" href="#pn-tab-usage" role="tab" aria-controls="pn-tab-usage" aria-selected="false">
-                        <i class="fas fa-chart-bar mr-1"></i> Uso de artículos
-                    </a>
-                </li>
-            </ul>
-            <div class="tab-content pn-tab-content" id="pn-view-tabs-content">
-                <div class="tab-pane fade show active" id="pn-tab-calendar" role="tabpanel" aria-labelledby="pn-tab-calendar-tab">
-                    <partial name="_PlanningCalendar" model="Model.Calendar" />
                 </div>
-                <div class="tab-pane fade" id="pn-tab-usage" role="tabpanel" aria-labelledby="pn-tab-usage-tab">
+                @if (Model.Recoveries.Count == 0)
+                {
+                    <div class="pn-ok pn-ok--success"><i class="fas fa-check-circle mr-1"></i> Todo al día: no hay días suspendidos por reponer.</div>
+                }
+                else
+                {
+                    @foreach (var r in Model.Recoveries)
+                    {
+                        <div class="pn-recovery">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                <div class="font-weight-bold text-dark">
+                                    <i class="fas fa-calendar-times text-warning mr-1"></i> Día @r.Date.ToString("dd/MM/yyyy") suspendido
+                                </div>
+                                <div class="d-flex flex-wrap" style="gap: 6px;">
+                                    <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-recoveryId="@r.Id"
+                                       class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold">
+                                        <i class="mdi mdi-table-large mr-1"></i>Continuar reposición
+                                    </a>
+                                    <a asp-page="./Reposiciones" asp-route-managementId="@management.Id" asp-route-recoveryId="@r.Id"
+                                       class="btn btn-sm btn-outline-secondary btn-rounded">
+                                        <i class="fas fa-clipboard-list mr-1"></i>Ver detalle
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="small text-muted mb-1">@r.Reason</div>
+                            <div class="small font-weight-bold text-dark">
+                                @r.Recovered de @r.Total repuestas@(r.Pending > 0 ? $", faltan {r.Pending}" : "")
+                            </div>
+                            <div class="pn-progress mt-1" aria-hidden="true">
+                                <span class="pn-progress__fill pn-progress__fill--warning" style="width: @(r.Total > 0 ? (int)Math.Round(r.Recovered * 100.0 / r.Total) : 100)%;"></span>
+                            </div>
+                            @if (r.Labs.Count > 0)
+                            {
+                                <div class="mt-2">
+                                    @foreach (var lab in r.Labs)
+                                    {
+                                        <span class="badge badge-light border text-dark mr-1 mb-1">
+                                            <i class="fas fa-flask mr-1 text-muted" aria-hidden="true"></i>@lab.Label · @lab.Count pendiente(s)
+                                        </span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+                @if (Model.CompletedRecoveries.Count > 0)
+                {
+                    <div class="mt-3">
+                        <a data-toggle="collapse" href="#pn-completed-recoveries" role="button"
+                           aria-expanded="false" aria-controls="pn-completed-recoveries"
+                           class="small font-weight-bold text-muted text-decoration-none">
+                            <i class="fas fa-chevron-down mr-1"></i> Reposiciones completadas (últimos 30 días) · @Model.CompletedRecoveries.Count
+                        </a>
+                        <div class="collapse" id="pn-completed-recoveries">
+                            @foreach (var r in Model.CompletedRecoveries)
+                            {
+                                <div class="pn-recovery pn-recovery--closed">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                        <div class="font-weight-bold text-dark">
+                                            <i class="fas fa-calendar-check text-success mr-1"></i> Día @r.Date.ToString("dd/MM/yyyy")
+                                        </div>
+                                        <a asp-page="./Reposiciones" asp-route-managementId="@management.Id" asp-route-recoveryId="@r.Id"
+                                           class="btn btn-sm btn-outline-secondary btn-rounded">Ver detalle</a>
+                                    </div>
+                                    <div class="small text-muted">@r.Reason</div>
+                                    <div class="small">@r.Recovered de @r.Total repuestas@(r.Pending > 0 ? $", {r.Pending} sin reubicar" : "")</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Pestañas: Avisos y pendientes / Uso de artículos -->
+        <ul class="nav nav-tabs pn-tabs" id="pn-view-tabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="pn-tab-alerts-tab" data-toggle="tab" href="#pn-tab-alerts" role="tab" aria-controls="pn-tab-alerts" aria-selected="true">
+                    <i class="fas fa-bell mr-1"></i> Avisos y pendientes
+                    @if (Model.AlertCount > 0)
+                    {
+                        <span class="badge badge-danger ml-1">@Model.AlertCount</span>
+                    }
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="pn-tab-usage-tab" data-toggle="tab" href="#pn-tab-usage" role="tab" aria-controls="pn-tab-usage" aria-selected="false">
+                    <i class="fas fa-chart-bar mr-1"></i> Uso de artículos
+                </a>
+            </li>
+        </ul>
+        <div class="tab-content pn-tab-content" id="pn-view-tabs-content">
+            <div class="tab-pane fade show active" id="pn-tab-alerts" role="tabpanel" aria-labelledby="pn-tab-alerts-tab">
+                <div class="row">
+                    @* (a) Reposiciones de días suspendidos *@
+                    <div class="col-lg-6 mb-3">
+                        <div class="card border-0 shadow-sm rounded-lg h-100 pn-alert">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="pn-alert__icon pn-alert__icon--warning mr-3"><i class="mdi mdi-backup-restore"></i></div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="font-weight-bold text-dark mb-0">Reposiciones de días suspendidos</h5>
+                                        <small class="text-muted">Prácticas esperando reubicación en otra fecha</small>
+                                    </div>
+                                    <span class="badge @(Model.Recoveries.Count > 0 ? "badge-warning" : "badge-light border text-dark") px-2 py-1">@Model.Recoveries.Count</span>
+                                </div>
+                                @if (Model.Recoveries.Count == 0)
+                                {
+                                    <div class="pn-ok pn-ok--success"><i class="fas fa-check-circle mr-1"></i> Todo al día: no hay días suspendidos por reponer.</div>
+                                }
+                                else
+                                {
+                                    @foreach (var r in Model.Recoveries)
+                                    {
+                                        <div class="pn-recovery">
+                                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                                <div class="font-weight-bold text-dark">
+                                                    <i class="fas fa-calendar-times text-warning mr-1"></i> Día @r.Date.ToString("dd/MM/yyyy") suspendido
+                                                </div>
+                                                <a asp-page="./Reposiciones" asp-route-managementId="@management.Id" asp-route-recoveryId="@r.Id"
+                                                   class="btn btn-sm btn-outline-warning btn-rounded">
+                                                    Ver reposición <i class="fas fa-arrow-right ml-1"></i>
+                                                </a>
+                                            </div>
+                                            <div class="small text-muted mb-2">@r.Reason</div>
+                                            <div class="small font-weight-bold text-dark">
+                                                @r.Recovered de @r.Total prácticas reubicadas@(r.Pending > 0 ? $", faltan {r.Pending}" : "")
+                                            </div>
+                                            <div class="pn-progress mt-1" aria-hidden="true">
+                                                <span class="pn-progress__fill pn-progress__fill--warning" style="width: @(r.Total > 0 ? (int)Math.Round(r.Recovered * 100.0 / r.Total) : 100)%;"></span>
+                                            </div>
+                                            @if (r.PendingItems.Count > 0)
+                                            {
+                                                <ul class="list-unstyled mb-0 mt-2 pn-list">
+                                                    @foreach (var p in r.PendingItems)
+                                                    {
+                                                        <li class="pn-list__item d-flex justify-content-between align-items-center flex-wrap">
+                                                            <div class="small flex-grow-1 mr-2">
+                                                                <span class="font-weight-bold text-dark">@p.Code</span> · @p.Subject (@p.Group)
+                                                                <span class="text-muted d-block">@p.Laboratory · @p.Practice</span>
+                                                            </div>
+                                                            <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-reponer="@p.Id" asp-route-recoveryId="@r.Id"
+                                                               class="btn btn-sm btn-outline-warning btn-rounded flex-shrink-0">
+                                                                <i class="mdi mdi-arrow-right-bold mr-1"></i>Reubicar
+                                                            </a>
+                                                        </li>
+                                                    }
+                                                </ul>
+                                            }
+                                            else
+                                            {
+                                                <div class="small text-success mt-2"><i class="fas fa-check-circle mr-1"></i> Todas las prácticas del día están reubicadas.</div>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* (b) Planificaciones pendientes de reprogramar *@
+                    <div class="col-lg-6 mb-3">
+                        <div class="card border-0 shadow-sm rounded-lg h-100 pn-alert">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="pn-alert__icon pn-alert__icon--danger mr-3"><i class="fas fa-exclamation-triangle"></i></div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="font-weight-bold text-dark mb-0">Pendientes de reprogramar</h5>
+                                        <small class="text-muted">Planificaciones sin fecha válida por día suspendido</small>
+                                    </div>
+                                    <span class="badge @(Model.PendingReschedules.Count > 0 ? "badge-danger" : "badge-light border text-dark") px-2 py-1">@Model.PendingReschedules.Count</span>
+                                </div>
+                                @if (Model.PendingReschedules.Count == 0)
+                                {
+                                    <div class="pn-ok pn-ok--success"><i class="fas fa-check-circle mr-1"></i> Todo al día: ninguna planificación espera reprogramación.</div>
+                                }
+                                else
+                                {
+                                    <ul class="list-unstyled mb-0 pn-list">
+                                        @foreach (var p in Model.PendingReschedules)
+                                        {
+                                            <li class="pn-list__item d-flex justify-content-between align-items-center flex-wrap">
+                                                <div class="small flex-grow-1 mr-2">
+                                                    <span class="font-weight-bold text-dark">@p.Code</span> · @p.Subject (@p.Group)
+                                                    <span class="text-muted d-block">@p.Laboratory · @p.Date.ToString("dd/MM") · @p.TimeText</span>
+                                                </div>
+                                                @if (p.RecoveryId.HasValue)
+                                                {
+                                                    <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-reponer="@p.Id" asp-route-recoveryId="@p.RecoveryId"
+                                                       class="btn btn-sm btn-outline-danger btn-rounded flex-shrink-0">
+                                                        <i class="mdi mdi-arrow-right-bold mr-1"></i>Reubicar
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a asp-page="./Reposiciones" asp-route-managementId="@management.Id"
+                                                       class="btn btn-sm btn-outline-danger btn-rounded flex-shrink-0">
+                                                        <i class="fas fa-external-link-alt mr-1"></i>Ver reposiciones
+                                                    </a>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
+                                    <small class="text-muted d-block mt-2">
+                                        <i class="fas fa-info-circle mr-1"></i> Solo SuperAdmin puede reprogramar desde la grilla.
+                                    </small>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* (c) Planificaciones sin periodo asignado *@
+                    <div class="col-lg-6 mb-3">
+                        <div class="card border-0 shadow-sm rounded-lg h-100 pn-alert">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="pn-alert__icon pn-alert__icon--info mr-3"><i class="far fa-clock"></i></div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="font-weight-bold text-dark mb-0">Sin periodo asignado</h5>
+                                        <small class="text-muted">Planificaciones vigentes que no reservan horario en la grilla</small>
+                                    </div>
+                                    <span class="badge @(Model.WithoutPeriodCount > 0 ? "badge-info" : "badge-light border text-dark") px-2 py-1">@Model.WithoutPeriodCount</span>
+                                </div>
+                                @if (Model.WithoutPeriodCount == 0)
+                                {
+                                    <div class="pn-ok pn-ok--success"><i class="fas fa-check-circle mr-1"></i> Todo al día: todas las planificaciones tienen horario.</div>
+                                }
+                                else
+                                {
+                                    <ul class="list-unstyled mb-0 pn-list">
+                                        @foreach (var p in Model.WithoutPeriod)
+                                        {
+                                            <li class="pn-list__item d-flex justify-content-between align-items-center flex-wrap">
+                                                <div class="small flex-grow-1 mr-2">
+                                                    <span class="font-weight-bold text-dark">@p.Code</span> · @p.Subject (@p.Group)
+                                                    <span class="text-muted d-block">@p.Laboratory · @p.Date.ToString("dd/MM") · @p.TimeText</span>
+                                                </div>
+                                                <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-laboratoryId="@p.LaboratoryId"
+                                                   class="btn btn-sm btn-outline-info btn-rounded flex-shrink-0">
+                                                    <i class="mdi mdi-table-large mr-1"></i>Ver grilla
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                    @if (Model.WithoutPeriodCount > Model.WithoutPeriod.Count)
+                                    {
+                                        <small class="text-muted d-block mt-2">Y @(Model.WithoutPeriodCount - Model.WithoutPeriod.Count) más.</small>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* (d) Próximos 7 días por laboratorio *@
+                    <div class="col-lg-6 mb-3">
+                        <div class="card border-0 shadow-sm rounded-lg h-100 pn-alert">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="pn-alert__icon pn-alert__icon--success mr-3"><i class="far fa-calendar-check"></i></div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="font-weight-bold text-dark mb-0">Próximos 7 días por laboratorio</h5>
+                                        <small class="text-muted">Sesiones de @Model.Today.ToString("dd/MM") al @Model.Today.AddDays(6).ToString("dd/MM")</small>
+                                    </div>
+                                </div>
+                                @if (Model.UpcomingByLaboratory.Count == 0)
+                                {
+                                    <div class="pn-ok pn-ok--muted"><i class="far fa-calendar mr-1"></i> Sin sesiones programadas en los próximos 7 días.</div>
+                                }
+                                else
+                                {
+                                    <div class="table-responsive pn-table-wrap">
+                                        <table class="table table-sm mb-0 pn-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Ambiente</th>
+                                                    <th class="text-center">Sesiones</th>
+                                                    <th>Primera sesión</th>
+                                                    <th class="text-right">Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var l in Model.UpcomingByLaboratory)
+                                                {
+                                                    <tr>
+                                                        <td class="font-weight-bold text-dark">@l.Laboratory</td>
+                                                        <td class="text-center"><span class="badge badge-light border text-dark">@l.SessionCount</span></td>
+                                                        <td>
+                                                            <div class="small font-weight-bold">@l.FirstSessionText</div>
+                                                            <div class="small text-muted">@l.FirstPractice</div>
+                                                        </td>
+                                                        <td class="text-right">
+                                                            <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-laboratoryId="@l.LaboratoryId"
+                                                               asp-route-date="@l.FirstSessionDate.ToString("yyyy-MM-dd")"
+                                                               class="btn btn-sm btn-outline-success btn-rounded">
+                                                                Ver grilla
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pn-tab-usage" role="tabpanel" aria-labelledby="pn-tab-usage-tab">
                     <div class="card border-0 shadow-sm rounded-lg">
                         <div class="card-body">
                             <div class="d-flex flex-wrap align-items-center mb-3">
@@ -405,14 +712,12 @@
                                 <div class="btn-group btn-group-sm pn-usage-toggle" role="group" aria-label="Periodo de uso">
                                     <a asp-page="./Index"
                                        asp-route-managementId="@management.Id"
-                                       asp-route-month="@Model.Month"
                                        asp-route-usagePeriod="week"
                                        class="btn btn-outline-primary @(Model.UsageIsMonth ? string.Empty : "active")">
                                         Esta semana
                                     </a>
                                     <a asp-page="./Index"
                                        asp-route-managementId="@management.Id"
-                                       asp-route-month="@Model.Month"
                                        asp-route-usagePeriod="month"
                                        class="btn btn-outline-primary @(Model.UsageIsMonth ? "active" : string.Empty)">
                                         Este mes
@@ -536,45 +841,56 @@
                     </div>
                 </div>
             </div>
-        }
+
+            @* ── Modal "Reponer día": fecha + motivo + vista previa (Supervisor/Admin/SuperAdmin) ── *@
+            @if (Model.CanRecover)
+            {
+                <div class="modal fade" id="modal-reponer-dia" tabindex="-1" role="dialog" aria-labelledby="modal-reponer-titulo" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" role="document">
+                        <form method="post" asp-page-handler="RecoverDay" id="form-recover-day"
+                              data-management-id="@management.Id" class="modal-content border-0 shadow-lg rounded-lg">
+                            <div class="modal-header" style="background: linear-gradient(135deg, #fff8e6, #fffdf5); border-bottom: 1px solid #f3ecd4;">
+                                <h5 class="modal-title font-weight-bold text-dark" id="modal-reponer-titulo">
+                                    <i class="mdi mdi-backup-restore text-warning mr-2"></i>Reponer día
+                                </h5>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" name="managementId" value="@management.Id" />
+                                <p class="small text-muted mb-3">
+                                    Suspende el día elegido del calendario académico y deja sus planificaciones pendientes de reubicación en la grilla.
+                                </p>
+                                <div class="form-group">
+                                    <label for="recovery-date" class="small font-weight-bold">FECHA <span class="text-danger">*</span></label>
+                                    <input type="date" id="recovery-date" name="date" class="form-control" required />
+                                </div>
+                                <div class="form-group">
+                                    <label for="recovery-reason" class="small font-weight-bold">MOTIVO <span class="text-danger">*</span></label>
+                                    <textarea id="recovery-reason" name="reason" class="form-control" rows="3" maxlength="200" required
+                                              placeholder="Ej. Feriado institucional, evento académico..."></textarea>
+                                    <small class="text-muted">Obligatorio, máximo 200 caracteres.</small>
+                                </div>
+                                <div id="recovery-preview" class="pn-recovery-preview" aria-live="polite">
+                                    <div class="small text-muted"><i class="far fa-calendar mr-1"></i> Elija una fecha para ver los laboratorios afectados.</div>
+                                </div>
+                            </div>
+                            <div class="modal-footer border-0">
+                                <button type="button" class="btn btn-outline-secondary btn-rounded font-weight-bold" data-dismiss="modal">Cancelar</button>
+                                <button type="submit" id="recovery-confirm" class="btn btn-warning btn-rounded font-weight-bold px-4" disabled>
+                                    <i class="mdi mdi-backup-restore mr-1"></i>Suspender y reponer
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            }
     }
 </div>
 
 @section Styles {
-    <style>
-        .metric-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-        .bg-light-primary { background: #e8e7ff; }
-        .bg-light-success { background: #e6f4ea; }
-        .bg-light-warning { background: #fef7e0; }
-        .bg-light-info    { background: #e8f4fd; }
-        .bg-light-danger  { background: #fde7e9; }
-
-        /* Notificaciones y pestañas del panel de planificación (pn-). */
-        #pn-notifications .pn-list { max-height: 260px; overflow-y: auto; }
-        #pn-notifications .pn-list__item + .pn-list__item { border-top: 1px solid #f0eef9; padding-top: 6px; margin-top: 6px; }
-        #pn-notifications .pn-link { text-decoration: none; transition: background-color .15s; padding: 4px 6px; border-radius: 6px; }
-        #pn-notifications .pn-link:hover { background: #f4f3ff; text-decoration: none; }
-        #pn-notifications .pn-empty { padding: 6px 8px; background: #f8f7ff; border-radius: 6px; }
-
-        .pn-tabs { border-bottom: 2px solid #7460ee22; margin-bottom: 0; }
-        .pn-tabs .nav-link { color: #555; font-weight: 600; border: none; border-bottom: 3px solid transparent; padding: 8px 16px; }
-        .pn-tabs .nav-link.active { color: #7460ee; background: transparent; border-bottom-color: #7460ee; }
-        .pn-tabs .nav-link:hover:not(.active) { color: #7460ee; background: #f4f3ff; border-bottom-color: #c7c2f0; }
-        .pn-tab-content > .tab-pane { padding-top: 1rem; }
-
-        .pn-table { background: #fff; }
-        .pn-table thead th { background: #f8f7ff; color: #7460ee; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #ececec; }
-        .pn-table tbody tr:hover { background: #faf9ff; }
-        .pn-table td, .pn-table th { vertical-align: middle; }
-        .pn-table-wrap { border-radius: 10px; border: 1px solid #ececec; }
-
-        .pn-bar { display: block; height: 4px; background: #ececec; border-radius: 4px; overflow: hidden; }
-        .pn-bar__fill { display: block; height: 100%; background: linear-gradient(90deg, #7460ee, #a895f7); }
-
-        .pn-summary .badge { font-weight: 600; padding: 6px 10px; }
-        .pn-usage-toggle .btn.active { background: #7460ee; color: #fff; border-color: #7460ee; }
-        .pn-footnote { line-height: 1.4; }
-    </style>
+    <link href="~/css/panel-planificacion.css" rel="stylesheet">
 }
 
 @section Scripts {
@@ -587,6 +903,123 @@
                 if (tab && window.jQuery) {
                     window.jQuery(tab).tab('show');
                 }
+            }
+
+            // ── Modal "Reponer día": vista previa + confirmación SweetAlert v7 ──
+            var recoveryForm = document.getElementById('form-recover-day');
+            if (recoveryForm) {
+                var dateInput = document.getElementById('recovery-date');
+                var reasonInput = document.getElementById('recovery-reason');
+                var previewBox = document.getElementById('recovery-preview');
+                var confirmButton = document.getElementById('recovery-confirm');
+                var lastPreview = null;
+
+                function esc(value) {
+                    return String(value == null ? '' : value)
+                        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                }
+
+                function renderPreview(p) {
+                    var html = '<div class="font-weight-bold small text-dark"><i class="far fa-calendar-check mr-1"></i> '
+                        + esc(p.message || (p.ok ? 'Fecha válida' : 'No se puede reponer esta fecha')) + '</div>';
+                    if (p.ok) {
+                        html += '<div class="small mt-1">Total a suspender: <strong>' + esc(p.total) + '</strong> planificación(es).</div>';
+                        if (p.labs && p.labs.length) {
+                            html += '<div class="mt-2">';
+                            p.labs.forEach(function (lab) {
+                                html += '<span class="badge badge-light border text-dark mr-1 mb-1"><i class="fas fa-flask mr-1 text-muted"></i>'
+                                    + esc(lab.label) + ' · ' + esc(lab.count) + '</span>';
+                            });
+                            html += '</div>';
+                        }
+                    } else if (p.blockers && p.blockers.length) {
+                        html += '<div class="mt-2">';
+                        p.blockers.forEach(function (b) {
+                            html += '<div class="pn-recovery-preview__blocker"><i class="mdi mdi-close-circle"></i><span>'
+                                + esc(b.code) + ' · ' + esc(b.practice) + ' — ' + esc(b.statusLabel) + '</span></div>';
+                        });
+                        html += '</div>';
+                    }
+                    previewBox.innerHTML = html;
+                }
+
+                function loadPreview() {
+                    var date = dateInput.value;
+                    if (!date) {
+                        lastPreview = null;
+                        confirmButton.disabled = true;
+                        previewBox.innerHTML = '<div class="small text-muted"><i class="far fa-calendar mr-1"></i> Elija una fecha para ver los laboratorios afectados.</div>';
+                        return;
+                    }
+                    previewBox.innerHTML = '<div class="small text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Consultando el calendario…</div>';
+                    var url = new URL(window.location.href);
+                    url.search = '';
+                    url.searchParams.set('handler', 'RecoveryPreview');
+                    url.searchParams.set('managementId', recoveryForm.getAttribute('data-management-id'));
+                    url.searchParams.set('date', date);
+                    fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                        .then(function (response) {
+                            if (!response.ok) throw new Error('No se pudo consultar la vista previa (' + response.status + ').');
+                            return response.json();
+                        })
+                        .then(function (p) {
+                            lastPreview = p;
+                            renderPreview(p);
+                            confirmButton.disabled = !p.ok;
+                        })
+                        .catch(function (error) {
+                            lastPreview = null;
+                            confirmButton.disabled = true;
+                            previewBox.innerHTML = '<div class="small text-danger"><i class="mdi mdi-close-circle mr-1"></i> '
+                                + esc(error.message) + '</div>';
+                        });
+                }
+
+                dateInput.addEventListener('change', loadPreview);
+
+                // Al abrir el modal se limpia el estado anterior.
+                $(recoveryForm).closest('.modal').on('show.bs.modal', function () {
+                    dateInput.value = '';
+                    reasonInput.value = '';
+                    lastPreview = null;
+                    confirmButton.disabled = true;
+                    previewBox.innerHTML = '<div class="small text-muted"><i class="far fa-calendar mr-1"></i> Elija una fecha para ver los laboratorios afectados.</div>';
+                });
+
+                recoveryForm.addEventListener('submit', function (e) {
+                    if (recoveryForm.dataset.confirmed === '1') return;
+                    e.preventDefault();
+                    if (!recoveryForm.reportValidity()) return;
+                    if (!lastPreview || !lastPreview.ok) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: 'Fecha no disponible',
+                                text: lastPreview && lastPreview.message ? lastPreview.message : 'Elija una fecha válida del calendario académico.',
+                                type: 'warning',
+                                confirmButtonColor: '#7460ee'
+                            });
+                        }
+                        return;
+                    }
+                    var send = function () {
+                        recoveryForm.dataset.confirmed = '1';
+                        HTMLFormElement.prototype.submit.call(recoveryForm);
+                    };
+                    if (typeof Swal === 'undefined') { send(); return; }
+                    Swal.fire({
+                        title: '¿Suspender y reponer el día?',
+                        text: lastPreview.message + ' Las planificaciones quedarán pendientes de reubicación.',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#f6c343',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, suspender y reponer',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) send();
+                    });
+                });
             }
 
             // Toast inicial si hay conflictos / rotaciones o devoluciones vencidas.

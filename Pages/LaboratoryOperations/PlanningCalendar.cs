@@ -143,13 +143,12 @@ public static class PlanningStatusView
         _ => "warning"
     };
 
-    /// <summary>"P1–P4 · 07:35–11:15", o solo las horas en planificaciones sin periodo (legado).</summary>
+    /// <summary>"Periodos 1–4 · 07:35–11:15", o solo las horas en planificaciones sin periodo (legado).</summary>
     public static string TimeText(int? startOrder, int? periodCount, DateTime start, DateTime? end)
     {
         var hours = $"{start:HH\\:mm}–{(end ?? start.AddHours(1)):HH\\:mm}";
         if (startOrder is not int first || periodCount is not int count) return hours;
-        var periods = count == 1 ? $"P{first}" : $"P{first}–P{PlanningSlot.LastOrder(first, count)}";
-        return $"{periods} · {hours}";
+        return $"{PlanningSlot.PeriodsText(first, count)} · {hours}";
     }
 
     public static string NextUrl(int id, string status, bool hasRequirements) => status switch

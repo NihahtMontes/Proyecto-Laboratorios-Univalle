@@ -1,0 +1,32 @@
+/* Pestañas de la gestión de materias: Materias | Grupos de la gestión | Horario por semestre.
+   Mismo estilo customtab de NiceAdmin usado en los demás índices. */
+.subjects-tabs {
+    border-bottom: 2px solid #f3f5f7;
+}
+
+.subjects-tabs .nav-link {
+    border: none;
+    color: #747d8c;
+    padding: 15px 20px;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.subjects-tabs .nav-link:hover {
+    color: #2962ff;
+}
+
+.subjects-tabs .nav-link.active {
+    color: #2962ff;
+    background: transparent;
+    border-bottom: 3px solid #2962ff !important;
+}
+
+.subjects-tabs .nav-link i {
+    margin-right: 6px;
+}
+
+.subjects-tabs-help {
+    margin-top: -4px;
+    padding-bottom: 6px;
+}

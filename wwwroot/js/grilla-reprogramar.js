@@ -115,6 +115,68 @@
     var labsById = {};
     (cfg.labs || []).forEach(function (l) { labsById[l.id] = l; });
 
+    // ------------------------------------------------ horario de clases del grupo
+    // groupOwn: día → { orden: true } celdas de clase de ESTA materia (sugerencia para reponer).
+    // groupBusy: día → { orden: materia } clases de OTRAS materias del mismo grupo de estudiantes (bloquean).
+    // Ambos dependen del día de semana, no del ambiente: sobreviven al cambio de laboratorio (modo "llevar").
+    var groupOwn = {};
+    var groupBusy = {};
+    var groupName = cfg.groupName || 'el grupo';
+    (cfg.groupSlots || []).forEach(function (s) {
+        if (!groupOwn[s.weekday]) groupOwn[s.weekday] = {};
+        groupOwn[s.weekday][s.order] = true;
+    });
+    (cfg.siblingClasses || []).forEach(function (s) {
+        if (!groupBusy[s.weekday]) groupBusy[s.weekday] = {};
+        groupBusy[s.weekday][s.order] = s.subject || 'otra materia';
+    });
+
+    /** Día de semana de una fecha yyyy-MM-dd (0 = domingo, 1..6 = lunes..sábado); -1 si es inválida. */
+    function weekdayOfDate(iso) {
+        var parts = String(iso || '').split('-');
+        if (parts.length !== 3) return -1;
+        return new Date(+parts[0], +parts[1] - 1, +parts[2]).getDay();
+    }
+
+    /** Primera clase de otra materia del grupo que toca el rango [order, order+periodCount-1] de ese día. */
+    function groupConflict(dateIso, order) {
+        var weekday = weekdayOfDate(dateIso);
+        if (weekday <= 0) return null;
+        var end = lastOrderOf(order);
+        for (var o = order; o <= end; o++) {
+            var subject = groupBusy[weekday] && groupBusy[weekday][o];
+            if (subject) return subject;
+        }
+        return null;
+    }
+
+    /** Marca las celdas de la grilla con el horario semanal del grupo (se recalcula al cargar la página). */
+    function markGroupCells() {
+        Array.prototype.forEach.call(document.querySelectorAll('.gr-cell'), function (cell) {
+            var col = parseInt(cell.getAttribute('data-col'), 10);
+            var order = parseInt(cell.getAttribute('data-order'), 10);
+            if (!col || !order) return;
+            if (cell.getAttribute('data-out') === 'true' || cell.getAttribute('data-suspended') === 'true') return;
+            var weekday = col - 1;   // data-col = weekday + 1
+            var subject = groupBusy[weekday] && groupBusy[weekday][order];
+            if (subject) {
+                cell.classList.add('gr-cell--group-busy');
+                cell.setAttribute('title', 'El grupo ' + groupName + ' tiene clase de ' + subject);
+                return;
+            }
+            if (groupOwn[weekday] && groupOwn[weekday][order]) {
+                cell.classList.add('gr-cell--group-own');
+                if (!cell.querySelector('.gr-cell__group-label')) {
+                    var tag = document.createElement('span');
+                    tag.className = 'gr-cell__group-label';
+                    tag.textContent = 'Clase del grupo';
+                    cell.appendChild(tag);
+                }
+            }
+        });
+    }
+    markGroupCells();
+
     var LEVELS = {
         valid: { icon: 'mdi mdi-check-circle', text: 'Disponible' },
         warning: { icon: 'mdi mdi-alert', text: 'Con advertencias' },
@@ -130,12 +192,22 @@
     var cache = {};          // clave fecha|periodo|ambiente|docente → respuesta del servidor
     var inflight = null;     // { key, controller, promise }
     var debounceTimer = null;
-    var dragging = false;
+    var dragging = false;    // arrastre HTML5 nativo en curso
     var dropped = false;
     var hover = null;        // destino bajo el cursor durante el arrastre
     var fixed = null;        // { dest, result } destino fijado (sin bloqueos)
     var chooseSeq = 0;
     var ghost = null;
+
+    // Modo "llevar": el bloque queda en mano y sobrevive al cambio de ambiente (sessionStorage).
+    var CARRY_KEY = 'gr-carry';
+    var carrying = false;    // bloque en mano (fantasma flotante que sigue al cursor)
+    var carryGhost = null;
+    var carryBar = null;
+    var chipsBox = document.getElementById('gr-rs-chips');
+    var chipTimer = null;
+    var chipTimerLab = null;
+    var lastDragEnd = 0;
 
     // ------------------------------------------------ utilidades
     function currentTeacherId() { return parseInt(teacherSelect.value, 10) || 0; }
@@ -153,10 +225,10 @@
 
     function periodsText(order) {
         var first = periodsByOrder[order];
-        if (!first) return 'P' + order;
         var lastOrder = lastOrderOf(order);
         var last = periodsByOrder[lastOrder];
-        var range = cfg.periodCount === 1 ? 'P' + order : 'P' + order + '–P' + lastOrder;
+        var range = cfg.periodCount === 1 ? 'Periodo ' + order : 'Periodos ' + order + '–' + lastOrder;
+        if (!first) return range;
         if (!last) return range + ' (no cabe en la jornada)';
         var start = String(first.label).split('–')[0].trim();
         var end = String(last.label).split('–').pop().trim();
@@ -206,12 +278,37 @@
         return null;
     }
 
+    /**
+     * Regla local de separación: el destino no puede quedar solapado ni contiguo a otro bloque
+     * del mismo ambiente y día (el bloque de origen se excluye porque "se levanta" de la grilla).
+     */
+    function bufferProblem(d) {
+        var start = d.order;
+        var end = lastOrderOf(start);
+        var blocks = document.querySelectorAll('.gr-block[data-date="' + d.date + '"][data-laboratory-id="' + d.labId + '"]');
+        for (var i = 0; i < blocks.length; i++) {
+            var block = blocks[i];
+            var id = parseInt(block.getAttribute('data-planning-id'), 10);
+            if (id === cfg.planningId) continue;   // el origen se excluye
+            if (block.classList.contains('gr-block--inactive')) continue;   // cancelados/reprogramados no ocupan
+            var s = parseInt(block.getAttribute('data-start-order'), 10);
+            var c = parseInt(block.getAttribute('data-period-count'), 10);
+            if (!s || !c) continue;   // legado sin periodos
+            var otherEnd = s + c - 1;
+            if (start <= otherEnd + 1 && end >= s - 1) return true;   // solapa o queda contiguo
+        }
+        return false;
+    }
+
     /** Rojo inmediato (sin esperar al servidor) para lo evidente: no cabe, día suspendido o fuera de la gestión. */
     function localProblem(d) {
-        if (!fits(d.order)) return 'El bloque de ' + cfg.periodCount + ' periodo(s) no cabe desde P' + d.order + '.';
+        if (!fits(d.order)) return 'El bloque de ' + cfg.periodCount + ' periodo(s) no cabe desde el Periodo ' + d.order + '.';
         var cell = cellFor(d);
         if (cell && cell.getAttribute('data-suspended') === 'true') return 'El día está suspendido.';
         if (cell && cell.getAttribute('data-out') === 'true') return 'El día está fuera de la gestión.';
+        if (bufferProblem(d)) return 'Debe quedar un periodo libre entre prácticas.';
+        var groupSubject = groupConflict(d.date, d.order);
+        if (groupSubject) return 'El grupo ' + groupName + ' tiene clase de ' + groupSubject + ' en ese horario.';
         return null;
     }
 
@@ -348,7 +445,9 @@
         }).then(function (response) {
             var type = response.headers.get('content-type') || '';
             if (response.status === 401 || response.status === 403 || (response.ok && type.indexOf('json') < 0)) {
-                throw new Error('No se pudo validar: la sesión expiró o no tiene permiso de SuperAdmin. Vuelva a iniciar sesión.');
+                throw new Error(cfg.recovery
+                    ? 'No se pudo validar: la sesión expiró o no tiene permiso para reponer. Vuelva a iniciar sesión.'
+                    : 'No se pudo validar: la sesión expiró o no tiene permiso de SuperAdmin. Vuelva a iniciar sesión.');
             }
             if (!response.ok) {
                 return response.json().catch(function () { return {}; }).then(function (body) {
@@ -400,18 +499,20 @@
         }
     }
 
-    function choose(d) {
+    /** done(ok): opcional; avisa si el destino quedó fijado (true) o rechazado (false). La usa el modo "llevar". */
+    function choose(d, done) {
         clearTimeout(debounceTimer);
         hover = null;
         var seq = ++chooseSeq;
         setFields(d);
 
-        if (!d.periodId || !d.date) { unfix(); renderEmpty('Elija la fecha y el periodo inicial del destino.'); return; }
+        if (!d.periodId || !d.date) { unfix(); renderEmpty('Elija la fecha y el periodo inicial del destino.'); if (done) done(false); return; }
         if (isSameAsOrigin(d)) {
             unfix();
             removeGhost();
             renderPreview(d, null, { notice: 'Es la ubicación actual de la planificación: elija otro destino u otro docente.', local: ' ' });
             previewBox.querySelector('.fa-spinner') && previewBox.querySelector('.fa-spinner').parentNode.remove();
+            if (done) done(false);
             return;
         }
 
@@ -426,15 +527,18 @@
                 unfix();
                 drawGhost(d, 'invalid', false);
                 renderPreview(d, result, { notice: 'Ese destino está bloqueado: elija otro.' });
+                if (done) done(false);
                 return;
             }
             fix(d, result);
+            if (done) done(true);
         }, function (error) {
             if (error && error.name === 'AbortError') return;
             if (seq !== chooseSeq) return;
             unfix();
             drawGhost(d, 'invalid', false);
             renderError(d, error.message);
+            if (done) done(false);
         });
     }
 
@@ -453,12 +557,12 @@
 
         debounceTimer = setTimeout(function () {
             requestValidation(d).then(function (result) {
-                if (!dragging || !hover || keyOf(hover) !== key) return;
+                if ((!dragging && !carrying) || !hover || keyOf(hover) !== key) return;
                 drawGhost(d, result.level, false);
                 renderPreview(d, result, { hover: true });
             }, function (error) {
                 if (error && error.name === 'AbortError') return;
-                if (!dragging || !hover || keyOf(hover) !== key) return;
+                if ((!dragging && !carrying) || !hover || keyOf(hover) !== key) return;
                 drawGhost(d, 'invalid', false);
                 renderError(d, error.message);
             });
@@ -472,6 +576,7 @@
             dropped = false;
             hover = null;
             closeMenu();
+            showChips();
             try { e.dataTransfer.setData('text/plain', cfg.code); } catch (ignored) { /* IE */ }
             e.dataTransfer.effectAllowed = 'move';
             // Cambiar el elemento arrastrado en el mismo dragstart cancela el arrastre en algunos navegadores.
@@ -479,6 +584,8 @@
         });
         source.addEventListener('dragend', function () {
             dragging = false;
+            lastDragEnd = Date.now();
+            hideChips();
             clearTimeout(debounceTimer);
             source.classList.remove('gr-block--dragging');
             if (!dropped) {
@@ -509,6 +616,289 @@
             choose(destFromCell(cell));
         });
     });
+
+    // ------------------------------------------------ modo "llevar": bloque en mano
+    // El bloque queda "en mano" (fantasma flotante) y sobrevive al cambio de ambiente o de semana:
+    // el estado vive en sessionStorage y reaparece pegado al cursor tras la recarga.
+    function saveCarry() {
+        try {
+            sessionStorage.setItem(CARRY_KEY, JSON.stringify({
+                carrying: true,
+                savedAt: Date.now(),
+                mode: cfg.recovery ? 'reponer' : 'reprogramar',
+                id: cfg.planningId,
+                recoveryId: cfg.recoveryId || null,
+                periodCount: cfg.periodCount,
+                code: cfg.code,
+                subject: cfg.subject || ''
+            }));
+        } catch (e) { /* sessionStorage no disponible */ }
+    }
+
+    function readCarry() {
+        try {
+            var raw = sessionStorage.getItem(CARRY_KEY);
+            if (!raw) return null;
+            var state = JSON.parse(raw);
+            if (!state || state.carrying !== true) return null;
+            if (!state.savedAt || Date.now() - state.savedAt > 10 * 60 * 1000) return null;   // estado viejo
+            if (state.id !== cfg.planningId) return null;
+            if (state.mode !== (cfg.recovery ? 'reponer' : 'reprogramar')) return null;
+            return state;
+        } catch (e) { return null; }
+    }
+
+    function clearCarry() {
+        try { sessionStorage.removeItem(CARRY_KEY); } catch (e) { /* ignorar */ }
+    }
+
+    /** URL actual con laboratoryId reemplazado; conserva reprogramar/reponer/recoveryId/week/twoWeeks. */
+    function urlWithLab(labId) {
+        var href = window.location.href;
+        if (!window.URLSearchParams) {
+            if (/[?&]laboratoryId=\d+/.test(href)) return href.replace(/([?&]laboratoryId=)\d+/, '$1' + labId);
+            return href + (href.indexOf('?') < 0 ? '?' : '&') + 'laboratoryId=' + labId;
+        }
+        var anchor = document.createElement('a');
+        anchor.href = href;
+        var params = new URLSearchParams(anchor.search.replace(/^\?/, ''));
+        params.set('laboratoryId', String(labId));
+        params.delete('resaltar');   // los marcadores de un destino anterior no aplican al cambiar de ambiente
+        params.delete('destDate');
+        params.delete('destPeriodId');
+        params.delete('destTeacherId');
+        anchor.search = params.toString();
+        return anchor.href;
+    }
+
+    function goLab(labId, keepCarrying) {
+        if (!labId) return;
+        if (keepCarrying) saveCarry();   // el bloque sigue en mano tras la recarga
+        window.location.href = urlWithLab(labId);
+    }
+
+    function justDragged() { return Date.now() - lastDragEnd < 400; }
+
+    // ---- chips de ambientes (visibles durante un arrastre nativo)
+    function buildChips() {
+        if (!chipsBox || chipsBox.getAttribute('data-built') === '1') return;
+        chipsBox.innerHTML = '<span class="gr-rs-chips__label"><i class="mdi mdi-arrow-right-bold" aria-hidden="true"></i> Llevar a otro ambiente:</span>';
+        (cfg.labs || []).forEach(function (l) {
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'gr-chip';
+            chip.setAttribute('data-lab-id', l.id);
+            chip.title = 'Mantén el bloque sobre este chip para cambiar a ' + l.label;
+            chip.textContent = l.label;
+            chipsBox.appendChild(chip);
+        });
+        chipsBox.setAttribute('data-built', '1');
+    }
+
+    function clearChipTimer() {
+        if (chipTimer) { clearTimeout(chipTimer); chipTimer = null; }
+        chipTimerLab = null;
+        Array.prototype.forEach.call(document.querySelectorAll('.gr-chip--armed'), function (chip) {
+            chip.classList.remove('gr-chip--armed');
+        });
+    }
+
+    function bindChips() {
+        if (!chipsBox) return;
+        buildChips();
+        Array.prototype.forEach.call(chipsBox.querySelectorAll('.gr-chip'), function (chip) {
+            var labId = chip.getAttribute('data-lab-id');
+            chip.addEventListener('dragenter', function (e) { if (dragging) e.preventDefault(); });
+            chip.addEventListener('dragover', function (e) {
+                if (!dragging) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (chipTimer || chipTimerLab === labId) return;
+                chipTimerLab = labId;
+                chip.classList.add('gr-chip--armed');
+                chipTimer = setTimeout(function () {
+                    clearChipTimer();
+                    goLab(labId, true);   // pasa a modo "llevar": el bloque sigue en mano tras la recarga
+                }, 700);
+            });
+            chip.addEventListener('dragleave', function (e) {
+                if (chipTimerLab !== labId) return;
+                if (e.relatedTarget && chip.contains(e.relatedTarget)) return;
+                clearChipTimer();
+            });
+            chip.addEventListener('drop', function (e) {
+                e.preventDefault();
+                clearChipTimer();
+            });
+            chip.addEventListener('click', function () {
+                // Clic: cambia de ambiente conservando el modo (y el bloque en mano si estaba en mano).
+                goLab(labId, carrying || readCarry() != null);
+            });
+        });
+    }
+
+    function showChips() { if (chipsBox) { buildChips(); chipsBox.hidden = false; } }
+    function hideChips() { if (chipsBox) { chipsBox.hidden = true; clearChipTimer(); } }
+
+    // ---- fantasma flotante (position:fixed, sigue al cursor)
+    function removeCarryGhost() {
+        if (carryGhost && carryGhost.parentNode) carryGhost.parentNode.removeChild(carryGhost);
+        carryGhost = null;
+    }
+
+    function createCarryGhost() {
+        removeCarryGhost();
+        var sample = document.querySelector('.gr-cell');
+        var width = sample ? sample.getBoundingClientRect().width : 150;
+        width = Math.max(120, Math.min(Math.round(width), 280));
+        var rows = Math.max(1, Math.min(cfg.periodCount, cfg.maxOrder || 12));
+        var height = Math.min(rows * 58 + 6, 320);
+        carryGhost = document.createElement('div');
+        carryGhost.className = 'gr-carry-ghost';
+        carryGhost.style.width = width + 'px';
+        carryGhost.style.height = height + 'px';
+        carryGhost.style.display = 'none';   // reaparece pegado al cursor en el primer mousemove
+        carryGhost.setAttribute('aria-hidden', 'true');
+        carryGhost.innerHTML = '<strong>' + esc(cfg.code) + '</strong>'
+            + '<span>' + esc(cfg.subject || '') + '</span>'
+            + '<span>' + esc(periodsText(cfg.originStartOrder || 1)) + '</span>';
+        document.body.appendChild(carryGhost);
+    }
+
+    function moveCarryGhost(x, y) {
+        if (!carryGhost) return;
+        carryGhost.style.display = 'flex';
+        var w = carryGhost.offsetWidth;
+        var h = carryGhost.offsetHeight;
+        var left = x + 14;
+        var top = y + 10;
+        if (left + w > window.innerWidth - 8) left = x - w - 10;
+        if (top + h > window.innerHeight - 8) top = y - h - 10;
+        carryGhost.style.left = Math.max(8, left) + 'px';
+        carryGhost.style.top = Math.max(8, top) + 'px';
+    }
+
+    // ---- barra indicadora fija
+    function hideCarryBar() {
+        if (carryBar && carryBar.parentNode) carryBar.parentNode.removeChild(carryBar);
+        carryBar = null;
+    }
+
+    function showCarryBar() {
+        if (carryBar) return;
+        carryBar = document.createElement('div');
+        carryBar.id = 'gr-carry-bar';
+        carryBar.className = 'gr-carry-bar';
+        carryBar.setAttribute('role', 'status');
+        carryBar.innerHTML = '<i class="mdi mdi-cursor-move" aria-hidden="true"></i>'
+            + '<span class="gr-carry-bar__text">Llevando <strong>' + esc(cfg.code) + '</strong> · ' + esc(cfg.periodCount)
+            + ' periodo(s) — haz clic en una celda libre o presiona Esc</span>';
+        var cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.id = 'gr-carry-cancel';
+        cancel.className = 'btn btn-sm btn-rounded font-weight-bold';
+        cancel.innerHTML = '<i class="fas fa-times mr-1"></i> Cancelar';
+        cancel.addEventListener('click', function () { cancelCarry(); });
+        carryBar.appendChild(cancel);
+        document.body.appendChild(carryBar);
+    }
+
+    // ---- ciclo de vida del modo llevar
+    function startCarry() {
+        if (carrying) return;
+        closeMenu();
+        carrying = true;
+        saveCarry();
+        createCarryGhost();
+        showCarryBar();
+        document.body.classList.add('gr-carrying');
+    }
+
+    function stopCarry() {
+        carrying = false;
+        removeCarryGhost();
+        hideCarryBar();
+        document.body.classList.remove('gr-carrying');
+        clearChipTimer();
+    }
+
+    /** El bloque quedó colocado en un destino válido: se suelta y se limpia el estado. */
+    function endCarry() {
+        stopCarry();
+        clearCarry();
+    }
+
+    /** Esc o botón Cancelar: el bloque vuelve a su lugar y se limpia el estado. */
+    function cancelCarry() {
+        stopCarry();
+        clearCarry();
+        hover = null;
+        clearTimeout(debounceTimer);
+        restoreFixed();
+    }
+
+    // Tomar: clic (no arrastre) en el bloque de origen, en la ficha del origen o botón "Tomar bloque".
+    var pickButton = document.getElementById('gr-rs-pick');
+    if (pickButton) pickButton.addEventListener('click', function () { startCarry(); });
+
+    var exitLink = document.getElementById('gr-rs-exit');
+    if (exitLink) exitLink.addEventListener('click', function () { clearCarry(); });
+
+    document.addEventListener('click', function (e) {
+        if (carrying) {
+            // Solo se interceptan los clics sobre la grilla (celdas y bloques): el resto de la página
+            // (menú lateral, controles, panel, chips) sigue funcionando con el bloque en mano.
+            if (!e.target.closest || !e.target.closest('.gr-grid')) return;
+            // Clic en la grilla = soltar; si el destino es inválido el bloque sigue en mano.
+            e.preventDefault();
+            e.stopPropagation();
+            var cell = cellAt(e.clientX, e.clientY);
+            if (cell) {
+                choose(destFromCell(cell), function (ok) { if (ok) endCarry(); });
+            }
+            return;
+        }
+        // Tomar el bloque con un clic simple (después de un arrastre no cuenta como clic).
+        if (justDragged() || !e.target.closest) return;
+        if (e.target.closest('.gr-block__menu-btn') || e.target.closest('.gr-block__reloc')) return;
+        if (e.target.closest('.gr-block--origin') || e.target.closest('#gr-rs-origin-card')) {
+            e.preventDefault();
+            e.stopPropagation();
+            startCarry();
+        }
+    }, true);
+
+    document.addEventListener('mousemove', function (e) {
+        if (!carrying) return;
+        moveCarryGhost(e.clientX, e.clientY);
+        var cell = cellAt(e.clientX, e.clientY);
+        if (cell) {
+            onHover(destFromCell(cell));   // misma previsualización que al arrastrar
+        } else if (hover) {
+            hover = null;
+            clearTimeout(debounceTimer);
+            restoreFixed();
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if ((e.key === 'Escape' || e.key === 'Esc') && carrying) {
+            e.preventDefault();
+            cancelCarry();
+        }
+    });
+
+    bindChips();
+
+    // Restaurar el bloque en mano tras un cambio de ambiente/semana (o limpiar estados viejos).
+    if (readCarry()) {
+        carrying = true;
+        createCarryGhost();
+        showCarryBar();
+        document.body.classList.add('gr-carrying');
+    } else {
+        clearCarry();
+    }
 
     // ------------------------------------------------ alternativa sin arrastre
     if (previewButton) {
@@ -595,6 +985,7 @@
         });
 
         if (typeof Swal === 'undefined') {
+            clearCarry();   // confirmación enviada: el modo llevar termina aquí
             HTMLFormElement.prototype.submit.call(form);
             return;
         }
@@ -624,6 +1015,7 @@
             };
         Swal.fire(options).then(function (r) {
             if (r && (r.isConfirmed === true || r.value === true)) {
+                clearCarry();   // confirmación enviada: el modo llevar termina aquí
                 HTMLFormElement.prototype.submit.call(form);
             }
         });

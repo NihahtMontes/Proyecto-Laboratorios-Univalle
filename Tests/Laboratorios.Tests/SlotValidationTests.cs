@@ -41,18 +41,32 @@ public class SlotValidationTests
 
         var issue = Single(result, Codes.LabOccupied);
         Assert.Equal(SlotSeverity.Block, issue.Severity);
-        Assert.Equal("PRA-00020 · Física (A) · P4–P5", Assert.Single(issue.Details));
+        Assert.Equal("PRA-00020 · Física (A) · Periodos 4–5", Assert.Single(issue.Details));
         Assert.Equal("invalid", result.Level);
     }
 
     [Fact]
-    public async Task AdjacentBlock_DoesNotBlock()
+    public async Task ContiguousLaboratory_BlocksRequiringFreePeriod()
     {
         using var db = new TestDb();
         db.AddPlanning(OriginId, OriginDate, 1, 2);
-        db.AddPlanning(OtherId, TargetDate, 5, 1, teacherPersonId: TestDb.Teacher2);
+        db.AddPlanning(OtherId, TargetDate, 1, 4, teacherPersonId: TestDb.Teacher2);   // ocupa P1–P4
 
-        var result = await Validate(db, TargetDate, 3);   // P3–P4 vs P5
+        var result = await Validate(db, TargetDate, 5);   // destino P5–P6: contiguo a P1–P4
+
+        var issue = Single(result, Codes.LabOccupied);
+        Assert.Equal(SlotSeverity.Block, issue.Severity);
+        Assert.Contains("Debe quedar un periodo libre entre prácticas del ambiente LAB-A", issue.Message);
+    }
+
+    [Fact]
+    public async Task FreePeriodBetweenPractices_DoesNotBlock()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(OriginId, OriginDate, 1, 2);
+        db.AddPlanning(OtherId, TargetDate, 1, 4, teacherPersonId: TestDb.Teacher2);   // ocupa P1–P4
+
+        var result = await Validate(db, TargetDate, 6);   // destino P6–P7: queda P5 libre
 
         Assert.DoesNotContain(result.Issues, i => i.Code == Codes.LabOccupied);
     }
@@ -79,7 +93,7 @@ public class SlotValidationTests
         var result = await Validate(db, TargetDate, 3);
 
         var issue = Single(result, Codes.LabOccupied);
-        Assert.EndsWith("P2–P3", Assert.Single(issue.Details));
+        Assert.EndsWith("Periodos 2–3", Assert.Single(issue.Details));
     }
 
     [Fact]
@@ -182,6 +196,20 @@ public class SlotValidationTests
         Assert.Equal(SlotSeverity.Warning, Single(result, Codes.TeacherBusy).Severity);
         Assert.DoesNotContain(result.Issues, i => i.Code == Codes.LabOccupied);
         Assert.Equal("warning", result.Level);
+    }
+
+    [Fact]
+    public async Task ContiguousTeacherInOtherLaboratory_DoesNotWarn()
+    {
+        using var db = new TestDb();
+        db.AddPlanning(OriginId, OriginDate, 1, 2);
+        // Misma fecha y docente, otro ambiente: P5–P6 es contiguo al destino P3–P4 pero no se solapa.
+        db.AddPlanning(OtherId, TargetDate, 5, 2, laboratoryId: TestDb.LabB, teacherPersonId: TestDb.Teacher1);
+
+        var result = await Validate(db, TargetDate, 3);
+
+        Assert.DoesNotContain(result.Issues, i => i.Code == Codes.TeacherBusy);
+        Assert.DoesNotContain(result.Issues, i => i.Code == Codes.LabOccupied);
     }
 
     [Fact]
@@ -302,5 +330,73 @@ public class SlotValidationTests
         var result = await Validate(db, TargetDate, 3);
 
         Assert.Equal(Codes.OriginNotFound, Assert.Single(result.Issues).Code);
+    }
+
+    // ==================== Horario de clases del grupo (destino) ====================
+
+    private const int SubjectId = 500;       // Química General (carrera 10, semestre 3)
+    private const int OtherSubjectId = 501;  // Física General (misma carrera y semestre)
+    private const int GroupId = 600;         // grupo "A" de Química (el de la planificación origen)
+    private const int SiblingGroupId = 601;  // grupo "A" de Física (hermano)
+
+    /// <summary>Materia con carrera y semestre + grupo A de cada una (mismos estudiantes).</summary>
+    private static void SeedSubjectGroups(TestDb db)
+    {
+        db.AddIntern(TestDb.Teacher1, "Ana Pérez");
+        db.AddSubject(SubjectId, "Química General", TestDb.CareerId, 3);
+        db.AddSubject(OtherSubjectId, "Física General", TestDb.CareerId, 3);
+        db.AddGroup(GroupId, "QG-1-A", "A", SubjectId);
+        db.AddGroup(SiblingGroupId, "FG-1-A", "A", OtherSubjectId);
+    }
+
+    [Fact]
+    public async Task SiblingClassInDestinationPeriods_BlocksGroupInClass()
+    {
+        using var db = new TestDb();
+        SeedSubjectGroups(db);
+        db.AddGroupSlots(SiblingGroupId, (3, 4));   // el grupo tiene clase de Física el miércoles P4
+        db.AddPlanning(OriginId, OriginDate, 1, 2, courseGroupId: GroupId);
+
+        var result = await Validate(db, TargetDate, 3);   // destino P3–P4: rango [3,4]
+
+        var issue = Single(result, Codes.GroupInClass);
+        Assert.Equal(SlotSeverity.Block, issue.Severity);
+        Assert.Contains("El grupo A tiene clase de otra materia en ese horario", issue.Message);
+        Assert.Equal("Física General (A) · Periodo 4", Assert.Single(issue.Details));
+        Assert.Equal("invalid", result.Level);
+    }
+
+    [Fact]
+    public async Task GroupWithoutSchedule_IsInfoOnly()
+    {
+        using var db = new TestDb();
+        SeedSubjectGroups(db);   // grupo sin slots de horario
+        db.AddPlanning(OriginId, OriginDate, 1, 2, courseGroupId: GroupId);
+
+        var result = await Validate(db, TargetDate, 3);
+
+        var issue = Single(result, Codes.GroupNoSchedule);
+        Assert.Equal(SlotSeverity.Info, issue.Severity);
+        Assert.Contains("no tiene horario de clases registrado", issue.Message);
+        Assert.False(result.HasBlocking);
+        Assert.Equal("valid", result.Level);
+    }
+
+    [Fact]
+    public async Task OwnClassInDestinationPeriods_IsInfoOnly()
+    {
+        using var db = new TestDb();
+        SeedSubjectGroups(db);
+        db.AddGroupSlots(GroupId, (3, 3));   // clase propia del grupo (misma materia) el miércoles P3
+        db.AddPlanning(OriginId, OriginDate, 1, 2, courseGroupId: GroupId);
+
+        var result = await Validate(db, TargetDate, 3);   // destino P3–P4: incluye P3 propio
+
+        var issue = Single(result, Codes.GroupOwnClass);
+        Assert.Equal(SlotSeverity.Info, issue.Severity);
+        Assert.Contains("horario de clases del grupo en esta materia", issue.Message);
+        Assert.DoesNotContain(result.Issues, i => i.Code == Codes.GroupInClass);
+        Assert.DoesNotContain(result.Issues, i => i.Code == Codes.GroupNoSchedule);
+        Assert.False(result.HasBlocking);
     }
 }

@@ -1,0 +1,132 @@
+/* ==========================================================================
+   Panel de planificación (centro general de métricas y avisos)
+   Pages/LaboratoryOperations/Index.cshtml
+   ========================================================================== */
+
+:root {
+    --pn-primary: #7460ee;
+}
+
+/* ---------- Métricas (KPIs) ---------- */
+.metric-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.bg-light-primary { background: #e8e7ff; }
+.bg-light-success { background: #e6f4ea; }
+.bg-light-warning { background: #fef7e0; }
+.bg-light-info    { background: #e8f4fd; }
+.bg-light-danger  { background: #fde7e9; }
+
+/* ---------- Notificaciones y pestañas del panel (pn-) ---------- */
+#pn-notifications .pn-list { max-height: 260px; overflow-y: auto; }
+#pn-notifications .pn-list__item + .pn-list__item { border-top: 1px solid #f0eef9; padding-top: 6px; margin-top: 6px; }
+#pn-notifications .pn-link { text-decoration: none; transition: background-color .15s; padding: 4px 6px; border-radius: 6px; }
+#pn-notifications .pn-link:hover { background: #f4f3ff; text-decoration: none; }
+#pn-notifications .pn-empty { padding: 6px 8px; background: #f8f7ff; border-radius: 6px; }
+
+.pn-tabs { border-bottom: 2px solid #7460ee22; margin-bottom: 0; }
+.pn-tabs .nav-link { color: #555; font-weight: 600; border: none; border-bottom: 3px solid transparent; padding: 8px 16px; }
+.pn-tabs .nav-link.active { color: #7460ee; background: transparent; border-bottom-color: #7460ee; }
+.pn-tabs .nav-link:hover:not(.active) { color: #7460ee; background: #f4f3ff; border-bottom-color: #c7c2f0; }
+.pn-tabs .nav-link .badge { font-size: 11px; }
+.pn-tab-content > .tab-pane { padding-top: 1rem; }
+
+.pn-table { background: #fff; }
+.pn-table thead th { background: #f8f7ff; color: #7460ee; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid #ececec; }
+.pn-table tbody tr:hover { background: #faf9ff; }
+.pn-table td, .pn-table th { vertical-align: middle; }
+.pn-table-wrap { border-radius: 10px; border: 1px solid #ececec; }
+
+.pn-bar { display: block; height: 4px; background: #ececec; border-radius: 4px; overflow: hidden; }
+.pn-bar__fill { display: block; height: 100%; background: linear-gradient(90deg, #7460ee, #a895f7); }
+
+.pn-summary .badge { font-weight: 600; padding: 6px 10px; }
+.pn-usage-toggle .btn.active { background: #7460ee; color: #fff; border-color: #7460ee; }
+.pn-footnote { line-height: 1.4; }
+
+/* ---------- Pestaña "Avisos y pendientes": tarjetas accionables ---------- */
+.pn-alert { transition: box-shadow .15s ease, transform .15s ease; }
+.pn-alert:hover { box-shadow: 0 10px 24px rgba(46, 41, 78, .10) !important; }
+
+.pn-alert__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.pn-alert__icon--warning { background: #fef7e0; color: #d79b06; }
+.pn-alert__icon--danger  { background: #fde7e9; color: #e05260; }
+.pn-alert__icon--info    { background: #e8f4fd; color: #2f9be8; }
+.pn-alert__icon--success { background: #e6f4ea; color: #34a770; }
+
+/* Listas de prácticas dentro de las tarjetas de aviso. */
+.pn-alert .pn-list { max-height: 280px; overflow-y: auto; }
+.pn-alert .pn-list__item { padding: 7px 8px; border-radius: 8px; transition: background-color .15s; }
+.pn-alert .pn-list__item + .pn-list__item { border-top: 1px solid #f0eef9; }
+.pn-alert .pn-list__item:hover { background: #faf9ff; }
+
+/* Bloque de una reposición de día. */
+.pn-recovery {
+    border: 1px solid #f3ecd4;
+    background: linear-gradient(135deg, #fffdf5, #fffef9);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+}
+.pn-recovery:last-child { margin-bottom: 0; }
+
+/* Barra de avance "X de N prácticas reubicadas". */
+.pn-progress {
+    display: block;
+    height: 8px;
+    background: #efece2;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.pn-progress__fill {
+    display: block;
+    height: 100%;
+    border-radius: 8px;
+    transition: width .3s ease;
+}
+.pn-progress__fill--warning { background: linear-gradient(90deg, #f6c343, #e0a800); }
+.pn-progress__fill--success { background: linear-gradient(90deg, #4fc47f, #34a770); }
+
+/* Estados vacíos amables. */
+.pn-ok {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+}
+.pn-ok--success { background: #f2faf5; color: #2e8b60; border: 1px dashed #bfe6cf; }
+.pn-ok--muted { background: #f8f7ff; color: #8a8a99; border: 1px dashed #e0dcf5; }
+
+/* Reposición cerrada (últimos 30 días, colapsable). */
+.pn-recovery--closed { background: #fafaf7; border-color: #ececec; }
+
+/* ---------- Modal "Reponer día": zona de vista previa ---------- */
+.pn-recovery-preview {
+    border: 1px solid #ecebf6;
+    background: #faf9ff;
+    border-radius: 10px;
+    padding: 10px 12px;
+    min-height: 52px;
+}
+.pn-recovery-preview .badge { font-weight: 600; }
+.pn-recovery-preview__blocker {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: #fdecef;
+    color: #8b1a2b;
+    font-size: 12.5px;
+    margin-bottom: 4px;
+}
+.pn-recovery-preview__blocker i { font-size: 15px; line-height: 1.2; }

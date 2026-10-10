@@ -1,0 +1,21 @@
+@* Grilla semanal reutilizable: esquina "Periodo" + encabezados de día + columna de periodos.
+   El contenedor .gr-grid y las celdas día × periodo (data-weekday / data-order) los define la página.
+   Requiere grilla.css (.gr-corner, .gr-dayhead, .gr-period). *@
+@model Proyecto_Laboratorios_Univalle.Pages.Shared.PeriodWeekGridModel
+
+<div class="gr-corner" style="grid-column: 1; grid-row: 1;">Periodo</div>
+
+@for (var i = 0; i < Model.DayNames.Count; i++)
+{
+    <div class="gr-dayhead" style="grid-column: @(i + 2); grid-row: 1;">
+        <span class="gr-dayhead__name">@Model.DayNames[i]</span>
+    </div>
+}
+
+@foreach (var period in Model.Periods)
+{
+    <div class="gr-period" style="grid-column: 1; grid-row: @(period.Order + 1);">
+        <span class="gr-period__badge" aria-hidden="true">@period.Order</span>
+        <span class="gr-period__time">@period.TimeText</span>
+    </div>
+}

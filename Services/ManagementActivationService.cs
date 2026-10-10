@@ -15,6 +15,12 @@ namespace Proyecto_Laboratorios_Univalle.Services
     {
         public Management? ActiveManagement { get; set; }
         public int ClosedCount { get; set; }
+
+        /// <summary>
+        /// Ids de las gestiones que la operación cerró (Status = Completed): el llamador puede purgar
+        /// sus grupos de trabajo con ICourseGroupPurgeService.PurgeManagementAsync.
+        /// </summary>
+        public IReadOnlyList<int> ClosedManagementIds { get; set; } = [];
     }
 
     public class ManagementActivationService : IManagementActivationService
@@ -43,7 +49,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
             return new ManagementActivationResult
             {
                 ActiveManagement = management,
-                ClosedCount = activeOthers.Count
+                ClosedCount = activeOthers.Count,
+                ClosedManagementIds = activeOthers.Select(m => m.Id).ToList()
             };
         }
 
@@ -75,7 +82,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
             return new ManagementActivationResult
             {
                 ActiveManagement = selected,
-                ClosedCount = toClose.Count
+                ClosedCount = toClose.Count,
+                ClosedManagementIds = toClose.Select(m => m.Id).ToList()
             };
         }
 

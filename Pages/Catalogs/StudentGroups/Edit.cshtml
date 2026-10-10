@@ -1,0 +1,56 @@
+@page "{id:int}"
+@model Proyecto_Laboratorios_Univalle.Pages.Catalogs.StudentGroups.EditModel
+@using Proyecto_Laboratorios_Univalle.Pages.Catalogs.StudentGroups
+@{
+    var group = Model.Group!;
+    ViewData["Title"] = $"Grupo {group.Name}";
+    var cancelUrl = Url.Page("./Index", new { managementId = group.ManagementId, careerId = group.CareerId }) ?? "/Catalogs/StudentGroups";
+    var form = new StudentGroupFormView(
+        Model.Input,
+        Model.Options,
+        IsEdit: true,
+        ManagementLabel: Model.Management?.Code,
+        Managements: [],
+        CareerName: group.CareerName,
+        CancelUrl: cancelUrl,
+        ConfigJson: Model.Options.ToJson(Model.Input, group.Id));
+    var readOnly = Model.Management is { IsEditable: false };
+}
+
+<partial name="../Subjects/_SubjectsTabs" model='(ActiveTab: "grupos", ManagementId: (int?)group.ManagementId)' />
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap no-block align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 class="card-title text-dark font-weight-bold">Grupo @group.Name <small class="text-muted">· @group.Code</small></h4>
+                        <h6 class="card-subtitle text-muted">@group.CareerName · @(group.Semester).º semestre · @(Model.Management?.Code)</h6>
+                    </div>
+                    <div class="ml-auto mt-2 mt-md-0">
+                        <a asp-page="/Catalogs/CourseGroups/Horario" asp-route-managementId="@group.ManagementId"
+                           asp-route-careerId="@group.CareerId" asp-route-cohort="@group.CohortKey"
+                           class="btn btn-outline-primary btn-rounded font-weight-bold px-4">
+                            <i class="far fa-calendar-alt mr-1"></i> Horario del grupo
+                        </a>
+                    </div>
+                </div>
+                @if (readOnly)
+                {
+                    <div class="alert alert-warning small"><i class="fas fa-lock mr-1"></i> La gestión @Model.Management!.Code está completada: el grupo es de solo lectura.</div>
+                }
+                <partial name="_StudentGroupForm" model="form" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <link href="~/css/student-groups.css" rel="stylesheet" asp-append-version="true">
+}
+
+@section Scripts {
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/js/student-group-form.js" asp-append-version="true"></script>
+}

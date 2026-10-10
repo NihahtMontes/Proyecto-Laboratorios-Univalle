@@ -24,8 +24,8 @@ public sealed record OccupancyBlock(
 {
     public int LastOrder => PlanningSlot.LastOrder(StartOrder, PeriodCount);
 
-    /// <summary>Texto de los periodos ocupados: "P3" o "P3–P5".</summary>
-    public string PeriodsText => PeriodCount <= 1 ? $"P{StartOrder}" : $"P{StartOrder}–P{LastOrder}";
+    /// <summary>Texto de los periodos ocupados: "Periodo 3" o "Periodos 3–5".</summary>
+    public string PeriodsText => PlanningSlot.PeriodsText(StartOrder, PeriodCount);
 }
 
 /// <summary>Consulta de ocupación entre dos fechas (inclusive). Las colecciones nulas o vacías no filtran.</summary>

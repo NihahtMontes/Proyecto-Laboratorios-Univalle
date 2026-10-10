@@ -16,17 +16,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         private readonly ApplicationDbContext _context;
         private readonly IManagementContextService _managementContext;
         private readonly IManagementActivationService _managementActivation;
+        private readonly ICourseGroupPurgeService _courseGroupPurge;
         private readonly ILogger<IndexModel> _logger;
 
         public IndexModel(
             ApplicationDbContext context,
             IManagementContextService managementContext,
             IManagementActivationService managementActivation,
+            ICourseGroupPurgeService courseGroupPurge,
             ILogger<IndexModel> logger)
         {
             _context = context;
             _managementContext = managementContext;
             _managementActivation = managementActivation;
+            _courseGroupPurge = courseGroupPurge;
             _logger = logger;
         }
 
@@ -123,9 +126,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 management.ActualClosedDate = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
+
+                // Los grupos de la gestión son datos de trabajo desechables: se purgan (borrado físico
+                // aprobado por el usuario) después de persistir el cambio de estado, porque la purga
+                // limpia el ChangeTracker.
+                var purgedGroups = await _courseGroupPurge.PurgeManagementAsync(management.Id);
                 _managementContext.InvalidateCache();
 
-                TempData.Success("La gestion administrativa ha sido cerrada correctamente.");
+                var purgedMessage = purgedGroups > 0
+                    ? $" Se eliminaron {purgedGroups} grupo(s) de la gestión."
+                    : string.Empty;
+                TempData.Success($"La gestion administrativa ha sido cerrada correctamente.{purgedMessage}");
                 return RedirectToPage("./Index", new { Type = type });
             }
             catch (Exception ex)
@@ -161,13 +172,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 type = management.Type.ToString();
                 var activationResult = await _managementActivation.ActivateAsync(management);
                 await _context.SaveChangesAsync();
+
+                // Las gestiones que la activación cerró (Completed) pierden sus grupos de trabajo
+                // (borrado físico aprobado): se purgan después de persistir el cambio de estado.
+                var purgedGroups = 0;
+                foreach (var closedId in activationResult.ClosedManagementIds)
+                {
+                    purgedGroups += await _courseGroupPurge.PurgeManagementAsync(closedId);
+                }
                 _managementContext.InvalidateCache();
 
                 var closedMessage = activationResult.ClosedCount > 0
                     ? $" Se cerro {activationResult.ClosedCount} gestion activa anterior del mismo tipo."
                     : string.Empty;
+                var purgedMessage = purgedGroups > 0
+                    ? $" Se eliminaron {purgedGroups} grupo(s) de la gestión."
+                    : string.Empty;
 
-                TempData.Success($"La gestion {management.Code} ahora es la gestion activa correcta.{closedMessage}");
+                TempData.Success($"La gestion {management.Code} ahora es la gestion activa correcta.{closedMessage}{purgedMessage}");
                 return RedirectToPage("./Details", new { id = management.Id, ActiveTab = "dashboard" });
             }
             catch (Exception ex)

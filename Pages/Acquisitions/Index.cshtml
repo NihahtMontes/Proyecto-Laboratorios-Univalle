@@ -254,7 +254,9 @@
 
             window.markLocalAsRead = function(e, id, url) {
                 if (e) e.preventDefault();
-                $.get('/Api/Notifications?handler=MarkAsRead&id=' + encodeURIComponent(id), function() {
+                id = parseInt(id, 10) || 0;
+
+                const proceed = function() {
                     if (url && url !== 'javascript:void(0)') {
                         window.location.href = url;
                     } else {
@@ -265,7 +267,14 @@
                             }
                         });
                     }
-                });
+                };
+
+                // Persistidos: marcar como leída (POST); calculados (id < 0): navegar directo.
+                if (window.LabNotifications && id > 0) {
+                    window.LabNotifications.markAsRead(id).always(proceed);
+                } else {
+                    proceed();
+                }
             };
 
             $('#localNotificationsList').on('click', '.js-local-notification-link', function(e) {

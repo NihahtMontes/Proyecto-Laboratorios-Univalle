@@ -9,7 +9,7 @@ public interface IOccupancyService
     /// <summary>Bloques de todas las fuentes que cumplen la consulta.</summary>
     Task<IReadOnlyList<OccupancyBlock>> GetAsync(OccupancyQuery query, CancellationToken ct = default);
 
-    /// <summary>Bloques que ocupan el ambiente en la fecha y se solapan con [startOrder, startOrder + periodCount − 1].</summary>
+    /// <summary>Bloques que ocupan el ambiente en la fecha y se solapan o quedan contiguos (sin un periodo libre) con [startOrder, startOrder + periodCount − 1].</summary>
     Task<IReadOnlyList<OccupancyBlock>> FindConflictsAsync(int laboratoryId, DateTime date, int startOrder, int periodCount,
         IReadOnlyCollection<int>? excludePlanningIds, CancellationToken ct = default);
 
@@ -39,19 +39,26 @@ public sealed class OccupancyService : IOccupancyService
         IReadOnlyCollection<int>? excludePlanningIds, CancellationToken ct = default)
     {
         var blocks = await GetAsync(new OccupancyQuery(date.Date, date.Date, [laboratoryId], null, excludePlanningIds), ct);
-        return blocks.Where(b => b.LaboratoryId == laboratoryId && Overlaps(b, date, startOrder, periodCount, excludePlanningIds)).ToList();
+        // En un mismo ambiente debe quedar al menos un periodo libre entre prácticas: también es conflicto el bloque contiguo.
+        return blocks.Where(b => b.LaboratoryId == laboratoryId
+            && Conflicts(b, date, startOrder, periodCount, excludePlanningIds,
+                (bs, bc, os, oc) => PlanningSlot.OverlapsWithGap(bs, bc, os, oc))).ToList();
     }
 
     public async Task<IReadOnlyList<OccupancyBlock>> FindTeacherConflictsAsync(int teacherPersonId, DateTime date, int startOrder, int periodCount,
         IReadOnlyCollection<int>? excludePlanningIds, CancellationToken ct = default)
     {
         var blocks = await GetAsync(new OccupancyQuery(date.Date, date.Date, null, [teacherPersonId], excludePlanningIds), ct);
-        return blocks.Where(b => b.TeacherPersonId == teacherPersonId && Overlaps(b, date, startOrder, periodCount, excludePlanningIds)).ToList();
+        // Para el docente solo cuenta el solapamiento real: la regla del periodo libre aplica solo al ambiente.
+        return blocks.Where(b => b.TeacherPersonId == teacherPersonId
+            && Conflicts(b, date, startOrder, periodCount, excludePlanningIds,
+                (bs, bc, os, oc) => PlanningSlot.Overlaps(bs, bc, os, oc))).ToList();
     }
 
     // Se vuelve a filtrar en memoria por si una fuente ignora algún criterio de la consulta.
-    private static bool Overlaps(OccupancyBlock block, DateTime date, int startOrder, int periodCount, IReadOnlyCollection<int>? excluded)
+    private static bool Conflicts(OccupancyBlock block, DateTime date, int startOrder, int periodCount,
+        IReadOnlyCollection<int>? excluded, Func<int, int, int, int, bool> overlaps)
         => block.Date == date.Date
             && !(block.PlanningId is int id && excluded != null && excluded.Contains(id))
-            && PlanningSlot.Overlaps(block.StartOrder, block.PeriodCount, startOrder, periodCount);
+            && overlaps(block.StartOrder, block.PeriodCount, startOrder, periodCount);
 }

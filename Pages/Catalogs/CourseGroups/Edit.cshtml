@@ -1,19 +1,6 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups.EditModel
 
-@{
-    string WeekdayName(int d) => d switch
-    {
-        1 => "Lunes",
-        2 => "Martes",
-        3 => "Miércoles",
-        4 => "Jueves",
-        5 => "Viernes",
-        6 => "Sábado",
-        _ => ""
-    };
-}
-
 <div class="row">
     <!-- Main Column: CourseGroup Management -->
     <div class="col-lg-8">
@@ -21,7 +8,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Gestión de Grupo de Materia</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Editar grupo</h4>
                         <h6 class="card-subtitle text-muted">Actualice el paralelo, su docente, laboratorio y horario. Las recetas asociadas se conservan.</h6>
                     </div>
                     <div class="ml-auto mt-2 mt-md-0">
@@ -77,6 +64,7 @@
                                         <option value="@opt.Id" data-career="@(opt.CareerId?.ToString() ?? "")">@opt.Name</option>
                                     }
                                 </select>
+                                <small id="subjectFilterHint" class="text-muted italic d-block mt-1"></small>
                                 <span asp-validation-for="Input.SubjectId" class="text-danger small font-weight-bold"></span>
                             </div>
                         </div>
@@ -104,36 +92,6 @@
                             </div>
 
                             <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-group mb-4">
-                                        <label asp-for="Input.Weekday" class="control-label font-weight-bold small uppercase text-muted">Día</label>
-                                        <select asp-for="Input.Weekday" class="form-control custom-select select2">
-                                            <option value="">— Sin día —</option>
-                                            @for (var d = 1; d <= 6; d++)
-                                            {
-                                                <option value="@d">@WeekdayName(d)</option>
-                                            }
-                                        </select>
-                                        <span asp-validation-for="Input.Weekday" class="text-danger small"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group mb-4">
-                                        <label asp-for="Input.StartTime" class="control-label font-weight-bold small uppercase text-muted">Hora Inicio</label>
-                                        <input asp-for="Input.StartTime" type="time" class="form-control" value="@(Model.Input.StartTime ?? "")" />
-                                        <span asp-validation-for="Input.StartTime" class="text-danger small"></span>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-group mb-4">
-                                        <label asp-for="Input.EndTime" class="control-label font-weight-bold small uppercase text-muted">Hora Fin</label>
-                                        <input asp-for="Input.EndTime" type="time" class="form-control" value="@(Model.Input.EndTime ?? "")" />
-                                        <span asp-validation-for="Input.EndTime" class="text-danger small"></span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
                                 <div class="col-md-6">
                                     <div class="form-group mb-4">
                                         <label asp-for="Input.StudentCount" class="control-label font-weight-bold small uppercase text-muted">N.º de Estudiantes</label>
@@ -149,16 +107,13 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning shadow-none">
-                                <div class="custom-control custom-switch">
-                                    <input asp-for="Input.IsDemonstrative" type="checkbox" class="custom-control-input" id="isDemonstrative" />
-                                    <label class="custom-control-label font-weight-bold text-warning" for="isDemonstrative">
-                                        <i class="fas fa-flask mr-1"></i>Grupo demostrativo
-                                    </label>
-                                </div>
-                            </div>
                         </div>
+                    </div>
+
+                    <!-- Horario de clases por periodos -->
+                    <div class="border-top pt-4 mt-2">
+                        <partial name="_GroupScheduleField" model="Model.ScheduleField" />
+                        <span asp-validation-for="Input.SlotsJson" class="text-danger small font-weight-bold d-block mt-2"></span>
                     </div>
 
                     <div class="form-group mb-4 bg-light p-3 rounded border-left border-warning mt-3 shadow-none">
@@ -175,7 +130,7 @@
                         <button type="submit" class="btn btn-warning btn-rounded px-5 shadow-sm text-white font-weight-bold py-2">
                             <i class="fas fa-save mr-1"></i> Actualizar Registro
                         </button>
-                        <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
+                        <a asp-page="./Index" asp-route-ManagementFilter="@Model.Input.ManagementId" class="btn btn-outline-secondary btn-rounded ml-2 py-2 px-4 font-weight-bold">
                             Cancelar
                         </a>
                     </div>
@@ -227,6 +182,7 @@
 
 @section Styles {
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <link href="~/css/grilla.css" rel="stylesheet" asp-append-version="true">
     <style>
         .help-block ul { list-style: none; padding-left: 0; }
         .italic { font-style: italic; }
@@ -246,24 +202,21 @@
             "use strict";
             $('.select2').select2({ width: '100%', allowClear: true });
 
-            // Filtro opcional por carrera
+            // Filtro opcional por carrera: reconstruye la lista de materias (no deshabilita opciones,
+            // porque Select2 las mostraba grises y no se podía elegir ninguna).
             var subjectSelect = $('#subjectSelect');
+            var allSubjectOptions = subjectSelect.find('option').filter(function () { return this.value !== ''; }).clone();
             $('#careerFilter').on('change', function () {
                 var careerId = $(this).val();
-                subjectSelect.find('option').each(function () {
-                    var $opt = $(this);
-                    if ($opt.val() === '') return;
-                    var optCareer = $opt.data('career');
-                    if (!careerId) {
-                        $opt.prop('disabled', false);
-                    } else {
-                        $opt.prop('disabled', String(optCareer) !== String(careerId));
-                    }
-                });
-                if (subjectSelect.find('option:selected').is(':disabled')) {
-                    subjectSelect.val('').trigger('change');
-                }
-                subjectSelect.select2({ width: '100%', allowClear: true });
+                var currentValue = subjectSelect.val();
+                subjectSelect.find('option').filter(function () { return this.value !== ''; }).remove();
+                var matches = allSubjectOptions.filter(function () {
+                    return !careerId || String($(this).data('career')) === String(careerId);
+                }).clone();
+                subjectSelect.append(matches);
+                var keep = matches.filter(function () { return this.value === currentValue; }).length > 0;
+                subjectSelect.val(keep ? currentValue : '').trigger('change');
+                $('#subjectFilterHint').text(careerId ? matches.length + ' materia(s) de la carrera seleccionada.' : '');
             });
 
             // Confirmación SweetAlert2
