@@ -544,3 +544,95 @@ inferencia: 37070, 37077, 43486-43491, 45840).
      `L3Request.PracticeScheduleId`) en lugar de crear otra; solo
      rechaza si otra práctica planificada vigente ya la usa. Probado
      con el `PracticaModel` real contra DEMO_QA.
+
+### Versión V12 (`BaseGastronomia_v1.xlsx`) — 2026-10-09
+
+1. **Fuente de referencia vigente** desde el 2026-10-09:
+   `BaseGastronomia_v1.xlsx` (internamente "V12"), SHA-256
+   `edca5f8b4a6601091a4e85939f9cf1aaa586a4e27c2e4df0dc1278afbb47a3f2`.
+   Reemplaza a la V7 como referencia para maestros académicos, docentes,
+   artículos, existencias, vida útil del catálogo y circuito L-3. El
+   histórico (L-6, L-7, L-8, L-48, unidades, catálogo y actores ya
+   cargados) **sigue saliendo de la V4**: en la V12 es idéntico salvo
+   formato, pero los textos vienen en "tipo oración" (`Casatermo srl`,
+   `Laboratorio de cocina h-1`) y siguen sin saltos de línea. Los códigos
+   ya vienen en MAYÚSCULAS. Análisis completo y contrato operativo:
+   `docs/INSTRUCCIONES_AGENTE_V12_GASTRONOMIA.md`.
+2. **Generador**: `Tools/ExcelImport/gen_v12_gastronomia_sql.py` (Bloque A).
+   Lote `XLSX-V12-GASTRO-EDCA5F8B4A66`, `ContractVersion` =
+   `base-gastronomia-v12`. Mismo comando `sqlcmd … -b -f 65001` y mismas
+   reglas (solo DEMO_QA, lotes de 100, idempotente).
+3. **Respaldo previo**: `DEMO_QA_pre_V12_20261009.bak` (`COPY_ONLY,
+   CHECKSUM`, `RESTORE VERIFYONLY` OK), en la carpeta `Backup` de la
+   instancia.
+4. **Bloque A ejecutado en DEMO_QA el 2026-10-09** (migración
+   `20261005144021_AddPracticeClosureRole`):
+
+   - unidad `UNI-05` Metro (la usa `ART-REQ-00615`);
+   - 22 materias nuevas (41 activas: LGS 32, LND 7, LTH 2), nombre en
+     MAYÚSCULAS como las existentes; ninguna tiene prácticas ni recetas;
+   - 6 docentes `ACT-0052…0057` (`Intern`, `Category = 2`, rol Docente,
+     alias), nombre y título en MAYÚSCULAS como los 15 existentes;
+     `ACT-0052` "Ing.zabala" → título `ING.`, nombre `ZABALA`, con
+     `POSSIBLE_PERSON_DUPLICATE` frente a `ACT-0037`;
+   - 372 artículos nuevos (1.374 activos sin demo): 302 `ART-L33-*`,
+     47 `ART-REQ-*`, 19 `ART-LAB-*`, 4 `GA-05-*`; 302 con
+     `ReviewStatus = 9`. `ART-L33-0256` se guardó como
+     `Paila para chicharron (ART-L33-0256)` porque repite el nombre de
+     `ART-L33-0007` (D4);
+   - vida útil en los 121 equipos del catálogo (6: 28, 8: 7, 10: 48,
+     12: 38);
+   - existencias (D5, agregar sin borrar): 605 nuevas, 4 actualizadas
+     (valor anterior en `CONTENT_CONFLICT`), 17 con fecha completada y
+     133 conservadas que la V12 ya no trae (`STOCK_NOT_IN_SOURCE`).
+     Total `ArticleStocks`: 833. Artículos de receta con stock: **93**
+     (antes 83);
+   - fechas de gestión completadas donde eran NULL (2024-2 … 2026-2,
+     fechas calendario 01-01/30-06 y 01-07/31-12); 2027-1 no se tocó;
+   - incidencias del lote: **453** — `ARTICLE_PENDING_CONFIRMATION` 302,
+     `STOCK_NOT_IN_SOURCE` 133, `ACTOR_LINK_PENDING` 6,
+     `VALUE_FILLED_FROM_SOURCE` 5, `CONTENT_CONFLICT` 4,
+     `DUPLICATE_NAME_IN_SOURCE` 1, `POSSIBLE_PERSON_DUPLICATE` 1,
+     `VALUE_NORMALIZED` 1;
+   - segunda ejecución: **0 filas** y **0 incidencias** nuevas;
+   - *checksums* idénticos antes y después en L-6, L-7, L-8, unidades,
+     prácticas, recetas, programaciones, `L3Requests` y en las filas ya
+     existentes de materias, artículos e internos; 0 códigos en
+     minúscula; tildes y "·" verificados por código Unicode.
+5. **Bloque B ejecutado en DEMO_QA el 2026-10-10** con
+   `Tools/ExcelImport/gen_v12_bloque_b_sql.py` (lote
+   `XLSX-V12-L3-EDCA5F8B4A66`, respaldo previo
+   `DEMO_QA_pre_V12_bloqueB_20261010.bak`, migración
+   `20261009215720_AddCourseGroupScheduleSlots`). Se corre **antes** de
+   `AddStudentGroups`: su SQL de conversión convirtió después los grupos
+   (A → A3 según semestre) y renombró `GroupName` en planificaciones y
+   programaciones.
+
+   - calendario: fechas de clases derivadas de la primera y la última
+     práctica (2026-1: 11-02 a 26-06, 20 semanas; 2026-2: 31-07 a 17-12,
+     21 semanas; `VALUE_DERIVED_FROM_SOURCE`, confirmar con la clienta).
+     2026-2 tenía 14 semanas de prueba (28-09 a 02-01): se quitaron 2
+     semanas y 12 días sin uso y se renumeraron las demás, igual que
+     `AcademicCalendarService`;
+   - 106 `CourseGroups` `GRP-2026-*`, 447 `PracticeSchedules`
+     `PROG-SOL3-*` (D8), **1.028 `Plannings`** `SOL3-*` (2026-1: 550,
+     2026-2: 478; 991 con periodo, todas con semana) y **11.297
+     `PlanningRequirements`**; 9 solicitudes y sus 154 líneas excluidas
+     (D2); `RequestDate` = fecha de práctica (D1);
+   - incidencias del lote: 1.203 — `PRACTICE_NOT_IN_CATALOG` 581,
+     `DUPLICATE_LINE_IN_SOURCE` 164, `SCHEDULE_OVERLAP_SOURCE` 139,
+     `CAREER_MISMATCH` 122, `QUANTITY_UNIT_SUSPECT` 102,
+     `TIME_NOT_ALIGNED_TO_PERIOD` 37, `VALUE_ZERO_IN_SOURCE` 30,
+     `REQUIRED_VALUE_MISSING` 9, `VALUE_MISSING` 9,
+     `COURSE_GROUP_VALUES_VARY` 7, `VALUE_DERIVED_FROM_SOURCE` 2,
+     `VALUE_PENDING_CONFIRMATION` 1;
+   - segunda ejecución: 0 filas y 0 incidencias nuevas; *checksums* de
+     L-6, L-7, L-8, prácticas, recetas, artículos y materias sin cambios.
+   - Comparación final por clave contra la V12: todas las hojas están en
+     la BD salvo lo excluido a propósito (gestión 1900-1 con
+     `MAN-L8-00962/00963`, y las 9 solicitudes de D2).
+6. **Cambio de negocio informado por la clienta**: se eliminaron
+   `SalidasL3`, `SalidaDetalles`, `DevolucionesL3` y
+   `DevolucionL3Detalles` (la solicitud aprobada hace de salida y no hay
+   devoluciones). No se borró nada de la BD; la decisión sobre el módulo
+   Cierre de práctica está abierta (D10).

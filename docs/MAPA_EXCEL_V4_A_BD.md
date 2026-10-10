@@ -5,6 +5,8 @@
 **Base analizada:** `DB_Laboratorios_Univalle_DEMO_QA`, migración `20261004054609_ArticleReviewStatus`, HEAD `d23d43a`. Todo en solo lectura.
 **Complementa a:** `docs/PLAN_MIGRACION_V4.md` (esquema de la migración `AlignStructuralBaseV4` y decisiones D1–D5) y al plan `quiero-que-puebles-mi-lovely-wind.md`.
 
+> **Actualización 2026-10-09 — fuente de referencia V12 (`BaseGastronomia_v1.xlsx`).** El contrato columna → propiedad de este mapa sigue vigente (los encabezados de la V12 son los mismos, con la primera letra en mayúscula). La V12 es ahora la referencia para materias, docentes, artículos, existencias, vida útil y circuito L-3; el histórico sigue saliendo de la V4. Ver `docs/INSTRUCCIONES_AGENTE_V12_GASTRONOMIA.md` y `docs/GUIA_IMPORTACION_HISTORICA.md` §V12. Las secciones marcadas con **V12** abajo reflejan el estado tras la carga del Bloque A.
+
 Leyenda de estado: ✅ cargado y correcto · 🟡 cargado parcial o con diferencias · 🔴 falta (estructura o datos) · ⚪ vacío en el Excel (solo estructura)
 
 ---
@@ -126,8 +128,11 @@ Valores reales observados en la V4, con su número de filas.
 - Duplicados probables, que **no se fusionan** (issue `POSSIBLE_PERSON_DUPLICATE`): 0007/0008/0016 (Sara Pérez), 0018/0019/0020 (Alex Quispe) y 0005/0010/0033 (PCS).
 - Restos demo `DEMO-DOC-001…004` y los 4 actores sin código: se conservan.
 
+- **V12 (2026-10-09):** +6 docentes `ACT-0052…0057` cargados (57 actores). Nombre y título en MAYÚSCULAS como los docentes existentes; `ACT-0052` "Ing.zabala" → `ING.` / `ZABALA` con `POSSIBLE_PERSON_DUPLICATE` frente a `ACT-0037`. Vinculación "Por confirmar" → `ACTOR_LINK_PENDING`.
+
 ### 3.7 `ActorRoles` → `PersonRoleAssignments` ✅
 `ActorCodigo`→`PersonId` · `Rol`→`Role` (§2) · `Estado`→`IsActive`. 40 en el Excel; la BD tiene 43, con 3 roles previos. Verificar que los 40 del Excel existen.
+- **V12:** 46 en el Excel; +6 roles Docente (`AR-0041…0046`) cargados. 21 docentes `ACT-%` con rol activo.
 
 ### 3.8 `CatalogoEquipos` → `Equipments` 🟡 (107 de 121)
 `CatalogoCodigo`→`CatalogCode` · `NombreGenerico`→`Name` · `Categoria`→`Category` · `TipoUtensilio`→`UtensilType` · `Clasificacion`→`TypeClassification` · `Marca`→`Brand` · `Modelo`→`Model` · `PaisOrigen`→`CountryId` (vacío) · `VidaUtilAnios`→`UsefulLifeYears` (vacío) · `Especificaciones`→`Description` (máx. 315 caracteres) · `Estado`→`Status` + `ClassificationReviewStatus`.
@@ -136,6 +141,7 @@ Valores reales observados en la V4, con su número de filas.
 - CAT-0057 está solo en la BD: se conserva y se registra `LEGACY_ONLY_IN_DB`.
 - **Hoy los 112 tienen `ClassificationReviewStatus = LegacyInferred` y `Category = Other`.** Pasar a `PendingClient` los que el Excel marca "Por confirmar"; el CAT con "Equipo" pasa a `Category = Equipment`.
 - 9 códigos con diferencias menores de nombre o marca respecto de la BD: el Excel manda (actualizar `Name`/`Brand`), con issue `CONTENT_CONFLICT`.
+- **V12 (2026-10-09):** `Vidautilanios` → `UsefulLifeYears` ✅ cargado en los 121 (6: 28, 8: 7, 10: 48, 12: 38). Ninguna otra columna del catálogo se tocó.
 
 ### 3.9 `UnidadesFisicas` → `EquipmentUnits` 🔴 estado / 🟡 filas (556 de 644)
 `NumeroInventario`→`InventoryNumber` (texto) · `CatalogoCodigo`→`EquipmentId` · `NumeroSerie`→`SerialNumber` (69 filas) · `LaboratorioCodigo`→`LaboratoryId` · `EstadoUbicacion`→`LocationResolutionStatus` · `UbicacionInterna`→`InternalLocation` (vacío) · `FechaAdquisicion`/`FechaFabricacion` (vacíos) · `ValorAdquisicionBs`→`AcquisitionValue` (536 filas) · `EstadoOperativo`→`CurrentStatus` · `CondicionFisica`→`PhysicalCondition` · `Observaciones`→`Notes` (vacío).
@@ -186,6 +192,7 @@ Ya existe estructura (padre exclusivo). **No se crean `CostDetail` a partir de `
 - 19 materias: LGS 15 (incluidas las 6 homologadas de LCG, D3) y LND 4.
 - Issues: `SUBJECT_CAREER_HOMOLOGATED` (6), ALI1N7 (semestre 6 frente a código 7), nombres con sufijo "LND".
 - Las 8 materias demo `GAS-xxx` → `Eliminado` (PLAN §4.2).
+- **V12 (2026-10-09):** ✅ 41 materias activas (+22: LGS 17, LND 3, LTH 2), nombre en MAYÚSCULAS. Las 22 nuevas no tienen prácticas ni recetas en el Excel.
 
 ### 3.19 `Practicas` → `Practices` ✅
 `PracticaCodigo`→`Code` · `MateriaCodigo`→`SubjectId` · `NumeroPractica`→`Number` · `Descripcion`→`Description` · `Observaciones`→`Observations`. `EstadoCobertura`, `MetodoCobertura` y `FuenteReferencia` **no existen en la V7** → NULL. `Estado = Normal (0)`. `Name = LEFT(Descripcion, 200)` (regla de la migración `AddPracticeName`); si la descripción supera los 200 caracteres, `Description` conserva el texto completo y se emite `VALUE_TRUNCATED_IN_NAME` (2 filas).
@@ -197,6 +204,7 @@ Columna por columna en PLAN §3.2 y §3.3.
 
 ### 3.21 `CategoriasArticulo` → `ArticleCategories` ✅ (10) · 3.22 `UnidadesMedida` → `MeasurementUnits` ✅ (3) · 3.23 `Articulos` → `Articles` ✅ (1.023)
 Cargados en V3. Pendiente: retirar los restos demo (PLAN §4.3).
+**V12 (2026-10-09):** `UnidadesMedida` +`UNI-05` Metro (la usa `ART-REQ-00615`). `Articulos` 1.002 → 1.374 (+372: 302 `ART-L33-*`, 47 `ART-REQ-*`, 19 `ART-LAB-*`, 4 `GA-05-*`; 302 con `ReviewStatus = 9`), nombre tal como viene; `ART-L33-0256` con sufijo por repetir el nombre de `ART-L33-0007`.
 
 ### 3.24 `RequerimientosPractica` → `PracticeRequirements` ✅
 `RequerimientoCodigo`→`Code` (nuevo) · `PracticaCodigo`→`PracticeId` · `ArticuloCodigo`→`ArticleId` · `Cantidad`→`Quantity` (nullable) · `Escalable`→`IsScalable` · `EstadoValidacion`→`ValidationStatus` · `Observaciones`→`Observations`. `Cantidad` NULL → `VALUE_MISSING` (11). `Code` se guarda en MAYÚSCULAS (`REQ-0001…`).
@@ -206,8 +214,11 @@ Cargados en V3. Pendiente: retirar los restos demo (PLAN §4.3).
 `LaboratorioCodigo`+`ArticuloCodigo`→clave única (`LaboratoryId`, `ArticleId`) · `CantidadDisponible`→`AvailableQuantity` · `FechaActualizacion`→`UpdatedOn`. Solo se cargan las filas con `LaboratorioCodigo` **y** `CantidadDisponible`; las 843 filas vacías se descartan (no se emiten incidencias por ellas).
 **Fuente: V7 (bloque académico), cargado 2026-10-05** — 220 existencias nuevas (1.063 leídas). `ArticleStocks` total: 228 (8 previas + 220). Por laboratorio: ECONO 122, H-03 26, K-01 16, H-06 14, H-01 13, H-05 12, H-04 11, H-02 8, H-07 6. **Disponibilidad (D12, aplicado el 2026-10-05):** `ArticleAvailabilityService` compara por defecto contra el total institucional (ECONO + laboratorios); el selector de origen permite ver un solo laboratorio. Tras la carga, 83 de 493 artículos de receta tienen stock en algún laboratorio (49 solo en ECONO, 410 sin stock en ninguno). No se modifica en esta carga. Lote `XLSX-V7-ACADEMIC-C677C7CC81D6`.
 
+**V12 (2026-10-09):** 700 existencias, todas con laboratorio y cantidad. Carga D5 (agregar sin borrar): 605 nuevas, 4 actualizadas (`CONTENT_CONFLICT` con el valor anterior), 133 de la BD que la V12 no trae se conservan (`STOCK_NOT_IN_SOURCE`). Total 833; artículos de receta con stock: 93. `Fechaactualizacion` → `UpdatedOn`.
+
 ### 3.26–3.31 Circuito L-3 → `L3Requests`, `L3RequestDetails`, `Departures`, `DepartureItems`, `DepartureReturns`, `DepartureReturnItems` ⚪
 Columna por columna en PLAN §3.4. Todas vacías en el Excel.
+**V12 (2026-10-09):** 🔴 `SolicitudesL3` (1.037) y `SolicitudL3Detalles` (11.451) traen datos de 2026-1/2026-2. Su destino es `Plannings` / `PlanningRequirements` (refactor Planning); mapa en `INSTRUCCIONES_AGENTE_V12_GASTRONOMIA.md` §4.5. Pendiente de la migración `RestructurePlanningModel`. La clienta **eliminó** `SalidasL3`, `SalidaDetalles`, `DevolucionesL3` y `DevolucionL3Detalles` y agregó `Incidentes` (vacía, brecha con `L5Incident` en §4.4 de esa guía).
 
 ---
 
