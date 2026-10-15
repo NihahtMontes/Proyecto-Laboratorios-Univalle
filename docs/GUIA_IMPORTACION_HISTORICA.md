@@ -636,3 +636,31 @@ inferencia: 37070, 37077, 43486-43491, 45840).
    `DevolucionL3Detalles` (la solicitud aprobada hace de salida y no hay
    devoluciones). No se borró nada de la BD; la decisión sobre el módulo
    Cierre de práctica está abierta (D10).
+
+### Versión REAL (`BaseGastronomia_v1.xlsx`, base nueva desde cero) — 2026-10-14
+
+1. **Base nueva** `DB_Laboratorios_Univalle_REAL` (localhost), creada vacía con las 31 migraciones y cargada **solo** desde el
+   Excel V12 (SHA-256 `edca5f8b…a3f2`). No parte de DEMO_QA ni de la nube. Lote `XLSX-V12-FULL-EDCA5F8B4A66`.
+2. **Regla**: el Excel se carga tal cual; las celdas vacías no se ignoran. Donde el esquema exige una fecha que el Excel no trae, se usa
+   la fecha de la importación (14-10-2026) con una incidencia `REQUIRED_VALUE_MISSING`/`VALUE_PENDING_CONFIRMATION`:
+   - 9 solicitudes L-3 sin fecha de práctica (SOL3-0016…0023 y 0312), 4 de ellas también sin laboratorio → entran como `Plannings`
+     (laboratorio vacío = "Sin ambiente");
+   - `RequestDate` de las 1.037 solicitudes (el Excel no trae `Fechasolicitud`) = fecha de la importación.
+   Los grupos (`A`, `A2`…) se cargan como vienen; no se aplica la conversión `AddStudentGroups`.
+3. **Migraciones nuevas** (las anteriores no se tocan): `AddV12FullFidelity` (año de gestión 1900–2100, `QualityStatus` en
+   `Maintenances`/`MaintenancePlans`, tablas `UndatedL3Requests`/`UndatedL3RequestLines` —hoy vacías, sin uso—) y
+   `RelaxPlanningChecksForExcelFidelity` (quita `CK_Plannings_Laboratory`; cantidad solicitada `>= 0`).
+4. **Herramientas** en `Tools/ExcelImport/`: `v12_common.py`, `gen_v12_full_a.py` (maestros, actores, catálogo, unidades),
+   `gen_v12_full_b1.py` (L-6, L-7, L-8, L-48), `gen_v12_full_b2.py` (académico, artículos, recetas, existencias, programación 2027-1),
+   `gen_v12_full_b3.py` (circuito L-3) y `verify_v12_full.py`. Cada generador escribe `%TEMP%\v12full\parte_*.sql`; se ejecuta con
+   `sqlcmd -S localhost -E -d DB_Laboratorios_Univalle_REAL -b -f 65001 -i <sql>` en el orden A, B1, B2, B3. Idempotentes (lotes de 100,
+   un `GO` por lote).
+5. **Red de seguridad**: cada fila del Excel queda en `ImportSourceRows.OriginalDataJson` con todas sus columnas (23.542 filas).
+6. **Verificación** (`python Tools/ExcelImport/verify_v12_full.py`): copia cruda de las 27 hojas = Excel; todas las claves presentes
+   (1.037 solicitudes y 11.451 líneas L-3, 1.209 mantenimientos con Bs 496.545, etc.); ~43.000 celdas tipadas comparadas; `DBCC
+   CHECKCONSTRAINTS` sin violaciones → **0 diferencias**. Segunda ejecución de los generadores: 0 filas nuevas.
+7. **Desviaciones inevitables** (el original está en el JSON): `ART-L33-0256` se guarda como "nombre (código)" por el índice único de
+   nombres; la categoría de los 120 equipos "Por confirmar" queda en `Equipment` (columna obligatoria) con revisión pendiente;
+   `Direccion` de actores internos solo en el JSON; ~7.450 incidencias de calidad registradas.
+8. Respaldo: `C:\Users\Public\BackupsUnivalle\DB_Laboratorios_Univalle_REAL_V12_20261014.bak` (`COPY_ONLY, CHECKSUM`, `VERIFYONLY` OK).
+   Pendiente: apuntar la app a esta base, crear el SuperAdmin (`Tools/AdminBootstrap`) y descartar las bases antiguas.

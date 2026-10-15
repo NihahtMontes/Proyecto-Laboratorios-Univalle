@@ -2321,6 +2321,10 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("QualityStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Recommendations")
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
@@ -2530,6 +2534,10 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Property<string>("ProviderSnapshot")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("QualityStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<int?>("ResponsiblePersonId")
                         .HasColumnType("int");
@@ -2758,7 +2766,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                             t.HasCheckConstraint("CK_Managements_Type", "[Type] IN (0, 1, 9)");
 
-                            t.HasCheckConstraint("CK_Managements_Year", "[Year] BETWEEN 2000 AND 2100");
+                            t.HasCheckConstraint("CK_Managements_Year", "[Year] BETWEEN 1900 AND 2100");
                         });
                 });
 
@@ -3292,8 +3300,6 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.ToTable("Plannings", t =>
                         {
-                            t.HasCheckConstraint("CK_Plannings_Laboratory", "[AllLaboratories] = 1 OR [LaboratoryId] IS NOT NULL");
-
                             t.HasCheckConstraint("CK_Plannings_Periods", "([StartPeriodId] IS NULL AND [PeriodCount] IS NULL) OR ([StartPeriodId] IS NOT NULL AND [PeriodCount] BETWEEN 1 AND 12)");
 
                             t.HasCheckConstraint("CK_Plannings_Status", "[Status] IN (N'Planificada', N'Aprobada', N'Finalizada', N'Cancelada', N'Reprogramada', N'PendienteReposicion', N'Repuesta')");
@@ -3351,7 +3357,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.ToTable("PlanningRequirements", t =>
                         {
-                            t.HasCheckConstraint("CK_PlanningRequirements_RequestedQuantity", "[RequestedQuantity] IS NULL OR [RequestedQuantity] > 0");
+                            t.HasCheckConstraint("CK_PlanningRequirements_RequestedQuantity", "[RequestedQuantity] IS NULL OR [RequestedQuantity] >= 0");
                         });
                 });
 
@@ -4075,6 +4081,167 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         {
                             t.HasCheckConstraint("CK_SubjectKitItems_Quantity", "[Quantity] > 0");
                         });
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.UndatedL3Request", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("AllLaboratories")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("CampusCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("CareerCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EndTimeText")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("GroupName")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("ImportBatchId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("LaboratoryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ManagementId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ModifiedById")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Observations")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("PracticeNumberText")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("RequestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("StartTimeText")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("SubjectId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TeacherPersonId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("LaboratoryId");
+
+                    b.HasIndex("ManagementId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("TeacherPersonId");
+
+                    b.ToTable("UndatedL3Requests");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.UndatedL3RequestLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ArticleId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("EquipmentUnitId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LastModifiedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ModifiedById")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Observations")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<decimal?>("RequestedQuantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<int>("UndatedL3RequestId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArticleId");
+
+                    b.HasIndex("EquipmentUnitId");
+
+                    b.HasIndex("UndatedL3RequestId");
+
+                    b.ToTable("UndatedL3RequestLines");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.User", b =>
@@ -6021,6 +6188,62 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("Subject");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.UndatedL3Request", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Laboratory", "Laboratory")
+                        .WithMany()
+                        .HasForeignKey("LaboratoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Management", "Management")
+                        .WithMany()
+                        .HasForeignKey("ManagementId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("TeacherPersonId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Laboratory");
+
+                    b.Navigation("Management");
+
+                    b.Navigation("Person");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.UndatedL3RequestLine", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Article", "Article")
+                        .WithMany()
+                        .HasForeignKey("ArticleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.EquipmentUnit", "EquipmentUnit")
+                        .WithMany()
+                        .HasForeignKey("EquipmentUnitId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.UndatedL3Request", "UndatedL3Request")
+                        .WithMany("Lines")
+                        .HasForeignKey("UndatedL3RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Article");
+
+                    b.Navigation("EquipmentUnit");
+
+                    b.Navigation("UndatedL3Request");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.User", b =>
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "CreatedBy")
@@ -6315,6 +6538,11 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.StudentGroup", b =>
                 {
                     b.Navigation("Subjects");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.UndatedL3Request", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Verification", b =>
