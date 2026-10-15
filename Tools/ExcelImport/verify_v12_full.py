@@ -15,6 +15,7 @@ import pyodbc
 
 from v12_common import EXPECTED_ROWS, BATCH_CODE, check_sha, read_sheets, row_json, text
 
+IMPORT_DATE = date(2026, 10, 14)  # fecha de la importación (se usa donde el Excel no trae fecha)
 CONN = ("Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=DB_Laboratorios_Univalle_REAL;"
         "Trusted_Connection=yes;TrustServerCertificate=yes")
 
@@ -160,7 +161,7 @@ def main():
                 compared += 1
                 a, b = norm(r[ecol]), norm(row[idx])
                 if sheet == "SolicitudesL3" and ecol in ("Fechapractica", "Fechasolicitud") and a is None:
-                    a = date.today()  # fecha vacía en el Excel -> se cargó con la fecha de la importación
+                    a = IMPORT_DATE  # fecha vacía en el Excel -> se cargó con la fecha de la importación
                 if isinstance(a, str) and isinstance(b, (date, datetime)):
                     a = a.strip()
                     b = b.isoformat()[:10]

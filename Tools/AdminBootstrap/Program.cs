@@ -120,8 +120,10 @@ var lastName = RequiredValue(arguments, "last-name", "Primer apellido");
 var identityCard = RequiredValue(arguments, "identity-card", "Cédula de identidad");
 var phone = RequiredValue(arguments, "phone", "Teléfono");
 
-var password = ReadSecret("Contraseña (mínimo 12 caracteres): ");
-var confirmation = ReadSecret("Repita la contraseña: ");
+// Modo no interactivo: ADMIN_BOOTSTRAP_PASSWORD (solo del proceso; la herramienta no la guarda ni la muestra).
+var envPassword = Environment.GetEnvironmentVariable("ADMIN_BOOTSTRAP_PASSWORD");
+var password = string.IsNullOrEmpty(envPassword) ? ReadSecret("Contraseña (mínimo 12 caracteres): ") : envPassword;
+var confirmation = string.IsNullOrEmpty(envPassword) ? ReadSecret("Repita la contraseña: ") : envPassword;
 if (!string.Equals(password, confirmation, StringComparison.Ordinal))
 {
     Console.Error.WriteLine("Las contraseñas no coinciden.");

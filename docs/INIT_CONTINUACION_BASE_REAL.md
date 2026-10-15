@@ -28,8 +28,20 @@ Leer primero: `AGENTS.md`, `context.md`, `docs/GUIA_IMPORTACION_HISTORICA.md` (s
   - `C:\Users\Public\BackupsUnivalle\bases_antiguas_20261015\*.bak` (9 bases antiguas) y los `NUBE_*.bak` anteriores.
 - La nube (MonsterASP) no se tocó.
 
+## Actualización 2026-10-15: SuperAdmin y prueba de punta a punta
+- **SuperAdmin creado** (`Tools/AdminBootstrap` ahora acepta `ADMIN_BOOTSTRAP_PASSWORD`; usar `--expected-server localhost --expected-database DB_Laboratorios_Univalle_REAL`):
+  usuario `nihaht`, correo `montesnihaht@gmail.com`, CI 1000001 y teléfono 70000001 provisionales (editar en /Users). La contraseña inicial se entregó en el chat; cambiarla al ingresar.
+- **Bases antiguas eliminadas** (9) con respaldo verificado en `C:\Users\Public\BackupsUnivalle\bases_antiguas_20261015\`. Respaldo nuevo de REAL (con usuario):
+  `C:\Users\Public\BackupsUnivalle\DB_Laboratorios_Univalle_REAL_V12_E2E_20261015.bak`.
+- **Prueba E2E** (`Tools/E2E/`, ver su README): 345 comprobaciones HTTP/BD y 49 pantallas en Chromium real, **0 fallas**; 158 tests unitarios OK; `verify_v12_full.py` 0 diferencias.
+- **Hallazgos corregidos**: `/Faculties` daba 500 («Multiple handlers matched»); `Managements/Details` cargaba SweetAlert desde una ruta inexistente; la Sugerencia de L-7 y el Título de
+  personas no se mostraban; datos sin pantalla → nuevas pantallas de solo lectura `/EquipmentUnits` (644 unidades), `/Maintenances/Plan` (387 planes L-48) y `/Schedules/Practices` (869 programaciones).
+- **Trabajadores**: GLM-5.3-Flash escribió los chequeos y las pantallas. ChatGPT/Codex NO se pudo conectar: el clasificador de permisos bloqueó lanzar `codex exec` desde Claude Code
+  (el CLI ya tiene sesión de ChatGPT Plus, pero su config usa MiniMax por defecto). Para habilitarlo el usuario debe añadir una regla de permiso Bash para `codex exec` o registrar él mismo un MCP.
+- Pendiente derivado: los trabajos de SQL Server Agent apuntaban a la base eliminada (reapuntar a `_REAL` o desactivar).
+
 ## Pendiente (lo decide el usuario)
-1. **Crear el SuperAdmin** (pide contraseña oculta; lo corre el usuario):
+1. ~~Crear el SuperAdmin~~ **Hecho el 2026-10-15** (ver arriba). Comando de referencia:
    `! dotnet run --project Tools/AdminBootstrap -- --username admin --email <correo> --first-name <nombre> --last-name <apellido> --identity-card <ci> --phone <telefono>`
 2. ~~Eliminar las bases locales antiguas~~ **Hecho el 2026-10-15** con autorización del usuario: las 9 bases antiguas (`DB_Laboratorios_Univalle`,
    `_MIGRACION`, `_QA`, `_CLOUD_20260827_1418_QA`, `_PRE/POST_NORMALIZACION_20260902_QA`, `_SCENARIOS_QA`, `_STRESS_QA`, `_DEMO_QA`) se eliminaron tras

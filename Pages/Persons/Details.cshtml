@@ -58,6 +58,10 @@
                                     <i class="fas @(Model.Person is Intern ? "fa-university" : "fa-truck-loading") fa-3x"></i>
                                 </div>
                                 <h3 class="font-weight-bold text-dark mb-1">@Model.Person.FullName</h3>
+                                @if (!string.IsNullOrWhiteSpace(Model.Person.Title))
+                                {
+                                    <div class="text-muted small mb-1">Título: <span class="font-weight-bold text-dark">@Model.Person.Title</span></div>
+                                }
                                 <div class="mb-3">
                                     <span class="badge badge-pill badge-info px-3">
                                         @(Model.Person is Intern ? "Laboratorio Interno" : (Model.Person is Extern ? "Proveedor Externo" : "Persona Base"))
