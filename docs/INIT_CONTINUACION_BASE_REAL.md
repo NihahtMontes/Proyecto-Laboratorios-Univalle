@@ -31,11 +31,10 @@ Leer primero: `AGENTS.md`, `context.md`, `docs/GUIA_IMPORTACION_HISTORICA.md` (s
 ## Pendiente (lo decide el usuario)
 1. **Crear el SuperAdmin** (pide contraseña oculta; lo corre el usuario):
    `! dotnet run --project Tools/AdminBootstrap -- --username admin --email <correo> --first-name <nombre> --last-name <apellido> --identity-card <ci> --phone <telefono>`
-2. **Eliminar las bases locales antiguas** (el último intento fue denegado por el clasificador de permisos; sus respaldos ya existen). Bases:
-   `DB_Laboratorios_Univalle`, `_MIGRACION`, `_QA`, `_CLOUD_20260827_1418_QA`, `_PRE_NORMALIZACION_20260902_QA`, `_POST_NORMALIZACION_20260902_QA`,
-   `_SCENARIOS_QA`, `_STRESS_QA`, `_DEMO_QA`. Hacerlo con `ALTER DATABASE [x] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [x];`
-   (las de solo lectura primero `SET READ_WRITE`). Tras borrar `DB_Laboratorios_Univalle`, los 3 trabajos de SQL Server Agent
-   («Backup FULL diario», «Backup LOG 15 minutos», «Verificación restauración semanal») fallarán: reapuntarlos a `_REAL` o desactivarlos.
+2. ~~Eliminar las bases locales antiguas~~ **Hecho el 2026-10-15** con autorización del usuario: las 9 bases antiguas (`DB_Laboratorios_Univalle`,
+   `_MIGRACION`, `_QA`, `_CLOUD_20260827_1418_QA`, `_PRE/POST_NORMALIZACION_20260902_QA`, `_SCENARIOS_QA`, `_STRESS_QA`, `_DEMO_QA`) se eliminaron tras
+   respaldarlas y verificar los `.bak`. En el servidor solo queda `DB_Laboratorios_Univalle_REAL`. **Pendiente derivado**: los 3 trabajos de SQL Server Agent
+   («Backup FULL diario», «Backup LOG 15 minutos», «Verificación restauración semanal») apuntaban a `DB_Laboratorios_Univalle` y fallarán: reapuntarlos a `_REAL` o desactivarlos.
 3. Probar la app en el navegador con la base nueva (lo hace el usuario). La app muestra «Sin ambiente» en las 4 planificaciones sin laboratorio.
 4. Cambios nuevos que traiga el usuario (correcciones del Excel o de datos): repetir A → B1 → B2 → B3 y correr el verificador. Si cambia el Excel,
    actualizar `EXPECTED_SHA` y `EXPECTED_ROWS` en `v12_common.py`.
