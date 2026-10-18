@@ -71,7 +71,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             [DataType(DataType.Date)]
             public DateTime EstimatedReturnDate { get; set; } = DateTime.Today.AddDays(15);
 
-            [StringLength(500)]
+            [StringLength(500, ErrorMessage = "Las observaciones no pueden superar 500 caracteres")]
             [Display(Name = "Observaciones")]
             public string? DepartureObservations { get; set; }
 
@@ -100,6 +100,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     .Include(p => p.Maintenance)
                     .Include(p => p.EquipmentUnit).ThenInclude(u => u!.Equipment)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
+
+                // R-02: L-3 solo puede registrarse si el plan está en la fase de salida.
+                var phaseRejection = WizardPhaseGuard.Validate(plan, WizardPhase.Exit);
+                if (phaseRejection != null)
+                {
+                    TempData.Warning(phaseRejection);
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan!.CurrentPhase, ManagementId = plan.ManagementId });
+                }
 
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.Exit);
                 ViewData["ManagementId"] = plan?.ManagementId;
@@ -257,6 +265,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     managementId = wizardPlan.ManagementId;
             }
 
+            // R-02: L-3 (definitivo o borrador) solo puede registrarse si el plan está en la fase
+            // de salida del wizard; en otra fase no se guarda nada para no saltar fases ni mover
+            // el wizard hacia atrás. Los registros sueltos (sin plan) siguen igual.
+            var phaseRejection = WizardPhaseGuard.Validate(wizardPlan, WizardPhase.Exit);
+            if (phaseRejection != null)
+            {
+                TempData.Warning(phaseRejection);
+                if (isWizard)
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)wizardPlan!.CurrentPhase, ManagementId = wizardPlan.ManagementId });
+
+                await LoadLists();
+                return Page();
+            }
+
             DepartureType inferredType = DepartureType.InternalLoan;
             Person? borrower = null;
 
@@ -309,6 +331,54 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             {
                 ModelState.Remove("Input.DepartureDate");
                 ModelState.Remove("Input.EstimatedReturnDate");
+            }
+
+            // ── Coherencia de fechas: la devolución estimada no puede ser anterior a la salida ──
+            if (Input.EstimatedReturnDate.Date < Input.DepartureDate.Date)
+            {
+                ModelState.AddModelError("Input.EstimatedReturnDate", "La fecha estimada de devolución no puede ser anterior a la fecha de salida.");
+            }
+
+            // ── Disponibilidad de la unidad física (solo guardados definitivos; los borradores no prestan) ──
+            if (!saveDraft)
+            {
+                // Si este plan ya tiene salida (p. ej. borrador que se confirma), esa salida
+                // es la que se está guardando y no cuenta como conflicto.
+                var updatedDepartureId = wizardPlan?.Departure?.Id;
+
+                var conflictingDepartureId = await _context.Departures
+                    .Where(d => d.EquipmentUnitId == Input.EquipmentUnitId
+                                && d.Id != (updatedDepartureId ?? 0)
+                                && (d.Status == LoanStatus.Active || d.Status == LoanStatus.Overdue))
+                    .OrderByDescending(d => d.Id)
+                    .Select(d => (int?)d.Id)
+                    .FirstOrDefaultAsync();
+
+                if (conflictingDepartureId.HasValue)
+                {
+                    ModelState.AddModelError("Input.EquipmentUnitId", $"La unidad ya está en préstamo (salida #{conflictingDepartureId.Value}).");
+                }
+                else
+                {
+                    var unitStatus = await _context.EquipmentUnits
+                        .Where(u => u.Id == Input.EquipmentUnitId)
+                        .Select(u => (EquipmentStatus?)u.CurrentStatus)
+                        .FirstOrDefaultAsync();
+
+                    if (unitStatus == null)
+                    {
+                        ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física seleccionada no existe.");
+                    }
+                    else if (unitStatus == EquipmentStatus.Deleted)
+                    {
+                        ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física fue eliminada y no puede registrar salidas.");
+                    }
+                    else if (unitStatus == EquipmentStatus.OnLoan && updatedDepartureId == null)
+                    {
+                        // OnLoan sin salida activa visible: estado incoherente que debe revisarse antes de prestar de nuevo.
+                        ModelState.AddModelError("Input.EquipmentUnitId", "La unidad ya está en préstamo. Regularice el estado de la unidad antes de registrar una nueva salida.");
+                    }
+                }
             }
 
             // ── VALIDACIÓN después de reconstrucción ──

@@ -57,6 +57,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 Verification = verification;
                 // Soft delete: anular la verificación en lugar de eliminar físicamente
                 verification.Status = Models.Enums.VerificationStatus.Annulled;
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach la anulación no persistía.
+                _context.Attach(verification).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                 await _context.SaveChangesAsync();
                 
                 TempData.Success(NotificationHelper.Verifications.Deleted(Verification.Id));

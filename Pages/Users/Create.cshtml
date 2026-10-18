@@ -115,7 +115,7 @@
                                     </div>
                                 </div>
                                 <span asp-validation-for="Input.Password" class="text-danger small font-weight-bold"></span>
-                                <small class="text-muted italic d-block mt-1" style="font-size: 0.75rem;">Mínimo 8 caracteres, debe incluir letras y números.</small>
+                                <small class="text-muted italic d-block mt-1" style="font-size: 0.75rem;">Mínimo 12 caracteres, con mayúscula, minúscula, número y símbolo.</small>
                             </div>
 
                             <h5 class="font-weight-bold text-info mb-3 mt-4"><i class="fas fa-briefcase mr-2"></i> Perfil Laboral</h5>
@@ -124,12 +124,14 @@
                                     <div class="form-group mb-3">
                                         <label asp-for="Input.Position" class="control-label font-weight-bold small uppercase text-muted">Cargo</label>
                                         <input asp-for="Input.Position" class="form-control" placeholder="Ej: Técnico II" />
+                                    <span asp-validation-for="Input.Position" class="text-danger small font-weight-bold d-block mt-1"></span>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group mb-3">
                                         <label asp-for="Input.Department" class="control-label font-weight-bold small uppercase text-muted">Departamento</label>
                                         <input asp-for="Input.Department" class="form-control" placeholder="Ej: Biomedicina" />
+                                    <span asp-validation-for="Input.Department" class="text-danger small font-weight-bold d-block mt-1"></span>
                                     </div>
                                 </div>
                             </div>
@@ -178,13 +180,21 @@
         });
 
         function generatePassword() {
-            var length = 10;
-            var charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&*";
-            var retVal = "";
-            for (var i = 0; i < length; ++i) {
-                retVal += charset.charAt(Math.floor(Math.random() * charset.length));
+            // Política de la cuenta (Identity): 12+ caracteres, mayúscula, minúscula, número, símbolo y 4 distintos como mínimo.
+            var sets = ["abcdefghijkmnopqrstuvwxyz", "ABCDEFGHJKLMNPQRSTUVWXYZ", "23456789", "!#$%&*?"];
+            var all = sets.join("");
+            var rand = function (max) {
+                var buffer = new Uint32Array(1);
+                window.crypto.getRandomValues(buffer);
+                return buffer[0] % max;
+            };
+            var chars = sets.map(function (set) { return set.charAt(rand(set.length)); });
+            while (chars.length < 14) { chars.push(all.charAt(rand(all.length))); }
+            for (var i = chars.length - 1; i > 0; i--) {
+                var j = rand(i + 1);
+                var tmp = chars[i]; chars[i] = chars[j]; chars[j] = tmp;
             }
-            retVal += Math.floor(Math.random() * 9);
+            var retVal = chars.join("");
             var input = document.getElementById("passwordInput");
             input.value = retVal;
             input.type = "text";

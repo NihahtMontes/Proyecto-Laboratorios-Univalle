@@ -61,10 +61,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
+                // FullName es una propiedad calculada que EF no traduce a SQL (la búsqueda daba error 500): se busca en el nombre de la persona.
+                var internIds = _context.Set<Intern>().Where(i => i.Name.ToLower().Contains(term)).Select(i => i.Id);
+                var externIds = _context.Set<Extern>().Where(e => e.Name.ToLower().Contains(term)).Select(e => e.Id);
                 query = query.Where(d =>
                     d.EquipmentUnit!.Equipment!.Name.ToLower().Contains(term) ||
                     d.EquipmentUnit!.InventoryNumber.ToLower().Contains(term) ||
-                    (d.Borrower != null && d.Borrower.FullName.ToLower().Contains(term)));
+                    (d.BorrowerId != null && (internIds.Contains(d.BorrowerId.Value) || externIds.Contains(d.BorrowerId.Value))));
             }
 
             // Filtro por Tipo de Salida

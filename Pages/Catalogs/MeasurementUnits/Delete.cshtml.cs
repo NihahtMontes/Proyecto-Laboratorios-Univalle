@@ -60,6 +60,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
                 return RedirectToPage("./Delete", new { id });
             }
 
+            // Idempotente: una segunda baja ya no vuelve a renombrar el código (quedaba CAT-0000N-DEL-…-DEL-… y luego no se podía dar de baja).
+            if (unit.Status == GeneralStatus.Eliminado)
+            {
+                TempData.Warning($"La unidad de medida '{unit.Name}' ya se encuentra dada de baja.");
+                return RedirectToPage("./Index");
+            }
+
             // Soft delete. Se renombra el código para liberar el índice único.
             unit.Status = GeneralStatus.Eliminado;
             unit.Code = string.IsNullOrWhiteSpace(unit.Code)

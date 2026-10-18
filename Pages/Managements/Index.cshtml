@@ -98,20 +98,58 @@
                                                     <small class="text-muted d-block text-truncate" style="max-width: 250px;" title="@item.Description">
                                                         @(string.IsNullOrEmpty(item.Description) ? "Sin descripción detallada" : item.Description)
                                                     </small>
-                                                    <div class="font-12">
-                                                        <i class="fas fa-user-tie mr-1 text-muted"></i> Resp: @item.Responsible
-                                                    </div>
+                                                    @if (!string.IsNullOrWhiteSpace(item.Responsible))
+                                                    {
+                                                        <div class="font-12">
+                                                            <i class="fas fa-user-tie mr-1 text-muted"></i> Resp: @item.Responsible
+                                                        </div>
+                                                    }
                                                 </td>
                                                 <td class="text-center v-middle">
                                                     <span class="badge badge-light border text-muted small">
-                                                        @(item.Faculty?.Name ?? "Todas")
+                                                        @(item.Faculty?.Name ?? (item.Type == ManagementType.PorConfirmar ? "Sin facultad" : "Todas"))
                                                     </span>
                                                 </td>
                                                 <td class="text-center" style="min-width: 150px;">
-                                                    <div class="progress mb-1" style="height: 6px;">
-                                                        <div class="progress-bar bg-info" role="progressbar" style="width: @item.CompletionPercentage%" aria-valuenow="@item.CompletionPercentage" aria-valuemin="0" aria-valuemax="100"></div>
-                                                    </div>
-                                                    <small class="font-weight-bold text-dark">@item.CompletionPercentage% (@item.CompletedMaintenances/@item.TotalEquipments)</small>
+                                                    @if ((item.ManagementPlans != null && item.ManagementPlans.Any()) || item.Type != ManagementType.PorConfirmar)
+                                                    {
+                                                        <div class="progress mb-1" style="height: 6px;">
+                                                            <div class="progress-bar bg-info" role="progressbar" style="width: @item.CompletionPercentage%" aria-valuenow="@item.CompletionPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                                        </div>
+                                                        <small class="font-weight-bold text-dark">@item.CompletionPercentage% (@item.CompletedMaintenances/@item.TotalEquipments)</small>
+                                                    }
+                                                    else
+                                                    {
+                                                        Model.HistoricalCountsByManagement.TryGetValue(item.Id, out var importedCounts);
+                                                        if (importedCounts != null && importedCounts.HasAny)
+                                                        {
+                                                            <div class="d-flex flex-wrap justify-content-center align-items-center" style="gap: 4px;">
+                                                                @if (importedCounts.L48Plans > 0)
+                                                                {
+                                                                    <a asp-page="/Maintenances/Plan" asp-route-ManagementId="@item.Id"
+                                                                       class="badge badge-info px-2 font-weight-bold" title="Ver plan L-48 importado de esta gestión">
+                                                                        L-48: @importedCounts.L48Plans
+                                                                    </a>
+                                                                }
+                                                                @if (importedCounts.L8Maintenances > 0)
+                                                                {
+                                                                    <span class="badge badge-secondary px-2 font-weight-bold" title="Mantenimientos L-8 importados">L-8: @importedCounts.L8Maintenances</span>
+                                                                }
+                                                                @if (importedCounts.L6Verifications > 0)
+                                                                {
+                                                                    <span class="badge badge-secondary px-2 font-weight-bold" title="Verificaciones L-6 importadas">L-6: @importedCounts.L6Verifications</span>
+                                                                }
+                                                                @if (importedCounts.L7Requests > 0)
+                                                                {
+                                                                    <span class="badge badge-secondary px-2 font-weight-bold" title="Solicitudes L-7 importadas">L-7: @importedCounts.L7Requests</span>
+                                                                }
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <small class="text-muted font-italic">Sin actividad importada</small>
+                                                        }
+                                                    }
                                                 </td>
                                                 <td class="text-center v-middle">
                                                     @{

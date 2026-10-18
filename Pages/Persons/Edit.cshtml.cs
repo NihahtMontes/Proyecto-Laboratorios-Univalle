@@ -101,13 +101,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
-
             var personToUpdate = await _context.People.AsTracking().FirstOrDefaultAsync(p => p.Id == Input.Id);
             if (personToUpdate == null) return NotFound();
+
+            // La dirección es obligatoria para externos (la regla existía solo en Create y en el atributo HTML).
+            if (personToUpdate is Extern && string.IsNullOrWhiteSpace(Input.Address))
+            {
+                ModelState.AddModelError("Input.Address", "La dirección es obligatoria para externos.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return await ShowFormAgainAsync();
+            }
 
             // Update common fields
             personToUpdate.Email = Input.Email?.Trim().ToLower();
@@ -137,8 +143,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             {
                 _logger.LogError(ex, "No se pudo actualizar la persona {PersonId}.", Input.Id);
                 TempData.Error("No se pudo actualizar la persona. Intente nuevamente.");
-                return Page();
+                return await ShowFormAgainAsync();
             }
+        }
+
+        /// <summary>Recarga <see cref="Person"/> desde la BD antes de volver a mostrar el formulario (la vista lo usa; antes daba un error 500).</summary>
+        private async Task<IActionResult> ShowFormAgainAsync()
+        {
+            var person = await _context.People.FirstOrDefaultAsync(m => m.Id == Input.Id);
+            if (person == null) return NotFound();
+            Person = person;
+            Input.IsInternal = person is Intern;
+            return Page();
         }
 
         private bool PersonExists(int id)

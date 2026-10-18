@@ -73,15 +73,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 .AsTracking()
                 .FirstOrDefaultAsync(u => u.Id == id);
 
-            if (unit != null)
+            if (unit == null || unit.CurrentStatus == EquipmentStatus.Deleted)
             {
-                unit.CurrentStatus = EquipmentStatus.Deleted;
-                await _context.SaveChangesAsync();
-
-                TempData.Success($"Unidad {unit.Equipment?.Name ?? "Equipo"} ({unit.InventoryNumber}) dada de baja correctamente.");
+                // Antes redirigía con id nulo a una ruta {id:int} y daba un error 500.
+                TempData.Warning("La unidad ya no está disponible.");
+                return RedirectToPage("./Index");
             }
 
-            return RedirectToPage(new { id = unit?.EquipmentId });
+            unit.CurrentStatus = EquipmentStatus.Deleted;
+            await _context.SaveChangesAsync();
+
+            TempData.Success($"Unidad {unit.Equipment?.Name ?? "Equipo"} ({unit.InventoryNumber}) dada de baja correctamente.");
+
+            return RedirectToPage(new { id = unit.EquipmentId });
         }
     }
 }

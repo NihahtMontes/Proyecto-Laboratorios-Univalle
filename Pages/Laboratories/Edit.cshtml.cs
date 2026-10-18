@@ -46,9 +46,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             public string Name { get; set; } = string.Empty;
 
             [Display(Name = "Piso/Nivel")]
+            [StringLength(50, ErrorMessage = "El piso o nivel no puede superar los 50 caracteres")]
             public string? Floor { get; set; }
 
             [Display(Name = "Descripción")]
+            [StringLength(1000, ErrorMessage = "La descripción no puede superar los 1000 caracteres")]
             public string? Description { get; set; }
 
             [Required]
@@ -87,6 +89,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // El estado Eliminado solo se asigna con la baja lógica (antes un POST manual lo aceptaba).
+            if (Input.Status == GeneralStatus.Eliminado)
+            {
+                ModelState.AddModelError("Input.Status", "El estado Eliminado solo se gestiona desde la opción Dar de Baja.");
+            }
+
             if (!ModelState.IsValid)
             {
                 await LoadLaboratoryData(Input.Id);
@@ -97,7 +105,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             }
 
             // Normalization
-            var normalizedName = Input.Name.Trim().ToLower();
+            var normalizedName = Input.Name.Clean().ToLower();
 
             // Validate Duplicate Name within same Faculty (excluding current record)
             bool nameExists = await _context.Laboratories
@@ -118,6 +126,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             var laboratory = await _context.Laboratories.FindAsync(Input.Id);
             if (laboratory == null) return NotFound();
 
+            // La facultad debe existir y estar activa (o ser la que ya tenía el laboratorio).
+            if (!await _context.Faculties.AnyAsync(f => f.Id == Input.FacultyId && (f.Status == GeneralStatus.Activo || f.Id == laboratory.FacultyId)))
+            {
+                ModelState.AddModelError("Input.FacultyId", "La facultad seleccionada no está disponible.");
+                await LoadLaboratoryData(Input.Id);
+                if (ExistingLaboratory != null) Input.Code = ExistingLaboratory.Code;
+                LoadFaculties(laboratory.FacultyId);
+                return Page();
+            }
+
             // Entity update
             laboratory.FacultyId = Input.FacultyId;
             // Code no se modifica: lo asigna el sistema.
@@ -136,6 +154,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
             try
             {
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach el guardado no persistía.
+                _context.Attach(laboratory).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 TempData.Success($"Datos del Laboratorio '{laboratory.Code}' ({laboratory.Name}) actualizados correctamente.");
             }

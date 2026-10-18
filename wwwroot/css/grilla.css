@@ -637,3 +637,88 @@ body.gr-carrying, body.gr-carrying * { cursor: move !important; }
     .gr-legend-card { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
     a[href]::after { content: none !important; }
 }
+
+/* ---------- Conflictos de material (mismos colores que conflictos.css) ---------- */
+:root {
+    --cf-overlap: #dc3545;
+    --cf-shortage: #8b1e3f;
+    --cf-rotation: #fd7e14;
+    --cf-nostock: #6c757d;
+}
+
+/* Barra sobre la grilla: interruptor, leyenda y enlace a Conflictos */
+.gr-cf-bar { flex-direction: column; align-items: flex-end; gap: 4px; min-width: 0; }
+.gr-cf-legend { display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: 11px; color: #555; justify-content: flex-end; }
+.gr-cf-legend__item { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.gr-cf-legend__dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.gr-cf-legend__dot--overlap { background: var(--cf-overlap); }
+.gr-cf-legend__dot--shortage { background: var(--cf-shortage); }
+.gr-cf-legend__dot--rotation { background: var(--cf-rotation); }
+.gr-cf-legend__dot--nostock { background: var(--cf-nostock); }
+.gr-cf-link { font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+
+/* Etiqueta chica de conflicto sobre un bloque (C1, C2…) */
+.gr-block__conflicts {
+    position: relative;
+    z-index: 2; /* sobre .gr-block__open (z-index 1): el clic abre el conflicto, no el bloque */
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 3px;
+    overflow: hidden;
+    max-height: 15px;
+    line-height: 1;
+}
+.gr-ctag {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 2px 5px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: var(--cf-ok, #6c757d);
+    color: #fff;
+    text-decoration: none;
+    white-space: nowrap;
+    user-select: none;
+}
+.gr-ctag:hover, .gr-ctag:focus { text-decoration: none; color: #fff; filter: brightness(1.08); }
+.gr-ctag--overlap { background: var(--cf-overlap); }
+.gr-ctag--shortage { background: var(--cf-shortage); }
+.gr-ctag--rotation { background: var(--cf-rotation); }
+.gr-ctag--nostock { background: var(--cf-nostock); }
+/* "Floja": pide el artículo pero no se cruza en el tramo sin stock */
+.gr-ctag--overlap.is-loose { background: #fff; border-color: var(--cf-overlap); color: var(--cf-overlap); }
+.gr-ctag--shortage.is-loose { background: #fff; border-color: var(--cf-shortage); color: var(--cf-shortage); }
+.gr-ctag--rotation.is-loose { background: #fff; border-color: var(--cf-rotation); color: var(--cf-rotation); }
+.gr-ctag--nostock.is-loose { background: #fff; border-color: var(--cf-nostock); color: var(--cf-nostock); }
+.gr-ctag--more { background: #eef0f3; color: #555; border-color: #d8dbe0; }
+
+/* Bloque con conflicto: borde izquierdo del color del peor tipo */
+.gr-block--has-conflict.gr-block--cf-overlap { border-left-color: var(--cf-overlap); }
+.gr-block--has-conflict.gr-block--cf-shortage { border-left-color: var(--cf-shortage); }
+.gr-block--has-conflict.gr-block--cf-rotation { border-left-color: var(--cf-rotation); }
+.gr-block--has-conflict.gr-block--cf-nostock { border-left-color: var(--cf-nostock); }
+
+/* Bloques de 1 periodo: sin la línea de docente para que todo siga legible */
+.gr-block--cf-tight .gr-block__teacher { display: none; }
+
+/* Resaltado por JS al pasar por una etiqueta: se colora con --cf-active (la fija conflict-tags.js) */
+.gr-block--related {
+    outline: 2px solid var(--cf-active, var(--gr-primary, #7460ee));
+    outline-offset: 1px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, .18);
+}
+.gr-grid--hovering .gr-block:not(.gr-block--related) { opacity: .3; }
+.gr-grid--conflicts .gr-block:not(.gr-block--has-conflict) { opacity: .35; }
+.gr-block { transition: box-shadow .15s, transform .15s, opacity .15s; }
+
+/* En impresión la grilla es el formulario oficial: las etiquetas no salen */
+@media print {
+    .gr-block__conflicts, .gr-cf-bar { display: none !important; }
+    .gr-grid--hovering .gr-block:not(.gr-block--related),
+    .gr-grid--conflicts .gr-block:not(.gr-block--has-conflict) { opacity: 1; }
+}

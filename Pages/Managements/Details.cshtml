@@ -18,6 +18,12 @@
         || Model.TechFilterId.HasValue
         || !string.IsNullOrWhiteSpace(Model.CategoryFilter)
         || (!string.IsNullOrWhiteSpace(Model.StatusFilter) && Model.StatusFilter != "Todos");
+    // Gestiones históricas importadas: sin registros del wizard (ManagementPlans vacío)
+    // se muestran los datos importados del Excel del cliente en modo solo lectura.
+    // Histórica = tipo PorConfirmar (importada del Excel) y sin planes del wizard. Una gestión nueva
+    // (Preventiva/Correctiva) sin planes sigue usando la vista normal del wizard.
+    var hasWizardPlans = Model.Management.ManagementPlans.Any()
+        || Model.Management.Type != Proyecto_Laboratorios_Univalle.Models.Enums.ManagementType.PorConfirmar;
 }
 
 @section Styles {
@@ -175,6 +181,50 @@
     <!-- ===== TAB: DASHBOARD ===== -->
     @if (Model.ActiveTab == "dashboard")
     {
+        @if (!hasWizardPlans)
+        {
+            <!-- GESTIÓN HISTÓRICA: contadores reales importados del Excel del cliente -->
+            <div class="row mb-3">
+                <!-- L-48 Planes -->
+                <div class="col-6 col-md-3 mb-3">
+                    <a asp-page="/Maintenances/Plan" asp-route-ManagementId="@Model.Management.Id" class="asset-metric-tile asset-bg-blue p-3" title="Ver plan L-48 importado de esta gestión">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L48Plans</div>
+                        <div class="font-weight-bold mt-2">L-48 Planes</div>
+                    </a>
+                </div>
+                <!-- L-8 Mantenimientos -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="asset-metric-tile asset-bg-red p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-wrench"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L8Maintenances</div>
+                        <div class="font-weight-bold mt-2">L-8 Mantenimientos</div>
+                    </div>
+                </div>
+                <!-- L-6 Verificaciones -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="asset-metric-tile asset-bg-cyan p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L6Verifications</div>
+                        <div class="font-weight-bold mt-2">L-6 Verificaciones</div>
+                    </div>
+                </div>
+                <!-- L-7 Solicitudes -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="asset-metric-tile asset-bg-amber p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-tools"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L7Requests</div>
+                        <div class="font-weight-bold mt-2">L-7 Solicitudes</div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-muted small mb-4">
+                <i class="fas fa-archive mr-1"></i>
+                Gestión histórica: contadores de los datos importados desde el Excel del cliente (solo lectura).
+            </p>
+        }
+        else
+        {
         <!-- FILA 1: KPIs globales -->
         <div class="row mb-3">
             <!-- Activos Totales -->
@@ -268,7 +318,10 @@
                 </a>
             </div>
         </div>
+        }
 
+        @if (hasWizardPlans)
+        {
         <!-- GRÁFICOS -->
         <div class="row mb-4">
             <!-- Avance Global (Donut) -->
@@ -340,6 +393,7 @@
                     }
                 </div>
             </div>
+        }
         }
     }
 
@@ -421,6 +475,152 @@
     <!-- ===== TAB: L-48 / CRONOGRAMA ===== -->
     @if (Model.ActiveTab == "l48" || Model.ActiveTab == "")
     {
+        @if (!hasWizardPlans && Model.HistoricalPlans.Any())
+        {
+            <!-- L-48 HISTÓRICO: nota de origen + enlace al listado completo -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+                <span class="badge badge-light border text-muted px-3 py-2 font-weight-bold">
+                    <i class="fas fa-archive mr-1"></i> Plan L-48 histórico importado desde el Excel del cliente (solo lectura)
+                </span>
+                <span class="small text-muted" aria-live="polite">
+                    <strong class="text-dark">@Model.HistoricalPlans.Count</strong> plan(es) importado(s)
+                    <a asp-page="/Maintenances/Plan" asp-route-ManagementId="@Model.Management.Id"
+                       class="btn btn-sm btn-outline-info btn-rounded font-weight-bold shadow-sm ml-3">
+                        <i class="fas fa-external-link-alt mr-1"></i> Ver en el listado completo del L-48
+                    </a>
+                </span>
+            </div>
+
+            <!-- Tabla L-48 histórica de solo lectura (sin wizard ni acciones) -->
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="tableL48Historico">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="text-muted small" style="width:36px;">No</th>
+                                <th class="text-muted small">Código</th>
+                                <th class="text-muted small">Equipo / N.º inventario</th>
+                                <th class="text-muted small">Laboratorio</th>
+                                <th class="text-muted small">Tipo de mantenimiento</th>
+                                <th class="text-muted small">Servicio</th>
+                                <th class="text-muted small text-center">Fecha planificada</th>
+                                <th class="text-muted small">Responsable</th>
+                                <th class="text-muted small text-center">Estado</th>
+                                <th class="text-muted small text-center">Calidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int histRowNum = 1; }
+                            @foreach (var plan in Model.HistoricalPlans)
+                            {
+                                <tr>
+                                    <td class="text-muted small align-middle text-center">@histRowNum</td>
+                                    <td class="align-middle">
+                                        <span class="font-weight-bold text-dark">@(plan.PlanCode ?? "—")</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        @if (plan.EquipmentUnit != null)
+                                        {
+                                            <div class="font-weight-bold" style="font-size:0.82rem;">@(plan.EquipmentUnit.Equipment?.Name ?? "S/E")</div>
+                                            <div class="text-muted" style="font-size:0.72rem;">Inv: @plan.EquipmentUnit.InventoryNumber</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="small">@(plan.Laboratory?.Code ?? "—")</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="small font-weight-bold">@(plan.MaintenanceType.HasValue ? EnumHelper.GetDisplayName(plan.MaintenanceType.Value) : "—")</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        @if (plan.ServiceType.HasValue)
+                                        {
+                                            <span class="small">@EnumHelper.GetDisplayName(plan.ServiceType.Value)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="small text-muted font-italic" title="El archivo del cliente indica 'Por confirmar'">Por confirmar</span>
+                                        }
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        <span class="small font-weight-bold">@(plan.PlannedDate?.ToString("dd/MM/yyyy") ?? "—")</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="small">@(plan.ResponsiblePerson?.FullName ?? "—")</span>
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        @if (plan.Status.HasValue)
+                                        {
+                                            var histStatusClass = plan.Status.Value switch
+                                            {
+                                                MaintenanceStatus.Pending => "badge-warning",
+                                                MaintenanceStatus.InProgress => "badge-warning",
+                                                MaintenanceStatus.Scheduled => "badge-info",
+                                                MaintenanceStatus.Completed => "badge-success",
+                                                MaintenanceStatus.Cancelled => "badge-danger",
+                                                _ => "badge-secondary"
+                                            };
+                                            <span class="badge @histStatusClass px-3 py-1 font-weight-bold">@EnumHelper.GetDisplayName(plan.Status.Value)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="small text-muted font-italic" title="El archivo del cliente indica 'Por confirmar'">Por confirmar</span>
+                                        }
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        @if (!string.IsNullOrWhiteSpace(plan.QualityStatus))
+                                        {
+                                            var histQualityClass = string.Equals(plan.QualityStatus, "Válida", StringComparison.OrdinalIgnoreCase)
+                                                ? "badge-success"
+                                                : "badge-warning";
+                                            <span class="badge @histQualityClass px-2 font-weight-bold" title="Calidad del dato en el Excel de origen">@plan.QualityStatus</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                </tr>
+                                histRowNum++;
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else if (!hasWizardPlans)
+        {
+            <!-- GESTIÓN HISTÓRICA SIN L-48: mensaje sereno, sin tabla vacía -->
+            <div class="alert alert-info border-0 rounded shadow-sm d-flex align-items-center" role="alert">
+                <i class="fas fa-info-circle text-info mr-3" style="font-size:1.4rem;"></i>
+                <div>
+                    <span class="font-weight-bold">Esta gestión no tiene plan L-48 cargado en el Excel del cliente.</span>
+                    @if (Model.HistoricalCountsInfo.L8Maintenances > 0 || Model.HistoricalCountsInfo.L6Verifications > 0 || Model.HistoricalCountsInfo.L7Requests > 0)
+                    {
+                        <div class="small text-muted mt-1">
+                            Registró actividad importada:
+                            @if (Model.HistoricalCountsInfo.L8Maintenances > 0)
+                            {
+                                <span class="badge badge-secondary px-2 mr-1">L-8: @Model.HistoricalCountsInfo.L8Maintenances</span>
+                            }
+                            @if (Model.HistoricalCountsInfo.L6Verifications > 0)
+                            {
+                                <span class="badge badge-secondary px-2 mr-1">L-6: @Model.HistoricalCountsInfo.L6Verifications</span>
+                            }
+                            @if (Model.HistoricalCountsInfo.L7Requests > 0)
+                            {
+                                <span class="badge badge-secondary px-2 mr-1">L-7: @Model.HistoricalCountsInfo.L7Requests</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
         <!-- Filtros -->
         <div class="mb-4 p-3 bg-light rounded border-left border-info">
             <form method="get" class="d-flex flex-wrap w-100 align-items-center" data-live-filter-form>
@@ -619,6 +819,7 @@
                 </table>
             </div>
         </div>
+        }
     }
 
     <!-- ===== TAB: CALENDARIO ===== -->

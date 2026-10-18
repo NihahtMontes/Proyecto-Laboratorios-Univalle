@@ -56,7 +56,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
             new("Equipos de medicion PCC", EquipmentTypeClassification.Medicion, "bg-info", "fas fa-tachometer-alt"),
             new("Equipos audiovisuales", EquipmentTypeClassification.Audiovisuales, "bg-primary", "fas fa-video"),
             new("Equipos electricos", EquipmentTypeClassification.Electricos, "bg-warning", "fas fa-bolt"),
-            new("Mobiliario", EquipmentTypeClassification.Mobiliario, "bg-secondary", "fas fa-chair")
+            new("Mobiliario", EquipmentTypeClassification.Mobiliario, "bg-secondary", "fas fa-chair"),
+            new("Equipos informaticos", EquipmentTypeClassification.Informatico, "bg-primary", "fas fa-desktop"),
+            new("Otros equipos", EquipmentTypeClassification.Otro, "bg-dark", "fas fa-toolbox")
         };
 
         public class ClassificationCard

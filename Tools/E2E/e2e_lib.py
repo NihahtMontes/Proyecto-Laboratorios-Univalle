@@ -18,7 +18,8 @@ from dataclasses import dataclass
 import pyodbc
 
 BASE = os.environ.get("E2E_BASE", "http://localhost:5000")
-CONN = ("Driver={ODBC Driver 17 for SQL Server};Server=localhost;Database=DB_Laboratorios_Univalle_REAL;"
+DB_NAME = os.environ.get("E2E_DB", "DB_Laboratorios_Univalle_REAL")  # E2E_DB permite apuntar a una copia desechable
+CONN = (f"Driver={{ODBC Driver 17 for SQL Server}};Server=localhost;Database={DB_NAME};"
         "Trusted_Connection=yes;TrustServerCertificate=yes")
 ERROR_MARKERS = re.compile(r"NullReferenceException|InvalidOperationException|SqlException|An unhandled exception|Stack trace", re.I)
 

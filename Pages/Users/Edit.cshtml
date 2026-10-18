@@ -116,6 +116,7 @@
                                 <div class="form-group mb-0">
                                     <label asp-for="Input.NewPassword" class="control-label font-weight-bold small uppercase text-muted">Nueva Contraseña</label>
                                     <input asp-for="Input.NewPassword" type="password" class="form-control shadow-none" placeholder="********" />
+                                    <span asp-validation-for="Input.NewPassword" class="text-danger small font-weight-bold d-block mt-1"></span>
                                     <small class="text-warning font-weight-bold d-block mt-2 small">
                                         <i class="fas fa-info-circle mr-1"></i> Deje en blanco para conservar la actual.
                                     </small>
@@ -127,12 +128,14 @@
                                     <div class="form-group mb-0">
                                         <label asp-for="Input.Position" class="control-label font-weight-bold small uppercase text-muted">Cargo</label>
                                         <input asp-for="Input.Position" class="form-control shadow-none" />
+                                    <span asp-validation-for="Input.Position" class="text-danger small font-weight-bold d-block mt-1"></span>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="form-group mb-0">
                                         <label asp-for="Input.Department" class="control-label font-weight-bold small uppercase text-muted">Área/Dpto.</label>
                                         <input asp-for="Input.Department" class="form-control shadow-none" />
+                                    <span asp-validation-for="Input.Department" class="text-danger small font-weight-bold d-block mt-1"></span>
                                     </div>
                                 </div>
                             </div>

@@ -225,6 +225,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                     return Page();
                 }
 
+                // Guarda de fase (QA R-02): L-12 solo opera si el plan está en Desembolso.
+                // El rechazo no crea la solicitud ni mueve el plan.
+                var phaseError = WizardPhaseGuard.Validate(wizardPlan, WizardPhase.Disbursement);
+                if (phaseError != null)
+                {
+                    TempData.Warning(phaseError);
+                    return isWizard
+                        ? RedirectToPage("/Index", new { ShowWizard = true, Step = (int)wizardPlan.CurrentPhase, ManagementId = wizardPlan.ManagementId })
+                        : RedirectToPage("./Index");
+                }
+
                 ApplyPlanToInput(wizardPlan);
                 ModelState.Remove("Input.FacultyId");
                 ModelState.Remove("Input.LaboratoryId");

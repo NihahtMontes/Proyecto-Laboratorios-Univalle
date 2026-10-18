@@ -86,7 +86,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             [Required(ErrorMessage = "La contraseña es obligatoria")]
             [DataType(DataType.Password)]
-            [StringLength(100, MinimumLength = 8, ErrorMessage = "La contraseña debe tener al menos 8 caracteres")]
+            [StringLength(100, MinimumLength = 12, ErrorMessage = "La contraseña debe tener al menos 12 caracteres, con mayúscula, minúscula, número y símbolo")]
             public string Password { get; set; } = string.Empty;
 
             [Display(Name = "Foto de Perfil")]

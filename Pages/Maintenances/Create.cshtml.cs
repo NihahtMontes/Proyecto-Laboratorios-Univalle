@@ -60,6 +60,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     .FirstOrDefaultAsync(p => p.Id == managementPlanId.Value);
                 if (plan != null)
                 {
+                    // Guarda de fase (QA R-02): si el plan ya no está en L-8, avisar y volver
+                    // al wizard en la fase real en lugar de mostrar el formulario.
+                    var getPhaseError = WizardPhaseGuard.Validate(plan, WizardPhase.Maintenance);
+                    if (getPhaseError != null)
+                    {
+                        TempData.Warning(getPhaseError);
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan.CurrentPhase, ManagementId = plan.ManagementId });
+                    }
+
                     ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
                     ViewData["ManagementId"] = plan.ManagementId;
                     ManagementId = plan.ManagementId;
@@ -255,6 +264,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 if (wizardPlan != null)
                 {
+                    // Guarda de fase (QA R-02): si el plan no está en L-8 Mantenimiento no se
+                    // guarda nada (ni definitivo ni borrador) y se vuelve al wizard en su fase real.
+                    var phaseError = WizardPhaseGuard.Validate(wizardPlan, WizardPhase.Maintenance);
+                    if (phaseError != null)
+                    {
+                        TempData.Warning(phaseError);
+                        return isWizard
+                            ? RedirectToPage("/Index", new { ShowWizard = true, Step = (int)wizardPlan.CurrentPhase, ManagementId = wizardPlan.ManagementId })
+                            : RedirectToPage("./Index");
+                    }
+
                     currentMgmt = wizardPlan.Management;
 
                     if (wizardPlan.EquipmentUnitId.HasValue)
@@ -313,14 +333,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     ModelState.AddModelError("Input.EndDate", "La fecha de finalización no puede ser anterior al inicio.");
             }
 
-            if (isWizard && !saveDraft && !Input.TechnicianId.HasValue)
+            // El técnico responsable es obligatorio en todo guardado definitivo del wizard y,
+            // fuera del wizard, siempre que el mantenimiento esté En curso o Completado.
+            if (!saveDraft && !Input.TechnicianId.HasValue &&
+                (isWizard || Input.Status is MaintenanceStatus.InProgress or MaintenanceStatus.Completed))
             {
                 ModelState.AddModelError("Input.TechnicianId", "El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que L-3 pueda derivar el responsable de la salida.");
-            }
-
-            if (!saveDraft && Input.Status == MaintenanceStatus.Completed && Input.CompletionPercentage != 100)
-            {
-                ModelState.AddModelError("Input.CompletionPercentage", "Para marcar el mantenimiento como Completado, el avance debe estar al 100%.");
             }
 
             var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).AsTracking().FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
@@ -357,6 +375,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             Input.Tasks = NormalizeTasks(Input.Tasks);
             Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
+
+            // QA R-02: el 100% solo lo validaba JS. El servidor recalcula el avance desde
+            // las tareas y exige 100% + al menos una tarea completada para marcar Completado.
+            if (!saveDraft && Input.Status == MaintenanceStatus.Completed &&
+                (Input.CompletionPercentage != 100 || !Input.Tasks.Any(t => t.IsCompleted)))
+            {
+                ModelState.AddModelError("Input.CompletionPercentage",
+                    "Para marcar el mantenimiento como Completado, el avance debe estar al 100% y debe haber al menos una tarea completada.");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -496,10 +523,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     {
                         MarkMaintenanceDraft(wizardPlan);
                     }
-                    else
+                    else if (Input.Status == MaintenanceStatus.Completed)
                     {
+                        // Solo un L-8 Completado avanza el plan a L-3 Salida.
                         wizardPlan.CurrentPhase = WizardPhase.Exit;
                         wizardPlan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                        ClearDraft(wizardPlan);
+                    }
+                    else
+                    {
+                        // L-8 Pendiente/En curso: el plan permanece en la fase Mantenimiento.
+                        wizardPlan.CurrentPhase = WizardPhase.Maintenance;
+                        wizardPlan.CurrentState = Input.Status == MaintenanceStatus.InProgress || Input.StartDate.HasValue
+                            ? WizardEquipmentState.InMaintenance
+                            : WizardEquipmentState.AwaitingMaintenance;
                         ClearDraft(wizardPlan);
                     }
                     await _context.SaveChangesAsync();
@@ -518,7 +555,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 if (wizardPlan != null && isWizard)
                 {
-                    return RedirectToPage("/Index", new { ShowWizard = true, Step = saveDraft ? 3 : 4, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                    // Paso 3 (Mantenimiento) mientras el L-8 no esté Completado; 4 (L-3) al completarlo.
+                    var nextStep = saveDraft || Input.Status != MaintenanceStatus.Completed ? 3 : 4;
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = nextStep, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                 }
 
                 return RedirectToPage("./Index");

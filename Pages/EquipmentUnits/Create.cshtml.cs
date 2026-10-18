@@ -27,6 +27,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
+        /// <summary>
+        /// Pantalla de origen (p. ej. el detalle del conflicto de material): Guardar y Cancelar vuelven ahí.
+        /// Solo se aceptan rutas locales.
+        /// </summary>
+        [BindProperty(SupportsGet = true)]
+        public string? ReturnUrl { get; set; }
+
+        /// <summary>ReturnUrl validado (local) o null si no se indicó o no es seguro.</summary>
+        public string? SafeReturnUrl => !string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl) ? ReturnUrl : null;
+
         public class InputModel
         {
             [Required(ErrorMessage = "La facultad es obligatoria")]
@@ -46,12 +56,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             public int? CareerId { get; set; }
 
             [Required(ErrorMessage = "El número de inventario es obligatorio")]
+            [MinLength(3, ErrorMessage = "El inventario debe tener al menos 3 caracteres")]
+            [StringLength(50, ErrorMessage = "El inventario no puede superar 50 caracteres")]
             [Display(Name = "Número de Inventario")]
             public string InventoryNumber { get; set; } = string.Empty;
 
+            [StringLength(100, ErrorMessage = "El número de serie no puede superar 100 caracteres")]
             [Display(Name = "Número de Serie")]
             public string? SerialNumber { get; set; }
 
+            [StringLength(2000, ErrorMessage = "Las observaciones no pueden superar 2000 caracteres")]
             [Display(Name = "Notas / Observaciones")]
             public string? Notes { get; set; }
 
@@ -69,6 +83,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             [Display(Name = "Fecha de Fabricación")]
             public DateTime? ManufacturingDate { get; set; }
 
+            [Range(0, 999999999, ErrorMessage = "El precio de adquisición no puede ser negativo")]
             [Display(Name = "Precio de Adquisición")]
             public decimal? AcquisitionValue { get; set; }
         }
@@ -103,7 +118,48 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 return Page();
             }
 
-            // Validar que el número de inventario sea único
+            // Normalizar ANTES de comprobar duplicados (mismo criterio que Edit):
+            // la comparación y el guardado usan el valor limpio.
+            Input.InventoryNumber = Input.InventoryNumber.Clean();
+            Input.SerialNumber = Input.SerialNumber?.Clean();
+            Input.Notes = Input.Notes?.Clean();
+
+            // Tras colapsar espacios internos el inventario puede quedar bajo el mínimo.
+            if (Input.InventoryNumber.Length < 3)
+            {
+                ModelState.AddModelError("Input.InventoryNumber", "El inventario debe tener al menos 3 caracteres");
+            }
+
+            // ── Validaciones de integridad referencial (evitan error 500 por FK inexistente) ──
+            if (!await _context.Equipments.AnyAsync(e => e.Id == Input.EquipmentId))
+            {
+                ModelState.AddModelError("Input.EquipmentId", "El modelo de equipo seleccionado no existe.");
+            }
+
+            var laboratoryExists = await _context.Laboratories.AnyAsync(l => l.Id == Input.LaboratoryId);
+            if (!laboratoryExists)
+            {
+                ModelState.AddModelError("Input.LaboratoryId", "El laboratorio seleccionado no existe.");
+            }
+            else if (!await _context.Laboratories.AnyAsync(l => l.Id == Input.LaboratoryId && l.FacultyId == Input.FacultyId))
+            {
+                ModelState.AddModelError("Input.LaboratoryId", "El laboratorio seleccionado no pertenece a la facultad indicada.");
+            }
+
+            if (Input.CareerId.HasValue && !await _context.Careers.AnyAsync(c => c.Id == Input.CareerId))
+            {
+                ModelState.AddModelError("Input.CareerId", "La carrera seleccionada no existe.");
+            }
+
+            ValidateUnitDates(Input.AcquisitionDate, Input.ManufacturingDate, "Input");
+
+            if (!ModelState.IsValid)
+            {
+                LoadLists();
+                return Page();
+            }
+
+            // Validar que el número de inventario sea único (ya normalizado)
             var existing = await _context.EquipmentUnits
                 .AnyAsync(u => u.InventoryNumber == Input.InventoryNumber && u.CurrentStatus != EquipmentStatus.Deleted);
 
@@ -128,9 +184,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 // CORRECCIÓN: Se agrega .Value para convertir de int? a int, ya validado por [Required]
                 LaboratoryId = Input.LaboratoryId!.Value,
                 CareerId = Input.CareerId,
-                InventoryNumber = Input.InventoryNumber.Clean()!,
-                SerialNumber = Input.SerialNumber?.Clean(),
-                Notes = Input.Notes?.Clean(),
+                InventoryNumber = Input.InventoryNumber,
+                SerialNumber = Input.SerialNumber,
+                Notes = Input.Notes,
                 CurrentStatus = Input.CurrentStatus,
                 PhysicalCondition = Input.PhysicalCondition,
                 AcquisitionDate = Input.AcquisitionDate,
@@ -142,13 +198,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             _context.EquipmentUnits.Add(unit);
             await _context.SaveChangesAsync();
 
-            // Guardar primer registro del historial de estado
+            // Guardar primer registro del historial de estado (texto visible del enum en español)
             var initialHistory = new EquipmentStateHistory
             {
                 EquipmentUnitId = unit.Id,
                 Status = unit.CurrentStatus,
                 StartDate = DateTime.UtcNow,
-                Reason = $"Alta inicial en sistema. Condición: {unit.PhysicalCondition}"
+                Reason = TruncateHistoryReason($"Alta inicial en sistema. Condición: {EnumHelper.GetDisplayName(unit.PhysicalCondition)}")
             };
             _context.EquipmentStateHistories.Add(initialHistory);
             await _context.SaveChangesAsync();
@@ -159,7 +215,52 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 .FirstOrDefaultAsync() ?? "Equipo";
 
             TempData.Success($"Equipo {equipmentName} ({unit.InventoryNumber}) fue creado exitosamente.");
+            if (SafeReturnUrl is string returnUrl)
+            {
+                return LocalRedirect(returnUrl);
+            }
             return RedirectToPage("/Equipment/Details", new { id = unit.EquipmentId });
+        }
+
+        /// <summary>Longitud máxima de Reason en EquipmentStateHistory (StringLength 500 en BD).</summary>
+        private const int HistoryReasonMaxLength = 500;
+
+        /// <summary>Trunca con seguridad el motivo del historial para no violar el máximo de BD.</summary>
+        private static string TruncateHistoryReason(string reason) =>
+            reason.Length <= HistoryReasonMaxLength ? reason : reason[..HistoryReasonMaxLength];
+
+        /// <summary>
+        /// Valida coherencia y rango de las fechas de la unidad: ninguna anterior a 1900-01-01
+        /// ni posterior a hoy, y la fabricación no puede ser posterior a la adquisición.
+        /// </summary>
+        private void ValidateUnitDates(DateTime? acquisitionDate, DateTime? manufacturingDate, string prefix)
+        {
+            var today = DateTime.Today;
+            var minDate = new DateTime(1900, 1, 1);
+
+            if (acquisitionDate.HasValue)
+            {
+                var date = acquisitionDate.Value.Date;
+                if (date < minDate || date > today)
+                {
+                    ModelState.AddModelError($"{prefix}.AcquisitionDate", "La fecha de adquisición debe estar entre 01/01/1900 y la fecha actual.");
+                }
+            }
+
+            if (manufacturingDate.HasValue)
+            {
+                var date = manufacturingDate.Value.Date;
+                if (date < minDate || date > today)
+                {
+                    ModelState.AddModelError($"{prefix}.ManufacturingDate", "La fecha de fabricación debe estar entre 01/01/1900 y la fecha actual.");
+                }
+            }
+
+            if (acquisitionDate.HasValue && manufacturingDate.HasValue
+                && manufacturingDate.Value.Date > acquisitionDate.Value.Date)
+            {
+                ModelState.AddModelError($"{prefix}.ManufacturingDate", "La fecha de fabricación no puede ser posterior a la fecha de adquisición.");
+            }
         }
 
         private void LoadLists()

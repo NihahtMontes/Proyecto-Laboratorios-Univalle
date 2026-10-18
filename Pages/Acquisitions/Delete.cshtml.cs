@@ -41,6 +41,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             if (id == null) return NotFound();
 
             var request = await _context.Requests.FindAsync(id);
+            // Solo solicitudes de adquisición (antes el POST aceptaba el Id de una L-7 técnica).
+            if (request != null && request.Type != RequestType.Purchasing) return NotFound();
             if (request != null)
             {
                 request.Status = RequestStatus.Cancelled;
@@ -48,6 +50,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                     ? "Solicitud marcada como eliminada lógicamente."
                     : request.RejectionReason;
                 request.LastModifiedDate = DateTime.UtcNow;
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach la anulación no persistía.
+                _context.Attach(request).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                 await _context.SaveChangesAsync();
                 TempData.Success("Solicitud marcada como eliminada correctamente.");
             }

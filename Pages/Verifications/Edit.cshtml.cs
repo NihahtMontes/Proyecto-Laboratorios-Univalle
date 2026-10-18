@@ -132,6 +132,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             if (user != null) verification.ModifiedById = user.Id;
             verification.LastModifiedDate = DateTime.UtcNow;
 
+            ManagementPlan? linkedPlan = null;
+            var planPhaseLocked = false;
+
             try
             {
                 var linkedPlanQuery = _context.ManagementPlans
@@ -144,9 +147,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     linkedPlanQuery = linkedPlanQuery.Where(p => p.ManagementId == ManagementId.Value);
                 }
 
-                var linkedPlan = await linkedPlanQuery.FirstOrDefaultAsync();
+                linkedPlan = await linkedPlanQuery.FirstOrDefaultAsync();
 
-                if (linkedPlan != null)
+                // R-02: fuera de la ventana temprana el plan (y su solicitud L-7) no se toca;
+                // solo se guardan los datos de la verificación.
+                planPhaseLocked = linkedPlan != null && !CanUpdateLinkedPlanPhase(linkedPlan);
+
+                if (linkedPlan != null && !planPhaseLocked)
                 {
                     linkedPlan.LastModifiedDate = DateTime.UtcNow;
                     linkedPlan.ModifiedById = user?.Id;
@@ -186,9 +193,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 }
 
                 await _context.SaveChangesAsync();
-                TempData.Success(isHealthyCondition
-                    ? $"Verificacion #{verification.Id} actualizada. El activo fue movido a activos sanos."
-                    : NotificationHelper.Verifications.Updated(verification.Id));
+
+                if (planPhaseLocked)
+                {
+                    TempData.Warning($"La verificación se actualizó, pero el activo ya avanzó a {WizardPhaseGuard.PhaseLabel(linkedPlan!.CurrentPhase)}: el plan no se modificó. Use «Rehacer fase» si necesita corregirlo.");
+                }
+                else
+                {
+                    TempData.Success(isHealthyCondition
+                        ? $"Verificacion #{verification.Id} actualizada. El activo fue movido a activos sanos."
+                        : NotificationHelper.Verifications.Updated(verification.Id));
+                }
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -198,6 +213,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             if (IsWizard)
             {
+                if (planPhaseLocked && linkedPlan != null)
+                {
+                    // El plan quedó en una fase posterior: devolver al paso real del wizard.
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)linkedPlan.CurrentPhase, ManagementId, FocusPlanId });
+                }
+
                 if (isHealthyCondition)
                 {
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = FocusPlanId.HasValue ? (int)WizardPhase.Verification : 2, ManagementId, FocusPlanId });
@@ -207,6 +228,30 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             }
 
             return RedirectToPage("./Index");
+        }
+
+        /// <summary>
+        /// R-02: determina si el plan vinculado todavía está en la ventana temprana que permite
+        /// re-clasificar el activo desde L-6 (fase Verification, o TechnicalRequest/AwaitingRequest,
+        /// es decir, con la solicitud L-7 aún sin registrar). Fuera de esa ventana el plan ya avanzó
+        /// (L-7 registrado, L-8, L-3, Kardex, L-12 o completado) y editarlo movería el wizard hacia atrás.
+        /// </summary>
+        public static bool CanUpdateLinkedPlanPhase(ManagementPlan? plan)
+        {
+            if (plan == null)
+                return false;
+
+            if (plan.CurrentState == WizardEquipmentState.Completed || plan.PlanStatus == ManagementPlanStatus.Completed)
+                return false;
+
+            if (plan.CurrentPhase == WizardPhase.Verification)
+                return true;
+
+            // Un L-6 con falla deja una solicitud L-7 Pendiente creada automáticamente (RequestId ≠ null)
+            // y el plan en AwaitingRequest: esa es justo la situación en que se corrige la verificación.
+            // Al registrar el L-7 de verdad el plan pasa a Maintenance/AwaitingMaintenance y la ventana se cierra.
+            return plan.CurrentPhase == WizardPhase.TechnicalRequest
+                && plan.CurrentState == WizardEquipmentState.AwaitingRequest;
         }
 
         private void LoadLists()

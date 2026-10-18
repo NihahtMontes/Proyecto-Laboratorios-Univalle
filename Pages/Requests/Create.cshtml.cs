@@ -63,6 +63,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     .Include(p => p.TechnicalRequest)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
+                // R-02: L-7 solo puede registrarse si el plan está en la fase de solicitud técnica.
+                var phaseRejection = WizardPhaseGuard.Validate(plan, WizardPhase.TechnicalRequest);
+                if (phaseRejection != null)
+                {
+                    TempData.Warning(phaseRejection);
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan!.CurrentPhase, ManagementId = plan.ManagementId });
+                }
+
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
 
                 if (plan?.Verification != null && !string.IsNullOrWhiteSpace(plan.Verification.Observations))
@@ -173,6 +181,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 if (wizardPlan == null)
                 {
                     TempData.Error($"No se pudo resolver el plan del wizard para L-7. ManagementPlanId recibido: {ManagementPlanId.Value}.");
+                    await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
+                    ViewData["IsWizard"] = isWizard;
+                    return Page();
+                }
+
+                // R-02: L-7 (definitivo o borrador) solo puede registrarse si el plan está en la
+                // fase de solicitud técnica; en otra fase no se guarda nada para no saltar fases
+                // ni mover el wizard hacia atrás.
+                var phaseRejection = WizardPhaseGuard.Validate(wizardPlan, WizardPhase.TechnicalRequest);
+                if (phaseRejection != null)
+                {
+                    TempData.Warning(phaseRejection);
+                    if (isWizard)
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)wizardPlan.CurrentPhase, ManagementId = wizardPlan.ManagementId });
+
                     await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                     ViewData["IsWizard"] = isWizard;
                     return Page();

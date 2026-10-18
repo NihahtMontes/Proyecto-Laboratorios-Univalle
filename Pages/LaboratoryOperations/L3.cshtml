@@ -41,6 +41,16 @@
                 </div>
             </div>
         }
+        else if (!Model.HasDeparture)
+        {
+            @* Sin salida registrada no hay nada entregado, así que tampoco puede haber faltantes (antes se mostraba la alerta de faltantes). *@
+            <div class="alert alert-light border rounded-lg d-flex align-items-center mb-4">
+                <i class="fas fa-info-circle text-primary mr-2"></i>
+                <div class="small">
+                    Aún no se registró la salida de materiales. Confirma las cantidades entregadas para poder registrar la devolución y finalizar la planificación.
+                </div>
+            </div>
+        }
         else if (Model.BlockFinalization)
         {
             <div class="alert alert-warning border-0 rounded-lg d-flex align-items-center mb-4 shadow-sm">

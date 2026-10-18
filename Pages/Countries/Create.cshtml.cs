@@ -46,7 +46,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             }
 
             // Normalization
-            var normalizedInput = Input.Name.Trim().ToLower();
+            var normalizedInput = Input.Name.Clean().ToLower();
 
             // Duplicate Validation
             var exists = await _context.Countries

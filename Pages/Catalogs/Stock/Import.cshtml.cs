@@ -102,7 +102,7 @@ public class ImportModel : PageModel
         {
             raw = ReadSheet(Upload);
         }
-        catch (InvalidDataException ex)
+        catch (ImportFileException ex)
         {
             TempData.Error(ex.Message);
             return RedirectToPage();
@@ -206,8 +206,8 @@ public class ImportModel : PageModel
         using var package = new ExcelPackage(stream);
         var sheet = package.Workbook.Worksheets.FirstOrDefault(w => w.Name.Equals("ExistenciasArticulos", StringComparison.OrdinalIgnoreCase))
             ?? package.Workbook.Worksheets.FirstOrDefault()
-            ?? throw new InvalidDataException("El archivo no tiene hojas.");
-        if (sheet.Dimension == null) throw new InvalidDataException("La hoja está vacía.");
+            ?? throw new ImportFileException("El archivo no tiene hojas.");
+        if (sheet.Dimension == null) throw new ImportFileException("La hoja está vacía.");
 
         var columns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         for (var c = 1; c <= sheet.Dimension.End.Column; c++)
@@ -217,7 +217,7 @@ public class ImportModel : PageModel
         }
         var missing = Headers.Where(h => !columns.ContainsKey(h)).ToList();
         if (missing.Count > 0)
-            throw new InvalidDataException($"Faltan columnas: {string.Join(", ", missing)}. Descarga la plantilla para ver el formato.");
+            throw new ImportFileException($"Faltan columnas: {string.Join(", ", missing)}. Descarga la plantilla para ver el formato.");
 
         var result = new List<(int, string, string, string)>();
         for (var r = 2; r <= sheet.Dimension.End.Row; r++)
@@ -227,9 +227,9 @@ public class ImportModel : PageModel
             var qty = sheet.Cells[r, columns["CantidadDisponible"]].Value?.ToString()?.Trim() ?? "";
             if (lab.Length == 0 && art.Length == 0 && qty.Length == 0) continue; // fila vacía
             result.Add((r, lab.ToUpperInvariant(), art.ToUpperInvariant(), qty));
-            if (result.Count > MaxRows) throw new InvalidDataException($"El archivo supera el máximo de {MaxRows} filas.");
+            if (result.Count > MaxRows) throw new ImportFileException($"El archivo supera el máximo de {MaxRows} filas.");
         }
-        if (result.Count == 0) throw new InvalidDataException("El archivo no tiene filas con datos.");
+        if (result.Count == 0) throw new ImportFileException("El archivo no tiene filas con datos.");
         return result;
     }
 
@@ -290,4 +290,10 @@ public class ImportModel : PageModel
     private static bool TryParseQuantity(string text, out decimal value) =>
         decimal.TryParse(text.Replace(',', '.'), System.Globalization.NumberStyles.Number,
             System.Globalization.CultureInfo.InvariantCulture, out value);
+
+    /// <summary>Error de formato con mensaje en español pensado para el usuario (los de EPPlus vienen en inglés y no se muestran).</summary>
+    private sealed class ImportFileException : Exception
+    {
+        public ImportFileException(string message) : base(message) { }
+    }
 }

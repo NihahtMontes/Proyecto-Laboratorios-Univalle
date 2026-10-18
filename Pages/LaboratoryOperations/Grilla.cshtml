@@ -84,12 +84,24 @@
                         · origen @origin.Date.ToString("dd/MM") @origin.PeriodsText · @origin.LaboratoryLabel
                     </span>
                 </div>
-                <a asp-page="./Grilla" asp-route-managementId="@origin.ManagementId" asp-route-laboratoryId="@origin.LaboratoryId"
-                   asp-route-date="@origin.Date.ToString("yyyy-MM-dd", inv)"
-                   id="gr-rs-exit"
-                   class="btn btn-light btn-rounded btn-sm font-weight-bold ml-auto">
-                    <i class="fas fa-times mr-1"></i> Salir del modo de traslado
-                </a>
+                @if (Model.SafeReturnUrl is string exitUrl)
+                {
+                    @* Con pantalla de origen (p. ej. conflictos), salir vuelve a ella. *@
+                    <a href="@exitUrl"
+                       id="gr-rs-exit"
+                       class="btn btn-light btn-rounded btn-sm font-weight-bold ml-auto">
+                        <i class="fas fa-times mr-1"></i> Salir del modo de traslado
+                    </a>
+                }
+                else
+                {
+                    <a asp-page="./Grilla" asp-route-managementId="@origin.ManagementId" asp-route-laboratoryId="@origin.LaboratoryId"
+                       asp-route-date="@origin.Date.ToString("yyyy-MM-dd", inv)"
+                       id="gr-rs-exit"
+                       class="btn btn-light btn-rounded btn-sm font-weight-bold ml-auto">
+                        <i class="fas fa-times mr-1"></i> Salir del modo de traslado
+                    </a>
+                }
                 @* Chips de ambientes: visibles solo durante un arrastre (los llena grilla-reprogramar.js) *@
                 <div class="gr-rs-chips" id="gr-rs-chips" hidden aria-label="Cambiar de ambiente durante el arrastre"></div>
             </div>
@@ -217,6 +229,30 @@
                         </div>
                     }
 
+                    @if (grid.HasWeeks && Model.ConflictTags.Count > 0)
+                    {
+                        <div class="gr-controls__field gr-controls__field--switch gr-cf-bar">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="gr-show-conflicts"
+                                       data-conflict-toggle data-target=".gr-grid" data-class="gr-grid--conflicts"
+                                       data-storage-key="gr-show-conflicts" checked="@Model.ShowConflicts">
+                                <label class="custom-control-label" for="gr-show-conflicts">Resaltar conflictos de material</label>
+                            </div>
+                            <span class="gr-cf-legend">
+                                @foreach (var tipo in ConflictTypes.All)
+                                {
+                                    <span class="gr-cf-legend__item">
+                                        <span class="gr-cf-legend__dot gr-cf-legend__dot--@tipo.Css" aria-hidden="true"></span>@tipo.Label
+                                    </span>
+                                }
+                            </span>
+                            <a asp-page="./Conflictos" asp-route-managementId="@management.Id"
+                               asp-route-date="@grid.Weeks[0].StartDate.ToString("yyyy-MM-dd", inv)" class="gr-cf-link">
+                                <i class="mdi mdi-alert-octagram mr-1" aria-hidden="true"></i> Ver conflictos de la semana
+                            </a>
+                        </div>
+                    }
+
                     <div class="gr-controls__actions">
                         <button type="button" class="btn btn-outline-primary btn-rounded btn-sm" id="gr-print">
                             <i class="fas fa-print mr-1"></i> Imprimir
@@ -284,8 +320,10 @@
 
                             <!-- Grilla: columna de periodos + lunes a sábado; filas = cabecera + periodos -->
                             <div class="gr-scroll">
-                                <div class="gr-grid" style="grid-template-rows: auto repeat(@grid.Periods.Count, minmax(var(--gr-row-height), auto));"
-                                     data-laboratory-id="@lab.Id" data-week="@week.Number">
+                                <div class="gr-grid @(Model.ShowConflicts ? "gr-grid--conflicts" : string.Empty)"
+                                     style="grid-template-rows: auto repeat(@grid.Periods.Count, minmax(var(--gr-row-height), auto));"
+                                     data-laboratory-id="@lab.Id" data-week="@week.Number"
+                                     data-conflict-scope="gr-grid--hovering" data-conflict-related-class="gr-block--related">
                                     <div class="gr-corner" style="grid-column: 1; grid-row: 1;">Periodo</div>
 
                                     @foreach (var day in week.Days)
@@ -353,17 +391,41 @@
                                             var isOrigin = mode && b.PlanningId == origin!.Id;
                                             var relocCss = b.Relocation is { Kind: GridRelocationKind.MovedFrom } ? $"gr-block--reloc-{b.Relocation.Css}" : string.Empty;
                                             var rescheduleUrl = canReschedule && b.IsReschedulable && !isOrigin ? Url.Page("./Grilla", new { reprogramar = b.PlanningId }) : null;
-                                            <div class="gr-block gr-block--@b.StatusCss @(b.Occupies ? string.Empty : "gr-block--inactive") @(b.LaneCount > 1 ? "gr-block--lane" : string.Empty) @relocCss @(isOrigin ? "gr-block--origin" : string.Empty) @(Model.Resaltar == b.PlanningId ? "gr-block--highlight" : string.Empty)"
+                                            var tags = Model.ConflictTags.TryGetValue(b.PlanningId, out var blockTags) ? blockTags : null;
+                                            var hasTags = tags is { Count: > 0 };
+                                            var cfKeys = hasTags ? string.Join(" ", tags!.Select(t => t.Key).Distinct()) : null;
+                                            var cfCss = hasTags ? ConflictTypes.Of(tags![0].Kind).Css : null;
+                                            <div class="gr-block gr-block--@b.StatusCss @(b.Occupies ? string.Empty : "gr-block--inactive") @(b.LaneCount > 1 ? "gr-block--lane" : string.Empty) @relocCss @(isOrigin ? "gr-block--origin" : string.Empty) @(Model.Resaltar == b.PlanningId ? "gr-block--highlight" : string.Empty) @(cfCss == null ? string.Empty : $"gr-block--has-conflict gr-block--cf-{cfCss}") @(cfCss != null && b.PeriodCount == 1 ? "gr-block--cf-tight" : string.Empty)"
                                                  style="grid-column: @(day.Weekday + 1); grid-row: @(b.StartOrder!.Value + 1) / span @b.PeriodCount; --gr-lane: @b.LaneIndex; --gr-lanes: @b.LaneCount;"
                                                  title="@b.Tooltip"
                                                  draggable="@(isOrigin ? "true" : null)"
                                                  data-planning-id="@b.PlanningId" data-code="@b.Code" data-date="@b.Date.ToString("yyyy-MM-dd", inv)"
                                                  data-start-order="@b.StartOrder" data-period-count="@b.PeriodCount"
                                                  data-laboratory-id="@b.LaboratoryId" data-status="@b.Status"
-                                                 data-next-url="@b.NextUrl" data-reschedule-url="@rescheduleUrl">
+                                                 data-next-url="@b.NextUrl" data-reschedule-url="@rescheduleUrl"
+                                                 data-conflict-keys="@cfKeys">
                                                 <a href="@b.NextUrl" class="gr-block__open" draggable="false" aria-label="Abrir @b.Code: @b.SubjectName (@b.GroupName)"></a>
                                                 <span class="gr-block__title">@b.SubjectShort (@b.GroupName)</span>
                                                 <span class="gr-block__teacher"><i class="fas fa-user-tie mr-1"></i>@b.TeacherName</span>
+                                                @if (hasTags)
+                                                {
+                                                    <span class="gr-block__conflicts">
+                                                        @foreach (var t in tags!.Take(3))
+                                                        {
+                                                            var tipo = ConflictTypes.Of(t.Kind);
+                                                            var relText = t.RelatedPlanningIds.Count > 0
+                                                                ? $"\nRelacionadas: {string.Join(", ", t.RelatedPlanningIds.Select(L3Codes.Format))}" : string.Empty;
+                                                            var titulo = $"{t.Tag} · {tipo.Label} · {t.ArticleName} · {t.Date.ToString("dd/MM")}{relText}\nClic para resolver en Conflictos";
+                                                            <a class="gr-ctag gr-ctag--@tipo.Css @(t.Involved ? "is-involved" : "is-loose")" href="@t.Url" draggable="false"
+                                                               data-conflict-key="@t.Key" data-cf-color="var(--cf-@tipo.Css)"
+                                                               title="@titulo">@t.Tag</a>
+                                                        }
+                                                        @if (tags!.Count > 3)
+                                                        {
+                                                            <span class="gr-ctag gr-ctag--more">+@(tags.Count - 3)</span>
+                                                        }
+                                                    </span>
+                                                }
                                                 @if (b.Relocation != null)
                                                 {
                                                     <a href="@b.Relocation.Url" class="gr-block__reloc gr-block__reloc--@b.Relocation.Css" draggable="false" title="@b.Relocation.Text">
@@ -536,11 +598,14 @@
                                      </div>
                                  }
 
-                                 <form method="post" asp-page-handler="Reprogramar" id="gr-rs-form" class="mt-3" novalidate
-                                      asp-route-managementId="@management.Id" asp-route-laboratoryId="@lab.Id"
+                                <form method="post" asp-page-handler="Reprogramar" id="gr-rs-form" class="mt-3" novalidate
+                                     asp-route-managementId="@management.Id" asp-route-laboratoryId="@lab.Id"
                                        asp-route-week="@grid.SelectedWeekNumber" asp-route-twoWeeks="@twoWeeksRoute" asp-route-reprogramar="@reprogramarRoute" asp-route-reponer="@reponerRoute" asp-route-recoveryId="@Model.RecoveryId">
                                      <input type="hidden" name="Move.PlanningId" value="@o.Id" />
                                      @if (Model.IsRecoveryMode) { <input type="hidden" name="Move.DayRecoveryId" value="@Model.RecoveryId" /> }
+                                     @* Reprogramación individual: al confirmar se vuelve a la pantalla de origen (p. ej. conflictos). *@
+                                     @if (!Model.IsRecoveryMode && Model.SafeReturnUrl is string modeReturnUrl)
+                                     { <input type="hidden" name="ReturnUrl" value="@modeReturnUrl" /> }
 
                                     <!-- Destino (alternativa sin arrastre) -->
                                     <fieldset class="gr-rs-fieldset">
@@ -738,5 +803,6 @@
             if (print) print.addEventListener('click', function () { window.print(); });
         })();
     </script>
+    <script src="~/js/conflict-tags.js" asp-append-version="true"></script>
     <script src="~/js/grilla-reprogramar.js" asp-append-version="true"></script>
 }

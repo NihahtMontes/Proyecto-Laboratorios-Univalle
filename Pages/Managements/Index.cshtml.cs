@@ -35,6 +35,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
         public PaginatedList<Management> ManagementList { get; set; } = new(new List<Management>(), 0, 1, 20);
 
+        /// <summary>
+        /// Contadores de datos históricos importados (Excel del cliente) para las
+        /// gestiones de la página actual que no tienen registros del wizard (ManagementPlans).
+        /// Clave: Management.Id.
+        /// </summary>
+        public Dictionary<int, HistoricalCounts> HistoricalCountsByManagement { get; set; } = new();
+
         [BindProperty(SupportsGet = true)]
         public int? PageIndex { get; set; }
 
@@ -67,6 +74,54 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     query.OrderByDescending(m => m.CreatedDate),
                     pageIndex ?? 1,
                     20);
+
+                // Contadores históricos importados (L-48/L-8/L-6/L-7) en 4 consultas
+                // agrupadas (sin consultas por fila), solo para las gestiones visibles
+                // de esta página que no tienen registros del wizard. Se respetan los
+                // query filters globales (cancelados/anulados quedan excluidos).
+                HistoricalCountsByManagement = new Dictionary<int, HistoricalCounts>();
+                var historicalPageIds = ManagementList
+                    .Where(m => m.ManagementPlans.Count == 0 && m.Type == ManagementType.PorConfirmar)
+                    .Select(m => m.Id)
+                    .ToList();
+
+                if (historicalPageIds.Count > 0)
+                {
+                    var l48Counts = await _context.MaintenancePlans
+                        .Where(p => p.ManagementId != null && historicalPageIds.Contains(p.ManagementId.Value))
+                        .GroupBy(p => p.ManagementId!.Value)
+                        .Select(g => new { ManagementId = g.Key, Count = g.Count() })
+                        .ToDictionaryAsync(x => x.ManagementId, x => x.Count);
+
+                    var l8Counts = await _context.Maintenances
+                        .Where(m => historicalPageIds.Contains(m.ManagementId))
+                        .GroupBy(m => m.ManagementId)
+                        .Select(g => new { ManagementId = g.Key, Count = g.Count() })
+                        .ToDictionaryAsync(x => x.ManagementId, x => x.Count);
+
+                    var l6Counts = await _context.Verifications
+                        .Where(v => historicalPageIds.Contains(v.ManagementId))
+                        .GroupBy(v => v.ManagementId)
+                        .Select(g => new { ManagementId = g.Key, Count = g.Count() })
+                        .ToDictionaryAsync(x => x.ManagementId, x => x.Count);
+
+                    var l7Counts = await _context.Requests
+                        .Where(r => historicalPageIds.Contains(r.ManagementId))
+                        .GroupBy(r => r.ManagementId)
+                        .Select(g => new { ManagementId = g.Key, Count = g.Count() })
+                        .ToDictionaryAsync(x => x.ManagementId, x => x.Count);
+
+                    foreach (var managementId in historicalPageIds)
+                    {
+                        HistoricalCountsByManagement[managementId] = new HistoricalCounts
+                        {
+                            L48Plans = l48Counts.GetValueOrDefault(managementId),
+                            L8Maintenances = l8Counts.GetValueOrDefault(managementId),
+                            L6Verifications = l6Counts.GetValueOrDefault(managementId),
+                            L7Requests = l7Counts.GetValueOrDefault(managementId)
+                        };
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -306,5 +361,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 listUrl = Url.Page("./Index", new { Type = type })
             });
         }
+    }
+
+    /// <summary>
+    /// Contadores de datos históricos importados desde el Excel del cliente
+    /// para una gestión (L-48 planes, L-8 mantenimientos, L-6 verificaciones, L-7 solicitudes).
+    /// </summary>
+    public sealed class HistoricalCounts
+    {
+        public int L48Plans { get; set; }
+        public int L8Maintenances { get; set; }
+        public int L6Verifications { get; set; }
+        public int L7Requests { get; set; }
+
+        public bool HasAny => L48Plans > 0 || L8Maintenances > 0 || L6Verifications > 0 || L7Requests > 0;
     }
 }

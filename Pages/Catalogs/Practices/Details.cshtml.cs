@@ -108,6 +108,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
 
             Practice = practice;
 
+            // La página tiene dos [BindProperty]: este formulario solo envía RequirementInput.*; el RequirementUpdate vacío
+            // (Quantity = 0) fallaba su [Range] (con la clave "Quantity", sin prefijo) y el alta de líneas de receta
+            // terminaba en silencio sin guardar nada.
+            KeepModelStateFor(nameof(RequirementInput));
+
             if (!ModelState.IsValid)
             {
                 Requirements = await LoadRequirementsAsync(practice.Id);
@@ -184,6 +189,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             if (practice == null) return NotFound();
 
             Practice = practice;
+
+            // Este formulario solo envía RequirementUpdate.*; se ignora la validación del otro [BindProperty].
+            KeepModelStateFor(nameof(RequirementUpdate));
 
             if (!ModelState.IsValid)
             {
@@ -263,6 +271,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             }
 
             return RedirectToPage(new { id = practice.Id });
+        }
+
+        /// <summary>Conserva solo los errores del modelo indicado; el resto de [BindProperty] de la página no participa en este handler.</summary>
+        private void KeepModelStateFor(string prefix)
+        {
+            foreach (var key in ModelState.Keys.Where(k => k != prefix && !k.StartsWith(prefix + ".", StringComparison.Ordinal)).ToList())
+            {
+                ModelState.Remove(key);
+            }
         }
 
         private async Task<Proyecto_Laboratorios_Univalle.Models.Practice?> LoadPracticeAsync(int id)

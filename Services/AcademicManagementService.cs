@@ -37,7 +37,7 @@ public sealed record AcademicManagementSummary(
 
 public interface IAcademicManagementService
 {
-    /// <summary>Gestión por defecto de la planificación: la preventiva semestral activa (null si no hay).</summary>
+    /// <summary>Gestión por defecto de la planificación: la preventiva semestral activa o, si no hay, la semestral activa de otro tipo (null si no hay ninguna).</summary>
     Task<AcademicManagementSummary?> GetCurrentAsync();
 
     Task<AcademicManagementSummary?> GetSummaryAsync(int managementId);
@@ -94,10 +94,14 @@ public sealed class AcademicManagementService : IAcademicManagementService
     private IQueryable<Models.Management> Semestral() =>
         _context.Managements.AsNoTracking().Where(m => m.Semester > 0 && m.Status != ManagementStatus.Deleted);
 
+    // La preventiva activa tiene prioridad; si no hay, se usa la gestión semestral Activa de cualquier tipo.
+    // Con los datos importados todas las gestiones son «Por confirmar» y, sin este respaldo, el Panel, la Grilla,
+    // el Calendario, las Reposiciones y la Demanda abrían en «No hay una gestión académica activa».
     private Task<int?> CurrentIdAsync() =>
         Semestral()
-            .Where(m => m.Status == ManagementStatus.Active && m.Type == ManagementType.Preventive)
-            .OrderByDescending(m => m.Year).ThenByDescending(m => m.Semester)
+            .Where(m => m.Status == ManagementStatus.Active)
+            .OrderByDescending(m => m.Type == ManagementType.Preventive)
+            .ThenByDescending(m => m.Year).ThenByDescending(m => m.Semester)
             .Select(m => (int?)m.Id)
             .FirstOrDefaultAsync();
 

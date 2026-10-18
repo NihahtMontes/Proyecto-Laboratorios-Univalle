@@ -79,6 +79,7 @@
                         <select asp-for="Input.Status" class="form-control border-warning font-weight-bold custom-select"
                                 asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
                                 required></select>
+                        <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold d-block mt-1"></span>
                         <small class="text-muted italic mt-2 d-block small">Indique si la materia sigue vigente para asignar nuevos grupos y prácticas.</small>
                     </div>
 

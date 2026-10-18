@@ -130,3 +130,12 @@
     margin-bottom: 4px;
 }
 .pn-recovery-preview__blocker i { font-size: 15px; line-height: 1.2; }
+
+/* ---------- Resumen semanal: ayuda (popover) y avisos con detalle ---------- */
+.pn-summary .pn-info-btn { font-size: 15px; line-height: 1; vertical-align: middle; }
+.pn-summary .pn-info-btn:hover,
+.pn-summary .pn-info-btn:focus { color: var(--pn-primary); text-decoration: none; }
+.pn-summary .pn-info-btn .popover { font-size: 12.5px; }
+
+#pn-notifications .pn-link > .fa-chevron-right { font-size: 12px; margin-left: 4px; transition: transform .15s; }
+#pn-notifications .pn-link:hover > .fa-chevron-right { transform: translateX(2px); }

@@ -14,7 +14,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 /// Grilla semanal por laboratorio (formulario RE-10-VAC-007 "Registro de horarios – Horario por aula"):
 /// lunes a sábado × 12 periodos, con las planificaciones del ambiente elegido.
 /// Con ?reprogramar={planningId} (solo SuperAdmin) entra en modo reprogramación: se arrastra el bloque origen a su
-/// nuevo destino, se previsualizan las validaciones del servidor y se confirma con motivo (OnPostReprogramarAsync).
+/// nuevo destino, se previsualizan las validaciones del servidor y se confirma con motivo (OnPostReprogramarAsync);
+/// con ?returnUrl= (pantalla de origen, p. ej. la grilla de conflictos) salir del modo y confirmar vuelven ahí.
 /// Con ?reponer={planningId}&recoveryId={id} (Supervisor/Administrator/SuperAdmin) repone un bloque de un día
 /// suspendido; con ?recoveryId= (sin reponer) muestra el panel de afectados de la reposición en curso.
 /// </summary>
@@ -26,14 +27,16 @@ public class GrillaModel : PageModel
     private readonly ILaboratoryGridService _grid;
     private readonly IReschedulingService _rescheduling;
     private readonly IGroupScheduleService _schedules;
+    private readonly IConflictGridService _conflicts;
     private readonly ApplicationDbContext _context;
 
     public GrillaModel(ILaboratoryGridService grid, IReschedulingService rescheduling, IGroupScheduleService schedules,
-        ApplicationDbContext context)
+        IConflictGridService conflicts, ApplicationDbContext context)
     {
         _grid = grid;
         _rescheduling = rescheduling;
         _schedules = schedules;
+        _conflicts = conflicts;
         _context = context;
     }
 
@@ -79,11 +82,26 @@ public class GrillaModel : PageModel
     [BindProperty(SupportsGet = true)]
     public int? Resaltar { get; set; }
 
+    /// <summary>Resalta los bloques con conflictos de material (query "conflictos").</summary>
+    [BindProperty(SupportsGet = true, Name = "conflictos")]
+    public bool ShowConflicts { get; set; }
+
+    /// <summary>Pantalla de origen del modo reprogramación (p. ej. la grilla de conflictos): salir y confirmar vuelven ahí.</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
+
+    /// <summary>ReturnUrl validado (local) o null si no se indicó o no es seguro.</summary>
+    public string? SafeReturnUrl => !string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl) ? ReturnUrl : null;
+
     [BindProperty]
     public RescheduleInput Move { get; set; } = new();
 
     /// <summary>Grilla armada (null si no hay gestión pedida ni actual).</summary>
     public LaboratoryGrid? Grid { get; private set; }
+
+    /// <summary>Etiquetas de conflicto de material por PlanningId de las semanas visibles.</summary>
+    public IReadOnlyDictionary<int, IReadOnlyList<PlanningConflictTag>> ConflictTags { get; private set; }
+        = new Dictionary<int, IReadOnlyList<PlanningConflictTag>>();
 
     public bool IsSuperAdmin => User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
 
@@ -239,6 +257,8 @@ public class GrillaModel : PageModel
         }
 
         Grid = await _grid.BuildAsync(ManagementId, LaboratoryId, Week, Date, EffectiveTwoWeeks);
+        if (Grid is { HasWeeks: true })
+            ConflictTags = await _conflicts.GetPlanningTagsAsync(Grid.Weeks.Select(w => w.StartDate));
         return Page();
     }
 
@@ -302,8 +322,16 @@ public class GrillaModel : PageModel
         {
             // Reposición de día: seguir en la grilla con el siguiente pendiente (mismo ambiente primero).
             var next = await FindNextRecoveryPendingAsync(destinationManagementId, Move.DayRecoveryId.Value, Move.LaboratoryId, ct);
+            // Sin más pendientes la reposición ya quedó completada: volver a la grilla del bloque repuesto.
+            // Con ?recoveryId= la página decía "La reposición indicada no existe o ya no está en curso" justo tras el éxito.
             return next == null
-                ? RedirectToPage("./Grilla", new { managementId = destinationManagementId, recoveryId = Move.DayRecoveryId })
+                ? RedirectToPage("./Grilla", new
+                {
+                    managementId = destinationManagementId,
+                    laboratoryId = Move.LaboratoryId,
+                    date = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    resaltar = result.DestinationPlanningId
+                })
                 : RedirectToPage("./Grilla", new
                 {
                     managementId = destinationManagementId,
@@ -312,6 +340,9 @@ public class GrillaModel : PageModel
                     laboratoryId = next.LaboratoryId
                 });
         }
+        // Reprogramación individual: con pantalla de origen (p. ej. conflictos) se vuelve a ella.
+        if (SafeReturnUrl is string returnUrl)
+            return LocalRedirect(returnUrl);
         return RedirectToPage(new
         {
             managementId = destinationManagementId,
@@ -389,7 +420,8 @@ public class GrillaModel : PageModel
             twoWeeks = TwoWeeks,
             destDate = dateText,
             destPeriodId = date.HasValue && Move.StartPeriodId > 0 ? Move.StartPeriodId : (int?)null,
-            destTeacherId = Move.TeacherPersonId > 0 ? Move.TeacherPersonId : (int?)null
+            destTeacherId = Move.TeacherPersonId > 0 ? Move.TeacherPersonId : (int?)null,
+            returnUrl = SafeReturnUrl
         });
     }
 

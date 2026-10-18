@@ -529,8 +529,12 @@
     {
         @if (Model.ActiveManagement != null)
         {
+            @* El dashboard de la gestión es solo para administradores: el Supervisor terminaba en la pantalla de error al iniciar sesión. *@
+            var homeTarget = User.IsInRole("Administrator") || User.IsInRole("SuperAdmin")
+                ? $"/Managements/Details?id={Model.ActiveManagement.Id}&ActiveTab=dashboard"
+                : "/LaboratoryOperations";
             <script>
-                window.location.href = '/Managements/Details?id=@Model.ActiveManagement.Id&ActiveTab=dashboard';
+                window.location.href = '@Html.Raw(homeTarget)';
             </script>
         }
         else

@@ -43,7 +43,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 .Include(r => r.CostDetails)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (request == null) return NotFound();
+            // Solo solicitudes de adquisición (antes abría también las L-7 técnicas).
+            if (request == null || request.Type != Models.Enums.RequestType.Purchasing) return NotFound();
 
             AcquisitionRequest = request;
             return Page();

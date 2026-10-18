@@ -22,6 +22,7 @@
 
                 <form method="post" class="needs-validation" novalidate id="unitForm">
                     <div asp-validation-summary="ModelOnly" class="text-danger small mb-3"></div>
+                    <input type="hidden" name="ReturnUrl" value="@Model.SafeReturnUrl" />
 
                     <div class="row">
                         <div class="col-md-6 border-right">
@@ -32,6 +33,7 @@
                                 <input type="hidden" asp-for="Input.EquipmentId" />
                                 <select disabled asp-for="Input.EquipmentId" class="form-control custom-select" asp-items="ViewBag.EquipmentId">
                                 </select>
+                                <span asp-validation-for="Input.EquipmentId" class="text-danger small"></span>
                             </div>
 
                             <div class="row">
@@ -114,10 +116,12 @@
                                 <div class="col-md-6 mb-4">
                                     <label asp-for="Input.CurrentStatus" class="control-label font-weight-bold small uppercase text-muted">Estado Operativo</label>
                                     <select asp-for="Input.CurrentStatus" class="form-control custom-select" asp-items="EnumHelper.FormSelectList<EquipmentStatus>()"></select>
+                                    <span asp-validation-for="Input.CurrentStatus" class="text-danger small"></span>
                                 </div>
                                 <div class="col-md-6 mb-4">
                                     <label asp-for="Input.PhysicalCondition" class="control-label font-weight-bold small uppercase text-muted">Condición Física</label>
                                     <select asp-for="Input.PhysicalCondition" class="form-control custom-select" asp-items="EnumHelper.FormSelectList<PhysicalCondition>()"></select>
+                                    <span asp-validation-for="Input.PhysicalCondition" class="text-danger small"></span>
                                 </div>
                             </div>
 
@@ -133,9 +137,18 @@
                         <button type="submit" class="btn btn-primary px-5 py-2 font-weight-bold shadow-sm btn-rounded font-18">
                             <i class="fas fa-save mr-2"></i> Registrar Unidad Física
                         </button>
-                        <a href="javascript:history.back()" class="btn btn-outline-secondary px-4 py-2 ml-2 font-weight-bold btn-rounded">
-                            <i class="fas fa-times mr-2"></i> Cancelar
-                        </a>
+                        @if (Model.SafeReturnUrl != null)
+                        {
+                            <a href="@Model.SafeReturnUrl" class="btn btn-outline-secondary px-4 py-2 ml-2 font-weight-bold btn-rounded">
+                                <i class="fas fa-times mr-2"></i> Cancelar
+                            </a>
+                        }
+                        else
+                        {
+                            <a href="javascript:history.back()" class="btn btn-outline-secondary px-4 py-2 ml-2 font-weight-bold btn-rounded">
+                                <i class="fas fa-times mr-2"></i> Cancelar
+                            </a>
+                        }
                     </div>
                 </form>
             </div>

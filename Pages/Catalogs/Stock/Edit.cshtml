@@ -184,7 +184,7 @@
                     {
                         <div class="mb-3">
                             <label class="text-muted d-block small uppercase mb-0">Cantidad actual</label>
-                            <span class="font-weight-bold text-dark d-block">@Model.Input.AvailableQuantity.ToString("0.##")</span>
+                            <span class="font-weight-bold text-dark d-block">@((Model.Input.AvailableQuantity ?? 0m).ToString("0.##"))</span>
                         </div>
                         <div class="mb-3">
                             <label class="text-muted d-block small uppercase mb-0">Última actualización</label>

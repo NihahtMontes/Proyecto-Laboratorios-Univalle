@@ -169,6 +169,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
             if (slots == null)
                 ModelState.AddModelError("Input.SlotsJson", "El horario enviado no es válido: vuelva a marcar los periodos.");
 
+            // El estado Eliminado solo se asigna con la acción de baja (antes un POST manual lo aceptaba y el registro desaparecía).
+            if (Input.Status == GeneralStatus.Eliminado)
+            {
+                ModelState.AddModelError("Input.Status", "El estado Eliminado solo se gestiona desde la opción Dar de Baja.");
+            }
+
             if (!ModelState.IsValid)
             {
                 await LoadAuditAsync(groupToUpdate);

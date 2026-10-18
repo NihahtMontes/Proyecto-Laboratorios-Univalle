@@ -1,0 +1,710 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.ConflictosModel
+@using System.Globalization
+@using Proyecto_Laboratorios_Univalle.Services
+@{
+    ViewData["Title"] = "Conflictos de material";
+    ViewData["HidePageTitle"] = true;
+    var grid = Model.Grid;
+    var cultura = CultureInfo.GetCultureInfo("es-ES");
+    var inv = CultureInfo.InvariantCulture;
+    var kindFilter = Model.KindFilter;
+    var selDate = grid?.Selected?.Item.Date.Date;
+    var selectedKey = grid?.Selected?.Item.Key;
+}
+
+@section Styles {
+    <link href="~/css/grilla.css" rel="stylesheet" asp-append-version="true">
+    <link href="~/css/conflictos.css" rel="stylesheet" asp-append-version="true">
+}
+
+<div class="page-breadcrumb cf-noprint">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
+            <h2 class="font-weight-bold text-dark">Conflictos de material</h2>
+            @if (grid != null && grid.SelectedWeekNumber.HasValue)
+            {
+                <div class="text-muted small">Semana @grid.SelectedWeekNumber · @grid.StartDate.ToString("dd/MM", inv)–@grid.EndDate.ToString("dd/MM", inv)</div>
+            }
+            else
+            {
+                <div class="text-muted small">Dónde falta material y cómo resolverlo, semana a semana.</div>
+            }
+        </div>
+        <div class="col-md-4 mt-2 mt-md-0 text-md-right">
+            <a asp-page="./Index" asp-route-managementId="@grid?.Management.Id" class="btn btn-light border btn-rounded btn-sm">
+                <i class="mdi mdi-view-dashboard mr-1"></i> Panel de planificación
+            </a>
+            <a asp-page="./Grilla" asp-route-managementId="@grid?.Management.Id" class="btn btn-light border btn-rounded btn-sm">
+                <i class="mdi mdi-table-large mr-1"></i> Grilla por laboratorio
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    @if (grid == null)
+    {
+        <div class="gr-empty-state">
+            <i class="fas fa-exclamation-triangle gr-empty-state__icon"></i>
+            <h3 class="font-weight-bold text-dark mb-2">No hay gestión académica configurada</h3>
+            <p class="text-muted mb-4">Active una gestión semestral o abra esta pantalla desde una gestión para revisar los conflictos de material.</p>
+            <a asp-page="/Managements/Index" class="btn btn-primary btn-rounded px-4 shadow-sm gr-btn-primary">
+                <i class="fas fa-university mr-2"></i> Ir a Gestiones
+            </a>
+        </div>
+    }
+    else if (grid.WeekOptions.Count == 0)
+    {
+        <div class="gr-empty-state">
+            <i class="far fa-calendar gr-empty-state__icon"></i>
+            <h4 class="font-weight-bold text-dark mb-2">La gestión @grid.Management.Code no tiene semanas académicas</h4>
+            <p class="text-muted mb-4">Genere el calendario académico de la gestión para revisar los conflictos de material.</p>
+            <a asp-page="./CalendarioAcademico" asp-route-managementId="@grid.Management.Id" class="btn btn-outline-primary btn-rounded px-4">
+                <i class="mdi mdi-calendar-month mr-1"></i> Calendario académico
+            </a>
+        </div>
+    }
+    else
+    {
+        var management = grid.Management;
+        var itemsByKey = grid.Items.ToDictionary(i => i.Key);
+
+        <!-- Barra de controles: gestión y semana -->
+        <div class="card border-0 shadow-sm rounded-lg mb-3 cf-noprint">
+            <div class="card-body py-3">
+                <form method="get" id="cf-controls" class="gr-controls">
+                    <div class="gr-controls__field">
+                        <label for="cf-management" class="gr-controls__label">Gestión</label>
+                        <select id="cf-management" name="managementId" class="custom-select custom-select-sm">
+                            @foreach (var m in grid.Managements)
+                            {
+                                <option value="@m.Id" selected="@(m.Id == management.Id)">@m.Code · @m.StatusText@(m.IsCurrent ? " (actual)" : "")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="gr-controls__field">
+                        <span class="gr-controls__label">Semana académica</span>
+                        <div class="d-flex align-items-center">
+                            @if (grid.PreviousWeekNumber.HasValue)
+                            {
+                                <a asp-page="./Conflictos" asp-route-managementId="@management.Id" asp-route-week="@grid.PreviousWeekNumber" asp-route-kind="@kindFilter"
+                                   class="btn btn-outline-secondary btn-sm btn-rounded mr-1" title="Semana anterior" aria-label="Semana anterior">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-outline-secondary btn-sm btn-rounded mr-1" disabled aria-label="Semana anterior">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                            }
+                            <select id="cf-week" name="week" class="custom-select custom-select-sm gr-controls__week" aria-label="Ir a la semana">
+                                @foreach (var w in grid.WeekOptions)
+                                {
+                                    <option value="@w.Number" selected="@(w.Number == grid.SelectedWeekNumber)">Semana @w.Number · @w.RangeText</option>
+                                }
+                            </select>
+                            @if (grid.NextWeekNumber.HasValue)
+                            {
+                                <a asp-page="./Conflictos" asp-route-managementId="@management.Id" asp-route-week="@grid.NextWeekNumber" asp-route-kind="@kindFilter"
+                                   class="btn btn-outline-secondary btn-sm btn-rounded ml-1" title="Semana siguiente" aria-label="Semana siguiente">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-outline-secondary btn-sm btn-rounded ml-1" disabled aria-label="Semana siguiente">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="gr-controls__actions">
+                        <button type="button" class="btn btn-outline-primary btn-rounded btn-sm" id="cf-print">
+                            <i class="fas fa-print mr-1"></i> Imprimir
+                        </button>
+                    </div>
+                    <noscript><button type="submit" class="btn btn-sm btn-secondary">Aplicar</button></noscript>
+                </form>
+            </div>
+        </div>
+
+        <!-- Leyenda / filtro por tipo de conflicto -->
+        <div class="card border-0 shadow-sm rounded-lg mb-3 cf-noprint">
+            <div class="card-body py-3">
+                <div class="d-flex flex-wrap align-items-center cf-legend">
+                    <a asp-page="./Conflictos" asp-route-managementId="@management.Id" asp-route-week="@grid.SelectedWeekNumber"
+                       class="cf-kindchip cf-kindchip--all @(kindFilter == null ? "is-active" : "")" title="Mostrar todos los conflictos de la semana">
+                        <span class="cf-kindchip__swatch cf-kindchip__swatch--all"></span> Todos
+                        <span class="badge badge-secondary badge-pill ml-1">@grid.Counts.Values.Sum()</span>
+                    </a>
+                    @foreach (var t in ConflictTypes.All)
+                    {
+                        var count = grid.Counts.GetValueOrDefault(t.Kind);
+                        <a asp-page="./Conflictos" asp-route-managementId="@management.Id" asp-route-week="@grid.SelectedWeekNumber" asp-route-kind="@t.Kind"
+                           class="cf-kindchip cf-kindchip--@t.Css @(kindFilter == t.Kind ? "is-active" : "")" title="@t.Description">
+                            <span class="cf-kindchip__swatch cf-kindchip__swatch--@t.Css"></span> @t.Label
+                            <span class="badge badge-pill cf-kindchip__count ml-1">@count</span>
+                        </a>
+                    }
+                    <span class="cf-legend__note text-muted small">
+                        <i class="fas fa-info-circle mr-1"></i> Cada artículo en problema aparece en los periodos donde ocurre. Haz clic para ver cómo resolverlo.
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layout: grilla semanal + panel lateral -->
+        <div class="cf-layout">
+            <div class="cf-layout__main">
+                <section class="card border-0 shadow-sm rounded-lg mb-4 cf-sheet" aria-label="Conflictos de la semana @grid.SelectedWeekNumber">
+                    <div class="gr-scroll">
+                        <div class="gr-grid cf-grid" style="grid-template-rows: auto repeat(@grid.Periods.Count, minmax(64px, auto));">
+                            <div class="gr-corner" style="grid-column: 1; grid-row: 1;">Periodo</div>
+
+                            @foreach (var day in grid.Days)
+                            {
+                                var headCss = !day.InManagement ? "gr-dayhead--out" : day.IsSuspended ? "gr-dayhead--suspended" : string.Empty;
+                                var isSelCol = selDate.HasValue && day.Date.Date == selDate.Value;
+                                <div class="gr-dayhead @headCss @(isSelCol ? "cf-dayhead--selected" : string.Empty)"
+                                     style="grid-column: @(day.Weekday + 1); grid-row: 1;"
+                                     data-date="@day.Date.ToString("yyyy-MM-dd", inv)">
+                                    <span class="gr-dayhead__name">@day.Name</span>
+                                    <span class="gr-dayhead__date">@day.Date.ToString("dd/MM", inv)</span>
+                                    @if (!day.InManagement)
+                                    {
+                                        <span class="gr-dayhead__note">Fuera de la gestión</span>
+                                    }
+                                    else if (day.IsSuspended)
+                                    {
+                                        <span class="gr-dayhead__note gr-dayhead__note--suspended" title="@day.Reason">
+                                            <i class="mdi mdi-calendar-remove"></i> Suspendido@(string.IsNullOrWhiteSpace(day.Reason) ? "" : ": " + day.Reason)
+                                        </span>
+                                    }
+                                    <span class="gr-dayhead__note">@day.PracticeCount práctica(s)</span>
+                                    @foreach (var a in day.Actions)
+                                    {
+                                        if (a.Enabled)
+                                        {
+                                            <button type="button" class="btn btn-outline-danger btn-sm btn-rounded cf-day-btn"
+                                                    data-toggle="modal" data-target="#modal-reponer-dia"
+                                                    data-date="@day.Date.ToString("yyyy-MM-dd", inv)"
+                                                    title="Reponer el día @day.Name @day.Date.ToString("dd/MM", inv)">
+                                                <i class="@ConflictosModel.IconClass(a.Icon) mr-1"></i>@a.Label
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-outline-danger btn-sm btn-rounded cf-day-btn" disabled title="@a.DisabledReason">
+                                                <i class="@ConflictosModel.IconClass(a.Icon) mr-1"></i>@a.Label
+                                            </button>
+                                        }
+                                    }
+                                </div>
+                            }
+
+                            @foreach (var period in grid.Periods)
+                            {
+                                var row = period.Order + 1;
+                                <div class="gr-period" style="grid-column: 1; grid-row: @row;">
+                                    <span class="gr-period__badge" aria-hidden="true">@period.Order</span>
+                                    <span class="gr-period__time">@period.Label</span>
+                                </div>
+
+                                @foreach (var day in grid.Days)
+                                {
+                                    var cellCss = !day.InManagement ? "gr-cell--out" : day.IsSuspended ? "gr-cell--suspended" : string.Empty;
+                                    var isSelCol = selDate.HasValue && day.Date.Date == selDate.Value;
+                                    var marks = day.Cells.GetValueOrDefault(period.Order) ?? (IReadOnlyList<ConflictCellMark>)Array.Empty<ConflictCellMark>();
+                                    <div class="gr-cell @cellCss @(isSelCol ? "cf-cell--selected" : string.Empty)"
+                                         style="grid-column: @(day.Weekday + 1); grid-row: @row;">
+                                        @foreach (var m in marks)
+                                        {
+                                            var type = ConflictTypes.Of(m.Kind);
+                                            var isSel = selectedKey != null && m.Key == selectedKey;
+                                            var articleId = itemsByKey.TryGetValue(m.Key, out var item) ? item.ArticleId : 0;
+                                            <a asp-page="./Conflictos"
+                                               asp-route-managementId="@management.Id"
+                                               asp-route-week="@grid.SelectedWeekNumber"
+                                               asp-route-kind="@kindFilter"
+                                               asp-route-selDate="@day.Date.ToString("yyyy-MM-dd", inv)"
+                                               asp-route-articleId="@articleId"
+                                               class="cf-chip cf-chip--@type.Css @(isSel ? "is-selected" : selectedKey != null ? "is-dimmed" : "")"
+                                               title="@($"{m.Tag} · {m.ArticleName} · {type.Label} · {m.Load.ToString("0.##", cultura)} pedidos / {m.Available?.ToString("0.##", cultura) ?? "—"} en stock")">
+                                                <strong class="cf-chip__tag">@m.Tag</strong>
+                                                <span class="cf-chip__name">@m.ArticleName</span>
+                                                <span class="cf-chip__qty">@m.Load.ToString("0.##", cultura)/@(m.Available?.ToString("0.##", cultura) ?? "—")</span>
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Panel lateral -->
+            <aside class="cf-layout__side cf-noprint" aria-label="Detalle de conflictos">
+                <div class="card border-0 shadow-sm rounded-lg cf-side-panel">
+                    <div class="card-body p-3">
+                        @if (grid.Selected is ConflictPanel p)
+                        {
+                            var type = p.Type;
+                            <!-- Encabezado del detalle -->
+                            <div class="cf-panel-head cf-panel-head--@type.Css">
+                                <i class="fas @type.Icon cf-panel-head__icon" aria-hidden="true"></i>
+                                <div class="flex-grow-1 min-width-0">
+                                    <div class="d-flex align-items-center flex-wrap">
+                                        <span class="cf-panel-head__label">@type.Label</span>
+                                        <span class="cf-tag cf-tag--@type.Css ml-2">@p.Item.Tag</span>
+                                    </div>
+                                    <strong class="d-block text-dark mt-1">@p.Item.ArticleName</strong>
+                                    <small class="text-muted">@p.Item.Date.ToString("D", cultura)</small>
+                                </div>
+                                <a asp-page="./Conflictos" asp-route-managementId="@management.Id" asp-route-week="@grid.SelectedWeekNumber" asp-route-kind="@kindFilter"
+                                   class="cf-close" title="Cerrar detalle" aria-label="Cerrar detalle"><i class="fas fa-times"></i></a>
+                            </div>
+                            <p class="small text-muted mb-3">@type.Description</p>
+
+                            <!-- Recomendación -->
+                            <div class="cf-advice">
+                                <div class="cf-block-title"><i class="fas fa-lightbulb mr-1"></i> Recomendación</div>
+                                <strong class="d-block text-dark">@p.Advice.Title</strong>
+                                <p class="small mb-1">@p.Advice.Summary</p>
+                                @if (p.Advice.Actions.Count > 0)
+                                {
+                                    <ul class="small mb-0 pl-3">
+                                        @foreach (var accion in p.Advice.Actions)
+                                        {
+                                            <li>@accion</li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+
+                            <!-- Métricas compactas -->
+                            <div class="cf-metrics">
+                                <div class="cf-metric">
+                                    <span class="cf-metric__label">Stock</span>
+                                    <span class="cf-metric__value">@(p.Item.Available?.ToString("0.##", cultura) ?? "Sin registro")</span>
+                                </div>
+                                <div class="cf-metric">
+                                    <span class="cf-metric__label">Pico a la vez</span>
+                                    <span class="cf-metric__value">@p.Item.PeakRequested.ToString("0.##", cultura)</span>
+                                    <small class="text-muted d-block">@p.Item.PeakText</small>
+                                </div>
+                                <div class="cf-metric">
+                                    <span class="cf-metric__label">Faltan</span>
+                                    <span class="cf-metric__value @(p.Item.Shortage > 0 ? "text-danger" : "text-success")">@p.Item.Shortage.ToString("0.##", cultura)</span>
+                                </div>
+                            </div>
+                            @if (p.Stock.Source == StockSource.EquipmentUnits)
+                            {
+                                <div class="small text-muted cf-stock-break">
+                                    <div><i class="fas fa-layer-group mr-1"></i> Disponibles: @p.Stock.Available?.ToString("0.##", cultura)</div>
+                                    <div><i class="fas fa-hand-holding mr-1"></i> Prestadas: @p.Stock.OnLoan</div>
+                                    <div><i class="fas fa-tools mr-1"></i> Mantenimiento: @p.Stock.InMaintenance</div>
+                                    <div><i class="fas fa-ban mr-1"></i> Fuera de servicio: @p.Stock.OutOfService</div>
+                                </div>
+                            }
+
+                            <!-- Acciones sobre el conflicto -->
+                            @if (p.Actions.Count > 0)
+                            {
+                                <div class="cf-actions">
+                                    <div class="cf-block-title"><i class="fas fa-bolt mr-1"></i> Acciones del conflicto</div>
+                                    <div class="d-flex flex-wrap">
+                                        @foreach (var a in p.Actions)
+                                        {
+                                            if (a.Enabled && a.Url != null)
+                                            {
+                                                <a href="@a.Url" class="btn btn-sm @a.Style btn-rounded font-weight-bold">
+                                                    <i class="@ConflictosModel.IconClass(a.Icon) mr-1"></i>@a.Label
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <button type="button" class="btn btn-sm @a.Style btn-rounded font-weight-bold" disabled title="@a.DisabledReason">
+                                                    <i class="@ConflictosModel.IconClass(a.Icon) mr-1"></i>@a.Label
+                                                </button>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <!-- Mini-grilla: periodos x prácticas -->
+                            <div class="cf-mini-wrap">
+                                <div class="cf-block-title"><i class="mdi mdi-table-large mr-1"></i> Periodos y prácticas</div>
+                                @if (p.Loads.Count == 0)
+                                {
+                                    <div class="small text-muted">La demanda del día no cubre ningún periodo académico.</div>
+                                }
+                                else
+                                {
+                                    <div class="cf-mini" style="grid-template-columns: minmax(112px, 1.3fr) repeat(@p.Loads.Count, minmax(0, 1fr));">
+                                        <div class="cf-mini__head">Práctica</div>
+                                        @foreach (var load in p.Loads)
+                                        {
+                                            <div class="cf-mini__head" title="Periodo @load.Order · @load.Label">P@load.Order</div>
+                                        }
+
+                                        <div class="cf-mini__label">Stock: @(p.Item.Available?.ToString("0.##", cultura) ?? "—")</div>
+                                        @foreach (var load in p.Loads)
+                                        {
+                                            <div class="cf-mini__cell cf-mini__cell--load @(load.Over ? "is-over" : "")" title="@load.Label">
+                                                @load.Load.ToString("0.##", cultura)
+                                            </div>
+                                        }
+
+                                        @foreach (var rowP in p.Practices)
+                                        {
+                                            <div class="cf-mini__practice">
+                                                <strong class="cf-mini__code">@rowP.Practice.Code</strong>
+                                                <small class="text-muted d-block text-truncate" title="@(rowP.Practice.GroupName ?? "—") · @(rowP.Practice.LaboratoryCode ?? "—")">
+                                                    @(rowP.Practice.GroupName ?? "—") · @(rowP.Practice.LaboratoryCode ?? "—")
+                                                </small>
+                                                <span class="small">@rowP.Quantity.ToString("0.##", cultura) pedido(s)</span>
+                                                <span class="badge badge-light border cf-mini__status">@rowP.StatusLabel</span>
+                                                @if (rowP.SuggestedMove)
+                                                {
+                                                    <span class="badge badge-warning text-white">Mover sugerido</span>
+                                                }
+                                            </div>
+                                            @foreach (var load in p.Loads)
+                                            {
+                                                var cruza = rowP.PeriodOrders.Contains(load.Order);
+                                                if (cruza && rowP.Involved)
+                                                {
+                                                    <div class="cf-mini__cell cf-mini__cell--@type.Css" title="@rowP.Practice.Code pide aquí"></div>
+                                                }
+                                                else
+                                                {
+                                                    <div class="cf-mini__cell cf-mini__cell--off" title="@rowP.Practice.Code · no se cruza"></div>
+                                                }
+                                            }
+                                            <div class="cf-mini__actions">
+                                                @foreach (var a in rowP.Actions)
+                                                {
+                                                    if (a.Enabled && a.Url != null)
+                                                    {
+                                                        <a href="@a.Url" class="btn btn-sm @a.Style btn-rounded">
+                                                            <i class="@ConflictosModel.IconClass(a.Icon) mr-1"></i>@a.Label
+                                                        </a>
+                                                    }
+                                                    else if (a.Enabled && a.Key == "reduce")
+                                                    {
+                                                        <button type="button" class="btn btn-sm @a.Style btn-rounded js-cf-reduce"
+                                                                data-planning-id="@rowP.Practice.Id"
+                                                                data-article-id="@p.Item.ArticleId"
+                                                                data-code="@rowP.Practice.Code"
+                                                                data-article="@p.Item.ArticleName"
+                                                                data-max="@rowP.ReducibleQuantity?.ToString(CultureInfo.InvariantCulture)">
+                                                            <i class="@ConflictosModel.IconClass(a.Icon) mr-1"></i>@a.Label
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button type="button" class="btn btn-sm @a.Style btn-rounded" disabled title="@a.DisabledReason">
+                                                            <i class="@ConflictosModel.IconClass(a.Icon) mr-1"></i>@a.Label
+                                                        </button>
+                                                    }
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <!-- Lista de conflictos de la semana, agrupada por tipo -->
+                            <h5 class="font-weight-bold text-dark mb-3">
+                                <i class="fas fa-exclamation-triangle text-danger mr-1"></i> Conflictos de la semana
+                            </h5>
+                            @if (grid.Items.Count == 0)
+                            {
+                                <div class="cf-empty-ok">
+                                    <i class="fas fa-check-circle mr-1"></i> Sin conflictos de material esta semana
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var t in ConflictTypes.All)
+                                {
+                                    var grupo = grid.Items.Where(i => i.Kind == t.Kind).ToList();
+                                    if (grupo.Count == 0)
+                                    {
+                                        continue;
+                                    }
+                                    <div class="cf-group">
+                                        <div class="cf-group__title">
+                                            <span class="cf-kindchip__swatch cf-kindchip__swatch--@t.Css"></span>
+                                            @t.Label <span class="badge badge-pill cf-kindchip__count">@grupo.Count</span>
+                                        </div>
+                                        @foreach (var aviso in grupo)
+                                        {
+                                            <a asp-page="./Conflictos"
+                                               asp-route-managementId="@management.Id"
+                                               asp-route-week="@grid.SelectedWeekNumber"
+                                               asp-route-kind="@kindFilter"
+                                               asp-route-selDate="@aviso.Date.ToString("yyyy-MM-dd", inv)"
+                                               asp-route-articleId="@aviso.ArticleId"
+                                               class="cf-item" title="Ver cómo resolver @aviso.Tag · @aviso.ArticleName">
+                                                <span class="cf-tag cf-tag--@t.Css">@aviso.Tag</span>
+                                                <span class="cf-item__main">
+                                                    <strong class="d-block text-dark text-truncate">@aviso.ArticleName</strong>
+                                                    <small class="text-muted">@aviso.Date.ToString("ddd dd/MM", cultura) · @ConflictosModel.LineaBreve(aviso, cultura)</small>
+                                                </span>
+                                                <i class="fas fa-chevron-right text-muted small"></i>
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            }
+                        }
+                    </div>
+                </div>
+            </aside>
+        </div>
+    }
+</div>
+
+<!-- Formulario oculto de "Reducir cantidad" (lo llena SweetAlert y se envía por JS) -->
+<form method="post" asp-page-handler="ReduceQuantity" id="cf-reduce-form" style="display:none">
+    <input type="hidden" name="planningId" />
+    <input type="hidden" name="articleId" />
+    <input type="hidden" name="newQuantity" />
+    <input type="hidden" name="returnTo" value="@Model.CurrentUrl" />
+</form>
+
+<!-- Modal "Reponer día": fecha + motivo + vista previa -->
+@if (Model.CanRecover && grid != null)
+{
+    <div class="modal fade" id="modal-reponer-dia" tabindex="-1" role="dialog" aria-labelledby="modal-reponer-titulo" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <form method="post" asp-page-handler="RecoverDay" id="form-recover-day"
+                  data-management-id="@grid.Management.Id" class="modal-content border-0 shadow-lg rounded-lg">
+                <div class="modal-header" style="background: linear-gradient(135deg, #fff8e6, #fffdf5); border-bottom: 1px solid #f3ecd4;">
+                    <h5 class="modal-title font-weight-bold text-dark" id="modal-reponer-titulo">
+                        <i class="mdi mdi-backup-restore text-warning mr-2"></i>Reponer día
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="managementId" value="@grid.Management.Id" />
+                    <p class="small text-muted mb-3">
+                        Suspende el día elegido del calendario académico y deja sus planificaciones pendientes de reubicación en la grilla.
+                    </p>
+                    <div class="form-group">
+                        <label for="recovery-date" class="small font-weight-bold">FECHA <span class="text-danger">*</span></label>
+                        <input type="date" id="recovery-date" name="date" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="recovery-reason" class="small font-weight-bold">MOTIVO <span class="text-danger">*</span></label>
+                        <textarea id="recovery-reason" name="reason" class="form-control" rows="3" maxlength="200" required
+                                  placeholder="Ej. Feriado institucional, evento académico..."></textarea>
+                        <small class="text-muted">Obligatorio, máximo 200 caracteres.</small>
+                    </div>
+                    <div id="recovery-preview" class="cf-recovery-preview" aria-live="polite">
+                        <div class="small text-muted"><i class="far fa-calendar mr-1"></i> Elija una fecha para ver los laboratorios afectados.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary btn-rounded font-weight-bold" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" id="recovery-confirm" class="btn btn-warning btn-rounded font-weight-bold px-4" disabled>
+                        <i class="mdi mdi-backup-restore mr-1"></i>Suspender y reponer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            // ── Controles de gestión/semana: enviar al cambiar ──
+            var controls = document.getElementById('cf-controls');
+            if (controls) {
+                ['cf-management', 'cf-week'].forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (el) el.addEventListener('change', function () { controls.submit(); });
+                });
+                var printBtn = document.getElementById('cf-print');
+                if (printBtn) printBtn.addEventListener('click', function () { window.print(); });
+            }
+
+            // ── "Reducir cantidad": SweetAlert v7 con input numérico ──
+            var reduceForm = document.getElementById('cf-reduce-form');
+            document.querySelectorAll('.js-cf-reduce').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    if (typeof Swal === 'undefined') return;
+                    var max = btn.getAttribute('data-max');
+                    // El título de SweetAlert2 v7 es HTML: el nombre del artículo se escapa para que no pueda inyectar marcado.
+                    var escapeTitle = function (value) {
+                        return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+                            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                        });
+                    };
+                    Swal.fire({
+                        title: 'Reducir cantidad de ' + escapeTitle(btn.getAttribute('data-article')) + ' en ' + escapeTitle(btn.getAttribute('data-code')),
+                        input: 'number',
+                        inputValue: max,
+                        inputAttributes: { min: '0.01', step: '0.01', max: max || '' },
+                        showCancelButton: true,
+                        confirmButtonText: 'Reducir',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#7460ee'
+                    }).then(function (result) {
+                        if (!result || !(result.value || result.isConfirmed === true)) return;
+                        var cantidad = String(result.value == null ? '' : result.value).trim();
+                        if (!cantidad || isNaN(parseFloat(cantidad))) {
+                            Swal.fire({
+                                type: 'warning',
+                                title: 'Cantidad no válida',
+                                text: 'Ingrese la cantidad que quedará pedida.',
+                                confirmButtonColor: '#7460ee'
+                            });
+                            return;
+                        }
+                        reduceForm.querySelector('[name="planningId"]').value = btn.getAttribute('data-planning-id');
+                        reduceForm.querySelector('[name="articleId"]').value = btn.getAttribute('data-article-id');
+                        reduceForm.querySelector('[name="newQuantity"]').value = cantidad;
+                        HTMLFormElement.prototype.submit.call(reduceForm);
+                    });
+                });
+            });
+
+            // ── Modal "Reponer día": vista previa por fetch + confirmación SweetAlert v7 ──
+            var recoveryForm = document.getElementById('form-recover-day');
+            if (recoveryForm) {
+                var dateInput = document.getElementById('recovery-date');
+                var reasonInput = document.getElementById('recovery-reason');
+                var previewBox = document.getElementById('recovery-preview');
+                var confirmButton = document.getElementById('recovery-confirm');
+                var previewDefault = '<div class="small text-muted"><i class="far fa-calendar mr-1"></i> Elija una fecha para ver los laboratorios afectados.</div>';
+                var lastPreview = null;
+
+                function esc(value) {
+                    return String(value == null ? '' : value)
+                        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                }
+
+                function renderPreview(p) {
+                    var html = '<div class="font-weight-bold small text-dark"><i class="far fa-calendar-check mr-1"></i> '
+                        + esc(p.message || (p.ok ? 'Fecha válida' : 'No se puede reponer esta fecha')) + '</div>';
+                    if (p.ok) {
+                        html += '<div class="small mt-1">Total a suspender: <strong>' + esc(p.total) + '</strong> planificación(es).</div>';
+                        if (p.labs && p.labs.length) {
+                            html += '<div class="mt-2">';
+                            p.labs.forEach(function (lab) {
+                                html += '<span class="badge badge-light border text-dark mr-1 mb-1"><i class="fas fa-flask mr-1 text-muted"></i>'
+                                    + esc(lab.label) + ' · ' + esc(lab.count) + '</span>';
+                            });
+                            html += '</div>';
+                        }
+                    } else if (p.blockers && p.blockers.length) {
+                        html += '<div class="mt-2">';
+                        p.blockers.forEach(function (b) {
+                            html += '<div class="cf-recovery-preview__blocker"><i class="mdi mdi-close-circle"></i><span>'
+                                + esc(b.code) + ' · ' + esc(b.practice) + ' — ' + esc(b.statusLabel) + '</span></div>';
+                        });
+                        html += '</div>';
+                    }
+                    previewBox.innerHTML = html;
+                }
+
+                function loadPreview() {
+                    var date = dateInput.value;
+                    if (!date) {
+                        lastPreview = null;
+                        confirmButton.disabled = true;
+                        previewBox.innerHTML = previewDefault;
+                        return;
+                    }
+                    previewBox.innerHTML = '<div class="small text-muted"><i class="fas fa-spinner fa-spin mr-1"></i> Consultando el calendario…</div>';
+                    var url = new URL(window.location.href);
+                    url.search = '';
+                    url.searchParams.set('handler', 'RecoveryPreview');
+                    url.searchParams.set('managementId', recoveryForm.getAttribute('data-management-id'));
+                    url.searchParams.set('date', date);
+                    fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                        .then(function (response) {
+                            if (!response.ok) throw new Error('No se pudo consultar la vista previa (' + response.status + ').');
+                            return response.json();
+                        })
+                        .then(function (p) {
+                            lastPreview = p;
+                            renderPreview(p);
+                            confirmButton.disabled = !p.ok;
+                        })
+                        .catch(function (error) {
+                            lastPreview = null;
+                            confirmButton.disabled = true;
+                            previewBox.innerHTML = '<div class="small text-danger"><i class="mdi mdi-close-circle mr-1"></i> '
+                                + esc(error.message) + '</div>';
+                        });
+                }
+
+                dateInput.addEventListener('change', loadPreview);
+
+                // Al abrir: con fecha del día pulsado carga la vista previa; sin ella, se limpia.
+                $(recoveryForm).closest('.modal').on('show.bs.modal', function (e) {
+                    var trigger = e.relatedTarget;
+                    var triggerDate = trigger ? trigger.getAttribute('data-date') : null;
+                    reasonInput.value = '';
+                    lastPreview = null;
+                    confirmButton.disabled = true;
+                    if (triggerDate) {
+                        dateInput.value = triggerDate;
+                        loadPreview();
+                    } else {
+                        dateInput.value = '';
+                        previewBox.innerHTML = previewDefault;
+                    }
+                });
+
+                recoveryForm.addEventListener('submit', function (e) {
+                    if (recoveryForm.dataset.confirmed === '1') return;
+                    e.preventDefault();
+                    if (!recoveryForm.reportValidity()) return;
+                    if (!lastPreview || !lastPreview.ok) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: 'Fecha no disponible',
+                                text: lastPreview && lastPreview.message ? lastPreview.message : 'Elija una fecha válida del calendario académico.',
+                                type: 'warning',
+                                confirmButtonColor: '#7460ee'
+                            });
+                        }
+                        return;
+                    }
+                    var send = function () {
+                        recoveryForm.dataset.confirmed = '1';
+                        HTMLFormElement.prototype.submit.call(recoveryForm);
+                    };
+                    if (typeof Swal === 'undefined') { send(); return; }
+                    Swal.fire({
+                        title: '¿Suspender y reponer el día?',
+                        text: lastPreview.message + ' Las planificaciones quedarán pendientes de reubicación.',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#f6c343',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, suspender y reponer',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) send();
+                    });
+                });
+            }
+        })();
+    </script>
+}

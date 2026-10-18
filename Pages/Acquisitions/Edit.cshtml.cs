@@ -160,13 +160,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 .AsTracking()
                 .FirstOrDefaultAsync(m => m.Id == Input.Id);
 
-            if (requestToUpdate == null) return NotFound();
+            // Solo solicitudes de adquisición (antes el POST aceptaba el Id de una L-7 técnica aunque la GET diera 404).
+            if (requestToUpdate == null || requestToUpdate.Type != RequestType.Purchasing) return NotFound();
 
             var currentUser = await _userManager.GetUserAsync(User);
 
+            // El estado (aprobación) solo lo cambia un administrador: el Supervisor podía aprobar L-12 aunque no pueda crearlas.
+            var canChangeStatus = User.IsInRole("Administrator") || User.IsInRole("SuperAdmin");
+
             requestToUpdate.Description = Input.Description;
             requestToUpdate.Priority = Input.Priority;
-            requestToUpdate.Status = Input.Status;
+            if (canChangeStatus) requestToUpdate.Status = Input.Status;
             requestToUpdate.Observations = Input.Observations;
             requestToUpdate.InvestmentCode = Input.InvestmentCode;
             requestToUpdate.CostCenter = Input.CostCenter;

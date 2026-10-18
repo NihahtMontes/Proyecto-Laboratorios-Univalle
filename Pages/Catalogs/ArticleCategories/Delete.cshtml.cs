@@ -62,6 +62,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
                 return RedirectToPage("./Delete", new { id });
             }
 
+            // Idempotente: una segunda baja ya no vuelve a renombrar el código (quedaba CAT-0000N-DEL-…-DEL-… y luego no se podía dar de baja).
+            if (category.Status == GeneralStatus.Eliminado)
+            {
+                TempData.Warning($"La categoría '{category.Name}' ya se encuentra dada de baja.");
+                return RedirectToPage("./Index");
+            }
+
             // Soft delete
             category.Status = GeneralStatus.Eliminado;
             category.Code = string.IsNullOrWhiteSpace(category.Code)

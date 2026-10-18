@@ -181,6 +181,14 @@
                     @* INTERPRETADOR GLOBAL DE NOTIFICACIONES SWEETALERT2 *@
                     <script>
                             $(function () {
+                                // SweetAlert2 v7 interpreta `title` como HTML: los mensajes llevan nombres escritos por usuarios
+                                // (p. ej. "País '<img onerror=...>' registrado"), así que se escapan antes de mostrarlos.
+                                const escapeHtml = function (value) {
+                                    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+                                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                                    });
+                                };
+
                                 const Toast = Swal.mixin({
                                     toast: true,
                                     position: 'top-end',
@@ -206,7 +214,8 @@
                                         <text>
                                             Toast.fire({
                                                 icon: 'success',
-                                                title: @Html.Raw(successMessageJson)
+                                                type: 'success',
+                                                title: escapeHtml(@Html.Raw(successMessageJson))
                                             });
                                         </text>
                                 }
@@ -216,6 +225,7 @@
                                         <text>
                                             Swal.fire({
                                                 icon: 'error',
+                                                type: 'error',
                                                 title: '¡Ups!',
                                                 text: @Html.Raw(errorMessageJson),
                                                 confirmButtonColor: '#2962ff'
@@ -228,6 +238,7 @@
                                         <text>
                                             Swal.fire({
                                                 icon: 'warning',
+                                                type: 'warning',
                                                 title: 'Atención',
                                                 text: @Html.Raw(warningMessageJson),
                                                 confirmButtonColor: '#ffc107'
@@ -240,7 +251,8 @@
                                         <text>
                                             Toast.fire({
                                                 icon: 'info',
-                                                title: @Html.Raw(infoMessageJson)
+                                                type: 'info',
+                                                title: escapeHtml(@Html.Raw(infoMessageJson))
                                             });
                                         </text>
                                 }

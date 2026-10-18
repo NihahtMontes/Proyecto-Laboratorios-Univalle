@@ -213,6 +213,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             decimal totalCosts = Input.CostDetails?.Sum(d => d.Quantity * d.UnitPrice) ?? 0;
             Input.ActualCost = totalCosts;
 
+            // Normalizar tareas y recalcular el avance en el servidor antes de validar (QA R-02).
+            Input.Tasks = (Input.Tasks ?? new())
+                .Where(t => !string.IsNullOrWhiteSpace(t.Description))
+                .ToList();
+            Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
+
             if (Input.Status == MaintenanceStatus.Completed)
             {
                 if (totalCosts <= 0)
@@ -223,6 +229,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     ModelState.AddModelError("Input.Recommendations", "Para estado Completado, las Recomendaciones Técnicas son obligatorias.");
                 if (string.IsNullOrWhiteSpace(Input.Observations))
                     ModelState.AddModelError("Input.Observations", "Para estado Completado, las Observaciones Internas son obligatorias.");
+                if (Input.CompletionPercentage != 100 || !Input.Tasks.Any(t => t.IsCompleted))
+                    ModelState.AddModelError("Input.CompletionPercentage",
+                        "Para marcar el mantenimiento como Completado, el avance debe estar al 100% y debe haber al menos una tarea completada.");
             }
 
             if (!ModelState.IsValid)
@@ -274,12 +283,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             maintenanceDB.ActualCost = Input.ActualCost;
 
             // --- GUARDAR LOS DATOS DE CHECKBOXES EN LA BD ---
-            // Normalizar y sincronizar tareas dinámicas
-            Input.Tasks = (Input.Tasks ?? new())
-                .Where(t => !string.IsNullOrWhiteSpace(t.Description))
-                .ToList();
-            Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
-
+            // Las tareas ya fueron normalizadas antes de la validación.
             maintenanceDB.CompletionPercentage = Input.CompletionPercentage;
             UpdateLegacySteps(maintenanceDB, Input.Tasks);
             // ------------------------------------------------
@@ -335,7 +339,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
                     if (plan != null)
                     {
-                        if (maintenanceDB.Status == MaintenanceStatus.Completed && plan.CurrentPhase == WizardPhase.Maintenance)
+                        // Guarda de fase (QA R-02): si la fase del plan ya pasó de L-8, se
+                        // permiten los cambios de datos del mantenimiento pero el plan NO se toca.
+                        var phaseError = WizardPhaseGuard.Validate(plan, WizardPhase.Maintenance);
+                        if (phaseError != null)
+                        {
+                            TempData.Warning("Los datos del mantenimiento se actualizaron, pero el plan ya avanzó de fase y no fue modificado. " + phaseError);
+                        }
+                        else if (maintenanceDB.Status == MaintenanceStatus.Completed)
                         {
                             plan.CurrentPhase = WizardPhase.Exit;
                             plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
@@ -474,7 +485,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 }
             }
 
-            // Marcar plan como borrador
+            // Marcar plan como borrador (solo si el plan sigue en la fase L-8, QA R-02)
             if (ManagementPlanId.HasValue)
             {
                 var plan = await _context.ManagementPlans
@@ -482,11 +493,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
                 if (plan != null)
                 {
-                    plan.IsDraft = true;
-                    plan.DraftPhase = WizardPhase.Maintenance;
-                    plan.DraftSavedAt = DateTime.UtcNow;
-                    plan.DraftSummary = $"Borrador L-8 guardado al {Input.CompletionPercentage}% de avance técnico.";
-                    plan.LastModifiedDate = DateTime.UtcNow;
+                    var phaseError = WizardPhaseGuard.Validate(plan, WizardPhase.Maintenance);
+                    if (phaseError == null)
+                    {
+                        plan.IsDraft = true;
+                        plan.DraftPhase = WizardPhase.Maintenance;
+                        plan.DraftSavedAt = DateTime.UtcNow;
+                        plan.DraftSummary = $"Borrador L-8 guardado al {Input.CompletionPercentage}% de avance técnico.";
+                        plan.LastModifiedDate = DateTime.UtcNow;
+                    }
+                    else
+                    {
+                        TempData.Warning("El borrador del mantenimiento se guardó, pero el plan ya avanzó de fase y no fue modificado. " + phaseError);
+                    }
                 }
             }
 

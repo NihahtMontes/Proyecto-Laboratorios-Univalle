@@ -122,7 +122,14 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="small">@(item.ServiceType.HasValue ? Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetDisplayName(item.ServiceType.Value) : "—")</span>
+                                            @if (item.ServiceType.HasValue)
+                                            {
+                                                <span class="small">@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetDisplayName(item.ServiceType.Value)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="small text-muted font-italic" title="El archivo del cliente indica 'Por confirmar'">Por confirmar</span>
+                                            }
                                         </td>
                                         <td>
                                             <div class="small font-weight-bold">@(item.ResponsiblePerson?.FullName ?? "—")</div>
@@ -146,7 +153,7 @@
                                             }
                                             else
                                             {
-                                                <span class="text-muted">—</span>
+                                                <span class="small text-muted font-italic" title="El archivo del cliente indica 'Por confirmar'">Por confirmar</span>
                                             }
                                         </td>
                                         <td class="text-center">

@@ -227,6 +227,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 TempData.Success($"La Gestion Correctiva {code} ha sido creada correctamente. Lista para recibir fallas criticas.{handoffMessage}");
                 return RedirectToPage("./Index", new { type = Input.Type.ToString() });
             }
+            catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 } sqlError)
+            {
+                // Antes cualquier violación de unicidad terminaba en el mensaje genérico, sin decir qué choca.
+                _logger.LogWarning(ex, "Unicidad al crear gestion {ManagementType} {Year}-{Semester}", Input.Type, Input.Year, Input.Semester);
+                var attemptedCode = BuildManagementCode(Input.Type, Input.Year, Input.Semester);
+                ModelState.AddModelError(string.Empty,
+                    sqlError.Message.Contains("IX_Managements_Code", StringComparison.OrdinalIgnoreCase)
+                        ? $"Ya existe una gestión con el código {attemptedCode}. Las gestiones importadas como «Por confirmar» ocupan los códigos AAAA-S: elija otro año o semestre."
+                        : "Ya hay otra gestión activa en el sistema. Ciérrela o déjela inactiva antes de crear una nueva gestión activa.");
+                LoadFaculties();
+                return Page();
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al crear gestion {ManagementType} {Year}-{Semester}", Input.Type, Input.Year, Input.Semester);

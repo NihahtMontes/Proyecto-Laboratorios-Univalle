@@ -113,6 +113,9 @@
                             <a asp-page="./Grilla" asp-route-managementId="@management.Id" class="btn btn-outline-primary btn-rounded font-weight-bold px-4">
                                 <i class="mdi mdi-table-large mr-1"></i> Grilla por laboratorio
                             </a>
+                            <a asp-page="./Conflictos" asp-route-managementId="@management.Id" class="btn btn-outline-danger btn-rounded font-weight-bold px-4">
+                                <i class="fas fa-exclamation-triangle mr-1"></i> Conflictos de material
+                            </a>
                             <a asp-page="./Planificaciones" asp-route-managementId="@management.Id" class="btn btn-outline-primary btn-rounded font-weight-bold px-4">
                                 <i class="fas fa-list mr-1"></i> Planificaciones
                             </a>
@@ -219,9 +222,19 @@
                                 {
                                     <span class="badge badge-warning ml-1">@Model.CurrentWeek.RotationCount rotación(es)</span>
                                 }
+                                @if (Model.CurrentWeek.NoStockCount > 0)
+                                {
+                                    <span class="badge badge-secondary ml-1">@Model.CurrentWeek.NoStockCount sin stock</span>
+                                }
+                                <button type="button" class="btn btn-link text-muted p-0 ml-1 align-middle pn-info-btn"
+                                        data-toggle="popover" data-trigger="focus" data-html="true" tabindex="0"
+                                        title="Tipos de aviso de material"
+                                        data-content='<strong>Conflicto de horario:</strong> varias prácticas a la vez piden más que el stock.<br /><strong>Stock insuficiente:</strong> una práctica sola pide más que el stock.<br /><strong>Rotación:</strong> alcanza si el material pasa de una práctica a otra.<br /><strong>Sin stock:</strong> el artículo no tiene existencias registradas.'>
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
                             </div>
-                            var issueItems = Model.CurrentWeek.Issues.Take(6).ToList();
-                            @if (issueItems.Count == 0)
+                            var noticeItems = Model.CurrentWeek.Notices.ToList();
+                            @if (noticeItems.Count == 0)
                             {
                                 <div class="text-success small pn-empty">
                                     <i class="fas fa-check-circle mr-1"></i> Sin conflictos de material esta semana
@@ -230,30 +243,47 @@
                             else
                             {
                                 <ul class="list-unstyled mb-0 pn-list">
-                                    @foreach (var issue in issueItems)
+                                    @foreach (var issue in noticeItems)
                                     {
-                                        var firstPracticeId = issue.Practices.FirstOrDefault()?.PracticeId ?? 0;
+                                        var kind = issue.Kind;
+                                        var iconClass = kind == ConflictKind.Rotation ? "fa-sync-alt text-warning"
+                                            : kind == ConflictKind.NoStock ? "fa-box-open text-secondary"
+                                            : "fa-exclamation-circle text-danger";
+                                        string linea2;
+                                        if (kind == ConflictKind.Overlap)
+                                        {
+                                            linea2 = $"Conflicto de horario · faltan {issue.Shortage.ToString("0.##")} · {issue.PeakText}";
+                                        }
+                                        else if (kind == ConflictKind.Shortage)
+                                        {
+                                            var mayor = issue.Practices.OrderByDescending(p => p.Quantity).First();
+                                            var codigoMayor = Model.CurrentWeek.Practices.FirstOrDefault(x => x.Id == mayor.PracticeId)?.Code ?? "—";
+                                            linea2 = $"Stock insuficiente · {codigoMayor} pide {mayor.Quantity.ToString("0.##")} · hay {issue.Stock.Available?.ToString("0.##") ?? "—"}";
+                                        }
+                                        else if (kind == ConflictKind.Rotation)
+                                        {
+                                            linea2 = $"Rotación · alcanza turnando {issue.Practices.Count} prácticas";
+                                        }
+                                        else
+                                        {
+                                            linea2 = "Sin stock registrado";
+                                        }
                                         <li class="pn-list__item">
-                                            <a asp-page="./Disponibilidad" asp-route-planId="@firstPracticeId" class="d-flex align-items-start text-dark pn-link">
-                                                <i class="fas @(issue.State == DemandState.Conflict ? "fa-exclamation-circle text-danger" : "fa-sync-alt text-warning") mt-1"></i>
+                                            <a asp-page="./Conflictos"
+                                               asp-route-selDate="@issue.Date.ToString("yyyy-MM-dd")"
+                                               asp-route-articleId="@issue.ArticleId"
+                                               class="d-flex align-items-start text-dark pn-link">
+                                                <i class="fas @iconClass mt-1"></i>
                                                 <div class="flex-grow-1 ml-2">
                                                     <div class="font-weight-bold small">
                                                         @issue.Date.ToString("ddd dd/MM", CultureInfo.GetCultureInfo("es-ES")) · @issue.ArticleName
                                                     </div>
+                                                    <div class="small text-muted">@linea2</div>
                                                     <div class="small text-muted">
-                                                        @issue.TotalRequested.ToString("0.##") pedidos / @(issue.Stock.Available?.ToString("0.##") ?? "—") en stock
-                                                    </div>
-                                                    <div class="small">
-                                                        @if (issue.State == DemandState.Conflict)
-                                                        {
-                                                            <span class="text-danger">@(issue.Practices.Count == 1 ? "Stock insuficiente" : "Conflicto") @issue.PeakText</span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="text-warning">Rotación</span>
-                                                        }
+                                                        @issue.InvolvedPracticeIds.Count práctica(s) involucrada(s) · @issue.TotalRequested.ToString("0.##") pedidos / @(issue.Stock.Available?.ToString("0.##") ?? "—") en stock
                                                     </div>
                                                 </div>
+                                                <i class="fas fa-chevron-right text-muted small mt-1"></i>
                                             </a>
                                         </li>
                                     }
@@ -896,6 +926,9 @@
 @section Scripts {
     <script>
         (function () {
+            // Popovers de ayuda del resumen semanal (Bootstrap 4).
+            $('[data-toggle="popover"]').popover();
+
             // Activa la pestaña "Uso de artículos" si la URL trae ?usagePeriod=...
             var params = new URLSearchParams(window.location.search);
             if (params.get('usagePeriod')) {

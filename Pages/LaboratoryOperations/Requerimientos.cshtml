@@ -1,6 +1,7 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.RequerimientosModel
 @using Proyecto_Laboratorios_Univalle.Pages.Shared
+@using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
 @using Proyecto_Laboratorios_Univalle.Services
 @{
     ViewData["Title"] = "Requerimientos — Paso 2";
@@ -16,6 +17,15 @@
     {
         <partial name="_PlanningContext" model="Model.Context" />
 
+        @if (Model.SafeReturnUrl is string volverUrl)
+        {
+            @* Pantalla de origen (p. ej. la grilla de conflictos): vuelve a ella sin pasar por el wizard. *@
+            <div class="mb-3">
+                <a href="@volverUrl" class="btn btn-outline-secondary btn-rounded">
+                    <i class="fas fa-arrow-left mr-1"></i> Volver a conflictos
+                </a>
+            </div>
+        }
 
         @if (Model.Context.IsReadOnly)
         {
@@ -97,6 +107,7 @@
                                 </div>
 
                                 <form method="post" asp-page-handler="LoadRecipe" asp-route-planId="@Model.PlanId" class="mt-3">
+                                    <input type="hidden" name="ReturnUrl" value="@Model.SafeReturnUrl" />
                                     <button type="submit" class="btn btn-info btn-rounded btn-block font-weight-bold js-load-recipe">
                                         <i class="fas fa-magic mr-1"></i> Cargar receta
                                     </button>
@@ -205,6 +216,7 @@
                                     </div>
 
                                     <form method="post" asp-page-handler="LoadKit" asp-route-planId="@Model.PlanId" class="mt-3">
+                                        <input type="hidden" name="ReturnUrl" value="@Model.SafeReturnUrl" />
                                         <button type="submit" class="btn btn-warning btn-rounded btn-block font-weight-bold js-load-kit">
                                             <i class="fas fa-boxes mr-1"></i> Cargar kit de la materia (@Model.Kit.Count)
                                         </button>
@@ -318,7 +330,7 @@
                                                     stockTitle += $" ({itemStock.Unconfirmed} por confirmar)";
                                                 }
                                             }
-                                            <tr class="@(itemIsShort ? "row-short-stock" : null)">
+                                            <tr class="@(itemIsShort ? "row-short-stock" : null)" data-focus-key="art-@item.ArticleId">
                                                 <td class="font-weight-bold">
                                                     @item.ArticleName
                                                     <small class="d-block text-muted">@item.ArticleCode@(string.IsNullOrWhiteSpace(item.Unit) ? "" : $" · {item.Unit}")</small>
@@ -341,6 +353,7 @@
                                                     @if (canWrite && !isFixedUnit)
                                                     {
                                                         <form method="post" asp-page-handler="UpdateQuantity" asp-route-planId="@Model.PlanId" class="m-0">
+                                                            <input type="hidden" name="ReturnUrl" value="@Model.SafeReturnUrl" />
                                                             <div class="input-group input-group-sm">
                                                                 <input type="hidden" name="detailId" value="@item.DetailId" />
                                                                 <input type="number" name="newQuantity" step="0.01" min="0.01" max="999999"
@@ -386,11 +399,15 @@
                                                         </span>
                                                         <small class="d-block text-muted">@itemStock!.SourceText</small>
                                                     }
-                                                    @if (canWrite && Model.IsMissingStock(item) && Model.StockUrl(item.ArticleId) is string stockUrl)
+                                                    @if (canWrite && Model.RowStockAction(item) is StockAction stockAction)
                                                     {
-                                                        <a href="@stockUrl" class="btn btn-sm btn-outline-danger btn-rounded mt-1 px-2 py-0 small font-weight-bold">
-                                                            <i class="fas fa-plus mr-1"></i>Registrar stock
+                                                        <a href="@stockAction.Url" class="btn btn-sm @stockAction.Style btn-rounded mt-1 px-2 py-0 small font-weight-bold">
+                                                            <i class="@stockAction.Icon mr-1"></i>@stockAction.Label
                                                         </a>
+                                                    }
+                                                    else if (canWrite && StockActionLinks.NeedsAction(item.Stock, itemRequested))
+                                                    {
+                                                        <small class="d-block text-muted">Pide a un administrador que actualice el stock</small>
                                                     }
                                                 </td>
                                                 <td class="small text-muted">
@@ -407,6 +424,7 @@
                                                     @if (canWrite)
                                                     {
                                                         <form method="post" asp-page-handler="Remove" asp-route-planId="@Model.PlanId" class="d-inline js-form-remove-requirement">
+                                                            <input type="hidden" name="ReturnUrl" value="@Model.SafeReturnUrl" />
                                                             <input type="hidden" name="detailId" value="@item.DetailId" />
                                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Retirar">
                                                                 <i class="mdi mdi-delete"></i>
@@ -429,6 +447,7 @@
                                 @if (canWrite && Model.CanEditKit && Model.Items.Count > 0 && kitSubjectId.HasValue)
                                 {
                                     <form method="post" asp-page-handler="SaveKit" asp-route-planId="@Model.PlanId" class="d-inline js-form-save-kit mr-2 mb-2">
+                                        <input type="hidden" name="ReturnUrl" value="@Model.SafeReturnUrl" />
                                         <button type="submit" class="btn btn-outline-warning btn-rounded font-weight-bold">
                                             <i class="fas fa-boxes mr-1"></i> Guardar como kit de la materia
                                         </button>
@@ -437,6 +456,7 @@
                                 @if (canWrite)
                                 {
                                     <form method="post" asp-page-handler="Continue" asp-route-planId="@Model.PlanId" class="d-inline">
+                                        <input type="hidden" name="ReturnUrl" value="@Model.SafeReturnUrl" />
                                         @if (Model.MissingStock.Count > 0)
                                         {
                                             <button type="submit" class="btn btn-danger btn-rounded font-weight-bold px-4 mb-2"
@@ -475,7 +495,7 @@
         RequirementPickerOptions.UnitsMode,
         "Agregar requerimientos",
         Model.PlanId,
-        Url.Page("./Requerimientos", "AddBatch", new { planId = Model.PlanId })!,
+        Url.Page("./Requerimientos", "AddBatch", new { planId = Model.PlanId, returnUrl = Model.SafeReturnUrl })!,
         Model.Categories,
         Model.Laboratories.Select(l => new RequirementPickerOptions.Option(l.Id, l.Name)).ToList(),
         Model.Plan?.LaboratoryId);
@@ -483,6 +503,7 @@
 }
 
 @section Styles {
+    <link rel="stylesheet" href="~/css/row-focus.css" asp-append-version="true" />
     <style>
         .bg-light-info { background-color: #e6f3fb; }
         .bg-light-primary { background-color: #e3edff; }
@@ -492,6 +513,42 @@
 }
 
 @section Scripts {
+    <script src="~/js/row-focus.js" asp-append-version="true"></script>
+    @{
+        var stockPromptRaw = TempData["StockPrompt"] as string;
+    }
+    @if (!string.IsNullOrEmpty(stockPromptRaw))
+    {
+        @* El JSON ya viene serializado del PageModel; se re-serializa como literal de string para incrustarlo con seguridad. *@
+        var stockPromptJson = System.Text.Json.JsonSerializer.Serialize(stockPromptRaw);
+        <script>
+            // Pequeño delay para no pisar el toast de éxito del layout.
+            setTimeout(function () {
+                var prompts;
+                try { prompts = JSON.parse(@Html.Raw(stockPromptJson)); } catch (e) { return; }
+                if (!prompts || !prompts.length || typeof Swal === 'undefined') return;
+                var first = prompts[0];
+                var text = prompts.length === 1
+                    ? '«' + first.name + '» no tiene stock suficiente. ¿Registrarlo ahora?'
+                    : 'Estos artículos no tienen stock suficiente: ' + prompts.map(function (p) { return '«' + p.name + '»'; }).join(', ')
+                        + '. ¿Registrar «' + first.name + '» ahora?';
+                Swal.fire({
+                    type: 'warning',
+                    title: 'Sin stock suficiente',
+                    text: text,
+                    showCancelButton: true,
+                    confirmButtonText: 'Registrar ahora',
+                    cancelButtonText: 'Después',
+                    confirmButtonColor: '#ffc107',
+                    cancelButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (result && (result.value === true || result.isConfirmed === true)) {
+                        window.location.href = first.url;
+                    }
+                });
+            }, 600);
+        </script>
+    }
     <script>
         (function () {
             // Confirmación al retirar un requerimiento

@@ -107,6 +107,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
                 .FirstOrDefaultAsync();
             CurrentCode = currentForCode ?? string.Empty;
 
+            // El estado Eliminado solo se asigna con la acción de baja (antes un POST manual lo aceptaba y el registro desaparecía).
+            if (Input.Status == GeneralStatus.Eliminado)
+            {
+                ModelState.AddModelError("Input.Status", "El estado Eliminado solo se gestiona desde la opción Dar de Baja.");
+            }
+
             if (!ModelState.IsValid)
             {
                 await LoadSubjectsAsync();

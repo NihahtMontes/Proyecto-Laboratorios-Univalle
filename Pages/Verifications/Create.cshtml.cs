@@ -78,6 +78,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     .Include(p => p.Verification).ThenInclude(v => v!.Faults)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
+                // R-02: L-6 solo puede registrarse si el plan sigue en la fase de verificación.
+                var phaseRejection = WizardPhaseGuard.Validate(plan, WizardPhase.Verification);
+                if (phaseRejection != null)
+                {
+                    TempData.Warning(phaseRejection);
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan!.CurrentPhase, ManagementId = plan.ManagementId });
+                }
+
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.Verification);
                 ViewData["ManagementId"] = plan?.ManagementId ?? ManagementId;
                 ManagementId = plan?.ManagementId ?? ManagementId;
@@ -201,6 +209,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     .AsTracking()
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value) 
                 : null;
+
+            // R-02: L-6 solo puede registrarse si el plan sigue en la fase de verificación;
+            // en otra fase no se guarda nada para no mover el wizard hacia atrás.
+            var wizardPhaseRejection = WizardPhaseGuard.Validate(plan, WizardPhase.Verification);
+            if (wizardPhaseRejection != null)
+            {
+                TempData.Warning(wizardPhaseRejection);
+                if (isWizard)
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan!.CurrentPhase, ManagementId = plan.ManagementId });
+
+                LoadLists();
+                ViewData["IsWizard"] = isWizard;
+                ViewData["ManagementId"] = ManagementId;
+                return Page();
+            }
 
             Verification verification;
             bool isNew = plan?.Verification == null;

@@ -44,9 +44,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
             public string Name { get; set; } = string.Empty;
 
             [Display(Name = "Piso")]
+            [StringLength(50, ErrorMessage = "El piso o nivel no puede superar los 50 caracteres")]
             public string? Floor { get; set; }
 
             [Display(Name = "Descripción")]
+            [StringLength(1000, ErrorMessage = "La descripción no puede superar los 1000 caracteres")]
             public string? Description { get; set; }
         }
 
@@ -58,8 +60,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
                 return Page();
             }
 
+            // La facultad debe existir y estar activa (antes una facultad inexistente provocaba un error 500 por la FK).
+            if (!await _context.Faculties.AnyAsync(f => f.Id == Input.FacultyId && f.Status == GeneralStatus.Activo))
+            {
+                ModelState.AddModelError("Input.FacultyId", "La facultad seleccionada no está disponible.");
+                LoadFaculties();
+                return Page();
+            }
+
             // Normalization
-            var normalizedName = Input.Name.Trim().ToLower();
+            var normalizedName = Input.Name.Clean().ToLower();
 
             // Validate Duplicate Name within the same Faculty
             bool nameExists = await _context.Laboratories

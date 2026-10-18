@@ -181,6 +181,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
 
             try
             {
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach el cambio no se guardaba.
+                _context.Attach(historyDB).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 
                 // Also update EquipmentUnit if this is the latest history (EndDate is null)
@@ -201,7 +203,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = ReturnStep, SelectedLabId, ManagementId });
                 }
 
-                return RedirectToPage("/EquipmentStateHistories/Index");
+                // La página /EquipmentStateHistories/Index no existe (provocaba un error 500): volver al Kardex de la unidad.
+                return RedirectToPage("/EquipmentUnits/Kardex", new { id = historyDB.EquipmentUnitId });
             }
             catch (Exception ex)
             {

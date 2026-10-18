@@ -212,7 +212,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
 
                 if (lastHistory != null && lastHistory.Id != existingKardexHistory?.Id)
                 {
-                    lastHistory.EndDate = historyDate;
+                    // EndDate nunca puede ser menor que StartDate (CK_EquipmentStateHistories_Dates):
+                    // tras un rollback, el historial abierto puede iniciar en una fecha posterior
+                    // a la devolución real registrada, por eso se ajusta al máximo de ambas.
+                    lastHistory.EndDate = historyDate < lastHistory.StartDate
+                        ? lastHistory.StartDate
+                        : historyDate;
                 }
 
                 var kardexHistory = existingKardexHistory ?? new EquipmentStateHistory
@@ -283,6 +288,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 return (null, Page());
             }
 
+            // Guarda de fase (QA R-02): solo se opera el Kardex si el plan está en su fase.
+            // El rechazo no toca el mantenimiento, el historial ni el plan.
+            var phaseError = WizardPhaseGuard.Validate(plan, WizardPhase.Kardex);
+            if (phaseError != null)
+            {
+                TempData.Warning(phaseError);
+                return (null, isWizard
+                    ? RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan.CurrentPhase, ManagementId = plan.ManagementId })
+                    : RedirectToPage("/Index", new { ManagementId = plan.ManagementId }));
+            }
+
             ViewData["IsWizard"] = isWizard;
             PopulateViewData(plan);
             RebuildServerTruth(plan);
@@ -348,7 +364,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             maintenance.Recommendations = Input.Recommendations.Clean();
             maintenance.Observations = Input.Observations.Clean();
             maintenance.ActualCost = totalCosts;
-            maintenance.Status = markCompleted ? MaintenanceStatus.Completed : MaintenanceStatus.InProgress;
+            // El cierre marca Completado; el borrador NUNCA reabre un L-8 que ya estaba
+            // Completado (QA R-02): solo pasa a En curso si aún no había terminado.
+            if (markCompleted || maintenance.Status == MaintenanceStatus.Completed)
+            {
+                maintenance.Status = MaintenanceStatus.Completed;
+            }
+            else
+            {
+                maintenance.Status = MaintenanceStatus.InProgress;
+            }
             maintenance.CompletionPercentage = Input.CompletionPercentage;
             UpdateLegacySteps(maintenance, Input.Tasks);
             maintenance.LastModifiedDate = DateTime.UtcNow;

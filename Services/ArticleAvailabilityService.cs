@@ -62,6 +62,21 @@ public enum DemandState
     NoStock
 }
 
+/// <summary>Tipo de conflicto de material de un artículo en un día (más preciso que <see cref="DemandState"/>).</summary>
+public enum ConflictKind
+{
+    /// <summary>La demanda cabe en el stock disponible.</summary>
+    None,
+    /// <summary>La suma del día supera el stock, pero nunca a la vez: alcanza rotando el material entre prácticas.</summary>
+    Rotation,
+    /// <summary>Ninguna práctica sola supera el stock, pero varias a la vez sí (conflicto de horario).</summary>
+    Overlap,
+    /// <summary>Al menos una práctica sola pide más que el stock.</summary>
+    Shortage,
+    /// <summary>No hay stock registrado: no se puede evaluar la demanda.</summary>
+    NoStock
+}
+
 public sealed record WeekPractice(
     int Id,
     string Code,
@@ -100,6 +115,54 @@ public sealed record ArticleDayDemand(
 
     public bool HasIssue => State is DemandState.Conflict or DemandState.Rotation;
 
+    /// <summary>Tramos del día con carga constante (ver <see cref="DemandPeak.Segments"/>); vacío si no se calculó.</summary>
+    public IReadOnlyList<DemandSegment> Segments { get; init; } = [];
+
+    /// <summary>Tramos donde la carga simultánea supera el stock disponible (vacío si no hay stock registrado).</summary>
+    public IReadOnlyList<DemandSegment> OverSegments =>
+        Stock.Available is not decimal disponible ? [] :
+        Segments.Where(s => s.Load > disponible).ToList();
+
+    /// <summary>
+    /// Prácticas involucradas en el problema: las activas en algún tramo que supera el stock; en rotación
+    /// o sin stock son todas las del día (las que deben turnarse); sin problema, vacío.
+    /// </summary>
+    public IReadOnlyList<int> InvolvedPracticeIds
+    {
+        get
+        {
+            if (State is DemandState.Rotation or DemandState.NoStock)
+                return Practices.Select(p => p.PracticeId).Distinct().OrderBy(id => id).ToList();
+            var ids = new SortedSet<int>();
+            foreach (var tramo in OverSegments)
+                foreach (var id in tramo.ActiveIds)
+                    ids.Add(id);
+            return [.. ids];
+        }
+    }
+
+    /// <summary>Cuánto falta en el pico del día respecto al stock (0 si no hay stock registrado).</summary>
+    public decimal Shortage => Stock.Available is not decimal disponible ? 0 : Math.Max(0, PeakRequested - disponible);
+
+    /// <summary>Tipo de conflicto del día: distingue falta de stock, cruce de horarios y rotación.</summary>
+    public ConflictKind Kind
+    {
+        get
+        {
+            if (Stock.Available is not decimal disponible) return ConflictKind.NoStock;
+            return State switch
+            {
+                DemandState.Conflict when Practices.Any(p => p.Quantity > disponible) => ConflictKind.Shortage,
+                DemandState.Conflict => ConflictKind.Overlap,
+                DemandState.Rotation => ConflictKind.Rotation,
+                _ => ConflictKind.None
+            };
+        }
+    }
+
+    /// <summary>True si el día merece aviso en el panel: conflicto, rotación o falta de stock registrado.</summary>
+    public bool IsNotice => HasIssue || State == DemandState.NoStock;
+
     public string PeakText => PeakStart.HasValue
         ? $"{PeakStart.Value:hh\\:mm}–{(PeakEnd ?? PeakStart.Value):hh\\:mm}"
         : "todo el día";
@@ -123,8 +186,14 @@ public sealed record WeekAvailability(
 
     public IEnumerable<ArticleDayDemand> Issues => Demands.Where(d => d.HasIssue);
 
+    /// <summary>Avisos para el panel de conflicto de material: conflictos, rotaciones y también días sin stock.</summary>
+    public IEnumerable<ArticleDayDemand> Notices => Demands.Where(d => d.IsNotice);
+
     public int ConflictCount => Demands.Count(d => d.State == DemandState.Conflict);
     public int RotationCount => Demands.Count(d => d.State == DemandState.Rotation);
+
+    /// <summary>Días del rango en los que un artículo no tiene existencias registradas.</summary>
+    public int NoStockCount => Demands.Count(d => d.State == DemandState.NoStock);
 
     /// <summary>Peor estado en el que participa cada práctica (solo las que tienen conflicto o rotación).</summary>
     public IReadOnlyDictionary<int, DemandState> PracticeStates =>
@@ -133,6 +202,9 @@ public sealed record WeekAvailability(
             .GroupBy(x => x.PracticeId)
             .ToDictionary(g => g.Key, g => g.Any(x => x.State == DemandState.Conflict) ? DemandState.Conflict : DemandState.Rotation);
 }
+
+/// <summary>Detalle de la demanda de un artículo en un día, con las prácticas que lo piden.</summary>
+public sealed record ArticleDayDetail(ArticleDayDemand Demand, IReadOnlyList<WeekPractice> Practices, int? EquipmentId);
 
 /// <summary>Uso de un artículo en un periodo: cuánto se pidió y cuántos días generó rotación o conflicto.</summary>
 public sealed record ArticleUsage(
@@ -165,6 +237,12 @@ public interface IArticleAvailabilityService
 
     /// <summary>Semana académica de la planificación (o lunes a domingo de su fecha si no tiene semana asignada).</summary>
     Task<WeekAvailability?> GetWeekForPracticeAsync(int practiceId, int? originLaboratoryId = null);
+
+    /// <summary>
+    /// Demanda de un artículo en una fecha concreta (stock total, sin laboratorio), con sus prácticas ordenadas
+    /// por horario; null si ese día el artículo no demanda material.
+    /// </summary>
+    Task<ArticleDayDetail?> GetArticleDayAsync(DateTime date, int articleId);
 }
 
 public sealed class ArticleAvailabilityService : IArticleAvailabilityService
@@ -359,11 +437,16 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
                 var perPractice = g.GroupBy(l => l.PlanningId)
                     .Select(p => new PracticeDemand(p.Key, p.Sum(l => l.Quantity)))
                     .ToList();
-                var (peak, peakStart, peakEnd) = ComputePeak(perPractice, practiceById);
+                var timed = TimedDemands(perPractice, practiceById);
+                var (peak, peakStart, peakEnd) = DemandPeak.Compute([.. timed.Select(t => t.Demand)]);
                 var first = g.First();
                 return new ArticleDayDemand(g.Key.Date, g.Key.ArticleId, first.Code, first.Name,
                     stock.TryGetValue(g.Key.ArticleId, out var info) ? info : ArticleStockInfo.NotRegistered(g.Key.ArticleId),
-                    perPractice.Sum(p => p.Quantity), peak, peakStart, peakEnd, perPractice);
+                    perPractice.Sum(p => p.Quantity), peak, peakStart, peakEnd, perPractice)
+                {
+                    // Tramos de demanda simultánea del día: base del análisis de conflictos por horario.
+                    Segments = DemandPeak.Segments(timed)
+                };
             })
             .OrderBy(d => d.Date)
             .ThenByDescending(d => d.State == DemandState.Conflict)
@@ -374,10 +457,31 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
         return new WeekAvailability(from, to, weekNumber, weekPractices, demands);
     }
 
-    /// <summary>Pico de demanda simultánea de las prácticas del día (ver <see cref="DemandPeak.Compute"/>).</summary>
-    private static (decimal Peak, TimeSpan? Start, TimeSpan? End) ComputePeak(
+    /// <summary>Demanda temporal de las prácticas del día con su Id (alimenta el pico y los tramos de <see cref="DemandPeak"/>).</summary>
+    private static List<(int Id, TimedDemand Demand)> TimedDemands(
         IReadOnlyList<PracticeDemand> demands, IReadOnlyDictionary<int, WeekPractice> practices)
-        => DemandPeak.Compute(demands
-            .Select(d => new TimedDemand(d.Quantity, practices[d.PracticeId].StartTime, practices[d.PracticeId].EndTime))
-            .ToList());
+        => [.. demands.Select(d => (d.PracticeId, new TimedDemand(d.Quantity, practices[d.PracticeId].StartTime, practices[d.PracticeId].EndTime)))];
+
+    public async Task<ArticleDayDetail?> GetArticleDayAsync(DateTime date, int articleId)
+    {
+        var day = date.Date;
+        var range = await GetRangeAsync(day, day);
+        var demand = range.Demands.FirstOrDefault(d => d.ArticleId == articleId);
+        if (demand is null) return null;
+
+        // Prácticas que piden el artículo ese día, ordenadas por horario (sin horario primero, como el pico) y luego por Id.
+        var porId = range.Practices.ToDictionary(p => p.Id);
+        var practices = demand.Practices
+            .Select(p => porId[p.PracticeId])
+            .OrderBy(p => p.StartTime)
+            .ThenBy(p => p.Id)
+            .ToList();
+
+        var equipmentId = await _context.Articles.AsNoTracking()
+            .Where(a => a.Id == articleId)
+            .Select(a => a.EquipmentId)
+            .FirstOrDefaultAsync();
+
+        return new ArticleDayDetail(demand, practices, equipmentId);
+    }
 }

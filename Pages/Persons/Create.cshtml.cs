@@ -75,7 +75,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             }
             else
             {
-                if (string.IsNullOrEmpty(Input.Address))
+                if (string.IsNullOrWhiteSpace(Input.Address))
                 {
                     ModelState.AddModelError("Input.Address", "La dirección es obligatoria para externos.");
                     return Page();

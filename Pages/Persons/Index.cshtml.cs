@@ -41,11 +41,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
                 .Include(p => p.ModifiedBy)
                 .Where(p => p.Status != GeneralStatus.Eliminado);
 
-            // Search by ID or Email (until specialized search is implemented)
+            // Búsqueda por nombre / razón social, correo o id (el placeholder prometía nombre pero solo buscaba correo o id).
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
-                query = query.Where(p => (p.Email ?? string.Empty).Contains(term) || p.Id.ToString() == term);
+                var internIds = _context.Set<Intern>().Where(i => i.Name.ToLower().Contains(term)).Select(i => i.Id);
+                var externIds = _context.Set<Extern>().Where(e => e.Name.ToLower().Contains(term)).Select(e => e.Id);
+                query = query.Where(p => (p.Email ?? string.Empty).Contains(term)
+                                         || p.Id.ToString() == term
+                                         || internIds.Contains(p.Id)
+                                         || externIds.Contains(p.Id));
             }
 
             // Status Filter

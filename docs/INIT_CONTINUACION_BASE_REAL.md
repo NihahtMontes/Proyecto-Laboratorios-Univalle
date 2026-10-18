@@ -40,6 +40,41 @@ Leer primero: `AGENTS.md`, `context.md`, `docs/GUIA_IMPORTACION_HISTORICA.md` (s
   (el CLI ya tiene sesión de ChatGPT Plus, pero su config usa MiniMax por defecto). Para habilitarlo el usuario debe añadir una regla de permiso Bash para `codex exec` o registrar él mismo un MCP.
 - Pendiente derivado: los trabajos de SQL Server Agent apuntaban a la base eliminada (reapuntar a `_REAL` o desactivar).
 
+## Actualización 2026-10-15 (tarde): clasificación del catálogo y L-48 por gestión
+- **Clasificación de los 121 catálogos** (`Equipments`): `BaseGastronomia_v1.xlsx` trae «Por confirmar» en Clasificación (121/121) y Categoría (120/121), así que el panel
+  /AssetView mostraba Equipos/Utensilios/Otros = 0. Se clasificaron por análisis de datos con `Tools/CatalogClassify` (regla en `Helpers/CatalogClassificationInference.cs`:
+  pista de la columna `Tipoutensilio`, serie física —con serie nunca es utensilio—, palabras del nombre y categoría del artículo de igual nombre).
+  Resultado: 116 equipos y 5 utensilios (Pinza kelly, Porta utensilios, Porta tablas, Porta bandejas, Taburete metálico), 121 decisiones `Confirmed` en
+  `EquipmentClassificationDecisions` (clave `CLS-INFER-v1-<CatalogCode>`, evidencia «Análisis de datos…», responsable Nihaht Montes). 12 casos de confianza media/baja
+  (Garrafa ×2, Bebedero, Termo tanque, Carrito, Filtro ablandador, Laminadora, Lavaplatos ×2, Bacha, Pinza kelly, Taburete) quedan marcados «Pendiente de revisión del cliente»
+  en la evidencia y listados en `outputs/clasificacion_catalogo_revision.csv`.
+- **Es un paso posterior a la importación**: si se reimporta el Excel hay que volver a ejecutarlo. Simulación (no escribe):
+  `dotnet run --project Tools/CatalogClassify -- --expected-server localhost --expected-database DB_Laboratorios_Univalle_REAL`; añadir `--apply --user nihaht --responsible "Nombre"`
+  para registrar. Es idempotente y no sobrescribe catálogos ya confirmados por el cliente. Respaldo previo:
+  `C:\Users\Public\BackupsUnivalle\DB_Laboratorios_Univalle_REAL_PRE_CLASIFICACION_20261015.bak`.
+- **/AssetView**: nueva tarjeta «Por clasificar» (pendientes + inferidos), contador «Existencias» (`ArticleStocks`, enlace a /Catalogs/Stock), «Sin serie» ya es informativo
+  (las unidades se identifican por N.º de inventario). Los enlaces a /Catalogs/Stock y /EquipmentUnits quedan inactivos para el rol Supervisor (esas páginas son solo Administrator/SuperAdmin).
+- **Gestiones**: las gestiones históricas (`Type = PorConfirmar` sin `ManagementPlans`) muestran su L-48 importado (`MaintenancePlans`, solo lectura) en la ficha y contadores
+  L-48/L-8/L-6/L-7 en el listado. Solo 2024-2 (196 planes) y 2025-1 (191) tienen plan en el archivo; las demás indican «Sin plan L-48 cargado». Descripción y responsable no existen en el archivo.
+- **QA exhaustivo (2026-10-15)**: 5 baterías previas (301 comprobaciones) + `Tools/E2E/checks_qa_clasificacion.py` (89) + Chromium 49 pantallas + `Tools/E2E/qa_visual.mjs` (escritorio/móvil): 0 fallas, 0 errores
+  de consola/JS/HTTP, 0 excepciones en el log del servidor. Correcciones del QA: (1) /AssetView/EquipmentClassifications ahora tiene 13 tarjetas (se añadieron «Equipos informáticos» y «Otros equipos»;
+  antes 56 de 567 unidades eran inalcanzables); (2) las balanzas pasaron de Medición a Electrónico (el panel las define como «Equipos electrónicos (balanzas)»): 4 decisiones `CLS-INFER-v2-*`, las v1 quedan
+  cerradas (125 decisiones, 121 vigentes; la herramienta re-aplica solo lo que cambió); (3) en el L-48 histórico, Servicio/Estado nulos se muestran «Por confirmar» (los 387 planes tienen NULL en la base);
+  (4) `PaginatedList.CreateAsync` limita la página a ≥ 1 (pageIndex negativo daba OFFSET negativo). Respaldos: `..._PRE_CLASIFICACION_20261015.bak` y `..._POST_CLASIFICACION_V1_20261015.bak`.
+- Verificación: build 0 errores, 277 tests OK, `verify_v12_full.py` 0 diferencias. No probado: rol Supervisor (enlaces inactivos a Existencias/Unidades) ni una gestión nueva sin planes (no hay datos de ese tipo).
+
+## Actualización 2026-10-16: QA de usuario (Chromium visible + HTTP) sobre una copia de REAL
+- Se probó la app como un usuario y con un motor HTTP sobre `DB_Laboratorios_Univalle_QA_E2E` (copia `COPY_ONLY` de REAL; **REAL no se tocó**). Informe completo en `outputs/qa-usuario/INFORME_QA.md` (no versionado) y casos repetibles en `Tools/E2E/` (`qa_driver.mjs`, `qa.mjs`, `http_forms.py`, `http_cases_*.py`, `sql/qa_conflict_fixtures_min.sql`; `e2e_lib.py` acepta `E2E_DB`; los scripts con escritura se niegan a correr si la base no es la copia de QA).
+- **Corregido en código (sin commit)**: Edit de País/Ciudad/Facultad/Laboratorio no guardaba (faltaba `Attach` con NoTracking global); la baja de Carrera y de Práctica no persistía; "Agregar a la receta" fallaba en silencio (dos `[BindProperty]` en `Practices/Details`); Edit de Persona daba 500; Edit de Usuario reactivaba cuentas y borraba la fecha de alta; XSS en los toasts (el `title` de SweetAlert2 v7 es HTML: `escapeHtml` en `_Layout` y `Conflictos`); el Supervisor caía en `/Error` al iniciar sesión (la portada lo mandaba al dashboard de administradores); Existencias aceptaba −0.01 (500), 999999.01 y vacío = 0; validaciones de facultad inexistente, límites de piso/descripción, mensajes de Identity y de enlace de modelo en español; error falso tras reponer el último bloque de un día; alerta de faltantes de L-3 antes de registrar la salida.
+- **Reportado, a decidir**: con los datos reales las pantallas de planificación (Panel, Grilla, Calendario, Reposiciones, Demanda) abren en «No hay una gestión académica activa» porque `ManagementContextService` solo busca la gestión Preventiva Activa y todas las importadas son «Por confirmar»; los códigos `AAAA-S` de las gestiones importadas impiden crear la preventiva de esos semestres y el índice único permite una sola gestión Activa global; 717 artículos pedidos por planificaciones no tienen existencias (cientos de avisos «Sin stock» en Conflictos); checklist L-7 de refrigeración para cualquier equipo; reglas de L-3/L-8/L-12 y purga de grupos con borrado físico (ver informe).
+- La copia `DB_Laboratorios_Univalle_QA_E2E` y el respaldo `C:/Users/Public/BackupsUnivalle/QA_COPY_20261015.bak` son desechables.
+
+## Actualización 2026-10-17: correcciones R-01 y R-02 del QA (sin commit)
+- **R-01**: «Rehacer L-8» y «Rehacer Kardex» (`WizardRollbackController`) y el cierre de `Kardex/Create` ya no fallan. **R-02**: `Helpers/WizardPhaseGuard` valida la fase del plan en L-6, L-7, L-8, L-3, Kardex y L-12 (en otra fase no se guarda nada, se avisa y se vuelve al paso real; un plan completado no se reabre); L-8 «Completado» exige 100 % y una tarea completada, y solo un L-8 Completado avanza a L-3; fuera del wizard también se exige técnico. Además, validaciones nuevas en `EquipmentUnits` (crear/editar) y en `Departures` (crear/editar): `En Préstamo` solo lo asigna una salida L-3.
+- Los guardados definitivos de L-6/L-7/L-8 **no cambian `PlanStatus`** (solo los borradores y las fases tardías); un trabajador lo añadió en L-8 y se revirtió.
+- Verificación: build 0 errores, **353 tests OK**, `verify_v12_full.py` 0 diferencias. Segunda pasada HTTP sobre una copia nueva de REAL (ya eliminada): fallas de los scripts de procesos 155 → 89; el resto está clasificado en `outputs/qa-usuario/INFORME_R01_R02.md` (13 expectativas de los scripts quedaron obsoletas por las reglas nuevas, 3 son el checklist de 500 caracteres, 2 son decisiones de diseño y 71 son hallazgos de otro alcance).
+- **A decidir**: R-03 (checklist L-7 truncado, requiere migración); al hacer «Rehacer Kardex» la unidad queda Operativa aunque el Kardex no esté cerrado; reabrir una salida devuelta solo avisa y no reasigna la unidad; `Kardex/Edit` permite dar de baja la unidad o dejarla En Préstamo sin salida; en `EquipmentUnits/Create` el precio fuera de `decimal(18,2)` da 500 y se puede crear una unidad «Eliminada».
+
 ## Pendiente (lo decide el usuario)
 1. ~~Crear el SuperAdmin~~ **Hecho el 2026-10-15** (ver arriba). Comando de referencia:
    `! dotnet run --project Tools/AdminBootstrap -- --username admin --email <correo> --first-name <nombre> --last-name <apellido> --identity-card <ci> --phone <telefono>`

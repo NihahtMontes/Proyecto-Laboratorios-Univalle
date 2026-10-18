@@ -41,6 +41,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // El estado Eliminado solo se asigna con la baja lógica (antes un POST manual lo aceptaba).
+            if (Country.Status == GeneralStatus.Eliminado)
+            {
+                ModelState.AddModelError("Country.Status", "El estado Eliminado solo se gestiona desde la opción Dar de Baja.");
+            }
+
             if (!ModelState.IsValid)
             {
                 await ReloadCountry(Country.Id);
@@ -48,7 +54,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             }
 
             // Normalization
-            var normalizedName = Country.Name.Trim().ToLower();
+            var normalizedName = Country.Name.Clean().ToLower();
 
             // Duplicate Validation (Excluding current ID)
             var exists = await _context.Countries
@@ -79,6 +85,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
 
             try
             {
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach el guardado no persistía.
+                _context.Attach(countryToUpdate).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 TempData.Success($"País '{countryToUpdate.Name}' actualizado correctamente.");
             }

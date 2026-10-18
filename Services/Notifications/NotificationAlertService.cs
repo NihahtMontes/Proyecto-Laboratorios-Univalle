@@ -897,7 +897,7 @@ public sealed partial class NotificationAlertService : INotificationAlertService
             Id = -6_000_003,
             Title = "Conflictos de material esta semana",
             Message = $"{conflictCount} conflicto(s) de stock esta semana.",
-            Url = "/LaboratoryOperations/Index",
+            Url = "/LaboratoryOperations/Conflictos",
             Icon = "fas fa-exclamation-circle text-danger",
             SortDate = monday,
             Time = "Esta semana",
