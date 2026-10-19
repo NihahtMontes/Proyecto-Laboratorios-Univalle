@@ -112,5 +112,5 @@ Sin hard-delete de historia; no tocar migraciones existentes; las pruebas en nav
   - un solo proceso correctivo abierto por unidad;
   - «Nueva L-7» lleva al asistente correctivo (paso 2);
   - no se puede dar de baja un país, facultad o materia con hijos activos.
-- La migración `20261018152946_CorrectiveCoexistenceAndL7Checklist` (índice único por tipo, un plan abierto por unidad, L-7 `Observations` de 2000) **no está aplicada en REAL**. Aplicarla solo con una orden explícita y después de un respaldo.
+- La migración `20261018152946_CorrectiveCoexistenceAndL7Checklist` (índice único por tipo, un plan abierto por unidad, L-7 `Observations` de 2000) **se aplicó en REAL el 2026-10-18** a pedido del usuario, después del respaldo `C:\Users\Public\BackupsUnivalle\REAL_PRE_MIGRACION_20261018_CorrectiveCoexistence.bak`. `verify_v12_full.py` siguió en 0 diferencias. Commit `256256a`.
 - Informe y evidencia: `outputs/qa-usuario/qa-2026-10-18/INFORME_QA_2026-10-18.md`. La copia de QA y su snapshot se eliminaron; para repetir, restaurar `C:\Users\Public\BackupsUnivalle\QA_COPY_20261018.bak` (pasos en el plan v2, §4).
