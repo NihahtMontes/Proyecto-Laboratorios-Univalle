@@ -1,5 +1,8 @@
 # INIT: continuación del trabajo de la base REAL (pegar al inicio de una conversación nueva)
 
+> **Desde 2026-10-18 el punto de entrada es `docs/GUIA_NUEVA_CONVERSACION.md`** (contexto, herramientas, reglas y prompt) junto con
+> `docs/INFORME_ESTADO_FUNCIONAL_2026-10-18.md` (qué funciona, qué no se probó y pendientes priorizados). Este documento queda como historia.
+
 **Proyecto**: Laboratorios Univalle · rama `integration/planificacion-2026-10` · commit de referencia `2d272fd`.
 Leer primero: `AGENTS.md`, `context.md`, `docs/GUIA_IMPORTACION_HISTORICA.md` (sección «Versión REAL») y `docs/AUDITORIA_BRECHAS_V12.md`.
 
