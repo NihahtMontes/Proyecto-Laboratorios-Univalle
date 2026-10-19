@@ -26,7 +26,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             _logger = logger;
         }
 
-        public IList<Request> Requests { get; set; } = default!;
+        public PaginatedList<Request> Requests { get; set; } = new PaginatedList<Request>(new List<Request>(), 0, 1, 20);
 
         [BindProperty(SupportsGet = true)]
         public string? SearchTerm { get; set; }
@@ -42,7 +42,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
         public Microsoft.AspNetCore.Mvc.Rendering.SelectList LaboratoryList { get; set; } = default!;
 
-        public async Task OnGetAsync()
+        public async Task OnGetAsync(int? pageIndex)
         {
             var query = _context.Requests
                 .Where(r => r.Type == RequestType.Purchasing)
@@ -71,7 +71,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             if (PriorityFilter.HasValue) query = query.Where(r => r.Priority == PriorityFilter.Value);
             if (FilterLaboratoryId.HasValue) query = query.Where(r => r.LaboratoryId == FilterLaboratoryId.Value);
 
-            Requests = await query.OrderByDescending(r => r.RequestDate ?? r.CreatedDate).ToListAsync();
+            Requests = await PaginatedList<Request>.CreateAsync(
+                query.OrderByDescending(r => r.RequestDate ?? r.CreatedDate).ThenBy(r => r.Id),
+                pageIndex ?? 1, 20);
 
             var labs = await _context.Laboratories
                 .Where(l => l.Status == GeneralStatus.Activo)

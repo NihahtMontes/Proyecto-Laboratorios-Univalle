@@ -20,7 +20,7 @@
                 </div>
 
                 <form method="post" enctype="multipart/form-data" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
                     <input type="hidden" name="id" value="@Model.Id" />
 
                     <div class="row">
@@ -104,6 +104,16 @@
                                 <label asp-for="Input.Role" class="control-label font-weight-bold small text-warning uppercase">Rol de Aplicación <span class="text-danger">*</span></label>
                                 <select asp-for="Input.Role" class="form-control custom-select border-warning font-weight-bold" asp-items="ViewBag.UserRole" required></select>
                                 <span asp-validation-for="Input.Role" class="text-danger small font-weight-bold"></span>
+                            </div>
+
+                            @* QA 2026-10-18: la página de baja recomendaba «Inactivar desde el editor», pero no había campo de estado. *@
+                            <div class="form-group mb-3 border-left border-info pl-3 bg-light p-3 rounded shadow-none">
+                                <label asp-for="Input.Status" class="control-label font-weight-bold small text-info uppercase">Estado de la cuenta</label>
+                                <select asp-for="Input.Status" class="form-control custom-select">
+                                    <option value="@((int)GeneralStatus.Activo)">Activa</option>
+                                    <option value="@((int)GeneralStatus.Inactivo)">Inactiva (no puede iniciar sesión)</option>
+                                </select>
+                                <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold"></span>
                             </div>
 
                             <div class="bg-light p-3 rounded mb-4 border shadow-none">

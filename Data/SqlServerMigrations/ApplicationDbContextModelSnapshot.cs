@@ -2750,7 +2750,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.HasIndex("ModifiedById");
 
-                    b.HasIndex("Status")
+                    b.HasIndex("Type", "Status")
                         .IsUnique()
                         .HasFilter("[Status] = 0");
 
@@ -2897,7 +2897,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.HasIndex("ManagementId", "EquipmentUnitId")
                         .IsUnique()
-                        .HasFilter("[EquipmentUnitId] IS NOT NULL");
+                        .HasFilter("[EquipmentUnitId] IS NOT NULL AND [PlanStatus] <> 2");
 
                     b.HasIndex("PlanStatus", "ManagementId");
 
@@ -3682,8 +3682,8 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasColumnType("int");
 
                     b.Property<string>("Observations")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<int>("Priority")
                         .HasColumnType("int");

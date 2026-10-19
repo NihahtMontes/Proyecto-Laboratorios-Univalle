@@ -122,11 +122,16 @@ def check_gestiones_listado(s):
     }
     suma = {k: 0 for k in esperado}
     sin_actividad = 0
-    paginas_html = []
+    paginas_html, ids_vistos = [], set()
     for p in range(1, 6):
         st, html = s.get(f"/Managements?Type=PorConfirmar&pageIndex={p}")
         if st != 200:
             break
+        # 2026-10-18 (H-005): una página mayor que la última muestra la última; no contarla dos veces.
+        ids_pag = set(re.findall(r"/Managements/Details\?id=(\d+)", html))
+        if p > 1 and ids_pag <= ids_vistos:
+            break
+        ids_vistos |= ids_pag
         paginas_html.append(html)
         for k in suma:
             suma[k] += sum(int(x) for x in re.findall(re.escape(k) + r":\s*(\d+)", re.sub(r"<[^>]+>", " ", html)))

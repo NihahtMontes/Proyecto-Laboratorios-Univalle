@@ -4,7 +4,7 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 <form method="post" id="sgForm" novalidate data-edit="@(Model.IsEdit ? "true" : "false")">
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
     <input type="hidden" name="Input.ManagementId" value="@Model.Input.ManagementId" />
     @if (Model.IsEdit)
     {

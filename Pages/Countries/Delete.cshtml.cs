@@ -46,6 +46,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             var country = await _context.Countries.FindAsync(id);
             if (country == null) return NotFound();
 
+            // Decisión del usuario (2026-10-18): un país con ciudades activas no se da de baja (antes sus ciudades se ocultaban en cascada).
+            var activeCities = await _context.Cities.CountAsync(c => c.CountryId == country.Id && c.Status != GeneralStatus.Eliminado);
+            if (activeCities > 0)
+            {
+                TempData.Warning($"No se puede dar de baja el país '{country.Name}': tiene {activeCities} ciudad(es) activa(s). Dé de baja o reasigne primero sus ciudades.");
+                return RedirectToPage("./Index");
+            }
+
             // Perform Soft Delete (Logic Delete)
             country.Status = GeneralStatus.Eliminado;
             country.LastModifiedDate = DateTime.UtcNow;

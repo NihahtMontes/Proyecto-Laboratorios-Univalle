@@ -180,6 +180,68 @@ public class WizardRollbackTests
     }
 
     [Fact]
+    public async Task RedoPhase_CierraElHistorialAbiertoPrevio_QuedaUnSoloHistorialAbierto()
+    {
+        // H-001: la unidad tenía un historial abierto ajeno al Kardex («Alta inicial»); rehacer la fase no debe dejar dos abiertos.
+        using var db = new TestDb();
+        SeedCompletedPlan(db);
+        db.Context.EquipmentStateHistories.Add(new EquipmentStateHistory
+        {
+            Id = KardexHistoryId + 1,
+            EquipmentUnitId = UnitId,
+            Status = EquipmentStatus.Operational,
+            StartDate = VerificationDate.AddDays(-30),
+            Reason = "Alta inicial en sistema.",
+            CreatedDate = VerificationDate.AddDays(-30)
+        });
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+
+        var result = await Controller(db).RedoPhase(
+            new RollbackRequestDto { PlanId = PlanId, TargetPhase = WizardPhase.Maintenance });
+
+        Assert.IsType<OkObjectResult>(result);
+        var abiertos = db.Context.EquipmentStateHistories.AsNoTracking()
+            .Where(h => h.EquipmentUnitId == UnitId && h.EndDate == null).ToList();
+        Assert.Single(abiertos);
+        Assert.Equal(EquipmentStatus.UnderMaintenance, abiertos[0].Status);
+        Assert.All(db.Context.EquipmentStateHistories.AsNoTracking().Where(h => h.EndDate != null).ToList(),
+            h => Assert.True(h.EndDate >= h.StartDate));
+    }
+
+    [Fact]
+    public async Task RedoPhase_CorrectivoCompletadoConOtroProcesoAbierto_SeBloqueaSinCambios()
+    {
+        using var db = new TestDb();
+        SeedCompletedPlan(db);
+        var management = db.Context.Managements.AsTracking().Single(m => m.Id == TestDb.ManagementId);
+        management.Type = ManagementType.Corrective;
+        var completed = db.Context.ManagementPlans.AsTracking().Single(p => p.Id == PlanId);
+        completed.PlanStatus = ManagementPlanStatus.Completed;
+        completed.CurrentPhase = WizardPhase.Disbursement;
+        db.Context.ManagementPlans.Add(new ManagementPlan
+        {
+            Id = PlanId + 1,
+            ManagementId = TestDb.ManagementId,
+            EquipmentUnitId = UnitId,
+            CurrentPhase = WizardPhase.Maintenance,
+            CurrentState = WizardEquipmentState.AwaitingMaintenance,
+            PlanStatus = ManagementPlanStatus.InProgress
+        });
+        db.Context.SaveChanges();
+        db.Context.ChangeTracker.Clear();
+
+        var result = await Controller(db).RedoPhase(
+            new RollbackRequestDto { PlanId = PlanId, TargetPhase = WizardPhase.Maintenance });
+
+        var bad = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("otro proceso correctivo abierto", bad.Value?.ToString());
+        var plan = db.Context.ManagementPlans.AsNoTracking().Single(p => p.Id == PlanId);
+        Assert.Equal(ManagementPlanStatus.Completed, plan.PlanStatus);
+        Assert.Equal(WizardPhase.Disbursement, plan.CurrentPhase);
+    }
+
+    [Fact]
     public async Task RedoPhase_Kardex_ReposicionaPlanYRestauraHistorialAncladoAlKardexAnterior()
     {
         using var db = new TestDb();
@@ -202,15 +264,21 @@ public class WizardRollbackTests
         Assert.Equal(MaintenanceStatus.Completed, maintenance.Status);
         Assert.Equal(RequestId, maintenance.RequestId);
 
+        // D-3 (2026-10-18): la devolución que registró el cierre del Kardex se deshace; la salida vuelve a
+        // estar activa y la unidad queda En Préstamo hasta que el Kardex se cierre de nuevo.
         var departure = db.Context.Departures.AsNoTracking().Single(d => d.Id == DepartureId);
-        Assert.Equal(LoanStatus.Returned, departure.Status);
+        Assert.Equal(LoanStatus.Active, departure.Status);
+        Assert.Null(departure.ActualReturnDate);
+
+        var unit = db.Context.EquipmentUnits.AsNoTracking().Single(u => u.Id == UnitId);
+        Assert.Equal(EquipmentStatus.OnLoan, unit.CurrentStatus);
 
         var kardex = db.Context.EquipmentStateHistories.AsNoTracking().Single(h => h.Id == KardexHistoryId);
         Assert.NotNull(kardex.EndDate);
 
         var restored = db.Context.EquipmentStateHistories.AsNoTracking()
             .Single(h => h.Id != KardexHistoryId && h.EquipmentUnitId == UnitId);
-        Assert.Equal(EquipmentStatus.Operational, restored.Status);
+        Assert.Equal(EquipmentStatus.OnLoan, restored.Status);
         Assert.Null(restored.EndDate);
         // Ancla coherente: el mismo inicio del Kardex anterior, nunca posterior a la
         // devolución real con la que se cerrará el Kardex rehecho.

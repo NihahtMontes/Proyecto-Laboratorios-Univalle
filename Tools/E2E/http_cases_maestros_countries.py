@@ -68,7 +68,7 @@ if PERSISTS:
     sub(c, "edit upper", f"/Countries/Edit/{idB}", {"Country.Name": nombre_nuevo.upper()})
     check(R, "Países/Edit: mismo nombre en mayúsculas (self) se guarda", name_of(idB) == nombre_nuevo.upper(), name_of(idB))
     sub(c, "edit 1 char", f"/Countries/Edit/{idB}", {"Country.Name": "Z"})
-    check(R, "Países/Edit: nota -> Edit acepta 1 carácter (Create exige 2)", name_of(idB) == "Z", f"BD={name_of(idB)!r}")
+    check(R, "Países/Edit: 1 carácter se rechaza como en Create (mínimo 2)", name_of(idB) == nombre_nuevo.upper(), f"BD={name_of(idB)!r}")
     # forzar Status=2 por Edit
     sub(c, "edit estado 2", f"/Countries/Edit/{idB}", {"Country.Name": B, "Country.Status": "2"})
     check(R, "Países/Edit: forzar Status=2 por POST no debe permitirse (la baja se hace en Delete)", status_of(idB) != 2, f"Status BD={status_of(idB)}")
@@ -89,6 +89,11 @@ check(R, "Países/Delete sin token: el país no cambió de estado", status_of(id
 expect(R, "Países/Edit sin token: 400", K.post_notoken(c, "edit sin token", f"/Countries/Edit/{idC3}", [("Country.Id", str(idC3)), ("Country.Name", "Hack"), ("Country.Status", "0")]), status=400)
 check(R, "Países/Edit sin token: el nombre no cambió", name_of(idC3) == C3, "")
 
+# Decisión del usuario 2026-10-18: un país con ciudades activas no se da de baja (antes se ocultaban en cascada).
+res = post(c, "delete A con ciudad activa", f"/Countries/Delete/{idA}", [("Country.Id", str(idA))], f"/Countries/Delete/{idA}")
+check(R, "Países/Delete: con ciudades activas se bloquea con aviso y el país sigue Activo", res.has_toast("ciudad(es) activa(s)", "warning") and status_of(idA) == 0, f"toasts={res.toasts[:1]} Status={status_of(idA)}")
+post(c, "baja de la ciudad de A", f"/Cities/Delete/{idCity}", [], f"/Cities/Delete/{idCity}")
+check(R, "Ciudades/Delete: la ciudad dependiente se da de baja primero", K.dbv("select Status from Cities where Id=?", idCity) == 2, "")
 cur = name_of(idA)
 res = post(c, "delete A", f"/Countries/Delete/{idA}", [("Country.Id", str(idA))], f"/Countries/Delete/{idA}")
 expect(R, "Países/Delete: baja lógica con toast", res, status=302, redirect="/Countries", toast=f"El país '{cur}' ha sido dado de baja correctamente.", toast_kind="success")
@@ -103,14 +108,9 @@ check(R, "Países/Delete: segunda baja -> 404 (no 500 ni segundo mensaje de éxi
 res2 = post(c, "POST edit país eliminado", f"/Countries/Edit/{idA}", [("Country.Id", str(idA)), ("Country.Name", "Revivir " + K.rnd()), ("Country.Status", "0")], "/Countries/Create")
 check(R, "Países/Edit: POST sobre un país eliminado -> 404 y no lo revive", res2.status == 404 and status_of(idA) == 2, f"status={res2.status} Status BD={status_of(idA)}")
 
-# ciudad dependiente: la baja del país no valida; ¿qué pasa con la ciudad?
-check(R, "Países/Delete: no valida ciudades dependientes (la ciudad queda Activa en la BD)", K.dbv("select Status from Cities where Id=?", idCity) == 0, "")
+# ciudad dependiente: ya se dio de baja antes que el país (no quedan ciudades activas de países eliminados)
 st, pg = c.get(f"/Cities/Details/{idCity}")
-check(R, "Ciudades/Details de una ciudad Activa cuyo país fue dado de baja -> 200", st == 200, f"status={st}")
-st, pg = c.get(f"/Cities/Edit/{idCity}")
-check(R, "Ciudades/Edit de una ciudad Activa cuyo país fue dado de baja -> 200", st == 200, f"status={st}")
-st, lst = c.get(f"/Cities?SearchTerm={city.split()[-1]}")
-check(R, "Ciudades/Index: la ciudad Activa cuyo país fue dado de baja sigue apareciendo en el listado", st == 200 and f"/Cities/Details/{idCity}" in lst, f"status={st}")
+check(R, "Ciudades/Details de la ciudad dada de baja -> 404", st == 404, f"status={st}")
 
 # ---- id inexistente / negativo / no numérico ----
 K.guard_404(c, "Países", ["/Countries/Edit/{id}", "/Countries/Delete/{id}", "/Countries/Details/{id}"])

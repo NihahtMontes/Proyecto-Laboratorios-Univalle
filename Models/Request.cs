@@ -48,7 +48,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Prioridad")]
         public RequestPriority Priority { get; set; } = RequestPriority.Medium;
 
-        [StringLength(500)]
+        // 2000: el checklist técnico obligatorio de 13 puntos (~900 caracteres) se guarda aquí completo.
+        [StringLength(2000)]
         [Display(Name = "Observaciones del Solicitante")]
         public string? Observations { get; set; }
 

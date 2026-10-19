@@ -42,6 +42,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         /// </summary>
         public Dictionary<int, HistoricalCounts> HistoricalCountsByManagement { get; set; } = new();
 
+        /// <summary>Código de la gestión Activa de cada tipo: la confirmación de «Activar» avisa cuál se cerrará (H-003).</summary>
+        public Dictionary<ManagementType, string> ActiveCodeByType { get; set; } = new();
+
         [BindProperty(SupportsGet = true)]
         public int? PageIndex { get; set; }
 
@@ -74,6 +77,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                     query.OrderByDescending(m => m.CreatedDate),
                     pageIndex ?? 1,
                     20);
+
+                ActiveCodeByType = (await _context.Managements.AsNoTracking()
+                        .Where(m => m.Status == ManagementStatus.Active)
+                        .Select(m => new { m.Type, m.Code })
+                        .ToListAsync())
+                    .GroupBy(m => m.Type)
+                    .ToDictionary(g => g.Key, g => g.First().Code);
 
                 // Contadores históricos importados (L-48/L-8/L-6/L-7) en 4 consultas
                 // agrupadas (sin consultas por fila), solo para las gestiones visibles

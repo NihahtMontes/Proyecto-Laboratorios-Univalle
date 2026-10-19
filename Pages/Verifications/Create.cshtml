@@ -38,7 +38,7 @@
                     <input type="hidden" asp-for="ManagementPlanId" />
                     <input type="hidden" asp-for="ManagementId" />
 
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 small"></div>
 
                     @* Selección de equipo *@
                     <div class="bg-light p-4 rounded mb-4 border-left border-info border-3 shadow-none" style="border-width: 4px !important;">
@@ -156,6 +156,7 @@
 </div>
 
 @section Scripts {
+    <link rel="stylesheet" href="~/assets/libs/select2/dist/css/select2.min.css" /> @* QA H-014: sin el CSS el texto del select se veía duplicado *@
     <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
     <script>
         $(document).ready(function () {

@@ -47,6 +47,7 @@
                                         asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
                                         required>
                                 </select>
+                                <span asp-validation-for="Country.Status" class="text-danger small font-weight-bold"></span>
                                 <small class="text-muted italic d-block mt-2 small">El estado determina si el país y sus ciudades asociadas son visibles para la gestión logística.</small>
                             </div>
                         </div>

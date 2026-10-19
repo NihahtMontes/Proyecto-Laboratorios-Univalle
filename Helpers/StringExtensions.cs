@@ -30,6 +30,21 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         }
 
         /// <summary>
+        /// Como <see cref="Clean"/>, pero conserva los saltos de línea: limpia los espacios de cada línea y
+        /// quita las líneas vacías. Para textos con formato por líneas (p. ej. el checklist de 13 puntos del L-7).
+        /// </summary>
+        public static string CleanMultiline(this string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var lines = value.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n')
+                .Select(line => System.Text.RegularExpressions.Regex.Replace(line.Trim(), @"\s+", " "))
+                .Where(line => line.Length > 0);
+            return string.Join("\n", lines);
+        }
+
+        /// <summary>
         /// Valida si el string contiene solo letras, espacios, acentos y guiones.
         /// Ideal para nombres de Países, Ciudades, etc.
         /// </summary>

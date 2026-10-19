@@ -48,7 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Required]
         [Precision(18, 2)]
         [Display(Name = "Precio Unitario (Estimado)")]
-        [Range(0, 999999999, ErrorMessage = "El precio debe ser positivo")]
+        [Range(0d, 999999999d, ErrorMessage = "El precio debe ser positivo")]
         public decimal UnitPrice { get; set; }
 
         // ========================================

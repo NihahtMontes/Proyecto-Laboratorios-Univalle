@@ -94,7 +94,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 activeMgmt = await _context.Managements.AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == managementId.Value && m.Status == ManagementStatus.Active);
 
-            if (activeMgmt == null && !IsWizard)
+            // Solo sin gestión indicada se usa la preventiva activa; una gestión pedida que no está activa no devuelve planes
+            // (antes caía a la gestión activa y mostraba planes de otra gestión).
+            if (activeMgmt == null && !IsWizard && !managementId.HasValue)
             {
                 activeMgmt = await _managementContext.GetCurrentManagementAsync(ManagementType.Preventive);
             }

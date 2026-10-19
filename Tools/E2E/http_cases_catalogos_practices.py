@@ -65,7 +65,7 @@ def run(R, c):
     expect(R, L("Create: nombre solo espacios"), c.submit(f"{B}/Create", ov(**{"Input.Name": "   "})), status=200, error="El nombre de la práctica es obligatorio")
     expect(R, L("Create: 201 caracteres"), c.submit(f"{B}/Create", ov(**{"Input.Name": "x" * 201})), status=200, error="no puede superar los 200")
     r = c.submit(f"{B}/Create", ov(**{"Input.SubjectId": ""}))
-    expect(R, L("Create: materia vacía ('')"), r, status=200, error="Debe seleccionar una materia")
+    expect(R, L("Create: materia vacía ('')"), r, status=200, error="obligatorio")
     r = c.submit(f"{B}/Create", {"Input.Name": nm, "Input.SubjectId": None})
     expect(R, L("Create: materia ausente del POST (el Required no actúa sobre int no anulable; mensaje del código)"), r, status=200,
            error="La materia seleccionada no existe o no está activa.")
@@ -141,7 +141,7 @@ def run(R, c):
     expect(R, L("Edit: guardar sin cambios"), c.submit(f"{B}/Edit/{pid}", {"Input.Name": nm2}), status=302, redirect=B)
     expect(R, L("Edit: nombre vacío"), c.submit(f"{B}/Edit/{pid}", {"Input.Name": ""}), status=200, error="El nombre de la práctica es obligatorio")
     expect(R, L("Edit: 201 caracteres"), c.submit(f"{B}/Edit/{pid}", {"Input.Name": "x" * 201}), status=200, error="no puede superar los 200")
-    expect(R, L("Edit: materia vacía"), c.submit(f"{B}/Edit/{pid}", {"Input.Name": nm2, "Input.SubjectId": ""}), status=200, error="Debe seleccionar una materia")
+    expect(R, L("Edit: materia vacía"), c.submit(f"{B}/Edit/{pid}", {"Input.Name": nm2, "Input.SubjectId": ""}), status=200, error="obligatorio")
     expect(R, L("Edit: materia dada de baja"), c.submit(f"{B}/Edit/{pid}", {"Input.Name": nm2, "Input.SubjectId": str(sid_dead)}), status=200,
            error="La materia seleccionada no existe o no está activa.")
     expect(R, L("Edit: cobertura inválida"), c.submit(f"{B}/Edit/{pid}", {"Input.Name": nm2, "Input.CoverageStatus": "Otra"}), status=200,
@@ -206,7 +206,7 @@ def run(R, c):
     for x in req_rows(pid):
         rp("RemoveRequirement", [], "limpieza", f"&requirementId={x[0]}")
     r = rp("AddRequirement", [("RequirementInput.ArticleId", ""), ("RequirementInput.Quantity", "1"), WA], "sin artículo ''")
-    expect(R, L("Receta/Agregar: artículo vacío ('')"), r, status=200, error="Debe seleccionar un artículo")
+    expect(R, L("Receta/Agregar: artículo vacío ('')"), r, status=200, error="obligatorio")
     r = rp("AddRequirement", [("RequirementInput.Quantity", "1"), WA], "sin artículo ausente")
     expect(R, L("Receta/Agregar: artículo ausente del POST (el Required no actúa sobre int no anulable; mensaje del código)"), r, status=200,
            error="El artículo seleccionado no existe o no está activo.")

@@ -69,7 +69,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             [Display(Name = "Fecha de Fabricación")]
             public DateTime? ManufacturingDate { get; set; }
 
-            [Range(0, 999999999, ErrorMessage = "El precio de adquisición no puede ser negativo")]
+            [Range(0d, 999999999d, ErrorMessage = "El precio de adquisición debe estar entre 0 y 999.999.999.")]
             [Display(Name = "Precio de Adquisición")]
             public decimal? AcquisitionValue { get; set; }
         }

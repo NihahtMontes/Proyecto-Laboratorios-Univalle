@@ -71,8 +71,17 @@ def run(R, c):
     check(R, "MassCreate: plan inexistente -> 'cambiaron' y sin 500", r.status < 500 and r.has_toast("cambiaron", "error"), P.dump(r))
     r = P.l6(c, pl["g"], us["g"][0], 0, name="sin laboratorio", follow=True)
     check(R, "MassCreate: laboratorio 0 -> sin 500 y con mensaje de error", r.status < 500 and bool(r.toasts), P.dump(r))
-    r = P.l6(c, 2, scalar("select EquipmentUnitId from ManagementPlans where Id=2"), lab, name="plan ajeno (id 2)", follow=True)
-    check(R, "MassCreate: plan de otro laboratorio/fase (plan #2, solo lectura) rechazado sin escribir", r.has_toast("cambiaron", "error") and plan(2)["phase"] == 6 and plan(2)["state"] == 9, P.dump(r) + f" {plan(2)}")
+    # plan ajeno (otra fase >1 de la gestion activa o, si no hay, el de otro laboratorio): solo lectura, sin escribir
+    ajeno = scalar("select top 1 Id from ManagementPlans where ManagementId=? and CurrentPhase>1 order by Id", P.MGMT)
+    if not ajeno:
+        ajeno = pl_lab2
+    u_aj = scalar("select EquipmentUnitId from ManagementPlans where Id=?", ajeno)
+    p_antes, n_antes = plan(ajeno), n_ver(u_aj)
+    r = P.l6(c, ajeno, u_aj, lab, name=f"plan ajeno (id {ajeno})", follow=True)
+    check(R, f"MassCreate: plan de otro laboratorio/fase (plan #{ajeno}, solo lectura) rechazado sin escribir",
+          r.status < 500 and (r.has_toast("cambiaron", "error") or any(k == "error" for k, _ in r.toasts))
+          and plan(ajeno) == p_antes and n_ver(u_aj) == n_antes,
+          P.dump(r) + f" antes={p_antes} despues={plan(ajeno)} verificaciones={n_antes}->{n_ver(u_aj)}")
 
     # borrador
     r = P.l6(c, pl["d"], us["d"][0], lab, cond=3, draft=True, name="borrador", follow=True)
@@ -209,13 +218,13 @@ def run(R, c):
     check(R, "Edit: condicion fisica inexistente (77) se rechaza", r.status == 200 and ver(vm_id)["cond"] == 2, P.dump(r) + f" cond={ver(vm_id)['cond']}")
     r = post_form(c, ep, {"Input.Id": "99999"}, name="edit Id inexistente", follow=False)
     check(R, "Edit: POST con Input.Id inexistente -> 404", r.status == 404, P.dump(r))
-    # Malo -> Regular (cuenta como falla en Edit, no en MassCreate)
+    # Malo -> Regular: desde 2026-10-18 «Regular» es sano en Edit igual que en MassCreate (solo «Malo» es falla)
+    rid_m = plan(pl["m"])["req"]
     r = post_form(c, ep, {"Input.PhysicalCondition": "3"}, name="edit regular", follow=True)
     pmn = plan(pl["m"])
-    check(R, "Edit Regular: verificacion WithObservations (2) -> 'Regular' cuenta como falla en Edit", ver(vm_id)["status"] == 2, f"{ver(vm_id)}")
+    check(R, "Edit Regular: verificacion Completed (1) -> 'Regular' es sano como en MassCreate", ver(vm_id)["status"] == 1, f"{ver(vm_id)}")
     check(R, "Edit Regular vs MassCreate Regular: mismo criterio (en MassCreate Regular=sano) -> inconsistencia", ver(plan(pl['r'])['ver'])["status"] == ver(vm_id)["status"], f"MassCreate Regular={ver(plan(pl['r'])['ver'])['status']} Edit Regular={ver(vm_id)['status']}")
-    # Malo -> Bueno: sano, cancela la L-7 pendiente
-    rid_m = pmn["req"]
+    # Regular -> Bueno: sigue sano; la L-7 pendiente del estado Malo quedó cancelada
     r = post_form(c, ep, {"Input.PhysicalCondition": "4"}, name="edit bueno", follow=True)
     check(R, "Edit Bueno: 302 con 'Verificacion #id actualizada. El activo fue movido a activos sanos.'", r.status == 302 and r.has_toast(f"Verificacion #{vm_id} actualizada. El activo fue movido a activos sanos.", "success"), P.dump(r))
     pmn = plan(pl["m"])
@@ -223,8 +232,9 @@ def run(R, c):
     # Bueno -> Malo sin observaciones (MassCreate lo exige)
     r = post_form(c, ep, {"Input.PhysicalCondition": "2", "Input.Observations": ""}, name="edit malo sin obs", follow=True)
     check(R, "Edit Malo sin observaciones: se rechaza como en MassCreate ('Describa las fallas...')", r.status == 200 or not (ver(vm_id)["status"] == 2 and not ver(vm_id)["obs"]), f"{ver(vm_id)} {P.dump(r)}")
+    r = post_form(c, ep, {"Input.PhysicalCondition": "2", "Input.Observations": "Falla de compresor QAP"}, name="edit malo con obs", follow=True)
     pmn = plan(pl["m"])
-    check(R, "Edit Malo: plan a TechnicalRequest/AwaitingRequest sin L-7 vinculada (queda a la espera de L-7 manual)", pmn["phase"] == 2 and pmn["state"] == 3 and pmn["req"] is None, f"{pmn}")
+    check(R, "Edit Malo (con observaciones): plan a TechnicalRequest/AwaitingRequest sin L-7 vinculada (queda a la espera de L-7 manual)", pmn["phase"] == 2 and pmn["state"] == 3 and pmn["req"] is None, f"{pmn}")
     # Edit sobre plan avanzado
     adv_v = plan(adv2["plan"])["ver"]
     av = f"/Verifications/Edit?id={adv_v}&ManagementId={P.MGMT}"
@@ -240,7 +250,7 @@ def run(R, c):
     check(R, "Delete: GET id inexistente -> 404", st == 404, f"status={st}")
     r = P.post_raw(c, f"/Verifications/Delete/{vid_g}", [], f"/Verifications/Delete/{vid_g}", name="delete")
     expect(R, "Delete: anula la verificacion", r, status=302, toast=f"Verificación #{vid_g} eliminada del sistema.", toast_kind="success")
-    check(R, "Delete: queda Annulled (99) y NO se revierte el plan (sigue VerifiedGood apuntando a la verificacion anulada)", ver(vid_g)["status"] == 99 and plan(pl["g"])["state"] == 2 and plan(pl["g"])["ver"] == vid_g, f"{ver(vid_g)} {plan(pl['g'])}")
+    check(R, "Delete: queda Annulled (99) y el plan vuelve a Pendiente de verificación (1/1) sin apuntar a la anulada (2026-10-18)", ver(vid_g)["status"] == 99 and plan(pl["g"])["phase"] == 1 and plan(pl["g"])["state"] == 1 and plan(pl["g"])["ver"] is None, f"{ver(vid_g)} {plan(pl['g'])}")
     anulada = ver(vid_g)["status"] == 99
     if anulada:   # las comprobaciones dependientes solo tienen sentido si la baja logica se aplico
         st, _ = c.get(f"/Verifications/Details?id={vid_g}")

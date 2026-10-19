@@ -92,7 +92,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             var currentMgmt = ManagementId.HasValue
                 ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
-                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == verification.ManagementId); // la gestión del propio registro (pueden estar activas una preventiva y una correctiva)
 
             ViewData["IsCorrective"] = currentMgmt?.Type == ManagementType.Corrective;
             ViewData["IsWizard"] = IsWizard;
@@ -103,6 +103,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // Mismo criterio que el L-6 masivo (MassCreate): solo «Malo» (o «Dado de baja») es falla y exige describirla.
+            var isHealthyCondition = Input.PhysicalCondition is not (PhysicalCondition.Bad or PhysicalCondition.Decommissioned);
+            if (!isHealthyCondition && string.IsNullOrWhiteSpace(Input.Observations))
+                ModelState.AddModelError("Input.Observations", "Describa las fallas del equipo marcado en estado Malo antes de guardar L-6.");
+            if (Input.EquipmentUnitId <= 0 || !await _context.EquipmentUnits.AnyAsync(u => u.Id == Input.EquipmentUnitId))
+                ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física seleccionada no existe.");
+
             if (!ModelState.IsValid)
             {
                 LoadLists();
@@ -120,7 +127,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             // Actualizar datos atómicos
             var user = await _userManager.GetUserAsync(User);
-            var isHealthyCondition = Input.PhysicalCondition is PhysicalCondition.Excellent or PhysicalCondition.Good;
 
             verification.Date = Input.Date;
             verification.Observations = Input.Observations;

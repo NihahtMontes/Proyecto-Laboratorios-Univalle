@@ -30,7 +30,7 @@
                 </div>
 
                 <form method="post" id="editAcquisitionForm" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4 small"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 mb-4 small"></div>
                     
                     <input type="hidden" asp-for="Input.Id" />
                     <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />

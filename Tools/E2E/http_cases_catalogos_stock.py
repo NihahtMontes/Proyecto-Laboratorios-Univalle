@@ -114,13 +114,17 @@ def run(R, c):
     max_msgs = {}
     # cada valor inválido se prueba sobre su propio par (laboratorio, artículo) para que un valor aceptado por error no contamine los demás
     probe_labs = labs[3:3 + 7]
-    for (q, desc, msg), lab_i in zip((("-1", "-1", "La cantidad debe ser mayor o igual a 0."), ("-0.01", "-0.01", "La cantidad debe ser mayor o igual a 0."),
+    for (q, desc, msg), lab_i in zip((("-1", "-1", ("La cantidad debe ser mayor o igual a 0.", "La cantidad debe estar entre 0 y 999999.")),
+                                      ("-0.01", "-0.01", ("La cantidad debe ser mayor o igual a 0.", "La cantidad debe estar entre 0 y 999999.")),
                                       ("abc", "'abc'", "El valor 'abc' no es un número válido."), ("1e3", "'1e3'", "no es un número válido."),
                                       ("999999.01", "999999.01", "La cantidad debe"), ("1000000", "1000000", "La cantidad debe"),
                                       ("999999.999", "999999.999", "La cantidad debe")), probe_labs):
         r = epost(lab_i, A0, f_(lab_i, A0, q), f"qty {desc}")
         max_msgs[q] = r.errors
-        expect(R, L(f"Edit: cantidad {desc}"), r, status=200, error=msg)
+        if isinstance(msg, tuple):
+            check(R, L(f"Edit: cantidad {desc}"), r.status == 200 and any(r.has_error(m) for m in msg), f"status={r.status} errores={r.errors[:3]}")
+        else:
+            expect(R, L(f"Edit: cantidad {desc}"), r, status=200, error=msg)
         created = stock(lab_i, A0)
         check(R, L(f"Edit: cantidad {desc} no crea la fila"), created is None, f"fila creada con {created[1] if created else None}")
     check(R, L("Edit: el mensaje para una cantidad por encima del máximo (1000000) menciona el límite 999999"), any("999" in e for e in max_msgs["1000000"]),

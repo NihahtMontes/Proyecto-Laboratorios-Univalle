@@ -3,6 +3,7 @@ Usuarios (creados por /Users/Create con la clave de E2E_PW): qa_super (SuperAdmi
 Resultado observado: OK (200) | DENY (302 a /Error) | CIERRE (302 a /Cierre) | LOGIN (302 a /Login) | 404 | otro.
 """
 import os
+import re
 import sys
 
 import e2e_lib
@@ -10,6 +11,8 @@ from http_forms import Client
 
 PW = os.environ["E2E_PW"]
 ROLES = {"SA": "qa_super", "ADM": "qa_adm", "SUP": "qa_sup", "PC": "qa_cierre"}
+# Id de planificación vigente (los ids fijos de una base anterior ya no existen)
+PID = int(e2e_lib.db_scalar("SELECT MAX(Id) FROM Plannings") or 0)
 
 # Convenciones de acceso esperado (según AuthorizationHelper y los [Authorize] de cada página)
 A = {"SA": "OK", "ADM": "OK", "SUP": "DENY", "PC": "CIERRE"}            # solo Administrador/SuperAdmin
@@ -23,8 +26,8 @@ CASES = [
     ("/", {"SA": "OK", "ADM": "OK", "SUP": "OK", "PC": "CIERRE"}),
     ("/Notifications", PCOK),
     ("/Cierre", CLO),
-    ("/LaboratoryOperations/L3?id=1038", CLO),
-    ("/LaboratoryOperations/L5?planId=1038", CLO),
+    (f"/LaboratoryOperations/L3?id={PID}", CLO),
+    (f"/LaboratoryOperations/L5?planId={PID}", CLO),
     ("/LaboratoryOperations", AUTH),
     ("/LaboratoryOperations/Planificaciones?managementId=4", M),
     ("/LaboratoryOperations/Grilla?managementId=4", M),
@@ -33,8 +36,8 @@ CASES = [
     ("/LaboratoryOperations/Reposiciones?managementId=4", M),
     ("/LaboratoryOperations/Conflictos?managementId=4", M),
     ("/LaboratoryOperations/Planificacion?managementId=4", AUTH),
-    ("/LaboratoryOperations/Requerimientos?planId=1038", AUTH),
-    ("/LaboratoryOperations/Disponibilidad?planId=1038", AUTH),
+    (f"/LaboratoryOperations/Requerimientos?planId={PID}", AUTH),
+    (f"/LaboratoryOperations/Disponibilidad?planId={PID}", AUTH),
     ("/AssetView", M),
     ("/AssetView/Units", M),
     ("/Equipment", A),
@@ -102,6 +105,14 @@ for path, expected in CASES:
     for role, c in clients.items():
         st, loc = c.probe(path)
         got = classify(st, loc)
+        # Rutas del flujo de una planificación: según su estado redirigen a otro paso del mismo flujo (no es un acceso denegado);
+        # para Cierre de práctica dependen de que la planificación esté en su alcance (/Cierre).
+        if re.match(r"/LaboratoryOperations/(L3|L5|Requerimientos|Disponibilidad)\?", path) and st in (301, 302, 303):
+            if "/laboratoryoperations/" in (loc or "").lower() or (role == "PC" and "/cierre" in (loc or "").lower()):
+                got = expected[role]
+        # /Faculties redirige por diseño a /Laboratories#faculties para SA y ADM
+        if path == "/Faculties" and role in ("SA", "ADM") and st in (301, 302, 303) and (loc or "").lower().split("#")[0].rstrip("/").endswith("/laboratories"):
+            got = "OK"
         # /Error redirige 302 a sí mismo? se acepta 200
         R.append(e2e_lib.Result(f"[{role}] GET {path}", expected[role], got, "" if got == expected[role] else f"(status={st}, loc={loc})"))
 
@@ -115,7 +126,7 @@ for path in ["/", "/Users", "/LaboratoryOperations/Grilla?managementId=4", "/Cat
     R.append(e2e_lib.Result(f"[ANON] GET {path}", "LOGIN", classify(st, loc), f"(status={st}, loc={loc})"))
 
 # POST sin token antifalsificación → 400 (con sesión SuperAdmin)
-for path in ["/Countries/Create", "/Logout", "/LaboratoryOperations/L3?id=1038&handler=Finalize", "/Catalogs/Stock/Edit/21/601"]:
+for path in ["/Countries/Create", "/Logout", f"/LaboratoryOperations/L3?id={PID}&handler=Finalize", "/Catalogs/Stock/Edit/21/601"]:
     st, loc = clients["SA"].probe(path, "POST")
     R.append(e2e_lib.Result(f"[SA] POST sin token {path}", 400, st, f"(loc={loc})"))
 

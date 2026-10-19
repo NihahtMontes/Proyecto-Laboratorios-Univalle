@@ -234,7 +234,9 @@ def run(R, c):
     post_form(c, "/Equipment/Create", base(nom6, cod6), name="equipo para baja")
     eid6 = eq_id(cod6)
     u_op, inv_op = P.nueva_unidad(c, lab, "b1", equipo=eid6)
-    u_loan, inv_loan = P.nueva_unidad(c, lab, "b2", equipo=eid6, **{"Input.CurrentStatus": "10"})
+    # «En Préstamo» solo por el flujo real (salida L-3): crear una unidad ya prestada está bloqueado (2026-10-18)
+    _loan = P.llevar_a(c, lab, "b2", "P5", equipo=eid6)
+    u_loan, inv_loan = _loan["unit"], _loan["inv"]
     u_mnt, inv_mnt = P.nueva_unidad(c, lab, "b3", equipo=eid6, **{"Input.CurrentStatus": "1"})
     u_plan, inv_plan = P.nueva_unidad(c, lab, "b4", equipo=eid6)
     pid_plan = P.planificar(c, [u_plan])[u_plan]

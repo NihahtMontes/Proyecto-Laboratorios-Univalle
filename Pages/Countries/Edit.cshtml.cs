@@ -46,9 +46,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Countries
             {
                 ModelState.AddModelError("Country.Status", "El estado Eliminado solo se gestiona desde la opción Dar de Baja.");
             }
+            else if (!Enum.IsDefined(Country.Status))
+            {
+                ModelState.AddModelError("Country.Status", "Seleccione un estado válido.");
+            }
 
             if (!ModelState.IsValid)
             {
+                await ReloadCountry(Country.Id);
+                return Page();
+            }
+
+            // Mismo rango que en Create (2-100 caracteres): Edit aceptaba nombres de 1 carácter.
+            if (Country.Name.Clean().Length < 2)
+            {
+                ModelState.AddModelError("Country.Name", "El nombre debe tener entre 2 y 100 caracteres");
                 await ReloadCountry(Country.Id);
                 return Page();
             }

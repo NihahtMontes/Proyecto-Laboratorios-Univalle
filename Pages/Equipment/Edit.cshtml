@@ -20,7 +20,7 @@
                 </div>
 
                 <form method="post" enctype="multipart/form-data" novalidate id="editForm">
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
                     <input type="hidden" asp-for="Input.Id" />
                     <input type="hidden" name="Input.Category" value="@((int)Model.Input.Category)" />
                     <input type="hidden" name="Input.UtensilType" value="@(Model.Input.UtensilType.HasValue ? ((int)Model.Input.UtensilType.Value).ToString() : string.Empty)" />

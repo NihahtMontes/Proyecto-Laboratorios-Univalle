@@ -75,7 +75,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             public string? Model { get; set; }
 
             [Display(Name = "Vida Útil Estimada (Años)")]
-            [Range(0, 100)]
+            [Range(0, 50, ErrorMessage = "La vida útil debe estar entre 0 y 50 años")]   // igual que en Create
             public int? UsefulLifeYears { get; set; }
 
             [Display(Name = "Descripción / Especificaciones")]

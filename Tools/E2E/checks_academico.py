@@ -123,9 +123,13 @@ def check_stock(s):
                    "JOIN Laboratories l ON l.Id=s.LaboratoryId GROUP BY s.LaboratoryId, l.Code ORDER BY l.Code")
     out, suma = [], 0
     for lab_id, codigo, n_bd in labs:
+        # 2026-10-18 (D-6): el listado pagina de a 20; se recorren todas las páginas del laboratorio.
         _, text = s.text(f"/Catalogs/Stock?LaboratoryFilter={lab_id}")
         articulos = _badge(text, "artículo(s)")
         sin_registro = text.count("sin registro")
+        for pagina in range(2, -(-max(articulos, 0) // 20) + 1):
+            _, t = s.text(f"/Catalogs/Stock?LaboratoryFilter={lab_id}&pageIndex={pagina}")
+            sin_registro += t.count("sin registro")
         visibles = articulos - sin_registro
         suma += visibles
         out.append(Result(f"Stock: laboratorio {codigo} vs BD", n_bd, visibles,

@@ -54,6 +54,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             }
 
             // Normalization
+            // Mismo límite que en Create (150): antes Edit aceptaba nombres de hasta 200 caracteres.
+            if (Faculty.Name.Clean().Length > 150)
+            {
+                ModelState.AddModelError("Faculty.Name", "El nombre no puede superar los 150 caracteres");
+                await ReloadFaculty(Faculty.Id);
+                return Page();
+            }
+
             var normalizedName = Faculty.Name.Clean().ToLower();
 
             // Duplicate Validation (excluding current ID)

@@ -47,13 +47,30 @@ def err(name, path, status, fragment=None):
 
 
 MGMT, LAB, UNIT, REQ, PLAN, DEP, ACQ = 30, 3, 382, 330, 2, 2, 331
+# ids de datos reales (por SQL de solo lectura); si no existen, la comprobación se omite
+UNIT_L6 = e2e_lib.db_scalar("SELECT TOP 1 v.EquipmentUnitId FROM Verifications v "
+                            "JOIN EquipmentUnits u ON u.Id = v.EquipmentUnitId "
+                            "WHERE v.ManagementId = ? AND u.LaboratoryId = ? ORDER BY v.Id", MGMT, LAB)
+REQ_COMPRA = e2e_lib.db_scalar("SELECT TOP 1 Id FROM Requests WHERE Type = ? ORDER BY Id", 2)  # RequestType.Purchasing = 2
+
+
+def omitida(motivo):
+    R.append(e2e_lib.Result(f"omitida: sin datos ({motivo})", "omitida", "omitida", ""))
+
+
 ok_xlsx("L-6 consolidado (laboratorio)", f"/api/reports/download/l6?managementId={MGMT}&labId={LAB}")
-ok_xlsx("L-6 por unidad", f"/api/reports/download/l6?managementId={MGMT}&labId={LAB}&unitId={UNIT}")
+if UNIT_L6:
+    ok_xlsx("L-6 por unidad", f"/api/reports/download/l6?managementId={MGMT}&labId={LAB}&unitId={UNIT_L6}")
+else:
+    omitida("L-6 por unidad: sin Verifications en gestion/laboratorio")
 ok_xlsx("Plan L-48", f"/api/reports/download/l48?managementId={MGMT}&labId={LAB}")
 ok_xlsx("L-7 solicitud", f"/api/reports/download/l7?requestId={REQ}&managementId={MGMT}")
 ok_xlsx("L-8 Kardex", f"/api/reports/download/l8?managementPlanId={PLAN}")
 ok_xlsx("L-3 salida", f"/api/reports/download/l3?departureId={DEP}")
-ok_xlsx("L-12 adquisición", f"/api/reports/download/adquisicion?requestId={ACQ}")
+if REQ_COMPRA:
+    ok_xlsx("L-12 adquisición", f"/api/reports/download/adquisicion?requestId={REQ_COMPRA}")
+else:
+    omitida("L-12 adquisición: sin Requests de compra (Type=Purchasing)")
 
 err("L-6 gestión inexistente", f"/api/reports/download/l6?managementId=99999&labId={LAB}", 404, "Gestión no encontrada")
 err("L-6 sin datos para el equipo", f"/api/reports/download/l6?managementId={MGMT}&labId={LAB}&unitId=1", 404, "No hay datos L-6")

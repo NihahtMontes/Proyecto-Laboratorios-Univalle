@@ -168,6 +168,8 @@ builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(options =>
     messages.SetNonPropertyAttemptedValueIsInvalidAccessor(value => $"El valor '{value}' no es válido.");
     messages.SetValueMustBeANumberAccessor(field => $"El valor de {field} debe ser un número.");
     messages.SetNonPropertyValueMustBeANumberAccessor(() => "El valor debe ser un número.");
+    // Mensajes de DataAnnotations en español cuando el atributo no declara ErrorMessage (antes: "The field X must be...").
+    options.ModelMetadataDetailsProviders.Add(new SpanishValidationMetadataProvider());
 });
 builder.Services.AddRazorPages(options =>
 {

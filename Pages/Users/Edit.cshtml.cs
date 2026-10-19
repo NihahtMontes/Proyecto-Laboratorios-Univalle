@@ -204,9 +204,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 return Forbid();
             }
 
-            // El formulario no envía Estado ni Fecha de alta: se conservan los de la cuenta.
-            // Antes cada guardado reactivaba las cuentas inactivas y borraba la fecha de alta.
-            Input.Status = userToUpdate.Status;
+            // El estado solo cambia si el formulario lo envía (campo «Estado de la cuenta»); si no, se conserva.
+            // Antes cada guardado reactivaba las cuentas inactivas. La fecha de alta no está en el formulario: se conserva.
+            if (!Request.HasFormContentType || !Request.Form.ContainsKey("Input.Status"))
+                Input.Status = userToUpdate.Status;
+            else if (Input.Status == GeneralStatus.Eliminado)
+                Input.Status = userToUpdate.Status;   // la baja se hace desde Eliminar, no desde el editor
             Input.HireDate = userToUpdate.HireDate;
 
             var currentUser = await _userManager.GetUserAsync(User);

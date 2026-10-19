@@ -129,6 +129,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             Input.Tasks = NormalizeTasks(Input.Tasks);
             Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
 
+            // QA 2026-10-18: el historial Kardex no es la puerta para dar de baja una unidad ni para prestarla sin salida L-3.
+            if (Input.Status == EquipmentStatus.Deleted)
+                ModelState.AddModelError("Input.Status", "La baja de una unidad se registra desde Unidades físicas, no desde el historial Kardex.");
+            if (Input.Status == EquipmentStatus.OnLoan && !Input.EndDate.HasValue
+                && !await _context.Departures.AnyAsync(d => d.EquipmentUnitId == Input.EquipmentUnitId
+                    && (d.Status == LoanStatus.Active || d.Status == LoanStatus.Overdue)))
+                ModelState.AddModelError("Input.Status", "Solo puede marcarse «En Préstamo» si la unidad tiene una salida L-3 abierta.");
+
             if (!ModelState.IsValid)
             {
                 var history = await _context.EquipmentStateHistories

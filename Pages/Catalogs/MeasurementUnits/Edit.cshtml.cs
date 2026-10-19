@@ -54,7 +54,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == id);
 
-            if (unit == null) return NotFound();
+            if (unit == null || unit.Status == GeneralStatus.Eliminado) return NotFound(); // QA 2026-10-18: un registro dado de baja no se edita ni se reactiva por URL.
 
             UnitSnapshot = unit;
             Input = new InputModel
@@ -95,7 +95,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.MeasurementUnits
                 .AsTracking()
                 .FirstOrDefaultAsync(u => u.Id == Input.Id);
 
-            if (unitToUpdate == null) return NotFound();
+            if (unitToUpdate == null || unitToUpdate.Status == GeneralStatus.Eliminado) return NotFound(); // QA 2026-10-18: un registro dado de baja no se edita ni se reactiva por URL.
 
             var normalizedName = Input.Name.Trim().ToLower();
 

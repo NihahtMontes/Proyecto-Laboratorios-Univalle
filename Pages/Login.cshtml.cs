@@ -57,7 +57,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
         public async Task<IActionResult> OnPostAsync(string? returnUrl = null)
         {
-            returnUrl ??= Url.Content("~/");
+            // H-020: solo se vuelve a direcciones del propio sitio; una externa lleva al inicio (LocalRedirect lanzaba 500).
+            returnUrl = !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Content("~/");
 
             if (ModelState.IsValid)
             {
@@ -87,7 +88,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 }
                 if (result.IsLockedOut)
                 {
-                    return RedirectToPage("./Lockout");
+                    // H-019: la página «Lockout» no existe (daba 500); se avisa en el propio formulario.
+                    ModelState.AddModelError(string.Empty,
+                        "Cuenta bloqueada temporalmente por 15 minutos por intentos fallidos. Intente más tarde o contacte a un administrador.");
+                    return Page();
                 }
                 else
                 {

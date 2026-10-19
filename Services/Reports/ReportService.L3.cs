@@ -22,7 +22,14 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 .Include(d => d.CreatedBy)
                 .FirstOrDefaultAsync(d => d.Id == departureId);
 
-            if (departure == null) throw new Exception("Salida L-3 no encontrada.");
+            if (departure == null) throw new KeyNotFoundException("Salida L-3 no encontrada.");
+
+            // Gestión impresa: la de la salida (semestre en romano y año); sin gestión semestral, la del semestre de la fecha.
+            var departureManagement = await _context.Managements.AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == departure.ManagementId);
+            var gestionLabel = departureManagement is { Semester: 1 or 2 }
+                ? $"{(departureManagement.Semester == 1 ? "I" : "II")}/{departureManagement.Year}"
+                : $"{(departure.DepartureDate.Month <= 6 ? "I" : "II")}/{departure.DepartureDate.Year}";
 
             var items = departure.Items.ToList();
 
@@ -53,7 +60,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                         worksheet.Cells[r, c].Value = "RECIBIDO POR: " + (departure.Borrower?.FullName?.ToUpper() ?? "");
                         
                     if (text.StartsWith("GESTIÓN:") || text.StartsWith("GESTION:")) 
-                        worksheet.Cells[r, c].Value = "GESTIÓN: I/" + departure.DepartureDate.Year;
+                        worksheet.Cells[r, c].Value = "GESTIÓN: " + gestionLabel;
                         
                     if (text.StartsWith("NRO. DE SOLICITUD") || text.StartsWith("NRO DE SOLICITUD")) 
                         worksheet.Cells[r, c].Value = "Nro. DE SOLICITUD: L3-" + departure.Id.ToString("D5");

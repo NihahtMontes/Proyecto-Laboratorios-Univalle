@@ -121,6 +121,11 @@ expect(R, "Facultades/Delete sin token: 400", K.post_notoken(c, "delete sin toke
 check(R, "Facultades/Delete sin token: la facultad sigue Activa", fstatus(id_h) == 0, "")
 expect(R, "Facultades/Edit sin token: 400", K.post_notoken(c, "edit sin token", f"/Faculties/Edit/{id_h}", [("Faculty.Id", str(id_h)), ("Faculty.Name", "Hack"), ("Faculty.Status", "0")]), status=400)
 
+# Decisión del usuario 2026-10-18: una facultad con laboratorios activos no se da de baja.
+res = post(c, "delete fd con laboratorio activo", f"/Faculties/Delete/{idd}", [("Faculty.Id", str(idd))], f"/Faculties/Delete/{idd}")
+check(R, "Facultades/Delete: con laboratorios activos se bloquea con aviso y sigue Activa", res.has_toast("laboratorio(s) activo(s)", "warning") and fstatus(idd) == 0, f"toasts={res.toasts[:1]} Status={fstatus(idd)}")
+post(c, "baja del laboratorio hijo", f"/Laboratories/Delete/{id_lab}", [], f"/Laboratories/Delete/{id_lab}")
+check(R, "Laboratorios/Delete: el laboratorio hijo se da de baja primero", K.dbv("select Status from Laboratories where Id=?", id_lab) == 2, "")
 cur = fname(idd)
 res = post(c, "delete fd", f"/Faculties/Delete/{idd}", [("Faculty.Id", str(idd))], f"/Faculties/Delete/{idd}")
 expect(R, "Facultades/Delete: baja lógica con toast", res, status=302, redirect="/Laboratories#faculties", toast=f"La Facultad académica '{cur}' ha sido dada de baja del sistema institucional.", toast_kind="success")
@@ -136,15 +141,8 @@ check(R, "Facultades/Edit: POST sobre facultad eliminada -> 404 y no la revive",
 res = sub(c, "recrear tras baja", "/Faculties/Create", {"Input.Name": fd})
 check(R, "Facultades/Create: recrear con el nombre de una facultad dada de baja se permite", res.status == 302, f"status={res.status} errores={res.errors[:1]}")
 
-# dependientes tras la baja de la facultad
-check(R, "Facultades/Delete: no valida dependientes (laboratorio y carrera siguen Activos en la BD)",
-      K.dbv("select Status from Laboratories where Id=?", id_lab) == 0 and K.dbv("select Status from Careers where Id=?", id_car) == 0, "")
-st, _ = c.get(f"/Laboratories/Details/{id_lab}")
-check(R, "Laboratorios/Details de un laboratorio Activo cuya facultad fue dada de baja -> 200 (el plan dice que pasan a 'Área General')", st == 200, f"status={st}")
-st, _ = c.get(f"/Laboratories/Edit/{id_lab}")
-check(R, "Laboratorios/Edit de un laboratorio Activo cuya facultad fue dada de baja -> 200", st == 200, f"status={st}")
-st, lst = c.get(f"/Laboratories?SearchTerm={tag}")
-check(R, "Laboratorios/Index: el laboratorio Activo cuya facultad fue dada de baja sigue en el listado", st == 200 and f"/Laboratories/Details/{id_lab}" in lst, f"status={st}")
+# dependientes tras la baja de la facultad: el laboratorio ya se dio de baja antes; la carrera (no bloquea) sigue Activa
+check(R, "Facultades/Delete: la carrera hija sigue Activa (la regla solo exige dar de baja los laboratorios)", K.dbv("select Status from Careers where Id=?", id_car) == 0, "")
 st, _ = c.get(f"/Career/Details?id={id_car}")
 check(R, "Carreras/Details de una carrera Activa cuya facultad fue dada de baja -> 200", st == 200, f"status={st}")
 st, _ = c.get(f"/Career/Edit?id={id_car}")

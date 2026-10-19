@@ -538,8 +538,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<ArticleStock>().ToTable(t => t.HasCheckConstraint("CK_ArticleStocks_Quantity", "[AvailableQuantity] >= 0"));
             modelBuilder.Entity<ImportBatch>().HasIndex(batch => batch.Code).IsUnique();
             modelBuilder.Entity<Management>().HasIndex(m => m.Code).IsUnique().HasFilter("[Status] <> 99");
-            modelBuilder.Entity<Management>().HasIndex(m => m.Status).IsUnique().HasFilter("[Status] = 0");
-            modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.ManagementId, p.EquipmentUnitId }).IsUnique().HasFilter("[EquipmentUnitId] IS NOT NULL");
+            // Una gestión Activa por tipo: la preventiva del semestre convive con la correctiva del mismo semestre.
+            modelBuilder.Entity<Management>().HasIndex(m => new { m.Type, m.Status }).IsUnique().HasFilter("[Status] = 0");
+            // Un plan ABIERTO por unidad y gestión: en el correctivo, cerrado un proceso, la unidad puede abrir otro.
+            // En el preventivo la unicidad completa la garantizan PlanAssets, la sincronización y Details (miran planes en cualquier estado).
+            modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.ManagementId, p.EquipmentUnitId }).IsUnique().HasFilter("[EquipmentUnitId] IS NOT NULL AND [PlanStatus] <> 2");
             modelBuilder.Entity<VerificationCheckResult>().HasIndex(r => new { r.VerificationId, r.CheckItemId }).IsUnique();
             modelBuilder.Entity<MaintenanceParticipant>().HasIndex(p => new { p.MaintenanceId, p.PersonId, p.Role }).IsUnique().HasFilter("[IsActive] = 1");
             modelBuilder.Entity<MaintenanceParticipant>().HasIndex(p => p.MaintenanceId).IsUnique().HasFilter("[IsPrimary] = 1 AND [IsActive] = 1");

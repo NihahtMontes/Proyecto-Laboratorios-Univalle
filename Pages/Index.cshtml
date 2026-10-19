@@ -10,8 +10,8 @@
         : new[] { "PROGRESO", "L6 VERIF.", "L7 SOLIC.", "L8 MANT.", "L3 SALIDA", "KARDEX", "DESEMB.", "COMPLET." };
 
     var stepIcons = isCorrective
-        ? new[] { "fa-chart-pie", "fa-clipboard-list", "fa-wrench", "fa-truck-loading", "fa-history", "fa-file-invoice-dollar", "fa-flag-checkered" }
-        : new[] { "fa-chart-pie", "fa-clipboard-check", "fa-clipboard-list", "fa-wrench", "fa-truck-loading", "fa-history", "fa-file-invoice-dollar", "fa-flag-checkered" };
+        ? new[] { "fa-chart-pie", "fa-clipboard-list", "fa-wrench", "fa-truck-loading", "fa-history", "fa-dollar-sign", "fa-flag-checkered" }
+        : new[] { "fa-chart-pie", "fa-clipboard-check", "fa-clipboard-list", "fa-wrench", "fa-truck-loading", "fa-history", "fa-dollar-sign", "fa-flag-checkered" };
 
     // Variables para paginación de Step 7 (Completados)
     var completedBaseUrl = $"?ShowWizard=true&Step=7&ManagementId={Model.ManagementId}";

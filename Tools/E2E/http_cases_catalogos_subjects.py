@@ -275,6 +275,11 @@ def run(R, c):
     pn = uniq("QAC Prac dep")
     rp = c.raw_post("/Catalogs/Practices/Create", [("Input.Name", pn), ("Input.SubjectId", sid)], token_from="/Catalogs/Practices/Create", name="práctica dependiente")
     prac_id = scalar("select top 1 Id from Practices where Name=? order by Id desc", pn)
+    # 2026-10-18: con prácticas activas la baja se bloquea; se da de baja primero la práctica
+    r = c.submit(f"{B}/Delete/{sid}", {})
+    check(R, L("Delete: con prácticas activas se bloquea con aviso y la materia sigue Activa"), r.has_toast("práctica(s) activa(s)", "warning") and subj(sid) and subj(sid)[5] == 0, f"toasts={r.toasts[:1]}")
+    if prac_id:
+        c.submit(f"/Catalogs/Practices/Delete/{prac_id}", {})
     r = c.submit(f"{B}/Delete/{sid}", {})
     expect(R, L("Delete: baja lógica"), r, status=302, redirect=B, toast_kind="success", toast=f"La materia '{nm2}' ha sido dada de baja del catálogo académico.")
     check(R, L("Delete: Status=Eliminado en BD (fila conservada)"), subj(sid) and subj(sid)[5] == 2, str(subj(sid)))
@@ -283,7 +288,7 @@ def run(R, c):
     st, _ = c.get(f"{B}/Kit/{sid}")
     check(R, L("Kit de una materia dada de baja -> 404"), st == 404, f"status={st}")
     has_prac = scalar("select Status from Practices where Id=?", prac_id) if prac_id else None
-    check(R, L("Delete: una materia con práctica activa se puede dar de baja sin avisar y deja la práctica activa [hallazgo extra: sin integridad referencial]"),
+    check(R, L("Delete: tras la baja no queda ninguna práctica activa de la materia (integridad)"),
           has_prac != 0, f"práctica {prac_id} Status={has_prac} (0=Activo)")
     r = c.submit(f"{B}/Delete/{sid}", {})
     check(R, L("Delete: segunda baja de la misma materia no falla (sin 500)"), r.status == 302, f"status={r.status} toasts={r.toasts[:1]}")
@@ -296,7 +301,7 @@ def run(R, c):
     check(R, L("Edit: una materia dada de baja no se abre por URL [hallazgo extra]"), st == 404, f"GET Edit status={st} (la categoría tampoco lo impide)")
 
     # ---------------------------------------------------------------- limpieza (bajas lógicas)
-    if prac_id:
+    if prac_id and scalar("select Status from Practices where Id=?", prac_id) == 0:
         c.submit(f"/Catalogs/Practices/Delete/{prac_id}", {})
     for rid in (sid_c2, created["sem1"], created["sem12"], created["nosem"], exact_id, html_id, acc_id):
         if rid:

@@ -77,6 +77,14 @@ public class CreateModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+        // QA 2026-10-18: errores de enlace (p. ej. estudiantes = "abc") se informan en lugar de guardar el dato perdido.
+        if (!ModelState.IsValid)
+        {
+            Management = await _managements.ResolveAsync(Input.ManagementId);
+            await LoadAsync();
+            return Page();
+        }
+
         var result = await _groups.CreateAsync(Input.ToServiceInput());
         if (result.Error != null)
         {

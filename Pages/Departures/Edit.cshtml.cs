@@ -219,6 +219,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             // Estado previo de la salida (antes de aplicar los cambios del POST).
             var statusBefore = departureDB.Status;
 
+            // Una salida ya devuelta no se reabre: dejaría la unidad sin coherencia con su historial.
+            if (statusBefore == LoanStatus.Returned && Input.Status != LoanStatus.Returned)
+            {
+                TempData.Warning($"La salida #{departureDB.Id} ya fue devuelta y no se puede reabrir. Registre una salida nueva si el equipo vuelve a salir.");
+                return RedirectToPage("./Index");
+            }
+
             departureDB.BorrowerId = Input.BorrowerId;
             departureDB.Type = Input.Type;
             departureDB.Status = Input.Status;
@@ -287,9 +294,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     $"Devolución de la salida #{departureDB.Id}");
             }
 
-            // ── (e) Reapertura (Returned -> Active/Overdue): no se toca la unidad, solo se avisa ──
-            var reopenedFromReturned = statusBefore == LoanStatus.Returned && Input.Status != LoanStatus.Returned;
-
             // ── (f) Cancelación: ninguna salida Cancelada puede dejar la unidad En Préstamo ──
             if (Input.Status == LoanStatus.Cancelled
                 && departureDB.EquipmentUnit is EquipmentUnit cancelledUnit
@@ -314,10 +318,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             {
                 await _context.SaveChangesAsync();
                 TempData.Success($"Salida #{departureDB.Id} actualizada correctamente.");
-                if (reopenedFromReturned)
-                {
-                    TempData.Warning($"La salida #{departureDB.Id} volvió a un estado activo: revise y actualice manualmente el estado de la unidad (p. ej. \"En Préstamo\").");
-                }
                 return RedirectToPage("./Index");
             }
             catch (Exception ex)

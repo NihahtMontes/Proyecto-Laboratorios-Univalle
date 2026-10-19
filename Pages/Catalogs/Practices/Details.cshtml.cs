@@ -113,6 +113,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             // terminaba en silencio sin guardar nada.
             KeepModelStateFor(nameof(RequirementInput));
 
+            // QA 2026-10-18: cantidad vacía no se guarda en silencio como 1; hasta 2 decimales, igual que en el Kit de la materia.
+            if (string.IsNullOrWhiteSpace(Request.Form["RequirementInput.Quantity"]))
+                ModelState.AddModelError("RequirementInput.Quantity", "La cantidad es obligatoria.");
+            else if (decimal.Round(RequirementInput.Quantity, 2) != RequirementInput.Quantity)
+                ModelState.AddModelError("RequirementInput.Quantity", "La cantidad admite hasta 2 decimales.");
+
             if (!ModelState.IsValid)
             {
                 Requirements = await LoadRequirementsAsync(practice.Id);
@@ -193,6 +199,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             // Este formulario solo envía RequirementUpdate.*; se ignora la validación del otro [BindProperty].
             KeepModelStateFor(nameof(RequirementUpdate));
 
+            if (string.IsNullOrWhiteSpace(Request.Form["RequirementUpdate.Quantity"]))
+                ModelState.AddModelError("RequirementUpdate.Quantity", "La cantidad es obligatoria.");
+            else if (decimal.Round(RequirementUpdate.Quantity, 2) != RequirementUpdate.Quantity)
+                ModelState.AddModelError("RequirementUpdate.Quantity", "La cantidad admite hasta 2 decimales.");
+
             if (!ModelState.IsValid)
             {
                 Requirements = await LoadRequirementsAsync(practice.Id);
@@ -240,7 +251,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
             if (practice == null) return NotFound();
 
             // IDOR: la línea debe pertenecer a esta práctica y no estar ya retirada.
+            // Se ignora el filtro de retiradas para poder avisar «ya estaba retirada» en lugar de «no pertenece».
             var requirement = await _context.PracticeRequirements
+                .IgnoreQueryFilters()
                 .AsTracking()
                 .FirstOrDefaultAsync(r => r.Id == requirementId);
 

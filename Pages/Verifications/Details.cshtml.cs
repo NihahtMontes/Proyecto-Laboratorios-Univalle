@@ -70,7 +70,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             var currentMgmt = ManagementId.HasValue
                 ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
-                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == verification.ManagementId); // la gestión del propio registro (pueden estar activas una preventiva y una correctiva)
 
             var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
             ViewData["IsCorrective"] = isCorrective;

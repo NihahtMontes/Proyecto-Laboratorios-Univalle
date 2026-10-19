@@ -188,8 +188,9 @@
                                                             </a>
                                                             @if (item.Status != ManagementStatus.Active)
                                                             {
-                                                                <form method="post" asp-page-handler="ActivateManagement" asp-route-id="@item.Id" class="d-inline js-activate-management-form">
-                                                                    <button type="submit" class="btn btn-sm btn-outline-success btn-rounded shadow-sm" title="Activar gestiÃ³n">
+                                                                <form method="post" asp-page-handler="ActivateManagement" asp-route-id="@item.Id" class="d-inline js-activate-management-form"
+                                                                      data-code="@item.Code" data-closes="@(Model.ActiveCodeByType.TryGetValue(item.Type, out var activeCode) && activeCode != item.Code ? activeCode : "")">
+                                                                    <button type="submit" class="btn btn-sm btn-outline-success btn-rounded shadow-sm" title="Activar gestión">
                                                                         <i class="fas fa-check-circle"></i>
                                                                     </button>
                                                                 </form>
@@ -325,9 +326,13 @@
                     return false;
                 }
 
+                var closes = form.dataset.closes || '';
+                var code = form.dataset.code || '';
                 Swal.fire({
-                    title: 'Activar gestion',
-                    text: 'Esta gestion quedara activa y cualquier otra gestion activa del mismo tipo se cerrara automaticamente.',
+                    title: 'Activar gestión ' + code,
+                    text: closes
+                        ? 'Se cerrará la gestión activa ' + closes + ' del mismo tipo (quedará Completada y no se puede reabrir). ¿Desea continuar?'
+                        : 'Esta gestión quedará activa. No hay otra gestión activa del mismo tipo que cerrar.',
                     type: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#10b981',

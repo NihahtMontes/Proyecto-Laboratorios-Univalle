@@ -83,7 +83,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             [Display(Name = "Fecha de Fabricación")]
             public DateTime? ManufacturingDate { get; set; }
 
-            [Range(0, 999999999, ErrorMessage = "El precio de adquisición no puede ser negativo")]
+            [Range(0d, 999999999d, ErrorMessage = "El precio de adquisición debe estar entre 0 y 999.999.999.")]
             [Display(Name = "Precio de Adquisición")]
             public decimal? AcquisitionValue { get; set; }
         }
@@ -152,6 +152,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             }
 
             ValidateUnitDates(Input.AcquisitionDate, Input.ManufacturingDate, "Input");
+
+            // QA 2026-10-18: una unidad nueva no puede nacer «Eliminada» ni «En Préstamo» (sin salida L-3 que la respalde).
+            if (Input.CurrentStatus == EquipmentStatus.Deleted)
+                ModelState.AddModelError("Input.CurrentStatus", "No se puede registrar una unidad con estado «Eliminado».");
+            else if (Input.CurrentStatus == EquipmentStatus.OnLoan)
+                ModelState.AddModelError("Input.CurrentStatus", "Una unidad nueva no puede registrarse «En Préstamo»: el préstamo se registra con una salida L-3.");
 
             if (!ModelState.IsValid)
             {

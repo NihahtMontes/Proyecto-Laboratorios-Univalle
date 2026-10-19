@@ -15,7 +15,7 @@ def n_mn(unit):
 
 
 def costs(mid):
-    return sql("select Concept,Quantity,UnitPrice,MaintenanceId,RequestId from CostDetails where MaintenanceId=? order by Id", mid)
+    return sql("select Concept,Quantity,UnitPrice,MaintenanceId,RequestId from CostDetails where MaintenanceId=? and IsVoided=0 order by Id", mid)
 
 
 def sin_tareas():
@@ -44,7 +44,8 @@ def run(R, c):
     r = P.l8(c, pid("a"), {"Input.TechnicianId": ""}, name="sin tecnico", follow=True)
     check(R, "Create (wizard): sin tecnico -> 'El técnico responsable es obligatorio en el flujo de mantenimiento...'", r.status == 200 and r.has_toast("El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que L-3 pueda derivar el responsable de la salida.", "error"), P.dump(r))
     r = P.l8(c, pid("a"), {"Input.CompletionPercentage": "50", **{f"Input.Tasks[{i}].IsCompleted": None for i in (2, 3)}}, name="Completado al 50%", follow=True)
-    expect(R, "Create: Completado con 50 % de avance", r, status=200, toast="Para marcar el mantenimiento como Completado, el avance debe estar al 100%.", toast_kind="error")
+    check(R, "Create: Completado con 50 % de avance -> 'el avance debe estar al 100%' como error de campo o toast",
+          r.status == 200 and (r.has_error("el avance debe estar al 100%") or r.has_toast("el avance debe estar al 100%")), P.dump(r))
     r = P.l8(c, pid("a"), {"Input.CompletionPercentage": "100", **sin_tareas()}, name="Completado 100 manipulado sin tareas", follow=True)
     check(R, "Create: 'Completado' con avance=100 enviado pero 0 tareas marcadas debe rechazarse (el servidor recalcula el avance DESPUES de validarlo)", r.status == 200 and plan(pid("a"))["state"] == 4, P.dump(r) + f" plan={plan(pid('a'))['state']} mnt={plan(pid('a'))['mnt']}")
     if plan(pid("a"))["mnt"]:   # el defecto dejo un L-8 'Completado' al 0 %; se anota
@@ -63,20 +64,28 @@ def run(R, c):
     check(R, "Create: nivel de satisfaccion fuera de rango (9) se rechaza", r.status == 200 and plan(pid("b"))["state"] == 4, P.dump(r) + f" plan={plan(pid('b'))['state']}")
     r = P.l8(c, 99999, name="plan inexistente", follow=True)
     check(R, "Create: plan inexistente sin 500", r.status < 500, P.dump(r))
-    # unidad en prestamo
-    u_loan = ctx["c"]["unit"]
-    post_form(c, f"/EquipmentUnits/Edit?id={u_loan}", {"EquipmentUnit.CurrentStatus": "10"}, name="poner OnLoan")
-    check(R, "Fixture: unidad 'c' en Prestamo", unidad(u_loan)["status"] == 10)
-    r = P.l8(c, pid("c"), name="unidad OnLoan", follow=True)
+    # unidad en prestamo: por flujo real (llevar_a hasta la salida L-3 activa); poner 'En Prestamo' a mano esta bloqueado
+    loan = P.llevar_a(c, lab, "mloan", "P5")
+    u_loan = loan["unit"]
+    check(R, "Fixture: unidad en Prestamo por flujo real (salida L-3 activa; ya no se puede poner En Prestamo a mano)", unidad(u_loan)["status"] == 10, f"unidad={unidad(u_loan)['status']}")
+    n_loan = n_mn(u_loan)
+    r = post_form(c, "/Maintenances/Create", {"Input.FacultyId": str(P.FAC), "Input.LaboratoryId": str(lab), "Input.EquipmentUnitId": str(u_loan),
+                                              "Input.MaintenanceType": "1", "Input.TechnicianId": str(P.TECH_INT), "Input.Status": "2",
+                                              "Input.Description": "Intento sobre unidad en prestamo QAP", "Input.CompletionPercentage": "100",
+                                              "Input.StartDate": f"{P.d(1)}T08:00", "Input.EndDate": f"{P.d(2)}T17:00", **P.TAREAS_OK},
+                  name="L-8 sin plan sobre unidad OnLoan", follow=True)
     expect(R, "Create: unidad en prestamo (OnLoan)", r, status=200, toast="No se puede realizar mantenimiento a un equipo que actualmente está en préstamo.", toast_kind="error")
-    check(R, "Create OnLoan: el plan no avanzo y la unidad sigue OnLoan", plan(pid("c"))["state"] == 4 and unidad(u_loan)["status"] == 10)
-    post_form(c, f"/EquipmentUnits/Edit?id={u_loan}", {"EquipmentUnit.CurrentStatus": "0"}, name="restaurar unidad c")
+    check(R, "Create OnLoan: el plan no avanzo, no se creo mantenimiento y la unidad sigue OnLoan",
+          plan(loan["plan"])["phase"] == 5 and unidad(u_loan)["status"] == 10 and n_mn(u_loan) == n_loan,
+          f"plan={plan(loan['plan'])['phase']} unidad={unidad(u_loan)['status']} mnt={n_loan}->{n_mn(u_loan)}")
     # unidad sin laboratorio
     post_form(c, f"/EquipmentUnits/Edit?id={uid('d')}", {"EquipmentUnit.LaboratoryId": ""}, name="quitar laboratorio d")
     r = P.l8(c, pid("d"), name="unidad sin laboratorio", follow=True)
     check(R, "Create: unidad sin laboratorio -> 'La unidad física no tiene laboratorio asignado...'", r.status == 200 and r.has_toast("no tiene laboratorio asignado", "error"), P.dump(r))
     post_form(c, f"/EquipmentUnits/Edit?id={uid('d')}", {"EquipmentUnit.LaboratoryId": str(lab)}, name="restaurar laboratorio d")
-    check(R, "Create: las validaciones fallidas no dejaron mantenimientos huerfanos en 'b', 'c' ni 'd'", all(n_mn(uid(k)) == 0 for k in ("b", "c", "d")), f"{[n_mn(uid(k)) for k in ('b', 'c', 'd')]}")
+    check(R, "Create: las validaciones fallidas no dejaron mantenimientos huerfanos en 'b', la unidad en prestamo ni 'd' ('c' ya no se pone OnLoan a mano)",
+          n_mn(uid("b")) == 0 and n_mn(u_loan) == n_loan and n_mn(uid("d")) == 0,
+          f"b={n_mn(uid('b'))} prestamo={n_loan}->{n_mn(u_loan)} d={n_mn(uid('d'))}")
 
     # borrador
     r = P.l8(c, pid("e"), {"Input.TechnicianId": "", "Input.Description": "", "Input.Status": "1"}, draft=True, name="borrador", follow=True)
@@ -94,6 +103,11 @@ def run(R, c):
           "Input.CostDetails[2].Id": "0", "Input.CostDetails[2].Concept": "Linea negativa QAP", "Input.CostDetails[2].Category": "0", "Input.CostDetails[2].Quantity": "-3", "Input.CostDetails[2].UnitPrice": "-10",
           "Input.CostDetails[3].Id": "0", "Input.CostDetails[3].Concept": "   ", "Input.CostDetails[3].Quantity": "5", "Input.CostDetails[3].UnitPrice": "99"}
     nom_eq = scalar("select Name from Equipments where Id=?", P.EQUIP)
+    # H-009 (aprobado 2026-10-18): la línea con cantidad/precio negativos ya NO se normaliza en silencio; se rechaza con mensaje.
+    r = P.l8(c, pid("f"), ov, name="Completado con linea negativa", follow=True)
+    check(R, "Create: línea de costo con cantidad/precio negativos se rechaza con mensaje en español y el plan no avanza (H-009)",
+          r.status == 200 and "cantidad debe ser un número" in P.toast_text(r) and plan(pid("f"))["phase"] == 3, P.dump(r))
+    ov.update({"Input.CostDetails[2].Concept": "Linea sin costo QAP", "Input.CostDetails[2].Quantity": "1", "Input.CostDetails[2].UnitPrice": "0"})
     r = P.l8(c, pid("f"), ov, name="valido Completado", follow=True)
     pf = plan(pid("f"))
     check(R, "Create: Completado 100 % -> 'Mantenimiento para ... guardado correctamente.' y paso 4", r.status == 302 and "Step=4" in (r.location or "") and r.has_toast(f"Mantenimiento para '{nom_eq}' guardado correctamente.", "success"), P.dump(r))
@@ -101,7 +115,7 @@ def run(R, c):
     m = mn(pf["mnt"]) if pf["mnt"] else {}
     check(R, "Create valido: Completado, 100 %, tecnico interno, costo = 2x50 + 150 + 1x0 = 250", m.get("status") == 2 and m.get("pct") == 100 and m.get("tech") == P.TECH_INT and m.get("cost") == 250, f"{m}")
     cs = costs(pf["mnt"]) if pf["mnt"] else []
-    check(R, "Create valido: la linea de concepto en blanco se descarta y la linea con cantidad/precio negativos se normaliza a 1 x 0", len(cs) == 3 and cs[2][1] == 1 and cs[2][2] == 0, f"{cs}")
+    check(R, "Create valido: la linea de concepto en blanco se descarta y la linea 1 x 0 se guarda tal cual", len(cs) == 3 and cs[2][1] == 1 and cs[2][2] == 0, f"{cs}")
     check(R, "Create valido: la unidad queda Operativa y vinculada a la L-7 del plan", unidad(uid("f"))["status"] == 0 and m.get("req") == plan(pid("f"))["req"], f"unidad={unidad(uid('f'))['status']} req={m.get('req')}")
     check(R, "Create valido: el L-8 completado crea el historial 'Cierre automatico L-8' abierto", scalar("select count(*) from EquipmentStateHistories where EquipmentUnitId=? and Reason like 'Cierre autom%' and EndDate is null", uid("f")) == 1)
     # doble envio sobre plan ya en L-3
@@ -176,9 +190,8 @@ def run(R, c):
     r = rechaza("descripcion vacia", {"Input.Description": ""})
     check(R, "Edit: el mensaje 'La descripción es obligatoria' se muestra al usuario (la vista solo tiene resumen ModelOnly)", r.has_error("La descripción es obligatoria"), P.dump(r))
     r = rechaza("fin antes de inicio", {"Input.StartDate": f"{P.d(5)}T08:00", "Input.EndDate": f"{P.d(4)}T08:00"})
-    check(R, "Edit: el mensaje 'La fecha de finalización no puede ser anterior al inicio.' se muestra al usuario", r.has_error("La fecha de finalización no puede ser anterior al inicio."), P.dump(r))
-    r = rechaza("Completado con costo total 0", {"Input.CostDetails[0].Quantity": "1", "Input.CostDetails[0].UnitPrice": "0", "Input.CostDetails[1].Quantity": "1", "Input.CostDetails[1].UnitPrice": "0", "Input.CostDetails[2].Quantity": "1", "Input.CostDetails[2].UnitPrice": "0"})
-    check(R, "Edit: el mensaje 'Para estado Completado, debe registrar costos reales.' se muestra al usuario", r.has_error("Para estado Completado, debe registrar costos reales."), P.dump(r))
+    check(R, "Edit: el mensaje 'La fecha de finalización no puede ser anterior al inicio.' se muestra al usuario", r.has_error("La fecha de finalización no puede ser anterior"), P.dump(r))
+    # H-010 (2026-10-18): «Completado» con costo 0 ahora se ACEPTA (Create y Edit); ya no es un caso de rechazo. Cubierto en http_cases_costos CO-05.
     r = rechaza("Completado sin satisfaccion", {"Input.SatisfactionLevel": ""})
     check(R, "Edit: el mensaje de satisfaccion obligatoria se muestra al usuario", r.has_error("Para estado Completado, la Evaluación de Satisfacción es obligatoria."), P.dump(r))
     r = rechaza("Completado sin recomendaciones", {"Input.Recommendations": ""})

@@ -43,7 +43,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             var request = await _context.Requests.FindAsync(id);
             // Solo solicitudes de adquisición (antes el POST aceptaba el Id de una L-7 técnica).
             if (request != null && request.Type != RequestType.Purchasing) return NotFound();
-            if (request != null)
+            if (request == null)
+            {
+                TempData.Warning("La solicitud de adquisición no existe o ya fue anulada.");
+                return RedirectToPage("./Index");
+            }
+            // QA 2026-10-18: la compra (L-12) de un plan no se anula aquí; dejaba planes «Completados» apuntando a una compra anulada.
+            var linkedPlan = await _context.ManagementPlans.AsNoTracking().FirstOrDefaultAsync(p => p.AcquisitionRequestId == request.Id);
+            if (linkedPlan != null)
+            {
+                TempData.Warning($"No se puede anular la solicitud de adquisición #{request.Id}: forma parte del proceso del activo (fase {Helpers.WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}). Use «Rehacer fase» en el asistente.");
+                return RedirectToPage("./Index");
+            }
             {
                 request.Status = RequestStatus.Cancelled;
                 request.RejectionReason = string.IsNullOrWhiteSpace(request.RejectionReason)

@@ -65,7 +65,7 @@
                             }
 
                             <span class="small text-muted ml-auto mb-2" aria-live="polite">
-                                <strong class="text-dark">@Model.StockRows.Count</strong> artículo(s)
+                                <strong class="text-dark">@Model.StockRows.TotalCount</strong> artículo(s)
                             </span>
                         </div>
                     </form>
@@ -166,6 +166,32 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if (Model.StockRows!.TotalPages > 1)
+                {
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.StockRows.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.StockRows.PageIndex - 1)" asp-route-LaboratoryFilter="@Model.LaboratoryFilter" asp-route-SearchTerm="@Model.SearchTerm">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.StockRows.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.StockRows.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-LaboratoryFilter="@Model.LaboratoryFilter" asp-route-SearchTerm="@Model.SearchTerm">@i</a>
+                                </li>
+                            }
+                            @if (Model.StockRows.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.StockRows.PageIndex + 1)" asp-route-LaboratoryFilter="@Model.LaboratoryFilter" asp-route-SearchTerm="@Model.SearchTerm">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
             </div>
         </div>
     </div>

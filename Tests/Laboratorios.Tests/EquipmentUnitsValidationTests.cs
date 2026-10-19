@@ -62,7 +62,7 @@ public class EquipmentUnitsValidationTests
     {
         var errors = Validate(new CreateModel.InputModel { InventoryNumber = "UV-001", AcquisitionValue = -1m });
 
-        Assert.Contains(errors, e => e.ErrorMessage == "El precio de adquisición no puede ser negativo");
+        Assert.Contains(errors, e => e.ErrorMessage == "El precio de adquisición debe estar entre 0 y 999.999.999.");
     }
 
     [Fact]
@@ -104,7 +104,7 @@ public class EquipmentUnitsValidationTests
     {
         var errors = Validate(new EditModel.InputModel { InventoryNumber = "UV-001", AcquisitionValue = -1m });
 
-        Assert.Contains(errors, e => e.ErrorMessage == "El precio de adquisición no puede ser negativo");
+        Assert.Contains(errors, e => e.ErrorMessage == "El precio de adquisición debe estar entre 0 y 999.999.999.");
     }
 
     // ═══════════════ Rechazos del PageModel sin HttpContext ═══════════════

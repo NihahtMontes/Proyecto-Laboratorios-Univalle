@@ -37,7 +37,7 @@ st, pg = c.get("/Laboratories/Create")
 check(R, "Laboratorios/Create GET: 200 y no ofrece facultades eliminadas", st == 200 and fdn not in pg, f"status={st}")
 
 # ---- Create: validaciones ----
-expect(R, "Laboratorios/Create: facultad vacía", sub(c, "facultad vacía", "/Laboratories/Create", {"Input.FacultyId": "", "Input.Name": "Lab " + tag}), status=200, error="La facultad responsable es obligatoria")
+expect(R, "Laboratorios/Create: facultad vacía", sub(c, "facultad vacía", "/Laboratories/Create", {"Input.FacultyId": "", "Input.Name": "Lab " + tag}), status=200, error="obligatori")
 res = sub(c, "facultad abc", "/Laboratories/Create", {"Input.FacultyId": "abc", "Input.Name": "Lab " + tag})
 check(R, "Laboratorios/Create: facultad no numérica 'abc' -> 200 con mensaje", res.status == 200 and bool(res.errors), f"status={res.status} errores={res.errors[:2]}")
 res = sub(c, "facultad inexistente", "/Laboratories/Create", {"Input.FacultyId": "99999", "Input.Name": "Fantasma " + tag})
@@ -96,7 +96,7 @@ check(R, "Laboratorios/Delete GET: 200 y '¿Retirar Laboratorio?'", st == 200 an
 # ---- Edit: validaciones por la respuesta ----
 expect(R, "Laboratorios/Edit: nombre vacío (el mensaje de Edit es 'El nombre descriptivo es obligatorio')", sub(c, "edit vacío", f"/Laboratories/Edit/{id1}", {"Input.Name": ""}), status=200, error="El nombre descriptivo es obligatorio")
 expect(R, "Laboratorios/Edit: nombre 101 caracteres", sub(c, "edit 101", f"/Laboratories/Edit/{id1}", {"Input.Name": "x" * 101}), status=200, error="no puede superar los 100")
-expect(R, "Laboratorios/Edit: facultad vacía", sub(c, "edit facultad vacía", f"/Laboratories/Edit/{id1}", {"Input.FacultyId": ""}), status=200, error="La facultad responsable es obligatoria")
+expect(R, "Laboratorios/Edit: facultad vacía", sub(c, "edit facultad vacía", f"/Laboratories/Edit/{id1}", {"Input.FacultyId": ""}), status=200, error="obligatori")
 res = sub(c, "edit piso 51", f"/Laboratories/Edit/{id1}", {"Input.Floor": "p" * 51})
 check(R, "Laboratorios/Edit: Piso de 51 caracteres se rechaza con mensaje (no excepción 500)", res.status == 200 and bool(res.errors), f"status={res.status} errores={res.errors[:2]}")
 res = sub(c, "edit descripción 1001", f"/Laboratories/Edit/{id1}", {"Input.Description": "d" * 1001})

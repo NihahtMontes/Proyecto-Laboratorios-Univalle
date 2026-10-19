@@ -38,6 +38,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Schedules
         [BindProperty(SupportsGet = true)]
         public string? StatusFilter { get; set; }
 
+        // Pueden estar activas a la vez una gestión preventiva y una correctiva: el cronograma muestra una de ellas.
+        [BindProperty(SupportsGet = true)]
+        public ManagementType TypeFilter { get; set; } = ManagementType.Preventive;
+
         public SelectList LabFList { get; set; } = default!;
         public SelectList CategoryFList { get; set; } = default!;
         public SelectList TechFList { get; set; } = default!;
@@ -62,7 +66,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Schedules
 
             // Buscar Gestión Activa
             ActiveManagement = await _context.Managements
-                .Where(m => m.Status == ManagementStatus.Active)
+                .Where(m => m.Status == ManagementStatus.Active && m.Type == TypeFilter)
                 .OrderByDescending(m => m.Year)
                 .ThenByDescending(m => m.Semester)
                 .FirstOrDefaultAsync();

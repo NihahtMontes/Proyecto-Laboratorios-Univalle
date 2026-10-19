@@ -91,8 +91,9 @@ public sealed class AcademicManagementService : IAcademicManagementService
         return status is ManagementStatus.Active or ManagementStatus.Inactive;
     }
 
+    // Gestiones académicas: semestrales y no correctivas (la correctiva también es semestral desde 2026-10-18).
     private IQueryable<Models.Management> Semestral() =>
-        _context.Managements.AsNoTracking().Where(m => m.Semester > 0 && m.Status != ManagementStatus.Deleted);
+        _context.Managements.AsNoTracking().Where(m => m.Semester > 0 && m.Type != ManagementType.Corrective && m.Status != ManagementStatus.Deleted);
 
     // La preventiva activa tiene prioridad; si no hay, se usa la gestión semestral Activa de cualquier tipo.
     // Con los datos importados todas las gestiones son «Por confirmar» y, sin este respaldo, el Panel, la Grilla,

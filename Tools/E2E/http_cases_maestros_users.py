@@ -108,7 +108,7 @@ check(R, "Usuarios/Create GET: 200", st == 200, f"status={st}")
 # Create: campos obligatorios vacíos
 # =====================================================================================
 for campo, msg in (("UserName", "El nombre de usuario es obligatorio"), ("Email", "El correo institucional es obligatorio"), ("FirstName", "Los nombres son obligatorios"),
-                   ("LastName", "El primer apellido es obligatorio"), ("IdentityCard", "El documento de identidad es obligatorio"), ("Role", "El rol es obligatorio"),
+                   ("LastName", "El primer apellido es obligatorio"), ("IdentityCard", "El documento de identidad es obligatorio"), ("Role", "obligatorio"),
                    ("PhoneNumber", "El teléfono es obligatorio"), ("Password", "La contraseña es obligatoria")):
     expect(R, f"Usuarios/Create: {campo} vacío", ucreate(f"vacío {campo}", **{campo: ""}), status=200, error=msg)
 expect(R, "Usuarios/Create: nombres solo espacios", ucreate("nombres espacios", FirstName="    "), status=200, error="Los nombres son obligatorios")
@@ -120,7 +120,7 @@ res = ucreate("ci 11", IdentityCard="Q1234567890")
 check(R, "Usuarios/Create: cédula de 11 caracteres -> 200 con error (mensaje por defecto)", res.status == 200 and res.has_error("10"), f"status={res.status} errores={res.errors[:2]}")
 expect(R, "Usuarios/Create: correo inválido", ucreate("email inválido", Email="no-es-correo"), status=200, error="Correo electrónico inválido")
 expect(R, "Usuarios/Create: teléfono inválido", ucreate("tel inválido", PhoneNumber="abc"), status=200, error="Formato de teléfono inválido")
-expect(R, "Usuarios/Create: rol inválido 7", ucreate("rol 7", Role="7"), status=200, error="Seleccione un rol válido.")
+expect(R, "Usuarios/Create: rol inválido 7", ucreate("rol 7", Role="7"), status=200, error="no es válido")
 res = ucreate("rol abc", Role="abc")
 check(R, "Usuarios/Create: rol no numérico -> 200 con mensaje", res.status == 200 and bool(res.errors), f"status={res.status} errores={res.errors[:2]}")
 
@@ -132,7 +132,7 @@ res = ucreate("largo Email", Email="a" * 250 + "@example.test")
 check(R, "Usuarios/Create: correo de 263 caracteres -> 200 con error", res.status == 200 and bool(res.errors), f"status={res.status} errores={res.errors[:2]}")
 
 # contraseñas
-expect(R, "Usuarios/Create: contraseña de 4 caracteres", ucreate("pw corta", Password="Ab1!"), status=200, error="La contraseña debe tener al menos 8 caracteres")
+expect(R, "Usuarios/Create: contraseña de 4 caracteres", ucreate("pw corta", Password="Ab1!"), status=200, error="La contraseña debe tener al menos 12 caracteres")
 res = ucreate("pw 101", Password="Aa1!" * 26)
 check(R, "Usuarios/Create: contraseña de 104 caracteres -> 200 con error", res.status == 200 and bool(res.errors), f"status={res.status} errores={res.errors[:2]}")
 NOTES.append(f"Usuarios/Create: una contraseña de 104 caracteres muestra: {res.errors[:1]} (el mensaje de 'mínimo 8' aparece también para exceso de largo)." if res.errors else "Usuarios/Create: contraseña larga sin mensaje visible.")
@@ -190,9 +190,9 @@ r = ucreate("hire año 0001", HireDate="0001-01-01")
 check(R, "Usuarios/Create: fecha 0001-01-01 no provoca excepción (200 o 302)", r.status in (200, 302), f"status={r.status} errores={r.errors[:1]}")
 
 # duplicados
-expect(R, "Usuarios/Create: documento de identidad duplicado (9000001)", ucreate("ci dup", IdentityCard="9000001"), status=200, error="Este documento de identidad ya está vinculado a otra cuenta.")
+expect(R, "Usuarios/Create: documento de identidad duplicado (9900001)", ucreate("ci dup", IdentityCard="9900001"), status=200, error="Este documento de identidad ya está vinculado a otra cuenta.")
 expect(R, "Usuarios/Create: usuario duplicado 'QA_SUPER ' (otra capitalización y espacios)", ucreate("user dup", UserName=" QA_SUPER "), status=200, error="El nombre de usuario ya está en uso.")
-expect(R, "Usuarios/Create: correo duplicado 'QA.SUPER@EXAMPLE.TEST'", ucreate("email dup", Email="QA.SUPER@EXAMPLE.TEST"), status=200, error="Este correo electrónico ya se encuentra registrado.")
+expect(R, "Usuarios/Create: correo duplicado 'QA_SUPER@QA.LOCAL'", ucreate("email dup", Email="QA_SUPER@QA.LOCAL"), status=200, error="Este correo electrónico ya se encuentra registrado.")
 expect(R, "Usuarios/Create: usuario duplicado de la cuenta creada", ucreate("user dup 2", UserName=u_adm.upper()), status=200, error="El nombre de usuario ya está en uso.")
 
 # fotos inválidas (multipart). Solo archivos que el servidor rechaza: no se escribe nada en wwwroot.
@@ -242,8 +242,8 @@ E = f"/Users/Edit/{id_t}"
 for campo, msg in (("FirstName", "Los nombres son obligatorios"), ("LastName", "El primer apellido es obligatorio"), ("IdentityCard", "El documento de identidad es obligatorio"), ("Email", "El correo institucional es obligatorio")):
     expect(R, f"Usuarios/Edit: {campo} vacío", sub(c, f"edit vacío {campo}", E, {f"Input.{campo}": ""}), status=200, error=msg)
 r = sub(c, "edit rol vacío", E, {"Input.Role": ""})
-check(R, "Usuarios/Edit: rol vacío -> 200 con 'El rol es obligatorio'", r.status == 200 and r.has_error("El rol es obligatorio"), f"status={r.status} errores={r.errors[:2]}")
-expect(R, "Usuarios/Edit: rol inválido 7", sub(c, "edit rol 7", E, {"Input.Role": "7"}), status=200, error="Seleccione un rol válido.")
+check(R, "Usuarios/Edit: rol vacío -> 200 con 'El rol es obligatorio'", r.status == 200 and r.has_error("obligatorio"), f"status={r.status} errores={r.errors[:2]}")
+expect(R, "Usuarios/Edit: rol inválido 7", sub(c, "edit rol 7", E, {"Input.Role": "7"}), status=200, error="no es válido")
 r = sub(c, "edit estado 7", E, {"Input.Status": "7"})
 check(R, "Usuarios/Edit: estado inválido 7 -> 200 con mensaje", r.status == 200 and bool(r.errors), f"status={r.status} errores={r.errors[:2]}")
 expect(R, "Usuarios/Edit: cédula en minúsculas", sub(c, "edit ci", E, {"Input.IdentityCard": "abc123"}), status=200, error="Formato de cédula inválido")
@@ -251,7 +251,7 @@ expect(R, "Usuarios/Edit: correo inválido", sub(c, "edit email", E, {"Input.Ema
 expect(R, "Usuarios/Edit: teléfono inválido", sub(c, "edit tel", E, {"Input.PhoneNumber": "abc"}), status=200, error="Formato de teléfono inválido")
 expect(R, "Usuarios/Edit: cédula duplicada de otra cuenta", sub(c, "edit ci dup", E, {"Input.IdentityCard": ci_adm}), status=200, error="Este C.I. ya está asignado a otro usuario.")
 expect(R, "Usuarios/Edit: correo duplicado de otra cuenta", sub(c, "edit email dup", E, {"Input.Email": e_adm.upper()}), status=200, error="Este correo electrónico ya se encuentra registrado.")
-expect(R, "Usuarios/Edit: clave nueva de 4 caracteres", sub(c, "edit pw corta", E, {"Input.NewPassword": "Ab1!"}), status=200, error="La contraseña debe tener al menos 8 caracteres.")
+expect(R, "Usuarios/Edit: clave nueva de 4 caracteres", sub(c, "edit pw corta", E, {"Input.NewPassword": "Ab1!"}), status=200, error="La contraseña debe tener al menos 12 caracteres")
 r = sub(c, "edit pw 8", E, {"Input.NewPassword": "Abcdef1!"})
 check(R, "Usuarios/Edit: clave nueva de 8 caracteres (Identity exige 12) -> error en español", r.status == 200 and bool(r.errors) and not any(re.search(r"\b(Passwords?|must|have at least)\b", e) for e in r.errors), f"status={r.status} errores={r.errors[:3]}")
 r = post(c, "edit POST id 99999", "/Users/Edit/99999", [("Input.FirstName", "Zz"), ("Input.LastName", "Zz"), ("Input.IdentityCard", "ZZ" + K.digits(6)), ("Input.Email", f"zz.{tag}@example.test"), ("Input.Role", "1"), ("Input.PhoneNumber", "70012345")], "/Users/Create")

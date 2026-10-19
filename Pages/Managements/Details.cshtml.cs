@@ -248,7 +248,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             // Cálculo del sombreado de 8 semanas según Semester:
             // Gestión I (sem=1): Junio + Julio del mismo año
             // Gestión II (sem=2): Diciembre del mismo año + Enero del año siguiente
-            if (Management.Semester == 1)
+            // Correctiva: sin sombreado (no tiene ventana de 8 semanas; las fallas llevan fechas reales).
+            if (Management.Type == ManagementType.Corrective)
+            {
+                ShadingStart = "";
+                ShadingEnd = "";
+            }
+            else if (Management.Semester == 1)
             {
                 ShadingStart = new DateTime(Management.Year, 6, 1).ToString("yyyy-MM-dd");
                 ShadingEnd   = new DateTime(Management.Year, 8, 1).ToString("yyyy-MM-dd"); // 1 Ago exclusive
@@ -490,6 +496,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (plan.Management.Type == ManagementType.PorConfirmar)
                 return BadRequest();
+
+            if (plan.Management.Type == ManagementType.Corrective)
+                return new JsonResult(new { success = false, error = "La gestión correctiva no usa semanas planificadas: las fallas se registran con sus fechas reales." });
 
             if (type == "planned")
             {

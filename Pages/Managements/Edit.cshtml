@@ -16,7 +16,7 @@
                     </div>
                 </div>
 
-                <form method="post" novalidate id="edit-management-form">
+                <form method="post" novalidate id="edit-management-form" data-active-code="@Model.ActiveSameTypeCode" data-original-status="@((int)Model.Input.Status)">
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small font-weight-bold" role="alert"></div>
                     <input type="hidden" asp-for="Input.Id" />
 
@@ -33,15 +33,8 @@
                             <div class="form-group mb-4">
                                 <label asp-for="Input.Semester" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Semestre <span class="text-danger">*</span></label>
                                 <select asp-for="Input.Semester" class="form-control custom-select">
-                                    @if (Model.ManagementType == ManagementType.Corrective)
-                                    {
-                                        <option value="0">Correctivo general (sin semestre)</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="1">Semestre 1 (Enero - Junio)</option>
-                                        <option value="2">Semestre 2 (Julio - Diciembre)</option>
-                                    }
+                                    <option value="1">Semestre 1 (Enero - Junio)</option>
+                                    <option value="2">Semestre 2 (Julio - Diciembre)</option>
                                 </select>
                                 <span asp-validation-for="Input.Semester" class="text-danger small font-weight-bold"></span>
                             </div>
@@ -51,12 +44,14 @@
                                     <div class="form-group mb-3">
                                         <label asp-for="Input.StartDate" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Apertura</label>
                                         <input asp-for="Input.StartDate" class="form-control" type="date" />
+                                        <span asp-validation-for="Input.StartDate" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="form-group mb-3">
                                         <label asp-for="Input.PlannedEndDate" class="control-label font-weight-bold small text-muted text-uppercase mb-1">Cierre Est.</label>
                                         <input asp-for="Input.PlannedEndDate" class="form-control" type="date" />
+                                        <span asp-validation-for="Input.PlannedEndDate" class="text-danger small font-weight-bold"></span>
                                     </div>
                                 </div>
                             </div>
@@ -71,7 +66,7 @@
                                         asp-items="Html.GetEnumSelectList<ManagementStatus>().Where(item => item.Value != ((int)ManagementStatus.Deleted).ToString())">
                                 </select>
                                 <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold"></span>
-                                <small class="form-text text-muted italic mt-1 font-12"><i class="fas fa-exclamation-triangle mr-1 text-warning"></i> Solo una gestión puede estar "Activa" a la vez.</small>
+                                <small class="form-text text-muted italic mt-1 font-12"><i class="fas fa-exclamation-triangle mr-1 text-warning"></i> Solo una gestión por tipo (preventiva o correctiva) puede estar "Activa" a la vez.</small>
                             </div>
 
                             <div class="form-group mb-4">
@@ -126,9 +121,15 @@
                     return false;
                 }
 
+                // H-003: si pasa a Activa y hay otra Activa del mismo tipo, se avisa que esa se cerrará sin vuelta atrás.
+                var activeCode = form.dataset.activeCode || '';
+                var status = form.querySelector('[name="Input.Status"]');
+                var closesOther = activeCode && status && status.value === '0' && form.dataset.originalStatus !== '0';
                 Swal.fire({
                     title: 'Guardar cambios',
-                    text: 'Se actualizaran los parametros administrativos de esta gestion L-48.',
+                    text: closesOther
+                        ? 'La gestión quedará activa y se cerrará la gestión activa ' + activeCode + ' del mismo tipo (quedará Completada y no se puede reabrir). ¿Desea continuar?'
+                        : 'Se actualizarán los parámetros administrativos de esta gestión.',
                     type: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#f59e0b',

@@ -312,7 +312,7 @@
             <!-- Desembolso -->
             <div class="col-12 col-md-3 mb-3">
                 <a href="/Index?ShowWizard=true&Step=6&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-slate p-3">
-                    <div class="asset-metric-icon mb-3"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-dollar-sign"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountDesembolso</div>
                     <div class="font-weight-bold mt-2">Desembolso</div>
                 </a>
@@ -691,12 +691,22 @@
                             <th class="text-muted small">Equipo / Inv.</th>
                             <th class="text-muted small">Falla Reportada</th>
                             <th class="text-muted small">Servicio</th>
-                            <th class="text-muted small text-center" colspan="4">@l48Col1Name</th>
-                            <th class="text-muted small text-center" colspan="4">@l48Col2Name</th>
+                            @if (isCorrective)
+                            {
+                                @* El correctivo no tiene ventana de 8 semanas: las fallas llevan su fecha real (D-8). *@
+                                <th class="text-muted small text-center">Fecha real</th>
+                            }
+                            else
+                            {
+                                <th class="text-muted small text-center" colspan="4">@l48Col1Name</th>
+                                <th class="text-muted small text-center" colspan="4">@l48Col2Name</th>
+                            }
                             <th class="text-muted small text-center">%</th>
                             <th class="text-muted small">Técnico</th>
                             <th class="text-muted small text-center" style="width: 120px;">Acciones</th>
                         </tr>
+                        @if (!isCorrective)
+                        {
                         <tr class="bg-light">
                             <th colspan="5"></th>
                             @for (int s2 = 1; s2 <= 8; s2++) {
@@ -704,6 +714,7 @@
                             }
                             <th colspan="3"></th>
                         </tr>
+                        }
                     </thead>
                     <tbody>
                         @{ int rowNum = 1; }
@@ -734,14 +745,15 @@
                                     @plan.EquipmentUnit?.Laboratory?.Name
                                 </td>
                                 @{
+                                    // El asistente correctivo usa la misma numeración que el preventivo (L-7 = paso 2).
                                     var wizardStep = isCorrective
                                         ? plan.CurrentPhase switch {
-                                            WizardPhase.TechnicalRequest => 1,
-                                            WizardPhase.Maintenance => 2,
-                                            WizardPhase.Exit => 3,
-                                            WizardPhase.Kardex => 4,
-                                            WizardPhase.Disbursement => 5,
-                                            _ => 1
+                                            WizardPhase.TechnicalRequest => 2,
+                                            WizardPhase.Maintenance => 3,
+                                            WizardPhase.Exit => 4,
+                                            WizardPhase.Kardex => 5,
+                                            WizardPhase.Disbursement => 6,
+                                            _ => 2
                                         }
                                         : plan.CurrentPhase switch {
                                             WizardPhase.Verification => 1,
@@ -768,9 +780,16 @@
                                 <td rowspan="2" class="align-middle text-center">
                                     <span class="badge @svcClass px-2 py-1 rounded-pill small">@svcLabel</span>
                                 </td>
-                                @for (int s3 = 1; s3 <= 8; s3++)
+                                @if (isCorrective)
                                 {
-                                    <td class="text-center p-1" style="cursor:pointer;" onclick="toggleWeek(@plan.Id, @s3, 'planned')">
+                                    var realDate = plan.Maintenance?.ScheduledDate ?? plan.Maintenance?.EndDate ?? plan.PlannedDate;
+                                    <td rowspan="2" class="align-middle text-center small">@(realDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                }
+                                else
+                                {
+                                for (int s3 = 1; s3 <= 8; s3++)
+                                {
+                                    <td class="text-center p-1" style="@(isCorrective ? "cursor:default;" : "cursor:pointer;")" onclick="@(isCorrective ? "" : $"toggleWeek({plan.Id}, {s3}, 'planned')")">
                                         @if (plannedWeek == s3)
                                         {
                                             <span id="badge-planned-@(plan.Id)" class="badge bg-primary text-white px-2 py-1 rounded"
@@ -781,6 +800,7 @@
                                             <span id="placeholder-planned-@(plan.Id)-@s3" style="display:inline-block; width:100%; height:100%;"></span>
                                         }
                                     </td>
+                                }
                                 }
                                 <td rowspan="2" class="align-middle text-center">
                                     <span class="badge badge-light border font-weight-bold text-dark" style="font-size:0.82rem;">
@@ -798,9 +818,11 @@
                             </tr>
                             <!-- FILA 2: Real -->
                             <tr>
-                                @for (int s4 = 1; s4 <= 8; s4++)
+                                @if (!isCorrective)
                                 {
-                                    <td class="text-center p-1" style="border-top:1px dashed #e2e8f0; cursor:pointer;" onclick="toggleWeek(@plan.Id, @s4, 'executed')">
+                                for (int s4 = 1; s4 <= 8; s4++)
+                                {
+                                    <td class="text-center p-1" style="border-top:1px dashed #e2e8f0; @(isCorrective ? "cursor:default;" : "cursor:pointer;")" onclick="@(isCorrective ? "" : $"toggleWeek({plan.Id}, {s4}, 'executed')")">
                                         @if (executedWeek == s4)
                                         {
                                             <span id="badge-executed-@(plan.Id)" class="badge bg-success text-white px-2 py-1 rounded"
@@ -811,6 +833,7 @@
                                             <span id="placeholder-executed-@(plan.Id)-@s4" style="display:inline-block; width:100%; height:100%;"></span>
                                         }
                                     </td>
+                                }
                                 }
                             </tr>
                             rowNum++;

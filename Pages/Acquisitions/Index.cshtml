@@ -76,7 +76,7 @@
                             }
 
                             <span class="small text-muted ml-auto mb-2" aria-live="polite">
-                                <strong class="text-dark">@Model.Requests.Count</strong> solicitud(es)
+                                <strong class="text-dark">@Model.Requests.TotalCount</strong> solicitud(es)
                             </span>
                         </div>
                     </form>
@@ -185,6 +185,32 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if (Model.Requests.TotalPages > 1)
+                {
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.Requests.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter" asp-route-PriorityFilter="@Model.PriorityFilter" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.Requests.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Requests.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter" asp-route-PriorityFilter="@Model.PriorityFilter" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
+                                </li>
+                            }
+                            @if (Model.Requests.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter" asp-route-PriorityFilter="@Model.PriorityFilter" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
             </div>
         </div>
     </div>

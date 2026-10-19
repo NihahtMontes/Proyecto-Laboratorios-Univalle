@@ -26,7 +26,7 @@
                     <p class="text-muted mb-0 font-12">Defina el periodo que agrupará los planes y actividades de mantenimiento.</p>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" id="create-management-form" data-active-code="@Model.ActiveSameTypeCode">
                         <div asp-validation-summary="ModelOnly" class="text-danger mb-3 font-weight-bold"></div>
 
                         <input type="hidden" asp-for="Input.Type" />
@@ -34,7 +34,7 @@
                         @if (Model.Input.Type == ManagementType.Corrective)
                         {
                             <div class="alert alert-danger" role="alert">
-                                <i class="fas fa-exclamation-triangle"></i> Está creando una <strong>Gestión Correctiva anual</strong>. No sincronizará equipos automáticamente; agrupará las fallas reportadas por L-7 durante el año.
+                                <i class="fas fa-exclamation-triangle"></i> Está creando una <strong>Gestión Correctiva semestral</strong>. No sincronizará equipos automáticamente; agrupará las fallas reportadas por L-7 durante el semestre y puede convivir con la gestión preventiva activa del mismo semestre.
                             </div>
                         }
                         else
@@ -53,18 +53,10 @@
 
                             <div class="col-md-6 mb-3">
                                 <label asp-for="Input.Semester" class="control-label font-weight-bold"></label>
-                                @if (Model.Input.Type == ManagementType.Corrective)
-                                {
-                                    <input type="hidden" asp-for="Input.Semester" value="0" />
-                                    <input class="form-control" value="Anual (sin semestre)" readonly />
-                                }
-                                else
-                                {
-                                    <select asp-for="Input.Semester" class="form-control custom-select">
-                                        <option value="1">Semestre 1 (Enero - Junio)</option>
-                                        <option value="2">Semestre 2 (Julio - Diciembre)</option>
-                                    </select>
-                                }
+                                <select asp-for="Input.Semester" class="form-control custom-select">
+                                    <option value="1">Semestre 1 (Enero - Junio)</option>
+                                    <option value="2">Semestre 2 (Julio - Diciembre)</option>
+                                </select>
                                 <span asp-validation-for="Input.Semester" class="text-danger"></span>
                             </div>
                         </div>
@@ -123,4 +115,35 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        // H-003: activar una gestión cierra (Completada, sin vuelta atrás) la Activa anterior del mismo tipo: se confirma antes.
+        $(function () {
+            var form = document.getElementById('create-management-form');
+            if (!form) return;
+            form.addEventListener('submit', function (event) {
+                var activeCode = form.dataset.activeCode || '';
+                var status = form.querySelector('[name="Input.Status"]');
+                if (form.dataset.confirmed === 'true' || !activeCode || !status || status.value !== '0' || typeof Swal === 'undefined') {
+                    return true;
+                }
+                event.preventDefault();
+                Swal.fire({
+                    title: 'Crear gestión activa',
+                    text: 'Se cerrará la gestión activa ' + activeCode + ' del mismo tipo (quedará Completada y no se puede reabrir). ¿Desea continuar?',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10b981',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, crear y activar',
+                    cancelButtonText: 'Cancelar'
+                }).then(function (result) {
+                    if (result && (result.isConfirmed === true || result.value === true)) {
+                        form.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(form);
+                    }
+                });
+                return false;
+            });
+        });
+    </script>
 }

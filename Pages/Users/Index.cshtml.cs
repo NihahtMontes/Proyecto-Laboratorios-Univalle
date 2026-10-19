@@ -33,7 +33,8 @@ public class IndexModel : PageModel
     public async Task OnGetAsync(int? pageIndex)
     {
         // 1. Load users for "Cuentas de Acceso" tab
-        var userQuery = _context.Users
+        // El filtro «Eliminados» debe poder mostrar las cuentas dadas de baja (el filtro global las ocultaba).
+        var userQuery = (StatusFilter == GeneralStatus.Eliminado ? _context.Users.IgnoreQueryFilters() : _context.Users)
             .Include(u => u.CreatedBy)
             .Include(u => u.ModifiedBy)
             .AsNoTracking();

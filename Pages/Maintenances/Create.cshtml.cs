@@ -154,6 +154,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             public int? RequestId { get; set; }
 
             [Display(Name = "Descripción del Trabajo")]
+            [StringLength(2000, ErrorMessage = "La descripción del trabajo no puede superar los 2000 caracteres.")]
             public string? Description { get; set; }
 
             [Display(Name = "Fecha Programada")]
@@ -355,20 +356,37 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física no tiene laboratorio asignado. Asigne un laboratorio al equipo antes de registrar el mantenimiento.");
             }
 
+            // Líneas de costo: las vacías (sin concepto) se ignoran; las demás se validan y NUNCA se corrigen en silencio
+            // (antes una cantidad 0 se guardaba como 1 y un precio negativo como 0, con «guardado correctamente»).
+            var costErrors = new List<string>();
+            var postedCosts = Input.CostDetails ?? new List<CostDetail>();
+            for (var i = 0; i < postedCosts.Count; i++)
+            {
+                var detail = postedCosts[i];
+                if (string.IsNullOrWhiteSpace(detail.Concept)) continue;
+                var line = $"Costo «{detail.Concept.Trim()}»";
+                bool BindError(string field) => ModelState.TryGetValue($"Input.CostDetails[{i}].{field}", out var entry) && entry.Errors.Count > 0;
+
+                if (detail.Concept.Trim().Length > 200)
+                    costErrors.Add($"Costo de la línea {i + 1}: el concepto no puede superar los 200 caracteres.");
+                if (BindError(nameof(CostDetail.Quantity)) || detail.Quantity < 0.01m || detail.Quantity > 99999m)
+                    costErrors.Add($"{line}: la cantidad debe ser un número entre 0,01 y 99.999.");
+                if (BindError(nameof(CostDetail.UnitPrice)) || detail.UnitPrice < 0m || detail.UnitPrice > 999999999m)
+                    costErrors.Add($"{line}: el precio unitario debe ser un número entre 0 y 999.999.999.");
+            }
+
             foreach (var key in ModelState.Keys.Where(k => k.StartsWith("Input.CostDetails")).ToList())
             {
                 ModelState.Remove(key);
             }
-
-            Input.CostDetails = Input.CostDetails?
-                .Where(d => !string.IsNullOrWhiteSpace(d.Concept))
-                .ToList() ?? new List<CostDetail>();
-
-            foreach (var detail in Input.CostDetails)
+            foreach (var error in costErrors.Distinct())
             {
-                detail.Quantity = detail.Quantity <= 0 ? 1 : detail.Quantity;
-                detail.UnitPrice = detail.UnitPrice < 0 ? 0 : detail.UnitPrice;
+                ModelState.AddModelError(string.Empty, error);
             }
+
+            Input.CostDetails = postedCosts
+                .Where(d => !string.IsNullOrWhiteSpace(d.Concept))
+                .ToList();
 
             decimal totalCosts = Input.CostDetails?.Sum(d => d.Subtotal) ?? 0;
             Input.ActualCost = totalCosts;

@@ -46,7 +46,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-costos" role="tab">
-                            <i class="fas fa-file-invoice-dollar mr-2"></i> 3. Costos y Repuestos
+                            <i class="fas fa-dollar-sign mr-2"></i> 3. Costos y Repuestos
                         </a>
                     </li>
                     <li class="nav-item">
@@ -57,7 +57,7 @@
                 </ul>
 
                 <form method="post" id="maintenanceForm" class="tab-content p-4" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 mb-4"></div>
                     <input type="hidden" asp-for="Input.Id" />
                     <input type="hidden" asp-for="Input.ActualCost" id="hiddenActualCost" />
                     <input type="hidden" asp-for="Input.CompletionPercentage" id="hiddenPercentageInput" />
@@ -195,7 +195,7 @@
                     <!-- TAB 3: COSTOS -->
                     <div class="tab-pane" id="tab-costos" role="tabpanel">
                         <div class="d-flex align-items-center mb-4">
-                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Detalle de Gastos y Repuestos</h5>
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-dollar-sign mr-2 text-success"></i>Detalle de Gastos y Repuestos</h5>
                             <button type="button" class="btn btn-sm btn-success btn-rounded shadow-sm ml-auto font-weight-bold px-3" onclick="addRow()">
                                 <i class="fas fa-plus mr-1"></i> Agregar Ítem
                             </button>

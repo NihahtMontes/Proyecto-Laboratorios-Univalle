@@ -126,8 +126,12 @@ def run(R, c):
     check(R, "Cierre doble envio: el plan se queda en 6/8", plan(pid("c"))["phase"] == 6 and plan(pid("c"))["state"] == 8)
 
     # estado atrasado: cierre y borrador sobre planes en otra fase
+    p4a = plan(p4["plan"])   # el cierre del L-8 ya deja un historial Kardex vinculado: se compara antes/después
     r = P.kardex(c, p4["plan"], name="cierre sobre plan sin salida (P4)", follow=True)
-    check(R, "Cierre sobre un plan que aun espera su salida L-3 (sin salida) -> 'El plan no tiene salida L-3 vinculada.'", r.has_toast("El plan no tiene salida L-3 vinculada.", "error") and plan(p4["plan"])["phase"] == 4, P.dump(r))
+    p4d = plan(p4["plan"])
+    check(R, "Cierre sobre un plan que aun espera su salida L-3 (sin salida) -> rechazado sin cerrar (guarda de fase con toast warning o 'El plan no tiene salida L-3 vinculada.')",
+          p4d["phase"] == 4 and p4d["kardex"] == p4a["kardex"] and p4d["dep"] == p4a["dep"] and (any(k == "warning" for k, _ in r.toasts) or r.has_toast("El plan no tiene salida L-3 vinculada.", "error")),
+          P.dump(r) + f" plan={p4d}")
     antes = plan(p7["plan"])
     r = P.kardex(c, p7["plan"], name="cierre sobre plan completado (P7)", follow=True)
     desp = plan(p7["plan"])

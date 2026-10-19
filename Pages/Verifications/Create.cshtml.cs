@@ -171,6 +171,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 ModelState.Remove("Input.EquipmentUnitId");
             }
 
+            // QA 2026-10-18: validaciones del servidor antes de guardar (antes daban 500 por clave foránea o longitud).
+            var unitExists = Input.EquipmentUnitId > 0 && await _context.EquipmentUnits.AnyAsync(u => u.Id == Input.EquipmentUnitId);
+            if (!unitExists)
+                ModelState.AddModelError("Input.EquipmentUnitId", Input.EquipmentUnitId > 0
+                    ? "La unidad física seleccionada no existe."
+                    : "La unidad física es obligatoria.");
+            if (Input.FaultDescriptions?.Any(f => (f?.Trim().Length ?? 0) > 255) == true)
+                ModelState.AddModelError(string.Empty, "Cada falla puede tener como máximo 255 caracteres.");
+            if (Input.Results.Count > 0)
+            {
+                var validCheckIds = await _context.VerificationCheckItems.AsNoTracking().Select(i => i.Id).ToListAsync();
+                if (Input.Results.Keys.Any(id => !validCheckIds.Contains(id)))
+                    ModelState.AddModelError(string.Empty, "Hay resultados de puntos de control que no existen. Recargue la página e intente de nuevo.");
+            }
+
             if (!ModelState.IsValid)
             {
                 LoadLists();
@@ -224,6 +239,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 ViewData["ManagementId"] = ManagementId;
                 return Page();
             }
+
+            // La verificación, sus resultados y el avance del plan se guardan juntos: si algo falla no queda una L-6 huérfana.
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
             Verification verification;
             bool isNew = plan?.Verification == null;
@@ -335,6 +353,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
                 await _context.SaveChangesAsync();
             }
+
+            await transaction.CommitAsync();
 
             if (isWizard)
             {

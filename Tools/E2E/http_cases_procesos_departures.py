@@ -21,16 +21,6 @@ def n_dep_all(unit):
     return scalar("select count(*) from Departures where EquipmentUnitId=?", unit)
 
 
-def mn_tech(mid):
-    return scalar("select TechnicianId from Maintenances where Id=?", mid)
-
-
-def p4_sin_tecnico(c, lab, suf):
-    ctx = P.llevar_a(c, lab, suf, "P3")
-    P.l8(c, ctx["plan"], {"Input.TechnicianId": ""}, wizard=False, name=f"{suf} L-8 sin tecnico (ruta no wizard)", follow=True)
-    return ctx
-
-
 def run(R, c):
     pw = os.environ["E2E_PW"]
     lab = P.lab_propio(c, "salidas")
@@ -42,7 +32,10 @@ def run(R, c):
     p3 = P.llevar_a(c, lab, "s3", "P3")
     p2 = P.llevar_a(c, lab, "s2", "P2")
     p1ok = P.llevar_a(c, lab, "s1", "P1OK")
-    nt = p4_sin_tecnico(c, lab, "sn")
+    # Regla nueva: ya no se admite un L-8 sin tecnico fuera del asistente (antes fabricaba el plan 'en L-3 sin tecnico').
+    nt = P.llevar_a(c, lab, "sn", "P3")
+    nt_mn_antes = scalar("select count(*) from Maintenances where EquipmentUnitId=?", nt["unit"])
+    r_sn = P.l8(c, nt["plan"], {"Input.TechnicianId": ""}, wizard=False, name="sn L-8 sin tecnico (ruta no wizard)", follow=True)
     other_lab = P.llevar_a(c, lab2, "sl", "P4")
     for k in ctx:
         fase(R, f"Fixture {k} en L-3", ctx[k]["plan"], 4, 6, 0)
@@ -50,14 +43,17 @@ def run(R, c):
     pid = lambda k: ctx[k]["plan"]
     uid = lambda k: ctx[k]["unit"]
     pn = plan(nt["plan"])
-    check(R, "Fixture sin tecnico: plan en L-3 con L-8 sin tecnico (ruta no wizard)", pn["phase"] == 4 and pn["mnt"] and mn_tech(pn["mnt"]) is None, f"{pn}")
+    check(R, "L-8 sin tecnico fuera del asistente se rechaza (no crea mantenimiento y el plan no avanza)",
+          r_sn.status == 200 and pn["phase"] == 3 and pn["mnt"] is None and scalar("select count(*) from Maintenances where EquipmentUnitId=?", nt["unit"]) == nt_mn_antes,
+          f"{P.dump(r_sn)} mantenimientos={nt_mn_antes}->{scalar('select count(*) from Maintenances where EquipmentUnitId=?', nt['unit'])} plan={pn}")
 
     q = f"/Departures/MassCreate?isWizard=true&labId={lab}&managementId={P.MGMT}"
     # ================================================================ MassCreate
     st, pg = c.get(q)
     check(R, "MassCreate: GET 200", st == 200, f"status={st}")
     st, js = c.get(f"/Departures/MassCreate?handler=EquipmentByLab&labId={lab}&managementId={P.MGMT}")
-    check(R, "MassCreate: EquipmentByLab lista los planes en L-3 con indicador de tecnico", st == 200 and all(f'"planId":{ctx[k]["plan"]}' in js for k in ctx) and '"hasTechnician":false' in js, f"status={st} {js[:160]}")
+    check(R, "MassCreate: EquipmentByLab lista los planes en L-3 de la gestion 30 con su tecnico (sin depender de un plan sin tecnico)",
+          st == 200 and all(f'"planId":{ctx[k]["plan"]}' in js for k in ctx) and f'"technicianId":{P.TECH_INT}' in js and '"hasTechnician":true' in js and '"hasTechnician":false' not in js, f"status={st} {js[:160]}")
     st, js = c.get(f"/Departures/MassCreate?handler=EquipmentByLab&labId={lab}&managementId=27")
     check(R, "MassCreate: EquipmentByLab con gestion no activa no devuelve planes", st == 200 and js.strip() in ("[]", ""), f"status={st} {js[:100]}")
 
@@ -76,7 +72,8 @@ def run(R, c):
     check(R, "MassCreate: gestion historica 27 con plan de la 30 -> se omite ('No se registró ninguna salida')", r.has_toast("No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico L-8 y un plan válido.", "error") and plan(pid("b"))["phase"] == 4, P.dump(r))
     r = P.l3(c, 0, 0, lab, filas=[(nt["plan"], nt["unit"], "true")], name="sin tecnico", follow=True)
     expect(R, "MassCreate: unico equipo sin tecnico L-8", r, status=200, toast="No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico L-8 y un plan válido.", toast_kind="error")
-    check(R, "MassCreate sin tecnico: ni plan ni unidad cambian", plan(nt["plan"])["phase"] == 4 and unidad(nt["unit"])["status"] == 0)
+    l3_sin_tec = scalar("select count(*) from ManagementPlans mp join Maintenances m on m.Id = mp.MaintenanceId where mp.ManagementId = ? and mp.CurrentPhase = 4 and m.TechnicianId is null", P.MGMT)
+    check(R, "MassCreate sin tecnico: no existe ningun plan en L-3 sin tecnico en la gestion 30", l3_sin_tec == 0, f"planes en L-3 sin tecnico={l3_sin_tec}")
     r = P.l3(c, 0, 0, lab, filas=[(p3["plan"], p3["unit"], "true")], name="plan en L-8", follow=True)
     check(R, "MassCreate: plan que aun esta en L-8 -> omitido", r.has_toast("No se registró ninguna salida", "error") and plan(p3["plan"])["phase"] == 3, P.dump(r))
     r = P.l3(c, 0, 0, lab, filas=[(p2["plan"], p2["unit"], "true"), (p1ok["plan"], p1ok["unit"], "true")], name="planes sin L-8", follow=True)
@@ -98,10 +95,10 @@ def run(R, c):
     r = P.l3(c, 0, 0, lab, filas=[(pid("b"), uid("b"), "true")], draft=True, name="borrador repetido", follow=True)
     check(R, "MassCreate borrador repetido: reutiliza la misma salida (no duplica)", n_dep_all(uid("b")) == 1, f"salidas={n_dep_all(uid('b'))}")
 
-    # guardado definitivo: borrador b + c + externo + sin tecnico + (d no incluido)
-    filas = [(pid("b"), uid("b"), "true"), (pid("c"), uid("c"), "true"), (ext["plan"], ext["unit"], "true"), (nt["plan"], nt["unit"], "true"), (pid("d"), uid("d"), "false")]
+    # guardado definitivo: borrador b + c + externo + (d no incluido). Regla nueva: ya no existe un plan en L-3 sin técnico.
+    filas = [(pid("b"), uid("b"), "true"), (pid("c"), uid("c"), "true"), (ext["plan"], ext["unit"], "true"), (pid("d"), uid("d"), "false")]
     r = P.l3(c, 0, 0, lab, filas=filas, salida=P.d(0), retorno=P.d(10), name="guardado masivo", follow=True)
-    check(R, "MassCreate: '3 salida(s) registrada(s) correctamente. 1 equipo(s) omitido(s) por no tener técnico en L-8.'", r.status == 302 and "Step=5" in (r.location or "") and r.has_toast("3 salida(s) registrada(s) correctamente. 1 equipo(s) omitido(s) por no tener técnico en L-8.", "success"), P.dump(r))
+    check(R, "MassCreate: '3 salida(s) registrada(s) correctamente.'", r.status == 302 and "Step=5" in (r.location or "") and r.has_toast("3 salida(s) registrada(s) correctamente.", "success"), P.dump(r))
     for k in ("b", "c"):
         pk = plan(pid(k))
         check(R, f"MassCreate {k}: plan a Kardex/AwaitingKardex (5/7), sin borrador, unidad En Prestamo (10)", pk["phase"] == 5 and pk["state"] == 7 and pk["draft"] == 0 and unidad(uid(k))["status"] == 10, f"{pk} unidad={unidad(uid(k))['status']}")
@@ -113,7 +110,7 @@ def run(R, c):
     check(R, "MassCreate: tecnico externo -> tipo Mantenimiento Externo (3)", de["type"] == 3 and de["borrower"] == P.TECH_EXT, f"{de}")
     pb = plan(pid("b"))
     check(R, "MassCreate: el borrador pasa a definitiva sobre la MISMA salida (Activa, 1 sola)", dp(pb["dep"])["status"] == 0 and n_dep_all(uid("b")) == 1, f"{dp(pb['dep'])} n={n_dep_all(uid('b'))}")
-    check(R, "MassCreate: el equipo marcado Include=false no salio y el sin tecnico se omitio", plan(pid("d"))["phase"] == 4 and plan(nt["plan"])["phase"] == 4 and unidad(uid("d"))["status"] == 0 and unidad(nt["unit"])["status"] == 0)
+    check(R, "MassCreate: el equipo marcado Include=false no salio", plan(pid("d"))["phase"] == 4 and unidad(uid("d"))["status"] == 0)
     check(R, "MassCreate: ProductName derivado del servidor (no del HTML) = 'Equipo (Inventario)'",
           scalar("select ProductName from DepartureItems where DepartureId=?", pc["dep"]) == f"{scalar('select Name from Equipments where Id=?', P.EQUIP)} ({ctx['c']['inv']})", "")
     # doble envio
@@ -137,10 +134,6 @@ def run(R, c):
     check(R, "Create wizard: GET 200", st == 200, f"status={st}")
     r = post_form(c, cw, {"Input.DepartureDate": P.d(0), "Input.EstimatedReturnDate": P.d(-3)}, name="wizard retorno anterior", follow=False)
     check(R, "Create wizard: retorno anterior a la salida debe rechazarse (MassCreate si lo rechaza)", r.status == 200 and plan(cu["w"]["plan"])["phase"] == 4, P.dump(r) + f" plan={plan(cu['w']['plan'])['phase']}")
-    antes_n = n_dep_all(cu["w"]["unit"])
-    ptn = nt["plan"]
-    r = post_form(c, f"/Departures/Create?isWizard=true&managementPlanId={ptn}", {"Input.DepartureDate": P.d(0), "Input.EstimatedReturnDate": P.d(5)}, name="wizard sin tecnico", follow=True)
-    check(R, "Create wizard: plan sin tecnico -> 'Debe asignar un técnico en L-8 antes de registrar la salida.'", r.status == 200 and r.has_toast("Debe asignar un técnico en L-8 antes de registrar la salida.", "error"), P.dump(r))
     r = post_form(c, cw, {"Input.DepartureObservations": "o" * 501}, name="wizard observaciones 501", follow=True)
     check(R, "Create wizard: observaciones de 501 caracteres -> mensaje en espanol, plan sin cambios", r.status == 200 and plan(cu["w"]["plan"])["phase"] == 4 and not P._EN.search(P.toast_text(r) + " ".join(r.errors)), P.dump(r))
     r = post_form(c, cw, {"Input.DepartureObservations": "Salida QAP", "Input.DepartureDate": P.d(0), "Input.EstimatedReturnDate": P.d(7)}, name="wizard valido", follow=True)
@@ -244,8 +237,12 @@ def run(R, c):
     uE, dE = nueva_salida("see")
     r = post_form(c, f"/Departures/Edit?id={dE}", {"Input.Status": "1", "Input.ActualReturnDate": P.d(1) + "T08:00"}, name="edit devolver ok", follow=True)
     check(R, "Edit: Devuelto + fecha real valida -> exito y unidad Operativa", r.status == 302 and unidad(uE)["status"] == 0 and dp(dE)["status"] == 1, P.dump(r) + f" unidad={unidad(uE)['status']}")
-    r = post_form(c, f"/Departures/Edit?id={dE}", {"Input.Status": "0", "Input.ActualReturnDate": ""}, name="edit reabrir devuelta", follow=False)
-    check(R, "Edit: reabrir (Activa) una salida ya devuelta deja la unidad coherente (En Prestamo) o se impide", r.status == 200 or unidad(uE)["status"] == 10, P.dump(r) + f" unidad={unidad(uE)['status']} salida={dp(dE)['status']}")
+    st_dev, un_dev = dp(dE)["status"], unidad(uE)["status"]
+    r = post_form(c, f"/Departures/Edit?id={dE}", {"Input.Status": "0", "Input.ActualReturnDate": ""}, name="edit reabrir devuelta", follow=True)
+    check(R, "Edit: reabrir (Activa) una salida ya devuelta se bloquea (D-4: 302 a /Departures, warning 'ya fue devuelta y no se puede reabrir', sigue Devuelta y la unidad no cambia)",
+          r.status == 302 and "/Departures" in (r.location or "") and r.has_toast("ya fue devuelta y no se puede reabrir", "warning")
+          and dp(dE)["status"] == st_dev and unidad(uE)["status"] == un_dev,
+          P.dump(r) + f" salida={dp(dE)['status']} (antes {st_dev}) unidad={unidad(uE)['status']} (antes {un_dev})")
     # edicion valida
     d2 = plan(cu["w"]["plan"])["dep"]
     r = post_form(c, f"/Departures/Edit?id={d2}", {"Input.DepartureObservations": "Observacion editada QAP", "Input.EstimatedReturnDate": P.d(20)}, name="edit valido", follow=True)

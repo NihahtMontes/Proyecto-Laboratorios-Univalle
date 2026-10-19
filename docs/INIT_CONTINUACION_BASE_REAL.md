@@ -104,3 +104,13 @@ Sin hard-delete de historia; no tocar migraciones existentes; las pruebas en nav
 ## Prompt sugerido para la conversación nueva
 > Lee `docs/INIT_CONTINUACION_BASE_REAL.md`. La base `DB_Laboratorios_Univalle_REAL` ya está cargada desde el Excel V12 y verificada.
 > Tengo estas correcciones: <lista>. Aplícalas sobre la base REAL (tal cual el Excel; los vacíos se suben con la fecha de hoy) y vuelve a correr el verificador.
+
+## QA funcional 2026-10-18 (resumen)
+- Decisiones de diseño:
+  - pueden estar activas a la vez una gestión preventiva y una correctiva (una por tipo);
+  - la correctiva es semestral (`CORR-AAAA-S`) y no aparece en lo académico;
+  - un solo proceso correctivo abierto por unidad;
+  - «Nueva L-7» lleva al asistente correctivo (paso 2);
+  - no se puede dar de baja un país, facultad o materia con hijos activos.
+- La migración `20261018152946_CorrectiveCoexistenceAndL7Checklist` (índice único por tipo, un plan abierto por unidad, L-7 `Observations` de 2000) **no está aplicada en REAL**. Aplicarla solo con una orden explícita y después de un respaldo.
+- Informe y evidencia: `outputs/qa-usuario/qa-2026-10-18/INFORME_QA_2026-10-18.md`. La copia de QA y su snapshot se eliminaron; para repetir, restaurar `C:\Users\Public\BackupsUnivalle\QA_COPY_20261018.bak` (pasos en el plan v2, §4).

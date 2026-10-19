@@ -19,6 +19,7 @@
     </div>
 
     <form method="post" id="verificationEditForm">
+        <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 small font-weight-bold" role="alert"></div>
         <input type="hidden" asp-for="Input.Id" />
         <input type="hidden" asp-for="IsWizard" />
         <input type="hidden" asp-for="ManagementId" />

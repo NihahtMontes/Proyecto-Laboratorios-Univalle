@@ -196,6 +196,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // Las filas de costo quitadas en el formulario llegan vacías: no deben bloquear el guardado con
+            // «El concepto/nombre es obligatorio» (luego se descartan y su línea se anula).
+            var postedCosts = Input.CostDetails ?? new List<CostDetail>();
+            for (var i = 0; i < postedCosts.Count; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(postedCosts[i].Concept)) continue;
+                foreach (var key in ModelState.Keys.Where(k => k.StartsWith($"Input.CostDetails[{i}].")).ToList())
+                    ModelState.Remove(key);
+            }
+
             // Limpieza y Normalización
             Input.Description = Input.Description.Clean();
             Input.Observations = Input.Observations.Clean();
@@ -221,8 +231,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             if (Input.Status == MaintenanceStatus.Completed)
             {
-                if (totalCosts <= 0)
-                    ModelState.AddModelError("Input.Status", "Para estado Completado, debe registrar costos reales.");
+                // Decisión del usuario (2026-10-18, H-010): un mantenimiento interno sin repuestos puede costar 0,
+                // igual que en Create; ya no se exige costo real > 0 para «Completado».
                 if (Input.SatisfactionLevel == null)
                     ModelState.AddModelError("Input.SatisfactionLevel", "Para estado Completado, la Evaluación de Satisfacción es obligatoria.");
                 if (string.IsNullOrWhiteSpace(Input.Recommendations))
@@ -306,8 +316,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             foreach (var detail in detailsToRemove)
             {
-                detail.MaintenanceId = null;
-                detail.Maintenance = null;
+                // Se anula la línea (IsVoided) conservando su padre: desvincularla (MaintenanceId = null) violaba
+                // CK_CostDetails_ExactlyOneParent y quitar una línea de costo no se guardaba.
+                detail.IsVoided = true;
+                detail.VoidedDate = DateTime.UtcNow;
                 detail.LastModifiedDate = DateTime.UtcNow;
             }
 
@@ -467,8 +479,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             var detailsToRemove = maintenanceDB.CostDetails.Where(d => !inputDetailIds.Contains(d.Id)).ToList();
             foreach (var detail in detailsToRemove)
             {
-                detail.MaintenanceId = null;
-                detail.Maintenance = null;
+                // Se anula la línea (IsVoided) conservando su padre: desvincularla (MaintenanceId = null) violaba
+                // CK_CostDetails_ExactlyOneParent y quitar una línea de costo no se guardaba.
+                detail.IsVoided = true;
+                detail.VoidedDate = DateTime.UtcNow;
                 detail.LastModifiedDate = DateTime.UtcNow;
             }
             foreach (var detailForm in Input.CostDetails)

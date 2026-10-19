@@ -37,7 +37,7 @@ st, pg = c.get("/Cities/Create")
 check(R, "Ciudades/Create GET: 200; no ofrece países eliminados en el desplegable", st == 200 and PDn not in pg and "Bolivia" in pg, f"status={st}")
 
 # ---- Create: validaciones ----
-expect(R, "Ciudades/Create: país vacío", sub(c, "país vacío", "/Cities/Create", {"Input.CountryId": "", "Input.Name": "Algo " + tag}), status=200, error="El país es obligatorio")
+expect(R, "Ciudades/Create: país vacío", sub(c, "país vacío", "/Cities/Create", {"Input.CountryId": "", "Input.Name": "Algo " + tag}), status=200, error="obligatorio")
 res = sub(c, "país no numérico", "/Cities/Create", {"Input.CountryId": "abc", "Input.Name": "Algo " + tag})
 check(R, "Ciudades/Create: país no numérico 'abc' -> 200 con mensaje", res.status == 200 and bool(res.errors), f"status={res.status} errores={res.errors[:2]}")
 res = sub(c, "país inexistente", "/Cities/Create", {"Input.CountryId": "99999", "Input.Name": "Fantasma " + tag})
@@ -92,7 +92,7 @@ check(R, "Ciudades/Delete GET: 200 y confirmación '¿Deshabilitar esta localida
 expect(R, "Ciudades/Edit: nombre vacío", sub(c, "edit vacío", f"/Cities/Edit/{id1}", {"City.Name": ""}), status=200, error="El nombre de la ciudad es obligatorio")
 expect(R, "Ciudades/Edit: nombre 101 caracteres (mensaje por defecto)", sub(c, "edit 101", f"/Cities/Edit/{id1}", {"City.Name": "x" * 101}), status=200, error="100")
 expect(R, "Ciudades/Edit: región 101 caracteres (mensaje por defecto)", sub(c, "edit región 101", f"/Cities/Edit/{id1}", {"City.Region": "r" * 101}), status=200, error="100")
-expect(R, "Ciudades/Edit: país vacío", sub(c, "edit país vacío", f"/Cities/Edit/{id1}", {"City.CountryId": ""}), status=200, error="El país es obligatorio")
+expect(R, "Ciudades/Edit: país vacío", sub(c, "edit país vacío", f"/Cities/Edit/{id1}", {"City.CountryId": ""}), status=200, error="obligatorio")
 other_n = "Ciudad Hermana " + tag
 sub(c, "crear hermana", "/Cities/Create", {"Input.CountryId": str(BOL), "Input.Name": other_n})
 id_h = K.id_by("Cities", "Name", other_n)

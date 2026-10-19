@@ -58,17 +58,54 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .AsTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
                 
-            if (maintenance != null)
+            if (maintenance == null)
             {
-                var equipmentName = maintenance.EquipmentUnit?.Equipment?.Name;
-                
-                // Soft delete: cancelar el mantenimiento en lugar de eliminar físicamente
-                maintenance.Status = Models.Enums.MaintenanceStatus.Cancelled;
-                await _context.SaveChangesAsync();
-                
-                TempData.Success(NotificationHelper.Maintenances.Deleted(equipmentName));
+                TempData.Warning("El mantenimiento no existe o ya fue anulado.");
+                return RedirectToPage("./Index");
             }
 
+            // QA 2026-10-18: anular un L-8 dejaba el plan apuntando a un L-8 anulado y la unidad «En mantenimiento».
+            var linkedPlan = await _context.ManagementPlans.AsTracking()
+                .FirstOrDefaultAsync(p => p.MaintenanceId == maintenance.Id);
+            if (linkedPlan != null && linkedPlan.CurrentPhase > Models.Enums.WizardPhase.Maintenance)
+            {
+                TempData.Warning($"No se puede anular este mantenimiento: el activo ya avanzó a {WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}. Use «Rehacer fase» en el asistente.");
+                return RedirectToPage("./Index");
+            }
+
+            var equipmentName = maintenance.EquipmentUnit?.Equipment?.Name;
+
+            // Soft delete: cancelar el mantenimiento en lugar de eliminar físicamente
+            maintenance.Status = Models.Enums.MaintenanceStatus.Cancelled;
+            if (linkedPlan != null)
+            {
+                // El plan sigue esperando su L-8, ya sin el anulado.
+                linkedPlan.MaintenanceId = null;
+                linkedPlan.CurrentState = Models.Enums.WizardEquipmentState.AwaitingMaintenance;
+            }
+
+            // La unidad sale de «En mantenimiento»: se cierra su historial abierto y vuelve a Operativa.
+            if (maintenance.EquipmentUnit is { CurrentStatus: Models.Enums.EquipmentStatus.UnderMaintenance } unit)
+            {
+                var now = DateTime.UtcNow;
+                var openHistories = await _context.EquipmentStateHistories.AsTracking()
+                    .Where(h => h.EquipmentUnitId == unit.Id && h.EndDate == null)
+                    .ToListAsync();
+                foreach (var open in openHistories)
+                    open.EndDate = open.StartDate > now ? open.StartDate : now;
+                _context.EquipmentStateHistories.Add(new EquipmentStateHistory
+                {
+                    EquipmentUnitId = unit.Id,
+                    Status = Models.Enums.EquipmentStatus.Operational,
+                    StartDate = now,
+                    Reason = $"Mantenimiento #{maintenance.Id} anulado.",
+                    CreatedDate = now
+                });
+                unit.CurrentStatus = Models.Enums.EquipmentStatus.Operational;
+            }
+
+            await _context.SaveChangesAsync();
+            TempData.Success(NotificationHelper.Maintenances.Deleted(equipmentName));
             return RedirectToPage("./Index");
         }
     }

@@ -226,7 +226,6 @@ def run(R, c):
         if rid and art(rid) and art(rid)[3] != 2:
             c.submit(f"{B}/Delete/{rid}", {})
     c.raw_post(f"/Catalogs/Practices/Delete/{pr_id}", [], token_from=f"{B}/Create")
-    c.submit(f"/Catalogs/Practices/Edit/{pr_id}", {"Input.Name": pn, "Input.Status": "2", "Input.SubjectId": str(sj_id)})
     c.submit(f"/Catalogs/Subjects/Delete/{sj_id}", {})
     c.submit(f"/Catalogs/ArticleCategories/Delete/{cat_off}", {})
     c.submit(f"/Catalogs/MeasurementUnits/Delete/{unit_off}", {})

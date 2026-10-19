@@ -54,7 +54,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Id == id);
 
-            if (category == null) return NotFound();
+            if (category == null || category.Status == GeneralStatus.Eliminado) return NotFound(); // QA 2026-10-18: un registro dado de baja no se edita ni se reactiva por URL.
 
             CategorySnapshot = category;
             Input = new InputModel
@@ -95,7 +95,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.ArticleCategories
                 .AsTracking()
                 .FirstOrDefaultAsync(c => c.Id == Input.Id);
 
-            if (categoryToUpdate == null) return NotFound();
+            if (categoryToUpdate == null || categoryToUpdate.Status == GeneralStatus.Eliminado) return NotFound(); // QA 2026-10-18: un registro dado de baja no se edita ni se reactiva por URL.
 
             var normalizedName = Input.Name.Trim().ToLower();
 

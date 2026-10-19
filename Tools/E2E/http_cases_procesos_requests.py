@@ -1,4 +1,4 @@
-"""Requerimientos tecnicos L-7: Create / Edit / Delete / Details / Index. Solo contra la copia QA."""
+"""Requerimientos tecnicos L-7: Create / Edit / Delete / Details / Index. Incluye la via correctiva (CORR-2027-2 Activa junto a la preventiva 30, reglas T0-09/D-7 y T0-10). Solo contra la copia QA."""
 import os
 import re
 
@@ -77,9 +77,12 @@ def run(R, c):
     check(R, "Create borrador: reutiliza la misma solicitud (no duplica) con descripcion marcador", pb["req"] == pend["b"] and n_req(ctx["b"]["unit"]) == 1 and rq(pb["req"])["desc"] == "Borrador L-7 pendiente de descripción técnica.", f"{rq(pb['req'])}")
 
     ob = rq(pb["req"])["obs"] or ""
-    check(R, "Create borrador: el checklist de 13 puntos se guarda completo (no recortado a 500 caracteres)", len(ob) > 600 and "13." in ob, f"len={len(ob)} termina={ob[-12:]!r}")
+    lineas_ob = [ln for ln in ob.split("\n") if ln.strip()[:1].isdigit()]
+    check(R, "Create borrador: el checklist de 13 puntos se guarda completo (>500 caracteres, 13 lineas numeradas, conserva saltos de linea)",
+          len(ob) > 500 and len(lineas_ob) == 13 and "\n" in ob and "13." in ob, f"len={len(ob)} lineas={len(lineas_ob)} termina={ob[-12:]!r}")
     r = P.l7(c, ctx["b"]["plan"], {"Input.Description": "Falla definitiva tras borrador QAP"}, name="borrador -> definitivo", follow=True)
-    check(R, "Create: despues de guardar un borrador se puede registrar el L-7 definitivo desde el formulario recargado", r.status == 302 and plan(ctx["b"]["plan"])["state"] == 4, P.dump(r) + f" plan={plan(ctx['b']['plan'])}")
+    check(R, "Create: despues de guardar un borrador se puede registrar el L-7 definitivo desde el formulario recargado (302 al paso 3)",
+          r.status == 302 and "Step=3" in (r.location or "") and plan(ctx["b"]["plan"])["state"] == 4, P.dump(r) + f" plan={plan(ctx['b']['plan'])}")
 
     # registro valido
     r = P.l7(c, ctx["a"]["plan"], {"Input.Description": "Motor no arranca QAP", "Input.EstimatedRepairTime": "3 dias", "Input.Priority": "2", "Input.Observations": checklist(13)}, name="valido", follow=True)
@@ -93,32 +96,111 @@ def run(R, c):
     r = P.l7(c, ctx["a"]["plan"], {"Input.Description": "Motor no arranca QAP (reenvio)"}, name="doble envio", follow=True)
     check(R, "Create doble envio: no duplica la solicitud", n_req(ctx["a"]["unit"]) == 1, P.dump(r))
     check(R, "Create doble envio sobre un plan ya en L-8: el plan se queda en L-8 (3/4)", plan(ctx["a"]["plan"])["phase"] == 3 and plan(ctx["a"]["plan"])["state"] == 4, f"{plan(ctx['a']['plan'])}")
-    # texto con HTML y observaciones largas
-    r = P.l7(c, ctx["c"]["plan"], {"Input.Description": "Falla <script>alert(1)</script> & mas", "Input.Observations": checklist(13) + "\r\n" + "o" * 600}, name="html y obs larga", follow=True)
+    # texto con HTML y observaciones largas (T0-03b: Observations admite 2000 caracteres, ya no se recorta a 500)
+    r = P.l7(c, ctx["d"]["plan"], {"Input.Description": "Observaciones largas completas QAP", "Input.Observations": checklist(13) + "\r\n" + "o" * 1500}, name="obs 1500 completas", follow=True)
+    rd = rq(plan(ctx["d"]["plan"])["req"])
+    esperado1500 = checklist(13).replace("\r\n", "\n") + "\n" + "o" * 1500
+    check(R, "Create: observaciones de ~1700 caracteres (checklist + 1500) se guardan completas (nuevo limite 2000)",
+          r.status == 302 and (rd["obs"] or "") == esperado1500, f"len={len(rd['obs'] or '')} esperado={len(esperado1500)} {P.dump(r)}")
+    r = P.l7(c, ctx["c"]["plan"], {"Input.Description": "Falla <script>alert(1)</script> & mas", "Input.Observations": checklist(13) + "\r\n" + "o" * 1800}, name="html y obs > 2000", follow=True)
     rc = rq(plan(ctx["c"]["plan"])["req"])
-    check(R, "Create: observaciones de mas de 500 caracteres se recortan a 500 con '...' (no 500 de servidor)", r.status == 302 and len(rc["obs"] or "") == 500 and rc["obs"].endswith("..."), f"len={len(rc['obs'] or '')} {P.dump(r)}")
+    check(R, "Create: observaciones de mas de 2000 caracteres se recortan a 2000 con '...' (no 500 de servidor)",
+          r.status == 302 and len(rc["obs"] or "") == 2000 and rc["obs"].endswith("..."), f"len={len(rc['obs'] or '')} {P.dump(r)}")
     st, dp = c.get(f"/Requests/Details?id={plan(ctx['c']['plan'])['req']}")
     check(R, "Details: descripcion con HTML sale escapada", st == 200 and "<script>alert(1)</script>" not in dp and "&lt;script&gt;" in dp, f"status={st}")
 
-    # solicitud pendiente duplicada (no wizard, misma unidad con L-7 pendiente de la gestion)
-    r = post_form(c, f"/Requests/Create?ManagementId={P.MGMT}", {"Input.FacultyId": str(P.FAC), "Input.LaboratoryId": str(lab), "Input.EquipmentUnitId": str(ctx["d"]["unit"]),
-                                                                    "Input.Description": "Otra falla", "Input.Observations": checklist(13), "Input.TechnicalChecklistConfirmed": "true"}, name="pendiente duplicada", follow=True)
-    expect(R, "Create: unidad con L-7 pendiente en la gestion", r, status=200, toast="Ya existe una solicitud L-7 pendiente para esta unidad en la gestión seleccionada.", toast_kind="warning")
-    check(R, "Create duplicada: no se creo una segunda L-7", n_req(ctx["d"]["unit"]) == 1)
+    # ================================================================ L-7 correctiva (T0-09/T0-10): CORR-2027-2 Activa convive con la preventiva 30
+    corr_id = scalar("select top 1 Id from Managements where Code='CORR-2027-2' and Type=1 and Status=0")
+    if not corr_id:
+        res = None
+        corr_id = scalar("select top 1 Id from Managements where Code='CORR-2027-2' and Type=1 and Status<>99")
+        if corr_id:
+            res = P.post_raw(c, f"/Managements/Index?handler=ActivateManagement&id={corr_id}", [], "/Managements/Index?Type=Corrective", follow=True, name="activar CORR-2027-2")
+        else:
+            res = post_form(c, "/Managements/Create?type=Corrective", {"Input.Year": "2027", "Input.Semester": "2", "Input.Description": "Correctiva QA E2E",
+                                                                       "Input.StartDate": "2027-07-01", "Input.PlannedEndDate": "2027-12-31", "Input.Status": "0",
+                                                                       "Input.Type": "Corrective", "Input.FacultyId": ""}, name="crear CORR-2027-2", follow=True)
+        corr_id = scalar("select top 1 Id from Managements where Code='CORR-2027-2' and Type=1 and Status=0")
+        if not corr_id:
+            raise RuntimeError(f"No se pudo asegurar la gestion correctiva activa CORR-2027-2: {P.dump(res)}")
+    corr_id = int(corr_id)
+    st_corr, st_prev = scalar("select Status from Managements where Id=?", corr_id), scalar("select Status from Managements where Id=30")
+    check(R, "Gestiones: la correctiva CORR-2027-2 y la preventiva 30 estan Activas a la vez (una por tipo)", st_corr == 0 and st_prev == 0, f"corr={st_corr} preventiva30={st_prev}")
 
-    # no wizard sin plan, unidad sin L-7 pendiente
+    # ---- regla 2 (T0-10): ya no hay L-7 sueltas; /Requests/Create sin plan ni gestion enruta al asistente correctivo
+    n_antes = scalar("select count(*) from Requests")
+    st, loc = c.probe("/Requests/Create")
+    check(R, "Create: GET sin ManagementPlanId ni ManagementId -> 302 a /Requests/Index?handler=NewRequest", st == 302 and "handler=NewRequest" in (loc or ""), f"status={st} loc={loc}")
+    r = P.post_raw(c, "/Requests/Create", [], f"/Requests/Create?ManagementId={corr_id}", follow=False, name="POST sin parametros")
+    check(R, "Create: POST sin ManagementPlanId ni ManagementId -> 302 a NewRequest", r.status == 302 and "handler=NewRequest" in (r.location or ""), P.dump(r))
+    check(R, "Create: ni el GET ni el POST sin parametros crearon solicitud alguna", scalar("select count(*) from Requests") == n_antes)
+    cs = P.client("qa_sup", pw)
+    st, loc = cs.probe("/Requests/Index?handler=NewRequest")
+    check(R, "NewRequest (Supervisor): redirige al asistente correctivo de CORR-2027-2 (ShowWizard, Step=2)",
+          st == 302 and "showwizard=true" in (loc or "").lower() and f"managementid={corr_id}" in (loc or "").lower() and "step=2" in (loc or "").lower(), f"status={st} loc={loc}")
+    _, html = cs.get("/Requests/Index?handler=NewRequest")
+    check(R, "NewRequest: aviso 'Iniciar mantenimiento correctivo: registre la falla en el L-7 del asistente.'", "Iniciar mantenimiento correctivo: registre la falla en el L-7 del asistente." in (html or ""), "")
+
+    def campos_libre(mg, u):
+        return [("Input.FacultyId", str(P.FAC)), ("Input.LaboratoryId", str(lab)), ("Input.EquipmentUnitId", str(u)),
+                ("Input.Description", "Falla suelta QAP"), ("Input.Observations", checklist(13)),
+                ("Input.TechnicalChecklistConfirmed", "true"), ("Input.Priority", "1"), ("ManagementId", str(mg))]
+
+    n_antes = scalar("select count(*) from Requests")
+    r = P.post_raw(c, f"/Requests/Create?ManagementId={P.MGMT}", campos_libre(P.MGMT, ctx["a"]["unit"]), f"/Requests/Create?ManagementId={corr_id}", follow=True, name="preventiva sin plan")
+    check(R, "Create: POST con ManagementId=30 (preventiva) sin plan -> 'la L-7 nace de un L-6 con falla' y va al asistente",
+          r.has_toast("En el mantenimiento preventivo la L-7 nace de un L-6 con falla", "warning") and "showwizard=true" in (r.location or "").lower(), P.dump(r))
+    check(R, "Create: la L-7 preventiva suelta no creo ninguna solicitud", scalar("select count(*) from Requests") == n_antes)
+    mgmt_inactiva = scalar("select top 1 Id from Managements where Status=1 and Type<>9 order by Id")
+    if not mgmt_inactiva:
+        # la copia recién restaurada no trae gestiones Inactivas: se crea una correctiva Inactiva propia (CORR-2027-1;
+        # los códigos AAAA-S preventivos están ocupados por la importación)
+        post_form(c, "/Managements/Create?type=Corrective", {"Input.Year": "2027", "Input.Semester": "1", "Input.Description": "Correctiva inactiva QA E2E",
+                                                              "Input.StartDate": "2027-01-15", "Input.PlannedEndDate": "2027-06-30", "Input.Status": "1",
+                                                              "Input.Type": "Corrective", "Input.FacultyId": ""}, name="crear CORR-2027-1 inactiva", follow=True)
+        mgmt_inactiva = scalar("select top 1 Id from Managements where Status=1 and Type<>9 order by Id")
+    n_antes = scalar("select count(*) from Requests")
+    r = P.post_raw(c, f"/Requests/Create?ManagementId={mgmt_inactiva}", campos_libre(mgmt_inactiva, ctx["a"]["unit"]), f"/Requests/Create?ManagementId={corr_id}", follow=True, name="gestion inactiva")
+    check(R, "Create: POST con ManagementId de una gestion Inactiva -> 'no esta activa' y vuelve a /Requests sin crear nada",
+          r.has_toast("La gestión seleccionada no está activa: no admite nuevas solicitudes L-7.", "warning") and (r.location or "").lower().split("?")[0].rstrip("/") == "/requests" and scalar("select count(*) from Requests") == n_antes, P.dump(r) + f" mgmt={mgmt_inactiva}")
+
+    # ---- D-7 (T0-09): un proceso correctivo abierto por unidad y gestion
+    ud7, invd7 = P.nueva_unidad(c, lab, "rd7")
+    fd7 = {"Input.FacultyId": str(P.FAC), "Input.LaboratoryId": str(lab), "Input.EquipmentUnitId": str(ud7), "Input.Description": "Primera falla correctiva QAP",
+           "Input.Observations": checklist(13), "Input.TechnicalChecklistConfirmed": "true", "Input.Priority": "1"}
+    r = post_form(c, f"/Requests/Create?isWizard=true&ManagementId={corr_id}", fd7, name="correctiva primera (D-7)", follow=True)
+    check(R, "Create correctivo: la L-7 de la correctiva activa se registra y salta al paso 3 del asistente",
+          r.status == 302 and "Step=3" in (r.location or "") and r.has_toast("Solicitud técnica L-7 registrada exitosamente.", "success"), P.dump(r))
+    pd7 = scalar("select top 1 Id from ManagementPlans where ManagementId=? and EquipmentUnitId=? order by Id desc", corr_id, ud7)
+    fase(R, "Create correctivo (D-7): sin plan previo se crea el ManagementPlan en fase Mantenimiento (3/4, En Progreso)", pd7, 3, 4, 1)
+    n_reqs, n_plans = scalar("select count(*) from Requests"), scalar("select count(*) from ManagementPlans")
+    r = post_form(c, f"/Requests/Create?isWizard=true&ManagementId={corr_id}", fd7, name="correctiva duplicada (D-7)", follow=True)
+    check(R, "Create: unidad con L-7 pendiente -> D-7: 'ya tiene un proceso correctivo abierto en esta gestion' con la unidad y el paso",
+          r.has_toast("ya tiene un proceso correctivo abierto en esta gestión", "warning") and f"La unidad {invd7}" in P.toast_text(r) and "asistente (paso 3)" in P.toast_text(r), P.dump(r))
+    check(R, "Create D-7: no se creo ninguna solicitud ni plan adicional",
+          scalar("select count(*) from Requests") == n_reqs and scalar("select count(*) from ManagementPlans") == n_plans,
+          f"reqs={n_reqs}->{scalar('select count(*) from Requests')} plans={n_plans}->{scalar('select count(*) from ManagementPlans')}")
+
+    # ---- L-7 por la via correctiva (T0-10): alimenta las pruebas de Edit (antes era una L-7 suelta sin plan)
     unw = P.nueva_unidad(c, lab, "rnw")
     nwf = {"Input.FacultyId": str(P.FAC), "Input.LaboratoryId": str(lab), "Input.EquipmentUnitId": str(unw[0]), "Input.Description": "Falla sin plan QAP",
            "Input.Observations": checklist(13), "Input.TechnicalChecklistConfirmed": "true", "Input.Priority": "1"}
-    r = post_form(c, f"/Requests/Create?ManagementId={P.MGMT}", nwf, name="no wizard sin plan", follow=True)
-    check(R, "Create no-wizard sin plan: registra la L-7 y vuelve al listado", r.status == 302 and r.has_toast("Solicitud técnica L-7 registrada exitosamente.", "success") and n_req(unw[0]) == 1, P.dump(r))
+    r = post_form(c, f"/Requests/Create?ManagementId={corr_id}", nwf, name="no wizard sin plan (correctiva)", follow=True)
+    check(R, "Create no-wizard sin plan: registra la L-7 y vuelve al listado",
+          r.status == 302 and r.has_toast("Solicitud técnica L-7 registrada exitosamente.", "success") and n_req(unw[0]) == 1, P.dump(r))
     rid_nw = scalar("select top 1 Id from Requests where EquipmentUnitId=? and Type=1 order by Id desc", unw[0])
-    r = post_form(c, f"/Requests/Create?ManagementId={P.MGMT}", nwf, name="no wizard repetida", follow=True)
-    check(R, "Create no-wizard repetida (doble envio): rechazada por L-7 pendiente, sin duplicar", r.has_toast("Ya existe una solicitud L-7 pendiente", "warning") and n_req(unw[0]) == 1, P.dump(r))
-    r = post_form(c, f"/Requests/Create?ManagementId={P.MGMT}", {**nwf, "Input.EquipmentUnitId": "99999"}, name="unidad inexistente", follow=True)
-    check(R, "Create: unidad inexistente -> 'la unidad física no existe' sin 500", r.status < 500 and r.has_toast("la unidad física no existe", "error"), P.dump(r))
-    r = post_form(c, f"/Requests/Create?ManagementId={P.MGMT}", {**nwf, "Input.EquipmentUnitId": ""}, name="sin unidad", follow=True)
-    check(R, "Create: sin unidad -> rechazo con 'La unidad física es obligatoria' y sin 500", r.status < 500 and (r.has_toast("obligatorio", "error") or r.has_error("La unidad física es obligatoria")), P.dump(r))
+    pid_nw = scalar("select top 1 Id from ManagementPlans where ManagementId=? and EquipmentUnitId=? order by Id desc", corr_id, unw[0])
+    pnw = plan(pid_nw)
+    check(R, "Create no-wizard sin plan (via correctiva): crea tambien el ManagementPlan (3/4) con la L-7 enlazada a CORR-2027-2",
+          bool(pnw) and pnw["phase"] == 3 and pnw["state"] == 4 and pnw["req"] == rid_nw and pnw["mgmt"] == corr_id and pnw["unit"] == unw[0], f"{pnw}")
+    r = post_form(c, f"/Requests/Create?ManagementId={corr_id}", nwf, name="no wizard repetida", follow=True)
+    check(R, "Create no-wizard repetida (doble envio): rechazada por proceso correctivo abierto (D-7), sin duplicar",
+          r.has_toast("ya tiene un proceso correctivo abierto", "warning") and n_req(unw[0]) == 1, P.dump(r))
+    r = post_form(c, f"/Requests/Create?ManagementId={corr_id}", {**nwf, "Input.EquipmentUnitId": "99999"}, name="unidad inexistente", follow=True)
+    check(R, "Create: unidad inexistente -> 'la unidad fisica no existe' sin 500", r.status < 500 and r.has_toast("la unidad física no existe", "error"), P.dump(r))
+    r = post_form(c, f"/Requests/Create?ManagementId={corr_id}", {**nwf, "Input.EquipmentUnitId": ""}, name="sin unidad", follow=True)
+    check(R, "Create: sin unidad -> rechazo con 'La unidad fisica es obligatoria' y sin 500",
+          r.status < 500 and (r.has_toast("obligatorio", "error") or r.has_error("La unidad física es obligatoria")), P.dump(r))
 
     # fases del plan: L-7 sobre un plan que NO esta en L-7
     antes = plan(p1ok["plan"])
@@ -159,13 +241,13 @@ def run(R, c):
     st, _ = c.get("/Requests/Edit/99999")
     check(R, "Edit: GET id inexistente -> 404", st == 404, f"status={st}")
     st, _ = c.get(ep(rid_nw))
-    check(R, "Edit: GET 200 (L-7 sin plan)", st == 200, f"status={st}")
+    check(R, "Edit: GET 200 (L-7 correctiva con plan propio)", st == 200, f"status={st}")
     r = post_form(c, ep(rid_nw), {"Input.Description": ""}, name="edit sin descripcion")
     expect(R, "Edit: descripcion vacia", r, status=200, error="La descripción es obligatoria")
     r = post_form(c, ep(rid_nw), {"Input.Description": "d" * 1001}, name="edit descripcion 1001")
     expect(R, "Edit: descripcion de 1001 caracteres", r, status=200, error="La descripción no puede superar los 1000 caracteres")
-    r = post_form(c, ep(rid_nw), {"Input.Observations": "o" * 501}, name="edit observaciones 501")
-    expect(R, "Edit: observaciones de 501 caracteres", r, status=200, error="Las observaciones no pueden superar los 500 caracteres")
+    r = post_form(c, ep(rid_nw), {"Input.Observations": "o" * 2001}, name="edit observaciones 2001")
+    expect(R, "Edit: observaciones de 2001 caracteres (limite 2000 desde D-2)", r, status=200, error="Las observaciones no pueden superar los 2000 caracteres")
     r = post_form(c, ep(rid_nw), {"Input.EstimatedRepairTime": "t" * 101}, name="edit tiempo 101")
     check(R, "Edit: tiempo estimado de 101 caracteres -> mensaje en espanol", r.status == 200 and bool(r.errors) and not P._EN.search(" ".join(r.errors)), P.dump(r))
     r = post_form(c, ep(rid_nw), {"Input.RejectionReason": "r" * 501}, name="edit motivo 501", follow=False)
@@ -192,8 +274,7 @@ def run(R, c):
     r = post_form(c, ep(rid_l6), {"Input.Description": "Intento de cambio", "Input.Observations": "otro", "Input.Priority": "2"}, name="edit L-7 derivada de L-6", follow=True)
     y = rq(rid_l6)
     check(R, "Edit L-7 de L-6: descripcion y observaciones NO cambian, prioridad si", y["desc"] == desc_l6 and y["prio"] == 2, f"{y['desc'][:40]!r} prio={y['prio']} {P.dump(r)}")
-    # Supervisor no cambia estado
-    cs = P.client("qa_sup", pw)
+    # Supervisor no cambia estado (cs: sesion qa_sup creada en el bloque del asistente correctivo)
     rid_sup = rid_l6
     r = post_form(cs, ep(rid_sup), {"Input.Status": "3", "Input.Priority": "1"}, name="edit como Supervisor", follow=False)
     check(R, "Rol Supervisor: puede editar la ficha pero el cambio de ESTADO se ignora", r.status == 302 and rq(rid_sup)["status"] == 0 and rq(rid_sup)["prio"] == 1, P.dump(r) + f" {rq(rid_sup)['status']}/{rq(rid_sup)['prio']}")
@@ -227,7 +308,7 @@ def run(R, c):
     check(R, "Delete bloqueado: la solicitud no cambio de estado", rq(req_mnt)["status"] != 99, f"{rq(req_mnt)}")
     r = P.post_raw(c, f"/Requests/Delete/{pend['f']}", [], "/Requests", name="delete", follow=True)
     expect(R, "Delete: anula la L-7 sin mantenimiento", r, status=302, toast=f"La solicitud #{pend['f']} ha sido anulada correctamente.", toast_kind="success")
-    check(R, "Delete: queda Cancelled (99) y el plan queda apuntando a una L-7 anulada (fase 2 sin cambios)", rq(pend["f"])["status"] == 99 and plan(ctx["f"]["plan"])["req"] == pend["f"] and plan(ctx["f"]["plan"])["state"] == 3, f"{rq(pend['f'])} {plan(ctx['f']['plan'])}")
+    check(R, "Delete: queda Cancelled (99) y el plan vuelve a esperar una L-7 (2/3) sin apuntar a la anulada (2026-10-18)", rq(pend["f"])["status"] == 99 and plan(ctx["f"]["plan"])["req"] is None and plan(ctx["f"]["plan"])["state"] == 3, f"{rq(pend['f'])} {plan(ctx['f']['plan'])}")
     r = P.post_raw(c, f"/Requests/Delete/{pend['f']}", [], "/Requests", name="delete repetido", follow=False)
     check(R, "Delete repetido -> 404 (ya no existe)", r.status == 404, P.dump(r))
     st, _ = c.get(pg("f"))

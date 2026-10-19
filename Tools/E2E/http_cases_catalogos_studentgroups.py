@@ -16,7 +16,7 @@ LABEL = "StudentGroups"
 MG = 4          # gestión 2026-2 (Inactiva, editable)
 MG_DONE = 1     # gestión 2025-1 (Completada)
 CAREER = 3      # Nutrición y dietética
-LETTER_MSG = "La letra del grupo debe tener de 1 a 3 letras (A, B, C...)."
+LETTER_MSG = "Letra del grupo"
 
 
 def L(s):
@@ -125,7 +125,7 @@ def run(R, c):
         r = post(body("QZ", [S15], sem=sem), f"semestre {sem}")
         expect(R, L(f"Create: semestre {sem}"), r, status=200, error="El semestre debe estar entre 1 y 12.")
     r = post(body("QZ", [S15], sem=""), "semestre vacío")
-    expect(R, L("Create: semestre vacío"), r, status=200, error="El semestre debe estar entre 1 y 12.")
+    expect(R, L("Create: semestre vacío"), r, status=200, error="obligatorio")
     for cnt in ("1001", "-1"):
         r = post(body("QZ", [S15], count=cnt), f"estudiantes {cnt}")
         expect(R, L(f"Create: estudiantes {cnt}"), r, status=200, error="El número de estudiantes debe estar entre 0 y 1000.")

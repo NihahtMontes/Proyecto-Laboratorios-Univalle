@@ -57,7 +57,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             public int Year { get; set; }
 
             [Required(ErrorMessage = "El semestre es obligatorio")]
-            [Range(0, 2, ErrorMessage = "Semestre inválido (0, 1 o 2)")]
+            [Range(1, 2, ErrorMessage = "La gestión debe usar el semestre 1 o 2.")]
             [Display(Name = "Semestre")]
             public int Semester { get; set; }
 
@@ -122,11 +122,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             return Page();
         }
 
+        /// <summary>Otra gestión Activa del mismo tipo que se cerrará si esta pasa a Activa (confirmación SweetAlert, H-003).</summary>
+        public string? ActiveSameTypeCode { get; set; }
+
         private void LoadFaculties()
         {
             FacultyList = new SelectList(
                 _context.Faculties.Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name),
                 "Id", "Name", Input.FacultyId);
+            ActiveSameTypeCode = _context.Managements.AsNoTracking()
+                .Where(m => m.Status == ManagementStatus.Active && m.Type == ManagementType && m.Id != Input.Id)
+                .Select(m => m.Code)
+                .FirstOrDefault();
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -172,15 +179,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             ManagementType = management.Type;
 
-            if (management.Type == ManagementType.Corrective)
-            {
-                Input.Semester = 0;
-                ModelState.Remove("Input.Semester");
-            }
-            else if (Input.Semester is < 1 or > 2)
+            // Preventiva y correctiva son semestrales: ambas exigen semestre 1 o 2 (código CORR-AAAA-S).
+            if (Input.Semester is < 1 or > 2)
             {
                 ModelState.AddModelError("Input.Semester",
-                    "La gestión preventiva debe usar el semestre 1 o 2.");
+                    "La gestión debe usar el semestre 1 o 2.");
             }
 
             if (Input.FacultyId.HasValue)

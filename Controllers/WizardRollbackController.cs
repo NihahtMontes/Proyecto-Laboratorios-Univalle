@@ -67,12 +67,25 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                     return BadRequest("La verificación L-6 no forma parte de una gestión correctiva.");
                 }
 
+                // Un proceso correctivo abierto por unidad y gestión (IX_ManagementPlans filtrado por PlanStatus <> 2):
+                // reabrir uno completado mientras la unidad tiene otro abierto chocaría con el índice.
+                if (plan.Management?.Type == ManagementType.Corrective &&
+                    plan.PlanStatus == ManagementPlanStatus.Completed &&
+                    plan.EquipmentUnitId.HasValue &&
+                    await _context.ManagementPlans.AnyAsync(p => p.Id != plan.Id
+                        && p.ManagementId == plan.ManagementId
+                        && p.EquipmentUnitId == plan.EquipmentUnitId
+                        && p.PlanStatus != ManagementPlanStatus.Completed))
+                {
+                    return BadRequest("La unidad ya tiene otro proceso correctivo abierto en esta gestión; ciérrelo antes de rehacer este.");
+                }
+
                 // La fecha de inicio del historial restaurado se calcula ANTES de desvincular
                 // los registros: las navegaciones del plan siguen pobladas en este punto.
                 var restoredHistoryStart = ResolveRestoredHistoryStart(plan, request.TargetPhase);
                 CancelDownstreamRecords(plan, request.TargetPhase);
                 RepositionPlan(plan, request.TargetPhase);
-                RestoreEquipmentState(plan, request.TargetPhase, restoredHistoryStart);
+                await RestoreEquipmentStateAsync(plan, request.TargetPhase, restoredHistoryStart);
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -111,6 +124,14 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                 }
 
                 plan.KardexHistoryId = null;
+            }
+
+            // Al rehacer Kardex, la devolución que registró su cierre se deshace: la salida L-3 vuelve a estar
+            // activa y la unidad queda En Préstamo hasta que el Kardex se cierre de nuevo.
+            if (targetPhase == WizardPhase.Kardex && plan.Departure is { Status: LoanStatus.Returned } returnedDeparture)
+            {
+                returnedDeparture.Status = LoanStatus.Active;
+                returnedDeparture.ActualReturnDate = null;
             }
 
             if (targetPhase <= WizardPhase.Exit && plan.Departure != null)
@@ -167,7 +188,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             plan.DraftSummary = null;
         }
 
-        private void RestoreEquipmentState(ManagementPlan plan, WizardPhase targetPhase, DateTime restoredStart)
+        private async Task RestoreEquipmentStateAsync(ManagementPlan plan, WizardPhase targetPhase, DateTime restoredStart)
         {
             if (plan.EquipmentUnit == null)
                 return;
@@ -176,6 +197,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             {
                 WizardPhase.TechnicalRequest => EquipmentStatus.OutOfService,
                 WizardPhase.Maintenance => EquipmentStatus.UnderMaintenance,
+                WizardPhase.Kardex when plan.Departure is { Status: LoanStatus.Active or LoanStatus.Overdue } => EquipmentStatus.OnLoan,
                 _ => EquipmentStatus.Operational
             };
 
@@ -183,6 +205,19 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
 
             if (plan.KardexHistoryId == null && targetPhase <= WizardPhase.Kardex)
             {
+                // H-001: un solo historial abierto por unidad. Antes de abrir el restaurado se cierra el que siga abierto
+                // (p. ej. «Alta inicial» o el estado del L-7), respetando EndDate >= StartDate.
+                var openHistories = (await _context.EquipmentStateHistories
+                        .AsTracking()
+                        .Where(h => h.EquipmentUnitId == plan.EquipmentUnit.Id && h.EndDate == null)
+                        .ToListAsync())
+                    .Where(h => h.EndDate == null)   // el Kardex ya cerrado en memoria por CancelDownstreamRecords se respeta
+                    .ToList();
+                foreach (var open in openHistories)
+                {
+                    open.EndDate = open.StartDate > restoredStart ? open.StartDate : restoredStart;
+                }
+
                 _context.EquipmentStateHistories.Add(new EquipmentStateHistory
                 {
                     EquipmentUnitId = plan.EquipmentUnit.Id,
