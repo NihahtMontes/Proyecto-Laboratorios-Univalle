@@ -11,10 +11,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
     public class DeleteModel : PageModel
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
+        private readonly Proyecto_Laboratorios_Univalle.Services.IEquipmentStateHistoryService _stateHistory;
 
-        public DeleteModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context)
+        public DeleteModel(
+            Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
+            Proyecto_Laboratorios_Univalle.Services.IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty]
@@ -87,21 +91,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             // La unidad sale de «En mantenimiento»: se cierra su historial abierto y vuelve a Operativa.
             if (maintenance.EquipmentUnit is { CurrentStatus: Models.Enums.EquipmentStatus.UnderMaintenance } unit)
             {
-                var now = DateTime.UtcNow;
-                var openHistories = await _context.EquipmentStateHistories.AsTracking()
-                    .Where(h => h.EquipmentUnitId == unit.Id && h.EndDate == null)
-                    .ToListAsync();
-                foreach (var open in openHistories)
-                    open.EndDate = open.StartDate > now ? open.StartDate : now;
-                _context.EquipmentStateHistories.Add(new EquipmentStateHistory
-                {
-                    EquipmentUnitId = unit.Id,
-                    Status = Models.Enums.EquipmentStatus.Operational,
-                    StartDate = now,
-                    Reason = $"Mantenimiento #{maintenance.Id} anulado.",
-                    CreatedDate = now
-                });
-                unit.CurrentStatus = Models.Enums.EquipmentStatus.Operational;
+                await _stateHistory.ChangeStatusAsync(unit, Models.Enums.EquipmentStatus.Operational,
+                    $"Mantenimiento #{maintenance.Id} anulado.");
             }
 
             await _context.SaveChangesAsync();

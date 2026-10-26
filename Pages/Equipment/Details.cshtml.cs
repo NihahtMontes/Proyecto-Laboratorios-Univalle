@@ -13,9 +13,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
     {
         private readonly ApplicationDbContext _context;
 
-        public DetailsModel(ApplicationDbContext context)
+        private readonly Proyecto_Laboratorios_Univalle.Services.IEquipmentStateHistoryService _stateHistory;
+
+        public DetailsModel(ApplicationDbContext context, Proyecto_Laboratorios_Univalle.Services.IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
+            _stateHistory = stateHistory;
         }
 
         public Models.Equipment Equipment { get; set; } = default!;
@@ -80,7 +83,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
                 return RedirectToPage("./Index");
             }
 
-            unit.CurrentStatus = EquipmentStatus.Deleted;
+            await _stateHistory.ChangeStatusAsync(unit, EquipmentStatus.Deleted, "Dado de baja.");
             await _context.SaveChangesAsync();
 
             TempData.Success($"Unidad {unit.Equipment?.Name ?? "Equipo"} ({unit.InventoryNumber}) dada de baja correctamente.");

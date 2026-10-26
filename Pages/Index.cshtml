@@ -948,6 +948,10 @@
                                     StepIndex = 3,
                                     ActionPage = isAdminUser ? "/Maintenances/Create" : string.Empty,
                                     ActionLabel = isAdminUser ? "Registrar mantenimiento" : string.Empty,
+                                    // «Continuar mantenimiento» + línea «Mantenimiento #N · estado» si ya hay uno sin finalizar.
+                                    // (sin ActionPage, p. ej. no administradores, el botón no se dibuja)
+                                    ActionLabelSelector = WizardStepViewModel.MaintenanceStepActionLabel,
+                                    CardDetailSelector = WizardStepViewModel.MaintenanceStepDetail,
                                     ActionClass = "btn-success",
                                     StatusLabel = "En Mantenimiento",
                                     LaboratoriesList = Model.LaboratoriesList,

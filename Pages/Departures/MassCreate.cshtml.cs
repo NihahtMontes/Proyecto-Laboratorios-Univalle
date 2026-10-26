@@ -20,17 +20,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
         private readonly ILogger<MassCreateModel> _logger;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
         public MassCreateModel(
             ApplicationDbContext context,
             UserManager<User> userManager,
             IManagementContextService managementContext,
-            ILogger<MassCreateModel> logger)
+            ILogger<MassCreateModel> logger,
+            IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
             _logger = logger;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -292,7 +295,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     // Actualizar estado del equipo
                     var unit = await _context.EquipmentUnits.FindAsync(equipmentUnitId);
                     if (!saveDraft && unit != null)
-                        unit.CurrentStatus = EquipmentStatus.OnLoan;
+                        await _stateHistory.ChangeStatusAsync(unit, EquipmentStatus.OnLoan,
+                            "Préstamo por salida de equipos (registro masivo).", userId: user?.Id);
 
                     // Vincular salida; solo el guardado final avanza a Kardex.
                     plan.Departure = departure;

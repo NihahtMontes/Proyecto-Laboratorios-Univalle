@@ -21,13 +21,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         private readonly IManagementContextService _managementContext;
         private readonly IMaintenanceNotificationWriter _maintenanceNotifications;
         private readonly ILogger<CreateModel> _logger;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
         public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
             UserManager<User> userManager,
             IManagementContextService managementContext,
             IMaintenanceNotificationWriter maintenanceNotifications,
-            ILogger<CreateModel> logger)
+            ILogger<CreateModel> logger,
+            IEquipmentStateHistoryService stateHistory)
         {
+            _stateHistory = stateHistory;
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
@@ -82,6 +85,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     if (plan.Maintenance != null)
                     {
                         ApplyMaintenanceToInput(plan.Maintenance);
+                        if (plan.Maintenance.Status != MaintenanceStatus.Completed)
+                        {
+                            ExistingMaintenanceId = plan.Maintenance.Id;
+                        }
                     }
                     else if (isWizard)
                     {
@@ -128,6 +135,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
         [BindProperty(SupportsGet = true)]
         public int? ManagementId { get; set; }
+
+        /// <summary>
+        /// Mantenimiento del plan del asistente que ya existe y aún no está Completado
+        /// (el título pasa a «Continuar mantenimiento»). No se bindea desde el formulario.
+        /// </summary>
+        public int? ExistingMaintenanceId { get; private set; }
 
         public class InputModel
         {
@@ -242,7 +255,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             return await SaveMaintenanceAsync(isWizard, saveDraft: false);
         }
 
-        private async Task<IActionResult> SaveMaintenanceAsync(bool isWizard, bool saveDraft)
+        /// <summary>
+        /// «Registrar y finalizar» del asistente: el servidor fuerza el estado Completado
+        /// (sin confiar en el select del formulario) y, si pasa las validaciones de
+        /// Completado, el plan avanza a la fase de Salida.
+        /// </summary>
+        public async Task<IActionResult> OnPostFinalizeAsync(bool isWizard = false)
+        {
+            return await SaveMaintenanceAsync(isWizard, saveDraft: false, finalize: true);
+        }
+
+        private async Task<IActionResult> SaveMaintenanceAsync(bool isWizard, bool saveDraft, bool finalize = false)
         {
             // ─────────────────────────────────────────────────────────────
             // WIZARD PRE-VALIDATION: reconstruir valores ANTES de ModelState
@@ -317,10 +340,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 ViewData["CurrentPhaseInt"] = (int)wizardPlan.CurrentPhase;
                 ViewData["ManagementId"] = wizardPlan.ManagementId;
                 ViewData["ManagementPlanId"] = wizardPlan.Id;
+                if (wizardPlan.Maintenance != null && wizardPlan.Maintenance.Status != MaintenanceStatus.Completed)
+                {
+                    ExistingMaintenanceId = wizardPlan.Maintenance.Id;
+                }
                 var mgmt = await _context.Managements.AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == wizardPlan.ManagementId);
                 ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
                 ViewData["ManagementType"] = mgmt?.Type.ToString();
+            }
+
+            // «Registrar y finalizar»: el estado lo decide el servidor. Las validaciones
+            // de Completado (técnico, avance 100%, fechas) se aplican igual más abajo.
+            if (finalize && !saveDraft)
+            {
+                Input.Status = MaintenanceStatus.Completed;
+                ModelState.Remove("Input.Status");
             }
 
             if (saveDraft)
@@ -464,36 +499,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 if (!saveDraft && equipmentUnit != null)
                 {
-                    var lastHistory = await _context.EquipmentStateHistories
-                        .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
-                        .OrderByDescending(h => h.StartDate)
-                        .AsTracking()
-                        .FirstOrDefaultAsync();
+                    var historyUserId = (await _userManager.GetUserAsync(User))?.Id;
 
                     if (Input.Status == MaintenanceStatus.Completed)
                     {
+                        var completionAt = Input.EndDate.HasValue ? BoliviaTime.ToUtc(Input.EndDate.Value) : DateTime.UtcNow;
+                        var workDone = maintenance.Description?.Trim();
+                        var completionReason = $"Cierre automático del mantenimiento #{maintenance.Id}"
+                            + (string.IsNullOrEmpty(workDone) ? "" : $": {workDone}")
+                            + $" | Costo Bs {(maintenance.ActualCost ?? 0m):N2}";
                         var kardexHistory = wizardPlan?.KardexHistoryId != null
                             ? await _context.EquipmentStateHistories
                                 .AsTracking()
                                 .FirstOrDefaultAsync(h => h.Id == wizardPlan.KardexHistoryId.Value)
                             : null;
 
-                        if (lastHistory != null && lastHistory.Id != kardexHistory?.Id)
-                        {
-                            lastHistory.EndDate = Input.EndDate ?? DateTime.UtcNow;
-                            _context.EquipmentStateHistories.Update(lastHistory);
-                        }
-
                         if (kardexHistory == null)
                         {
-                            kardexHistory = new EquipmentStateHistory
+                            // Registrado y finalizado de una vez: la línea de tiempo igual muestra el tramo «En mantenimiento».
+                            if (equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
                             {
-                                EquipmentUnitId = equipmentUnit.Id,
-                                Status = EquipmentStatus.Operational,
-                                StartDate = Input.EndDate ?? DateTime.UtcNow,
-                                Reason = $"Cierre automático L-8 #{maintenance.Id}: {maintenance.Description?.Trim()} | Costo Bs {(maintenance.ActualCost ?? 0m):N2}"
-                            };
-                            _context.EquipmentStateHistories.Add(kardexHistory);
+                                await _stateHistory.ChangeStatusAsync(
+                                    equipmentUnit, EquipmentStatus.UnderMaintenance,
+                                    "Ingreso a proceso de mantenimiento.", Input.StartDate.HasValue ? BoliviaTime.ToUtc(Input.StartDate.Value) : DateTime.UtcNow, historyUserId);
+                            }
+
+                            // Cierra el tramo vigente («En mantenimiento») y abre «Operativo».
+                            kardexHistory = await _stateHistory.ChangeStatusAsync(
+                                equipmentUnit, EquipmentStatus.Operational, completionReason,
+                                completionAt, historyUserId, splitIfSameStatus: true);
                             if (wizardPlan != null)
                             {
                                 wizardPlan.KardexHistory = kardexHistory;
@@ -502,31 +536,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         else
                         {
                             kardexHistory.Status = EquipmentStatus.Operational;
-                            kardexHistory.StartDate = Input.EndDate ?? DateTime.UtcNow;
+                            kardexHistory.StartDate = completionAt;
                             kardexHistory.EndDate = null;
-                            kardexHistory.Reason = $"Cierre automático L-8 #{maintenance.Id}: {maintenance.Description?.Trim()} | Costo Bs {(maintenance.ActualCost ?? 0m):N2}";
+                            kardexHistory.Reason = EquipmentStateHistoryService.TrimReason(completionReason);
+                            equipmentUnit.CurrentStatus = EquipmentStatus.Operational;
                         }
-
-                        equipmentUnit.CurrentStatus = EquipmentStatus.Operational;
                     }
                     else if (equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
                     {
-                        if (lastHistory != null)
-                        {
-                            lastHistory.EndDate = DateTime.UtcNow;
-                            _context.EquipmentStateHistories.Update(lastHistory);
-                        }
-
-                        var newHistory = new EquipmentStateHistory
-                        {
-                            EquipmentUnitId = equipmentUnit.Id,
-                            Status = EquipmentStatus.UnderMaintenance,
-                            StartDate = DateTime.UtcNow,
-                            Reason = "Ingreso a proceso de mantenimiento."
-                        };
-                        _context.EquipmentStateHistories.Add(newHistory);
-
-                        equipmentUnit.CurrentStatus = EquipmentStatus.UnderMaintenance;
+                        await _stateHistory.ChangeStatusAsync(
+                            equipmentUnit, EquipmentStatus.UnderMaintenance,
+                            "Ingreso a proceso de mantenimiento.", DateTime.UtcNow, historyUserId);
                     }
 
                     _context.EquipmentUnits.Update(equipmentUnit);
@@ -567,9 +587,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     await TryCreateMaintenanceNotificationAsync(maintenance);
                 }
 
-                TempData.Success(saveDraft
-                    ? $"Borrador de mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente."
-                    : $"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
+                if (!saveDraft && wizardPlan != null && isWizard && Input.Status != MaintenanceStatus.Completed)
+                {
+                    // Guardado sin finalizar desde el asistente: avisar claramente que el
+                    // equipo sigue en el paso de Registro de mantenimiento.
+                    TempData.Warning($"El mantenimiento quedó como «{EnumHelper.GetDisplayName(Input.Status)}». El equipo seguirá en el paso de Registro de mantenimiento hasta que lo registres como finalizado.");
+                }
+                else if (finalize && wizardPlan != null && isWizard)
+                {
+                    TempData.Success($"Mantenimiento de '{equipmentUnit?.Equipment?.Name}' registrado y finalizado. El equipo pasó al paso de Salida.");
+                }
+                else
+                {
+                    TempData.Success(saveDraft
+                        ? $"Borrador de mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente."
+                        : $"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
+                }
 
                 if (wizardPlan != null && isWizard)
                 {

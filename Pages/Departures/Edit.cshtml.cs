@@ -8,6 +8,7 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -19,15 +20,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly ILogger<EditModel> _logger;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
         public EditModel(
             ApplicationDbContext context,
             UserManager<User> userManager,
-            ILogger<EditModel> logger)
+            ILogger<EditModel> logger,
+            IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _userManager = userManager;
             _logger = logger;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty]
@@ -303,9 +307,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 && departureDB.EquipmentUnit is EquipmentUnit returnedUnit
                 && returnedUnit.CurrentStatus == EquipmentStatus.OnLoan)
             {
-                returnedUnit.CurrentStatus = EquipmentStatus.Operational;
-                await RegisterUnitStatusChangeAsync(
-                    returnedUnit.Id,
+                await _stateHistory.ChangeStatusAsync(
+                    returnedUnit,
                     EquipmentStatus.Operational,
                     $"Devolución de la salida #{departureDB.Id}");
             }
@@ -322,9 +325,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
                 if (!hasOtherActiveDeparture)
                 {
-                    cancelledUnit.CurrentStatus = EquipmentStatus.Operational;
-                    await RegisterUnitStatusChangeAsync(
-                        cancelledUnit.Id,
+                    await _stateHistory.ChangeStatusAsync(
+                        cancelledUnit,
                         EquipmentStatus.Operational,
                         $"Cancelación de la salida #{departureDB.Id}");
                 }
@@ -346,38 +348,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 CargarListas(facultyId, labId, Input.EquipmentUnitId);
                 return Page();
             }
-        }
-
-        /// <summary>Longitud máxima de Reason en EquipmentStateHistory (StringLength 500 en BD).</summary>
-        private const int HistoryReasonMaxLength = 500;
-
-        /// <summary>
-        /// Cierra el historial abierto de la unidad (EndDate = max(ahora, StartDate), como
-        /// EquipmentUnits/Edit) y abre uno nuevo con el estado y motivo indicados.
-        /// </summary>
-        private async Task RegisterUnitStatusChangeAsync(int unitId, EquipmentStatus newStatus, string reason)
-        {
-            var now = DateTime.UtcNow;
-
-            var lastHistory = await _context.EquipmentStateHistories
-                .Where(h => h.EquipmentUnitId == unitId && h.EndDate == null)
-                .OrderByDescending(h => h.StartDate)
-                .AsTracking()
-                .FirstOrDefaultAsync();
-
-            if (lastHistory != null)
-            {
-                lastHistory.EndDate = now > lastHistory.StartDate ? now : lastHistory.StartDate;
-                _context.EquipmentStateHistories.Update(lastHistory);
-            }
-
-            _context.EquipmentStateHistories.Add(new EquipmentStateHistory
-            {
-                EquipmentUnitId = unitId,
-                Status = newStatus,
-                StartDate = now,
-                Reason = reason.Length <= HistoryReasonMaxLength ? reason : reason[..HistoryReasonMaxLength]
-            });
         }
 
         private void CargarListas(int facultyId = 0, int laboratoryId = 0, int? equipmentUnitId = null)

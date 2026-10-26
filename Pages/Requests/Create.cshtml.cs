@@ -621,6 +621,46 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             return new JsonResult(units);
         }
 
+        // Buscador global de equipo (solo correctivo): busca en todos los laboratorios
+        // por nombre del equipo o número de inventario. Máximo 20 resultados.
+        public async Task<JsonResult> OnGetSearchUnitsAsync(string? term)
+        {
+            term = term?.Trim();
+            if (string.IsNullOrEmpty(term) || term.Length < 2)
+                return new JsonResult(new { results = Array.Empty<object>() });
+
+            var units = await _context.EquipmentUnits
+                .AsNoTracking()
+                .Where(u => u.CurrentStatus != EquipmentStatus.Deleted
+                            && u.LaboratoryId != null
+                            && u.Laboratory != null
+                            && (u.InventoryNumber.Contains(term)
+                                || (u.Equipment != null && u.Equipment.Name.Contains(term))))
+                .OrderBy(u => u.Equipment!.Name)
+                .ThenBy(u => u.InventoryNumber)
+                .Select(u => new
+                {
+                    id = u.Id,
+                    equipmentName = u.Equipment!.Name,
+                    inventoryNumber = u.InventoryNumber,
+                    laboratoryName = u.Laboratory!.Name,
+                    laboratoryId = u.LaboratoryId!.Value,
+                    facultyId = u.Laboratory!.FacultyId
+                })
+                .Take(20)
+                .ToListAsync(HttpContext.RequestAborted);
+
+            var results = units.Select(u => new
+            {
+                u.id,
+                text = $"{u.equipmentName} ({u.inventoryNumber}) — {u.laboratoryName}",
+                u.facultyId,
+                u.laboratoryId
+            });
+
+            return new JsonResult(new { results });
+        }
+
         public async Task<JsonResult> OnGetKardexDetailAsync(int equipmentId)
         {
             var summary = await EquipmentKardexSummaryBuilder.BuildAsync(_context, equipmentId, HttpContext.RequestAborted);

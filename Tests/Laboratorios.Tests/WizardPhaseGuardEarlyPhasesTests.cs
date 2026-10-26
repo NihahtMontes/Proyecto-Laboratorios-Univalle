@@ -226,7 +226,7 @@ public class WizardPhaseGuardEarlyPhasesTests
         AddPlan(db, WizardPhase.Maintenance, WizardEquipmentState.AwaitingMaintenance);
 
         var page = Prepare(new DeparturesCreateModel(db.Context, NoOpUserManager(), new StubManagementService(),
-            NullLogger<DeparturesCreateModel>.Instance));
+            NullLogger<DeparturesCreateModel>.Instance, new EquipmentStateHistoryService(db.Context)));
         page.ManagementPlanId = PlanId;
         page.Input = new DeparturesCreateModel.InputModel
         {
@@ -254,7 +254,7 @@ public class WizardPhaseGuardEarlyPhasesTests
         AddPlan(db, WizardPhase.Maintenance, WizardEquipmentState.AwaitingMaintenance);
 
         var page = Prepare(new DeparturesCreateModel(db.Context, NoOpUserManager(), new StubManagementService(),
-            NullLogger<DeparturesCreateModel>.Instance));
+            NullLogger<DeparturesCreateModel>.Instance, new EquipmentStateHistoryService(db.Context)));
 
         var redirect = Assert.IsType<RedirectToPageResult>(
             await page.OnGetAsync(equipmentUnitId: null, isWizard: true, managementPlanId: PlanId));

@@ -113,7 +113,7 @@ public class EquipmentUnitsValidationTests
     public async Task Edit_OnPost_ModeloDeEquipoInexistente_DevuelvePageConError()
     {
         using var db = new TestDb();
-        var page = Prepare(new EditModel(db.Context));
+        var page = Prepare(new EditModel(db.Context, new EquipmentStateHistoryService(db.Context)));
         page.EquipmentUnit = new EditModel.InputModel
         {
             Id = 1,
@@ -147,7 +147,7 @@ public class EquipmentUnitsValidationTests
         db.Context.SaveChanges();
         db.Context.ChangeTracker.Clear();
 
-        var page = Prepare(new EditModel(db.Context));
+        var page = Prepare(new EditModel(db.Context, new EquipmentStateHistoryService(db.Context)));
         page.EquipmentUnit = new EditModel.InputModel
         {
             Id = 1,
@@ -175,7 +175,7 @@ public class EquipmentUnitsValidationTests
         db.Context.SaveChanges();
         db.Context.ChangeTracker.Clear();
 
-        var page = Prepare(new CreateModel(db.Context, new StubManagementService()));
+        var page = Prepare(new CreateModel(db.Context, new StubManagementService(), new EquipmentStateHistoryService(db.Context)));
         page.Input = new CreateModel.InputModel
         {
             FacultyId = 999,               // facultad inexistente
@@ -200,7 +200,7 @@ public class EquipmentUnitsValidationTests
     public async Task Create_OnPost_FabricacionPosteriorAAdquisicion_DevuelvePageConError()
     {
         using var db = new TestDb();
-        var page = Prepare(new CreateModel(db.Context, new StubManagementService()));
+        var page = Prepare(new CreateModel(db.Context, new StubManagementService(), new EquipmentStateHistoryService(db.Context)));
         page.Input = new CreateModel.InputModel
         {
             FacultyId = 999,
@@ -224,7 +224,7 @@ public class EquipmentUnitsValidationTests
     public async Task Create_OnPost_AdquisicionAnteriorA1900_DevuelvePageConError()
     {
         using var db = new TestDb();
-        var page = Prepare(new CreateModel(db.Context, new StubManagementService()));
+        var page = Prepare(new CreateModel(db.Context, new StubManagementService(), new EquipmentStateHistoryService(db.Context)));
         page.Input = new CreateModel.InputModel
         {
             FacultyId = 999,

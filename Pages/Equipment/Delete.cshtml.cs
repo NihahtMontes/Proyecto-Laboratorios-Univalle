@@ -14,11 +14,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
     {
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
+        private readonly Proyecto_Laboratorios_Univalle.Services.IEquipmentStateHistoryService _stateHistory;
 
-        public DeleteModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager)
+        public DeleteModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, UserManager<User> userManager, Proyecto_Laboratorios_Univalle.Services.IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _userManager = userManager;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty]
@@ -59,7 +61,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Equipment
             {
                 foreach (var unit in equipment.Units.Where(u => u.CurrentStatus != EquipmentStatus.Deleted))
                 {
-                    unit.CurrentStatus = EquipmentStatus.Deleted;
+                    await _stateHistory.ChangeStatusAsync(unit, EquipmentStatus.Deleted,
+                        $"Dado de baja junto con la definición de equipo «{equipment.Name}».");
                 }
             }
 

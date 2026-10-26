@@ -49,6 +49,18 @@
                                 <i class="fas fa-university mr-2"></i> Ubicación y Activo
                             </h5>
 
+                            @if (!(isWizard && !isCorrective))
+                            {
+                                <div class="form-group mb-4 p-2 rounded" style="background:#f0f9ff; border:1px solid #bae6fd;">
+                                    <label for="equipmentSearch" class="control-label font-weight-bold small text-info text-uppercase">
+                                        <i class="fas fa-search mr-1"></i> Buscar equipo
+                                    </label>
+                                    <select id="equipmentSearch" class="form-control" data-placeholder="Nombre del equipo o número de inventario..." aria-describedby="equipmentSearchHelp"></select>
+                                    <small id="equipmentSearchHelp" class="form-text text-muted">¿No sabes en qué laboratorio está? Búscalo por nombre o número de inventario.</small>
+                                    <div id="equipmentSearchStatus" class="small mt-1" role="status" aria-live="polite"></div>
+                                </div>
+                            }
+
                             <div class="form-group mb-4">
                                 <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">Facultad <span class="text-danger">*</span></label>
                                 @if (isWizard && !isCorrective)
@@ -268,6 +280,74 @@
                     $unit.prop('disabled', false).trigger('change');
                 });
             });
+
+            // ─── Buscador global de equipo (solo cuando los selects son editables) ───
+            var $equipmentSearch = $('#equipmentSearch');
+            if ($equipmentSearch.length) {
+                var $searchStatus = $('#equipmentSearchStatus');
+                var setSearchStatus = function(text, cssClass) {
+                    $searchStatus.removeClass('text-muted text-danger text-success').addClass(cssClass || 'text-muted').text(text || '');
+                };
+
+                $equipmentSearch.select2({
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: $equipmentSearch.data('placeholder'),
+                    minimumInputLength: 2,
+                    ajax: {
+                        url: '?handler=SearchUnits',
+                        dataType: 'json',
+                        delay: 300,
+                        data: function(params) { return { term: params.term }; },
+                        processResults: function(data) { return { results: (data && data.results) || [] }; },
+                        cache: true
+                    },
+                    language: {
+                        inputTooShort: function() { return 'Escribe al menos 2 caracteres'; },
+                        noResults: function() { return 'No se encontraron equipos'; },
+                        searching: function() { return 'Buscando…'; },
+                        errorLoading: function() { return 'No se pudo realizar la búsqueda. Intente de nuevo.'; }
+                    }
+                });
+
+                var loadOptions = function(url, params, $select, placeholder, selectedId) {
+                    return $.get(url, params).then(function(data) {
+                        $select.empty().append(new Option(placeholder, ''));
+                        $.each(data || [], function(i, item) { $select.append(new Option(item.name || '', item.id)); });
+                        $select.prop('disabled', false).val(String(selectedId));
+                        // Solo refresca Select2: no dispara los handlers manuales de 'change'.
+                        $select.trigger('change.select2');
+                    });
+                };
+
+                $equipmentSearch.on('select2:select', function(e) {
+                    var item = e.params && e.params.data;
+                    if (!item || !item.laboratoryId) return;
+
+                    var $faculty = $('#facultySelect');
+                    var $laboratory = $('#laboratorySelect');
+                    var $unit = $('#equipmentUnitSelect');
+
+                    setSearchStatus('Cargando ubicación del equipo…', 'text-muted');
+                    $faculty.val(String(item.facultyId)).trigger('change.select2');
+
+                    loadOptions('?handler=LaboratoriesByFaculty', { facultyId: item.facultyId }, $laboratory, '-- Seleccionar Laboratorio --', item.laboratoryId)
+                        .then(function() {
+                            return loadOptions('?handler=UnitsByLab', { laboratoryId: item.laboratoryId }, $unit, '-- Seleccionar Unidad Física --', item.id);
+                        })
+                        .then(function() {
+                            if ($unit.val() === String(item.id)) {
+                                setSearchStatus('Equipo seleccionado. Puedes ajustar la ubicación manualmente si hace falta.', 'text-success');
+                            } else {
+                                setSearchStatus('No se pudo seleccionar el equipo automáticamente. Selecciónalo manualmente.', 'text-danger');
+                            }
+                        }, function() {
+                            setSearchStatus('No se pudo cargar la ubicación del equipo. Selecciónalo manualmente o intente de nuevo.', 'text-danger');
+                        });
+                });
+
+                $equipmentSearch.on('select2:clear', function() { setSearchStatus('', 'text-muted'); });
+            }
 
             var requestSubmitting = false;
             $('#createRequestForm').on('submit', function(event) {

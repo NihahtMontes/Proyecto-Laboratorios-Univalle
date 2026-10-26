@@ -21,7 +21,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
         }
 
         public EquipmentUnit Unit { get; set; } = default!;
+        /// <summary>Línea de tiempo de estados: el tramo vigente primero y luego del más reciente al más antiguo.</summary>
         public List<EquipmentStateHistory> StateHistory { get; set; } = new();
+
+        /// <summary>Tramo vigente (EndDate == null) del historial, si existe.</summary>
+        public EquipmentStateHistory? CurrentSegment => StateHistory.FirstOrDefault(h => !h.EndDate.HasValue);
         public List<Maintenance> History { get; set; } = new();
 
         [BindProperty(SupportsGet = true)]
@@ -52,7 +56,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                 .Include(h => h.CreatedBy)
                 .Include(h => h.ModifiedBy)
                 .Where(h => h.EquipmentUnitId == id)
-                .OrderByDescending(h => h.StartDate)
+                .OrderByDescending(h => h.EndDate == null)
+                .ThenByDescending(h => h.StartDate)
                 .ThenByDescending(h => h.Id)
                 .ToListAsync();
 
@@ -82,6 +87,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             Models.Enums.EquipmentStatus.PorConfirmar => "badge-light",
             _ => "badge-secondary"
         };
+
+        /// <summary>Duración legible de un tramo del historial.</summary>
+        public static string FormatDuration(EquipmentStateHistory state)
+        {
+            if (state.DurationDays is not int days || days < 0) return "—";
+            return days == 0 ? "menos de 1 día" : days == 1 ? "1 día" : $"{days} días";
+        }
 
         public static string GetMaintenanceStatusBadge(Models.Enums.MaintenanceStatus status) => status switch
         {

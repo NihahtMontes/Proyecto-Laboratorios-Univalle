@@ -10,6 +10,9 @@
     bool isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 3);
     var categoryList = Html.GetEnumSelectList<CostCategory>();
+    // En el asistente (con plan) se ofrecen dos acciones: guardar sin finalizar o registrar y finalizar.
+    bool wizardWithPlan = isWizard && Model.ManagementPlanId.HasValue;
+    bool continuingMaintenance = wizardWithPlan && Model.ExistingMaintenanceId.HasValue;
 }
 
 <partial name="_PageHelp" model='"Maintenances.Create"' />
@@ -26,7 +29,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Registrar mantenimiento</h4>
+                        <h4 class="card-title text-dark font-weight-bold">@(continuingMaintenance ? "Continuar mantenimiento" : "Registrar mantenimiento")</h4>
                         <h6 class="card-subtitle text-muted">Complete el registro técnico de la intervención realizada al equipo.</h6>
                     </div>
                     <div class="ml-auto text-right">
@@ -235,6 +238,10 @@
                                         </select>
                                     </div>
                                     <p class="text-muted small mb-0"><i class="fas fa-info-circle mr-1"></i> Defina si el equipo está reparado o requiere mayor intervención.</p>
+                                    @if (wizardWithPlan)
+                                    {
+                                        <p class="small mb-0 mt-2 text-success font-weight-bold"><i class="fas fa-flag-checkered mr-1"></i> Cuando el trabajo esté terminado, usa «Registrar y finalizar» para pasar el equipo al paso de Salida.</p>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -389,9 +396,21 @@
                         <button type="submit" asp-page-handler="Draft" id="btnDraftMaintenance" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2">
                             <i class="fas fa-save mr-1"></i> Guardar Borrador
                         </button>
-                        <button type="submit" id="btnSubmitMaintenance" formnovalidate class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark">
-                            <i class="fas fa-save mr-1"></i> Registrar Mantenimiento
-                        </button>
+                        @if (wizardWithPlan)
+                        {
+                            <button type="submit" id="btnSubmitMaintenance" formnovalidate class="btn btn-outline-warning btn-rounded px-4 shadow-sm font-weight-bold text-dark mr-2" title="Guarda con el estado elegido; el equipo sigue en el paso de Registro de mantenimiento">
+                                <i class="fas fa-save mr-1"></i> Guardar sin finalizar
+                            </button>
+                            <button type="submit" asp-page-handler="Finalize" id="btnFinalizeMaintenance" formnovalidate class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold" title="Marca el mantenimiento como Completado y pasa el equipo al paso de Salida">
+                                <i class="fas fa-flag-checkered mr-1"></i> Registrar y finalizar
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="submit" id="btnSubmitMaintenance" formnovalidate class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark">
+                                <i class="fas fa-save mr-1"></i> Registrar Mantenimiento
+                            </button>
+                        }
                     </div>
                 </form>
             </div>
@@ -542,8 +561,9 @@
                 event.preventDefault();
                 const submitter = event.originalEvent && event.originalEvent.submitter ? event.originalEvent.submitter : document.activeElement;
                 const isDraft = submitter && submitter.id === 'btnDraftMaintenance';
+                const isFinalize = submitter && submitter.id === 'btnFinalizeMaintenance';
                 const targetAction = submitter && submitter.getAttribute('formaction') ? submitter.getAttribute('formaction') : form.action;
-                window.confirmMaintenanceSubmit(isDraft, targetAction);
+                window.confirmMaintenanceSubmit(isDraft, targetAction, isFinalize);
             });
 
             // Stars Rating Logic
@@ -568,7 +588,7 @@
 
         var isMaintSubmitting = false;
 
-        window.confirmMaintenanceSubmit = function (isDraft, targetAction) {
+        window.confirmMaintenanceSubmit = function (isDraft, targetAction, isFinalize) {
             var form = document.getElementById('maintenanceForm');
             if (!form) {
                 alert('No se pudo ubicar el formulario de mantenimiento.');
@@ -580,11 +600,13 @@
             var status = $('#statusSelector').val();
             var percent = parseInt($('#hiddenPercentageInput').val()) || 0;
 
-            if (!isDraft && status == "2" && percent !== 100) {
+            if (!isDraft && (isFinalize || status == "2") && percent !== 100) {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Mantenimiento Incompleto',
-                        text: 'Para marcar el mantenimiento como Completado, el avance debe estar al 100%.',
+                        text: isFinalize
+                            ? 'Para registrar y finalizar el mantenimiento, el avance debe estar al 100%: marca todas las tareas como completadas.'
+                            : 'Para marcar el mantenimiento como Completado, el avance debe estar al 100%.',
                         icon: 'warning',
                         confirmButtonText: 'Entendido',
                         confirmButtonColor: '#f59e0b'
@@ -596,7 +618,7 @@
             }
 
             var techId = $('#Input_TechnicianId').val();
-            var statusLabel = $('#statusSelector option:selected').text();
+            var statusLabel = isFinalize ? 'Completado' : $('#statusSelector option:selected').text();
             var techLabel = techId ? $('#Input_TechnicianId option:selected').text() : 'Sin asignar';
 
             var detailsHtml = '<div class="text-left mt-3 small">' +
@@ -609,9 +631,13 @@
                 isMaintSubmitting = true;
                 $(form).data('confirmed', true);
                 form.action = targetAction || form.action;
-                $('#btnDraftMaintenance, #btnSubmitMaintenance').prop('disabled', true);
+                $('#btnDraftMaintenance, #btnSubmitMaintenance, #btnFinalizeMaintenance').prop('disabled', true);
                 if (isDraft) {
                     $('#btnDraftMaintenance').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                } else if (isFinalize) {
+                    // El servidor fuerza el estado Completado; se refleja también en el formulario.
+                    $('#statusSelector').val('2');
+                    $('#btnFinalizeMaintenance').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
                 } else {
                     $('#btnSubmitMaintenance').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
                 }
@@ -623,14 +649,26 @@
                 return;
             }
 
+            var swalTitle = isDraft
+                ? '¿Guardar borrador del mantenimiento?'
+                : (isFinalize ? '¿Registrar y finalizar el mantenimiento?' : '¿Confirmar registro de mantenimiento?');
+            var swalHtml = isDraft
+                ? 'Se guardará el avance parcial sin pasar a la salida de equipos. Podrás continuar el registro más tarde.'
+                : (isFinalize
+                    ? '<p class="mb-0">El equipo pasará al paso de Salida y el mantenimiento quedará como <strong>Completado</strong>.</p>' + detailsHtml
+                    : detailsHtml);
+            var swalConfirm = isDraft
+                ? '<i class="fas fa-save mr-1"></i> Guardar borrador'
+                : (isFinalize ? '<i class="fas fa-flag-checkered mr-1"></i> Sí, registrar y finalizar' : '<i class="fas fa-save mr-1"></i> Registrar');
+
             Swal.fire({
-                title: isDraft ? '¿Guardar borrador del mantenimiento?' : '¿Confirmar registro de mantenimiento?',
-                html: isDraft ? 'Se guardará el avance parcial sin pasar a la salida de equipos. Podrás continuar el registro más tarde.' : detailsHtml,
+                title: swalTitle,
+                html: swalHtml,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: isDraft ? '<i class="fas fa-save mr-1"></i> Guardar borrador' : '<i class="fas fa-save mr-1"></i> Registrar',
+                confirmButtonText: swalConfirm,
                 cancelButtonText: 'Cancelar',
-                confirmButtonColor: isDraft ? '#17a2b8' : '#f59e0b',
+                confirmButtonColor: isDraft ? '#17a2b8' : (isFinalize ? '#28a745' : '#f59e0b'),
                 cancelButtonColor: '#6c757d'
             }).then(function(result) {
                 if (result && (result.isConfirmed === true || result.value === true)) {

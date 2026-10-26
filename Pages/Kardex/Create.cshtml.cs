@@ -7,6 +7,7 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 
@@ -17,11 +18,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<CreateModel> _logger;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
-        public CreateModel(ApplicationDbContext context, ILogger<CreateModel> logger)
+        public CreateModel(ApplicationDbContext context, ILogger<CreateModel> logger, IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _logger = logger;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty]
@@ -197,12 +200,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     if (int.TryParse(userIdString, out var duid)) departure.ModifiedById = duid;
                 }
 
-                var historyDate = Input.ActualReturnDate!.Value;
-                var lastHistory = await _context.EquipmentStateHistories
-                    .Where(h => h.EquipmentUnitId == unit.Id && h.EndDate == null)
-                    .OrderByDescending(h => h.StartDate)
-                    .AsTracking()
-                    .FirstOrDefaultAsync();
+                var historyDate = BoliviaTime.ToUtc(Input.ActualReturnDate!.Value);
+                int? historyUserId = int.TryParse(userIdString, out var huid) ? huid : null;
 
                 var existingKardexHistory = plan.KardexHistoryId.HasValue
                     ? await _context.EquipmentStateHistories
@@ -210,39 +209,47 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                         .FirstOrDefaultAsync(h => h.Id == plan.KardexHistoryId.Value)
                     : null;
 
-                if (lastHistory != null && lastHistory.Id != existingKardexHistory?.Id)
-                {
-                    // EndDate nunca puede ser menor que StartDate (CK_EquipmentStateHistories_Dates):
-                    // tras un rollback, el historial abierto puede iniciar en una fecha posterior
-                    // a la devolución real registrada, por eso se ajusta al máximo de ambas.
-                    lastHistory.EndDate = historyDate < lastHistory.StartDate
-                        ? lastHistory.StartDate
-                        : historyDate;
-                }
-
-                var kardexHistory = existingKardexHistory ?? new EquipmentStateHistory
-                {
-                    EquipmentUnitId = unit.Id,
-                    Status = EquipmentStatus.Operational,
-                    StartDate = historyDate,
-                    Reason = BuildKardexReason(maintenance),
-                    CreatedDate = DateTime.UtcNow,
-                    CreatedById = int.TryParse(userIdString, out var huid) ? huid : null
-                };
-
+                EquipmentStateHistory kardexHistory;
                 if (existingKardexHistory == null)
                 {
-                    _context.EquipmentStateHistories.Add(kardexHistory);
+                    // Línea de tiempo continua: cierra el tramo vigente en la fecha de devolución y abre el del Kardex.
+                    // El Kardex siempre es una fila propia (aunque el equipo ya estuviera Operativo) porque el plan la referencia.
+                    kardexHistory = await _stateHistory.ChangeStatusAsync(
+                        unit,
+                        EquipmentStatus.Operational,
+                        BuildKardexReason(maintenance),
+                        historyDate,
+                        historyUserId,
+                        splitIfSameStatus: true);
                 }
                 else
                 {
-                    kardexHistory.Status = EquipmentStatus.Operational;
-                    kardexHistory.StartDate = historyDate;
-                    kardexHistory.EndDate = null;
-                    kardexHistory.Reason = BuildKardexReason(maintenance);
-                }
+                    // El plan ya tiene su fila de Kardex: se reutiliza y se reabre (semántica original).
+                    var lastHistory = (await _context.EquipmentStateHistories
+                            .Where(h => h.EquipmentUnitId == unit.Id && h.EndDate == null)
+                            .AsTracking()
+                            .ToListAsync())
+                        .Where(h => h.EndDate == null && h.Id != existingKardexHistory.Id)
+                        .OrderByDescending(h => h.StartDate)
+                        .FirstOrDefault();
 
-                unit.CurrentStatus = EquipmentStatus.Operational;
+                    if (lastHistory != null)
+                    {
+                        // EndDate nunca puede ser menor que StartDate (CK_EquipmentStateHistories_Dates):
+                        // tras un rollback, el historial abierto puede iniciar en una fecha posterior
+                        // a la devolución real registrada, por eso se ajusta al máximo de ambas.
+                        lastHistory.EndDate = historyDate < lastHistory.StartDate
+                            ? lastHistory.StartDate
+                            : historyDate;
+                    }
+
+                    kardexHistory = existingKardexHistory;
+                    kardexHistory.Status = EquipmentStatus.Operational;
+                    kardexHistory.StartDate = lastHistory?.EndDate ?? historyDate;
+                    kardexHistory.EndDate = null;
+                    kardexHistory.Reason = EquipmentStateHistoryService.TrimReason(BuildKardexReason(maintenance));
+                    unit.CurrentStatus = EquipmentStatus.Operational;
+                }
 
                 await _context.SaveChangesAsync();
 

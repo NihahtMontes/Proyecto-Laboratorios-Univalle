@@ -7,6 +7,7 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
 using System.ComponentModel.DataAnnotations;
 
 namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
@@ -15,10 +16,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
     public class EditModel : PageModel
     {
         private readonly ApplicationDbContext _context;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
-        public EditModel(ApplicationDbContext context)
+        public EditModel(ApplicationDbContext context, IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty]
@@ -203,26 +206,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
                     : "Sin confirmar";
                 stateChangeMessage = $"Estado: {EnumHelper.GetDisplayName(dbUnit.CurrentStatus)} -> {EnumHelper.GetDisplayName(EquipmentUnit.CurrentStatus)}. Físico: {previousCondition} -> {newCondition}";
 
-                var lastHistory = await _context.EquipmentStateHistories
-                    .Where(h => h.EquipmentUnitId == dbUnit.Id && h.EndDate == null)
-                    .OrderByDescending(h => h.StartDate)
-                    .AsTracking()
-                    .FirstOrDefaultAsync();
-
-                if (lastHistory != null)
-                {
-                    lastHistory.EndDate = DateTime.UtcNow;
-                    _context.EquipmentStateHistories.Update(lastHistory);
-                }
-
-                var newHistory = new EquipmentStateHistory
-                {
-                    EquipmentUnitId = dbUnit.Id,
-                    Status = EquipmentUnit.CurrentStatus,
-                    StartDate = DateTime.UtcNow,
-                    Reason = TruncateHistoryReason("Actualización manual de estado/condición. " + stateChangeMessage)
-                };
-                _context.EquipmentStateHistories.Add(newHistory);
+                // Cierra el tramo vigente y abre otro; si solo cambió la condición física se deja igualmente constancia.
+                await _stateHistory.ChangeStatusAsync(dbUnit, EquipmentUnit.CurrentStatus,
+                    "Actualización manual de estado/condición. " + stateChangeMessage, splitIfSameStatus: true);
             }
 
             dbUnit.EquipmentId = EquipmentUnit.EquipmentId!.Value;
@@ -263,13 +249,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
 
             return RedirectToPage("/Equipment/Details", new { id = dbUnit.EquipmentId });
         }
-
-        /// <summary>Longitud máxima de Reason en EquipmentStateHistory (StringLength 500 en BD).</summary>
-        private const int HistoryReasonMaxLength = 500;
-
-        /// <summary>Trunca con seguridad el motivo del historial para no violar el máximo de BD.</summary>
-        private static string TruncateHistoryReason(string reason) =>
-            reason.Length <= HistoryReasonMaxLength ? reason : reason[..HistoryReasonMaxLength];
 
         /// <summary>
         /// Valida coherencia y rango de las fechas de la unidad: ninguna anterior a 1900-01-01

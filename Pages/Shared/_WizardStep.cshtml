@@ -131,6 +131,11 @@
                             <i class="fas fa-save mr-1"></i> Borrador
                         </span>
                     }
+                    @{ var cardDetail = Model.ResolveCardDetail(item); }
+                    @if (!string.IsNullOrEmpty(cardDetail))
+                    {
+                        <span class="text-success small font-weight-bold d-block mt-1"><i class="fas fa-tools mr-1"></i>@cardDetail</span>
+                    }
                     @* Solo planes con L-6: el correctivo no tiene verificación y mostraba «0 Falla(s)» (QA H-017). *@
                     @if (Model.ShowFailCount && item.Verification != null) {
                         <span class="text-danger small font-bold d-block mt-1">
@@ -175,7 +180,7 @@
                            asp-route-isWizard="true" 
                            asp-route-managementId="@ViewData["ManagementId"]"
                            class="btn @Model.ActionClass btn-sm rounded-pill font-weight-bold px-4 shadow-sm" style="letter-spacing: 0.03em;">
-                            @Model.ActionLabel
+                            @Model.ResolveActionLabel(item)
                         </a>
                     }
                     

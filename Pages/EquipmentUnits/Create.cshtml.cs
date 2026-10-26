@@ -17,11 +17,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
     {
         private readonly ApplicationDbContext _context;
         private readonly IManagementContextService _managementService;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
-        public CreateModel(ApplicationDbContext context, IManagementContextService managementService)
+        public CreateModel(ApplicationDbContext context, IManagementContextService managementService, IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _managementService = managementService;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty]
@@ -205,14 +207,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             await _context.SaveChangesAsync();
 
             // Guardar primer registro del historial de estado (texto visible del enum en español)
-            var initialHistory = new EquipmentStateHistory
-            {
-                EquipmentUnitId = unit.Id,
-                Status = unit.CurrentStatus,
-                StartDate = DateTime.UtcNow,
-                Reason = TruncateHistoryReason($"Alta inicial en sistema. Condición: {EnumHelper.GetDisplayName(unit.PhysicalCondition)}")
-            };
-            _context.EquipmentStateHistories.Add(initialHistory);
+            // El tramo inicial empieza en el alta (CreatedDate de la unidad) y queda vigente.
+            await _stateHistory.EnsureInitialAsync(unit, $"Alta inicial en sistema. Condición: {EnumHelper.GetDisplayName(unit.PhysicalCondition)}");
             await _context.SaveChangesAsync();
 
             var equipmentName = await _context.Equipments
@@ -227,13 +223,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             }
             return RedirectToPage("/Equipment/Details", new { id = unit.EquipmentId });
         }
-
-        /// <summary>Longitud máxima de Reason en EquipmentStateHistory (StringLength 500 en BD).</summary>
-        private const int HistoryReasonMaxLength = 500;
-
-        /// <summary>Trunca con seguridad el motivo del historial para no violar el máximo de BD.</summary>
-        private static string TruncateHistoryReason(string reason) =>
-            reason.Length <= HistoryReasonMaxLength ? reason : reason[..HistoryReasonMaxLength];
 
         /// <summary>
         /// Valida coherencia y rango de las fechas de la unidad: ninguna anterior a 1900-01-01

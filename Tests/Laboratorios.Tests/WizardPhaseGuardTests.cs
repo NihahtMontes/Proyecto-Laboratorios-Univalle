@@ -553,10 +553,11 @@ public class WizardPhaseGuardTests
             new UserManager<User>(new StubUserStore(), null!, null!, null!, null!, null!, null!, null!, NullLogger<UserManager<User>>.Instance),
             new StubManagementService(),
             new StubNotificationWriter(),
-            NullLogger<MaintenanceCreateModel>.Instance));
+            NullLogger<MaintenanceCreateModel>.Instance,
+            new EquipmentStateHistoryService(db.Context)));
 
     private static KardexCreateModel KardexCreatePage(TestDb db) => Prepare(
-        new KardexCreateModel(db.Context, NullLogger<KardexCreateModel>.Instance));
+        new KardexCreateModel(db.Context, NullLogger<KardexCreateModel>.Instance, new EquipmentStateHistoryService(db.Context)));
 
     private static AcquisitionCreateModel AcquisitionCreatePage(TestDb db) => Prepare(
         new AcquisitionCreateModel(

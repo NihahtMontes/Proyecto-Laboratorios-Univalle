@@ -36,8 +36,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         private readonly IManagementContextService _managementContext;
         private readonly IDashboardReadService _dashboardReadService;
         private readonly IManagementActivationService _managementActivation;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
-        public IndexModel(ApplicationDbContext context, UserManager<User> userManager, ILogger<IndexModel> logger, IManagementContextService managementContext, IDashboardReadService dashboardReadService, IManagementActivationService managementActivation)
+        public IndexModel(ApplicationDbContext context, UserManager<User> userManager, ILogger<IndexModel> logger, IManagementContextService managementContext, IDashboardReadService dashboardReadService, IManagementActivationService managementActivation, IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _userManager = userManager;
@@ -45,6 +46,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             _managementContext = managementContext;
             _dashboardReadService = dashboardReadService;
             _managementActivation = managementActivation;
+            _stateHistory = stateHistory;
         }
 
         public Management? ActiveManagement { get; set; }
@@ -576,26 +578,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 await using var transaction = await _context.Database.BeginTransactionAsync();
                 var historyDate = DateTime.UtcNow;
 
-                var previousOpenHistory = await _context.EquipmentStateHistories
-                    .AsTracking()
-                    .Where(history => history.EquipmentUnitId == plan.EquipmentUnit.Id && history.EndDate == null)
-                    .OrderByDescending(history => history.StartDate)
-                    .FirstOrDefaultAsync();
-
-                if (previousOpenHistory != null)
-                    previousOpenHistory.EndDate = historyDate;
-
-                var kardexEntry = new EquipmentStateHistory
-                {
-                    EquipmentUnitId = plan.EquipmentUnit.Id,
-                    Status = EquipmentStatus.Operational,
-                    StartDate = historyDate,
-                    Reason = $"Kardex: Mantenimiento #{plan.MaintenanceId} finalizado en Gestión #{plan.ManagementId}.",
-                    CreatedDate = historyDate
-                };
-                _context.EquipmentStateHistories.Add(kardexEntry);
-
-                plan.EquipmentUnit.CurrentStatus = EquipmentStatus.Operational;
+                var kardexEntry = await _stateHistory.ChangeStatusAsync(
+                    plan.EquipmentUnit,
+                    EquipmentStatus.Operational,
+                    $"Cierre del mantenimiento #{plan.MaintenanceId} en la gestión #{plan.ManagementId}.",
+                    historyDate,
+                    (await _userManager.GetUserAsync(User))?.Id,
+                    splitIfSameStatus: true);
 
                 await _context.SaveChangesAsync();
 
@@ -742,5 +731,32 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         public int? SelectedLabId { get; set; }
         public int? ManagementId { get; set; }
         public int? FocusPlanId { get; set; }
+
+        // Personalización por tarjeta (opcional). Si no se define, se usa ActionLabel.
+        public Func<ManagementPlan, string>? ActionLabelSelector { get; set; }
+        public Func<ManagementPlan, string?>? CardDetailSelector { get; set; }
+
+        public string ResolveActionLabel(ManagementPlan plan) =>
+            ActionLabelSelector?.Invoke(plan) ?? ActionLabel;
+
+        public string? ResolveCardDetail(ManagementPlan plan) =>
+            CardDetailSelector?.Invoke(plan);
+
+        /// <summary>
+        /// Paso 3 del asistente: mantenimiento ya registrado y aún no finalizado.
+        /// Usa la navegación Maintenance ya incluida en la consulta del panel (sin N+1).
+        /// </summary>
+        public static bool HasPendingMaintenance(ManagementPlan plan) =>
+            plan.MaintenanceId.HasValue
+            && plan.Maintenance != null
+            && plan.Maintenance.Status != MaintenanceStatus.Completed;
+
+        public static string MaintenanceStepActionLabel(ManagementPlan plan) =>
+            HasPendingMaintenance(plan) ? "Continuar mantenimiento" : "Registrar mantenimiento";
+
+        public static string? MaintenanceStepDetail(ManagementPlan plan) =>
+            HasPendingMaintenance(plan)
+                ? $"Mantenimiento #{plan.MaintenanceId} · {EnumHelper.GetDisplayName(plan.Maintenance!.Status)}"
+                : null;
     }
 }

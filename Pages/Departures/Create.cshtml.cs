@@ -20,17 +20,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementService;
         private readonly ILogger<CreateModel> _logger;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
         public CreateModel(
             ApplicationDbContext context,
             UserManager<User> userManager,
             IManagementContextService managementService,
-            ILogger<CreateModel> logger)
+            ILogger<CreateModel> logger,
+            IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _userManager = userManager;
             _managementService = managementService;
             _logger = logger;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty]
@@ -511,7 +514,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     var equipmentUnit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
                     if (equipmentUnit != null)
                     {
-                        equipmentUnit.CurrentStatus = EquipmentStatus.OnLoan;
+                        await _stateHistory.ChangeStatusAsync(equipmentUnit, EquipmentStatus.OnLoan,
+                            "Préstamo por salida de equipos.");
                         _context.EquipmentUnits.Update(equipmentUnit);
                     }
                 }
