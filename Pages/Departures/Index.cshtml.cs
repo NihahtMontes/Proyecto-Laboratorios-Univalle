@@ -46,6 +46,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     .ThenInclude(u => u!.Equipment)
                 .Include(d => d.EquipmentUnit)
                     .ThenInclude(u => u!.Laboratory)
+                .Include(d => d.Planning)
+                    .ThenInclude(p => p!.Laboratory)
+                .Include(d => d.OriginLaboratory)
                 .Include(d => d.Borrower)
                 .AsQueryable();
 
@@ -61,10 +64,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             if (!string.IsNullOrEmpty(SearchTerm))
             {
                 var term = SearchTerm.Trim().ToLower();
+                // FullName es una propiedad calculada que EF no traduce a SQL (la búsqueda daba error 500): se busca en el nombre de la persona.
+                var internIds = _context.Set<Intern>().Where(i => i.Name.ToLower().Contains(term)).Select(i => i.Id);
+                var externIds = _context.Set<Extern>().Where(e => e.Name.ToLower().Contains(term)).Select(e => e.Id);
                 query = query.Where(d =>
                     d.EquipmentUnit!.Equipment!.Name.ToLower().Contains(term) ||
                     d.EquipmentUnit!.InventoryNumber.ToLower().Contains(term) ||
-                    (d.Borrower != null && d.Borrower.FullName.ToLower().Contains(term)));
+                    (d.Code != null && d.Code.ToLower().Contains(term)) ||
+                    (d.Planning != null && d.Planning.Code != null && d.Planning.Code.ToLower().Contains(term)) ||
+                    (d.BorrowerId != null && (internIds.Contains(d.BorrowerId.Value) || externIds.Contains(d.BorrowerId.Value))));
             }
 
             // Filtro por Tipo de Salida
@@ -79,10 +87,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 query = query.Where(d => d.Status == FilterStatus.Value);
             }
 
-            // Filtro por Laboratorio (vía EquipmentUnit)
+            // Filtro por Laboratorio: ambiente de la unidad de equipo o, en salidas de
+            // práctica (L-3), el ambiente de la planificación que origina la salida.
             if (FilterLaboratoryId.HasValue)
             {
-                query = query.Where(d => d.EquipmentUnit != null && d.EquipmentUnit.LaboratoryId == FilterLaboratoryId.Value);
+                query = query.Where(d =>
+                    (d.EquipmentUnit != null && d.EquipmentUnit.LaboratoryId == FilterLaboratoryId.Value) ||
+                    (d.PlanningId != null && d.Planning!.LaboratoryId == FilterLaboratoryId.Value));
             }
 
             Departures = await PaginatedList<Departure>.CreateAsync(

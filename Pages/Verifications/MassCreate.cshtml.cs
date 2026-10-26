@@ -135,13 +135,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 : await _managementContext.GetCurrentManagementAsync();
             if (activeMgmt == null || activeMgmt.Status != ManagementStatus.Active || activeMgmt.Type != ManagementType.Preventive)
             {
-                TempData.Error("Seleccione una gestión preventiva activa para registrar L-6.");
+                TempData.Error("Seleccione una gestión preventiva activa para registrar la verificación.");
                 return RedirectToPage();
             }
 
             if (!LabId.HasValue || Rows.GroupBy(r => r.PlanId).Any(g => g.Key <= 0 || g.Count() > 1))
             {
-                TempData.Error("Seleccione un laboratorio y envíe cada plan L-6 una sola vez.");
+                TempData.Error("Seleccione un laboratorio y envíe cada equipo una sola vez.");
                 return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
             }
 
@@ -162,13 +162,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                         || plan.EquipmentUnitId != row.EquipmentUnitId
                         || !Enum.IsDefined(row.Condition))
                     {
-                        TempData.Error("Los equipos o la fase de L-6 cambiaron. Recargue el formulario antes de guardar.");
+                        TempData.Error("Los equipos o su paso en el asistente cambiaron. Recargue el formulario antes de guardar.");
                         return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
                     }
 
                     if (row.Condition == PhysicalCondition.Bad && string.IsNullOrWhiteSpace(row.Observations))
                     {
-                        TempData.Error("Describa las fallas de cada equipo marcado en estado Malo antes de guardar L-6.");
+                        TempData.Error("Describa las fallas de cada equipo marcado en estado Malo antes de guardar la verificación.");
                         return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
                     }
 
@@ -176,7 +176,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                         .AnyAsync(v => v.Id == plan.VerificationId.Value && v.ManagementId == activeMgmt.Id
                             && v.EquipmentUnitId == row.EquipmentUnitId && v.Status == VerificationStatus.Draft))
                     {
-                        TempData.Error("Una verificación L-6 ya fue finalizada o no pertenece a este plan. Recargue el formulario.");
+                        TempData.Error("Una verificación ya fue finalizada o no pertenece a este equipo. Recargue el formulario.");
                         return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
                     }
                 }
@@ -198,14 +198,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                             .FirstOrDefaultAsync(p => p.Id == row.PlanId && p.ManagementId == activeMgmt.Id
                                 && p.EquipmentUnitId == row.EquipmentUnitId && p.CurrentPhase == WizardPhase.Verification);
 
-                        if (plan == null) throw new InvalidOperationException("El plan L-6 cambió durante el guardado.");
+                        if (plan == null) throw new InvalidOperationException("Un equipo cambió mientras se guardaba.");
 
                         var verification = plan.VerificationId.HasValue
                             ? await _context.Verifications.AsTracking().FirstOrDefaultAsync(v => v.Id == plan.VerificationId.Value)
                             : null;
 
                         if (plan.VerificationId.HasValue && verification?.Status != VerificationStatus.Draft)
-                            throw new InvalidOperationException("La verificación L-6 cambió durante el guardado.");
+                            throw new InvalidOperationException("La verificación cambió mientras se guardaba.");
 
                         if (verification == null)
                         {
@@ -244,13 +244,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                             badCount++;
 
                             var unit = await _context.EquipmentUnits.FindAsync(row.EquipmentUnitId)
-                                ?? throw new InvalidOperationException("El equipo L-6 ya no existe.");
+                                ?? throw new InvalidOperationException("Uno de los equipos ya no existe.");
                             var obsText = row.Observations?.Trim() ?? "Equipo en mal estado requiere mantenimiento.";
                             var request = new Request
                             {
                                 Type = RequestType.Technical,
                                 ManagementId = activeMgmt.Id,
-                                LaboratoryId = unit.LaboratoryId ?? throw new InvalidOperationException("El equipo L-6 ya no tiene laboratorio."),
+                                LaboratoryId = unit.LaboratoryId ?? throw new InvalidOperationException("Uno de los equipos ya no tiene laboratorio asignado."),
                                 EquipmentId = unit.EquipmentId,
                                 EquipmentUnitId = row.EquipmentUnitId,
                                 Description = obsText.Length > 500 ? obsText[..497] + "..." : obsText,
@@ -288,13 +288,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             {
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Falló el guardado masivo L-6 para gestión {ManagementId} y laboratorio {LabId}", activeMgmt.Id, LabId);
-                TempData.Error("No se guardó L-6: alguno de los equipos cambió o hubo un error de persistencia. Recargue e intente nuevamente.");
+                TempData.Error("No se guardó la verificación: alguno de los equipos cambió o hubo un error de persistencia. Recargue e intente nuevamente.");
                 return RedirectToPage(new { isWizard = IsWizard, labId = LabId, managementId = activeMgmt.Id });
             }
 
             if (saveDraft)
             {
-                TempData.Success($"Borrador L-6 guardado para {created} equipo(s).");
+                TempData.Success($"Borrador de la verificación guardado para {created} equipo(s).");
                 if (IsWizard)
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = 1, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
                 return RedirectToPage("./Index");
@@ -316,7 +316,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.Verification;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-6 guardado con verificación masiva parcial.";
+            plan.DraftSummary = "Borrador de la verificación guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.Verification;
             plan.CurrentState = WizardEquipmentState.PendingVerification;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

@@ -3,6 +3,8 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
+    ViewData["Title"] = "Eliminar grupo";
+    ViewData["Section"] = "Planificación académica";
     string WeekdayName(int? wd) => wd switch
     {
         1 => "Lunes",
@@ -101,7 +103,7 @@
                 </form>
 
                 <div class="mt-4">
-                    <a asp-page="./Index" asp-route-ManagementFilter="@Model.Group.ManagementId" class="btn btn-link text-muted small">Volver a Grupos de la gestión</a>
+                    <a asp-page="./Index" asp-route-ManagementFilter="@Model.Group.ManagementId" class="btn btn-link text-muted small">Volver al listado</a>
                 </div>
 
                 <div class="mt-3 text-muted small font-italic opacity-7">

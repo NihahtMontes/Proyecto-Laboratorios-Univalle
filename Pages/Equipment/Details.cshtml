@@ -2,7 +2,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Equipment.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Detalles del Equipo";
+    ViewData["Title"] = "Detalle del equipo";
+    ViewData["Section"] = "Equipos e inventario";
 }
 
 <div class="row">
@@ -286,7 +287,7 @@
                 <i class="fas fa-edit mr-1"></i> Modificar Ficha Técnica
             </a>
             <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
-                <i class="fas fa-list mr-1"></i> Volver al Catálogo
+                <i class="fas fa-list mr-1"></i> Volver al listado
             </a>
 
             <a asp-page="./Delete" asp-route-id="@Model.Equipment.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">

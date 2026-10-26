@@ -1,0 +1,15 @@
+/* Resaltado de la fila a la que se volvió tras registrar stock (ver row-focus.js).
+   Se anima una sombra interior y no el fondo: así también se ve sobre filas con fondo !important (p. ej. row-short-stock). */
+@keyframes row-focus-pulse {
+    0%, 100% { box-shadow: inset 0 0 0 9999px rgba(255, 193, 7, 0); }
+    50% { box-shadow: inset 0 0 0 9999px rgba(255, 193, 7, .35); }
+}
+
+.row-focus {
+    outline: 2px solid #ffc107;
+    outline-offset: -2px;
+}
+
+.row-focus > td {
+    animation: row-focus-pulse 2s ease-in-out 2;
+}

@@ -9,7 +9,9 @@ using Proyecto_Laboratorios_Univalle.Models.Enums;
 namespace Proyecto_Laboratorios_Univalle.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController]
+    // Nota: se omite [ApiController] a propósito para que un cuerpo nulo o un JSON mal
+    // formado caigan en la validación manual del handler y respondan "Solicitud inválida."
+    // en español, en lugar del ProblemDetails automático en inglés.
     [Authorize(Roles = AuthorizationHelper.AdminRoles)]
     public class WizardRollbackController : ControllerBase
     {
@@ -26,7 +28,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
 
         [HttpPost("redo")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RedoPhase([FromBody] RollbackRequestDto request)
+        public async Task<IActionResult> RedoPhase([FromBody] RollbackRequestDto? request)
         {
             if (request == null || request.PlanId <= 0 ||
                 !Enum.IsDefined(typeof(WizardPhase), request.TargetPhase))
@@ -65,9 +67,25 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                     return BadRequest("La verificación L-6 no forma parte de una gestión correctiva.");
                 }
 
+                // Un proceso correctivo abierto por unidad y gestión (IX_ManagementPlans filtrado por PlanStatus <> 2):
+                // reabrir uno completado mientras la unidad tiene otro abierto chocaría con el índice.
+                if (plan.Management?.Type == ManagementType.Corrective &&
+                    plan.PlanStatus == ManagementPlanStatus.Completed &&
+                    plan.EquipmentUnitId.HasValue &&
+                    await _context.ManagementPlans.AnyAsync(p => p.Id != plan.Id
+                        && p.ManagementId == plan.ManagementId
+                        && p.EquipmentUnitId == plan.EquipmentUnitId
+                        && p.PlanStatus != ManagementPlanStatus.Completed))
+                {
+                    return BadRequest("La unidad ya tiene otro proceso correctivo abierto en esta gestión; ciérrelo antes de rehacer este.");
+                }
+
+                // La fecha de inicio del historial restaurado se calcula ANTES de desvincular
+                // los registros: las navegaciones del plan siguen pobladas en este punto.
+                var restoredHistoryStart = ResolveRestoredHistoryStart(plan, request.TargetPhase);
                 CancelDownstreamRecords(plan, request.TargetPhase);
                 RepositionPlan(plan, request.TargetPhase);
-                RestoreEquipmentState(plan, request.TargetPhase);
+                await RestoreEquipmentStateAsync(plan, request.TargetPhase, restoredHistoryStart);
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -97,9 +115,23 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             if (targetPhase <= WizardPhase.Kardex && plan.KardexHistory != null)
             {
                 if (!plan.KardexHistory.EndDate.HasValue)
-                    plan.KardexHistory.EndDate = DateTime.UtcNow;
+                {
+                    // EndDate nunca puede ser menor que StartDate (CK_EquipmentStateHistories_Dates):
+                    // un Kardex fechado a futuro se cierra en su propia fecha de inicio.
+                    plan.KardexHistory.EndDate = plan.KardexHistory.StartDate > DateTime.UtcNow
+                        ? plan.KardexHistory.StartDate
+                        : DateTime.UtcNow;
+                }
 
                 plan.KardexHistoryId = null;
+            }
+
+            // Al rehacer Kardex, la devolución que registró su cierre se deshace: la salida L-3 vuelve a estar
+            // activa y la unidad queda En Préstamo hasta que el Kardex se cierre de nuevo.
+            if (targetPhase == WizardPhase.Kardex && plan.Departure is { Status: LoanStatus.Returned } returnedDeparture)
+            {
+                returnedDeparture.Status = LoanStatus.Active;
+                returnedDeparture.ActualReturnDate = null;
             }
 
             if (targetPhase <= WizardPhase.Exit && plan.Departure != null)
@@ -111,6 +143,14 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             if (targetPhase <= WizardPhase.Maintenance && plan.Maintenance != null)
             {
                 plan.Maintenance.Status = MaintenanceStatus.Cancelled;
+
+                // El índice único IX_Maintenances_RequestId (filtro [RequestId] IS NOT NULL)
+                // impediría registrar un L-8 nuevo para la misma solicitud L-7: se libera el
+                // vínculo conservando el registro cancelado (nunca se borra físicamente).
+                plan.Maintenance.RequestId = null;
+                AppendMaintenanceNote(plan.Maintenance,
+                    $"Anulado al rehacer la fase {ToSpanishPhaseName(targetPhase)} del plan {plan.Id}.");
+
                 plan.MaintenanceId = null;
             }
 
@@ -148,7 +188,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             plan.DraftSummary = null;
         }
 
-        private void RestoreEquipmentState(ManagementPlan plan, WizardPhase targetPhase)
+        private async Task RestoreEquipmentStateAsync(ManagementPlan plan, WizardPhase targetPhase, DateTime restoredStart)
         {
             if (plan.EquipmentUnit == null)
                 return;
@@ -157,6 +197,7 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             {
                 WizardPhase.TechnicalRequest => EquipmentStatus.OutOfService,
                 WizardPhase.Maintenance => EquipmentStatus.UnderMaintenance,
+                WizardPhase.Kardex when plan.Departure is { Status: LoanStatus.Active or LoanStatus.Overdue } => EquipmentStatus.OnLoan,
                 _ => EquipmentStatus.Operational
             };
 
@@ -164,15 +205,75 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
 
             if (plan.KardexHistoryId == null && targetPhase <= WizardPhase.Kardex)
             {
+                // H-001: un solo historial abierto por unidad. Antes de abrir el restaurado se cierra el que siga abierto
+                // (p. ej. «Alta inicial» o el estado del L-7), respetando EndDate >= StartDate.
+                var openHistories = (await _context.EquipmentStateHistories
+                        .AsTracking()
+                        .Where(h => h.EquipmentUnitId == plan.EquipmentUnit.Id && h.EndDate == null)
+                        .ToListAsync())
+                    .Where(h => h.EndDate == null)   // el Kardex ya cerrado en memoria por CancelDownstreamRecords se respeta
+                    .ToList();
+                foreach (var open in openHistories)
+                {
+                    open.EndDate = open.StartDate > restoredStart ? open.StartDate : restoredStart;
+                }
+
                 _context.EquipmentStateHistories.Add(new EquipmentStateHistory
                 {
                     EquipmentUnitId = plan.EquipmentUnit.Id,
                     Status = restoredStatus,
-                    StartDate = DateTime.UtcNow,
-                    Reason = $"Estado restaurado al rehacer la fase {targetPhase} del plan {plan.Id}.",
+                    StartDate = restoredStart,
+                    Reason = $"Estado restaurado al rehacer la fase {ToSpanishPhaseName(targetPhase)} del plan {plan.Id}.",
                     CreatedDate = DateTime.UtcNow
                 });
             }
+        }
+
+        /// <summary>
+        /// Fecha de inicio coherente del historial restaurado: se ancla al inicio de la fase
+        /// que se reabre (nunca a UtcNow) para que no sea posterior a una devolución real
+        /// posible. Así, al cerrar Kardex con una devolución en el pasado, EndDate &gt;= StartDate
+        /// y la BD no rechaza por CK_EquipmentStateHistories_Dates.
+        /// </summary>
+        private static DateTime ResolveRestoredHistoryStart(ManagementPlan plan, WizardPhase targetPhase)
+        {
+            return targetPhase switch
+            {
+                WizardPhase.Verification => plan.Verification?.Date ?? DateTime.UtcNow,
+                WizardPhase.TechnicalRequest => plan.TechnicalRequest?.RequestDate ?? DateTime.UtcNow,
+                WizardPhase.Maintenance => plan.Maintenance?.StartDate
+                    ?? plan.Maintenance?.ScheduledDate
+                    ?? plan.Maintenance?.CreatedDate
+                    ?? DateTime.UtcNow,
+                WizardPhase.Exit => plan.Departure?.DepartureDate ?? DateTime.UtcNow,
+                WizardPhase.Kardex => plan.KardexHistory?.StartDate ?? DateTime.UtcNow,
+                _ => DateTime.UtcNow
+            };
+        }
+
+        /// <summary>Nombres visibles en español de las fases del wizard (evita el nombre inglés del enum).</summary>
+        private static string ToSpanishPhaseName(WizardPhase phase) => phase switch
+        {
+            WizardPhase.Verification => "L-6 Verificación",
+            WizardPhase.TechnicalRequest => "L-7 Solicitud",
+            WizardPhase.Maintenance => "L-8 Mantenimiento",
+            WizardPhase.Exit => "L-3 Salida",
+            WizardPhase.Kardex => "Kardex",
+            WizardPhase.Disbursement => "Desembolso",
+            _ => phase.ToString()
+        };
+
+        /// <summary>Deja constancia de la anulación en las observaciones del L-8 sin borrar el registro.</summary>
+        private static void AppendMaintenanceNote(Maintenance maintenance, string note)
+        {
+            var current = maintenance.Observations?.Trim();
+            var merged = string.IsNullOrWhiteSpace(current) ? note : $"{current} | {note}";
+
+            // El campo Observations admite 1000 caracteres (StringLength(1000)).
+            if (merged.Length > 1000)
+                merged = merged[..1000];
+
+            maintenance.Observations = merged;
         }
     }
 

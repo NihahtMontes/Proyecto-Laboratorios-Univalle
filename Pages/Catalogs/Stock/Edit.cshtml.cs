@@ -52,10 +52,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
 
             public int ArticleId { get; set; }
 
+            // decimal? + Required: un campo vacío o ausente ya no se guarda en silencio como 0.
+            // Range con decimal real: antes los límites enteros dejaban pasar -0.01 (error 500 por el CHECK de la BD) y 999999.01.
             [Required(ErrorMessage = "La cantidad disponible es obligatoria.")]
-            [Range(0, 999999, ErrorMessage = "La cantidad debe ser mayor o igual a 0.")]
+            [Range(typeof(decimal), "0", "999999", ErrorMessage = "La cantidad debe estar entre 0 y 999999.")]
             [Display(Name = "Cantidad disponible")]
-            public decimal AvailableQuantity { get; set; }
+            public decimal? AvailableQuantity { get; set; }
 
             [DataType(DataType.Date)]
             [Display(Name = "Fecha de actualización")]
@@ -166,6 +168,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
             Laboratory = lab;
             Article = article;
 
+            // La BD guarda 2 decimales: se rechaza el exceso en lugar de redondearlo en silencio.
+            if (Input.AvailableQuantity.HasValue && decimal.Round(Input.AvailableQuantity.Value, 2) != Input.AvailableQuantity.Value)
+            {
+                ModelState.AddModelError("Input.AvailableQuantity", "La cantidad admite hasta 2 decimales.");
+            }
+
             if (!ModelState.IsValid)
             {
                 RowExists = Input.Id > 0;
@@ -189,19 +197,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
 
                 RowExists = true;
 
-                // Concurrencia optimista: fijar la RowVersion original capturada en GET.
+                // La fila indicada debe ser la del par laboratorio-artículo del formulario (antes se modificaba la fila de otro par).
+                if (stockToUpdate.LaboratoryId != Input.LaboratoryId || stockToUpdate.ArticleId != Input.ArticleId)
+                {
+                    TempData.Error("La existencia indicada no corresponde al laboratorio y artículo seleccionados.");
+                    return BackToOrigin(Input.LaboratoryFilter, Input.SearchTerm);
+                }
+
+                // Concurrencia optimista: la RowVersion capturada en GET es obligatoria y debe ser válida
+                // (antes un token vacío o malformado se ignoraba y la edición sobrescribía sin control).
+                byte[]? originalRowVersion = null;
                 if (!string.IsNullOrEmpty(Input.RowVersionBase64))
                 {
                     try
                     {
-                        var originalRowVersion = Convert.FromBase64String(Input.RowVersionBase64);
-                        _context.Entry(stockToUpdate).Property(s => s.RowVersion).OriginalValue = originalRowVersion;
+                        originalRowVersion = Convert.FromBase64String(Input.RowVersionBase64);
                     }
-                    catch
+                    catch (FormatException)
                     {
-                        // base64 malformado se ignora; SaveChanges podrá disparar DbUpdateConcurrencyException.
+                        originalRowVersion = null;
                     }
                 }
+
+                if (originalRowVersion == null || originalRowVersion.Length == 0)
+                {
+                    TempData.Warning("No se pudo verificar la versión de esta existencia. Se recargaron los valores actuales; revise y vuelva a guardar.");
+                    return RedirectToPage(new { laboratoryId = Input.LaboratoryId, articleId = Input.ArticleId, laboratoryFilter = Input.LaboratoryFilter, searchTerm = Input.SearchTerm, returnUrl = SafeReturnUrl });
+                }
+
+                _context.Entry(stockToUpdate).Property(s => s.RowVersion).OriginalValue = originalRowVersion;
             }
             else
             {
@@ -221,7 +245,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
                 {
                     LaboratoryId = Input.LaboratoryId,
                     ArticleId = Input.ArticleId,
-                    AvailableQuantity = Input.AvailableQuantity,
+                    AvailableQuantity = Input.AvailableQuantity!.Value,
                     UpdatedOn = Input.UpdatedOn?.Date
                 };
                 _context.ArticleStocks.Add(stockToUpdate);
@@ -229,7 +253,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
                 RowExists = false;
             }
 
-            stockToUpdate.AvailableQuantity = Input.AvailableQuantity;
+            stockToUpdate.AvailableQuantity = Input.AvailableQuantity!.Value;
             stockToUpdate.UpdatedOn = Input.UpdatedOn?.Date;
 
             try

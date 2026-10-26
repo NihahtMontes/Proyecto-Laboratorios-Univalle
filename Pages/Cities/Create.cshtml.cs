@@ -57,7 +57,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
             }
 
             // Normalization
-            var normalizedName = Input.Name.Trim().ToLower();
+            var normalizedName = Input.Name.Clean().ToLower();
 
             // Duplicate Validation: Same city IN THE SAME country
             var exists = await _context.Cities
@@ -75,6 +75,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
             var country = await _context.Countries.FindAsync(Input.CountryId);
             if (country == null) 
             {
+                ModelState.AddModelError("Input.CountryId", "El país seleccionado no está disponible.");
                 LoadCountries();
                 return Page();
             }

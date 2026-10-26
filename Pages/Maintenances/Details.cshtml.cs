@@ -46,7 +46,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         {
             if (id == null)
             {
-                return RedirectToError("Sin dato", "No se recibio el identificador del mantenimiento L-8.");
+                return RedirectToError("Sin dato", "No se indicó qué registro de mantenimiento abrir.");
             }
 
             try
@@ -81,7 +81,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 if (maintenance == null)
                 {
-                    return RedirectToError(id.Value.ToString(), "No se encontro el mantenimiento L-8 solicitado.");
+                    return RedirectToError(id.Value.ToString(), "No se encontró el registro de mantenimiento solicitado.");
                 }
 
                 Maintenance = maintenance;
@@ -108,7 +108,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al abrir detalle L-8 para MaintenanceId {MaintenanceId}", id);
-                return RedirectToError(id.Value.ToString(), "Se produjo una excepcion al abrir el mantenimiento L-8.");
+                return RedirectToError(id.Value.ToString(), "No se pudo abrir el registro de mantenimiento.");
             }
         }
 
@@ -149,7 +149,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
             return RedirectToPage("/Error", new
             {
-                module = "Mantenimiento L-8",
+                module = "Registros de mantenimiento",
                 entityId,
                 message,
                 returnUrl,

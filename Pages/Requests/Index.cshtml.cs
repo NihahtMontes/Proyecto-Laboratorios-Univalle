@@ -44,9 +44,36 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         public Microsoft.AspNetCore.Mvc.Rendering.SelectList LaboratoryList { get; set; } = default!;
 
-        public async Task OnGetAsync(int? pageIndex)
+        /// <summary>
+        /// «Nueva solicitud»: una L-7 ya no se crea suelta en este módulo, sino dentro del proceso.
+        /// Lleva al asistente correctivo (paso L-7) de la gestión correctiva activa, accesible también al Supervisor.
+        /// </summary>
+        public async Task<IActionResult> OnGetNewRequestAsync()
         {
-            var query = _context.Requests
+            var correctiveId = await _context.Managements
+                .AsNoTracking()
+                .Where(m => m.Type == ManagementType.Corrective && m.Status == ManagementStatus.Active)
+                .OrderByDescending(m => m.Year)
+                .ThenByDescending(m => m.Semester)
+                .ThenByDescending(m => m.CreatedDate)
+                .Select(m => (int?)m.Id)
+                .FirstOrDefaultAsync();
+
+            if (correctiveId == null)
+            {
+                var isAdmin = User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
+                TempData.Warning("No hay una gestión correctiva activa." + (isAdmin
+                    ? " Cree o active una desde Gestiones para reportar fallas."
+                    : " Pida a un administrador que active una gestión correctiva."));
+                return RedirectToPage("./Index");
+            }
+
+            TempData.Info("Mantenimiento correctivo: registre la falla en la solicitud de servicio técnico del asistente.");
+            return RedirectToPage("/Index", new { ShowWizard = true, ManagementId = correctiveId.Value, Step = 2 });
+        }
+
+        public async Task OnGetAsync(int? pageIndex)
+        {            var query = _context.Requests
                 .Include(r => r.Equipment)
                 .Include(r => r.EquipmentUnit)
                     .ThenInclude(eu => eu != null ? eu.Laboratory : null)
@@ -55,6 +82,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 .Include(r => r.ApprovedBy)
                 .Include(r => r.CreatedBy)
                 .Include(r => r.ModifiedBy)
+                // Solo solicitudes técnicas (L-7): las de compra (L-12) tienen su propio listado. Filtrar ANTES de paginar
+                // (antes se paginaba todo y la vista descartaba las compras: páginas con menos de 20 filas y total inflado).
+                .Where(r => r.Type == RequestType.Technical)
                 .AsQueryable();
 
             if (!string.IsNullOrEmpty(SearchTerm))

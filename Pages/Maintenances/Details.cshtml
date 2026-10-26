@@ -3,10 +3,11 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Proyecto_Laboratorios_Univalle.Helpers
 @{
-    ViewData["Title"] = "Detalle de Mantenimiento (L-8)";
+    ViewData["Title"] = "Detalle del registro de mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
     var equipmentName = Model.Maintenance.EquipmentUnit?.Equipment?.Name ?? "Equipo historico no disponible";
     var inventoryNumber = Model.Maintenance.EquipmentUnit?.InventoryNumber ?? "Sin inventario";
-    var laboratoryName = Model.Maintenance.EquipmentUnit?.Laboratory?.Name ?? "Sin ambiente vigente";
+    var laboratoryName = Model.Maintenance.EquipmentUnit?.Laboratory?.Name ?? "Sin laboratorio vigente";
     var activeTasks = Model.Maintenance.Tasks
         .Where(task => !task.IsDeleted)
         .OrderBy(task => task.Id)
@@ -160,7 +161,7 @@
                 </div>
 
                 <div class="mt-4 pt-4 border-top">
-                    <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-clipboard-check mr-2 text-info"></i> Lista de control L-48</h5>
+                    <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-clipboard-check mr-2 text-info"></i> Tareas de mantenimiento</h5>
                     <div class="row">
                         <div class="col-sm-6 mb-2">
                             <span class="small"><i class="@(Model.Maintenance.Step1_Cleaning ? "fas fa-check-circle text-success" : "far fa-circle text-muted") mr-2"></i>Limpieza y desinfección</span>
@@ -178,7 +179,7 @@
                 </div>
 
                 <div class="mt-4 pt-4 border-top">
-                    <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-tasks mr-2 text-info"></i> Tareas L-48 Ejecutadas</h5>
+                    <h5 class="text-dark font-weight-bold mb-3 small uppercase"><i class="fas fa-tasks mr-2 text-info"></i> Tareas de mantenimiento ejecutadas</h5>
                     @if (activeTasks.Any())
                     {
                         <div class="table-responsive">
@@ -208,7 +209,7 @@
                     else
                     {
                         <div class="alert alert-light border shadow-none small">
-                            <i class="fas fa-info-circle mr-2"></i> No se registraron tareas L-48 para este mantenimiento.
+                            <i class="fas fa-info-circle mr-2"></i> No se registraron tareas para este mantenimiento.
                         </div>
                     }
                 </div>
@@ -449,19 +450,19 @@
 
             <a href="/api/reports/download/l8?managementPlanId=@Model.ManagementPlanId&unitId=@Model.Maintenance.EquipmentUnitId&managementId=@Model.Maintenance.ManagementId"
                class="btn btn-success btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3">
-                <i class="fas fa-file-excel mr-2"></i> Descargar Kardex L-8
+                <i class="fas fa-file-excel mr-2"></i> Descargar registro de mantenimiento (Excel)
             </a>
 
             @if (Model.Maintenance.EquipmentUnit != null)
             {
                 <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@Model.Maintenance.EquipmentUnitId" class="btn btn-outline-primary btn-block btn-rounded shadow-sm font-weight-bold py-2 mb-3">
-                    <i class="fas fa-history mr-2"></i> Ver Kardex
+                    <i class="fas fa-history mr-2"></i> Ver historial del equipo
                 </a>
             }
             else
             {
                 <button type="button" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-3" disabled>
-                    <i class="fas fa-history mr-2"></i> Kardex no disponible
+                    <i class="fas fa-history mr-2"></i> Historial no disponible
                 </button>
             }
 
@@ -469,13 +470,13 @@
             {
                 <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3" asp-route-ManagementId="@ViewData["ManagementId"]" asp-route-focusPlanId="@Model.FocusPlanId"
                    class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
-                    <i class="fas fa-arrow-left mr-2"></i> Volver al Wizard
+                    <i class="fas fa-arrow-left mr-2"></i> Volver al asistente
                 </a>
             }
             else
             {
                 <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
-                    <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+                    <i class="fas fa-arrow-left mr-2"></i> Volver al listado
                 </a>
             }
         </div>

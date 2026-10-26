@@ -3,6 +3,9 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Microsoft.AspNetCore.Mvc.Rendering
 @{
+    ViewData["Title"] = "Prácticas";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
                            || Model.CareerId.HasValue
                            || Model.SubjectId.HasValue

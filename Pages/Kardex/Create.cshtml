@@ -4,11 +4,15 @@
 @using Proyecto_Laboratorios_Univalle.Helpers
 
 @{
-    ViewData["Title"] = "Completar Kardex";
+    ViewData["Title"] = "Cierre del mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 5);
     var categoryList = Html.GetEnumSelectList<CostCategory>();
 }
+
+<partial name="_PageHelp" model='"Kardex.Create"' />
 
 <div class="row justify-content-center">
     <div class="col-lg-12">
@@ -21,8 +25,8 @@
             <div class="card-header bg-info p-4">
                 <div class="d-flex no-block align-items-center">
                     <div>
-                        <h4 class="card-title text-white font-weight-bold mb-0">Completar Kardex</h4>
-                        <h6 class="card-subtitle text-white-50 mb-0">Completa los datos del mantenimiento L-8, cierra la salida L-3 y habilita el desembolso.</h6>
+                        <h4 class="card-title text-white font-weight-bold mb-0">Cierre del mantenimiento</h4>
+                        <h6 class="card-subtitle text-white-50 mb-0">Completa los datos del mantenimiento, cierra la salida del equipo y habilita la solicitud de compra.</h6>
                     </div>
                     <div class="ml-auto text-right text-white">
                         <div class="font-weight-bold h5 mb-1">@Model.EquipmentTitle</div>
@@ -33,9 +37,9 @@
 
             <div class="card-body p-0">
                 <ul class="nav nav-tabs customtab px-4 pt-3" role="tablist">
-                    <li class="nav-item"><a class="nav-link active font-weight-bold small uppercase" data-toggle="tab" href="#tab-general" role="tab"><i class="fas fa-info-circle mr-2"></i> 1. Datos L-8</a></li>
-                    <li class="nav-item"><a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-costos" role="tab"><i class="fas fa-file-invoice-dollar mr-2"></i> 2. Costos e Insumos</a></li>
-                    <li class="nav-item"><a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-cierre" role="tab"><i class="fas fa-check-double mr-2"></i> 3. Cierre Kardex</a></li>
+                    <li class="nav-item"><a class="nav-link active font-weight-bold small uppercase" data-toggle="tab" href="#tab-general" role="tab"><i class="fas fa-info-circle mr-2"></i> 1. Datos del mantenimiento</a></li>
+                    <li class="nav-item"><a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-costos" role="tab"><i class="fas fa-dollar-sign mr-2"></i> 2. Costos e Insumos</a></li>
+                    <li class="nav-item"><a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-cierre" role="tab"><i class="fas fa-check-double mr-2"></i> 3. Cierre</a></li>
                 </ul>
 
                 <form method="post" id="kardexForm" class="tab-content p-4" novalidate>
@@ -55,7 +59,7 @@
                             <div class="row align-items-center">
                                 <div class="col-md-4"><strong>Equipo:</strong> @Model.EquipmentTitle<br /><span class="text-muted small">Inv: @Model.InventoryTitle</span></div>
                                 <div class="col-md-4"><strong>Laboratorio:</strong> @Model.LaboratoryTitle</div>
-                                <div class="col-md-4"><strong>L-3:</strong> @(Model.LinkedDepartureId.HasValue ? $"Salida #{Model.LinkedDepartureId}" : "Sin salida vinculada")<br /><span class="text-muted small">Fecha salida: @(Model.DepartureDate?.ToString("dd/MM/yyyy") ?? "Pendiente")</span></div>
+                                <div class="col-md-4"><strong>Salida:</strong> @(Model.LinkedDepartureId.HasValue ? $"Salida #{Model.LinkedDepartureId}" : "Sin salida vinculada")<br /><span class="text-muted small">Fecha salida: @(Model.DepartureDate?.ToString("dd/MM/yyyy") ?? "Pendiente")</span></div>
                             </div>
                         </div>
 
@@ -106,7 +110,7 @@
                                     <span asp-validation-for="Input.EndDate" class="text-danger small"></span>
                                 </div>
                                 <div class="form-group mb-0">
-                                    <label asp-for="Input.ActualReturnDate" class="control-label font-weight-bold small uppercase text-muted">Devolución Real L-3 <span class="text-danger">*</span></label>
+                                    <label asp-for="Input.ActualReturnDate" class="control-label font-weight-bold small uppercase text-muted">Devolución real del equipo <span class="text-danger">*</span></label>
                                     <input asp-for="Input.ActualReturnDate" class="form-control border-info" type="date" required />
                                     <span asp-validation-for="Input.ActualReturnDate" class="text-danger small"></span>
                                 </div>
@@ -120,7 +124,7 @@
 
                     <div class="tab-pane" id="tab-costos" role="tabpanel">
                         <div class="d-flex align-items-center mb-4">
-                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Detalle de Costos e Insumos</h5>
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-dollar-sign mr-2 text-success"></i>Detalle de Costos e Insumos <partial name="_HelpHint" model='"real-cost"' /></h5>
                             <button type="button" class="btn btn-sm btn-success btn-rounded shadow-sm ml-auto font-weight-bold px-3" onclick="addRow()"><i class="fas fa-plus mr-1"></i> Agregar Ítem</button>
                         </div>
 
@@ -194,7 +198,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center mb-3">
-                                    <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Validación Técnica L-48</h5>
+                                    <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Tareas de mantenimiento</h5>
                                     <button type="button" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold ml-auto" onclick="addTask()">
                                         <i class="fas fa-plus mr-1"></i> Agregar Tarea
                                     </button>
@@ -209,7 +213,7 @@
                                                     <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_@i" name="Input.Tasks[@i].IsCompleted" value="true" onchange="calculatePercentage()" @(Model.Input.Tasks[i].IsCompleted ? "checked" : "") />
                                                     <label class="custom-control-label" for="taskChk_@i"></label>
                                                 </div>
-                                                <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required />
+                                                <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea" required />
                                                 <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </button>
@@ -218,7 +222,7 @@
                                     </div>
                                     <div class="mt-3">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <span class="font-weight-bold text-muted small text-uppercase">Avance L-48</span>
+                                            <span class="font-weight-bold text-muted small text-uppercase">Avance de las tareas</span>
                                             <span id="displayProgressText" class="font-weight-bold text-info">0%</span>
                                         </div>
                                         <div class="progress rounded-pill shadow-sm" style="height: 10px;">
@@ -235,7 +239,7 @@
                         </div>
 
                         <div class="alert alert-info border-0 shadow-sm mt-4">
-                            <strong>                            Al completar Kardex:</strong> el mantenimiento L-8 quedará <strong>Completado</strong>, la salida L-3 se cerrará con devolución y el equipo avanzará a Desembolso. El registro quedará disponible en el Kardex histórico del equipo.
+                            <strong>                            Al cerrar el mantenimiento:</strong> el registro de mantenimiento quedará <strong>Completado</strong>, la salida del equipo se cerrará con devolución y el equipo avanzará a Desembolso. El registro quedará disponible en el Kardex histórico del equipo.
                         </div>
 
                         <div class="mt-5 d-flex justify-content-between border-top pt-4">
@@ -244,7 +248,7 @@
                                 @if (isWizard)
                                 {
                                     <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="5" asp-route-SelectedLabId="@Model.Input.LaboratoryId" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded px-4 ml-2">
-                                        <i class="fas fa-magic mr-1"></i> Volver al Wizard
+                                        <i class="fas fa-magic mr-1"></i> Volver al asistente
                                     </a>
                                 }
                             </div>
@@ -253,7 +257,7 @@
                                     <i class="fas fa-save mr-2"></i> Guardar Borrador
                                 </button>
                                 <button type="submit" asp-page-handler="Close" id="btnSubmitKardex" formnovalidate class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold text-white">
-                                    <i class="fas fa-check-double mr-2"></i> Completar Kardex
+                                    <i class="fas fa-check-double mr-2"></i> Cerrar mantenimiento
                                 </button>
                             </div>
                         </div>
@@ -288,7 +292,7 @@
             <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_INDEX" name="Input.Tasks[INDEX].IsCompleted" value="true" onchange="calculatePercentage()" disabled />
             <label class="custom-control-label" for="taskChk_INDEX"></label>
         </div>
-        <input type="text" name="Input.Tasks[INDEX].Description" value="" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required disabled />
+        <input type="text" name="Input.Tasks[INDEX].Description" value="" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea" required disabled />
         <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
             <i class="fas fa-trash-alt"></i>
         </button>
@@ -305,7 +309,7 @@
 
 @section Scripts {
     <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
-    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    @* SweetAlert2 ya la carga el layout (_Layout.cshtml). *@
     <script>
         $(function () {
             calculatePercentage();
@@ -338,10 +342,10 @@
                 }
 
                 Swal.fire({
-                    title: isDraft ? '¿Guardar borrador?' : '¿Completar Kardex?',
+                    title: isDraft ? '¿Guardar borrador?' : '¿Cerrar el mantenimiento?',
                     text: isDraft
-                        ? 'Se guardará el avance sin pasar a desembolso. Podrás continuar el cierre de Kardex más tarde.'
-                        : 'Se completará el mantenimiento L-8, se cerrará la salida L-3 con devolución y el equipo avanzará a Desembolso.',
+                        ? 'Se guardará el avance sin pasar a la solicitud de compra. Podrás continuar el cierre más tarde.'
+                        : 'Se completará el registro de mantenimiento, se cerrará la salida con la devolución y el equipo pasará a la solicitud de compra.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: isDraft ? 'Sí, guardar borrador' : 'Sí, concluir',

@@ -2,6 +2,10 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Proyecto_Laboratorios_Univalle.Helpers
+@{
+    ViewData["Title"] = "Editar artículo";
+    ViewData["Section"] = "Equipos e inventario";
+}
 
 <div class="row">
     <!-- Main Column -->
@@ -106,6 +110,7 @@
                         <select asp-for="Input.Status" class="form-control border-warning font-weight-bold custom-select"
                                 asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
                                 required></select>
+                        <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold d-block mt-1"></span>
                         <small class="text-muted italic mt-2 d-block small">Indique si el artículo está disponible para nuevas recetas y solicitudes de salida.</small>
                     </div>
 
@@ -185,7 +190,7 @@
 
 @section Scripts {
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
     <script>
         $(function () {

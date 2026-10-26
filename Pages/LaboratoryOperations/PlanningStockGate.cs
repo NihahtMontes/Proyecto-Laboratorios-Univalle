@@ -5,9 +5,10 @@ using Proyecto_Laboratorios_Univalle.Services;
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Regla de planificación: un artículo de inventario sin stock registrado (o con 0 en todo el sistema) no se
-/// puede planificar. El usuario debe registrar su existencia antes de continuar o aprobar; la pantalla de
-/// existencias lo devuelve a la planificación al guardar o cancelar.
+/// Regla D2 de planificación: la falta de stock en la solicitud SOLO ADVIERTE, nunca bloquea. Los artículos
+/// de inventario sin stock registrado (o con 0 en todo el sistema) se listan para que el usuario registre su
+/// existencia (opcional) o continúe; al aprobar se pide confirmación y la salida L-3 entrega esos artículos
+/// sin descontar. Quien descuenta y bloquea si no alcanza es la salida, no la solicitud.
 /// Los equipos (unidades físicas) no entran en esta regla: su disponibilidad depende de préstamos y mantenimientos.
 /// </summary>
 public static class PlanningStockGate

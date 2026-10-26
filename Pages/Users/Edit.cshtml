@@ -1,6 +1,10 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Users.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Editar usuario";
+    ViewData["Section"] = "Configuración";
+}
 
 
 
@@ -20,7 +24,7 @@
                 </div>
 
                 <form method="post" enctype="multipart/form-data" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
                     <input type="hidden" name="id" value="@Model.Id" />
 
                     <div class="row">
@@ -106,6 +110,16 @@
                                 <span asp-validation-for="Input.Role" class="text-danger small font-weight-bold"></span>
                             </div>
 
+                            @* QA 2026-10-18: la página de baja recomendaba «Inactivar desde el editor», pero no había campo de estado. *@
+                            <div class="form-group mb-3 border-left border-info pl-3 bg-light p-3 rounded shadow-none">
+                                <label asp-for="Input.Status" class="control-label font-weight-bold small text-info uppercase">Estado de la cuenta</label>
+                                <select asp-for="Input.Status" class="form-control custom-select">
+                                    <option value="@((int)GeneralStatus.Activo)">Activa</option>
+                                    <option value="@((int)GeneralStatus.Inactivo)">Inactiva (no puede iniciar sesión)</option>
+                                </select>
+                                <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold"></span>
+                            </div>
+
                             <div class="bg-light p-3 rounded mb-4 border shadow-none">
                                 <h6 class="font-weight-bold text-dark small text-uppercase mb-3 italic"><i class="fas fa-key mr-2 text-muted"></i> Gestión de Credenciales</h6>
                                 <div class="form-group mb-3">
@@ -116,6 +130,7 @@
                                 <div class="form-group mb-0">
                                     <label asp-for="Input.NewPassword" class="control-label font-weight-bold small uppercase text-muted">Nueva Contraseña</label>
                                     <input asp-for="Input.NewPassword" type="password" class="form-control shadow-none" placeholder="********" />
+                                    <span asp-validation-for="Input.NewPassword" class="text-danger small font-weight-bold d-block mt-1"></span>
                                     <small class="text-warning font-weight-bold d-block mt-2 small">
                                         <i class="fas fa-info-circle mr-1"></i> Deje en blanco para conservar la actual.
                                     </small>
@@ -127,12 +142,14 @@
                                     <div class="form-group mb-0">
                                         <label asp-for="Input.Position" class="control-label font-weight-bold small uppercase text-muted">Cargo</label>
                                         <input asp-for="Input.Position" class="form-control shadow-none" />
+                                    <span asp-validation-for="Input.Position" class="text-danger small font-weight-bold d-block mt-1"></span>
                                     </div>
                                 </div>
                                 <div class="col-6">
                                     <div class="form-group mb-0">
                                         <label asp-for="Input.Department" class="control-label font-weight-bold small uppercase text-muted">Área/Dpto.</label>
                                         <input asp-for="Input.Department" class="form-control shadow-none" />
+                                    <span asp-validation-for="Input.Department" class="text-danger small font-weight-bold d-block mt-1"></span>
                                     </div>
                                 </div>
                             </div>

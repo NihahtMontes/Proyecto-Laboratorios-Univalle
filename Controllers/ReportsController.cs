@@ -51,6 +51,8 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                 var management = await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == managementId);
                 if (management == null) return NotFound("Gestión no encontrada.");
                 if (management.Type == ManagementType.Corrective) return BadRequest("L-6 solo aplica al proceso preventivo.");
+                if (!await _context.Laboratories.AsNoTracking().AnyAsync(l => l.Id == labId))
+                    return NotFound("Laboratorio no encontrado.");
 
                 var responsable = await GetCurrentUserFullName();
                 var bytes = await _reportService.GenerateL6VerificacionExcel(managementId, labId, responsable, date, unitId);
@@ -108,6 +110,8 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
 
                 if (!resolvedDepartureId.HasValue)
                     return NotFound("Este equipo no tiene salidas L-3 registradas en la gestión seleccionada.");
+                if (!await _context.Departures.AsNoTracking().AnyAsync(d => d.Id == resolvedDepartureId.Value))
+                    return NotFound("Salida L-3 no encontrada.");
 
                 var bytes = await _reportService.GenerateL3SalidaExcel(resolvedDepartureId.Value);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -130,6 +134,10 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
             {
                 if (!managementPlanId.HasValue && !unitId.HasValue)
                     return BadRequest("Debe indicar managementPlanId o unitId.");
+                if (managementPlanId.HasValue && !await _context.ManagementPlans.AsNoTracking().AnyAsync(p => p.Id == managementPlanId.Value))
+                    return NotFound("Plan de mantenimiento no encontrado.");
+                if (!managementPlanId.HasValue && !await _context.EquipmentUnits.AsNoTracking().AnyAsync(u => u.Id == unitId!.Value))
+                    return NotFound("Unidad física no encontrada.");
 
                 var bytes = await _reportService.GenerateL8KardexExcel(unitId ?? 0, managementPlanId, managementId);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -156,6 +164,10 @@ namespace Proyecto_Laboratorios_Univalle.Controllers
                 var bytes = await _reportService.GenerateL48GanttExcel(managementId, labId);
                 return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     $"Plan_Gantt_L48_{management.Code}_Lab_{labId}.xlsx");
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
             }
             catch (Exception ex)
             {

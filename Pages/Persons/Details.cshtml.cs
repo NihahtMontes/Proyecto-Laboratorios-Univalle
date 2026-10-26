@@ -97,7 +97,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Persons
             MaintenanceManagementId = await _context.Managements
                 .AsNoTracking()
                 .Where(m => m.Status == ManagementStatus.Active)
-                .OrderByDescending(m => m.Year)
+                .OrderByDescending(m => m.Type == ManagementType.Preventive) // con preventiva y correctiva activas, la preventiva por defecto
+                .ThenByDescending(m => m.Year)
                 .ThenByDescending(m => m.Semester)
                 .Select(m => (int?)m.Id)
                 .FirstOrDefaultAsync();

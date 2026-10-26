@@ -51,6 +51,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             var faculty = await _context.Faculties.FindAsync(id);
             if (faculty == null) return NotFound();
 
+            // Decisión del usuario (2026-10-18): una facultad con laboratorios activos no se da de baja (antes se ocultaban en cascada).
+            var activeLabs = await _context.Laboratories.CountAsync(l => l.FacultyId == faculty.Id && l.Status != GeneralStatus.Eliminado);
+            if (activeLabs > 0)
+            {
+                TempData.Warning($"No se puede dar de baja la facultad '{faculty.Name}': tiene {activeLabs} laboratorio(s) activo(s). Dé de baja o reasigne primero sus laboratorios.");
+                return RedirectToPage("/Laboratories/Index", null, "faculties");
+            }
+
             // Perform Soft Delete (Logic Delete for Audit)
             faculty.Status = GeneralStatus.Eliminado;
             faculty.LastModifiedDate = DateTime.UtcNow;

@@ -1,6 +1,10 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Detalle de la solicitud de servicio técnico";
+    ViewData["Section"] = "Mantenimiento de equipos";
+}
 
 @if (TempData["Error"] != null)
 {
@@ -30,7 +34,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Paso 2: Solicitud Técnica (L-7)</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Paso 2: Solicitud de servicio técnico</h4>
                         <h6 class="card-subtitle text-muted small">Detalle del requerimiento técnico registrado. (Expediente: #@Model.Request.Id)</h6>
                     </div>
                     <div class="ml-auto d-print-none">
@@ -97,6 +101,13 @@
                                     }
                                     <i class="fas @pIcon mr-2"></i> @Html.DisplayFor(m => m.Request.Priority)
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="control-label font-weight-bold small uppercase text-muted mb-1">Sugerencia del solicitante</label>
+                            <div class="p-3 bg-light border rounded text-muted small" style="white-space: pre-line;">
+                                @(string.IsNullOrWhiteSpace(Model.Request.Suggestion) ? "Sin sugerencia registrada." : Model.Request.Suggestion)
                             </div>
                         </div>
 
@@ -258,7 +269,7 @@
             {
                 <a href="/api/reports/download/l7?requestId=@Model.Request.Id&managementId=@ViewData["ManagementId"]"
                    class="btn btn-success btn-block btn-rounded shadow-sm font-weight-bold py-3 mb-3">
-                    <i class="fas fa-file-excel mr-2"></i> Descargar Solicitud L-7
+                    <i class="fas fa-file-excel mr-2"></i> Descargar solicitud (Excel)
                 </a>
             }
 
@@ -266,13 +277,13 @@
             {
                 <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="@(Model.FocusPlanId.HasValue ? 2 : 3)" asp-route-ManagementId="@ViewData["ManagementId"]" asp-route-focusPlanId="@Model.FocusPlanId"
                    class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
-                    <i class="fas fa-arrow-left mr-2"></i> Volver al Wizard
+                    <i class="fas fa-arrow-left mr-2"></i> Volver al asistente
                 </a>
             }
             else
             {
                 <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
-                    <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+                    <i class="fas fa-arrow-left mr-2"></i> Volver al listado
                 </a>
             }
         </div>

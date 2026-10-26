@@ -1,0 +1,50 @@
+/* Ayuda contextual (UX fase 2): icono «?» (_HelpHint) y recuadro «¿Qué hago aquí?» (_PageHelp). */
+
+.ux-help-hint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: .25rem;
+    color: #1e6fd9;
+    font-size: 1.05rem;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: pointer;
+    text-decoration: none !important;
+    border-radius: 50%;
+}
+.ux-help-hint:hover { color: #0b4fa8; }
+.ux-help-hint:focus { outline: 2px solid #1e6fd9; outline-offset: 2px; }
+
+.popover { max-width: 320px; font-size: .9rem; }
+.popover .popover-header { font-weight: 700; color: #1f2937; }
+.popover .popover-body { color: #374151; line-height: 1.45; }
+
+.ux-page-help {
+    background: #f0f7ff;
+    border: 1px solid #cfe3fb;
+    border-left: 4px solid #1e6fd9;
+    border-radius: 8px;
+    color: #1f2937;
+}
+.ux-page-help__toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: .6rem .9rem;
+    background: transparent;
+    border: 0;
+    color: #0b4fa8;
+    text-align: left;
+    cursor: pointer;
+}
+.ux-page-help__toggle:focus { outline: 2px solid #1e6fd9; outline-offset: -2px; }
+.ux-page-help__body { padding: 0 .9rem .75rem 2.4rem; font-size: .92rem; line-height: 1.5; }
+.ux-page-help__body li { margin-bottom: .2rem; }
+.ux-page-help.is-collapsed .ux-page-help__body { display: none; }
+.ux-page-help.is-collapsed .ux-page-help__chevron { transform: rotate(180deg); }
+.ux-page-help__chevron { transition: transform .15s ease; }
+
+/* Página de Ayuda */
+.ux-glossary-format { white-space: nowrap; color: #4b5563; }
+.ux-role-card .mdi { font-size: 1.6rem; color: #1e6fd9; }

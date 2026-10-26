@@ -1,0 +1,32 @@
+@model string
+@using Proyecto_Laboratorios_Univalle.Helpers
+@{
+    // Recuadro plegable «¿Qué hago aquí?» con 2-4 pasos de la pantalla (Helpers/HelpContent.cs).
+    // El estado plegado se recuerda por pantalla en localStorage (wwwroot/js/site.js, clave ux-help:<clave>).
+    // Uso: <partial name="_PageHelp" model='"Managements.Index"' />.
+    var help = HelpContent.GetPage(Model);
+    var bodyId = "ux-page-help-" + Model.Replace('.', '-');
+}
+@if (help != null)
+{
+    <section class="ux-page-help mb-3" data-help-key="@Model" aria-label="Ayuda de esta pantalla">
+        <button type="button" class="ux-page-help__toggle" aria-expanded="true" aria-controls="@bodyId">
+            <i class="mdi mdi-lightbulb-on-outline mr-2" aria-hidden="true"></i>
+            <span class="font-weight-bold">¿Qué hago aquí?</span>
+            <i class="mdi mdi-chevron-up ml-auto ux-page-help__chevron" aria-hidden="true"></i>
+        </button>
+        <div class="ux-page-help__body" id="@bodyId">
+            <ol class="mb-2 pl-3">
+                @foreach (var step in help.Steps)
+                {
+                    <li>@step</li>
+                }
+            </ol>
+            @if (!string.IsNullOrWhiteSpace(help.Tip))
+            {
+                <p class="mb-2"><i class="mdi mdi-information-outline mr-1" aria-hidden="true"></i>@help.Tip</p>
+            }
+            <a href="/Ayuda" class="font-weight-bold">Ver la ayuda completa y el glosario</a>
+        </div>
+    </section>
+}

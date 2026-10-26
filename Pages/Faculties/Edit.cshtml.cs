@@ -41,6 +41,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // El estado Eliminado solo se asigna con la baja lógica (antes un POST manual lo aceptaba).
+            if (Faculty.Status == GeneralStatus.Eliminado)
+            {
+                ModelState.AddModelError("Faculty.Status", "El estado Eliminado solo se gestiona desde la opción Dar de Baja.");
+            }
+
             if (!ModelState.IsValid)
             {
                 await ReloadFaculty(Faculty.Id);
@@ -48,7 +54,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             }
 
             // Normalization
-            var normalizedName = Faculty.Name.Trim().ToLower();
+            // Mismo límite que en Create (150): antes Edit aceptaba nombres de hasta 200 caracteres.
+            if (Faculty.Name.Clean().Length > 150)
+            {
+                ModelState.AddModelError("Faculty.Name", "El nombre no puede superar los 150 caracteres");
+                await ReloadFaculty(Faculty.Id);
+                return Page();
+            }
+
+            var normalizedName = Faculty.Name.Clean().ToLower();
 
             // Duplicate Validation (excluding current ID)
             var exists = await _context.Faculties
@@ -82,6 +96,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
 
             try
             {
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach el guardado no persistía.
+                _context.Attach(facultyToUpdate).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 TempData.Success($"Datos de la Facultad '{facultyToUpdate.Code}' ({facultyToUpdate.Name}) actualizados correctamente.");
             }

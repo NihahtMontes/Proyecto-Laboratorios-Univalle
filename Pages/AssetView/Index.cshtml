@@ -3,6 +3,9 @@
 
 @{
     ViewData["Title"] = "Ver Inventario";
+    // /Catalogs/Stock y /EquipmentUnits son solo para Administrator/SuperAdmin: el Supervisor ve la tarjeta sin enlace.
+    var canOpenAdminLists = User.IsInRole("Administrator") || User.IsInRole("SuperAdmin");
+    var adminLinkStyle = canOpenAdminLists ? "" : "pointer-events:none;cursor:default;";
 }
 
 @section Styles {
@@ -102,6 +105,8 @@
         .asset-bg-purple { background: linear-gradient(135deg, #7460ee, #a163f7); }
         .asset-bg-red { background: linear-gradient(135deg, #f62d51, #ff6b6b); }
         .asset-bg-cyan { background: linear-gradient(135deg, #03a9f3, #4fc3f7); }
+        .asset-bg-teal { background: linear-gradient(135deg, #00838f, #26c6da); }
+        .asset-bg-slate { background: linear-gradient(135deg, #6c757d, #95a5a6); }
 
         .asset-nav-card {
             min-height: 172px;
@@ -197,15 +202,26 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 <div class="asset-metric-tile asset-bg-blue p-3">
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-cubes"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.TotalUnitsCount</div>
                                     <div class="font-weight-bold mt-2">Total activos</div>
-                                    <small>Unidades fisicas vigentes</small>
+                                    <small>Unidades fisicas: patrimonio por N.º de inventario</small>
                                 </div>
                             </div>
-                            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                <a asp-page="/Catalogs/Stock/Index" class="text-decoration-none" title="Ver existencias de articulos consumibles" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
+                                    <div class="asset-metric-tile asset-bg-teal p-3">
+                                        <div class="asset-metric-icon mb-3"><i class="fas fa-boxes"></i></div>
+                                        <div class="asset-metric-value font-weight-bold">@Model.StockRecordsCount</div>
+                                        <div class="font-weight-bold mt-2">Existencias</div>
+                                        <small>Registros de stock de articulos consumibles</small>
+                                        <small class="d-block">Consumibles por stock en @Model.StockLaboratoriesCount ambiente(s)</small>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 <div class="asset-metric-tile asset-bg-purple p-3">
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-microscope"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.EquipmentUnitsCount</div>
@@ -213,7 +229,7 @@
                                     <small>Clasificados como equipo</small>
                                 </div>
                             </div>
-                            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 <div class="asset-metric-tile asset-bg-green p-3">
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-utensils"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.UtensilUnitsCount</div>
@@ -221,7 +237,7 @@
                                     <small>Materiales y menaje</small>
                                 </div>
                             </div>
-                            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 <div class="asset-metric-tile asset-bg-amber p-3">
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-layer-group"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.OtherUnitsCount</div>
@@ -229,7 +245,29 @@
                                     <small>Fuera de equipo/utensilio</small>
                                 </div>
                             </div>
-                            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                @if (Model.UnitsWithoutSpecificClassificationCount > 0)
+                                {
+                                    <a asp-page="/EquipmentUnits/Index" class="text-decoration-none" title="Ver todas las unidades fisicas" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
+                                        <div class="asset-metric-tile asset-bg-amber p-3">
+                                            <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
+                                            <div class="asset-metric-value font-weight-bold">@Model.UnitsWithoutSpecificClassificationCount</div>
+                                            <div class="font-weight-bold mt-2">Por clasificar</div>
+                                            <small>Pendientes: @Model.PendingClassificationUnitsCount · Heredadas: @Model.LegacyInferredUnitsCount</small>
+                                        </div>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <div class="asset-metric-tile asset-bg-slate p-3">
+                                        <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
+                                        <div class="asset-metric-value font-weight-bold">0</div>
+                                        <div class="font-weight-bold mt-2">Por clasificar</div>
+                                        <small>Al dia: sin pendientes</small>
+                                    </div>
+                                }
+                            </div>
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 <div class="asset-metric-tile asset-bg-cyan p-3">
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-door-open"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.EnvironmentsWithUnitsCount</div>
@@ -237,7 +275,7 @@
                                     <small>Con inventario asignado</small>
                                 </div>
                             </div>
-                            <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 <div class="asset-metric-tile asset-bg-red p-3">
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-exclamation-triangle"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.UnitsWithoutEnvironmentCount</div>
@@ -271,7 +309,7 @@
                                             </div>
                                             <div class="text-right">
                                                 <h4 class="font-weight-bold text-warning mb-0">@Model.UnitsWithoutSpecificClassificationCount</h4>
-                                                <span class="text-muted small">En Otro / No aplica</span>
+                                                <span class="text-muted small">Pendientes de clasificar</span>
                                             </div>
                                         </div>
                                         <div class="asset-quality-track mb-4">
@@ -280,7 +318,8 @@
                                         <div class="row text-center">
                                             <div class="col-6 border-right">
                                                 <h4 class="font-weight-bold mb-0">@Model.UnitsWithoutSerialCount</h4>
-                                                <small class="text-muted">Sin numero de serie</small>
+                                                <small class="text-muted d-block">Sin serie</small>
+                                                <small class="text-muted">Se identifican por N.º de inventario</small>
                                             </div>
                                             <div class="col-6">
                                                 <h4 class="font-weight-bold mb-0">@Model.UnitsWithoutEnvironmentCount</h4>
@@ -361,7 +400,7 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-4 mb-3">
+                            <div class="col-xl-3 col-md-6 mb-3">
                                 <a asp-page="./EquipmentClassifications" asp-route-activeTab="Inventario" class="text-decoration-none">
                                     <div class="asset-nav-card bg-primary h-100 p-4">
                                         <div class="asset-nav-icon mb-3"><i class="fas fa-microscope"></i></div>
@@ -372,7 +411,7 @@
                                 </a>
                             </div>
 
-                            <div class="col-md-4 mb-3">
+                            <div class="col-xl-3 col-md-6 mb-3">
                                 <a asp-page="./UtensilClassifications" asp-route-activeTab="Inventario" class="text-decoration-none">
                                     <div class="asset-nav-card bg-success h-100 p-4">
                                         <div class="asset-nav-icon mb-3"><i class="fas fa-utensils"></i></div>
@@ -383,7 +422,7 @@
                                 </a>
                             </div>
 
-                            <div class="col-md-4 mb-3">
+                            <div class="col-xl-3 col-md-6 mb-3">
                                 <a asp-page="./OtherUnits" asp-route-activeTab="Inventario" class="text-decoration-none">
                                     <div class="asset-nav-card bg-warning h-100 p-4">
                                         <div class="asset-nav-icon mb-3"><i class="fas fa-layer-group"></i></div>
@@ -392,6 +431,29 @@
                                         <p class="mb-0 font-weight-bold">Unidades fisicas fuera de equipos y utensilios.</p>
                                     </div>
                                 </a>
+                            </div>
+
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                @if (Model.UnitsWithoutSpecificClassificationCount > 0)
+                                {
+                                    <a asp-page="/EquipmentUnits/Index" class="text-decoration-none" title="Ver todas las unidades fisicas" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
+                                        <div class="asset-nav-card bg-warning h-100 p-4">
+                                            <div class="asset-nav-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
+                                            <h4 class="asset-nav-title text-white font-weight-bold mb-4">Por clasificar</h4>
+                                            <div class="asset-nav-value font-weight-bold mb-2">@Model.UnitsWithoutSpecificClassificationCount</div>
+                                            <p class="mb-0 font-weight-bold">Unidades fisicas pendientes de clasificacion.</p>
+                                        </div>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <div class="asset-nav-card bg-secondary h-100 p-4">
+                                        <div class="asset-nav-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
+                                        <h4 class="asset-nav-title text-white font-weight-bold mb-4">Por clasificar</h4>
+                                        <div class="asset-nav-value font-weight-bold mb-2">0</div>
+                                        <p class="mb-0 font-weight-bold">Clasificacion al dia: sin pendientes.</p>
+                                    </div>
+                                }
                             </div>
                         </div>
 
@@ -431,6 +493,8 @@
             var statusData = @Html.Raw(Model.StatusDataJson);
             var conditionData = @Html.Raw(Model.ConditionDataJson);
             var environmentData = @Html.Raw(Model.EnvironmentDataJson);
+            var totalUnits = @Model.TotalUnitsCount;
+            var pendingClassificationUnits = @Model.UnitsWithoutSpecificClassificationCount;
             var charts = [];
 
             function hasDonutData(columns) {
@@ -559,14 +623,21 @@
                 charts.push(chart);
             }
 
+            var donutEmptyTitle = "Sin inventario vigente";
+            var donutEmptyText = "No hay unidades fisicas para graficar.";
+            if (totalUnits > 0 && pendingClassificationUnits > 0 && !hasDonutData(categoryData)) {
+                donutEmptyTitle = "Nada clasificado aun";
+                donutEmptyText = "Hay " + pendingClassificationUnits + " unidades por clasificar.";
+            }
+
             renderDonut(
                 "#donut-chart",
                 categoryData,
                 "Activos",
                 ["#7460ee", "#00c292", "#ffb22b"],
                 "fas fa-box-open",
-                "Sin inventario vigente",
-                "No hay unidades fisicas para graficar.");
+                donutEmptyTitle,
+                donutEmptyText);
 
             renderDonut(
                 "#status-chart",

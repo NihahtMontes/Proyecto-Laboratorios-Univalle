@@ -14,7 +14,7 @@
 - No hard-delete en entidades de negocio.
 - NoTracking global exige `.AsTracking()` para modificar desde PageModels.
 - SQL Server es el proveedor vigente.
-- Correctivo usa `Semester = 0`; preventivo usa gestiones semestrales (`Semester = 1/2`).
+- Preventivo y correctivo usan gestiones semestrales (`Semester = 1/2`; correctiva `CORR-AAAA-S`) y pueden estar Activas a la vez (una por tipo, desde 2026-10-18). Lo académico excluye la correctiva (`Semester > 0 && Type != Corrective`).
 - `Person.FullName` es `[NotMapped]`; no usar en LINQ.
 - No agregar query filters globales sin revisar impacto.
 

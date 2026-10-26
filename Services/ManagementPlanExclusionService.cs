@@ -22,11 +22,13 @@ namespace Proyecto_Laboratorios_Univalle.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<ManagementPlanExclusionService> _logger;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
-        public ManagementPlanExclusionService(ApplicationDbContext context, ILogger<ManagementPlanExclusionService> logger)
+        public ManagementPlanExclusionService(ApplicationDbContext context, ILogger<ManagementPlanExclusionService> logger, IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _logger = logger;
+            _stateHistory = stateHistory;
         }
 
         public async Task<Dictionary<int, bool>> GetPlanHistoryMapAsync(int managementId, IEnumerable<int> equipmentUnitIds)
@@ -137,7 +139,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 Excluded = true,
                 HadHistory = hadHistory,
                 Message = hadHistory
-                    ? "Se excluyo la unidad y se cancelaron logicamente sus registros del wizard."
+                    ? "Se excluyó la unidad y se cancelaron sus registros del asistente."
                     : "Se excluyo la unidad del plan."
             };
         }
@@ -270,7 +272,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
 
             if (unit.CurrentStatus is EquipmentStatus.UnderMaintenance or EquipmentStatus.InRepair or EquipmentStatus.OnLoan)
             {
-                unit.CurrentStatus = EquipmentStatus.Operational;
+                await _stateHistory.ChangeStatusAsync(unit, EquipmentStatus.Operational,
+                    "Estado restaurado al excluir el activo de la planificación de la gestión.", now, userId);
                 unit.ModifiedById = userId;
                 unit.LastModifiedDate = now;
                 unit.Notes = AppendNote(unit.Notes, "Estado restaurado por exclusion del activo del plan L-48.", now);

@@ -78,6 +78,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     .Include(p => p.Verification).ThenInclude(v => v!.Faults)
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value);
 
+                // R-02: L-6 solo puede registrarse si el plan sigue en la fase de verificación.
+                var phaseRejection = WizardPhaseGuard.Validate(plan, WizardPhase.Verification);
+                if (phaseRejection != null)
+                {
+                    TempData.Warning(phaseRejection);
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan!.CurrentPhase, ManagementId = plan.ManagementId });
+                }
+
                 ViewData["CurrentPhaseInt"] = (int)(plan?.CurrentPhase ?? WizardPhase.Verification);
                 ViewData["ManagementId"] = plan?.ManagementId ?? ManagementId;
                 ManagementId = plan?.ManagementId ?? ManagementId;
@@ -163,6 +171,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 ModelState.Remove("Input.EquipmentUnitId");
             }
 
+            // QA 2026-10-18: validaciones del servidor antes de guardar (antes daban 500 por clave foránea o longitud).
+            var unitExists = Input.EquipmentUnitId > 0 && await _context.EquipmentUnits.AnyAsync(u => u.Id == Input.EquipmentUnitId);
+            if (!unitExists)
+                ModelState.AddModelError("Input.EquipmentUnitId", Input.EquipmentUnitId > 0
+                    ? "La unidad física seleccionada no existe."
+                    : "La unidad física es obligatoria.");
+            if (Input.FaultDescriptions?.Any(f => (f?.Trim().Length ?? 0) > 255) == true)
+                ModelState.AddModelError(string.Empty, "Cada falla puede tener como máximo 255 caracteres.");
+            if (Input.Results.Count > 0)
+            {
+                var validCheckIds = await _context.VerificationCheckItems.AsNoTracking().Select(i => i.Id).ToListAsync();
+                if (Input.Results.Keys.Any(id => !validCheckIds.Contains(id)))
+                    ModelState.AddModelError(string.Empty, "Hay resultados de puntos de control que no existen. Recargue la página e intente de nuevo.");
+            }
+
             if (!ModelState.IsValid)
             {
                 LoadLists();
@@ -201,6 +224,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                     .AsTracking()
                     .FirstOrDefaultAsync(p => p.Id == ManagementPlanId.Value) 
                 : null;
+
+            // R-02: L-6 solo puede registrarse si el plan sigue en la fase de verificación;
+            // en otra fase no se guarda nada para no mover el wizard hacia atrás.
+            var wizardPhaseRejection = WizardPhaseGuard.Validate(plan, WizardPhase.Verification);
+            if (wizardPhaseRejection != null)
+            {
+                TempData.Warning(wizardPhaseRejection);
+                if (isWizard)
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan!.CurrentPhase, ManagementId = plan.ManagementId });
+
+                LoadLists();
+                ViewData["IsWizard"] = isWizard;
+                ViewData["ManagementId"] = ManagementId;
+                return Page();
+            }
+
+            // La verificación, sus resultados y el avance del plan se guardan juntos: si algo falla no queda una L-6 huérfana.
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
             Verification verification;
             bool isNew = plan?.Verification == null;
@@ -313,11 +354,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 await _context.SaveChangesAsync();
             }
 
+            await transaction.CommitAsync();
+
             if (isWizard)
             {
                 if (saveDraft)
                 {
-                    TempData.Success($"Borrador L-6 guardado correctamente.");
+                    TempData.Success($"Borrador de la verificación guardado correctamente.");
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = 1, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                 }
 
@@ -336,7 +379,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.Verification;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-6 guardado con verificación parcial.";
+            plan.DraftSummary = "Borrador de la verificación guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.Verification;
             plan.CurrentState = WizardEquipmentState.PendingVerification;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

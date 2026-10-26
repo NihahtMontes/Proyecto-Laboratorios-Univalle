@@ -3,7 +3,9 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Proyecto_Laboratorios_Univalle.Helpers
 @{
-    ViewData["Title"] = "Kardex integral del activo";
+    ViewData["Title"] = "Historial del equipo";
+    ViewData["Section"] = "Equipos e inventario";
+    ViewData["HidePageTitle"] = true;
 }
 
 <div class="row">
@@ -16,7 +18,7 @@
                             <i class="fas fa-history fa-lg"></i>
                         </div>
                         <div>
-                            <h3 class="card-title text-dark font-weight-bold mb-0">Kardex integral del activo</h3>
+                            <h3 class="card-title text-dark font-weight-bold mb-0">Historial del equipo</h3>
                             <h6 class="card-subtitle text-muted mt-1">
                                 @Model.Unit.Equipment?.Name
                                 <span class="badge badge-light border ml-2">Inv: @Model.Unit.InventoryNumber</span>
@@ -35,7 +37,7 @@
                         @if (Model.IsWizard)
                         {
                             <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="@Model.ReturnStep" asp-route-SelectedLabId="@Model.SelectedLabId" asp-route-ManagementId="@Model.ManagementId" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold shadow-sm">
-                                <i class="fas fa-magic mr-2"></i> Volver al Wizard
+                                <i class="fas fa-magic mr-2"></i> Volver al asistente
                             </a>
                         }
                         else
@@ -104,13 +106,27 @@
                         }
                         else
                         {
+                            <div class="px-3 py-2 border-bottom bg-light small">
+                                <i class="fas fa-stream text-info mr-1"></i>
+                                Estado actual:
+                                <span class="badge badge-pill @KardexModel.GetEquipmentStatusBadge(Model.Unit.CurrentStatus) px-2 ml-1">@EnumHelper.GetDisplayName(Model.Unit.CurrentStatus)</span>
+                                @if (Model.CurrentSegment is { } vigente)
+                                {
+                                    <span class="ml-1">desde <strong>@BoliviaTime.ToLocal(vigente.StartDate).ToString("dd/MM/yyyy HH:mm")</strong></span>
+                                }
+                                else
+                                {
+                                    <span class="ml-1 text-muted">(sin tramo vigente registrado)</span>
+                                }
+                                <span class="text-muted d-block d-md-inline ml-md-2">Línea de tiempo: el más reciente arriba.</span>
+                            </div>
                             <div class="table-responsive">
                                 <table class="table table-hover v-middle mb-0">
                                     <thead class="bg-light">
                                         <tr class="small text-uppercase font-weight-bold">
-                                            <th class="border-top-0">Inicio</th>
-                                            <th class="border-top-0">Fin</th>
-                                            <th class="border-top-0">Estado detectado</th>
+                                            <th class="border-top-0">Desde</th>
+                                            <th class="border-top-0">Hasta</th>
+                                            <th class="border-top-0">Estado</th>
                                             <th class="border-top-0">Motivo del cambio</th>
                                             <th class="border-top-0">Registro</th>
                                             <th class="border-top-0 text-center">Duración</th>
@@ -119,16 +135,16 @@
                                     <tbody>
                                         @foreach (var state in Model.StateHistory)
                                         {
-                                            <tr>
-                                                <td class="small font-weight-bold">@state.StartDate.ToString("dd/MM/yyyy HH:mm")</td>
+                                            <tr class="@(state.EndDate.HasValue ? "" : "table-active")">
+                                                <td class="small font-weight-bold">Desde @BoliviaTime.ToLocal(state.StartDate).ToString("dd/MM/yyyy HH:mm")</td>
                                                 <td class="small">
                                                     @if (state.EndDate.HasValue)
                                                     {
-                                                        @state.EndDate.Value.ToString("dd/MM/yyyy HH:mm")
+                                                        <span>Hasta @BoliviaTime.ToLocal(state.EndDate.Value).ToString("dd/MM/yyyy HH:mm")</span>
                                                     }
                                                     else
                                                     {
-                                                        <span class="badge badge-light border">Vigente</span>
+                                                        <span class="badge badge-success">Vigente</span>
                                                     }
                                                 </td>
                                                 <td>
@@ -139,13 +155,13 @@
                                                 <td class="small text-muted">@(string.IsNullOrWhiteSpace(state.Reason) ? "Sin motivo registrado" : state.Reason)</td>
                                                 <td class="small">
                                                     <span class="font-weight-bold text-dark d-block">@(state.CreatedBy?.FullName ?? "Sistema")</span>
-                                                    <span class="text-muted">@state.CreatedDate.ToString("dd/MM/yyyy HH:mm")</span>
+                                                    <span class="text-muted">@BoliviaTime.ToLocal(state.CreatedDate).ToString("dd/MM/yyyy HH:mm")</span>
                                                     @if (state.LastModifiedDate.HasValue)
                                                     {
-                                                        <span class="text-muted d-block">Actualizado: @state.LastModifiedDate.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                                        <span class="text-muted d-block">Actualizado: @BoliviaTime.ToLocal(state.LastModifiedDate.Value).ToString("dd/MM/yyyy HH:mm")</span>
                                                     }
                                                 </td>
-                                                <td class="small text-center">@(state.DurationDays.HasValue && state.DurationDays.Value >= 0 ? $"{state.DurationDays} día(s)" : "—")</td>
+                                                <td class="small text-center">@KardexModel.FormatDuration(state)</td>
                                             </tr>
                                         }
                                     </tbody>

@@ -218,7 +218,7 @@
                         <i class="fas fa-university"></i>
                     </div>
                     <div class="mr-3">
-                        <div class="pc-strip__eyebrow">Gestión académica</div>
+                        <div class="pc-strip__eyebrow">Semestre académico</div>
                         <div class="pc-strip__title">Gestión: <b>@management.Code</b></div>
                     </div>
                     <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -260,7 +260,7 @@
         <div class="pc-empty d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div class="d-flex align-items-center gap-2">
                 <i class="fas fa-info-circle" style="color:#7460ee;font-size:1.1rem;"></i>
-                <span>La gestión académica de esta planificación no está disponible (registro anterior o eliminado).</span>
+                <span>El semestre académico de esta planificación no está disponible (registro anterior o eliminado).</span>
             </div>
             <a asp-page="./Index" class="pc-panel-link">
                 <i class="fas fa-th-large"></i> Panel
@@ -280,7 +280,7 @@
                 @if (Model.CanReschedule && User.IsInRole(Proyecto_Laboratorios_Univalle.Helpers.AuthorizationHelper.RoleSuperAdmin))
                 {
                     <a href="/LaboratoryOperations/Grilla?reprogramar=@Model.PlanningId" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold"
-                       title="Mover esta planificación a otra fecha, periodo o ambiente">
+                       title="Mover esta planificación a otra fecha, periodo o laboratorio">
                         <i class="mdi mdi-calendar-sync mr-1"></i> Reprogramar
                     </a>
                 }

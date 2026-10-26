@@ -2,10 +2,14 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.CreateModel
 
 @{
-    ViewData["Title"] = "Solicitud de Adquisición (L-12)";
+    ViewData["Title"] = "Nueva solicitud de compra";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 6);
 }
+
+<partial name="_PageHelp" model='"Acquisitions.Create"' />
 
 <div class="row justify-content-center">
     <div class="col-lg-11 col-xl-10">
@@ -19,7 +23,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Formulario de Solicitud de Adquisición (L-12)</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Solicitud de compra</h4>
                         <h6 class="card-subtitle text-muted">Gestión de compra de nuevos activos, repuestos e insumos para laboratorios.</h6>
                     </div>
                     <div class="ml-auto mt-2 mt-md-0">
@@ -28,7 +32,7 @@
                 </div>
 
                 <form method="post" novalidate id="createAcquisitionForm">
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
 
                     <input type="hidden" name="isWizard" value="@isWizard.ToString().ToLower()" />
                     <input type="hidden" asp-for="ManagementPlanId" />
@@ -98,14 +102,14 @@
                                 <div class="d-flex align-items-center">
                                     <div class="mr-3" style="color: #0284c7;"><i class="fas fa-clipboard-list fa-lg"></i></div>
                                     <div>
-                                        <h6 class="m-0 font-weight-bold" style="color: #0369a1;">Kardex / Historial Previos (Fase 5)</h6>
-                                        <span class="small" style="color: #0284c7;">Ref L-8 Mantenimiento: @ViewData["LinkedMaintenanceId"]</span>
+                                        <h6 class="m-0 font-weight-bold" style="color: #0369a1;">Cierre del mantenimiento e historial</h6>
+                                        <span class="small" style="color: #0284c7;">Mantenimiento vinculado al equipo</span>
                                     </div>
                                     <a href="/Maintenances/Details/@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #0284c7; border: 1px solid #bae6fd;">
-                                        Ver Mantenimiento L-8 <i class="fas fa-external-link-alt ml-1"></i>
+                                        Ver registro de mantenimiento <i class="fas fa-external-link-alt ml-1"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 5, 'Kardex e Historial', 6)">
-                                        <i class="fas fa-undo"></i> Rehacer Kardex
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@Model.ManagementPlanId, 5, 'Cierre del mantenimiento', 6)">
+                                        <i class="fas fa-undo"></i> Rehacer cierre
                                     </button>
                                 </div>
                             </div>
@@ -114,17 +118,17 @@
 
                     <div class="row mt-4">
                         <div class="col-md-5 border-right">
-                            <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i> Datos Financieros</h6>
+                            <h6 class="text-muted font-weight-bold text-uppercase mb-3"><i class="fas fa-dollar-sign mr-2 text-success"></i> Datos Financieros</h6>
 
                             <div class="form-group mb-3">
-                                <label asp-for="Input.InvestmentCode" class="control-label font-weight-bold small uppercase text-muted">Código de Inversión (Activos) <span class="text-danger">*</span></label>
+                                <label asp-for="Input.InvestmentCode" class="control-label font-weight-bold small uppercase text-muted">Código de Inversión (Activos) <span class="text-danger">*</span></label> <partial name="_HelpHint" model='"investment-code"' />
                                 <input asp-for="Input.InvestmentCode" class="form-control border-success" id="investmentCodeInput" placeholder="Ej: INV-2024-001" />
                                 <span asp-validation-for="Input.InvestmentCode" class="text-danger small"></span>
                                 <small class="form-text text-muted italic">Código sugerido según la unidad seleccionada.</small>
                             </div>
 
                             <div class="form-group mb-3">
-                                <label asp-for="Input.CostCenter" class="control-label font-weight-bold small uppercase text-muted">Centro de Costos <span class="text-danger">*</span></label>
+                                <label asp-for="Input.CostCenter" class="control-label font-weight-bold small uppercase text-muted">Centro de Costos <span class="text-danger">*</span></label> <partial name="_HelpHint" model='"cost-center"' />
                                 <input asp-for="Input.CostCenter" class="form-control border-success" placeholder="Ej: FAC-MED-01" />
                                 <span asp-validation-for="Input.CostCenter" class="text-danger small"></span>
                             </div>
@@ -134,7 +138,7 @@
                                 @if (isWizard && ViewData["LinkedMaintenanceId"] != null)
                                 {
                                     <select asp-for="Input.MaintenanceId" class="form-control custom-select bg-light text-dark font-weight-bold" id="maintenanceSelect">
-                                        <option value="@ViewData["LinkedMaintenanceId"]" selected>Mnt #@ViewData["LinkedMaintenanceId"] (Seleccionado por Wizard)</option>
+                                        <option value="@ViewData["LinkedMaintenanceId"]" selected>Mnt #@ViewData["LinkedMaintenanceId"] (seleccionado por el asistente)</option>
                                     </select>
                                 }
                                 else
@@ -204,7 +208,7 @@
                         {
                             <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="6" asp-route-SelectedLabId="@Model.Input.LaboratoryId" asp-route-ManagementId="@ViewData["ManagementId"]"
                                class="btn btn-outline-secondary btn-rounded mr-2 px-4 font-weight-bold">
-                                <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
+                                <i class="fas fa-arrow-left mr-1"></i> Volver al asistente
                             </a>
                         }
                         else
@@ -217,7 +221,7 @@
                             <i class="fas fa-save mr-1"></i> Guardar Borrador
                         </button>
                         <button type="submit" id="btnSubmitAcquisition" formnovalidate class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold py-2">
-                            <i class="fas fa-check-circle mr-1"></i> Crear Solicitud L-12
+                            <i class="fas fa-check-circle mr-1"></i> Registrar solicitud de compra
                         </button>
                     </div>
                 </form>
@@ -233,7 +237,7 @@
     }
 
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
-        <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+        <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
         <script>
             $(function() {
                 $(".select2").select2({ width: '100%', allowClear: true });
@@ -369,10 +373,10 @@
                 }
 
                 Swal.fire({
-                    title: isDraft ? '¿Guardar borrador L-12?' : '¿Confirmar Solicitud?',
+                    title: isDraft ? '¿Guardar borrador de la solicitud de compra?' : '¿Confirmar Solicitud?',
                     text: isDraft
-                        ? 'Se guardará el avance sin cerrar el wizard ni pasar a Completados.'
-                        : 'Se enviará la solicitud de adquisición (L-12) para aprobación financiera.',
+                        ? 'Se guardará el avance sin cerrar el asistente ni pasar a Completados.'
+                        : 'Se enviará la solicitud de compra para aprobación financiera.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: isDraft ? 'Sí, guardar borrador' : 'Sí, crear solicitud',

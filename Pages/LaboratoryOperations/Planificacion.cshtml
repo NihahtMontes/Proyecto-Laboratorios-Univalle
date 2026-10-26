@@ -3,6 +3,7 @@
 @using System.Text.Json
 @{
     ViewData["Title"] = Model.Title;
+    ViewData["Section"] = "Planificación académica";
     var readonlyClass = Model.IsReadOnly ? "bg-light" : null;
     var isEdit = Model.Id.HasValue && !Model.IsReadOnly;
 
@@ -48,6 +49,82 @@
 <div class="container-fluid mt-3">
     <partial name="_PlanningContext" model="Model.Context" />
 
+    @if (Model.CanAssignPeriod)
+    {
+        var assignDate = DateTime.TryParseExact(Model.Input.Date, "yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var parsedDate)
+            ? parsedDate : (DateTime?)null;
+        <div class="card border-0 shadow-sm rounded-lg mb-4" style="border-left: 4px solid #17a2b8;">
+            <div class="card-body p-4">
+                <form method="post" asp-page-handler="AssignPeriod" asp-route-id="@Model.Id" id="form-assign-period">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="rounded-circle bg-light-info text-info p-3 mr-3"><i class="far fa-clock fa-lg"></i></div>
+                        <div class="flex-grow-1">
+                            <h5 class="font-weight-bold text-info mb-1">Asignar horario</h5>
+                            <div class="small text-dark">
+                                Esta planificación aprobada no tiene periodo asignado y no aparece en la grilla.
+                                Asigna el bloque de periodos del día <strong>@(assignDate?.ToString("dd/MM/yyyy"))</strong>:
+                                no cambia la fecha, el laboratorio, el docente ni el material.
+                            </div>
+                        </div>
+                    </div>
+                    @if (Model.AssignTeacherConflicts.Count > 0)
+                    {
+                        <div class="card border border-danger shadow-lg mb-4" role="alert" id="assign-teacher-conflict-box" style="border-width:2px !important;border-left-width:8px !important;border-radius:10px;">
+                            <div class="card-header bg-danger text-white d-flex align-items-center py-2" style="border-radius:8px 8px 0 0;">
+                                <i class="fas fa-exclamation-triangle fa-lg mr-2"></i>
+                                <strong class="text-uppercase" style="letter-spacing:.5px;">Choque de docente: el horario no se asignó</strong>
+                            </div>
+                            <div class="card-body py-3">
+                                <div>
+                                    <h5 class="font-weight-bold text-danger mb-2">El docente ya tiene otra práctica en esos periodos</h5>
+                                    <ul class="mb-2 pl-3">
+                                        @foreach (var conflict in Model.AssignTeacherConflicts)
+                                        {
+                                            <li>@conflict</li>
+                                        }
+                                    </ul>
+                                    <div class="small text-dark mb-3">
+                                        Para continuar elija otro horario o docente. Si aun así necesita asignar,
+                                        se dejará constancia en las observaciones.
+                                    </div>
+                                    <input type="hidden" name="acceptTeacherConflict" id="assign-accept-teacher-conflict" value="false" />
+                                    <input type="hidden" name="teacherConflictFingerprint" id="assign-teacher-conflict-fingerprint" value="" />
+                                    <button type="button" id="assign-teacher-conflict-force" class="btn btn-danger btn-rounded font-weight-bold px-4 shadow-sm">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i> Asignar de todos modos
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <div class="form-row align-items-end">
+                        <div class="form-group col-md-5 mb-2">
+                            <label for="assign-start-period" class="small font-weight-bold text-muted">PERIODO INICIAL</label>
+                            <select name="startPeriodId" id="assign-start-period" class="form-control">
+                                @foreach (var p in Model.Periods)
+                                {
+                                    <option value="@p.Id" selected="@(p.Id == Model.SuggestedStartPeriodId)">
+                                        Periodo @p.Order · @p.StartTime.ToString(@"hh\:mm")–@p.EndTime.ToString(@"hh\:mm")
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3 mb-2">
+                            <label for="assign-period-count" class="small font-weight-bold text-muted">CANTIDAD DE PERIODOS</label>
+                            <input type="number" name="periodCount" id="assign-period-count" class="form-control"
+                                   min="1" max="12" value="@Model.SuggestedPeriodCount" />
+                        </div>
+                        <div class="form-group col-md-4 mb-2 text-md-right">
+                            <button type="submit" class="btn btn-info btn-rounded font-weight-bold px-4">
+                                <i class="far fa-clock mr-1"></i> Asignar horario
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+
     <form method="post" asp-route-id="@Model.Id" asp-route-managementId="@Model.ManagementId" id="form-planificacion">
         <input type="hidden" asp-for="Id" />
         <input type="hidden" asp-for="ManagementId" />
@@ -64,6 +141,36 @@
                         </div>
 
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                        @if (Model.TeacherConflicts.Count > 0)
+                        {
+                            <div class="card border border-danger shadow-lg mb-4" role="alert" id="teacher-conflict-box" style="border-width:2px !important;border-left-width:8px !important;border-radius:10px;">
+                                <div class="card-header bg-danger text-white d-flex align-items-center py-2" style="border-radius:8px 8px 0 0;">
+                                    <i class="fas fa-exclamation-triangle fa-lg mr-2"></i>
+                                    <strong class="text-uppercase" style="letter-spacing:.5px;">Choque de docente: la planificación no se guardó</strong>
+                                </div>
+                                <div class="card-body py-3">
+                                    <div>
+                                        <h5 class="font-weight-bold text-danger mb-2">El docente ya tiene otra práctica en esos periodos</h5>
+                                        <ul class="mb-2 pl-3">
+                                            @foreach (var conflict in Model.TeacherConflicts)
+                                            {
+                                                <li>@conflict</li>
+                                            }
+                                        </ul>
+                                        <div class="small text-dark mb-3">
+                                            Para continuar elija otro horario o docente. Si aun así necesita guardar,
+                                            se dejará constancia en las observaciones.
+                                        </div>
+                                        <input type="hidden" name="Input.AcceptTeacherConflict" id="accept-teacher-conflict" value="false" />
+                                        <input type="hidden" name="Input.TeacherConflictFingerprint" id="teacher-conflict-fingerprint" value="" />
+                                        <button type="button" id="teacher-conflict-force" class="btn btn-danger btn-rounded font-weight-bold px-4 shadow-sm">
+                                            <i class="fas fa-exclamation-triangle mr-1"></i> Guardar de todos modos
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
 
                         @if (!string.IsNullOrWhiteSpace(Model.ScheduleCode))
                         {
@@ -112,6 +219,11 @@
                                 <div class="d-flex align-items-center">
                                     <select asp-for="Input.PracticeId" id="practice-select" class="form-control select2 flex-grow-1" disabled="@(Model.IsReadOnly ? "disabled" : null)" data-placeholder="— Seleccionar práctica —">
                                         <option value="0">— Seleccionar práctica —</option>
+                                        @* La lista la dibuja el JS por materia: la práctica elegida se conserva al volver con errores o al editar. *@
+                                        @if (Model.Input.PracticeId > 0)
+                                        {
+                                            <option value="@Model.Input.PracticeId" selected="selected">@Model.Input.PracticeId</option>
+                                        }
                                     </select>
                                     @if (Model.CanCreatePractice && !Model.IsReadOnly)
                                     {
@@ -121,8 +233,8 @@
                                     }
                                 </div>
                                 <span asp-validation-for="Input.PracticeId" class="text-danger small"></span>
-                                <small id="practice-hint" class="text-muted d-block mt-1" style="display:none;"></small>
-                                <small id="practice-empty-hint" class="text-warning d-block mt-1" style="display:none;">
+                                <small id="practice-hint" class="text-muted mt-1" style="display:none;"></small>
+                                <small id="practice-empty-hint" class="text-warning mt-1" style="display:none;">
                                     <i class="fas fa-exclamation-triangle mr-1"></i> No hay prácticas del catálogo para la materia seleccionada.
                                 </small>
                             </div>
@@ -290,7 +402,7 @@
 
                         <div class="alert alert-light border mt-4 mb-0 small">
                             <i class="fas fa-info-circle text-primary mr-1"></i>
-                            El horario se define tocando la ficha del periodo de inicio y ajustando la cantidad de periodos: la hora de inicio y de fin se calculan del catálogo de periodos académicos. Las fichas grises muestran la ocupación del ambiente elegido; entre prácticas del mismo ambiente debe quedar un periodo libre.
+                            El horario se define tocando la ficha del periodo de inicio y ajustando la cantidad de periodos: la hora de inicio y de fin se calculan del catálogo de periodos académicos. Las fichas grises muestran la ocupación del laboratorio elegido; entre prácticas del mismo laboratorio debe quedar un periodo libre.
                         </div>
                     </div>
                 </div>
@@ -352,8 +464,9 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script src="~/js/planificacion-periodos.js"></script>
+    <script src="~/js/confirm-countdown.js" asp-append-version="true"></script>
     <script>
         (function () {
             var practices = @Html.Raw(practiceJson);
@@ -535,6 +648,37 @@
             renderPracticeStatus(initialSubject);
             updatePracticeHint();
 
+            // Confirmación previa a asignar el horario de una aprobada sin periodo (O10).
+            var assignForm = document.getElementById('form-assign-period');
+            if (assignForm) {
+                assignForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    if (typeof Swal === 'undefined') {
+                        HTMLFormElement.prototype.submit.call(assignForm);
+                        return;
+                    }
+                    var planningCode = @Html.Raw(JsonSerializer.Serialize(Model.Code));
+                    var sel = assignForm.querySelector('select[name="startPeriodId"]');
+                    var selText = sel && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '';
+                    var countInput = assignForm.querySelector('input[name="periodCount"]');
+                    var count = countInput && countInput.value ? countInput.value : '1';
+                    Swal.fire({
+                        title: '¿Asignar el horario?',
+                        text: 'Se reservará ' + selText + ' (' + count + ' periodo(s)) para la planificación ' + planningCode + '. No cambia la fecha, el laboratorio, el docente ni el material.',
+                        type: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, asignar',
+                        cancelButtonText: 'Cancelar',
+                        confirmButtonColor: '#17a2b8',
+                        cancelButtonColor: '#6c757d'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            HTMLFormElement.prototype.submit.call(assignForm);
+                        }
+                    });
+                });
+            }
+
             // Confirmación previa al guardar una edición.
             var form = document.getElementById('form-planificacion');
             var editButton = form ? form.querySelector('.js-edit-confirm') : null;
@@ -560,6 +704,77 @@
                         if (result && (result.isConfirmed === true || result.value === true)) {
                             form.dataset.confirmed = '1';
                             HTMLFormElement.prototype.submit.call(form);
+                        }
+                    });
+                });
+            }
+
+            // ── Choque de docente: insistir tras una cuenta regresiva de 5 s (queda constancia en observaciones) ──
+            var mainTeacherConflicts = @Html.Raw(JsonSerializer.Serialize(Model.TeacherConflicts));
+            var mainTeacherFingerprint = @Html.Raw(JsonSerializer.Serialize(Model.TeacherConflictFingerprint ?? string.Empty));
+            var assignTeacherConflicts = @Html.Raw(JsonSerializer.Serialize(Model.AssignTeacherConflicts));
+            var assignTeacherFingerprint = @Html.Raw(JsonSerializer.Serialize(Model.AssignTeacherConflictFingerprint ?? string.Empty));
+
+            function escapeHtml(text) {
+                return String(text == null ? '' : text)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            function conflictListHtml(items) {
+                var html = '<ul style="padding-left:18px;margin-bottom:10px;">';
+                items.forEach(function (c) {
+                    html += '<li style="margin-bottom:2px;"><i class="fas fa-user-clock mr-1 text-danger"></i>' + escapeHtml(c) + '</li>';
+                });
+                return html + '</ul>' +
+                    '<div class="small text-danger font-weight-bold"><i class="fas fa-exclamation-triangle mr-1"></i>Esta acción quedará registrada.</div>';
+            }
+
+            // Flujo principal: guardar la planificación con el choque de docente aceptado.
+            var mainForceBtn = document.getElementById('teacher-conflict-force');
+            if (mainForceBtn) {
+                mainForceBtn.addEventListener('click', function () {
+                    if (typeof window.confirmWithCountdown !== 'function') return;
+                    window.confirmWithCountdown({
+                        seconds: 5,
+                        title: 'Guardar con choque de docente',
+                        html: conflictListHtml(mainTeacherConflicts),
+                        confirmText: 'Sí, guardar con el choque de docente',
+                        onConfirm: function () {
+                            var form = document.getElementById('form-planificacion');
+                            var accept = document.getElementById('accept-teacher-conflict');
+                            var fp = document.getElementById('teacher-conflict-fingerprint');
+                            if (accept) accept.value = 'true';
+                            if (fp) fp.value = mainTeacherFingerprint || '';
+                            if (form) {
+                                form.dataset.confirmed = '1';
+                                HTMLFormElement.prototype.submit.call(form);
+                            }
+                        }
+                    });
+                });
+            }
+
+            // Flujo de asignación de horario (O10): asignar con el choque de docente aceptado.
+            var assignForceBtn = document.getElementById('assign-teacher-conflict-force');
+            if (assignForceBtn) {
+                assignForceBtn.addEventListener('click', function () {
+                    if (typeof window.confirmWithCountdown !== 'function') return;
+                    window.confirmWithCountdown({
+                        seconds: 5,
+                        title: 'Asignar con choque de docente',
+                        html: conflictListHtml(assignTeacherConflicts),
+                        confirmText: 'Sí, asignar con el choque de docente',
+                        onConfirm: function () {
+                            var form = document.getElementById('form-assign-period');
+                            var accept = document.getElementById('assign-accept-teacher-conflict');
+                            var fp = document.getElementById('assign-teacher-conflict-fingerprint');
+                            if (accept) accept.value = 'true';
+                            if (fp) fp.value = assignTeacherFingerprint || '';
+                            if (form) {
+                                form.dataset.confirmed = '1';
+                                HTMLFormElement.prototype.submit.call(form);
+                            }
                         }
                     });
                 });

@@ -1,5 +1,9 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups.EditModel
+@{
+    ViewData["Title"] = "Editar grupo";
+    ViewData["Section"] = "Planificación académica";
+}
 
 <div class="row">
     <!-- Main Column: CourseGroup Management -->
@@ -121,6 +125,7 @@
                         <select asp-for="Input.Status" class="form-control border-warning font-weight-bold custom-select"
                                 asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<GeneralStatus>()"
                                 required></select>
+                        <span asp-validation-for="Input.Status" class="text-danger small font-weight-bold d-block mt-1"></span>
                         <small class="text-muted italic mt-2 d-block small">Indique si el grupo sigue operativo para nuevas prácticas.</small>
                     </div>
 
@@ -196,7 +201,7 @@
 }
 
 @section Scripts {
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script>
         $(function () {
             "use strict";

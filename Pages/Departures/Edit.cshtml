@@ -3,7 +3,8 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Editar Salida de Equipo (L-3)";
+    ViewData["Title"] = "Editar salida de equipos";
+    ViewData["Section"] = "Mantenimiento de equipos";
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 4);
     int? prevPhaseId = (int?)ViewData["LinkedMaintenanceId"];
@@ -30,7 +31,7 @@
                 </div>
 
                 <form method="post" id="departureEditForm" novalidate>
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 mb-4"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 mb-4"></div>
                     <input type="hidden" asp-for="Input.Id" />
                     <input type="hidden" asp-for="Input.EquipmentUnitId" />
 
@@ -114,12 +115,12 @@
                         @if (isWizard && prevPhaseId != null && planId != null)
                         {
                             <div class="form-group mt-4 mb-0">
-                                <label class="control-label font-weight-bold small text-uppercase text-muted">Mantenimiento Relacionado (L-8)</label>
+                                <label class="control-label font-weight-bold small text-uppercase text-muted">Mantenimiento relacionado</label>
                                 <div class="p-2 rounded" style="background:#f5f3ff; border: 1px solid #ddd6fe;">
                                     <div class="d-flex align-items-center">
                                         <div class="mr-3" style="color: #7c3aed;"><i class="fas fa-wrench fa-lg"></i></div>
                                         <div>
-                                            <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Mantenimiento L-8 Vinculado</h6>
+                                            <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Mantenimiento vinculado</h6>
                                             <span class="small" style="color: #7c3aed;">ID: @prevPhaseId</span>
                                         </div>
                                         <a href="/Maintenances/Details/@prevPhaseId" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
@@ -132,13 +133,13 @@
                                         @if (diff == 1)
                                         {
                                             <a href="/Maintenances/Edit?id=@prevPhaseId" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold shadow-sm ml-2">
-                                                <i class="fas fa-edit"></i> Editar L-8
+                                                <i class="fas fa-edit"></i> Editar mantenimiento
                                             </a>
                                         }
                                         else
                                         {
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, @prevPhaseEnumInt, 'L-8 Mantenimiento', @currentPhaseInt)">
-                                                <i class="fas fa-undo"></i> Rehacer L-8
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, @prevPhaseEnumInt, 'Registro de mantenimiento', @currentPhaseInt)">
+                                                <i class="fas fa-undo"></i> Rehacer mantenimiento
                                             </button>
                                         }
                                     </div>
@@ -226,7 +227,7 @@
                                                                        class="form-control form-control-sm" placeholder="Pendiente por evidencia" />
                                                             </td>
                                                             <td>
-                                                                <input type="number" name="Input.Items[@i].Quantity" value="@item.Quantity"
+                                                                <input type="number" name="Input.Items[@i].Quantity" value="@(item.Quantity?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))"
                                                                        class="form-control form-control-sm" min="0.01" step="0.01" placeholder="Pendiente" />
                                                             </td>
                                                             <td>
@@ -291,14 +292,39 @@
             '<td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger btn-rounded remove-item-row" title="Quitar"><i class="fas fa-trash-alt"></i></button></td>' +
             '</tr>';
 
+        // BUG-06: el model binder de ASP.NET Core corta en el primer hueco de índices
+        // (0,2,3 => solo llega Input.Items[0]) y en Edit.cshtml.cs los ítems existentes
+        // que no llegan se marcan IsRemoved=true => se borrarían ítems que el usuario
+        // no quitó. Por eso se reindexan las filas como 0..n-1, sin huecos.
+        function reindexDepartureItems() {
+            var $rows = $('#itemsBody tr.item-row');
+            $rows.each(function (n) {
+                $(this).find('[name],[id],[for],[data-valmsg-for]').each(function () {
+                    var $el = $(this);
+                    $.each(['name', 'id', 'for', 'data-valmsg-for'], function (j, attr) {
+                        var val = $el.attr(attr);
+                        if (!val) return;
+                        var newVal = val.replace(/Input\.Items\[\d+\]/g, 'Input.Items[' + n + ']')
+                                        .replace(/Input_Items_\d+__/g, 'Input_Items_' + n + '__');
+                        if (newVal !== val) {
+                            $el.attr(attr, newVal);
+                        }
+                    });
+                });
+            });
+            itemRowCount = $rows.length;
+        }
+
         $('#addItemBtn').click(function () {
-            var row = itemRowTemplate.replace(/\{0\}/g, itemRowCount);
+            // Índice nuevo = cantidad actual de filas: nunca quedan huecos.
+            var row = itemRowTemplate.replace(/\{0\}/g, $('#itemsBody tr.item-row').length);
             $('#itemsBody').append(row);
-            itemRowCount++;
+            reindexDepartureItems();
         });
 
         $('#itemsBody').on('click', '.remove-item-row', function () {
             $(this).closest('tr.item-row').remove();
+            reindexDepartureItems();
         });
     </script>
     @{

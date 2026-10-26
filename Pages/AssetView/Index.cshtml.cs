@@ -30,6 +30,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
         public int UnitsWithoutSerialCount { get; set; }
         public int UnitsWithoutSpecificClassificationCount { get; set; }
         public int ClassificationQualityPercent { get; set; }
+        public int StockRecordsCount { get; set; }
+        public int StockLaboratoriesCount { get; set; }
 
         public string CategoryDataJson { get; set; } = "[]";
         public string EquipmentSubClassJson { get; set; } = "{}";
@@ -83,6 +85,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 .CountAsync();
             UnitsWithoutEnvironmentCount = await activeUnits.CountAsync(u => !u.LaboratoryId.HasValue);
             UnitsWithoutSerialCount = await activeUnits.CountAsync(u => u.SerialNumber == null || u.SerialNumber == "");
+            StockRecordsCount = await _context.ArticleStocks
+                .AsNoTracking()
+                .CountAsync();
+            StockLaboratoriesCount = await _context.ArticleStocks
+                .AsNoTracking()
+                .Select(s => s.LaboratoryId)
+                .Distinct()
+                .CountAsync();
             UnitsWithoutSpecificClassificationCount = PendingClassificationUnitsCount + LegacyInferredUnitsCount;
             ClassificationQualityPercent = TotalUnitsCount == 0
                 ? 0

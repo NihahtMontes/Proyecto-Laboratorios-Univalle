@@ -3,12 +3,19 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Registrar Mantenimiento (L-8)";
+    ViewData["Title"] = "Nuevo registro de mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     bool isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 3);
     var categoryList = Html.GetEnumSelectList<CostCategory>();
+    // En el asistente (con plan) se ofrecen dos acciones: guardar sin finalizar o registrar y finalizar.
+    bool wizardWithPlan = isWizard && Model.ManagementPlanId.HasValue;
+    bool continuingMaintenance = wizardWithPlan && Model.ExistingMaintenanceId.HasValue;
 }
+
+<partial name="_PageHelp" model='"Maintenances.Create"' />
 
 <div class="row justify-content-center">
     <div class="col-lg-12">
@@ -22,7 +29,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Registrar Mantenimiento / Servicio (L-8)</h4>
+                        <h4 class="card-title text-dark font-weight-bold">@(continuingMaintenance ? "Continuar mantenimiento" : "Registrar mantenimiento")</h4>
                         <h6 class="card-subtitle text-muted">Complete el registro técnico de la intervención realizada al equipo.</h6>
                     </div>
                     <div class="ml-auto text-right">
@@ -41,12 +48,12 @@
                                 @if (isWizard)
                                 {
                                     <text><strong>Registro de mantenimiento en flujo.</strong> Los campos marcados con <span class="text-danger font-weight-bold">*</span> son obligatorios para avanzar.<br/>
-                                    El <strong>Técnico Responsable</strong> es obligatorio porque la fase L-3 Salida necesita saber quién recibe el equipo.</text>
+                                    El <strong>Técnico Responsable</strong> es obligatorio porque la salida de equipos necesita saber quién recibe el equipo.</text>
                                 }
                                 else
                                 {
                                     <text><strong>Registro inicial de mantenimiento.</strong> Solo los campos marcados con <span class="text-danger font-weight-bold">*</span> son obligatorios para crear el registro.<br/>
-                                    Los campos con <span class="badge badge-light border text-muted ml-1">Kardex</span> se completan después en la fase <strong>Concluir Mantenimiento (Kardex)</strong>.</text>
+                                    Los campos marcados con <span class="badge badge-light border text-muted ml-1">Cierre</span> se completan después, en el paso <strong>Cierre del mantenimiento</strong>.</text>
                                 }
                             </div>
                         </div>
@@ -59,7 +66,7 @@
                     <div class="bg-light p-4 rounded mb-4 border-left border-warning" style="border-left-width: 4px;">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-microchip mr-2 text-warning"></i>Contexto del Servicio</h5>
-                            <button type="button" id="btnVerHistorico" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Ver historial de Kardex del equipo seleccionado">
+                            <button type="button" id="btnVerHistorico" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Ver el historial del equipo seleccionado">
                                 <i class="fas fa-history mr-1"></i> Ver Histórico
                             </button>
                         </div>
@@ -152,7 +159,7 @@
                                     }
                                     else
                                     {
-                                        <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small text-uppercase text-muted">Técnico Responsable <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
+                                        <label asp-for="Input.TechnicianId" class="control-label font-weight-bold small text-uppercase text-muted">Técnico Responsable <span class="badge badge-light border text-muted ml-1">Cierre</span></label>
                                         <select asp-for="Input.TechnicianId" class="form-control custom-select" asp-items="ViewBag.TechnicianId">
                                             <option value="">-- Asignar Técnico --</option>
                                         </select>
@@ -163,7 +170,7 @@
                         <div class="row mt-3">
                             <div class="col-md-12">
                                 <div class="form-group mb-0">
-                                    <label class="control-label font-weight-bold small text-uppercase text-muted">Solicitud Técnica Relacionada (L-7)</label>
+                                    <label class="control-label font-weight-bold small text-uppercase text-muted">Solicitud relacionada</label>
                                     <input type="hidden" asp-for="Input.RequestId" />
                                     @if (Model.Input.RequestId.HasValue)
                                     {
@@ -171,7 +178,7 @@
                                             <div class="d-flex align-items-center">
                                                 <div class="mr-3" style="color: #7c3aed;"><i class="fas fa-file-invoice fa-lg"></i></div>
                                                 <div>
-                                                    <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Solicitud L-7 Vinculada</h6>
+                                                    <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Solicitud vinculada</h6>
                                                     <span class="small" style="color: #7c3aed;">Req ID: @Model.Input.RequestId.Value</span>
                                                 </div>
                                                 <a href="/Requests/Details/@Model.Input.RequestId.Value?isWizard=true" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
@@ -183,7 +190,7 @@
                                     else
                                     {
                                         <div class="p-2 rounded bg-light border">
-                                            <span class="text-muted small font-weight-bold"><i class="fas fa-info-circle mr-1"></i>Mantenimiento directo (Sin L-7)</span>
+                                            <span class="text-muted small font-weight-bold"><i class="fas fa-info-circle mr-1"></i>Mantenimiento directo (sin solicitud)</span>
                                         </div>
                                     }
                                 </div>
@@ -205,11 +212,11 @@
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group mb-3">
-                                                <label asp-for="Input.StartDate" class="control-label font-weight-bold small text-uppercase text-muted">Inicio Real <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
+                                                <label asp-for="Input.StartDate" class="control-label font-weight-bold small text-uppercase text-muted">Inicio Real <span class="badge badge-light border text-muted ml-1">Cierre</span></label>
                                                 <input asp-for="Input.StartDate" class="form-control" type="datetime-local" />
                                             </div>
                                             <div class="form-group mb-0">
-                                                <label asp-for="Input.EndDate" class="control-label font-weight-bold small text-uppercase text-muted">Finalización <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
+                                                <label asp-for="Input.EndDate" class="control-label font-weight-bold small text-uppercase text-muted">Finalización <span class="badge badge-light border text-muted ml-1">Cierre</span></label>
                                                 <input asp-for="Input.EndDate" class="form-control" type="datetime-local" />
                                                 <span asp-validation-for="Input.EndDate" class="text-danger small"></span>
                                             </div>
@@ -231,6 +238,10 @@
                                         </select>
                                     </div>
                                     <p class="text-muted small mb-0"><i class="fas fa-info-circle mr-1"></i> Defina si el equipo está reparado o requiere mayor intervención.</p>
+                                    @if (wizardWithPlan)
+                                    {
+                                        <p class="small mb-0 mt-2 text-success font-weight-bold"><i class="fas fa-flag-checkered mr-1"></i> Cuando el trabajo esté terminado, usa «Registrar y finalizar» para pasar el equipo al paso de Salida.</p>
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -238,7 +249,7 @@
 
                     <div class="card border mb-4 shadow-none">
                         <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-4 px-4">
-                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Lista de Verificación Técnica (L-48) <span class="badge badge-light border text-muted ml-1">Kardex</span></h5>
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Tareas de mantenimiento <partial name="_HelpHint" model='"maintenance-tasks"' /> <span class="badge badge-light border text-muted ml-1">Cierre</span></h5>
                             <button type="button" class="btn btn-sm btn-outline-primary btn-rounded ml-auto font-weight-bold" onclick="addTask()">
                                 <i class="fas fa-plus mr-1"></i> Agregar Tarea
                             </button>
@@ -280,14 +291,14 @@
                     </div>
 
                     <div class="form-group mb-4">
-                        <label asp-for="Input.Description" class="control-label font-weight-bold text-dark">Descripción del Trabajo Realizado / Observaciones Técnicas <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
+                        <label asp-for="Input.Description" class="control-label font-weight-bold text-dark">Descripción del Trabajo Realizado / Observaciones Técnicas <span class="badge badge-light border text-muted ml-1">Cierre</span></label>
                         <textarea asp-for="Input.Description" id="descriptionInput" class="form-control rounded" rows="3" placeholder="Detalle las fallas encontradas y las soluciones aplicadas..."></textarea>
                         <span asp-validation-for="Input.Description" class="text-danger small"></span>
                     </div>
 
                     <div class="card border shadow-none mb-4">
                         <div class="card-header bg-white d-flex align-items-center border-bottom-0 pt-4 px-4">
-                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-file-invoice-dollar mr-2 text-success"></i>Control de Costos y Repuestos <span class="badge badge-light border text-muted ml-1">Kardex</span></h5>
+                            <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-dollar-sign mr-2 text-success"></i>Control de Costos y Repuestos <span class="badge badge-light border text-muted ml-1">Cierre</span></h5>
                             <button type="button" id="btnAddCost" class="btn btn-sm btn-success btn-rounded shadow-sm ml-auto font-weight-bold px-3" onclick="addRow()">
                                 <i class="fas fa-plus mr-1"></i> Agregar Ítem
                             </button>
@@ -347,13 +358,13 @@
                     <div class="row" id="completedOptionsBlock" style="display:none;">
                         <div class="col-md-6">
                             <div class="form-group mb-4">
-                                <label asp-for="Input.SuggestedNextMaintenanceDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Sugerida Próximo Mantenimiento <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
+                                <label asp-for="Input.SuggestedNextMaintenanceDate" class="control-label font-weight-bold small text-uppercase text-muted">Fecha Sugerida Próximo Mantenimiento <span class="badge badge-light border text-muted ml-1">Cierre</span></label>
                                 <input asp-for="Input.SuggestedNextMaintenanceDate" class="form-control" type="date" />
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group mb-4">
-                                <label asp-for="Input.SatisfactionLevel" class="control-label font-weight-bold small text-uppercase text-muted">Nivel de Satisfacción <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
+                                <label asp-for="Input.SatisfactionLevel" class="control-label font-weight-bold small text-uppercase text-muted">Nivel de Satisfacción <span class="badge badge-light border text-muted ml-1">Cierre</span></label>
                                 <div class="rating-stars text-warning h4 m-0" style="cursor: pointer;">
                                     <i class="far fa-star" data-value="1"></i>
                                     <i class="far fa-star" data-value="2"></i>
@@ -367,7 +378,7 @@
                     </div>
 
                     <div class="form-group mb-4">
-                        <label asp-for="Input.Recommendations" class="control-label font-weight-bold small text-uppercase text-muted">Recomendaciones Post-Servicio <span class="badge badge-light border text-muted ml-1">Kardex</span></label>
+                        <label asp-for="Input.Recommendations" class="control-label font-weight-bold small text-uppercase text-muted">Recomendaciones Post-Servicio <span class="badge badge-light border text-muted ml-1">Cierre</span></label>
                         <textarea asp-for="Input.Recommendations" class="form-control" rows="2" placeholder="Ej: No forzar el mando, limpiar después de cada uso..."></textarea>
                     </div>
 
@@ -376,7 +387,7 @@
                     <div class="form-actions text-right pb-4">
                         @if (isWizard)
                         {
-                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Volver al Wizard</a>
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="3" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded px-4 mr-2">Volver al asistente</a>
                         }
                         else
                         {
@@ -385,9 +396,21 @@
                         <button type="submit" asp-page-handler="Draft" id="btnDraftMaintenance" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2">
                             <i class="fas fa-save mr-1"></i> Guardar Borrador
                         </button>
-                        <button type="submit" id="btnSubmitMaintenance" formnovalidate class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark">
-                            <i class="fas fa-save mr-1"></i> Registrar Mantenimiento
-                        </button>
+                        @if (wizardWithPlan)
+                        {
+                            <button type="submit" id="btnSubmitMaintenance" formnovalidate class="btn btn-outline-warning btn-rounded px-4 shadow-sm font-weight-bold text-dark mr-2" title="Guarda con el estado elegido; el equipo sigue en el paso de Registro de mantenimiento">
+                                <i class="fas fa-save mr-1"></i> Guardar sin finalizar
+                            </button>
+                            <button type="submit" asp-page-handler="Finalize" id="btnFinalizeMaintenance" formnovalidate class="btn btn-success btn-rounded px-5 shadow-sm font-weight-bold" title="Marca el mantenimiento como Completado y pasa el equipo al paso de Salida">
+                                <i class="fas fa-flag-checkered mr-1"></i> Registrar y finalizar
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="submit" id="btnSubmitMaintenance" formnovalidate class="btn btn-warning btn-rounded px-5 shadow-sm font-weight-bold text-dark">
+                                <i class="fas fa-save mr-1"></i> Registrar Mantenimiento
+                            </button>
+                        }
                     </div>
                 </form>
             </div>
@@ -538,8 +561,9 @@
                 event.preventDefault();
                 const submitter = event.originalEvent && event.originalEvent.submitter ? event.originalEvent.submitter : document.activeElement;
                 const isDraft = submitter && submitter.id === 'btnDraftMaintenance';
+                const isFinalize = submitter && submitter.id === 'btnFinalizeMaintenance';
                 const targetAction = submitter && submitter.getAttribute('formaction') ? submitter.getAttribute('formaction') : form.action;
-                window.confirmMaintenanceSubmit(isDraft, targetAction);
+                window.confirmMaintenanceSubmit(isDraft, targetAction, isFinalize);
             });
 
             // Stars Rating Logic
@@ -564,7 +588,7 @@
 
         var isMaintSubmitting = false;
 
-        window.confirmMaintenanceSubmit = function (isDraft, targetAction) {
+        window.confirmMaintenanceSubmit = function (isDraft, targetAction, isFinalize) {
             var form = document.getElementById('maintenanceForm');
             if (!form) {
                 alert('No se pudo ubicar el formulario de mantenimiento.');
@@ -576,11 +600,13 @@
             var status = $('#statusSelector').val();
             var percent = parseInt($('#hiddenPercentageInput').val()) || 0;
 
-            if (!isDraft && status == "2" && percent !== 100) {
+            if (!isDraft && (isFinalize || status == "2") && percent !== 100) {
                 if (typeof Swal !== 'undefined') {
                     Swal.fire({
                         title: 'Mantenimiento Incompleto',
-                        text: 'Para marcar el mantenimiento como Completado, el avance debe estar al 100%.',
+                        text: isFinalize
+                            ? 'Para registrar y finalizar el mantenimiento, el avance debe estar al 100%: marca todas las tareas como completadas.'
+                            : 'Para marcar el mantenimiento como Completado, el avance debe estar al 100%.',
                         icon: 'warning',
                         confirmButtonText: 'Entendido',
                         confirmButtonColor: '#f59e0b'
@@ -592,7 +618,7 @@
             }
 
             var techId = $('#Input_TechnicianId').val();
-            var statusLabel = $('#statusSelector option:selected').text();
+            var statusLabel = isFinalize ? 'Completado' : $('#statusSelector option:selected').text();
             var techLabel = techId ? $('#Input_TechnicianId option:selected').text() : 'Sin asignar';
 
             var detailsHtml = '<div class="text-left mt-3 small">' +
@@ -605,9 +631,13 @@
                 isMaintSubmitting = true;
                 $(form).data('confirmed', true);
                 form.action = targetAction || form.action;
-                $('#btnDraftMaintenance, #btnSubmitMaintenance').prop('disabled', true);
+                $('#btnDraftMaintenance, #btnSubmitMaintenance, #btnFinalizeMaintenance').prop('disabled', true);
                 if (isDraft) {
                     $('#btnDraftMaintenance').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
+                } else if (isFinalize) {
+                    // El servidor fuerza el estado Completado; se refleja también en el formulario.
+                    $('#statusSelector').val('2');
+                    $('#btnFinalizeMaintenance').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
                 } else {
                     $('#btnSubmitMaintenance').html('<i class="fas fa-spinner fa-spin mr-1"></i> Guardando...');
                 }
@@ -619,14 +649,26 @@
                 return;
             }
 
+            var swalTitle = isDraft
+                ? '¿Guardar borrador del mantenimiento?'
+                : (isFinalize ? '¿Registrar y finalizar el mantenimiento?' : '¿Confirmar registro de mantenimiento?');
+            var swalHtml = isDraft
+                ? 'Se guardará el avance parcial sin pasar a la salida de equipos. Podrás continuar el registro más tarde.'
+                : (isFinalize
+                    ? '<p class="mb-0">El equipo pasará al paso de Salida y el mantenimiento quedará como <strong>Completado</strong>.</p>' + detailsHtml
+                    : detailsHtml);
+            var swalConfirm = isDraft
+                ? '<i class="fas fa-save mr-1"></i> Guardar borrador'
+                : (isFinalize ? '<i class="fas fa-flag-checkered mr-1"></i> Sí, registrar y finalizar' : '<i class="fas fa-save mr-1"></i> Registrar');
+
             Swal.fire({
-                title: isDraft ? '¿Guardar borrador L-8?' : '¿Confirmar registro de mantenimiento?',
-                html: isDraft ? 'Se guardará el avance parcial sin pasar a L-3. Podrás continuar el L-8 más tarde.' : detailsHtml,
+                title: swalTitle,
+                html: swalHtml,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: isDraft ? '<i class="fas fa-save mr-1"></i> Guardar borrador' : '<i class="fas fa-save mr-1"></i> Registrar',
+                confirmButtonText: swalConfirm,
                 cancelButtonText: 'Cancelar',
-                confirmButtonColor: isDraft ? '#17a2b8' : '#f59e0b',
+                confirmButtonColor: isDraft ? '#17a2b8' : (isFinalize ? '#28a745' : '#f59e0b'),
                 cancelButtonColor: '#6c757d'
             }).then(function(result) {
                 if (result && (result.isConfirmed === true || result.value === true)) {

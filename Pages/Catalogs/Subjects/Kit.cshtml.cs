@@ -86,6 +86,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
                     lines.Add((await _picker.ResolveEquipmentArticleAsync(line.Id), line.Quantity!.Value));
 
                 var kit = await _context.SubjectKitItems.AsTracking().Where(k => k.SubjectId == Id).ToListAsync();
+
+                // Tope de 999999 también al acumular (antes un artículo repetido podía sumar 1.000.005 en el kit).
+                foreach (var group in lines.GroupBy(l => l.ArticleId))
+                {
+                    var current = kit.FirstOrDefault(k => k.ArticleId == group.Key)?.Quantity ?? 0m;
+                    if (current + group.Sum(l => l.Quantity) > 999999m)
+                    {
+                        await transaction.RollbackAsync();
+                        TempData.Error("La cantidad total de un artículo en el kit no puede superar 999999.");
+                        return RedirectToPage(new { id = Id });
+                    }
+                }
+
                 foreach (var group in lines.GroupBy(l => l.ArticleId))
                 {
                     var quantity = group.Sum(l => l.Quantity);

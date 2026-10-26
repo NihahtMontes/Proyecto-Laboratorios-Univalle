@@ -92,7 +92,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             public string? UserName { get; set; }
 
             [DataType(DataType.Password)]
-            [StringLength(100, ErrorMessage = "La contraseña debe tener al menos 8 caracteres.", MinimumLength = 8)]
+            [StringLength(100, ErrorMessage = "La contraseña debe tener al menos 12 caracteres, con mayúscula, minúscula, número y símbolo.", MinimumLength = 12)]
             [Display(Name = "Nueva Contraseña")]
             public string? NewPassword { get; set; }
 
@@ -194,11 +194,23 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             if (userToUpdate == null)
                 return NotFound();
 
+            // Una cuenta dada de baja no se edita ni se revive desde aquí (el POST usaba IgnoreQueryFilters y la reactivaba).
+            if (userToUpdate.Status == GeneralStatus.Eliminado)
+                return NotFound();
+
             if (userToUpdate.Role == UserRole.SuperAdmin &&
                 !User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
             {
                 return Forbid();
             }
+
+            // El estado solo cambia si el formulario lo envía (campo «Estado de la cuenta»); si no, se conserva.
+            // Antes cada guardado reactivaba las cuentas inactivas. La fecha de alta no está en el formulario: se conserva.
+            if (!Request.HasFormContentType || !Request.Form.ContainsKey("Input.Status"))
+                Input.Status = userToUpdate.Status;
+            else if (Input.Status == GeneralStatus.Eliminado)
+                Input.Status = userToUpdate.Status;   // la baja se hace desde Eliminar, no desde el editor
+            Input.HireDate = userToUpdate.HireDate;
 
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser?.Id == userToUpdate.Id &&

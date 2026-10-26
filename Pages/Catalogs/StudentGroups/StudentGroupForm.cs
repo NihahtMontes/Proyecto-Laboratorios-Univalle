@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
@@ -9,13 +10,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.StudentGroups;
 /// <summary>Campos del formulario Crear/Editar grupo (las materias llegan como filas con casilla).</summary>
 public sealed class StudentGroupFormInput
 {
-    public int ManagementId { get; set; }
-    public int CareerId { get; set; }
-    public int Semester { get; set; }
-    public string Letter { get; set; } = string.Empty;
-    public int? StudentCount { get; set; }
-    public int? ScalingFactor { get; set; }
-    public int? LaboratoryId { get; set; }
+    [Display(Name = "Gestión")] public int ManagementId { get; set; }
+    [Display(Name = "Carrera")] public int CareerId { get; set; }
+    [Display(Name = "Semestre")] public int Semester { get; set; }
+    // Nombres en español: los mensajes de validación muestran el nombre del campo (antes «El campo Letter es obligatorio»).
+    [Display(Name = "Letra del grupo")] public string Letter { get; set; } = string.Empty;
+    [Display(Name = "Cantidad de estudiantes")] public int? StudentCount { get; set; }
+    [Display(Name = "Factor de escala")] public int? ScalingFactor { get; set; }
+    [Display(Name = "Laboratorio")] public int? LaboratoryId { get; set; }
     public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
     public List<StudentGroupFormSubject> Subjects { get; set; } = [];
 

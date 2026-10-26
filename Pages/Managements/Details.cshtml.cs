@@ -48,6 +48,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         // Plan Table L-48
         public IList<ManagementPlan> ManagementPlans { get; set; } = new List<ManagementPlan>();
 
+        // L-48 histórico importado (tabla MaintenancePlans, Excel del cliente): solo lectura.
+        // Solo se carga cuando la gestión NO tiene registros del wizard (ManagementPlans vacío).
+        public IList<MaintenancePlan> HistoricalPlans { get; set; } = new List<MaintenancePlan>();
+
+        // Contadores reales de los datos históricos importados (L-48, L-8, L-6, L-7).
+        public HistoricalActivityCounts HistoricalCountsInfo { get; set; } = new();
+
         // Sprint 3B: Métricas adicionales para el detalle de gestión
         public int TotalActivos       { get; set; }
         public int TotalVencidos      { get; set; }
@@ -241,7 +248,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             // Cálculo del sombreado de 8 semanas según Semester:
             // Gestión I (sem=1): Junio + Julio del mismo año
             // Gestión II (sem=2): Diciembre del mismo año + Enero del año siguiente
-            if (Management.Semester == 1)
+            // Correctiva: sin sombreado (no tiene ventana de 8 semanas; las fallas llevan fechas reales).
+            if (Management.Type == ManagementType.Corrective)
+            {
+                ShadingStart = "";
+                ShadingEnd = "";
+            }
+            else if (Management.Semester == 1)
             {
                 ShadingStart = new DateTime(Management.Year, 6, 1).ToString("yyyy-MM-dd");
                 ShadingEnd   = new DateTime(Management.Year, 8, 1).ToString("yyyy-MM-dd"); // 1 Ago exclusive
@@ -316,6 +329,34 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 .ThenBy(p => p.EquipmentUnit!.Equipment!.Name)
                 .ToListAsync();
 
+            // Gestiones históricas (sin registros del wizard): cargar el L-48 importado
+            // del Excel del cliente y los contadores reales por ManagementId. Las gestiones
+            // con ManagementPlans (wizard, correctivas, activas) no pasan por aquí.
+            // Se respetan los query filters globales (cancelados/anulados quedan excluidos).
+            if (Management.ManagementPlans.Count == 0 && Management.Type == ManagementType.PorConfirmar)
+            {
+                var managementId = Management.Id;
+
+                HistoricalPlans = await _context.MaintenancePlans
+                    .Include(p => p.EquipmentUnit)
+                        .ThenInclude(eu => eu!.Equipment)
+                    .Include(p => p.Laboratory)
+                    .Include(p => p.ResponsiblePerson)
+                    .Where(p => p.ManagementId == managementId)
+                    .OrderBy(p => p.PlannedDate)
+                    .ThenBy(p => p.PlanCode)
+                    .ThenBy(p => p.Id)
+                    .ToListAsync();
+
+                HistoricalCountsInfo = new HistoricalActivityCounts
+                {
+                    L48Plans = await _context.MaintenancePlans.CountAsync(p => p.ManagementId == managementId),
+                    L8Maintenances = await _context.Maintenances.CountAsync(m => m.ManagementId == managementId),
+                    L6Verifications = await _context.Verifications.CountAsync(v => v.ManagementId == managementId),
+                    L7Requests = await _context.Requests.CountAsync(r => r.ManagementId == managementId)
+                };
+            }
+
             return Page();
         }
 
@@ -327,7 +368,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (currentManagement == null)
             {
-                TempData.Warning("No se encontro la gestion solicitada para actualizar el dashboard.");
+                TempData.Warning("No se encontró la gestión solicitada para actualizar el panel.");
                 return RedirectToPage("./Index");
             }
 
@@ -345,7 +386,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (activationResult.ActiveManagement == null)
             {
-                TempData.Warning("No hay una gestion activa para este tipo. Cree o active una gestion antes de continuar.");
+                TempData.Warning("No hay una gestión activa para este tipo. Cree o active una gestión antes de continuar.");
                 return RedirectToPage("./Index", new { Type = currentManagement.Type.ToString() });
             }
 
@@ -360,13 +401,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             _managementContext.InvalidateCache();
 
             var closedMessage = activationResult.ClosedCount > 0
-                ? $" Se cerro {activationResult.ClosedCount} gestion activa duplicada."
+                ? $" Se cerró {activationResult.ClosedCount} gestión activa duplicada."
                 : string.Empty;
             var purgedMessage = purgedGroups > 0
                 ? $" Se eliminaron {purgedGroups} grupo(s) de la gestión."
                 : string.Empty;
 
-            TempData.Success($"Gestion actualizada correctamente. Ahora estas en {activeCode}.{closedMessage}{purgedMessage}");
+            TempData.Success($"Gestión actualizada correctamente. Ahora está en {activeCode}.{closedMessage}{purgedMessage}");
             return RedirectToPage("./Details", new { id = activeId, ActiveTab = "dashboard" });
         }
 
@@ -390,14 +431,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (management.Type == ManagementType.Corrective)
             {
-                TempData.Warning("Las gestiones correctivas no sincronizan equipos. Cada activo entra al flujo cuando se reporta una falla L-7.");
+                TempData.Warning("Las gestiones correctivas no agregan equipos automáticamente. Cada activo entra al flujo cuando se reporta una falla.");
                 return RedirectToPage(new { id, ActiveTab });
             }
 
             // Obtener todos los IDs de equipos ya en esta gestión
             if (management.Type == ManagementType.Preventive)
             {
-                TempData.Info("Seleccione las categorias, subclasificaciones y unidades que entraran a esta ronda preventiva.");
+                TempData.Info("Seleccione las categorías, subclasificaciones y unidades que entrarán a este mantenimiento preventivo.");
                 return RedirectToPage("./PlanAssets", new { id });
             }
 
@@ -414,7 +455,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (!newEquipments.Any())
             {
-                TempData.Info("Todos los equipos activos ya están incluidos en esta ronda.");
+                TempData.Info("Todos los equipos activos ya están incluidos en esta gestión.");
                 return RedirectToPage(new { id, ActiveTab });
             }
 
@@ -434,7 +475,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             }
 
             await _context.SaveChangesAsync();
-            TempData.Success($"Se han sincronizado {newEquipments.Count} equipos nuevos a esta ronda.");
+            TempData.Success($"Se han agregado {newEquipments.Count} equipos nuevos a esta gestión.");
 
             return RedirectToPage(new { id, ActiveTab });
         }
@@ -455,6 +496,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (plan.Management.Type == ManagementType.PorConfirmar)
                 return BadRequest();
+
+            if (plan.Management.Type == ManagementType.Corrective)
+                return new JsonResult(new { success = false, error = "La gestión correctiva no usa semanas planificadas: las fallas se registran con sus fechas reales." });
 
             if (type == "planned")
             {
@@ -535,5 +579,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         public int    PlanId          { get; set; }
         public int    CurrentPhaseInt { get; set; }
         public string StatusLabel     { get; set; } = "Pendiente";
+    }
+
+    /// <summary>
+    /// Contadores de datos históricos importados desde el Excel del cliente
+    /// para una gestión (L-48 planes, L-8 mantenimientos, L-6 verificaciones, L-7 solicitudes).
+    /// </summary>
+    public class HistoricalActivityCounts
+    {
+        public int L48Plans { get; set; }
+        public int L8Maintenances { get; set; }
+        public int L6Verifications { get; set; }
+        public int L7Requests { get; set; }
+
+        public bool HasAny => L48Plans > 0 || L8Maintenances > 0 || L6Verifications > 0 || L7Requests > 0;
     }
 }

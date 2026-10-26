@@ -3,6 +3,9 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
+    ViewData["Title"] = "Verificaciones de equipos";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = Model.FilterLaboratoryId.HasValue;
 }
 
@@ -22,7 +25,7 @@
                 }
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Historial de Verificaciones (L-6)</h3>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Historial de verificaciones de equipos</h3>
                         <h6 class="card-subtitle text-muted ml-2">Sesiones de inspección agrupadas por laboratorio y fecha.</h6>
                     </div>
                 </div>
@@ -33,9 +36,9 @@
                             <select asp-for="FilterLaboratoryId"
                                     class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2"
                                     asp-items="Model.LaboratoryList"
-                                    aria-label="Laboratorio o ambiente"
+                                    aria-label="Laboratorio"
                                     data-live-filter-control>
-                                <option value="">Laboratorio o ambiente</option>
+                                <option value="">Laboratorio</option>
                             </select>
 
                             @if (hasActiveFilters)
@@ -57,7 +60,7 @@
                     <div class="text-center py-5 text-muted">
                         <i class="fas fa-clipboard-check fa-4x mb-4 d-block opacity-2"></i>
                         <h5 class="font-weight-bold">Seleccione un laboratorio</h5>
-                        <p>Elija un laboratorio para ver el historial de sesiones de verificación L-6.</p>
+                        <p>Elija un laboratorio para ver el historial de sesiones de verificación.</p>
                     </div>
                 }
                 else if (Model.Sessions == null || !Model.Sessions.Any())

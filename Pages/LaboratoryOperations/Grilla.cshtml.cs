@@ -14,7 +14,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 /// Grilla semanal por laboratorio (formulario RE-10-VAC-007 "Registro de horarios – Horario por aula"):
 /// lunes a sábado × 12 periodos, con las planificaciones del ambiente elegido.
 /// Con ?reprogramar={planningId} (solo SuperAdmin) entra en modo reprogramación: se arrastra el bloque origen a su
-/// nuevo destino, se previsualizan las validaciones del servidor y se confirma con motivo (OnPostReprogramarAsync).
+/// nuevo destino, se previsualizan las validaciones del servidor y se confirma con motivo (OnPostReprogramarAsync);
+/// con ?returnUrl= (pantalla de origen, p. ej. la grilla de conflictos) salir del modo y confirmar vuelven ahí.
 /// Con ?reponer={planningId}&recoveryId={id} (Supervisor/Administrator/SuperAdmin) repone un bloque de un día
 /// suspendido; con ?recoveryId= (sin reponer) muestra el panel de afectados de la reposición en curso.
 /// </summary>
@@ -26,14 +27,16 @@ public class GrillaModel : PageModel
     private readonly ILaboratoryGridService _grid;
     private readonly IReschedulingService _rescheduling;
     private readonly IGroupScheduleService _schedules;
+    private readonly IConflictGridService _conflicts;
     private readonly ApplicationDbContext _context;
 
     public GrillaModel(ILaboratoryGridService grid, IReschedulingService rescheduling, IGroupScheduleService schedules,
-        ApplicationDbContext context)
+        IConflictGridService conflicts, ApplicationDbContext context)
     {
         _grid = grid;
         _rescheduling = rescheduling;
         _schedules = schedules;
+        _conflicts = conflicts;
         _context = context;
     }
 
@@ -79,11 +82,26 @@ public class GrillaModel : PageModel
     [BindProperty(SupportsGet = true)]
     public int? Resaltar { get; set; }
 
+    /// <summary>Resalta los bloques con conflictos de material (query "conflictos").</summary>
+    [BindProperty(SupportsGet = true, Name = "conflictos")]
+    public bool ShowConflicts { get; set; }
+
+    /// <summary>Pantalla de origen del modo reprogramación (p. ej. la grilla de conflictos): salir y confirmar vuelven ahí.</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
+
+    /// <summary>ReturnUrl validado (local) o null si no se indicó o no es seguro.</summary>
+    public string? SafeReturnUrl => !string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl) ? ReturnUrl : null;
+
     [BindProperty]
     public RescheduleInput Move { get; set; } = new();
 
     /// <summary>Grilla armada (null si no hay gestión pedida ni actual).</summary>
     public LaboratoryGrid? Grid { get; private set; }
+
+    /// <summary>Etiquetas de conflicto de material por PlanningId de las semanas visibles.</summary>
+    public IReadOnlyDictionary<int, IReadOnlyList<PlanningConflictTag>> ConflictTags { get; private set; }
+        = new Dictionary<int, IReadOnlyList<PlanningConflictTag>>();
 
     public bool IsSuperAdmin => User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
 
@@ -239,6 +257,8 @@ public class GrillaModel : PageModel
         }
 
         Grid = await _grid.BuildAsync(ManagementId, LaboratoryId, Week, Date, EffectiveTwoWeeks);
+        if (Grid is { HasWeeks: true })
+            ConflictTags = await _conflicts.GetPlanningTagsAsync(Grid.Weeks.Select(w => w.StartDate));
         return Page();
     }
 
@@ -302,8 +322,16 @@ public class GrillaModel : PageModel
         {
             // Reposición de día: seguir en la grilla con el siguiente pendiente (mismo ambiente primero).
             var next = await FindNextRecoveryPendingAsync(destinationManagementId, Move.DayRecoveryId.Value, Move.LaboratoryId, ct);
+            // Sin más pendientes la reposición ya quedó completada: volver a la grilla del bloque repuesto.
+            // Con ?recoveryId= la página decía "La reposición indicada no existe o ya no está en curso" justo tras el éxito.
             return next == null
-                ? RedirectToPage("./Grilla", new { managementId = destinationManagementId, recoveryId = Move.DayRecoveryId })
+                ? RedirectToPage("./Grilla", new
+                {
+                    managementId = destinationManagementId,
+                    laboratoryId = Move.LaboratoryId,
+                    date = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    resaltar = result.DestinationPlanningId
+                })
                 : RedirectToPage("./Grilla", new
                 {
                     managementId = destinationManagementId,
@@ -312,6 +340,9 @@ public class GrillaModel : PageModel
                     laboratoryId = next.LaboratoryId
                 });
         }
+        // Reprogramación individual: con pantalla de origen (p. ej. conflictos) se vuelve a ella.
+        if (SafeReturnUrl is string returnUrl)
+            return LocalRedirect(returnUrl);
         return RedirectToPage(new
         {
             managementId = destinationManagementId,
@@ -333,12 +364,13 @@ public class GrillaModel : PageModel
             .Select(p => new
             {
                 p.Id,
+                p.Code,
                 p.GroupName,
                 p.TeacherPersonId,
                 p.PeriodCount,
                 p.StatusBeforeRecovery,
                 LaboratoryId = (int?)p.LaboratoryId,
-                Laboratory = p.Laboratory != null ? p.Laboratory.Code : "Sin ambiente",
+                Laboratory = p.Laboratory != null ? p.Laboratory.Code : "Sin laboratorio",
                 Subject = p.Subject != null ? p.Subject.Name : p.PracticeName,
                 StartOrder = p.StartPeriod != null ? (int?)p.StartPeriod.Order : null
             })
@@ -347,7 +379,7 @@ public class GrillaModel : PageModel
         var teachers = teacherIds.Count == 0
             ? []
             : await _context.Interns.AsNoTracking().Where(t => teacherIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t.Name, ct);
-        return rows.Select(p => new RecoverySibling(p.Id, L3Codes.Format(p.Id), p.Laboratory, p.LaboratoryId,
+        return rows.Select(p => new RecoverySibling(p.Id, L3Codes.Format(p.Id, p.Code), p.Laboratory, p.LaboratoryId,
             p.Subject, p.GroupName ?? "—", teachers.GetValueOrDefault(p.TeacherPersonId, "—"), p.PeriodCount ?? 0,
             p.StartOrder is int order && p.PeriodCount is int count ? PlanningSlot.PeriodsText(order, count) : "Sin periodos",
             PlanningStatus.Label(p.StatusBeforeRecovery ?? PlanningStatus.PendingRecovery))).ToList();
@@ -389,7 +421,8 @@ public class GrillaModel : PageModel
             twoWeeks = TwoWeeks,
             destDate = dateText,
             destPeriodId = date.HasValue && Move.StartPeriodId > 0 ? Move.StartPeriodId : (int?)null,
-            destTeacherId = Move.TeacherPersonId > 0 ? Move.TeacherPersonId : (int?)null
+            destTeacherId = Move.TeacherPersonId > 0 ? Move.TeacherPersonId : (int?)null,
+            returnUrl = SafeReturnUrl
         });
     }
 
@@ -400,6 +433,7 @@ public class GrillaModel : PageModel
             .Select(x => new
             {
                 x.Id,
+                x.Code,
                 x.ManagementId,
                 ManagementStatus = x.Management != null ? (Models.Enums.ManagementStatus?)x.Management.Status : null,
                 x.Status,
@@ -424,7 +458,7 @@ public class GrillaModel : PageModel
         if (p == null)
             return (null, "La planificación a reprogramar no existe o fue eliminada.");
         if (!isRecovery && p.Status == PlanningStatus.PendingRecovery)
-            return (null, $"{L3Codes.Format(p.Id)} está pendiente de reposición: se reubica desde la reposición del día suspendido.");
+            return (null, $"{L3Codes.Format(p.Id, p.Code)} está pendiente de reposición: se reubica desde la reposición del día suspendido.");
         if (isRecovery && (recoveryId is not > 0 || p.Status != PlanningStatus.PendingRecovery
             || p.StatusBeforeRecovery is null
             || !await _context.AcademicDays.AsNoTracking().AnyAsync(d => d.Date == p.ScheduledDate.Date
@@ -432,9 +466,9 @@ public class GrillaModel : PageModel
                 && d.DayRecoveryId == recoveryId && d.DayRecovery!.Status == Models.Enums.DayRecoveryStatus.InProgress)))
             return (null, "El bloque ya no está pendiente de esta reposición de día.");
         if (!isRecovery && !GridRelocation.IsReschedulableStatus(p.Status))
-            return (null, $"{L3Codes.Format(p.Id)} está en estado \"{PlanningStatus.Label(p.Status)}\" y no se puede reprogramar.");
+            return (null, $"{L3Codes.Format(p.Id, p.Code)} está en estado \"{PlanningStatus.Label(p.Status)}\" y no se puede reprogramar.");
         if (p.StartPeriodId is not int startPeriodId || p.StartOrder is not int startOrder || p.PeriodCount is not int count)
-            return (null, $"{L3Codes.Format(p.Id)} no tiene periodos asignados: complete su horario antes de reprogramarla.");
+            return (null, $"{L3Codes.Format(p.Id, p.Code)} no tiene periodos asignados: complete su horario antes de reprogramarla.");
         if (p.ManagementStatus is not (Models.Enums.ManagementStatus.Active or Models.Enums.ManagementStatus.Inactive))
             return (null, AcademicManagementService.ReadOnlyMessage);
 
@@ -445,7 +479,7 @@ public class GrillaModel : PageModel
 
         return (new RescheduleOrigin(
             p.Id,
-            L3Codes.Format(p.Id),
+            L3Codes.Format(p.Id, p.Code),
             p.ManagementId,
             string.IsNullOrWhiteSpace(p.SubjectName) ? "Sin materia" : p.SubjectName!,
             string.IsNullOrWhiteSpace(p.GroupLabel) ? "—" : p.GroupLabel!,

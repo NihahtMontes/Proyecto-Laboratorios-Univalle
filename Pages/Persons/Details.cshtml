@@ -4,6 +4,8 @@
 @using Proyecto_Laboratorios_Univalle.Helpers
 
 @{
+    ViewData["Title"] = "Detalle de la persona";
+    ViewData["Section"] = "Configuración";
     var showMaintenancesTab = HttpContext.Request.Query.Keys.Any(k => k.StartsWith("Maintenance"));
     var hasMaintenanceFilters = Model.MaintenanceManagementId.HasValue
         || Model.MaintenanceManagementType.HasValue
@@ -58,6 +60,10 @@
                                     <i class="fas @(Model.Person is Intern ? "fa-university" : "fa-truck-loading") fa-3x"></i>
                                 </div>
                                 <h3 class="font-weight-bold text-dark mb-1">@Model.Person.FullName</h3>
+                                @if (!string.IsNullOrWhiteSpace(Model.Person.Title))
+                                {
+                                    <div class="text-muted small mb-1">Título: <span class="font-weight-bold text-dark">@Model.Person.Title</span></div>
+                                }
                                 <div class="mb-3">
                                     <span class="badge badge-pill badge-info px-3">
                                         @(Model.Person is Intern ? "Laboratorio Interno" : (Model.Person is Extern ? "Proveedor Externo" : "Persona Base"))
@@ -365,7 +371,7 @@
                 <i class="fas fa-edit mr-1"></i> Editar Perfil
             </a>
             <a asp-page="Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 font-weight-bold mb-4">
-                <i class="fas fa-list mr-1"></i> Volver al Directorio
+                <i class="fas fa-list mr-1"></i> Volver al listado
             </a>
             
             <a asp-page="./Delete" asp-route-id="@Model.Person.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">

@@ -17,22 +17,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 /// </summary>
 public class DisponibilidadModel : PageModel
 {
+    private static readonly string[] AdminRoles =
+        AuthorizationHelper.AdminRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    private static readonly string[] ManagerRoles =
+        AuthorizationHelper.ManagementRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     private readonly ApplicationDbContext _context;
     private readonly IAcademicManagementService _managements;
     private readonly IL3CircuitService _circuit;
     private readonly IArticleAvailabilityService _availability;
+    private readonly IConflictGridService _conflicts;
     private readonly ILogger<DisponibilidadModel> _logger;
 
     private readonly IPlanningLock _lock;
 
     public DisponibilidadModel(ApplicationDbContext context, IAcademicManagementService managements, IL3CircuitService circuit,
-        IArticleAvailabilityService availability, ILogger<DisponibilidadModel> logger, IPlanningLock planningLock)
+        IArticleAvailabilityService availability, IConflictGridService conflicts, ILogger<DisponibilidadModel> logger, IPlanningLock planningLock)
     {
         _lock = planningLock;
         _context = context;
         _managements = managements;
         _circuit = circuit;
         _availability = availability;
+        _conflicts = conflicts;
         _logger = logger;
     }
 
@@ -44,11 +51,12 @@ public class DisponibilidadModel : PageModel
     public int? OriginLabId { get; set; }
 
     public Planning? Plan { get; private set; }
-    public string Code => L3Codes.Format(PlanId);
+    public string Code => L3Codes.Format(PlanId, Plan?.Code);
     public List<AvailabilityRow> Items { get; private set; } = [];
     public SelectList OriginList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public string? OriginName { get; private set; }
-    public bool HasShortage => Items.Any(i => i.State == AvailabilityState.Insufficient);
+    /// <summary>True si algún artículo queda insuficiente o sin registro de stock (D2: exige confirmación al aprobar).</summary>
+    public bool HasShortage => Items.Any(i => i.State is AvailabilityState.Insufficient or AvailabilityState.NotRegistered);
     public bool HasUnregistered => Items.Any(i => i.State == AvailabilityState.NotRegistered);
     public bool IsApproved => Plan != null && Plan.Status != PlanningStatus.Planned;
 
@@ -58,13 +66,17 @@ public class DisponibilidadModel : PageModel
     /// <summary>Conflictos y rotaciones de la semana en los que participa esta planificación.</summary>
     public List<ArticleDayDemand> PracticeIssues { get; private set; } = [];
 
+    /// <summary>Etiquetas de conflicto de material por PlanningId de la semana mostrada.</summary>
+    public IReadOnlyDictionary<int, IReadOnlyList<PlanningConflictTag>> ConflictTags { get; private set; }
+        = new Dictionary<int, IReadOnlyList<PlanningConflictTag>>();
+
     /// <summary>La persona confirma que conoce los conflictos/rotaciones y aprueba igual.</summary>
     [BindProperty]
     public bool Acknowledged { get; set; }
 
     public enum AvailabilityState { Ok, Insufficient, NotRegistered }
 
-    public sealed record AvailabilityRow(int DetailId, string ArticleCode, string ArticleName, bool ArticlePending, string? Unit,
+    public sealed record AvailabilityRow(int ArticleId, int DetailId, string ArticleCode, string ArticleName, bool ArticlePending, string? Unit,
         decimal Requested, ArticleStockInfo Stock, string? InventoryNumber)
     {
         public decimal? Available => Stock.Available;
@@ -72,6 +84,24 @@ public class DisponibilidadModel : PageModel
         public AvailabilityState State => Available is null ? AvailabilityState.NotRegistered
             : Available >= Requested ? AvailabilityState.Ok : AvailabilityState.Insufficient;
     }
+
+    /// <summary>Laboratorio donde se registra el stock faltante (Economato) si alguna fila necesita acción.</summary>
+    public int? StockLaboratoryId { get; private set; }
+
+    /// <summary>Equipo vinculado a cada artículo de la solicitud (null si es de inventario).</summary>
+    public Dictionary<int, int?> EquipmentIdByArticle { get; private set; } = [];
+
+    /// <summary>Roles que habilitan actualizar el stock de inventario (Administrador/SuperAdmin).</summary>
+    public bool IsAdmin => AdminRoles.Any(User.IsInRole);
+
+    /// <summary>Roles que habilitan registrar unidades físicas de equipo (Supervisor y superiores).</summary>
+    public bool CanManage => ManagerRoles.Any(User.IsInRole);
+
+    /// <summary>Acción de stock para la fila (null si no hace falta o el usuario no tiene permiso).</summary>
+    public StockAction? RowStockAction(AvailabilityRow row) =>
+        StockActionLinks.For(row.Stock, row.Requested, row.ArticleId,
+            EquipmentIdByArticle.GetValueOrDefault(row.ArticleId), StockLaboratoryId,
+            StockActionLinks.WithFocus(Request.Path + Request.QueryString, row.ArticleId), IsAdmin, CanManage);
 
     /// <summary>Franja superior del wizard: gestión de la planificación y paso actual.</summary>
     public PlanningContextViewModel? Context { get; private set; }
@@ -106,9 +136,19 @@ public class DisponibilidadModel : PageModel
             return RedirectToPage("./Requerimientos", new { planId = PlanId });
         }
 
+        // Datos para las acciones de stock por fila: equipo por artículo y Economato si alguna fila lo necesita.
+        EquipmentIdByArticle = await _context.Articles.AsNoTracking()
+            .Where(a => Items.Select(i => i.ArticleId).Contains(a.Id))
+            .Select(a => new { a.Id, a.EquipmentId })
+            .ToDictionaryAsync(a => a.Id, a => a.EquipmentId);
+        if (Items.Any(i => StockActionLinks.NeedsAction(i.Stock, i.Requested)))
+            StockLaboratoryId = await PlanningStockGate.StockLaboratoryIdAsync(_context, Plan.Id);
+
         // La semana compara siempre contra el total: el material se mueve entre laboratorios (D12).
         Week = await _availability.GetWeekForPracticeAsync(Plan.Id);
         PracticeIssues = Week?.Issues.Where(d => d.Practices.Any(p => p.PracticeId == Plan.Id)).ToList() ?? [];
+        if (Week != null)
+            ConflictTags = await _conflicts.GetPlanningTagsAsync([Week.StartDate]);
 
         return Page();
     }
@@ -151,23 +191,15 @@ public class DisponibilidadModel : PageModel
                 return RedirectToPage("./Requerimientos", new { planId = PlanId, conflict = true });
             }
 
-            // No se aprueba lo que no tiene stock registrado (o en 0): se vuelve a Requerimientos para registrarlo.
-            // Un stock insuficiente (pero existente) solo se informa: la salida valida y descuenta.
-            var missing = await PlanningStockGate.FindAsync(_context, _availability, plan.Id);
-            if (missing.Count > 0)
-            {
-                var names = string.Join(", ", missing.Take(5).Select(m => m.ArticleName)) + (missing.Count > 5 ? "…" : "");
-                TempData.Error($"No se puede aprobar: hay artículos sin stock ({names}). Registre su existencia primero.");
-                return RedirectToPage("./Requerimientos", new { planId = PlanId });
-            }
-
+            // Regla D2: la falta de stock solo advierte; nunca bloquea la aprobación. Quien descuenta y
+            // bloquea si no alcanza es la salida L-3: los artículos sin stock se entregan sin descontar.
             var originId = OriginLabId is 0 ? null : OriginLabId;
             var rows = await BuildRowsAsync(plan.Id, originId);
             var week = await _availability.GetWeekForPracticeAsync(plan.Id);
             var issues = week?.Issues.Count(d => d.Practices.Any(p => p.PracticeId == plan.Id)) ?? 0;
             var shortages = rows.Count(r => r.State == AvailabilityState.Insufficient);
             var unregistered = rows.Count(r => r.State == AvailabilityState.NotRegistered);
-            if ((issues > 0 || shortages > 0) && !Acknowledged)
+            if ((issues > 0 || shortages > 0 || unregistered > 0) && !Acknowledged)
             {
                 TempData.Warning("Confirma que conoces los faltantes, conflictos o rotaciones de la semana antes de aprobar.");
                 return RedirectToPage(new { planId = PlanId, originLabId = OriginLabId });
@@ -213,7 +245,7 @@ public class DisponibilidadModel : PageModel
             {
                 var first = g.First();
                 var units = string.Join(", ", g.Select(d => d.Inventory).Where(i => i != null));
-                return new AvailabilityRow(first.Id, first.Code, first.Name, first.Pending, first.Unit, g.Sum(d => d.Quantity),
+                return new AvailabilityRow(g.Key, first.Id, first.Code, first.Name, first.Pending, first.Unit, g.Sum(d => d.Quantity),
                     stock.TryGetValue(g.Key, out var info) ? info : ArticleStockInfo.NotRegistered(g.Key), units.Length > 0 ? units : null);
             })
             .OrderBy(r => r.ArticleName)

@@ -2,7 +2,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock.EditModel
 @using Proyecto_Laboratorios_Univalle.Helpers
 @{
-    ViewData["Title"] = "Ajustar Existencia";
+    ViewData["Title"] = "Ajustar existencia";
+    ViewData["Section"] = "Equipos e inventario";
     var articleName = Model.Article?.Name ?? "Artículo";
     var articleCode = Model.Article?.Code ?? string.Empty;
     var labDisplay = Model.Laboratory != null ? LaboratoryDisplayHelper.Format(Model.Laboratory) : "—";
@@ -184,7 +185,7 @@
                     {
                         <div class="mb-3">
                             <label class="text-muted d-block small uppercase mb-0">Cantidad actual</label>
-                            <span class="font-weight-bold text-dark d-block">@Model.Input.AvailableQuantity.ToString("0.##")</span>
+                            <span class="font-weight-bold text-dark d-block">@((Model.Input.AvailableQuantity ?? 0m).ToString("0.##"))</span>
                         </div>
                         <div class="mb-3">
                             <label class="text-muted d-block small uppercase mb-0">Última actualización</label>

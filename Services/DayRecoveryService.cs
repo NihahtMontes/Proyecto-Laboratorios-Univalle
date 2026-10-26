@@ -77,7 +77,7 @@ public sealed class DayRecoveryService : IDayRecoveryService
             var candidates = await _context.Plannings.AsNoTracking()
                 .Where(p => p.ManagementId == scope.ManagementId && p.ScheduledDate >= start && p.ScheduledDate < end
                     && !PlanningStatus.NonOccupying.Contains(p.Status))
-                .Select(p => new { p.Id, p.Status }).ToListAsync(ct);
+                .Select(p => new { p.Id, p.Code, p.Status }).ToListAsync(ct);
             if (candidates.Count == 0)
                 return Fail("El día no tiene planificaciones vigentes: suspéndalo desde Calendario académico.");
             var incompatible = candidates
@@ -85,7 +85,7 @@ public sealed class DayRecoveryService : IDayRecoveryService
                 .ToList();
             if (incompatible.Count > 0)
                 return Fail(IncompatibleMessage(incompatible.Count,
-                    incompatible.Select(p => (Id: p.Id, Status: (string)p.Status))));
+                    incompatible.Select(p => (Id: p.Id, p.Code, Status: (string)p.Status))));
 
             var recovery = new DayRecovery
             {
@@ -147,18 +147,21 @@ public sealed class DayRecoveryService : IDayRecoveryService
         var candidates = await _context.Plannings.AsNoTracking()
             .Where(p => p.ManagementId == managementId && p.ScheduledDate >= target && p.ScheduledDate < target.AddDays(1)
                 && !PlanningStatus.NonOccupying.Contains(p.Status))
-            .Select(p => new { p.Id, p.PracticeName, p.Status, p.LaboratoryId,
-                Laboratory = p.Laboratory != null ? p.Laboratory.Code + " · " + p.Laboratory.Name : "Sin ambiente" })
+            .Select(p => new { p.Id, p.Code, p.PracticeName, p.Status, p.LaboratoryId,
+                Laboratory = p.Laboratory != null ? p.Laboratory.Code + " · " + p.Laboratory.Name : "Sin laboratorio" })
             .ToListAsync(ct);
         if (candidates.Count == 0)
             return new(false, $"El {target:dd/MM/yyyy} no tiene planificaciones vigentes.", target, day.Id, 0, [], []);
 
-        var blockers = candidates
+        var incompatible = candidates
             .Where(p => p.Status is not (PlanningStatus.Planned or PlanningStatus.Approved or PlanningStatus.Finalized))
-            .Select(p => new DayRecoveryPreviewBlocker(p.Id, L3Codes.Format(p.Id), p.PracticeName, PlanningStatus.Label(p.Status)))
+            .ToList();
+        var blockers = incompatible
+            .Select(p => new DayRecoveryPreviewBlocker(p.Id, L3Codes.Format(p.Id, p.Code), p.PracticeName, PlanningStatus.Label(p.Status)))
             .ToList();
         if (blockers.Count > 0)
-            return new(false, IncompatibleMessage(blockers.Count, blockers.Select(b => (Id: b.PlanningId, Status: b.StatusLabel))),
+            return new(false, IncompatibleMessage(blockers.Count,
+                incompatible.Select(p => (Id: p.Id, p.Code, Status: (string)p.Status))),
                 target, day.Id, candidates.Count, [], blockers);
 
         var labs = candidates.GroupBy(p => p.LaboratoryId)
@@ -182,10 +185,10 @@ public sealed class DayRecoveryService : IDayRecoveryService
         return await SuspendAsync(dayId.Value, reason, ct);
     }
 
-    /// <summary>"3 planificación(es) en estado no compatible: PRA-00001 (Aprobada), ... y 2 más."</summary>
-    private static string IncompatibleMessage(int count, IEnumerable<(int Id, string Status)> incompatible)
+    /// <summary>"3 planificación(es) en estado no compatible: PRA-00001 (Aprobada), ... y 2 más." Muestra el código persistido si existe.</summary>
+    private static string IncompatibleMessage(int count, IEnumerable<(int Id, string? Code, string Status)> incompatible)
     {
-        var parts = incompatible.Take(5).Select(p => $"{L3Codes.Format(p.Id)} ({PlanningStatus.Label(p.Status)})").ToList();
+        var parts = incompatible.Take(5).Select(p => $"{L3Codes.Format(p.Id, p.Code)} ({PlanningStatus.Label(p.Status)})").ToList();
         var more = count - parts.Count;
         return $"{count} planificación(es) en estado no compatible con la reposición: {string.Join(", ", parts)}" +
                (more > 0 ? $" y {more} más" : string.Empty) + ". Revise el día antes de suspenderlo.";

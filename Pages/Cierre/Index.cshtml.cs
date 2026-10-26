@@ -53,9 +53,9 @@ public class IndexModel : PageModel
     public sealed record ClosureRow(
         int Id, DateTime Date, TimeSpan? StartTime, TimeSpan? EndTime, string PracticeName, string? SubjectName,
         string? GroupName, string? LaboratoryCode, string? TeacherName, string Status, int ItemCount,
-        bool HasDeparture, bool HasOpenDeparture, int IncidentCount)
+        bool HasDeparture, bool HasOpenDeparture, int IncidentCount, string? PlanningCode = null)
     {
-        public string Code => L3Codes.Format(Id);
+        public string Code => L3Codes.Format(Id, PlanningCode);
 
         public string StatusText => PlanningStatus.Label(Status);
 
@@ -124,6 +124,7 @@ public class IndexModel : PageModel
                 r.Requirements.Count,
                 _context.Departures.Any(d => d.PlanningId == r.Id && d.Status != LoanStatus.Cancelled),
                 _context.Departures.Any(d => d.PlanningId == r.Id && openStatuses.Contains(d.Status)),
-                r.Incidents.Count));
+                r.Incidents.Count,
+                r.Code));
     }
 }

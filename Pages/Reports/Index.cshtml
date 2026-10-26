@@ -1,7 +1,9 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Reports.IndexModel
 @{
-    ViewData["Title"] = "Centro de Reportes Oficiales";
+    ViewData["Title"] = "Reportes";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     var managementLabel = Model.SelectedManagement == null
         ? "Seleccione una gestión para exportar reportes oficiales."
         : $"Gestión {Model.SelectedManagement.Code} - {(Model.IsCorrective ? "Correctivo" : Model.SelectedManagement.Type == Proyecto_Laboratorios_Univalle.Models.Enums.ManagementType.PorConfirmar ? "Por confirmar" : "Preventivo")}";
@@ -10,6 +12,8 @@
         || !string.IsNullOrWhiteSpace(Model.SearchTerm)
         || (!string.IsNullOrWhiteSpace(Model.ReportFilter) && Model.ReportFilter != "all");
 }
+
+<partial name="_PageHelp" model='"Reports.Index"' />
 
 <div class="row">
     <div class="col-12">
@@ -30,7 +34,7 @@
                         @if (Model.SelectedManagement != null)
                         {
                             <a asp-page="/Managements/Details" asp-route-id="@Model.SelectedManagement.Id" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
-                                <i class="fas fa-arrow-left mr-1 text-info"></i> Volver a Gestión
+                                <i class="fas fa-arrow-left mr-1 text-info"></i> Volver al panel
                             </a>
                         }
                     </div>
@@ -61,19 +65,19 @@
                                 <option value="missing">Sin reportes</option>
                                 @if (!Model.IsCorrective)
                                 {
-                                    <option value="l6">Con L-6</option>
+                                    <option value="l6">Con verificación</option>
                                 }
-                                <option value="l7">Con L-7</option>
-                                <option value="l8">Con L-8</option>
-                                <option value="l3">Con L-3</option>
-                                <option value="l12">Con L-12/Insumos</option>
+                                <option value="l7">Con solicitud de servicio técnico</option>
+                                <option value="l8">Con registro de mantenimiento</option>
+                                <option value="l3">Con salida de equipos</option>
+                                <option value="l12">Con solicitud de compra</option>
                             </select>
                             <select asp-for="SelectedLabId"
                                     asp-items="Model.LaboratoriesList"
                                     class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.SelectedLabId.HasValue ? "border-info text-info font-weight-bold" : "")"
-                                    aria-label="Ambiente"
+                                    aria-label="Laboratorio"
                                     data-live-filter-control>
-                                <option value="">Ambiente</option>
+                                <option value="">Laboratorio</option>
                             </select>
 
                             @if (hasActiveFilters)
@@ -101,11 +105,11 @@
                             @if (!Model.IsCorrective)
                             {
                                 <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-success btn-rounded font-weight-bold px-3 mr-1 shadow-sm">
-                                    <i class="fas fa-file-excel mr-1"></i> L-6 Consolidado
+                                    <i class="fas fa-file-excel mr-1"></i> Verificaciones (consolidado)
                                 </a>
                             }
                             <a href="/api/reports/download/l48?managementId=@Model.ManagementId&labId=@Model.SelectedLabId" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold px-3 shadow-sm">
-                                <i class="fas fa-project-diagram mr-1"></i> Plan L-48
+                                <i class="fas fa-project-diagram mr-1"></i> Cronograma de mantenimiento
                             </a>
                         </div>
                     </div>
@@ -185,32 +189,32 @@
                                                 <div class="btn-group flex-wrap justify-content-center">
                                                     @if (!Model.IsCorrective && status.HasL6)
                                                     {
-                                                        <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId&unitId=@unit.Id" class="btn btn-sm btn-outline-success btn-rounded mr-1 mb-1 js-report-download" title="Descargar L-6 de este equipo">
-                                                            <i class="fas fa-file-excel mr-1"></i> L-6
+                                                        <a href="/api/reports/download/l6?managementId=@Model.ManagementId&labId=@Model.SelectedLabId&unitId=@unit.Id" class="btn btn-sm btn-outline-success btn-rounded mr-1 mb-1 js-report-download" title="Descargar la verificación de este equipo (Excel)">
+                                                            <i class="fas fa-file-excel mr-1"></i> Verificación
                                                         </a>
                                                     }
                                                     @if (status.HasL7)
                                                     {
-                                                        <a href="/api/reports/download/l7?requestId=@status.RequestId&managementId=@Model.ManagementId" class="btn btn-sm btn-outline-info btn-rounded mr-1 mb-1" title="Descargar L-7">
-                                                            <i class="fas fa-file-signature mr-1"></i> L-7
+                                                        <a href="/api/reports/download/l7?requestId=@status.RequestId&managementId=@Model.ManagementId" class="btn btn-sm btn-outline-info btn-rounded mr-1 mb-1" title="Descargar la solicitud de servicio técnico (Excel)">
+                                                            <i class="fas fa-file-signature mr-1"></i> Solicitud
                                                         </a>
                                                     }
                                                     @if (status.HasL8)
                                                     {
-                                                        <a href="/api/reports/download/l8?managementPlanId=@status.PlanId" class="btn btn-sm btn-outline-warning btn-rounded mr-1 mb-1" title="Descargar L-8">
-                                                            <i class="fas fa-wrench mr-1"></i> L-8
+                                                        <a href="/api/reports/download/l8?managementPlanId=@status.PlanId" class="btn btn-sm btn-outline-warning btn-rounded mr-1 mb-1" title="Descargar el registro de mantenimiento (Excel)">
+                                                            <i class="fas fa-wrench mr-1"></i> Mantenimiento
                                                         </a>
                                                     }
                                                     @if (status.HasL3)
                                                     {
-                                                        <a href="/api/reports/download/l3?departureId=@status.DepartureId" class="btn btn-sm btn-outline-primary btn-rounded mr-1 mb-1" title="Descargar L-3">
-                                                            <i class="fas fa-sign-out-alt mr-1"></i> L-3
+                                                        <a href="/api/reports/download/l3?departureId=@status.DepartureId" class="btn btn-sm btn-outline-primary btn-rounded mr-1 mb-1" title="Descargar la salida de equipos (Excel)">
+                                                            <i class="fas fa-sign-out-alt mr-1"></i> Salida
                                                         </a>
                                                     }
                                                     @if (status.HasAdquisicion)
                                                     {
-                                                        <a href="/api/reports/download/adquisicion?requestId=@status.AcquisitionRequestId" class="btn btn-sm btn-outline-dark btn-rounded mr-1 mb-1" title="Descargar L-12/Insumos">
-                                                            <i class="fas fa-shopping-cart mr-1"></i> L-12/Insumos
+                                                        <a href="/api/reports/download/adquisicion?requestId=@status.AcquisitionRequestId" class="btn btn-sm btn-outline-dark btn-rounded mr-1 mb-1" title="Descargar la solicitud de compra (Excel)">
+                                                            <i class="fas fa-shopping-cart mr-1"></i> Compra
                                                         </a>
                                                     }
                                                 </div>
@@ -265,7 +269,7 @@
             if ($link.hasClass('disabled')) return;
 
             var originalHtml = $link.html();
-            $link.addClass('disabled').html('<i class="fas fa-spinner fa-spin mr-1"></i> L-6');
+            $link.addClass('disabled').html('<i class="fas fa-spinner fa-spin mr-1"></i> Verificación');
 
             fetch($link.attr('href'), { credentials: 'same-origin' })
                 .then(function (response) {

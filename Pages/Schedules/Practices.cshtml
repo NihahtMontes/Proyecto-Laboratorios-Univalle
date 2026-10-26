@@ -1,0 +1,240 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Schedules.PracticesModel
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Programación de prácticas";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
+
+    var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
+        || Model.ManagementId.HasValue
+        || Model.Status.HasValue;
+
+    string FormatTime(TimeSpan? t) => t.HasValue ? t.Value.ToString(@"hh\:mm") : "";
+    string FormatSchedule(TimeSpan? start, TimeSpan? end)
+    {
+        var s = FormatTime(start);
+        var e = FormatTime(end);
+        if (string.IsNullOrEmpty(s) && string.IsNullOrEmpty(e)) return "—";
+        if (string.IsNullOrEmpty(e)) return s;
+        if (string.IsNullOrEmpty(s)) return $"fin {e}";
+        return $"{s} – {e}";
+    }
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <!-- Header section -->
+                <div class="d-md-flex align-items-center mb-4 pb-3 border-bottom">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Programación de prácticas</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Listado histórico de prácticas programadas por gestión, materia, grupo, docente y fecha (solo lectura).</h6>
+                    </div>
+                    <div class="ml-auto mt-3 mt-md-0 d-flex align-items-center">
+                        <a asp-page="./Index" class="btn btn-link text-muted mr-2" title="Volver al listado">
+                            <i class="fas fa-arrow-left mr-1"></i> Volver al cronograma
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Smart Index Zone: Search and Filters -->
+                <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                    <form method="get" data-live-filter-form>
+                        <label asp-for="SearchTerm" class="sr-only">Buscar programación</label>
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                            </div>
+                            <input type="search" asp-for="SearchTerm"
+                                   class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                                   placeholder="Buscar por código, materia, práctica, grupo o docente"
+                                   autocomplete="off"
+                                   data-live-filter-search />
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                            <select asp-for="ManagementId"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.ManagementId.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="Model.ManagementOptions"
+                                    aria-label="Gestión"
+                                    data-live-filter-control>
+                                <option value="">Gestión</option>
+                            </select>
+
+                            <select asp-for="Status"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.Status.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<PracticeScheduleStatus>()"
+                                    aria-label="Estado"
+                                    data-live-filter-control>
+                                <option value="">Estado</option>
+                            </select>
+
+                            @if (hasActiveFilters)
+                            {
+                                <a asp-page="./Practices" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                    <i class="fas fa-times mr-1"></i> Limpiar filtros
+                                </a>
+                            }
+
+                            <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                <strong class="text-dark">@Model.Schedules.TotalCount</strong> programación(es)
+                            </span>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>Código</th>
+                                <th>Gestión</th>
+                                <th>Materia</th>
+                                <th>Práctica</th>
+                                <th>Grupo</th>
+                                <th>Docente</th>
+                                <th>Laboratorio</th>
+                                <th class="text-center">Semana</th>
+                                <th class="text-center">Fecha</th>
+                                <th>Horario</th>
+                                <th class="text-center">Estado</th>
+                                <th class="text-center">N.º estudiantes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Schedules == null || !Model.Schedules.Any())
+                            {
+                                <tr>
+                                    <td colspan="12" class="text-center py-5 text-muted italic">
+                                        <i class="fas fa-calendar-alt fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron programaciones con los filtros aplicados.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var item in Model.Schedules)
+                                {
+                                    var (statusClass, statusText) = item.Status switch
+                                    {
+                                        PracticeScheduleStatus.Scheduled => ("badge-primary", "PROGRAMADA"),
+                                        PracticeScheduleStatus.Executed => ("badge-success", "EJECUTADA"),
+                                        PracticeScheduleStatus.Rescheduled => ("badge-info", "REPROGRAMADA"),
+                                        PracticeScheduleStatus.Cancelled => ("badge-secondary", "CANCELADA"),
+                                        PracticeScheduleStatus.PorConfirmar => ("badge-warning", "POR CONFIRMAR"),
+                                        _ => ("badge-secondary", "DESCONOCIDO")
+                                    };
+                                    <tr>
+                                        <td>
+                                            <span class="font-weight-bold text-dark">@(string.IsNullOrWhiteSpace(item.Code) ? "—" : item.Code)</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-pill badge-light border text-muted small font-weight-bold">@(item.Management?.Code ?? "—")</span>
+                                        </td>
+                                        <td>
+                                            <div class="text-dark text-truncate" style="max-width: 220px;" title="@item.Subject?.Name">@(item.Subject?.Name ?? "Sin materia")</div>
+                                            <small class="text-muted">@item.Subject?.Code</small>
+                                        </td>
+                                        <td>
+                                            <div class="text-dark text-truncate" style="max-width: 220px;" title="@item.Practice?.Name">@(item.Practice?.Name ?? "Sin práctica")</div>
+                                            <small class="text-muted">@(!string.IsNullOrWhiteSpace(item.Practice?.Number) ? item.Practice.Number : "—")</small>
+                                        </td>
+                                        <td>
+                                            <span class="text-dark font-weight-bold">@(string.IsNullOrWhiteSpace(item.GroupName) ? "—" : item.GroupName)</span>
+                                        </td>
+                                        <td>
+                                            <div class="text-dark text-truncate" style="max-width: 180px;">@Model.GetTeacherName(item.TeacherPersonId)</div>
+                                        </td>
+                                        <td>
+                                            @if (item.Laboratory != null && !string.IsNullOrWhiteSpace(item.Laboratory.Code))
+                                            {
+                                                <span class="text-dark">@item.Laboratory.Code</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">—</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @(item.WeekNumber?.ToString() ?? "—")
+                                        </td>
+                                        <td class="text-center">
+                                            @(item.ExecutionDate?.ToString("dd/MM/yyyy") ?? "—")
+                                        </td>
+                                        <td>
+                                            <span class="text-dark"><i class="far fa-clock text-muted mr-1"></i>@FormatSchedule(item.StartTime, item.EndTime)</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge @statusClass px-3 py-1 font-weight-bold">@statusText</span>
+                                        </td>
+                                        <td class="text-center">
+                                            @(item.StudentCount?.ToString() ?? "—")
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.Schedules!.TotalPages > 1)
+                {
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.Schedules.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Practices" asp-route-pageIndex="@(Model.Schedules.PageIndex - 1)"
+                                       asp-route-searchTerm="@Model.SearchTerm"
+                                       asp-route-managementId="@Model.ManagementId"
+                                       asp-route-status="@Model.Status">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.Schedules.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Schedules.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./Practices" asp-route-pageIndex="@i"
+                                       asp-route-searchTerm="@Model.SearchTerm"
+                                       asp-route-managementId="@Model.ManagementId"
+                                       asp-route-status="@Model.Status">@i</a>
+                                </li>
+                            }
+                            @if (Model.Schedules.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Practices" asp-route-pageIndex="@(Model.Schedules.PageIndex + 1)"
+                                       asp-route-searchTerm="@Model.SearchTerm"
+                                       asp-route-managementId="@Model.ManagementId"
+                                       asp-route-status="@Model.Status">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .v-middle td {
+            vertical-align: middle !important;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .opacity-2 {
+            opacity: 0.2;
+        }
+    </style>
+}

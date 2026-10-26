@@ -39,10 +39,10 @@ public static class PlanningContextLoader
     {
         var row = await context.Plannings.AsNoTracking()
             .Where(p => p.Id == planningId)
-            .Select(p => new { p.ManagementId, p.Status })
+            .Select(p => new { p.ManagementId, p.Status, p.Code })
             .FirstOrDefaultAsync();
         var summary = row != null ? await managements.GetSummaryAsync(row.ManagementId) : null;
-        return new PlanningContextViewModel(summary, planningId, $"Planificación {L3Codes.Format(planningId)}", step, row?.Status);
+        return new PlanningContextViewModel(summary, planningId, $"Planificación {L3Codes.Format(planningId, row?.Code)}", step, row?.Status);
     }
 
     /// <summary>True si la planificación existe y su gestión admite cambios.</summary>

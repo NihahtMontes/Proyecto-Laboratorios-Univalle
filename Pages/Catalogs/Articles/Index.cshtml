@@ -3,6 +3,9 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Microsoft.AspNetCore.Mvc.Rendering
 @{
+    ViewData["Title"] = "Artículos";
+    ViewData["Section"] = "Equipos e inventario";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
                            || Model.StatusFilter.HasValue
                            || Model.ArticleCategoryId.HasValue

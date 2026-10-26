@@ -65,6 +65,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Career
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // La facultad (opcional) debe existir: antes una facultad inexistente provocaba un error 500 por la FK.
+            if (Input.FacultadId.HasValue && !await _context.Faculties.AnyAsync(f => f.Id == Input.FacultadId.Value))
+            {
+                ModelState.AddModelError("Input.FacultadId", "La facultad seleccionada no está disponible.");
+            }
+
             if (!ModelState.IsValid)
             {
                 LoadLists();

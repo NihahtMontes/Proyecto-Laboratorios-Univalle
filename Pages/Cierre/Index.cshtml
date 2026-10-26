@@ -3,6 +3,8 @@
 @using System.Globalization
 @{
     ViewData["Title"] = "Cierre de práctica";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
 
     var es = CultureInfo.GetCultureInfo("es-BO");
     var dateLabel = Model.SelectedDate.ToString("dddd, d 'de' MMMM 'de' yyyy", es);

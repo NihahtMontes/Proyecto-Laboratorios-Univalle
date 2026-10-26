@@ -1,6 +1,10 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Countries.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Detalle del país";
+    ViewData["Section"] = "Configuración";
+}
 
 
 
@@ -98,7 +102,7 @@
                 <i class="fas fa-edit mr-1"></i> Modificar Registro
             </a>
             <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 font-weight-bold mb-4">
-                <i class="fas fa-list mr-1"></i> Volver al Listado
+                <i class="fas fa-list mr-1"></i> Volver al listado
             </a>
             
              <a asp-page="./Delete" asp-route-id="@Model.Country.Id" class="btn btn-link btn-block text-danger small font-weight-bold mt-2">

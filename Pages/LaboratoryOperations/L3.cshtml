@@ -2,7 +2,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.L3Model
 @using Proyecto_Laboratorios_Univalle.Helpers
 @{
-    ViewData["Title"] = "L-3 y devolución — Paso 4";
+    ViewData["Title"] = "Entrega y devolución de material";
+    ViewData["Section"] = "Planificación académica";
     var canWrite = Model.IsEditable && !(Model.Context?.IsReadOnly ?? false);
     var closureOnly = PracticeClosureAccess.IsClosureOnly(User);
 }
@@ -10,7 +11,7 @@
 <div class="container-fluid mt-3">
     <div class="mb-2">
         <a asp-page="/Cierre/Index" class="btn btn-outline-primary btn-rounded btn-sm font-weight-bold">
-            <i class="mdi mdi-arrow-left mr-1"></i> Volver al cierre del día
+            <i class="mdi mdi-arrow-left mr-1"></i> Volver
         </a>
     </div>
 
@@ -25,7 +26,7 @@
                 <i class="fas fa-eye fa-2x mr-3"></i>
                 <div>
                     <strong>Solo consulta.</strong><br />
-                    <span>La gestión de esta planificación no admite devoluciones, finalización ni registro de incidentes L-5.</span>
+                    <span>La gestión de esta planificación no admite devoluciones, finalización ni registro de incidentes de material.</span>
                 </div>
             </div>
         }
@@ -37,7 +38,17 @@
                 <div>
                     <strong>Planificación finalizada.</strong>
                     <span class="badge badge-success badge-pill ml-2"><i class="mdi mdi-check-decagram mr-1"></i> FINALIZADA</span><br />
-                    Esta planificación fue cerrada y ya no admite cambios. Los registros L-5 asociados se conservan como historial.
+                    Esta planificación fue cerrada y ya no admite cambios. Los incidentes de material asociados se conservan como historial.
+                </div>
+            </div>
+        }
+        else if (!Model.HasDeparture)
+        {
+            @* Sin salida registrada no hay nada entregado, así que tampoco puede haber faltantes (antes se mostraba la alerta de faltantes). *@
+            <div class="alert alert-light border rounded-lg d-flex align-items-center mb-4">
+                <i class="fas fa-info-circle text-primary mr-2"></i>
+                <div class="small">
+                    Aún no se registró la salida de materiales. Confirma las cantidades entregadas para poder registrar la devolución y finalizar la planificación.
                 </div>
             </div>
         }
@@ -46,8 +57,8 @@
             <div class="alert alert-warning border-0 rounded-lg d-flex align-items-center mb-4 shadow-sm">
                 <i class="mdi mdi-lock-alert mdi-36px mr-3"></i>
                 <div>
-                    <strong>Hay faltantes sin incidente L-5 registrado.</strong><br />
-                    Registra cada faltante como L-5 antes de poder finalizar la planificación.
+                    <strong>Hay faltantes sin incidente de material registrado.</strong><br />
+                    Registra cada faltante como incidente de material antes de poder finalizar la planificación.
                 </div>
             </div>
         }
@@ -56,7 +67,7 @@
             <div class="alert alert-light border rounded-lg d-flex align-items-center mb-4">
                 <i class="fas fa-info-circle text-primary mr-2"></i>
                 <div class="small">
-                    Actualiza la cantidad devuelta por artículo. Una vez que todos los faltantes estén cubiertos por un L-5, podrás finalizar la planificación.
+                    Actualiza la cantidad devuelta por artículo. Una vez que todos los faltantes estén cubiertos por un incidente, podrás finalizar la planificación.
                 </div>
             </div>
         }
@@ -74,10 +85,16 @@
                                 <h6 class="font-weight-bold text-dark mb-0 mt-1">@Model.CurrentDeparture.Code</h6>
                             </div>
                         </div>
-                        <div class="d-flex flex-wrap gap-3 small">
+                        <div class="d-flex flex-wrap gap-3 small align-items-center">
                             <span><i class="fas fa-warehouse text-muted mr-1"></i> <strong>Origen:</strong> @Model.CurrentDeparture.OriginName</span>
                             <span><i class="fas fa-calendar-alt text-muted mr-1"></i> <strong>Fecha:</strong> @Model.CurrentDeparture.DepartureDate.ToString("dd/MM/yyyy HH:mm")</span>
-                            <span class="badge badge-info badge-pill">@Model.CurrentDeparture.Status</span>
+                            <span class="badge badge-info badge-pill ml-2">@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetDisplayName(Model.CurrentDeparture.Status)</span>
+                            @if (!closureOnly)
+                            {
+                                <a class="btn btn-sm btn-outline-success btn-rounded" href="/api/reports/download/l3?departureId=@Model.CurrentDeparture.Id">
+                                    <i class="fas fa-file-excel"></i> Descargar vale de entrega (Excel)
+                                </a>
+                            }
                         </div>
                     </div>
                 </div>
@@ -92,7 +109,7 @@
                     <div class="d-flex align-items-center mb-3">
                         <div class="rounded-circle bg-light-warning text-warning p-2 mr-3"><i class="fas fa-truck-loading fa-lg"></i></div>
                         <div>
-                            <h6 class="font-weight-bold text-warning mb-0">Registrar salida L-3</h6>
+                            <h6 class="font-weight-bold text-warning mb-0">Registrar entrega de material</h6>
                             <small class="text-muted">Confirma la cantidad entregada por artículo desde el laboratorio de origen.</small>
                         </div>
                     </div>
@@ -188,7 +205,7 @@
             <div class="card shadow-sm border-0 rounded-lg">
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="font-weight-bold text-primary mb-0">DETALLE DE PRÉSTAMO · DEVOLUCIÓN L-3</h6>
+                        <h6 class="font-weight-bold text-primary mb-0">DETALLE DE PRÉSTAMO · DEVOLUCIÓN</h6>
                         <span class="badge badge-pill badge-light border px-3">@Model.Items.Count ítem(s)</span>
                     </div>
 
@@ -200,7 +217,7 @@
                                     <th class="border-0 text-center">ENTREGADO</th>
                                     <th class="border-0 text-center">DEVUELTO</th>
                                     <th class="border-0 text-center">PENDIENTE</th>
-                                    <th class="border-0 text-center">CUBIERTO L-5</th>
+                                    <th class="border-0 text-center">CUBIERTO POR INCIDENTE</th>
                                     <th class="border-0 text-center">DESCUBIERTO</th>
                                     <th class="border-0 text-center">ACCIÓN</th>
                                 </tr>
@@ -252,7 +269,7 @@
                                             {
                                                 <a asp-page="./L5" asp-route-planId="@Model.Id" asp-route-articleId="@item.ArticleId"
                                                    class="btn btn-sm btn-danger font-weight-bold">
-                                                    <i class="mdi mdi-alert-octagon mr-1"></i> Registrar L-5
+                                                    <i class="mdi mdi-alert-octagon mr-1"></i> Registrar incidente
                                                 </a>
                                             }
                                             else if (pending == 0)
@@ -311,7 +328,7 @@
                                     <thead class="bg-light text-dark">
                                         <tr>
                                             <th>ARTÍCULO</th>
-                                            <th class="text-center">PENDIENTE</th>
+                                            <th class="text-center">SIN CUBRIR</th>
                                             <th class="text-center">DEVUELTO</th>
                                         </tr>
                                     </thead>
@@ -321,18 +338,18 @@
                                         }
                                         @foreach (var item in Model.Items)
                                         {
-                                            if (item.Pending <= 0) { continue; }
-                                            var pendingStr = item.Pending.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                                            if (item.Uncovered <= 0) { continue; }
+                                            var uncoveredStr = item.Uncovered.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
                                             <tr>
                                                 <td>
                                                     <div class="font-weight-bold small">@item.ArticleName</div>
                                                     <small class="text-muted">@item.ArticleCode</small>
                                                 </td>
-                                                <td class="text-center font-weight-bold">@pendingStr</td>
+                                                <td class="text-center font-weight-bold">@uncoveredStr</td>
                                                 <td class="text-center" style="width:180px;">
                                                     <input type="hidden" name="Return.Lines[@lineIndex].DepartureItemId" value="@item.DepartureItemId" />
-                                                    <input type="number" name="Return.Lines[@lineIndex].Quantity" step="0.01" min="0" max="@pendingStr"
-                                                           class="form-control text-center" value="@pendingStr" />
+                                                    <input type="number" name="Return.Lines[@lineIndex].Quantity" step="0.01" min="0" max="@uncoveredStr"
+                                                           class="form-control text-center" value="@uncoveredStr" />
                                                 </td>
                                             </tr>
                                             lineIndex++;
@@ -391,15 +408,15 @@
                         }
                         @if (Model.IsFinalized)
                         {
-                            <span class="badge badge-success px-4 py-2"><i class="mdi mdi-check-decagram mr-1"></i> L-3 cerrado</span>
+                            <span class="badge badge-success px-4 py-2"><i class="mdi mdi-check-decagram mr-1"></i> Entrega cerrada</span>
                         }
                         else if (canWrite && Model.CanFinalize)
                         {
                             <form method="post" asp-page-handler="Finalize" asp-route-id="@Model.Id" id="formFinalizeL3" class="m-0">
                                 <button type="submit" class="btn btn-dark font-weight-bold px-5 py-2"
                                         disabled="@(Model.BlockFinalization ? "disabled" : null)"
-                                        title="@(Model.BlockFinalization ? "Hay faltantes sin incidente L-5" : "Cerrar la planificación")">
-                                    <i class="mdi mdi-check-all mr-1"></i> Finalizar L-3
+                                        title="@(Model.BlockFinalization ? "Hay faltantes sin incidente registrado" : "Cerrar la planificación")">
+                                    <i class="mdi mdi-check-all mr-1"></i> Finalizar práctica
                                 </button>
                             </form>
                         }
@@ -411,7 +428,7 @@
             <div class="card shadow-sm border-0 rounded-lg mt-4">
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="font-weight-bold text-danger mb-0">INCIDENTES L-5 REGISTRADOS</h6>
+                        <h6 class="font-weight-bold text-danger mb-0">INCIDENTES DE MATERIAL REGISTRADOS</h6>
                         <span class="badge badge-pill badge-light border px-3">@Model.Incidents.Count registro(s)</span>
                     </div>
 
@@ -419,7 +436,7 @@
                     {
                         <div class="text-center text-muted py-4">
                             <i class="mdi mdi-shield-off-outline mdi-36px d-block mb-2"></i>
-                            Aún no se registraron incidentes L-5 para esta planificación.
+                            Aún no se registraron incidentes de material para esta planificación.
                         </div>
                     }
                     else
@@ -471,7 +488,7 @@
 }
 
 @section Scripts {
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script>
         (function () {
             $('.select2').select2({
@@ -546,7 +563,7 @@
                     return;
                 }
                 Swal.fire({
-                    title: '¿Finalizar L-3?',
+                    title: '¿Finalizar la práctica?',
                     text: 'Se cerrará la planificación. Esta acción no se puede deshacer.',
                     type: 'warning',
                     showCancelButton: true,

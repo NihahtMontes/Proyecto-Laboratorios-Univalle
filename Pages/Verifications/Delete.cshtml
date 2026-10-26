@@ -1,6 +1,10 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.DeleteModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Eliminar verificación";
+    ViewData["Section"] = "Mantenimiento de equipos";
+}
 
 <div class="row justify-content-center align-items-center" style="min-height: 80vh;">
     <div class="col-md-6 col-lg-5 col-xl-4">
@@ -68,7 +72,7 @@
                 </form>
 
                 <div class="mt-4">
-                    <a asp-page="./Index" class="btn btn-link text-muted small">Volver al Listado</a>
+                    <a asp-page="./Index" class="btn btn-link text-muted small">Volver al listado</a>
                 </div>
             </div>
         </div>

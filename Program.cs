@@ -55,6 +55,7 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options => {
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
+.AddErrorDescriber<SpanishIdentityErrorDescriber>()
 .AddDefaultTokenProviders();
 
 var cookieSecurePolicy = builder.Environment.IsDevelopment()
@@ -75,7 +76,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.SecurePolicy = cookieSecurePolicy;
     options.LoginPath = "/Login";
-    options.AccessDeniedPath = "/Error";
+    options.AccessDeniedPath = "/AccesoDenegado";
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
 });
@@ -129,8 +130,11 @@ builder.Services.AddScoped<IDayRecoveryService, DayRecoveryService>();
 builder.Services.AddScoped<RequirementPickerService>();
 builder.Services.AddScoped<IL3CircuitService, L3CircuitService>();
 builder.Services.AddScoped<IArticleAvailabilityService, ArticleAvailabilityService>();
+builder.Services.AddScoped<IConflictGridService, ConflictGridService>();
+builder.Services.AddScoped<IConflictResolutionService, ConflictResolutionService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Notifications.INotificationAlertService, Proyecto_Laboratorios_Univalle.Services.Notifications.NotificationAlertService>();
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.Notifications.IMaintenanceNotificationWriter, Proyecto_Laboratorios_Univalle.Services.Notifications.MaintenanceNotificationWriter>();
+builder.Services.AddScoped<IEquipmentStateHistoryService, EquipmentStateHistoryService>();
 builder.Services.AddScoped<IManagementPlanExclusionService, ManagementPlanExclusionService>();
 builder.Services.AddScoped<IEquipmentClassificationDecisionService, EquipmentClassificationDecisionService>();
 builder.Services.AddScoped<ICatalogClassificationBatchService, CatalogClassificationBatchService>();
@@ -150,6 +154,24 @@ builder.Services.AddControllers();
 // Decimales con punto o coma (los input number envían punto; la cultura del servidor usa coma).
 builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(options =>
     options.ModelBinderProviders.Insert(0, new FlexibleDecimalModelBinderProvider()));
+// Mensajes de enlace de modelo en español (antes: "The value '' is invalid." / "The value 'abc' is not valid for X.").
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(options =>
+{
+    var messages = options.ModelBindingMessageProvider;
+    messages.SetValueIsInvalidAccessor(value => string.IsNullOrEmpty(value) ? "Seleccione un valor válido." : $"El valor '{value}' no es válido.");
+    messages.SetAttemptedValueIsInvalidAccessor((value, field) => string.IsNullOrEmpty(value) ? $"Seleccione un valor válido para {field}." : $"El valor '{value}' no es válido para {field}.");
+    messages.SetMissingBindRequiredValueAccessor(field => $"Falta un valor para {field}.");
+    messages.SetMissingKeyOrValueAccessor(() => "Se requiere un valor.");
+    messages.SetMissingRequestBodyRequiredValueAccessor(() => "Se requiere el cuerpo de la solicitud.");
+    messages.SetValueMustNotBeNullAccessor(value => "Este campo es obligatorio.");
+    messages.SetUnknownValueIsInvalidAccessor(field => $"El valor proporcionado no es válido para {field}.");
+    messages.SetNonPropertyUnknownValueIsInvalidAccessor(() => "El valor proporcionado no es válido.");
+    messages.SetNonPropertyAttemptedValueIsInvalidAccessor(value => $"El valor '{value}' no es válido.");
+    messages.SetValueMustBeANumberAccessor(field => $"El valor de {field} debe ser un número.");
+    messages.SetNonPropertyValueMustBeANumberAccessor(() => "El valor debe ser un número.");
+    // Mensajes de DataAnnotations en español cuando el atributo no declara ErrorMessage (antes: "The field X must be...").
+    options.ModelMetadataDetailsProviders.Add(new SpanishValidationMetadataProvider());
+});
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AuthorizeFolder("/");

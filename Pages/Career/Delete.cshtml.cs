@@ -44,6 +44,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Career
             {
                 // Soft delete
                 career.Status = GeneralStatus.Eliminado;
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach la baja no persistía.
+                _context.Attach(career).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 TempData.Success("Carrera eliminada correctamente.");
             }

@@ -17,6 +17,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 /// </summary>
 public class RequerimientosModel : PageModel
 {
+    private static readonly string[] AdminRoles =
+        AuthorizationHelper.AdminRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    private static readonly string[] ManagerRoles =
+        AuthorizationHelper.ManagementRoles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     private readonly ApplicationDbContext _context;
     private readonly IAcademicManagementService _managements;
     private readonly RequirementPickerService _picker;
@@ -39,12 +44,19 @@ public class RequerimientosModel : PageModel
     [BindProperty(SupportsGet = true)]
     public bool Conflict { get; set; }
 
+    /// <summary>Pantalla de origen (p. ej. la grilla de conflictos): los POST y "Volver" regresan a ella.</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
+
+    /// <summary>ReturnUrl validado (local) o null si no se indicó o no es seguro.</summary>
+    public string? SafeReturnUrl => !string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl) ? ReturnUrl : null;
+
     /// <summary>Selección del buscador: artículos con cantidad y unidades físicas.</summary>
     [BindProperty]
     public BatchInput Batch { get; set; } = new();
 
     public Planning? Plan { get; private set; }
-    public string Code => L3Codes.Format(PlanId);
+    public string Code => L3Codes.Format(PlanId, Plan?.Code);
     public bool IsEditable => Plan?.Status == PlanningStatus.Planned;
     public List<RequirementRow> Items { get; private set; } = [];
 
@@ -77,20 +89,38 @@ public class RequerimientosModel : PageModel
     public bool IsShort(RequirementRow row) =>
         row.Stock?.Available is decimal available && RequestedByArticle.GetValueOrDefault(row.ArticleId) > available;
 
-    /// <summary>Artículos de inventario sin stock (sin registro o en 0): bloquean "Validar disponibilidad".</summary>
+    /// <summary>Artículos de inventario sin stock (sin registro o en 0): solo se advierten (D2), no bloquean.</summary>
     public List<PlanningStockGate.MissingStock> MissingStock { get; private set; } = [];
 
     /// <summary>Laboratorio donde se registra el stock faltante (Economato).</summary>
     public int? StockLaboratoryId { get; private set; }
 
+    /// <summary>Equipo vinculado a cada artículo de la solicitud (null si es de inventario).</summary>
+    public Dictionary<int, int?> EquipmentIdByArticle { get; private set; } = [];
+
+    /// <summary>Roles que habilitan actualizar el stock de inventario (Administrador/SuperAdmin).</summary>
+    public bool IsAdmin => AdminRoles.Any(User.IsInRole);
+
+    /// <summary>Roles que habilitan registrar unidades físicas de equipo (Supervisor y superiores).</summary>
+    public bool CanManage => ManagerRoles.Any(User.IsInRole);
+
     public bool IsMissingStock(RequirementRow row) => PlanningStockGate.IsMissing(row.Stock);
 
     /// <summary>Registrar el stock de un artículo y volver a estos requerimientos al guardar o cancelar.</summary>
     public string? StockUrl(int articleId) => StockLaboratoryId is int labId
-        ? PlanningStockGate.StockEditUrl(labId, articleId, ReturnHereUrl)
+        ? PlanningStockGate.StockEditUrl(labId, articleId, StockActionLinks.WithFocus(ReturnHereUrl, articleId))
         : null;
 
-    private string ReturnHereUrl => Url.Page("./Requerimientos", new { planId = PlanId }) ?? $"/LaboratoryOperations/Requerimientos?planId={PlanId}";
+    /// <summary>Acción de stock para la fila (null si no hace falta o el usuario no tiene permiso).</summary>
+    public StockAction? RowStockAction(RequirementRow item) =>
+        StockActionLinks.For(item.Stock, RequestedByArticle.GetValueOrDefault(item.ArticleId), item.ArticleId,
+            EquipmentIdByArticle.GetValueOrDefault(item.ArticleId), StockLaboratoryId,
+            StockActionLinks.WithFocus(ReturnHereUrl, item.ArticleId), IsAdmin, CanManage);
+
+    /// <summary>Recarga la página conservando la pantalla de origen (si la hay).</summary>
+    private IActionResult Reload() => RedirectToPage(new { planId = PlanId, returnUrl = SafeReturnUrl });
+
+    private string ReturnHereUrl => Url.Page("./Requerimientos", new { planId = PlanId, returnUrl = SafeReturnUrl }) ?? $"/LaboratoryOperations/Requerimientos?planId={PlanId}";
     public sealed record RecipeRow(string ArticleCode, string ArticleName, bool ArticlePending, decimal? BaseQuantity,
         bool IsScalable, decimal? ComputedQuantity, string? Note);
     public sealed record KitRow(string ArticleCode, string ArticleName, string? Category, bool IsEquipment, decimal BaseQuantity,
@@ -110,7 +140,7 @@ public class RequerimientosModel : PageModel
     public async Task<IActionResult> OnPostLoadRecipeAsync()
     {
         var plan = await GuardAsync();
-        if (plan == null) return RedirectToPage(new { planId = PlanId });
+        if (plan == null) return Reload();
 
         var schedule = plan.PracticeScheduleId.HasValue
             ? await _context.PracticeSchedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == plan.PracticeScheduleId.Value)
@@ -118,7 +148,7 @@ public class RequerimientosModel : PageModel
         if (schedule == null)
         {
             TempData.Warning("La planificación no está vinculada a una práctica del catálogo: agrega los artículos manualmente.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         var recipe = await _context.PracticeRequirements.AsNoTracking()
@@ -128,7 +158,7 @@ public class RequerimientosModel : PageModel
         if (recipe.Count == 0)
         {
             TempData.Warning("La práctica del catálogo no tiene receta registrada.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         var present = await _context.PlanningRequirements.AsNoTracking()
@@ -159,18 +189,18 @@ public class RequerimientosModel : PageModel
         if (added > 0) TempData.Success($"Receta cargada: {added} artículo(s) agregados.");
         else TempData.Info("Todos los artículos de la receta ya estaban en la solicitud.");
         if (skipped > 0) TempData.Warning($"{skipped} línea(s) sin cantidad en la receta no se cargaron: {string.Join("; ", warnings.Take(5))}");
-        return RedirectToPage(new { planId = PlanId });
+        return Reload();
     }
 
     /// <summary>Carga el kit de la materia: agrega los artículos que aún no están en la solicitud.</summary>
     public async Task<IActionResult> OnPostLoadKitAsync()
     {
         var plan = await GuardAsync();
-        if (plan == null) return RedirectToPage(new { planId = PlanId });
+        if (plan == null) return Reload();
         if (!plan.SubjectId.HasValue)
         {
             TempData.Warning("La planificación no tiene materia: agrega los artículos con el buscador.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         var kit = await _context.SubjectKitItems.AsNoTracking()
@@ -179,7 +209,7 @@ public class RequerimientosModel : PageModel
         if (kit.Count == 0)
         {
             TempData.Warning("Esta materia aún no tiene kit.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         var schedule = plan.PracticeScheduleId.HasValue
@@ -209,14 +239,14 @@ public class RequerimientosModel : PageModel
 
         if (added > 0) TempData.Success($"Kit de la materia cargado: {added} artículo(s) agregados. Ajusta las cantidades si hace falta.");
         else TempData.Info("Todos los artículos del kit ya estaban en la solicitud.");
-        return RedirectToPage(new { planId = PlanId });
+        return Reload();
     }
 
     /// <summary>Agrega lo elegido en el buscador: artículos (acumula cantidad) y unidades físicas (una línea por unidad).</summary>
     public async Task<IActionResult> OnPostAddBatchAsync()
     {
         var plan = await GuardAsync();
-        if (plan == null) return RedirectToPage(new { planId = PlanId });
+        if (plan == null) return Reload();
 
         var articleLines = Batch.Articles.Where(l => l.Id > 0)
             .GroupBy(l => l.Id)
@@ -226,12 +256,12 @@ public class RequerimientosModel : PageModel
         if (articleLines.Count == 0 && unitIds.Count == 0)
         {
             TempData.Warning("Selecciona al menos un artículo o una unidad de equipo.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
         if (articleLines.Any(l => l.Quantity <= 0 || l.Quantity > 999999 || decimal.Round(l.Quantity, 2) != l.Quantity))
         {
             TempData.Error("Las cantidades deben ser mayores a 0 y admiten hasta 2 decimales.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         var articleIds = articleLines.Select(l => l.ArticleId).ToList();
@@ -240,7 +270,7 @@ public class RequerimientosModel : PageModel
         if (activeArticles != articleIds.Count)
         {
             TempData.Error("Algún artículo seleccionado ya no está activo. Vuelve a buscarlo.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         var units = new List<(int Id, int EquipmentId)>();
@@ -250,7 +280,7 @@ public class RequerimientosModel : PageModel
             if (scope == null)
             {
                 TempData.Error("La planificación no tiene facultad para ubicar unidades de equipo.");
-                return RedirectToPage(new { planId = PlanId });
+                return Reload();
             }
             var labIds = _picker.ScopeLaboratories(scope.Value.FacultyId, scope.Value.CampusId).Select(l => l.Id);
             units = (await _context.EquipmentUnits.AsNoTracking()
@@ -265,11 +295,12 @@ public class RequerimientosModel : PageModel
             if (units.Count != unitIds.Count)
             {
                 TempData.Error("Alguna unidad seleccionada no está disponible en la sede y facultad de la planificación.");
-                return RedirectToPage(new { planId = PlanId });
+                return Reload();
             }
         }
 
         int added = 0, merged = 0, skipped = 0;
+        var unitArticleIds = new List<int>();
         await using var transaction = await _context.Database.BeginTransactionAsync();
         try
         {
@@ -299,6 +330,7 @@ public class RequerimientosModel : PageModel
                 };
                 _context.PlanningRequirements.Add(detail);
                 existing.Add(detail);
+                unitArticleIds.Add(articleByEquipment[unit.EquipmentId]);
                 added++;
             }
 
@@ -333,7 +365,7 @@ public class RequerimientosModel : PageModel
         {
             await transaction.RollbackAsync();
             TempData.Error("No se pudieron agregar los requerimientos. Intente nuevamente.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         var parts = new List<string>();
@@ -341,7 +373,53 @@ public class RequerimientosModel : PageModel
         if (merged > 0) parts.Add($"{merged} cantidad(es) sumada(s) a líneas existentes");
         if (parts.Count > 0) TempData.Success($"Requerimientos actualizados: {string.Join(" y ", parts)}.");
         if (skipped > 0) TempData.Info($"{skipped} unidad(es) ya estaban en la solicitud.");
-        return RedirectToPage(new { planId = PlanId });
+        await PromptStockAsync(articleLines.Select(l => l.ArticleId).Concat(unitArticleIds).Distinct().ToList());
+        return Reload();
+    }
+
+    /// <summary>Artículo ofrecido para registro inmediato desde el aviso "¿Registrarlo ahora?".</summary>
+    public sealed record StockPromptItem(string Name, string Url, string Label);
+
+    /// <summary>
+    /// Tras agregar requerimientos: si algún artículo quedó sin stock suficiente, guarda en TempData
+    /// (StockPrompt) la lista para ofrecer registrar su existencia al volver; máximo 5 artículos.
+    /// </summary>
+    private async Task PromptStockAsync(List<int> articleIds)
+    {
+        if (articleIds.Count == 0) return;
+        var requested = await _context.PlanningRequirements.AsNoTracking()
+            .Where(d => d.PlanningId == PlanId && articleIds.Contains(d.ArticleId))
+            .GroupBy(d => d.ArticleId)
+            .Select(g => new { ArticleId = g.Key, Total = g.Sum(d => d.RequestedQuantity ?? d.ExpectedQuantity) })
+            .ToDictionaryAsync(x => x.ArticleId, x => x.Total);
+        if (requested.Count == 0) return;
+
+        var ids = requested.Keys.ToList();
+        var stock = await _availability.GetStockAsync(ids, null);
+        var articles = await _context.Articles.AsNoTracking()
+            .Where(a => ids.Contains(a.Id))
+            .Select(a => new { a.Id, a.Name, a.EquipmentId })
+            .ToDictionaryAsync(a => a.Id, a => (Name: a.Name, EquipmentId: a.EquipmentId));
+
+        int? laboratoryId = null;
+        var items = new List<StockPromptItem>();
+        foreach (var id in ids)
+        {
+            var info = stock.GetValueOrDefault(id);
+            var total = requested.GetValueOrDefault(id);
+            if (!StockActionLinks.NeedsAction(info, total)) continue;
+            var (name, equipmentId) = articles.GetValueOrDefault(id);
+            if (info?.Source != StockSource.EquipmentUnits && !equipmentId.HasValue && laboratoryId == null)
+                laboratoryId = await PlanningStockGate.StockLaboratoryIdAsync(_context, PlanId);
+            var action = StockActionLinks.For(info, total, id, equipmentId, laboratoryId,
+                StockActionLinks.WithFocus(ReturnHereUrl, id), IsAdmin, CanManage);
+            if (action != null)
+                items.Add(new StockPromptItem(name, action.Url, action.Label));
+        }
+        if (items.Count == 0) return;
+
+        TempData["StockPrompt"] = System.Text.Json.JsonSerializer.Serialize(items.Take(5),
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
     }
 
     /// <summary>
@@ -353,13 +431,13 @@ public class RequerimientosModel : PageModel
         if (!CanEditKit)
         {
             TempData.Error("No tiene permisos para modificar el kit de la materia.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
         var plan = await _context.Plannings.AsNoTracking().FirstOrDefaultAsync(r => r.Id == PlanId);
         if (plan?.SubjectId is not int subjectId)
         {
             TempData.Error("La planificación no tiene materia.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         var lines = (await _context.PlanningRequirements.AsNoTracking()
@@ -373,7 +451,7 @@ public class RequerimientosModel : PageModel
         if (lines.Count == 0)
         {
             TempData.Error("La solicitud no tiene líneas con cantidad para guardar como kit.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -395,18 +473,18 @@ public class RequerimientosModel : PageModel
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
         TempData.Success($"Kit de la materia guardado con {lines.Count} artículo(s).");
-        return RedirectToPage(new { planId = PlanId });
+        return Reload();
     }
 
     public async Task<IActionResult> OnPostUpdateQuantityAsync(int detailId, decimal newQuantity)
     {
         var plan = await GuardAsync();
-        if (plan == null) return RedirectToPage(new { planId = PlanId });
+        if (plan == null) return Reload();
 
         if (newQuantity <= 0 || newQuantity > 999999 || decimal.Round(newQuantity, 2) != newQuantity)
         {
             TempData.Error("La cantidad debe ser mayor a 0 y admite hasta 2 decimales.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         var detail = await _context.PlanningRequirements.AsTracking()
@@ -414,25 +492,25 @@ public class RequerimientosModel : PageModel
         if (detail == null)
         {
             TempData.Error("El requerimiento no pertenece a esta planificación.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
         if (detail.EquipmentUnitId.HasValue && newQuantity != 1)
         {
             TempData.Error("Una unidad física de equipo siempre se solicita con cantidad 1.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
         detail.RequestedQuantity = newQuantity;
         detail.ExpectedQuantity = (int)Math.Ceiling(newQuantity);
         await _context.SaveChangesAsync();
         TempData.Success("Cantidad actualizada.");
-        return RedirectToPage(new { planId = PlanId });
+        return Reload();
     }
 
     public async Task<IActionResult> OnPostRemoveAsync(int detailId)
     {
         var plan = await GuardAsync();
-        if (plan == null) return RedirectToPage(new { planId = PlanId });
+        if (plan == null) return Reload();
 
         var detail = await _context.PlanningRequirements.AsTracking()
             .FirstOrDefaultAsync(d => d.Id == detailId && d.PlanningId == plan.Id);
@@ -443,31 +521,27 @@ public class RequerimientosModel : PageModel
             await _context.SaveChangesAsync();
             TempData.Success("Requerimiento retirado.");
         }
-        return RedirectToPage(new { planId = PlanId });
+        return Reload();
     }
 
     public async Task<IActionResult> OnPostContinueAsync()
     {
         var plan = await GuardAsync();
-        if (plan == null) return RedirectToPage(new { planId = PlanId });
+        if (plan == null) return Reload();
 
         if (!await _context.PlanningRequirements.AsNoTracking().AnyAsync(d => d.PlanningId == plan.Id))
         {
             TempData.Error("Agrega al menos un requerimiento antes de validar disponibilidad.");
-            return RedirectToPage(new { planId = PlanId });
+            return Reload();
         }
 
-        // No se planifica lo que no tiene stock: se lleva al usuario a registrar la existencia del primero
-        // y la pantalla de existencias lo devuelve aquí al guardar o cancelar.
+        // Regla D2: la falta de stock en la solicitud solo advierte; quien descuenta y bloquea si no
+        // alcanza es la salida L-3. El usuario puede registrar la existencia (opcional) o continuar.
         var missing = await PlanningStockGate.FindAsync(_context, _availability, plan.Id);
         if (missing.Count > 0)
         {
-            StockLaboratoryId = await PlanningStockGate.StockLaboratoryIdAsync(_context, plan.Id);
             var names = string.Join(", ", missing.Take(5).Select(m => m.ArticleName)) + (missing.Count > 5 ? "…" : "");
-            TempData.Warning($"Registre el stock antes de continuar. Sin stock: {names}.");
-            return StockUrl(missing[0].ArticleId) is string url
-                ? LocalRedirect(url)
-                : RedirectToPage(new { planId = PlanId });
+            TempData.Warning($"Atención: {missing.Count} artículo(s) sin stock ({names}). Puedes continuar: al aprobar se pedirá confirmación, y la entrega de material se hace sin descontar lo que no tiene registro y se bloquea si el stock registrado no alcanza.");
         }
 
         return RedirectToPage("./Disponibilidad", new { planId = PlanId });
@@ -535,13 +609,18 @@ public class RequerimientosModel : PageModel
         var stock = await _availability.GetStockAsync(Items.Select(i => i.ArticleId), null); // total institucional (D12)
         Items = Items.Select(i => i with { Stock = stock.GetValueOrDefault(i.ArticleId) }).ToList();
         RequestedByArticle = Items.GroupBy(i => i.ArticleId).ToDictionary(g => g.Key, g => g.Sum(i => i.Quantity ?? 0));
+        EquipmentIdByArticle = await _context.Articles.AsNoTracking()
+            .Where(a => Items.Select(i => i.ArticleId).Contains(a.Id))
+            .Select(a => new { a.Id, a.EquipmentId })
+            .ToDictionaryAsync(a => a.Id, a => a.EquipmentId);
         MissingStock = Items
             .Where(IsMissingStock)
             .GroupBy(i => i.ArticleId)
             .Select(g => new PlanningStockGate.MissingStock(g.Key, g.First().ArticleCode, g.First().ArticleName))
             .OrderBy(m => m.ArticleName)
             .ToList();
-        if (MissingStock.Count > 0)
+        // El laboratorio de stock se necesita si alguna fila ofrece acción de inventario (no solo faltantes).
+        if (Items.Any(i => StockActionLinks.NeedsAction(i.Stock, RequestedByArticle.GetValueOrDefault(i.ArticleId))))
             StockLaboratoryId = await PlanningStockGate.StockLaboratoryIdAsync(_context, Plan.Id);
 
         if (IsEditable)

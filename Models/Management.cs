@@ -19,7 +19,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // IDENTIFICACIÓN (Clave de Negocio AAAA-S)
         // ========================================
         [Required(ErrorMessage = "El año es obligatorio")]
-        [Range(2000, 2100, ErrorMessage = "Año fuera de rango permitido")]
+        [Range(1900, 2100, ErrorMessage = "Año fuera de rango permitido")]
         [Display(Name = "Año")]
         public int Year { get; set; }
 

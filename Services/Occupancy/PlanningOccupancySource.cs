@@ -43,6 +43,7 @@ public sealed class PlanningOccupancySource : IOccupancySource
             .Select(p => new
             {
                 p.Id,
+                p.Code,
                 LaboratoryId = p.LaboratoryId!.Value,
                 p.TeacherPersonId,
                 p.ScheduledDate,
@@ -81,7 +82,7 @@ public sealed class PlanningOccupancySource : IOccupancySource
             blocks.Add(new OccupancyBlock(
                 SourceName,
                 row.Id,
-                BuildLabel(row.Id, row.Subject ?? row.PracticeName, row.Group),
+                BuildLabel(row.Id, row.Code, row.Subject ?? row.PracticeName, row.Group),
                 row.LaboratoryId,
                 row.TeacherPersonId,
                 row.ScheduledDate.Date,
@@ -92,10 +93,10 @@ public sealed class PlanningOccupancySource : IOccupancySource
         return blocks;
     }
 
-    /// <summary>"PRA-00024 · Materia (Grupo)".</summary>
-    public static string BuildLabel(int planningId, string? title, string? group)
+    /// <summary>"SOL3-0565 · Materia (Grupo)" con el código persistido, o "PRA-00024 · Materia (Grupo)" si no tiene.</summary>
+    public static string BuildLabel(int planningId, string? code, string? title, string? group)
     {
-        var label = $"{Pages.LaboratoryOperations.L3Codes.Format(planningId)} · {(string.IsNullOrWhiteSpace(title) ? "Sin materia" : title)}";
+        var label = $"{Pages.LaboratoryOperations.L3Codes.Format(planningId, code)} · {(string.IsNullOrWhiteSpace(title) ? "Sin materia" : title)}";
         return string.IsNullOrWhiteSpace(group) ? label : $"{label} ({group})";
     }
 

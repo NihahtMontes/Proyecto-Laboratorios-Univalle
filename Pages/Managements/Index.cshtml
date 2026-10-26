@@ -3,8 +3,12 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Managements.IndexModel
 
 @{
-    ViewData["Title"] = "Gestiones de Mantenimiento";
+    ViewData["Title"] = "Gestiones de mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
 }
+
+<partial name="_PageHelp" model='"Managements.Index"' />
 
 <div class="row">
     <div class="col-12">
@@ -25,7 +29,7 @@
                 <li class="nav-item">
                     <a class="nav-link @(Model.IsHistorical ? "active" : "") font-weight-bold uppercase small"
                        href="?Type=PorConfirmar">
-                        <i class="fas fa-archive mr-2"></i> Hist&oacute;ricas (Por confirmar)
+                        <i class="fas fa-archive mr-2"></i> Históricas (datos importados por revisar)
                     </a>
                 </li>
             </ul>
@@ -47,7 +51,7 @@
                                 }
                                 else
                                 {
-                                    <span class="badge badge-light border text-muted px-3 py-2 font-weight-bold" title="Las gestiones hist&oacute;ricas importadas son de solo lectura; no se crean, activan ni eliminan desde este listado.">
+                                    <span class="badge badge-light border text-muted px-3 py-2 font-weight-bold" title="Las gestiones históricas importadas son de solo lectura; no se crean, activan ni eliminan desde este listado.">
                                         <i class="fas fa-eye mr-1"></i> Solo lectura
                                     </span>
                                 }
@@ -61,7 +65,7 @@
                                         <th class="border-top-0">Código / Período</th>
                                         <th class="border-top-0">Descripción</th>
                                         <th class="border-top-0 text-center">Facultad</th>
-                                        <th class="border-top-0 text-center">Avance L-48</th>
+                                        <th class="border-top-0 text-center">Avance</th>
                                         <th class="border-top-0 text-center">Estado</th>
                                         <th class="border-top-0 text-center">Acciones</th>
                                     </tr>
@@ -98,20 +102,58 @@
                                                     <small class="text-muted d-block text-truncate" style="max-width: 250px;" title="@item.Description">
                                                         @(string.IsNullOrEmpty(item.Description) ? "Sin descripción detallada" : item.Description)
                                                     </small>
-                                                    <div class="font-12">
-                                                        <i class="fas fa-user-tie mr-1 text-muted"></i> Resp: @item.Responsible
-                                                    </div>
+                                                    @if (!string.IsNullOrWhiteSpace(item.Responsible))
+                                                    {
+                                                        <div class="font-12">
+                                                            <i class="fas fa-user-tie mr-1 text-muted"></i> Resp: @item.Responsible
+                                                        </div>
+                                                    }
                                                 </td>
                                                 <td class="text-center v-middle">
                                                     <span class="badge badge-light border text-muted small">
-                                                        @(item.Faculty?.Name ?? "Todas")
+                                                        @(item.Faculty?.Name ?? (item.Type == ManagementType.PorConfirmar ? "Sin facultad" : "Todas"))
                                                     </span>
                                                 </td>
                                                 <td class="text-center" style="min-width: 150px;">
-                                                    <div class="progress mb-1" style="height: 6px;">
-                                                        <div class="progress-bar bg-info" role="progressbar" style="width: @item.CompletionPercentage%" aria-valuenow="@item.CompletionPercentage" aria-valuemin="0" aria-valuemax="100"></div>
-                                                    </div>
-                                                    <small class="font-weight-bold text-dark">@item.CompletionPercentage% (@item.CompletedMaintenances/@item.TotalEquipments)</small>
+                                                    @if ((item.ManagementPlans != null && item.ManagementPlans.Any()) || item.Type != ManagementType.PorConfirmar)
+                                                    {
+                                                        <div class="progress mb-1" style="height: 6px;">
+                                                            <div class="progress-bar bg-info" role="progressbar" style="width: @item.CompletionPercentage%" aria-valuenow="@item.CompletionPercentage" aria-valuemin="0" aria-valuemax="100"></div>
+                                                        </div>
+                                                        <small class="font-weight-bold text-dark">@item.CompletionPercentage% (@item.CompletedMaintenances/@item.TotalEquipments)</small>
+                                                    }
+                                                    else
+                                                    {
+                                                        Model.HistoricalCountsByManagement.TryGetValue(item.Id, out var importedCounts);
+                                                        if (importedCounts != null && importedCounts.HasAny)
+                                                        {
+                                                            <div class="d-flex flex-wrap justify-content-center align-items-center" style="gap: 4px;">
+                                                                @if (importedCounts.L48Plans > 0)
+                                                                {
+                                                                    <a asp-page="/Maintenances/Plan" asp-route-ManagementId="@item.Id"
+                                                                       class="badge badge-info px-2 font-weight-bold" title="Ver el cronograma de mantenimiento importado de esta gestión">
+                                                                        Cronograma: @importedCounts.L48Plans
+                                                                    </a>
+                                                                }
+                                                                @if (importedCounts.L8Maintenances > 0)
+                                                                {
+                                                                    <span class="badge badge-secondary px-2 font-weight-bold" title="Mantenimientos importados">Mantenimientos: @importedCounts.L8Maintenances</span>
+                                                                }
+                                                                @if (importedCounts.L6Verifications > 0)
+                                                                {
+                                                                    <span class="badge badge-secondary px-2 font-weight-bold" title="Verificaciones importadas">Verificaciones: @importedCounts.L6Verifications</span>
+                                                                }
+                                                                @if (importedCounts.L7Requests > 0)
+                                                                {
+                                                                    <span class="badge badge-secondary px-2 font-weight-bold" title="Solicitudes de servicio técnico importadas">Solicitudes: @importedCounts.L7Requests</span>
+                                                                }
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <small class="text-muted font-italic">Sin actividad importada</small>
+                                                        }
+                                                    }
                                                 </td>
                                                 <td class="text-center v-middle">
                                                     @{
@@ -127,10 +169,10 @@
                                                 </td>
                                                 <td class="text-center v-middle">
                                                     <div class="btn-group">
-                                                        <a asp-page="./Details" asp-route-id="@item.Id" asp-route-ActiveTab="dashboard" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Dashboard">
+                                                        <a asp-page="./Details" asp-route-id="@item.Id" asp-route-ActiveTab="dashboard" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Panel">
                                                             <i class="fas fa-chart-pie"></i>
                                                         </a>
-                                                        <a asp-page="./Details" asp-route-id="@item.Id" asp-route-ActiveTab="l48" class="btn btn-sm btn-outline-success btn-rounded shadow-sm" title="L-48 / Cronograma">
+                                                        <a asp-page="./Details" asp-route-id="@item.Id" asp-route-ActiveTab="l48" class="btn btn-sm btn-outline-success btn-rounded shadow-sm" title="Cronograma de mantenimiento">
                                                             <i class="fas fa-table"></i>
                                                         </a>
                                                         <a asp-page="./Details" asp-route-id="@item.Id" asp-route-ActiveTab="calendario" class="btn btn-sm btn-outline-secondary btn-rounded shadow-sm" title="Calendario">
@@ -150,8 +192,9 @@
                                                             </a>
                                                             @if (item.Status != ManagementStatus.Active)
                                                             {
-                                                                <form method="post" asp-page-handler="ActivateManagement" asp-route-id="@item.Id" class="d-inline js-activate-management-form">
-                                                                    <button type="submit" class="btn btn-sm btn-outline-success btn-rounded shadow-sm" title="Activar gestiÃ³n">
+                                                                <form method="post" asp-page-handler="ActivateManagement" asp-route-id="@item.Id" class="d-inline js-activate-management-form"
+                                                                      data-code="@item.Code" data-closes="@(Model.ActiveCodeByType.TryGetValue(item.Type, out var activeCode) && activeCode != item.Code ? activeCode : "")">
+                                                                    <button type="submit" class="btn btn-sm btn-outline-success btn-rounded shadow-sm" title="Activar gestión">
                                                                         <i class="fas fa-check-circle"></i>
                                                                     </button>
                                                                 </form>
@@ -167,9 +210,9 @@
                                                         }
                                                         else
                                                         {
-                                                            <span class="badge badge-light border text-muted small ml-1" title="Gesti&oacute;n hist&oacute;rica importada; no se permite editar, activar ni dar de baja desde este listado.">
-                                                                <i class="fas fa-archive mr-1"></i> Hist&oacute;rica
-                                                            </span>
+                                                             <span class="badge badge-light border text-muted small ml-1" title="Gestión histórica importada; no se permite editar, activar ni dar de baja desde este listado.">
+                                                                 <i class="fas fa-archive mr-1"></i> Histórica
+                                                             </span>
                                                         }
                                                     </div>
                                                 </td>
@@ -254,13 +297,13 @@
                 }
 
                 Swal.fire({
-                    title: 'Eliminar gestion',
-                    text: 'La gestion sera dada de baja de forma logica.',
+                    title: 'Eliminar gestión',
+                    text: 'La gestión será dada de baja de forma lógica.',
                     type: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#d33',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Si, eliminar',
+                    confirmButtonText: 'Sí, eliminar',
                     cancelButtonText: 'Cancelar'
                 }).then(function (result) {
                     if (result && (result.isConfirmed === true || result.value === true)) {
@@ -287,14 +330,18 @@
                     return false;
                 }
 
+                var closes = form.dataset.closes || '';
+                var code = form.dataset.code || '';
                 Swal.fire({
-                    title: 'Activar gestion',
-                    text: 'Esta gestion quedara activa y cualquier otra gestion activa del mismo tipo se cerrara automaticamente.',
+                    title: 'Activar gestión ' + code,
+                    text: closes
+                        ? 'Se cerrará la gestión activa ' + closes + ' del mismo tipo (quedará Completada y no se puede reabrir). ¿Desea continuar?'
+                        : 'Esta gestión quedará activa. No hay otra gestión activa del mismo tipo que cerrar.',
                     type: 'warning',
                     showCancelButton: true,
                     confirmButtonColor: '#10b981',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Si, activar',
+                    confirmButtonText: 'Sí, activar',
                     cancelButtonText: 'Cancelar'
                 }).then(function (result) {
                     if (result && (result.isConfirmed === true || result.value === true)) {

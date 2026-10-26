@@ -156,7 +156,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
         private async Task LoadFiltersAsync()
         {
             var managements = await _context.Managements.AsNoTracking()
-                .Where(m => m.Status != ManagementStatus.Deleted && m.Semester > 0)
+                .Where(m => m.Status != ManagementStatus.Deleted && m.Semester > 0 && m.Type != ManagementType.Corrective)
                 .OrderByDescending(m => m.Year).ThenByDescending(m => m.Semester)
                 .Select(m => new { m.Id, m.Code })
                 .ToListAsync();

@@ -15,7 +15,7 @@
                     <div class="flex-grow-1">
                         <h2 class="font-weight-bold text-dark mb-2">@Model.Title</h2>
                         <p class="text-muted mb-4">
-                            El sistema no pudo mostrar la informacion solicitada. Puede volver a la pantalla anterior o regresar al listado del modulo.
+                            @Model.Message
                         </p>
 
                         <div class="bg-light border rounded p-4 mb-4">
@@ -27,10 +27,6 @@
                                 <div class="col-md-6 mb-3">
                                     <label class="small text-muted font-weight-bold text-uppercase mb-1">Identificador</label>
                                     <div class="font-weight-bold text-dark">@(string.IsNullOrWhiteSpace(Model.EntityId) ? "Sin dato" : Model.EntityId)</div>
-                                </div>
-                                <div class="col-12">
-                                    <label class="small text-muted font-weight-bold text-uppercase mb-1">Detalle</label>
-                                    <div class="text-dark">@Model.Message</div>
                                 </div>
                             </div>
                         </div>

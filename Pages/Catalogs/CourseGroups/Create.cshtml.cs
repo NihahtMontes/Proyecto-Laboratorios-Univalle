@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -147,10 +147,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
 
             // Validación de FK: gestión válida y no Deleted
             var management = await _context.Managements.AsNoTracking()
-                .FirstOrDefaultAsync(m => m.Id == Input.ManagementId && m.Status != ManagementStatus.Deleted && m.Semester > 0);
+                .FirstOrDefaultAsync(m => m.Id == Input.ManagementId && (m.Status == ManagementStatus.Active || m.Status == ManagementStatus.Inactive) && m.Semester > 0 && m.Type != ManagementType.Corrective);
             if (management == null)
             {
-                ModelState.AddModelError("Input.ManagementId", "La gestión seleccionada no existe o no está disponible.");
+                ModelState.AddModelError("Input.ManagementId", "La gestión seleccionada no existe o está completada (solo lectura).");
                 await LoadListsAsync();
                 return Page();
             }
@@ -196,7 +196,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
                 .IgnoreQueryFilters()
                 .AnyAsync(g => g.ManagementId == Input.ManagementId
                                && g.SubjectId == Input.SubjectId
-                               && g.Name.Trim().ToUpper() == nameNormalized
+                               && g.Name.Replace(" ", "").ToUpper() == nameNormalized
                                && g.Status != GeneralStatus.Eliminado);
             if (nameExists)
             {
@@ -260,7 +260,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
         private async Task LoadListsAsync()
         {
             var managements = await _context.Managements.AsNoTracking()
-                .Where(m => m.Status != ManagementStatus.Deleted && m.Semester > 0)
+                .Where(m => m.Status != ManagementStatus.Deleted && m.Semester > 0 && m.Type != ManagementType.Corrective)
                 .OrderByDescending(m => m.Year).ThenByDescending(m => m.Semester)
                 .Select(m => new { m.Id, m.Code })
                 .ToListAsync();

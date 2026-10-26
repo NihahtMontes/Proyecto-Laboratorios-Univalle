@@ -1,6 +1,9 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects.KitModel
 @{
+    ViewData["Title"] = "Kit de la materia";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
     var totalItems = Model.Items.Count;
     var totalEquipment = Model.Items.Count(i => i.IsEquipment);
     var totalScalable = Model.Items.Count(i => i.IsScalable);
@@ -17,7 +20,7 @@
                             <ol class="breadcrumb bg-transparent p-0 mb-0 small">
                                 <li class="breadcrumb-item">
                                     <a asp-page="./Index" class="text-muted text-decoration-none">
-                                        <i class="fas fa-arrow-left mr-1"></i>Volver a materias
+                                        <i class="fas fa-arrow-left mr-1"></i>Volver al listado
                                     </a>
                                 </li>
                             </ol>

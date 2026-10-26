@@ -14,9 +14,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
         private const int PageSize = 20;
         private readonly Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext _context;
 
-        public UtensilUnitsModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context)
+        private readonly Proyecto_Laboratorios_Univalle.Services.IEquipmentStateHistoryService _stateHistory;
+
+        public UtensilUnitsModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context, Proyecto_Laboratorios_Univalle.Services.IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -54,7 +57,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
                 return RedirectToPage(new { utensilType = UtensilType, searchTerm = SearchTerm, pageIndex = PageIndex });
             }
 
-            unit.CurrentStatus = EquipmentStatus.Deleted;
+            await _stateHistory.ChangeStatusAsync(unit, EquipmentStatus.Deleted, "Dado de baja.");
             unit.LastModifiedDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 

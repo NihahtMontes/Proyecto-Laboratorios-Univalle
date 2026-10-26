@@ -20,17 +20,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         private readonly UserManager<User> _userManager;
         private readonly IManagementContextService _managementContext;
         private readonly ILogger<MassCreateModel> _logger;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
         public MassCreateModel(
             ApplicationDbContext context,
             UserManager<User> userManager,
             IManagementContextService managementContext,
-            ILogger<MassCreateModel> logger)
+            ILogger<MassCreateModel> logger,
+            IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
             _logger = logger;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -94,7 +97,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 activeMgmt = await _context.Managements.AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == managementId.Value && m.Status == ManagementStatus.Active);
 
-            if (activeMgmt == null && !IsWizard)
+            // Solo sin gestión indicada se usa la preventiva activa; una gestión pedida que no está activa no devuelve planes
+            // (antes caía a la gestión activa y mostraba planes de otra gestión).
+            if (activeMgmt == null && !IsWizard && !managementId.HasValue)
             {
                 activeMgmt = await _managementContext.GetCurrentManagementAsync(ManagementType.Preventive);
             }
@@ -195,7 +200,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
             if (activeMgmt == null)
             {
-                TempData.Error("No hay gestión activa para registrar la salida L-3.");
+                TempData.Error("No hay una gestión activa para registrar la salida de equipos.");
                 await LoadLabList();
                 return Page();
             }
@@ -290,7 +295,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     // Actualizar estado del equipo
                     var unit = await _context.EquipmentUnits.FindAsync(equipmentUnitId);
                     if (!saveDraft && unit != null)
-                        unit.CurrentStatus = EquipmentStatus.OnLoan;
+                        await _stateHistory.ChangeStatusAsync(unit, EquipmentStatus.OnLoan,
+                            "Préstamo por salida de equipos (registro masivo).", userId: user?.Id);
 
                     // Vincular salida; solo el guardado final avanza a Kardex.
                     plan.Departure = departure;
@@ -331,21 +337,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     "No se registraron salidas masivas. Omitidos: {Skipped}. Filas: {AttemptedRows}.",
                     skipped,
                     attemptedRows);
-                TempData.Error("No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico L-8 y un plan válido.");
+                TempData.Error("No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico asignado en el registro de mantenimiento.");
                 await LoadLabList();
                 return Page();
             }
 
             if (saveDraft)
             {
-                TempData.Success($"Borrador L-3 guardado para {created} salida(s).");
+                TempData.Success($"Borrador de la salida de equipos guardado para {created} equipo(s).");
                 if (IsWizard)
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
                 return RedirectToPage("./Index");
             }
 
             var msg = $"{created} salida(s) registrada(s) correctamente.";
-            if (skipped > 0) msg += $" {skipped} equipo(s) omitido(s) por no tener técnico en L-8.";
+            if (skipped > 0) msg += $" {skipped} equipo(s) omitido(s) por no tener técnico asignado en el registro de mantenimiento.";
             TempData.Success(msg);
 
             if (IsWizard)
@@ -369,7 +375,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.Exit;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-3 guardado con salida masiva parcial.";
+            plan.DraftSummary = "Borrador de la salida de equipos guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.Exit;
             plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

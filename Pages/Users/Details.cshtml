@@ -2,7 +2,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Users.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Detalle de Usuario";
+    ViewData["Title"] = "Detalle del usuario";
+    ViewData["Section"] = "Configuración";
 
     string ValueOrFallback(string? value, string fallback = "Sin dato")
     {
@@ -147,7 +148,7 @@
                     <i class="fas fa-edit mr-1"></i> Modificar Perfil
                 </a>
                 <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 font-weight-bold mb-3">
-                    <i class="fas fa-list mr-1"></i> Volver al Listado
+                    <i class="fas fa-list mr-1"></i> Volver al listado
                 </a>
                 <a asp-page="./Delete" asp-route-id="@Model.User.Id" class="btn btn-link btn-block text-danger small font-weight-bold">
                     <i class="fas fa-user-minus mr-1"></i> Revocar Acceso

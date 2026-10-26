@@ -10,19 +10,24 @@ using Proyecto_Laboratorios_Univalle.Services;
 namespace Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations;
 
 /// <summary>
-/// Demanda agregada por artículo para las planificaciones de una gestión académica:
-/// suma RequestedQuantity de los requerimientos y compara contra el stock del Economato (laboratorio "ECONO").
-/// Solo considera planificaciones vigentes (estado que ocupa material) y con fecha igual o posterior a hoy.
+/// Demanda agregada por artículo para las planificaciones de una gestión académica: suma
+/// RequestedQuantity de los requerimientos y la compara contra el stock total institucional (todos los
+/// laboratorios; para artículos de equipo, unidades físicas disponibles). Alcance "proximas": solo
+/// planificaciones vigentes no finalizadas con fecha igual o posterior a hoy; "gestion": todas las de la
+/// gestión que ocupan material (incluidas las finalizadas), sin filtro de fecha.
 /// </summary>
 public class DemandaModel : PageModel
 {
     private readonly ApplicationDbContext _context;
     private readonly IAcademicManagementService _managements;
+    private readonly IArticleAvailabilityService _availability;
 
-    public DemandaModel(ApplicationDbContext context, IAcademicManagementService managements)
+    public DemandaModel(ApplicationDbContext context, IAcademicManagementService managements,
+        IArticleAvailabilityService availability)
     {
         _context = context;
         _managements = managements;
+        _availability = availability;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -37,6 +42,13 @@ public class DemandaModel : PageModel
     [BindProperty(SupportsGet = true)]
     public int? ManagementId { get; set; }
 
+    /// <summary>Alcance del consolidado: "proximas" (desde hoy, sin finalizadas) o "gestion" (toda la gestión).</summary>
+    [BindProperty(SupportsGet = true)]
+    public string? Scope { get; set; }
+
+    /// <summary>True cuando el alcance cubre toda la gestión (incluye finalizadas y fechas pasadas).</summary>
+    public bool IsWholeManagement => string.Equals(Scope, "gestion", StringComparison.OrdinalIgnoreCase);
+
     public SelectList ManagementList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public SelectList LaboratoryList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public IReadOnlyList<DemandRow> Rows { get; private set; } = [];
@@ -46,7 +58,6 @@ public class DemandaModel : PageModel
     public int SurplusCount { get; private set; }
     public bool HasManagement { get; private set; }
     public AcademicManagementSummary? Management { get; private set; }
-    public string? OriginLaboratoryCode { get; private set; }
 
     public async Task OnGetAsync()
     {
@@ -55,6 +66,7 @@ public class DemandaModel : PageModel
         Management = await _managements.ResolveAsync(ManagementId);
         ManagementId = Management?.Id;
         HasManagement = Management != null;
+        Scope = ResolveScope(Management);
 
         var managements = await _managements.ListAsync();
         ManagementList = new SelectList(
@@ -73,46 +85,43 @@ public class DemandaModel : PageModel
             return;
         }
 
-        // Laboratorios activos: alimenta el filtro y la resolución del Economato.
+        // Laboratorios activos: alimenta el filtro de ambiente.
         var laboratories = await _context.Laboratories.AsNoTracking()
             .Where(item => item.Status == GeneralStatus.Activo)
             .OrderBy(item => item.Name)
-            .Select(item => new { item.Id, item.Code, item.Name })
+            .Select(item => new { item.Id, item.Name })
             .ToListAsync();
         LaboratoryList = new SelectList(laboratories, "Id", "Name", LaboratoryId);
 
-        var econo = laboratories.FirstOrDefault(item => item.Code == "ECONO");
-        var econoDbId = econo?.Id;
-        OriginLaboratoryCode = econo?.Code;
-
         // Demanda agregada por artículo (RequestedQuantity es decimal). Una sola consulta,
         // acotada a las planificaciones de la gestión; los estados no ocupantes no demandan material.
-        var demandRows = await _context.PlanningRequirements.AsNoTracking()
+        // "proximas": no finalizadas y con fecha igual o posterior a hoy. "gestion": toda la gestión.
+        var demandQuery = _context.PlanningRequirements.AsNoTracking()
             .Where(d => d.Planning!.ManagementId == Management!.Id
                         && !PlanningStatus.NonOccupying.Contains(d.Planning!.Status)
-                        && d.Planning!.Status != PlanningStatus.Finalized
-                        && d.Planning!.ScheduledDate >= today
-                        && (!LaboratoryId.HasValue || d.Planning!.LaboratoryId == LaboratoryId.Value))
+                        && (!LaboratoryId.HasValue || d.Planning!.LaboratoryId == LaboratoryId.Value));
+        if (!IsWholeManagement)
+            demandQuery = demandQuery
+                .Where(d => d.Planning!.Status != PlanningStatus.Finalized
+                            && d.Planning!.ScheduledDate >= today);
+        var demandRows = await demandQuery
             .GroupBy(d => d.ArticleId)
             .Select(g => new
             {
                 ArticleId = g.Key,
                 Requested = g.Sum(d => (decimal?)d.RequestedQuantity) ?? 0m,
-                PlanCount = g.Count()
+                // Planificaciones distintas que piden el artículo, no filas de requerimientos.
+                PlanCount = g.Select(d => d.PlanningId).Distinct().Count()
             })
             .ToListAsync();
 
         var articleIds = demandRows.Select(row => row.ArticleId).Distinct().ToList();
 
-        // Stock disponible por artículo del Economato (AvailableQuantity es decimal).
-        var stockMap = (econoDbId == null || articleIds.Count == 0)
-            ? new Dictionary<int, decimal>()
-            : (await _context.ArticleStocks.AsNoTracking()
-                .Where(s => s.LaboratoryId == econoDbId.Value && articleIds.Contains(s.ArticleId))
-                .GroupBy(s => s.ArticleId)
-                .Select(g => new { ArticleId = g.Key, Available = g.Sum(s => s.AvailableQuantity) })
-                .ToListAsync())
-            .ToDictionary(x => x.ArticleId, x => x.Available);
+        // Stock disponible por artículo: total institucional (null = todos los laboratorios; equipos por
+        // unidades físicas disponibles).
+        var stockMap = articleIds.Count == 0
+            ? new Dictionary<int, ArticleStockInfo>()
+            : await _availability.GetStockAsync(articleIds, null);
 
         // Catálogo de artículos referenciados (un lote).
         var articleMap = articleIds.Count == 0
@@ -133,7 +142,7 @@ public class DemandaModel : PageModel
         var source = demandRows.Select(d =>
         {
             articleMap.TryGetValue(d.ArticleId, out var article);
-            var hasStock = stockMap.TryGetValue(d.ArticleId, out var stockValue);
+            var info = stockMap.GetValueOrDefault(d.ArticleId);
             return new DemandRow
             {
                 ArticleId = d.ArticleId,
@@ -142,7 +151,8 @@ public class DemandaModel : PageModel
                 Category = article?.Category ?? string.Empty,
                 ReviewPending = article?.ReviewStatus == DataReviewStatus.PorConfirmar,
                 Requested = d.Requested,
-                Available = hasStock ? stockValue : (decimal?)null,
+                Available = info?.Available,
+                StockSource = info?.SourceText,
                 PlanCount = d.PlanCount
             };
         }).ToList();
@@ -168,6 +178,18 @@ public class DemandaModel : PageModel
         SurplusCount = source.Count(item => item.Balance >= 0);
     }
 
+    /// <summary>
+    /// Alcance resuelto: "proximas" | "gestion". Si viene vacío (o inválido), "proximas" cuando la gestión
+    /// es la actual y editable; si no, "gestion".
+    /// </summary>
+    private string ResolveScope(AcademicManagementSummary? management)
+    {
+        var scope = (Scope ?? string.Empty).Trim();
+        if (string.Equals(scope, "gestion", StringComparison.OrdinalIgnoreCase)) return "gestion";
+        if (string.Equals(scope, "proximas", StringComparison.OrdinalIgnoreCase)) return "proximas";
+        return management is { IsCurrent: true, IsEditable: true } ? "proximas" : "gestion";
+    }
+
     private sealed class ArticleProjection
     {
         public int Id { get; init; }
@@ -185,8 +207,10 @@ public class DemandaModel : PageModel
         public string Category { get; init; } = string.Empty;
         public bool ReviewPending { get; init; }
         public decimal Requested { get; init; }
-        /// <summary>Null cuando no existe ArticleStock para el artículo en el Economato.</summary>
+        /// <summary>Null cuando el artículo no tiene registro de stock (existencias ni equipo).</summary>
         public decimal? Available { get; init; }
+        /// <summary>De dónde sale el stock: "Existencias" o "Unidades físicas" (null sin registro).</summary>
+        public string? StockSource { get; init; }
         public decimal Balance => (Available ?? 0m) - Requested;
         public int PlanCount { get; init; }
     }

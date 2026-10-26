@@ -70,7 +70,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
                 .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.Id == id);
 
-            if (subject == null) return NotFound();
+            if (subject == null || subject.Status == GeneralStatus.Eliminado) return NotFound(); // QA 2026-10-18: un registro dado de baja no se edita ni se reactiva por URL.
 
             // Carrera actual para el panel lateral (excluir si fue Eliminada).
             if (subject.CareerId.HasValue)
@@ -101,7 +101,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
             var subjectToUpdate = await _context.Subjects
                 .AsTracking()
                 .FirstOrDefaultAsync(s => s.Id == Input.Id);
-            if (subjectToUpdate == null) return NotFound();
+            if (subjectToUpdate == null || subjectToUpdate.Status == GeneralStatus.Eliminado) return NotFound(); // QA 2026-10-18: un registro dado de baja no se edita ni se reactiva por URL.
+
+            // El estado Eliminado solo se asigna con la acción de baja (antes un POST manual lo aceptaba y el registro desaparecía).
+            if (Input.Status == GeneralStatus.Eliminado)
+            {
+                ModelState.AddModelError("Input.Status", "El estado Eliminado solo se gestiona desde la opción Dar de Baja.");
+            }
 
             if (!ModelState.IsValid)
             {

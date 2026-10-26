@@ -1,0 +1,185 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits.IndexModel
+@using Proyecto_Laboratorios_Univalle.Helpers
+@using Proyecto_Laboratorios_Univalle.Models.Enums
+
+@{
+    ViewData["Title"] = "Unidades físicas";
+    ViewData["Section"] = "Equipos e inventario";
+    ViewData["HidePageTitle"] = true;
+    var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
+        || Model.LaboratoryId.HasValue
+        || Model.Status.HasValue;
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0 mt-3">
+            <div class="card-body">
+                <div class="d-md-flex align-items-center mb-4">
+                    <div>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Unidades físicas</h3>
+                        <h6 class="card-subtitle text-muted ml-2">Listado plano de todas las unidades físicas vigentes del inventario.</h6>
+                    </div>
+                </div>
+
+                <div class="bg-light p-3 mb-4 rounded border-left border-info">
+                    <form method="get" data-live-filter-form>
+                        <label asp-for="SearchTerm" class="sr-only">Buscar por inventario, serie, equipo o código</label>
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-muted"></i></span>
+                            </div>
+                            <input type="search" asp-for="SearchTerm"
+                                   class="form-control border-left-0 @(!string.IsNullOrWhiteSpace(Model.SearchTerm) ? "border-info" : "")"
+                                   placeholder="Buscar por n.º inventario, serie, equipo o código de catálogo"
+                                   autocomplete="off"
+                                   data-live-filter-search />
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                            <select asp-for="LaboratoryId"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.LaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="Model.LaboratoriesList"
+                                    aria-label="Laboratorio"
+                                    data-live-filter-control>
+                                <option value="">Laboratorio</option>
+                            </select>
+
+                            <select asp-for="Status"
+                                    class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.Status.HasValue ? "border-info text-info font-weight-bold" : "")"
+                                    asp-items="@Proyecto_Laboratorios_Univalle.Helpers.EnumHelper.GetStatusSelectList<Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus>()"
+                                    aria-label="Estado operativo"
+                                    data-live-filter-control>
+                                <option value="">Estado operativo</option>
+                            </select>
+
+                            @if (hasActiveFilters)
+                            {
+                                <a asp-page="./Index" class="btn btn-link btn-sm text-muted mb-2" title="Limpiar filtros">
+                                    <i class="fas fa-times mr-1"></i> Limpiar filtros
+                                </a>
+                            }
+
+                            <span class="small text-muted ml-auto mb-2" aria-live="polite">
+                                <strong class="text-dark">@Model.Units.TotalCount</strong> unidad(es)
+                            </span>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover v-middle">
+                        <thead class="bg-light">
+                            <tr class="small uppercase font-weight-bold">
+                                <th>N.º Inventario</th>
+                                <th>Equipo</th>
+                                <th>N.º Serie</th>
+                                <th>Laboratorio</th>
+                                <th class="text-center">Estado Operativo</th>
+                                <th class="text-center">Condición Física</th>
+                                <th class="text-right">Valor de Adquisición</th>
+                                <th class="text-center">Historial</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Units == null || !Model.Units.Any())
+                            {
+                                <tr>
+                                    <td colspan="8" class="text-center py-5 text-muted italic font-weight-bold">
+                                        <i class="fas fa-inbox fa-3x mb-3 d-block opacity-2"></i>
+                                        No se encontraron unidades físicas para la búsqueda actual.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var unit in Model.Units)
+                                {
+                                    <tr>
+                                        <td class="v-middle">
+                                            <a asp-page="/EquipmentUnits/Details" asp-route-id="@unit.Id" class="font-weight-bold text-dark" title="Ver detalle de la unidad">
+                                                @unit.InventoryNumber
+                                            </a>
+                                        </td>
+                                        <td class="v-middle">
+                                            <h6 class="m-b-0 font-weight-bold text-dark">@(unit.Equipment?.Name ?? "Sin equipo")</h6>
+                                            <span class="text-muted small">@(unit.Equipment?.CatalogCode ?? "—")</span>
+                                        </td>
+                                        <td class="v-middle">@(unit.SerialNumber ?? "—")</td>
+                                        <td class="v-middle">@(unit.Laboratory != null ? unit.Laboratory.Code : "—")</td>
+                                        <td class="text-center v-middle">
+                                            <span class="badge badge-pill badge-info px-3 py-1 shadow-sm font-weight-bold">
+                                                @EnumHelper.GetDisplayName(unit.CurrentStatus)
+                                            </span>
+                                        </td>
+                                        <td class="text-center v-middle">
+                                            <span class="badge badge-pill badge-light border px-3 py-1 font-weight-bold">
+                                                @(unit.PhysicalCondition.HasValue ? EnumHelper.GetDisplayName(unit.PhysicalCondition.Value) : "—")
+                                            </span>
+                                        </td>
+                                        <td class="text-right v-middle text-dark font-weight-bold">
+                                            @(unit.AcquisitionValue.HasValue ? $"Bs {unit.AcquisitionValue.Value:N2}" : "—")
+                                        </td>
+                                        <td class="text-center v-middle">
+                                            <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-primary btn-rounded" title="Historial del equipo">
+                                                <i class="fas fa-history"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.Units!.TotalPages > 1)
+                {
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.Units.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Units.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-LaboratoryId="@Model.LaboratoryId" asp-route-Status="@Model.Status">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.Units.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Units.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-LaboratoryId="@Model.LaboratoryId" asp-route-Status="@Model.Status">@i</a>
+                                </li>
+                            }
+                            @if (Model.Units.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Units.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-LaboratoryId="@Model.LaboratoryId" asp-route-Status="@Model.Status">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .v-middle td {
+            vertical-align: middle !important;
+        }
+
+        .uppercase {
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .italic {
+            font-style: italic;
+        }
+
+        .opacity-2 {
+            opacity: 0.2;
+        }
+    </style>
+}

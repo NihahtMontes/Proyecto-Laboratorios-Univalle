@@ -45,6 +45,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // El estado Eliminado solo se asigna con la baja lógica (antes un POST manual lo aceptaba).
+            if (City.Status == GeneralStatus.Eliminado)
+            {
+                ModelState.AddModelError("City.Status", "El estado Eliminado solo se gestiona desde la opción Dar de Baja.");
+            }
+
             if (!ModelState.IsValid)
             {
                 await ReloadCity(City.Id);
@@ -53,7 +59,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
             }
 
             // Normalization
-            var normalizedName = City.Name.Trim().ToLower();
+            var normalizedName = City.Name.Clean().ToLower();
 
             // Duplicate Validation (Same country, different ID)
             var exists = await _context.Cities
@@ -88,6 +94,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Cities
 
             try
             {
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach el guardado no persistía.
+                _context.Attach(cityToUpdate).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 TempData.Success($"Localidad '{cityToUpdate.Name}' actualizada exitosamente.");
             }

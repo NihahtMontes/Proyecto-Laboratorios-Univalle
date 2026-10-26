@@ -109,6 +109,10 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [StringLength(200)]
         public string? HistoricalSourceKey { get; set; }
 
+        /// <summary>Estado de calidad del dato en el Excel de origen (Válida / Requiere revisión).</summary>
+        [StringLength(50)]
+        public string? QualityStatus { get; set; }
+
         public int? ImportBatchId { get; set; }
 
         // ========================================

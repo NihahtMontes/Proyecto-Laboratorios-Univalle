@@ -41,13 +41,28 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             if (id == null) return NotFound();
 
             var request = await _context.Requests.FindAsync(id);
-            if (request != null)
+            // Solo solicitudes de adquisición (antes el POST aceptaba el Id de una L-7 técnica).
+            if (request != null && request.Type != RequestType.Purchasing) return NotFound();
+            if (request == null)
+            {
+                TempData.Warning("La solicitud de adquisición no existe o ya fue anulada.");
+                return RedirectToPage("./Index");
+            }
+            // QA 2026-10-18: la compra (L-12) de un plan no se anula aquí; dejaba planes «Completados» apuntando a una compra anulada.
+            var linkedPlan = await _context.ManagementPlans.AsNoTracking().FirstOrDefaultAsync(p => p.AcquisitionRequestId == request.Id);
+            if (linkedPlan != null)
+            {
+                TempData.Warning($"No se puede anular esta solicitud de compra: forma parte del proceso del equipo (paso {Helpers.WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}). Para corregirlo, abra el formulario del paso actual del equipo desde el asistente y use «Rehacer paso anterior».");
+                return RedirectToPage("./Index");
+            }
             {
                 request.Status = RequestStatus.Cancelled;
                 request.RejectionReason = string.IsNullOrWhiteSpace(request.RejectionReason)
                     ? "Solicitud marcada como eliminada lógicamente."
                     : request.RejectionReason;
                 request.LastModifiedDate = DateTime.UtcNow;
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach la anulación no persistía.
+                _context.Attach(request).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                 await _context.SaveChangesAsync();
                 TempData.Success("Solicitud marcada como eliminada correctamente.");
             }

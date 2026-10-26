@@ -630,7 +630,7 @@ public sealed partial class NotificationAlertService : INotificationAlertService
 
             var date = completedMaintenance.SuggestedDate.Date;
             var (title, urgency) = date < today
-                ? ("Preventivo vencido según Kardex", NotificationUrgency.Danger)
+                ? ("Preventivo vencido según el historial del equipo", NotificationUrgency.Danger)
                 : date <= today.AddDays(7)
                     ? ("Preventivo por programar", NotificationUrgency.Warning)
                     : ("Preventivo sugerido", NotificationUrgency.Info);
@@ -897,7 +897,7 @@ public sealed partial class NotificationAlertService : INotificationAlertService
             Id = -6_000_003,
             Title = "Conflictos de material esta semana",
             Message = $"{conflictCount} conflicto(s) de stock esta semana.",
-            Url = "/LaboratoryOperations/Index",
+            Url = "/LaboratoryOperations/Conflictos",
             Icon = "fas fa-exclamation-circle text-danger",
             SortDate = monday,
             Time = "Esta semana",

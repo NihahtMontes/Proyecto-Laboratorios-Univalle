@@ -33,7 +33,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 worksheet.Cells["D11"].Value = null; // Fecha - Día
                 worksheet.Cells["F11"].Value = null; // Fecha - Mes
                 worksheet.Cells["H11"].Value = null; // Fecha - Año
-                worksheet.Cells["C14"].Value = null; // Justificación/Requerimiento
+                // Requerimiento: A13:U16 está combinado en la plantilla (C14 queda dentro y no se ve); se escribe en A13.
+                worksheet.Cells["A13"].Value = null;
 
                 // Limpiar el cuerpo de la tabla (Filas 19 a 37) - LIMPIEZA SEGURA
                 for (int r = 19; r <= 37; r++)
@@ -97,8 +98,8 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 rangeAño.Style.VerticalAlignment = ExcelVerticalAlignment.Center;
 
                 // JUSTIFICACIÓN / TÍTULO (Fila 14)
-                worksheet.Cells["C14"].Value = request.Description ?? "SIN DESCRIPCIÓN";
-                worksheet.Cells["C14"].Style.WrapText = true;
+                worksheet.Cells["A13"].Value = $"Requerimiento: {request.Description ?? "SIN DESCRIPCIÓN"}";
+                worksheet.Cells["A13"].Style.WrapText = true;
 
                 // ===============================================
                 // TABLA DE ÍTEMS

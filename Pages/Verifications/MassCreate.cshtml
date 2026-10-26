@@ -3,9 +3,13 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Verificaci\u00f3n Masiva (L-6)";
+    ViewData["Title"] = "Verificación masiva por laboratorio";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
 }
+
+<partial name="_PageHelp" model='"Verifications.MassCreate"' />
 
 <div class="row justify-content-center">
     <div class="col-lg-12">
@@ -30,7 +34,7 @@
                 <div class="bg-light p-4 rounded mb-4 border-left border-info shadow-sm" style="border-left-width: 4px;">
                     <div class="row align-items-end">
                         <div class="col-md-5">
-                            <label class="font-weight-bold small text-uppercase text-muted">Laboratorio / Ambiente</label>
+                            <label class="font-weight-bold small text-uppercase text-muted">Laboratorio</label>
                             <select id="labSelector" class="form-control custom-select" asp-items="Model.LabList">
                                 <option value="">-- Seleccione un laboratorio --</option>
                             </select>
@@ -59,7 +63,7 @@
                                         <th class="border-top-0" style="width: 30%;">Equipo</th>
                                         <th class="border-top-0" style="width: 20%;">Inv. / Marca</th>
                                         <th class="border-top-0 text-center" style="width: 12%;">Estado Actual</th>
-                                        <th class="border-top-0" style="width: 28%;">Condición Física</th>
+                                        <th class="border-top-0" style="width: 28%;">Condición Física <partial name="_HelpHint" model='"verification-state"' /></th>
                                         <th class="border-top-0 text-center" style="width: 10%;">Detalle</th>
                                     </tr>
                                 </thead>
@@ -74,7 +78,7 @@
                             {
                                 <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" asp-route-ManagementId="@ViewData["ManagementId"]"
                                    class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
-                                    <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
+                                    <i class="fas fa-arrow-left mr-1"></i> Volver al asistente
                                 </a>
                             }
                             <button type="submit" asp-page-handler="Draft" id="btnDraftMassVerification" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2">
@@ -121,7 +125,7 @@
                     </label>
                     <textarea id="obsText" class="form-control" rows="4"
                               placeholder="Describa detalladamente los fallos detectados en el equipo..."></textarea>
-                    <small class="form-text text-muted">Este texto se enviará automáticamente como solicitud L-7.</small>
+                    <small class="form-text text-muted">Este texto se copiará a la solicitud de servicio técnico, que completará en el paso siguiente.</small>
                 </div>
             </div>
             <div class="modal-footer">
@@ -297,8 +301,8 @@
                 }
 
                 Swal.fire({
-                    title: isDraft ? '¿Guardar borrador L-6?' : '¿Guardar verificaciones L-6?',
-                    text: isDraft ? 'Se guardará la revisión parcial sin avanzar de fase.' : 'Se registrará la condición física de todos los equipos cargados y el wizard avanzará según las fallas detectadas.',
+                    title: isDraft ? '¿Guardar borrador de la verificación?' : '¿Guardar la verificación?',
+                    text: isDraft ? 'Se guardará la revisión parcial sin avanzar de paso.' : 'Se registrará la condición física de todos los equipos cargados y el asistente avanzará según las fallas detectadas.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: isDraft ? 'Sí, guardar borrador' : 'Sí, guardar',

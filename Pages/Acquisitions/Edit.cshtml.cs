@@ -63,6 +63,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             public string? InvestmentCode { get; set; }
 
             [Display(Name = "Centro de Costos")]
+            [Required(ErrorMessage = "El centro de costos es obligatorio.")]   // igual que en Create
             [StringLength(100)]
             public string? CostCenter { get; set; }
 
@@ -131,6 +132,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // QA 2026-10-18: las líneas de la compra se validan (antes una cantidad o precio negativo terminaba en 500).
+            foreach (var (item, index) in (Input.Items ?? new List<CostItemInput>()).Select((item, index) => (item, index)))
+            {
+                if (string.IsNullOrWhiteSpace(item.Concept)) continue;
+                if (item.Quantity < 0.01m || item.Quantity > 99999m)
+                    ModelState.AddModelError(string.Empty, $"Ítem «{item.Concept.Trim()}»: la cantidad debe estar entre 0,01 y 99.999.");
+                if (item.UnitPrice < 0m || item.UnitPrice > 999999999m)
+                    ModelState.AddModelError(string.Empty, $"Ítem «{item.Concept.Trim()}»: el precio unitario debe estar entre 0 y 999.999.999.");
+                if (item.Concept.Trim().Length > 200)
+                    ModelState.AddModelError(string.Empty, $"Ítem {index + 1}: el concepto no puede superar los 200 caracteres.");
+            }
+
             if (!ModelState.IsValid)
             {
                 var request = await _context.Requests
@@ -160,24 +173,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                 .AsTracking()
                 .FirstOrDefaultAsync(m => m.Id == Input.Id);
 
-            if (requestToUpdate == null) return NotFound();
+            // Solo solicitudes de adquisición (antes el POST aceptaba el Id de una L-7 técnica aunque la GET diera 404).
+            if (requestToUpdate == null || requestToUpdate.Type != RequestType.Purchasing) return NotFound();
 
             var currentUser = await _userManager.GetUserAsync(User);
 
+            // El estado (aprobación) solo lo cambia un administrador: el Supervisor podía aprobar L-12 aunque no pueda crearlas.
+            var canChangeStatus = User.IsInRole("Administrator") || User.IsInRole("SuperAdmin");
+
             requestToUpdate.Description = Input.Description;
             requestToUpdate.Priority = Input.Priority;
-            requestToUpdate.Status = Input.Status;
+            if (canChangeStatus) requestToUpdate.Status = Input.Status;
             requestToUpdate.Observations = Input.Observations;
             requestToUpdate.InvestmentCode = Input.InvestmentCode;
             requestToUpdate.CostCenter = Input.CostCenter;
             requestToUpdate.LastModifiedDate = DateTime.UtcNow;
             requestToUpdate.ModifiedById = currentUser?.Id;
 
-            // Preserve cost history: detach old rows instead of deleting them physically.
+            // Se conserva el historial anulando las líneas anteriores (IsVoided); desvincularlas con RequestId = null
+            // violaba CK_CostDetails_ExactlyOneParent (500 al editar una compra con líneas copiadas del L-8).
             foreach (var detail in requestToUpdate.CostDetails.ToList())
             {
-                detail.RequestId = null;
-                detail.Request = null;
+                detail.IsVoided = true;
+                detail.VoidedDate = DateTime.UtcNow;
                 detail.LastModifiedDate = DateTime.UtcNow;
             }
 

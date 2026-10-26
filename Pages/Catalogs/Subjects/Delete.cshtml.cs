@@ -52,6 +52,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects
 
             if (subject == null) return NotFound();
 
+            // QA 2026-10-18: integridad referencial — una materia con prácticas activas no se da de baja (las dejaba huérfanas).
+            var activePractices = await _context.Practices.CountAsync(p => p.SubjectId == subject.Id && p.Status != GeneralStatus.Eliminado);
+            if (activePractices > 0)
+            {
+                TempData.Warning($"No se puede dar de baja la materia '{subject.Name}': tiene {activePractices} práctica(s) activa(s). Dé de baja primero sus prácticas.");
+                return RedirectToPage("./Index");
+            }
+
             // Soft Delete: baja lógica para auditoría
             subject.Status = GeneralStatus.Eliminado;
 

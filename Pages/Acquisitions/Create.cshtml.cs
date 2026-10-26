@@ -219,10 +219,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
                 if (wizardPlan == null)
                 {
-                    TempData.Error($"No se pudo resolver el plan de gestión para L-12. ManagementPlanId recibido: {ManagementPlanId.Value}.");
+                    TempData.Error("No se encontró el equipo en la gestión. Vuelva al asistente y ábralo de nuevo.");
                     await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                     ViewData["IsWizard"] = isWizard;
                     return Page();
+                }
+
+                // Guarda de fase (QA R-02): L-12 solo opera si el plan está en Desembolso.
+                // El rechazo no crea la solicitud ni mueve el plan.
+                var phaseError = WizardPhaseGuard.Validate(wizardPlan, WizardPhase.Disbursement);
+                if (phaseError != null)
+                {
+                    TempData.Warning(phaseError);
+                    return isWizard
+                        ? RedirectToPage("/Index", new { ShowWizard = true, Step = (int)wizardPlan.CurrentPhase, ManagementId = wizardPlan.ManagementId })
+                        : RedirectToPage("./Index");
                 }
 
                 ApplyPlanToInput(wizardPlan);
@@ -245,7 +256,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
                     .Distinct()
                     .Take(4)
                     .ToList();
-                TempData.Error(errors.Count > 0 ? "No se pudo guardar L-12: " + string.Join(" ", errors) : "No se pudo guardar L-12. Revise los campos obligatorios.");
+                TempData.Error(errors.Count > 0 ? "No se pudo guardar la solicitud de compra: " + string.Join(" ", errors) : "No se pudo guardar la solicitud de compra. Revise los campos obligatorios.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
                 ViewData["IsWizard"] = isWizard;
@@ -274,7 +285,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
             if (management == null)
             {
-                TempData.Error("No hay gestión activa para registrar L-12 en este flujo.");
+                TempData.Error("No hay una gestión activa para registrar la solicitud de compra.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
                 ViewData["IsWizard"] = isWizard;
@@ -292,7 +303,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             request.EquipmentId = unit.EquipmentId;
             request.EquipmentUnitId = unit.Id;
             request.Description = string.IsNullOrWhiteSpace(Input.Description)
-                ? "Borrador L-12 pendiente de justificación."
+                ? "Borrador de la solicitud de compra pendiente de justificación."
                 : Input.Description.Clean()!;
             request.Observations = Input.Observations?.Clean();
             request.InvestmentCode = Input.InvestmentCode.Clean();
@@ -310,7 +321,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
 
                 if (request.CostDetails.Count(c => c.Id > 0) > maintenanceCosts.Count)
                 {
-                    TempData.Error("La lista de costos L-8 se redujo después de guardar L-12. Revise los costos vinculados antes de continuar; no se eliminarán registros históricos automáticamente.");
+                    TempData.Error("La lista de costos del registro de mantenimiento se redujo después de guardar la solicitud de compra. Revise los costos vinculados antes de continuar; no se eliminarán registros históricos automáticamente.");
                     await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                     if (wizardPlan != null) await PopulateWizardViewDataAsync(wizardPlan);
                     ViewData["IsWizard"] = isWizard;
@@ -401,8 +412,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             }
 
             TempData.Success(saveDraft
-                ? $"Borrador L-12 para '{unit.InventoryNumber}' guardado correctamente."
-                : $"Solicitud de Adquisición para '{unit.InventoryNumber}' registrada exitosamente. El mantenimiento quedó completado en el wizard.");
+                ? $"Borrador de la solicitud de compra para '{unit.InventoryNumber}' guardado correctamente."
+                : $"Solicitud de compra para '{unit.InventoryNumber}' registrada correctamente. El mantenimiento del equipo quedó completado.");
 
             if (wizardPlan != null && isWizard)
             {
@@ -429,7 +440,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
         {
             if (request == null) return;
 
-            Input.Description = request.Description == "Borrador L-12 pendiente de justificación." ? string.Empty : request.Description;
+            Input.Description = request.Description == "Borrador de la solicitud de compra pendiente de justificación." ? string.Empty : request.Description;
             Input.Observations = request.Observations;
             Input.InvestmentCode = request.InvestmentCode ?? string.Empty;
             Input.CostCenter = request.CostCenter ?? string.Empty;
@@ -475,7 +486,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.Disbursement;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-12 guardado con solicitud de adquisición parcial.";
+            plan.DraftSummary = "Borrador de la solicitud de compra guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.Disbursement;
             plan.CurrentState = WizardEquipmentState.AwaitingDisbursement;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

@@ -21,13 +21,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         private readonly IManagementContextService _managementContext;
         private readonly IMaintenanceNotificationWriter _maintenanceNotifications;
         private readonly ILogger<CreateModel> _logger;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
         public CreateModel(Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext context,
             UserManager<User> userManager,
             IManagementContextService managementContext,
             IMaintenanceNotificationWriter maintenanceNotifications,
-            ILogger<CreateModel> logger)
+            ILogger<CreateModel> logger,
+            IEquipmentStateHistoryService stateHistory)
         {
+            _stateHistory = stateHistory;
             _context = context;
             _userManager = userManager;
             _managementContext = managementContext;
@@ -60,6 +63,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     .FirstOrDefaultAsync(p => p.Id == managementPlanId.Value);
                 if (plan != null)
                 {
+                    // Guarda de fase (QA R-02): si el plan ya no está en L-8, avisar y volver
+                    // al wizard en la fase real en lugar de mostrar el formulario.
+                    var getPhaseError = WizardPhaseGuard.Validate(plan, WizardPhase.Maintenance);
+                    if (getPhaseError != null)
+                    {
+                        TempData.Warning(getPhaseError);
+                        return RedirectToPage("/Index", new { ShowWizard = true, Step = (int)plan.CurrentPhase, ManagementId = plan.ManagementId });
+                    }
+
                     ViewData["CurrentPhaseInt"] = (int)plan.CurrentPhase;
                     ViewData["ManagementId"] = plan.ManagementId;
                     ManagementId = plan.ManagementId;
@@ -73,6 +85,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     if (plan.Maintenance != null)
                     {
                         ApplyMaintenanceToInput(plan.Maintenance);
+                        if (plan.Maintenance.Status != MaintenanceStatus.Completed)
+                        {
+                            ExistingMaintenanceId = plan.Maintenance.Id;
+                        }
                     }
                     else if (isWizard)
                     {
@@ -120,6 +136,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
         [BindProperty(SupportsGet = true)]
         public int? ManagementId { get; set; }
 
+        /// <summary>
+        /// Mantenimiento del plan del asistente que ya existe y aún no está Completado
+        /// (el título pasa a «Continuar mantenimiento»). No se bindea desde el formulario.
+        /// </summary>
+        public int? ExistingMaintenanceId { get; private set; }
+
         public class InputModel
         {
             [Required(ErrorMessage = "La facultad es obligatoria")]
@@ -145,6 +167,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             public int? RequestId { get; set; }
 
             [Display(Name = "Descripción del Trabajo")]
+            [StringLength(2000, ErrorMessage = "La descripción del trabajo no puede superar los 2000 caracteres.")]
             public string? Description { get; set; }
 
             [Display(Name = "Fecha Programada")]
@@ -232,7 +255,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             return await SaveMaintenanceAsync(isWizard, saveDraft: false);
         }
 
-        private async Task<IActionResult> SaveMaintenanceAsync(bool isWizard, bool saveDraft)
+        /// <summary>
+        /// «Registrar y finalizar» del asistente: el servidor fuerza el estado Completado
+        /// (sin confiar en el select del formulario) y, si pasa las validaciones de
+        /// Completado, el plan avanza a la fase de Salida.
+        /// </summary>
+        public async Task<IActionResult> OnPostFinalizeAsync(bool isWizard = false)
+        {
+            return await SaveMaintenanceAsync(isWizard, saveDraft: false, finalize: true);
+        }
+
+        private async Task<IActionResult> SaveMaintenanceAsync(bool isWizard, bool saveDraft, bool finalize = false)
         {
             // ─────────────────────────────────────────────────────────────
             // WIZARD PRE-VALIDATION: reconstruir valores ANTES de ModelState
@@ -255,6 +288,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 if (wizardPlan != null)
                 {
+                    // Guarda de fase (QA R-02): si el plan no está en L-8 Mantenimiento no se
+                    // guarda nada (ni definitivo ni borrador) y se vuelve al wizard en su fase real.
+                    var phaseError = WizardPhaseGuard.Validate(wizardPlan, WizardPhase.Maintenance);
+                    if (phaseError != null)
+                    {
+                        TempData.Warning(phaseError);
+                        return isWizard
+                            ? RedirectToPage("/Index", new { ShowWizard = true, Step = (int)wizardPlan.CurrentPhase, ManagementId = wizardPlan.ManagementId })
+                            : RedirectToPage("./Index");
+                    }
+
                     currentMgmt = wizardPlan.Management;
 
                     if (wizardPlan.EquipmentUnitId.HasValue)
@@ -296,10 +340,22 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 ViewData["CurrentPhaseInt"] = (int)wizardPlan.CurrentPhase;
                 ViewData["ManagementId"] = wizardPlan.ManagementId;
                 ViewData["ManagementPlanId"] = wizardPlan.Id;
+                if (wizardPlan.Maintenance != null && wizardPlan.Maintenance.Status != MaintenanceStatus.Completed)
+                {
+                    ExistingMaintenanceId = wizardPlan.Maintenance.Id;
+                }
                 var mgmt = await _context.Managements.AsNoTracking()
                     .FirstOrDefaultAsync(m => m.Id == wizardPlan.ManagementId);
                 ViewData["IsCorrective"] = mgmt?.Type == ManagementType.Corrective;
                 ViewData["ManagementType"] = mgmt?.Type.ToString();
+            }
+
+            // «Registrar y finalizar»: el estado lo decide el servidor. Las validaciones
+            // de Completado (técnico, avance 100%, fechas) se aplican igual más abajo.
+            if (finalize && !saveDraft)
+            {
+                Input.Status = MaintenanceStatus.Completed;
+                ModelState.Remove("Input.Status");
             }
 
             if (saveDraft)
@@ -313,14 +369,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     ModelState.AddModelError("Input.EndDate", "La fecha de finalización no puede ser anterior al inicio.");
             }
 
-            if (isWizard && !saveDraft && !Input.TechnicianId.HasValue)
+            // El técnico responsable es obligatorio en todo guardado definitivo del wizard y,
+            // fuera del wizard, siempre que el mantenimiento esté En curso o Completado.
+            if (!saveDraft && !Input.TechnicianId.HasValue &&
+                (isWizard || Input.Status is MaintenanceStatus.InProgress or MaintenanceStatus.Completed))
             {
-                ModelState.AddModelError("Input.TechnicianId", "El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que L-3 pueda derivar el responsable de la salida.");
-            }
-
-            if (!saveDraft && Input.Status == MaintenanceStatus.Completed && Input.CompletionPercentage != 100)
-            {
-                ModelState.AddModelError("Input.CompletionPercentage", "Para marcar el mantenimiento como Completado, el avance debe estar al 100%.");
+                ModelState.AddModelError("Input.TechnicianId", "El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que la salida de equipos tome ese responsable.");
             }
 
             var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).AsTracking().FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
@@ -337,26 +391,52 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física no tiene laboratorio asignado. Asigne un laboratorio al equipo antes de registrar el mantenimiento.");
             }
 
+            // Líneas de costo: las vacías (sin concepto) se ignoran; las demás se validan y NUNCA se corrigen en silencio
+            // (antes una cantidad 0 se guardaba como 1 y un precio negativo como 0, con «guardado correctamente»).
+            var costErrors = new List<string>();
+            var postedCosts = Input.CostDetails ?? new List<CostDetail>();
+            for (var i = 0; i < postedCosts.Count; i++)
+            {
+                var detail = postedCosts[i];
+                if (string.IsNullOrWhiteSpace(detail.Concept)) continue;
+                var line = $"Costo «{detail.Concept.Trim()}»";
+                bool BindError(string field) => ModelState.TryGetValue($"Input.CostDetails[{i}].{field}", out var entry) && entry.Errors.Count > 0;
+
+                if (detail.Concept.Trim().Length > 200)
+                    costErrors.Add($"Costo de la línea {i + 1}: el concepto no puede superar los 200 caracteres.");
+                if (BindError(nameof(CostDetail.Quantity)) || detail.Quantity < 0.01m || detail.Quantity > 99999m)
+                    costErrors.Add($"{line}: la cantidad debe ser un número entre 0,01 y 99.999.");
+                if (BindError(nameof(CostDetail.UnitPrice)) || detail.UnitPrice < 0m || detail.UnitPrice > 999999999m)
+                    costErrors.Add($"{line}: el precio unitario debe ser un número entre 0 y 999.999.999.");
+            }
+
             foreach (var key in ModelState.Keys.Where(k => k.StartsWith("Input.CostDetails")).ToList())
             {
                 ModelState.Remove(key);
             }
-
-            Input.CostDetails = Input.CostDetails?
-                .Where(d => !string.IsNullOrWhiteSpace(d.Concept))
-                .ToList() ?? new List<CostDetail>();
-
-            foreach (var detail in Input.CostDetails)
+            foreach (var error in costErrors.Distinct())
             {
-                detail.Quantity = detail.Quantity <= 0 ? 1 : detail.Quantity;
-                detail.UnitPrice = detail.UnitPrice < 0 ? 0 : detail.UnitPrice;
+                ModelState.AddModelError(string.Empty, error);
             }
+
+            Input.CostDetails = postedCosts
+                .Where(d => !string.IsNullOrWhiteSpace(d.Concept))
+                .ToList();
 
             decimal totalCosts = Input.CostDetails?.Sum(d => d.Subtotal) ?? 0;
             Input.ActualCost = totalCosts;
 
             Input.Tasks = NormalizeTasks(Input.Tasks);
             Input.CompletionPercentage = CalculateCompletionPercentage(Input.Tasks);
+
+            // QA R-02: el 100% solo lo validaba JS. El servidor recalcula el avance desde
+            // las tareas y exige 100% + al menos una tarea completada para marcar Completado.
+            if (!saveDraft && Input.Status == MaintenanceStatus.Completed &&
+                (Input.CompletionPercentage != 100 || !Input.Tasks.Any(t => t.IsCompleted)))
+            {
+                ModelState.AddModelError("Input.CompletionPercentage",
+                    "Para marcar el mantenimiento como Completado, el avance debe estar al 100% y debe haber al menos una tarea completada.");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -419,36 +499,35 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
 
                 if (!saveDraft && equipmentUnit != null)
                 {
-                    var lastHistory = await _context.EquipmentStateHistories
-                        .Where(h => h.EquipmentUnitId == equipmentUnit.Id && h.EndDate == null)
-                        .OrderByDescending(h => h.StartDate)
-                        .AsTracking()
-                        .FirstOrDefaultAsync();
+                    var historyUserId = (await _userManager.GetUserAsync(User))?.Id;
 
                     if (Input.Status == MaintenanceStatus.Completed)
                     {
+                        var completionAt = Input.EndDate.HasValue ? BoliviaTime.ToUtc(Input.EndDate.Value) : DateTime.UtcNow;
+                        var workDone = maintenance.Description?.Trim();
+                        var completionReason = $"Cierre automático del mantenimiento #{maintenance.Id}"
+                            + (string.IsNullOrEmpty(workDone) ? "" : $": {workDone}")
+                            + $" | Costo Bs {(maintenance.ActualCost ?? 0m):N2}";
                         var kardexHistory = wizardPlan?.KardexHistoryId != null
                             ? await _context.EquipmentStateHistories
                                 .AsTracking()
                                 .FirstOrDefaultAsync(h => h.Id == wizardPlan.KardexHistoryId.Value)
                             : null;
 
-                        if (lastHistory != null && lastHistory.Id != kardexHistory?.Id)
-                        {
-                            lastHistory.EndDate = Input.EndDate ?? DateTime.UtcNow;
-                            _context.EquipmentStateHistories.Update(lastHistory);
-                        }
-
                         if (kardexHistory == null)
                         {
-                            kardexHistory = new EquipmentStateHistory
+                            // Registrado y finalizado de una vez: la línea de tiempo igual muestra el tramo «En mantenimiento».
+                            if (equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
                             {
-                                EquipmentUnitId = equipmentUnit.Id,
-                                Status = EquipmentStatus.Operational,
-                                StartDate = Input.EndDate ?? DateTime.UtcNow,
-                                Reason = $"Cierre automático L-8 #{maintenance.Id}: {maintenance.Description?.Trim()} | Costo Bs {(maintenance.ActualCost ?? 0m):N2}"
-                            };
-                            _context.EquipmentStateHistories.Add(kardexHistory);
+                                await _stateHistory.ChangeStatusAsync(
+                                    equipmentUnit, EquipmentStatus.UnderMaintenance,
+                                    "Ingreso a proceso de mantenimiento.", Input.StartDate.HasValue ? BoliviaTime.ToUtc(Input.StartDate.Value) : DateTime.UtcNow, historyUserId);
+                            }
+
+                            // Cierra el tramo vigente («En mantenimiento») y abre «Operativo».
+                            kardexHistory = await _stateHistory.ChangeStatusAsync(
+                                equipmentUnit, EquipmentStatus.Operational, completionReason,
+                                completionAt, historyUserId, splitIfSameStatus: true);
                             if (wizardPlan != null)
                             {
                                 wizardPlan.KardexHistory = kardexHistory;
@@ -457,31 +536,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         else
                         {
                             kardexHistory.Status = EquipmentStatus.Operational;
-                            kardexHistory.StartDate = Input.EndDate ?? DateTime.UtcNow;
+                            kardexHistory.StartDate = completionAt;
                             kardexHistory.EndDate = null;
-                            kardexHistory.Reason = $"Cierre automático L-8 #{maintenance.Id}: {maintenance.Description?.Trim()} | Costo Bs {(maintenance.ActualCost ?? 0m):N2}";
+                            kardexHistory.Reason = EquipmentStateHistoryService.TrimReason(completionReason);
+                            equipmentUnit.CurrentStatus = EquipmentStatus.Operational;
                         }
-
-                        equipmentUnit.CurrentStatus = EquipmentStatus.Operational;
                     }
                     else if (equipmentUnit.CurrentStatus != EquipmentStatus.UnderMaintenance)
                     {
-                        if (lastHistory != null)
-                        {
-                            lastHistory.EndDate = DateTime.UtcNow;
-                            _context.EquipmentStateHistories.Update(lastHistory);
-                        }
-
-                        var newHistory = new EquipmentStateHistory
-                        {
-                            EquipmentUnitId = equipmentUnit.Id,
-                            Status = EquipmentStatus.UnderMaintenance,
-                            StartDate = DateTime.UtcNow,
-                            Reason = "Ingreso a proceso de mantenimiento."
-                        };
-                        _context.EquipmentStateHistories.Add(newHistory);
-
-                        equipmentUnit.CurrentStatus = EquipmentStatus.UnderMaintenance;
+                        await _stateHistory.ChangeStatusAsync(
+                            equipmentUnit, EquipmentStatus.UnderMaintenance,
+                            "Ingreso a proceso de mantenimiento.", DateTime.UtcNow, historyUserId);
                     }
 
                     _context.EquipmentUnits.Update(equipmentUnit);
@@ -496,10 +561,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     {
                         MarkMaintenanceDraft(wizardPlan);
                     }
-                    else
+                    else if (Input.Status == MaintenanceStatus.Completed)
                     {
+                        // Solo un L-8 Completado avanza el plan a L-3 Salida.
                         wizardPlan.CurrentPhase = WizardPhase.Exit;
                         wizardPlan.CurrentState = WizardEquipmentState.AwaitingDeparture;
+                        ClearDraft(wizardPlan);
+                    }
+                    else
+                    {
+                        // L-8 Pendiente/En curso: el plan permanece en la fase Mantenimiento.
+                        wizardPlan.CurrentPhase = WizardPhase.Maintenance;
+                        wizardPlan.CurrentState = Input.Status == MaintenanceStatus.InProgress || Input.StartDate.HasValue
+                            ? WizardEquipmentState.InMaintenance
+                            : WizardEquipmentState.AwaitingMaintenance;
                         ClearDraft(wizardPlan);
                     }
                     await _context.SaveChangesAsync();
@@ -512,13 +587,28 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                     await TryCreateMaintenanceNotificationAsync(maintenance);
                 }
 
-                TempData.Success(saveDraft
-                    ? $"Borrador de mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente."
-                    : $"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
+                if (!saveDraft && wizardPlan != null && isWizard && Input.Status != MaintenanceStatus.Completed)
+                {
+                    // Guardado sin finalizar desde el asistente: avisar claramente que el
+                    // equipo sigue en el paso de Registro de mantenimiento.
+                    TempData.Warning($"El mantenimiento quedó como «{EnumHelper.GetDisplayName(Input.Status)}». El equipo seguirá en el paso de Registro de mantenimiento hasta que lo registres como finalizado.");
+                }
+                else if (finalize && wizardPlan != null && isWizard)
+                {
+                    TempData.Success($"Mantenimiento de '{equipmentUnit?.Equipment?.Name}' registrado y finalizado. El equipo pasó al paso de Salida.");
+                }
+                else
+                {
+                    TempData.Success(saveDraft
+                        ? $"Borrador de mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente."
+                        : $"Mantenimiento para '{equipmentUnit?.Equipment?.Name}' guardado correctamente.");
+                }
 
                 if (wizardPlan != null && isWizard)
                 {
-                    return RedirectToPage("/Index", new { ShowWizard = true, Step = saveDraft ? 3 : 4, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
+                    // Paso 3 (Mantenimiento) mientras el L-8 no esté Completado; 4 (L-3) al completarlo.
+                    var nextStep = saveDraft || Input.Status != MaintenanceStatus.Completed ? 3 : 4;
+                    return RedirectToPage("/Index", new { ShowWizard = true, Step = nextStep, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                 }
 
                 return RedirectToPage("./Index");
@@ -699,7 +789,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.Maintenance;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-8 guardado con planificación parcial de mantenimiento.";
+            plan.DraftSummary = "Borrador del registro de mantenimiento guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.Maintenance;
             plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

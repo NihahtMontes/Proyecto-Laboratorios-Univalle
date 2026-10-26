@@ -4,11 +4,15 @@
 @using Proyecto_Laboratorios_Univalle.Helpers
 
 @{
-    ViewData["Title"] = "Registrar Requerimiento Técnico (L-7)";
+    ViewData["Title"] = "Nueva solicitud de servicio técnico";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 2);
     bool isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
 }
+
+<partial name="_PageHelp" model='"Requests.Create"' />
 
 <div class="row justify-content-center">
     <div class="col-lg-10 col-xl-9">
@@ -22,7 +26,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4">
                     <div>
-                        <h4 class="card-title text-dark">Registrar Requerimiento Técnico (L-7)</h4>
+                        <h4 class="card-title text-dark">Registrar solicitud de servicio técnico</h4>
                         <h6 class="card-subtitle text-muted">Apertura de ficha para mantenimiento o asistencia técnica de activos.</h6>
                     </div>
                     <div class="ml-auto">
@@ -44,6 +48,18 @@
                             <h5 class="font-weight-bold text-info mb-3">
                                 <i class="fas fa-university mr-2"></i> Ubicación y Activo
                             </h5>
+
+                            @if (!(isWizard && !isCorrective))
+                            {
+                                <div class="form-group mb-4 p-2 rounded" style="background:#f0f9ff; border:1px solid #bae6fd;">
+                                    <label for="equipmentSearch" class="control-label font-weight-bold small text-info text-uppercase">
+                                        <i class="fas fa-search mr-1"></i> Buscar equipo
+                                    </label>
+                                    <select id="equipmentSearch" class="form-control" data-placeholder="Nombre del equipo o número de inventario..." aria-describedby="equipmentSearchHelp"></select>
+                                    <small id="equipmentSearchHelp" class="form-text text-muted">¿No sabes en qué laboratorio está? Búscalo por nombre o número de inventario.</small>
+                                    <div id="equipmentSearchStatus" class="small mt-1" role="status" aria-live="polite"></div>
+                                </div>
+                            }
 
                             <div class="form-group mb-4">
                                 <label asp-for="Input.FacultyId" class="control-label font-weight-bold small text-info text-uppercase">Facultad <span class="text-danger">*</span></label>
@@ -99,12 +115,12 @@
                             @if (isWizard && ViewData["LinkedVerificationId"] != null && !isCorrective)
                             {
                                 <div class="form-group mt-3 mb-4">
-                                    <label class="control-label font-weight-bold small text-uppercase text-muted">Verificación Técnica Relacionada (L-6)</label>
+                                    <label class="control-label font-weight-bold small text-uppercase text-muted">Verificación relacionada</label>
                                     <div class="p-2 rounded" style="background:#f0fdf4; border: 1px solid #bbf7d0;">
                                         <div class="d-flex align-items-center">
                                             <div class="mr-3" style="color: #16a34a;"><i class="fas fa-clipboard-check fa-lg"></i></div>
                                             <div>
-                                                <h6 class="m-0 font-weight-bold" style="color: #15803d;">Verificación L-6 Vinculada</h6>
+                                                <h6 class="m-0 font-weight-bold" style="color: #15803d;">Verificación vinculada</h6>
                                                 <span class="small" style="color: #16a34a;">ID: @ViewData["LinkedVerificationId"]</span>
                                             </div>
                                             <a href="/Verifications/Details?id=@ViewData["LinkedVerificationId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #16a34a; border: 1px solid #bbf7d0;">
@@ -134,7 +150,7 @@
                                 <h5 class="font-weight-bold text-info mb-0">
                                     <i class="fas fa-align-left mr-2"></i> Naturaleza del Problema
                                 </h5>
-                                <button type="button" id="btnVerHistorico" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Ver historial de Kardex del equipo seleccionado">
+                                <button type="button" id="btnVerHistorico" class="btn btn-sm btn-outline-info btn-rounded shadow-sm" title="Ver el historial del equipo seleccionado">
                                     <i class="fas fa-history mr-1"></i> Ver Histórico
                                 </button>
                             </div>
@@ -160,7 +176,7 @@
                             </div>
 
                             <div class="form-group mb-4">
-                                <label asp-for="Input.Observations" class="control-label font-weight-bold small text-uppercase text-dark">CHECKLIST TÉCNICO OBLIGATORIO Y OBSERVACIONES</label>
+                                <label asp-for="Input.Observations" class="control-label font-weight-bold small text-uppercase text-dark">CHECKLIST TÉCNICO OBLIGATORIO Y OBSERVACIONES</label> <partial name="_HelpHint" model='"technical-checklist"' />
                                 <textarea asp-for="Input.Observations" class="form-control shadow-sm" rows="14" placeholder="Indique las actividades sugeridas..."></textarea>
                                 <span asp-validation-for="Input.Observations" class="text-danger small"></span>
                             </div>
@@ -168,7 +184,7 @@
                             <div class="custom-control custom-checkbox mb-4 p-3 rounded" style="background:#f0f9ff; border:1px solid #bae6fd;">
                                 <input asp-for="Input.TechnicalChecklistConfirmed" class="custom-control-input" id="technicalChecklistConfirmed" />
                                 <label class="custom-control-label font-weight-bold small text-info" for="technicalChecklistConfirmed">
-                                    Confirmo que revisé los 13 puntos técnicos obligatorios antes de registrar la solicitud L-7.
+                                    Confirmo que revisé los 13 puntos técnicos obligatorios antes de registrar la solicitud.
                                 </label>
                                 <span asp-validation-for="Input.TechnicalChecklistConfirmed" class="text-danger small d-block mt-1"></span>
                             </div>
@@ -178,7 +194,7 @@
                     <div class="form-actions text-right mt-4">
                         @if (isWizard)
                         {
-                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded mr-2 px-4">Volver al Wizard</a>
+                            <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="2" asp-route-ManagementId="@ViewData["ManagementId"]" class="btn btn-outline-secondary btn-rounded mr-2 px-4">Volver al asistente</a>
                         }
                         <button type="submit" asp-page-handler="Draft" id="btnDraftRequest" formnovalidate class="btn btn-outline-info btn-rounded px-4 shadow-sm font-weight-bold mr-2">
                             <i class="fas fa-save mr-1"></i> Guardar Borrador
@@ -236,7 +252,8 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <link rel="stylesheet" href="~/assets/libs/select2/dist/css/select2.min.css" /> @* QA H-014: sin el CSS el texto del select se veía duplicado *@
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script src="~/js/equipment-kardex-sidebar.js" asp-append-version="true"></script>
     <script>
         $(function() {
@@ -263,6 +280,74 @@
                     $unit.prop('disabled', false).trigger('change');
                 });
             });
+
+            // ─── Buscador global de equipo (solo cuando los selects son editables) ───
+            var $equipmentSearch = $('#equipmentSearch');
+            if ($equipmentSearch.length) {
+                var $searchStatus = $('#equipmentSearchStatus');
+                var setSearchStatus = function(text, cssClass) {
+                    $searchStatus.removeClass('text-muted text-danger text-success').addClass(cssClass || 'text-muted').text(text || '');
+                };
+
+                $equipmentSearch.select2({
+                    width: '100%',
+                    allowClear: true,
+                    placeholder: $equipmentSearch.data('placeholder'),
+                    minimumInputLength: 2,
+                    ajax: {
+                        url: '?handler=SearchUnits',
+                        dataType: 'json',
+                        delay: 300,
+                        data: function(params) { return { term: params.term }; },
+                        processResults: function(data) { return { results: (data && data.results) || [] }; },
+                        cache: true
+                    },
+                    language: {
+                        inputTooShort: function() { return 'Escribe al menos 2 caracteres'; },
+                        noResults: function() { return 'No se encontraron equipos'; },
+                        searching: function() { return 'Buscando…'; },
+                        errorLoading: function() { return 'No se pudo realizar la búsqueda. Intente de nuevo.'; }
+                    }
+                });
+
+                var loadOptions = function(url, params, $select, placeholder, selectedId) {
+                    return $.get(url, params).then(function(data) {
+                        $select.empty().append(new Option(placeholder, ''));
+                        $.each(data || [], function(i, item) { $select.append(new Option(item.name || '', item.id)); });
+                        $select.prop('disabled', false).val(String(selectedId));
+                        // Solo refresca Select2: no dispara los handlers manuales de 'change'.
+                        $select.trigger('change.select2');
+                    });
+                };
+
+                $equipmentSearch.on('select2:select', function(e) {
+                    var item = e.params && e.params.data;
+                    if (!item || !item.laboratoryId) return;
+
+                    var $faculty = $('#facultySelect');
+                    var $laboratory = $('#laboratorySelect');
+                    var $unit = $('#equipmentUnitSelect');
+
+                    setSearchStatus('Cargando ubicación del equipo…', 'text-muted');
+                    $faculty.val(String(item.facultyId)).trigger('change.select2');
+
+                    loadOptions('?handler=LaboratoriesByFaculty', { facultyId: item.facultyId }, $laboratory, '-- Seleccionar Laboratorio --', item.laboratoryId)
+                        .then(function() {
+                            return loadOptions('?handler=UnitsByLab', { laboratoryId: item.laboratoryId }, $unit, '-- Seleccionar Unidad Física --', item.id);
+                        })
+                        .then(function() {
+                            if ($unit.val() === String(item.id)) {
+                                setSearchStatus('Equipo seleccionado. Puedes ajustar la ubicación manualmente si hace falta.', 'text-success');
+                            } else {
+                                setSearchStatus('No se pudo seleccionar el equipo automáticamente. Selecciónalo manualmente.', 'text-danger');
+                            }
+                        }, function() {
+                            setSearchStatus('No se pudo cargar la ubicación del equipo. Selecciónalo manualmente o intente de nuevo.', 'text-danger');
+                        });
+                });
+
+                $equipmentSearch.on('select2:clear', function() { setSearchStatus('', 'text-muted'); });
+            }
 
             var requestSubmitting = false;
             $('#createRequestForm').on('submit', function(event) {
@@ -293,8 +378,8 @@
                 }
 
                 Swal.fire({
-                    title: isDraft ? '¿Guardar borrador L-7?' : '¿Registrar solicitud L-7?',
-                    text: isDraft ? 'Se guardará el avance sin pasar al paso L-8.' : 'Se guardará la solicitud técnica y el equipo avanzará al paso L-8 de mantenimiento.',
+                    title: isDraft ? '¿Guardar borrador de la solicitud?' : '¿Registrar la solicitud de servicio técnico?',
+                    text: isDraft ? 'Se guardará el avance sin pasar al registro de mantenimiento.' : 'Se guardará la solicitud y el equipo pasará al registro de mantenimiento.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: isDraft ? 'Sí, guardar borrador' : 'Sí, guardar',

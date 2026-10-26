@@ -16,6 +16,7 @@
             <link href="~/assets/libs/sweetalert2/dist/sweetalert2.min.css" rel="stylesheet">
     <link href="~/assets/extra-libs/c3/c3.min.css" rel="stylesheet">
     <link href="~/css/smart-index.css" rel="stylesheet" asp-append-version="true">
+    <link href="~/css/ux-help.css" rel="stylesheet" asp-append-version="true">
 
     <style>
         /* ===== WIZARD STEPPER GLOBAL ===== */
@@ -67,21 +68,6 @@
                             </div>
 
                             <div class="navbar-collapse collapse" id="navbarSupportedContent">
-                                <ul class="navbar-nav float-left mr-auto">
-                                    <li class="nav-item search-box">
-                                        <a class="nav-link waves-effect waves-dark" href="javascript:void(0)">
-                                            <div class="d-flex align-items-center">
-                                                <i class="mdi mdi-magnify font-20 mr-1"></i>
-                                                <div class="ml-1 d-none d-sm-block"><span>Buscar</span></div>
-                                            </div>
-                                        </a>
-                                        <form class="app-search position-absolute">
-                                            <input type="text" class="form-control" placeholder="Buscar &amp; enter">
-                                            <a class="srh-btn"><i class="ti-close"></i></a>
-                                        </form>
-                                    </li>
-                                </ul>
-
                                 @{
                                     var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? "";
                                     bool showBell = User.Identity != null && User.Identity.IsAuthenticated;
@@ -104,6 +90,11 @@
                                 }
 
                                 <ul class="navbar-nav float-right">
+                                    <li class="nav-item">
+                                        <a class="nav-link waves-effect waves-dark" href="/Ayuda" title="Ayuda" aria-label="Ayuda">
+                                            <i class="mdi mdi-help-circle-outline font-24"></i>
+                                        </a>
+                                    </li>
                                     @if (showBell)
                                     {
                                         <li class="nav-item dropdown" id="notificationDropdown">
@@ -149,7 +140,14 @@
                             {
                                 <div class="page-breadcrumb">
                                     <div class="row">
-                                        <div class="col-5 align-self-center">
+                                        <div class="col-12 align-self-center">
+                                            @* Ubicación: grupo del menú (ViewData["Section"]) › título de la página. *@
+                                            @if (ViewData["Section"] is string pageSection && !string.IsNullOrWhiteSpace(pageSection))
+                                            {
+                                                <nav aria-label="Ubicación" class="small text-uppercase font-weight-bold mb-1" style="color:#6c757d; letter-spacing:.4px;">
+                                                    @pageSection <span aria-hidden="true">›</span>
+                                                </nav>
+                                            }
                                             <h4 class="page-title">@ViewData["Title"]</h4>
                                         </div>
                                     </div>
@@ -175,12 +173,21 @@
                     <script src="~/dist/js/sidebarmenu.js"></script>
                     <script src="~/dist/js/custom.min.js"></script>
                     <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+                    <script src="~/js/swal-compat.js" asp-append-version="true"></script>
                     <script src="~/assets/extra-libs/c3/d3.min.js"></script>
                     <script src="~/assets/extra-libs/c3/c3.min.js"></script>
 
                     @* INTERPRETADOR GLOBAL DE NOTIFICACIONES SWEETALERT2 *@
                     <script>
                             $(function () {
+                                // SweetAlert2 v7 interpreta `title` como HTML: los mensajes llevan nombres escritos por usuarios
+                                // (p. ej. "País '<img onerror=...>' registrado"), así que se escapan antes de mostrarlos.
+                                const escapeHtml = function (value) {
+                                    return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
+                                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                                    });
+                                };
+
                                 const Toast = Swal.mixin({
                                     toast: true,
                                     position: 'top-end',
@@ -206,7 +213,8 @@
                                         <text>
                                             Toast.fire({
                                                 icon: 'success',
-                                                title: @Html.Raw(successMessageJson)
+                                                type: 'success',
+                                                title: escapeHtml(@Html.Raw(successMessageJson))
                                             });
                                         </text>
                                 }
@@ -216,7 +224,8 @@
                                         <text>
                                             Swal.fire({
                                                 icon: 'error',
-                                                title: '¡Ups!',
+                                                type: 'error',
+                                                title: 'No se pudo completar',
                                                 text: @Html.Raw(errorMessageJson),
                                                 confirmButtonColor: '#2962ff'
                                             });
@@ -228,6 +237,7 @@
                                         <text>
                                             Swal.fire({
                                                 icon: 'warning',
+                                                type: 'warning',
                                                 title: 'Atención',
                                                 text: @Html.Raw(warningMessageJson),
                                                 confirmButtonColor: '#ffc107'
@@ -240,7 +250,8 @@
                                         <text>
                                             Toast.fire({
                                                 icon: 'info',
-                                                title: @Html.Raw(infoMessageJson)
+                                                type: 'info',
+                                                title: escapeHtml(@Html.Raw(infoMessageJson))
                                             });
                                         </text>
                                 }

@@ -61,34 +61,40 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 Input.Type = typeEnum;
             }
 
-            Input.Semester = Input.Type == ManagementType.Corrective
-                ? 0
-                : DateTime.Now.Month <= 6 ? 1 : 2;
+            // Preventiva y correctiva son semestrales: ambas usan el semestre en curso (1 o 2).
+            Input.Semester = DateTime.Now.Month <= 6 ? 1 : 2;
 
             LoadFaculties();
             return Page();
         }
+
+        /// <summary>Gestión Activa del mismo tipo que se cerrará si esta se crea Activa (confirmación SweetAlert, H-003).</summary>
+        public string? ActiveSameTypeCode { get; set; }
 
         private void LoadFaculties()
         {
             FacultyList = new SelectList(
                 _context.Faculties.Where(f => f.Status == GeneralStatus.Activo).OrderBy(f => f.Name),
                 "Id", "Name", Input.FacultyId);
+            ActiveSameTypeCode = _context.Managements.AsNoTracking()
+                .Where(m => m.Status == ManagementStatus.Active && m.Type == Input.Type)
+                .Select(m => m.Code)
+                .FirstOrDefault();
         }
 
         public class ManagementInputModel
         {
-            [Required(ErrorMessage = "El anio es obligatorio")]
-            [Range(2000, 2100, ErrorMessage = "Anio fuera de rango permitido")]
-            [Display(Name = "Anio")]
+            [Required(ErrorMessage = "El año es obligatorio")]
+            [Range(2000, 2100, ErrorMessage = "Año fuera de rango permitido")]
+            [Display(Name = "Año")]
             public int Year { get; set; }
 
             [Required(ErrorMessage = "El semestre es obligatorio")]
-            [Range(0, 2, ErrorMessage = "El semestre debe ser 0, 1 o 2")]
+            [Range(1, 2, ErrorMessage = "La gestión debe usar el semestre 1 o 2.")]
             [Display(Name = "Semestre")]
             public int Semester { get; set; }
 
-            [Display(Name = "Descripcion general")]
+            [Display(Name = "Descripción general")]
             [StringLength(1000)]
             public string? Description { get; set; }
 
@@ -96,7 +102,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             [DataType(DataType.Date)]
             public DateTime? StartDate { get; set; }
 
-            [Display(Name = "Fecha Limite Planificada")]
+            [Display(Name = "Fecha límite planificada")]
             [DataType(DataType.Date)]
             public DateTime? PlannedEndDate { get; set; }
 
@@ -105,7 +111,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             public ManagementStatus Status { get; set; } = ManagementStatus.Active;
 
             [Required]
-            [Display(Name = "Tipo de Gestion")]
+            [Display(Name = "Tipo de gestión")]
             public ManagementType Type { get; set; } = ManagementType.Preventive;
 
             [Display(Name = "Facultad Asociada")]
@@ -128,14 +134,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 ModelState.AddModelError("Input.Status", "Seleccione un estado inicial válido.");
             }
 
-            if (Input.Type == ManagementType.Corrective)
+            // Preventiva y correctiva son semestrales: ambas exigen semestre 1 o 2 (código CORR-AAAA-S).
+            if (Input.Semester is < 1 or > 2)
             {
-                Input.Semester = 0;
-                ModelState.Remove("Input.Semester");
-            }
-            else if (Input.Semester is < 1 or > 2)
-            {
-                ModelState.AddModelError("Input.Semester", "La gestión preventiva debe usar el semestre 1 o 2.");
+                ModelState.AddModelError("Input.Semester", "La gestión debe usar el semestre 1 o 2.");
             }
 
             if (Input.StartDate.HasValue && Input.PlannedEndDate.HasValue &&
@@ -161,7 +163,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (Input.Year > DateTime.Now.Year + 1)
             {
-                ModelState.AddModelError("Input.Year", "No se puede registrar una gestion para un anio tan lejano en el futuro.");
+                ModelState.AddModelError("Input.Year", "No se puede registrar una gestión para un año tan lejano en el futuro.");
                 LoadFaculties();
                 return Page();
             }
@@ -179,7 +181,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
                 if (exists)
                 {
-                    ModelState.AddModelError(string.Empty, $"Ya existe una gestion registrada para {code}.");
+                    ModelState.AddModelError(string.Empty, $"Ya existe una gestión registrada para {code}.");
                     LoadFaculties();
                     return Page();
                 }
@@ -215,17 +217,29 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 _managementContext.InvalidateCache();
 
                 var handoffMessage = closedCount > 0
-                    ? $" Se cerro {closedCount} gestion activa anterior del mismo tipo."
+                    ? $" Se cerró {closedCount} gestión activa anterior del mismo tipo."
                     : string.Empty;
 
                 if (Input.Type == ManagementType.Preventive)
                 {
-                    TempData.Success($"La Gestion {code} ha sido creada correctamente.{handoffMessage} Seleccione manualmente los activos que participaran en esta ronda preventiva.");
+                    TempData.Success($"La gestión {code} ha sido creada correctamente.{handoffMessage} Seleccione manualmente los activos que participarán en este mantenimiento preventivo.");
                     return RedirectToPage("./PlanAssets", new { id = management.Id });
                 }
 
-                TempData.Success($"La Gestion Correctiva {code} ha sido creada correctamente. Lista para recibir fallas criticas.{handoffMessage}");
+                TempData.Success($"La gestión correctiva {code} ha sido creada correctamente. Puede convivir con la gestión preventiva activa del semestre y está lista para recibir fallas.{handoffMessage}");
                 return RedirectToPage("./Index", new { type = Input.Type.ToString() });
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException { Number: 2601 or 2627 } sqlError)
+            {
+                // Antes cualquier violación de unicidad terminaba en el mensaje genérico, sin decir qué choca.
+                _logger.LogWarning(ex, "Unicidad al crear gestion {ManagementType} {Year}-{Semester}", Input.Type, Input.Year, Input.Semester);
+                var attemptedCode = BuildManagementCode(Input.Type, Input.Year, Input.Semester);
+                ModelState.AddModelError(string.Empty,
+                    sqlError.Message.Contains("IX_Managements_Code", StringComparison.OrdinalIgnoreCase)
+                        ? $"Ya existe una gestión con el código {attemptedCode}. Las gestiones importadas como «Por confirmar» ocupan los códigos AAAA-S: elija otro año o semestre."
+                        : $"Ya hay otra gestión {TypeName()} activa. Ciérrela o déjela inactiva antes de activar otra del mismo tipo.");
+                LoadFaculties();
+                return Page();
             }
             catch (Exception ex)
             {
@@ -243,5 +257,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 ? $"CORR-{year}-{semester}"
                 : $"{year}-{semester}";
         }
+
+        /// <summary>Nombre visible del tipo para mensajes (índice IX_Managements_Type_Status: una activa por tipo).</summary>
+        private string TypeName() => Input.Type == ManagementType.Corrective ? "Correctiva" : "Preventiva";
     }
 }

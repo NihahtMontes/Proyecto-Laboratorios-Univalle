@@ -4,6 +4,8 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
+    ViewData["Title"] = "Equipos";
+    ViewData["Section"] = "Equipos e inventario";
     var isEquipmentCategory = Model.SelectedCategory == EquipmentCategory.Equipment;
     var isUtensilCategory = Model.SelectedCategory == EquipmentCategory.Utensil;
     var hasSubclassification = isEquipmentCategory || isUtensilCategory;
@@ -14,6 +16,8 @@
         || Model.SelectedReviewStatus.HasValue
         || Model.SelectedLaboratoryId.HasValue;
 }
+
+<partial name="_PageHelp" model='"Equipment.Index"' />
 
 @if (TempData["Error"] != null)
 {
@@ -35,6 +39,9 @@
                         <h6 class="card-subtitle text-muted ml-2">Definiciones técnicas y control de inventario global.</h6>
                     </div>
                     <div class="ml-auto mt-3">
+                        <a asp-page="/EquipmentUnits/Index" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold mr-2" title="Ver listado plano de unidades físicas">
+                            <i class="fas fa-boxes mr-1 text-primary"></i> Ver todas las unidades
+                        </a>
                         <a asp-page="Create" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
                             <i class="fas fa-plus-circle mr-1 text-info"></i> Registrar nuevo activo
                         </a>
@@ -101,9 +108,9 @@
                             <select asp-for="SelectedLaboratoryId"
                                     class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.SelectedLaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
                                     asp-items="Model.LaboratoriesList"
-                                    aria-label="Ambiente"
+                                    aria-label="Laboratorio"
                                     data-live-filter-control>
-                                <option value="">Ambiente</option>
+                                <option value="">Laboratorio</option>
                             </select>
 
                             @if (hasActiveFilters)
@@ -282,7 +289,7 @@
 }
 
 @section Scripts {
-    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    @* SweetAlert2 ya la carga el layout (_Layout.cshtml). *@
     <script>
         $(function () {
             $('[data-toggle="tooltip"]').tooltip();

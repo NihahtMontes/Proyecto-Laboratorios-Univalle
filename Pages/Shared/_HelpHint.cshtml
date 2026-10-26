@@ -1,0 +1,12 @@
+@model string
+@using Proyecto_Laboratorios_Univalle.Helpers
+@{
+    // Icono «?» junto a un concepto: popover de Bootstrap 4 con la definición del glosario (Helpers/HelpContent.cs).
+    // Uso: <partial name="_HelpHint" model='"real-cost"' />. Se abre con clic o teclado y se cierra al salir del foco.
+    var term = HelpContent.GetTerm(Model);
+}
+@if (term != null)
+{
+    <a tabindex="0" role="button" class="ux-help-hint" data-toggle="popover" data-trigger="focus" data-placement="top"
+       data-container="body" title="@term.Name" data-content="@term.Definition" aria-label="Qué es: @term.Name"><i class="mdi mdi-help-circle-outline" aria-hidden="true"></i></a>
+}

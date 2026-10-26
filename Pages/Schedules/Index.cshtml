@@ -2,7 +2,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Schedules.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Cronograma de Intervenciones (L-48)";
+    ViewData["Title"] = "Cronograma de mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
     var hasActiveFilters = Model.LabFilterId.HasValue
         || Model.CategoryFilterId.HasValue
         || Model.TechFilterId.HasValue
@@ -16,6 +17,10 @@
                 <h4 class="card-title font-weight-bold mb-3">Filtros del cronograma</h4>
                 <form method="get" data-live-filter-form>
                     <div class="d-flex flex-wrap align-items-center border-top pt-3">
+                        <select asp-for="TypeFilter" class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2" aria-label="Tipo de gestión" data-live-filter-control>
+                            <option value="Preventive">Gestión preventiva</option>
+                            <option value="Corrective">Gestión correctiva</option>
+                        </select>
                         <select asp-for="LabFilterId" asp-items="Model.LabFList" class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2" aria-label="Laboratorio" data-live-filter-control>
                             <option value="">Laboratorio</option>
                         </select>
@@ -59,7 +64,14 @@
     <div class="col-12">
         <div class="card shadow-sm border-0">
             <div class="card-body">
-                <h4 class="card-title font-weight-bold">Cronograma de Mantenimientos</h4>
+                <div class="d-md-flex align-items-center">
+                    <h4 class="card-title font-weight-bold">Cronograma de Mantenimientos</h4>
+                    <div class="ml-auto mb-2">
+                        <a asp-page="./Practices" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold">
+                            <i class="fas fa-calendar-check mr-1 text-info"></i> Programación de prácticas
+                        </a>
+                    </div>
+                </div>
                 <div class="table-responsive mt-3">
                     <table class="table table-hover">
                         <thead class="bg-light">

@@ -52,11 +52,34 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
             var verification = await _context.Verifications.FindAsync(id);
 
-            if (verification != null)
+            if (verification == null)
+            {
+                TempData.Warning("La verificación no existe o ya fue eliminada.");
+                return RedirectToPage("./Index");
+            }
+
+            // QA 2026-10-18: anular la L-6 de un plan que ya avanzó dejaba el plan incoherente con un falso «eliminada».
+            var linkedPlan = await _context.ManagementPlans.AsTracking()
+                .FirstOrDefaultAsync(p => p.VerificationId == verification.Id);
+            if (linkedPlan != null && linkedPlan.CurrentPhase > Models.Enums.WizardPhase.Verification)
+            {
+                TempData.Warning($"No se puede anular esta verificación: el equipo ya avanzó a {WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}. Para corregirlo, abra el formulario del paso actual del equipo desde el asistente y use «Rehacer paso anterior».");
+                return RedirectToPage("./Index");
+            }
+            if (linkedPlan != null)
+            {
+                // El plan sigue en L-6: vuelve a quedar pendiente de verificación, sin la L-6 anulada.
+                linkedPlan.VerificationId = null;
+                linkedPlan.CurrentPhase = Models.Enums.WizardPhase.Verification;
+                linkedPlan.CurrentState = Models.Enums.WizardEquipmentState.PendingVerification;
+            }
+
             {
                 Verification = verification;
                 // Soft delete: anular la verificación en lugar de eliminar físicamente
                 verification.Status = Models.Enums.VerificationStatus.Annulled;
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach la anulación no persistía.
+                _context.Attach(verification).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
                 await _context.SaveChangesAsync();
                 
                 TempData.Success(NotificationHelper.Verifications.Deleted(Verification.Id));

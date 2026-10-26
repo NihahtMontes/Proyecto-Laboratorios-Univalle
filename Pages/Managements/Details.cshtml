@@ -3,7 +3,9 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using System.Text.Json
 @{
-    ViewData["Title"] = $"{(Model.Management.Type == ManagementType.Corrective ? "Mantenimiento Correctivo" : Model.Management.Type == ManagementType.PorConfirmar ? "Mantenimiento Por confirmar" : "Mantenimiento Preventivo")} {Model.Management.Code}";
+    ViewData["Title"] = "Panel de la gestión";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     var isManagementActive = Model.Management.Status == ManagementStatus.Active;
     // Variables L-48 (usadas solo cuando ActiveTab == l48, declaradas aqui para evitar RZ1010)
     var l48Sem      = Model.Management.Semester;
@@ -18,7 +20,15 @@
         || Model.TechFilterId.HasValue
         || !string.IsNullOrWhiteSpace(Model.CategoryFilter)
         || (!string.IsNullOrWhiteSpace(Model.StatusFilter) && Model.StatusFilter != "Todos");
+    // Gestiones históricas importadas: sin registros del wizard (ManagementPlans vacío)
+    // se muestran los datos importados del Excel del cliente en modo solo lectura.
+    // Histórica = tipo PorConfirmar (importada del Excel) y sin planes del wizard. Una gestión nueva
+    // (Preventiva/Correctiva) sin planes sigue usando la vista normal del wizard.
+    var hasWizardPlans = Model.Management.ManagementPlans.Any()
+        || Model.Management.Type != Proyecto_Laboratorios_Univalle.Models.Enums.ManagementType.PorConfirmar;
 }
+
+<partial name="_PageHelp" model='"Managements.Details"' />
 
 @section Styles {
     <style> 
@@ -89,7 +99,7 @@
     <!-- CABECERA DE LA GESTIÓN -->
     <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap">
         <div>
-            <h1 class="wizard-title mb-1">@(isCorrective ? "Mantenimiento Correctivo" : Model.Management.Type == ManagementType.PorConfirmar ? "Mantenimiento Por confirmar" : "Mantenimiento Preventivo") @Model.Management.Code</h1>
+            <h1 class="wizard-title mb-1">@(isCorrective ? "Mantenimiento correctivo" : Model.Management.Type == ManagementType.PorConfirmar ? "Mantenimiento importado por revisar" : "Mantenimiento preventivo") @Model.Management.Code</h1>
             <p class="wizard-subtitle">
                 @(string.IsNullOrEmpty(Model.Management.Description)
                     ? (isCorrective ? "Gestión semestral de fallas correctivas." : "Resumen de indicadores para este período administrativo.")
@@ -105,13 +115,13 @@
                         <i class="fas fa-tasks mr-2"></i>Planificar Activos
                     </a>
                     <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm mr-2" style="background-color: #334155; color: white;">
-                        <i class="fas fa-play mr-2"></i>Iniciar Ronda (Wizard)
+                        <i class="fas fa-play mr-2"></i>Abrir asistente
                     </a>
                 }
                 else
                 {
                     <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn btn-danger rounded-pill px-3 font-weight-bold shadow-sm mr-2">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>Reportar Falla Crítica
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Reportar falla
                     </a>
                 }
             }
@@ -125,12 +135,12 @@
                 <i class="fas fa-file-pdf mr-2"></i>Reportes Oficiales
             </a>
             <form method="post" asp-page-handler="UpdateActiveManagement" asp-route-id="@Model.Management.Id" class="d-inline mr-2">
-                <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white" style="background-color:#10b981;">
-                    <i class="fas fa-sync-alt mr-2"></i>Actualizar Gestión
+                <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white" style="background-color:#10b981;" title="Vuelve a calcular los contadores de la gestión a partir de los registros">
+                    <i class="fas fa-sync-alt mr-2"></i>Recalcular avance
                 </button>
             </form>
             <a asp-page="./Index" class="btn btn-light border rounded-pill px-4">
-                <i class="fas fa-arrow-left mr-2"></i>Volver
+                <i class="fas fa-arrow-left mr-2"></i>Volver al listado
             </a>
         </div>
     </div>
@@ -140,13 +150,13 @@
         <li class="nav-item">
             <a class="nav-link @(Model.ActiveTab == "dashboard" ? "active" : "")"
                href="?id=@Model.Management.Id&ActiveTab=dashboard">
-                <i class="fas fa-chart-pie mr-1"></i> Dashboard
+                <i class="fas fa-chart-pie mr-1"></i> Panel
             </a>
         </li>
         <li class="nav-item">
             <a class="nav-link @(Model.ActiveTab == "l48" || Model.ActiveTab == "" ? "active" : "")"
                href="?id=@Model.Management.Id&ActiveTab=l48">
-                <i class="fas fa-table mr-1"></i> @(isCorrective ? "Fallas Registradas" : "L-48 / Cronograma")
+                <i class="fas fa-table mr-1"></i> @(isCorrective ? "Fallas Registradas" : "Cronograma de mantenimiento")
             </a>
         </li>
         @if (!isCorrective)
@@ -175,6 +185,50 @@
     <!-- ===== TAB: DASHBOARD ===== -->
     @if (Model.ActiveTab == "dashboard")
     {
+        @if (!hasWizardPlans)
+        {
+            <!-- GESTIÓN HISTÓRICA: contadores reales importados del Excel del cliente -->
+            <div class="row mb-3">
+                <!-- L-48 Planes -->
+                <div class="col-6 col-md-3 mb-3">
+                    <a asp-page="/Maintenances/Plan" asp-route-ManagementId="@Model.Management.Id" class="asset-metric-tile asset-bg-blue p-3" title="Ver el cronograma de mantenimiento importado de esta gestión">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L48Plans</div>
+                        <div class="font-weight-bold mt-2">Planes del cronograma</div>
+                    </a>
+                </div>
+                <!-- L-8 Mantenimientos -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="asset-metric-tile asset-bg-red p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-wrench"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L8Maintenances</div>
+                        <div class="font-weight-bold mt-2">Mantenimientos</div>
+                    </div>
+                </div>
+                <!-- L-6 Verificaciones -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="asset-metric-tile asset-bg-cyan p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L6Verifications</div>
+                        <div class="font-weight-bold mt-2">Verificaciones</div>
+                    </div>
+                </div>
+                <!-- L-7 Solicitudes -->
+                <div class="col-6 col-md-3 mb-3">
+                    <div class="asset-metric-tile asset-bg-amber p-3">
+                        <div class="asset-metric-icon mb-3"><i class="fas fa-tools"></i></div>
+                        <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L7Requests</div>
+                        <div class="font-weight-bold mt-2">Solicitudes de servicio técnico</div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-muted small mb-4">
+                <i class="fas fa-archive mr-1"></i>
+                Gestión histórica: contadores de los datos importados desde el Excel del cliente (solo lectura).
+            </p>
+        }
+        else
+        {
         <!-- FILA 1: KPIs globales -->
         <div class="row mb-3">
             <!-- Activos Totales -->
@@ -231,7 +285,7 @@
                     <a href="/Index?ShowWizard=true&Step=1&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-cyan p-3">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.CountL6</div>
-                        <div class="font-weight-bold mt-2">L-6 Verificación</div>
+                        <div class="font-weight-bold mt-2">Verificación</div>
                     </a>
                 </div>
             }
@@ -240,7 +294,7 @@
                 <a href="/Index?ShowWizard=true&Step=2&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-amber p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-tools"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountL7</div>
-                    <div class="font-weight-bold mt-2">L-7 Solicitud</div>
+                    <div class="font-weight-bold mt-2">Solicitud</div>
                 </a>
             </div>
             <!-- L8 -->
@@ -248,7 +302,7 @@
                 <a href="/Index?ShowWizard=true&Step=3&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-red p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-wrench"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountL8</div>
-                    <div class="font-weight-bold mt-2">L-8 Mantenimiento</div>
+                    <div class="font-weight-bold mt-2">Mantenimiento</div>
                 </a>
             </div>
             <!-- L3 / Salida -->
@@ -256,19 +310,22 @@
                 <a href="/Index?ShowWizard=true&Step=4&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-purple p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-truck-loading"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountSalida</div>
-                    <div class="font-weight-bold mt-2">L-3 Salida</div>
+                    <div class="font-weight-bold mt-2">Salida</div>
                 </a>
             </div>
             <!-- Desembolso -->
             <div class="col-12 col-md-3 mb-3">
                 <a href="/Index?ShowWizard=true&Step=6&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-slate p-3">
-                    <div class="asset-metric-icon mb-3"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div class="asset-metric-icon mb-3"><i class="fas fa-dollar-sign"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountDesembolso</div>
-                    <div class="font-weight-bold mt-2">Desembolso</div>
+                    <div class="font-weight-bold mt-2">Compra</div>
                 </a>
             </div>
         </div>
+        }
 
+        @if (hasWizardPlans)
+        {
         <!-- GRÁFICOS -->
         <div class="row mb-4">
             <!-- Avance Global (Donut) -->
@@ -340,6 +397,7 @@
                     }
                 </div>
             </div>
+        }
         }
     }
 
@@ -421,6 +479,152 @@
     <!-- ===== TAB: L-48 / CRONOGRAMA ===== -->
     @if (Model.ActiveTab == "l48" || Model.ActiveTab == "")
     {
+        @if (!hasWizardPlans && Model.HistoricalPlans.Any())
+        {
+            <!-- L-48 HISTÓRICO: nota de origen + enlace al listado completo -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
+                <span class="badge badge-light border text-muted px-3 py-2 font-weight-bold">
+                    <i class="fas fa-archive mr-1"></i> Cronograma histórico importado desde el Excel del cliente (solo lectura)
+                </span>
+                <span class="small text-muted" aria-live="polite">
+                    <strong class="text-dark">@Model.HistoricalPlans.Count</strong> plan(es) importado(s)
+                    <a asp-page="/Maintenances/Plan" asp-route-ManagementId="@Model.Management.Id"
+                       class="btn btn-sm btn-outline-info btn-rounded font-weight-bold shadow-sm ml-3">
+                        <i class="fas fa-external-link-alt mr-1"></i> Ver en el listado completo del cronograma
+                    </a>
+                </span>
+            </div>
+
+            <!-- Tabla L-48 histórica de solo lectura (sin wizard ni acciones) -->
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="tableL48Historico">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="text-muted small" style="width:36px;">No</th>
+                                <th class="text-muted small">Código</th>
+                                <th class="text-muted small">Equipo / N.º inventario</th>
+                                <th class="text-muted small">Laboratorio</th>
+                                <th class="text-muted small">Tipo de mantenimiento</th>
+                                <th class="text-muted small">Servicio</th>
+                                <th class="text-muted small text-center">Fecha planificada</th>
+                                <th class="text-muted small">Responsable</th>
+                                <th class="text-muted small text-center">Estado</th>
+                                <th class="text-muted small text-center">Calidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int histRowNum = 1; }
+                            @foreach (var plan in Model.HistoricalPlans)
+                            {
+                                <tr>
+                                    <td class="text-muted small align-middle text-center">@histRowNum</td>
+                                    <td class="align-middle">
+                                        <span class="font-weight-bold text-dark">@(plan.PlanCode ?? "—")</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        @if (plan.EquipmentUnit != null)
+                                        {
+                                            <div class="font-weight-bold" style="font-size:0.82rem;">@(plan.EquipmentUnit.Equipment?.Name ?? "S/E")</div>
+                                            <div class="text-muted" style="font-size:0.72rem;">Inv: @plan.EquipmentUnit.InventoryNumber</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="small">@(plan.Laboratory?.Code ?? "—")</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="small font-weight-bold">@(plan.MaintenanceType.HasValue ? EnumHelper.GetDisplayName(plan.MaintenanceType.Value) : "—")</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        @if (plan.ServiceType.HasValue)
+                                        {
+                                            <span class="small">@EnumHelper.GetDisplayName(plan.ServiceType.Value)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="small text-muted font-italic" title="El archivo del cliente indica 'Por confirmar'">Por confirmar</span>
+                                        }
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        <span class="small font-weight-bold">@(plan.PlannedDate?.ToString("dd/MM/yyyy") ?? "—")</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="small">@(plan.ResponsiblePerson?.FullName ?? "—")</span>
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        @if (plan.Status.HasValue)
+                                        {
+                                            var histStatusClass = plan.Status.Value switch
+                                            {
+                                                MaintenanceStatus.Pending => "badge-warning",
+                                                MaintenanceStatus.InProgress => "badge-warning",
+                                                MaintenanceStatus.Scheduled => "badge-info",
+                                                MaintenanceStatus.Completed => "badge-success",
+                                                MaintenanceStatus.Cancelled => "badge-danger",
+                                                _ => "badge-secondary"
+                                            };
+                                            <span class="badge @histStatusClass px-3 py-1 font-weight-bold">@EnumHelper.GetDisplayName(plan.Status.Value)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="small text-muted font-italic" title="El archivo del cliente indica 'Por confirmar'">Por confirmar</span>
+                                        }
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        @if (!string.IsNullOrWhiteSpace(plan.QualityStatus))
+                                        {
+                                            var histQualityClass = string.Equals(plan.QualityStatus, "Válida", StringComparison.OrdinalIgnoreCase)
+                                                ? "badge-success"
+                                                : "badge-warning";
+                                            <span class="badge @histQualityClass px-2 font-weight-bold" title="Calidad del dato en el Excel de origen">@plan.QualityStatus</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                </tr>
+                                histRowNum++;
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+        else if (!hasWizardPlans)
+        {
+            <!-- GESTIÓN HISTÓRICA SIN L-48: mensaje sereno, sin tabla vacía -->
+            <div class="alert alert-info border-0 rounded shadow-sm d-flex align-items-center" role="alert">
+                <i class="fas fa-info-circle text-info mr-3" style="font-size:1.4rem;"></i>
+                <div>
+                    <span class="font-weight-bold">Esta gestión no tiene cronograma cargado en el Excel del cliente.</span>
+                    @if (Model.HistoricalCountsInfo.L8Maintenances > 0 || Model.HistoricalCountsInfo.L6Verifications > 0 || Model.HistoricalCountsInfo.L7Requests > 0)
+                    {
+                        <div class="small text-muted mt-1">
+                            Registró actividad importada:
+                            @if (Model.HistoricalCountsInfo.L8Maintenances > 0)
+                            {
+                                <span class="badge badge-secondary px-2 mr-1">Mantenimientos: @Model.HistoricalCountsInfo.L8Maintenances</span>
+                            }
+                            @if (Model.HistoricalCountsInfo.L6Verifications > 0)
+                            {
+                                <span class="badge badge-secondary px-2 mr-1">Verificaciones: @Model.HistoricalCountsInfo.L6Verifications</span>
+                            }
+                            @if (Model.HistoricalCountsInfo.L7Requests > 0)
+                            {
+                                <span class="badge badge-secondary px-2 mr-1">Solicitudes: @Model.HistoricalCountsInfo.L7Requests</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
         <!-- Filtros -->
         <div class="mb-4 p-3 bg-light rounded border-left border-info">
             <form method="get" class="d-flex flex-wrap w-100 align-items-center" data-live-filter-form>
@@ -491,12 +695,22 @@
                             <th class="text-muted small">Equipo / Inv.</th>
                             <th class="text-muted small">Falla Reportada</th>
                             <th class="text-muted small">Servicio</th>
-                            <th class="text-muted small text-center" colspan="4">@l48Col1Name</th>
-                            <th class="text-muted small text-center" colspan="4">@l48Col2Name</th>
+                            @if (isCorrective)
+                            {
+                                @* El correctivo no tiene ventana de 8 semanas: las fallas llevan su fecha real (D-8). *@
+                                <th class="text-muted small text-center">Fecha real</th>
+                            }
+                            else
+                            {
+                                <th class="text-muted small text-center" colspan="4">@l48Col1Name</th>
+                                <th class="text-muted small text-center" colspan="4">@l48Col2Name</th>
+                            }
                             <th class="text-muted small text-center">%</th>
                             <th class="text-muted small">Técnico</th>
                             <th class="text-muted small text-center" style="width: 120px;">Acciones</th>
                         </tr>
+                        @if (!isCorrective)
+                        {
                         <tr class="bg-light">
                             <th colspan="5"></th>
                             @for (int s2 = 1; s2 <= 8; s2++) {
@@ -504,6 +718,7 @@
                             }
                             <th colspan="3"></th>
                         </tr>
+                        }
                     </thead>
                     <tbody>
                         @{ int rowNum = 1; }
@@ -534,14 +749,15 @@
                                     @plan.EquipmentUnit?.Laboratory?.Name
                                 </td>
                                 @{
+                                    // El asistente correctivo usa la misma numeración que el preventivo (L-7 = paso 2).
                                     var wizardStep = isCorrective
                                         ? plan.CurrentPhase switch {
-                                            WizardPhase.TechnicalRequest => 1,
-                                            WizardPhase.Maintenance => 2,
-                                            WizardPhase.Exit => 3,
-                                            WizardPhase.Kardex => 4,
-                                            WizardPhase.Disbursement => 5,
-                                            _ => 1
+                                            WizardPhase.TechnicalRequest => 2,
+                                            WizardPhase.Maintenance => 3,
+                                            WizardPhase.Exit => 4,
+                                            WizardPhase.Kardex => 5,
+                                            WizardPhase.Disbursement => 6,
+                                            _ => 2
                                         }
                                         : plan.CurrentPhase switch {
                                             WizardPhase.Verification => 1,
@@ -556,7 +772,7 @@
                                 }
                                 <td rowspan="2" class="align-middle">
                                     <div class="font-weight-bold" style="font-size:0.82rem;">
-                                        <a href="@wizardUrl" class="text-primary" title="Abrir wizard en fase actual">
+                                        <a href="@wizardUrl" class="text-primary" title="Abrir el asistente en el paso actual">
                                             @plan.EquipmentUnit?.Equipment?.Name
                                         </a>
                                     </div>
@@ -568,9 +784,16 @@
                                 <td rowspan="2" class="align-middle text-center">
                                     <span class="badge @svcClass px-2 py-1 rounded-pill small">@svcLabel</span>
                                 </td>
-                                @for (int s3 = 1; s3 <= 8; s3++)
+                                @if (isCorrective)
                                 {
-                                    <td class="text-center p-1" style="cursor:pointer;" onclick="toggleWeek(@plan.Id, @s3, 'planned')">
+                                    var realDate = plan.Maintenance?.ScheduledDate ?? plan.Maintenance?.EndDate ?? plan.PlannedDate;
+                                    <td rowspan="2" class="align-middle text-center small">@(realDate?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                }
+                                else
+                                {
+                                for (int s3 = 1; s3 <= 8; s3++)
+                                {
+                                    <td class="text-center p-1" style="@(isCorrective ? "cursor:default;" : "cursor:pointer;")" onclick="@(isCorrective ? "" : $"toggleWeek({plan.Id}, {s3}, 'planned')")">
                                         @if (plannedWeek == s3)
                                         {
                                             <span id="badge-planned-@(plan.Id)" class="badge bg-primary text-white px-2 py-1 rounded"
@@ -582,6 +805,7 @@
                                         }
                                     </td>
                                 }
+                                }
                                 <td rowspan="2" class="align-middle text-center">
                                     <span class="badge badge-light border font-weight-bold text-dark" style="font-size:0.82rem;">
                                         @(plan.Maintenance?.CompletionPercentage ?? 0)%
@@ -591,16 +815,18 @@
                                     @(plan.Maintenance?.Technician?.FullName ?? "—")
                                 </td>
                                 <td rowspan="2" class="align-middle text-center">
-                                    <a href="@wizardUrl" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold shadow-sm" title="Atender en wizard">
+                                    <a href="@wizardUrl" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold shadow-sm" title="Atender en el asistente">
                                         <i class="fas fa-external-link-alt mr-1"></i> Atender
                                     </a>
                                 </td>
                             </tr>
                             <!-- FILA 2: Real -->
                             <tr>
-                                @for (int s4 = 1; s4 <= 8; s4++)
+                                @if (!isCorrective)
                                 {
-                                    <td class="text-center p-1" style="border-top:1px dashed #e2e8f0; cursor:pointer;" onclick="toggleWeek(@plan.Id, @s4, 'executed')">
+                                for (int s4 = 1; s4 <= 8; s4++)
+                                {
+                                    <td class="text-center p-1" style="border-top:1px dashed #e2e8f0; @(isCorrective ? "cursor:default;" : "cursor:pointer;")" onclick="@(isCorrective ? "" : $"toggleWeek({plan.Id}, {s4}, 'executed')")">
                                         @if (executedWeek == s4)
                                         {
                                             <span id="badge-executed-@(plan.Id)" class="badge bg-success text-white px-2 py-1 rounded"
@@ -612,6 +838,7 @@
                                         }
                                     </td>
                                 }
+                                }
                             </tr>
                             rowNum++;
                         }
@@ -619,6 +846,7 @@
                 </table>
             </div>
         </div>
+        }
     }
 
     <!-- ===== TAB: CALENDARIO ===== -->
@@ -686,7 +914,7 @@
 
 @section Scripts {
 
-    <script src="~/assets/extra-libs/sweetalert2/sweetalert2.all.min.js"></script>
+    @* SweetAlert2 ya la carga el layout (_Layout.cshtml). *@
     <script>
         async function toggleWeek(planId, weekNumber, type) {
             const formData = new FormData();
@@ -1001,7 +1229,7 @@
                                     var planId = Number.parseInt(ev._raw.PlanId, 10);
                                     var currentPhase = Number.parseInt(ev._raw.CurrentPhaseInt, 10);
                                     if (Number.isInteger(planId) && planId > 0 && Number.isInteger(currentPhase)) {
-                                        html += '<button type="button" class="btn btn-outline-danger btn-sm" title="Rehacer Mantenimiento" onclick="confirmRedoPhase(' + planId + ', 3, \'L-8 Mantenimiento\', ' + currentPhase + ')"><i class="fas fa-undo"></i></button>';
+                                        html += '<button type="button" class="btn btn-outline-danger btn-sm" title="Rehacer el registro de mantenimiento" onclick="confirmRedoPhase(' + planId + ', 3, \'Registro de mantenimiento\', ' + currentPhase + ')"><i class="fas fa-undo"></i></button>';
                                     }
                                 }
                             }

@@ -74,14 +74,14 @@ public class PlanificacionesModel : PageModel
         if (await _context.Departures.AsNoTracking().AnyAsync(d => d.PlanningId == id && d.Status != LoanStatus.Cancelled)
             || await _context.L5Incidents.AsNoTracking().AnyAsync(i => i.PlanningId == id))
         {
-            TempData.Error("No se puede reabrir: la planificación tiene una salida L-3 o un incidente L-5.");
+            TempData.Error("No se puede reabrir: la planificación tiene una entrega de material o un incidente registrado.");
             return RedirectToPage(new { managementId = planning.ManagementId });
         }
 
         planning.Status = PlanningStatus.Planned;
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
-        TempData.Success($"{L3Codes.Format(planning.Id)} se reabrió para editar.");
+        TempData.Success($"{L3Codes.Format(planning.Id, planning.Code)} se reabrió para editar.");
         return RedirectToPage("./Requerimientos", new { planId = planning.Id });
     }
 
@@ -137,6 +137,7 @@ public class PlanificacionesModel : PageModel
             .Select(r => new
             {
                 r.Id,
+                r.Code,
                 r.PracticeName,
                 r.AcademicWeek,
                 r.ScheduledDate,
@@ -165,7 +166,7 @@ public class PlanificacionesModel : PageModel
 
         Rows = projections.Select(p => new PlanningRow(
             p.Id,
-            L3Codes.Format(p.Id),
+            L3Codes.Format(p.Id, p.Code),
             p.PracticeName,
             p.SubjectName,
             p.GroupLabel,

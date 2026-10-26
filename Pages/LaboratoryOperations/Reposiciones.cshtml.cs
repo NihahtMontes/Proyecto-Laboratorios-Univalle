@@ -85,17 +85,18 @@ public class ReposicionesModel : PageModel
             .Select(x => new
             {
                 x.OriginPlanningId,
+                OriginCode = x.OriginPlanning != null ? x.OriginPlanning.Code : null,
                 x.DestinationDate,
                 StartOrder = x.DestinationStartPeriod != null ? (int?)x.DestinationStartPeriod.Order : null,
                 x.DestinationPeriodCount,
                 Laboratory = x.DestinationLaboratory != null
-                    ? x.DestinationLaboratory.Code + " · " + x.DestinationLaboratory.Name : "Sin ambiente",
+                    ? x.DestinationLaboratory.Code + " · " + x.DestinationLaboratory.Name : "Sin laboratorio",
                 Subject = x.DestinationPlanning.Subject != null
                     ? x.DestinationPlanning.Subject.Name : x.DestinationPlanning.PracticeName,
                 Group = x.DestinationPlanning.GroupName
             })
             .ToListAsync();
-        RescheduledRows = rescheduled.Select(x => new RescheduledRow(x.OriginPlanningId, L3Codes.Format(x.OriginPlanningId),
+        RescheduledRows = rescheduled.Select(x => new RescheduledRow(x.OriginPlanningId, L3Codes.Format(x.OriginPlanningId, x.OriginCode),
             x.Subject ?? "Sin materia", x.Group ?? "—", x.DestinationDate.Date,
             x.StartOrder is int order && x.DestinationPeriodCount > 0
                 ? PlanningSlot.PeriodsText(order, x.DestinationPeriodCount) : "Sin periodos",
@@ -109,16 +110,16 @@ public class ReposicionesModel : PageModel
             .OrderBy(p => p.Laboratory!.Code).ThenBy(p => p.ScheduledDate)
             .Select(p => new
             {
-                p.Id, p.PracticeName, p.GroupName, p.TeacherPersonId, p.PeriodCount, p.StatusBeforeRecovery,
+                p.Id, p.Code, p.PracticeName, p.GroupName, p.TeacherPersonId, p.PeriodCount, p.StatusBeforeRecovery,
                 StartOrder = p.StartPeriod != null ? (int?)p.StartPeriod.Order : null,
                 Subject = p.Subject != null ? p.Subject.Name : "Sin materia",
-                Laboratory = p.Laboratory != null ? p.Laboratory.Code + " · " + p.Laboratory.Name : "Sin ambiente"
+                Laboratory = p.Laboratory != null ? p.Laboratory.Code + " · " + p.Laboratory.Name : "Sin laboratorio"
             }).ToListAsync();
         var teacherIds = rows.Select(p => p.TeacherPersonId).Distinct().ToList();
         var teachers = await _context.Interns.AsNoTracking().Where(t => teacherIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, t => t.Name);
         Groups = rows.GroupBy(p => p.Laboratory).Select(g => new PendingGroup(g.Key, g.Select(p =>
-            new PendingPlanning(p.Id, L3Codes.Format(p.Id), p.PracticeName, p.Subject,
+            new PendingPlanning(p.Id, L3Codes.Format(p.Id, p.Code), p.PracticeName, p.Subject,
                 p.GroupName ?? "—", teachers.GetValueOrDefault(p.TeacherPersonId, "—"), p.PeriodCount ?? 0,
                 p.StartOrder is int order && p.PeriodCount is int count
                     ? PlanningSlot.PeriodsText(order, count) : "Sin periodos",

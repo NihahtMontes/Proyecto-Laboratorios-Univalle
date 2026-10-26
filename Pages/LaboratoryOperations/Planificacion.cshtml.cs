@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -69,11 +70,41 @@ public class PlanificacionModel : PageModel
     /// <summary>Estado real de la planificación editada (null al crear).</summary>
     public string? CurrentStatus { get; private set; }
     public string Title => Id.HasValue ? $"Planificación {Code}" : "Nueva planificación";
-    public string Code => Id.HasValue ? L3Codes.Format(Id.Value) : "—";
+    /// <summary>Code persistido de la planificación cargada (null al crear o antes de cargar).</summary>
+    public string? PlanningCode { get; private set; }
+    public string Code => Id.HasValue ? L3Codes.Format(Id.Value, PlanningCode) : "—";
     public string? ScheduleCode { get; private set; }
     public string StatusText { get; private set; } = PlanningStatus.Planned;
     /// <summary>En edición: solo se modifica en estado Planificada y con gestión editable.</summary>
     public bool IsReadOnly { get; private set; }
+
+    /// <summary>
+    /// True cuando una planificación aprobada sin periodo asignado puede recibir horario desde esta página
+    /// (O10): estado Aprobada, StartPeriodId null y gestión editable.
+    /// </summary>
+    public bool CanAssignPeriod { get; private set; }
+
+    /// <summary>Periodo inicial sugerido para la asignación de horario (null sin sugerencia).</summary>
+    public int? SuggestedStartPeriodId { get; private set; }
+
+    /// <summary>Cantidad de periodos sugerida para la asignación de horario (mínimo 1).</summary>
+    public int SuggestedPeriodCount { get; private set; } = 1;
+
+    /// <summary>Choques de docente detectados al guardar ("{Label} ({PeriodsText})"); vacío sin choques.</summary>
+    public List<string> TeacherConflicts { get; private set; } = [];
+
+    /// <summary>Huella de los choques de docente actuales: debe acompañar a AcceptTeacherConflict para insistir.</summary>
+    public string? TeacherConflictFingerprint { get; private set; }
+
+    /// <summary>Choques de docente del intento de asignación de horario (leídos de TempData en OnGet).</summary>
+    public List<string> AssignTeacherConflicts { get; private set; } = [];
+
+    /// <summary>Huella de los choques de docente del intento de asignación de horario.</summary>
+    public string? AssignTeacherConflictFingerprint { get; private set; }
+
+    /// <summary>Hora importada de la planificación sin periodo: base de la sugerencia de horario.</summary>
+    private TimeSpan? _planningStartTime;
+    private TimeSpan? _planningEndTime;
 
     public List<SelectListItem> SubjectList { get; private set; } = [];
     public SelectList LaboratoryList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
@@ -117,16 +148,23 @@ public class PlanificacionModel : PageModel
             }
             Input = InputModel.From(planning);
             ScheduleCode = planning.PracticeSchedule?.Code;
+            PlanningCode = planning.Code;
             StatusText = PlanningStatus.Label(planning.Status);
             CurrentStatus = planning.Status;
             IsReadOnly = planning.Status != PlanningStatus.Planned || !Management.IsEditable;
+            // O10: una aprobada sin periodo reservado puede asignar horario desde aquí (fecha y demás datos fijos).
+            CanAssignPeriod = planning.Status == PlanningStatus.Approved
+                && planning.StartPeriodId == null
+                && Management.IsEditable;
+            _planningStartTime = planning.StartTime;
+            _planningEndTime = planning.EndTime;
         }
         else
         {
             Management = await _managements.ResolveAsync(ManagementId);
             if (Management == null)
             {
-                TempData.Warning("No hay una gestión académica disponible. Configure la gestión antes de registrar planificaciones.");
+                TempData.Warning("No hay un semestre académico disponible. Pida al administrador que active la gestión del semestre.");
                 return RedirectToPage("./Index");
             }
             if (!Management.IsEditable)
@@ -144,6 +182,29 @@ public class PlanificacionModel : PageModel
         }
 
         await LoadListsAsync();
+
+        if (CanAssignPeriod && Periods.Count > 0)
+            (SuggestedStartPeriodId, SuggestedPeriodCount) = SuggestSlot(_planningStartTime, _planningEndTime);
+
+        // Intento de asignación de horario rechazado por choque de docente (OnPostAssignPeriod): se
+        // muestran los choques y se precarga el mismo bloque para insistir o elegir otro horario.
+        if (TempData["AssignTeacherConflicts"] is string assignConflictsJson && assignConflictsJson.Length > 0)
+        {
+            try
+            {
+                AssignTeacherConflicts = JsonSerializer.Deserialize<List<string>>(assignConflictsJson) ?? [];
+            }
+            catch (JsonException)
+            {
+                AssignTeacherConflicts = [];
+            }
+            AssignTeacherConflictFingerprint = TempData["AssignTeacherConflictFingerprint"] as string;
+            if (TempData["AssignStartPeriodId"] is int retryStartPeriodId && Periods.Any(p => p.Id == retryStartPeriodId))
+                SuggestedStartPeriodId = retryStartPeriodId;
+            if (TempData["AssignPeriodCount"] is int retryPeriodCount and >= 1)
+                SuggestedPeriodCount = Math.Min(retryPeriodCount, PlanningSlot.MaxPeriods);
+        }
+
         return Page();
     }
 
@@ -162,6 +223,7 @@ public class PlanificacionModel : PageModel
             }
             ManagementId = existing.ManagementId;
             ScheduleCode = existing.PracticeSchedule?.Code;
+            PlanningCode = existing.Code;
             StatusText = PlanningStatus.Label(existing.Status);
             CurrentStatus = existing.Status;
             if (existing.Status != PlanningStatus.Planned)
@@ -174,7 +236,7 @@ public class PlanificacionModel : PageModel
         Management = await _managements.ResolveAsync(ManagementId);
         if (Management == null)
         {
-            TempData.Error("La gestión académica no existe.");
+            TempData.Error("El semestre académico no existe.");
             return RedirectToPage("./Index");
         }
         if (!Management.IsEditable)
@@ -258,14 +320,38 @@ public class PlanificacionModel : PageModel
                     UsedBy = _context.Plannings
                         .Where(r => r.PracticeScheduleId == s.Id && r.Id != currentPlanningId
                             && !PlanningStatus.NonOccupying.Contains(r.Status))
-                        .Select(r => (int?)r.Id)
+                        .Select(r => new { r.Id, r.Code })
                         .FirstOrDefault()
                 })
                 .FirstOrDefaultAsync();
-            if (match?.UsedBy is int usedBy)
-                ModelState.AddModelError("Input.GroupName", $"El grupo {Input.GroupName} ya tiene planificada esta práctica en la gestión ({L3Codes.Format(usedBy)}).");
+            if (match is { UsedBy: not null })
+                ModelState.AddModelError("Input.GroupName", $"El grupo {Input.GroupName} ya tiene planificada esta práctica en la gestión ({L3Codes.Format(match.UsedBy.Id, match.UsedBy.Code)}).");
             else if (match != null)
                 adoptScheduleId = match.Id;
+        }
+
+        // Aforo: los estudiantes del grupo no pueden superar la capacidad del laboratorio (mismo texto y
+        // criterio que la reprogramación, SlotValidationService). Sin alguno de los dos datos no se bloquea.
+        if (laboratory != null)
+        {
+            var students = Input.StudentCount;
+            if (students is null)
+            {
+                var capacityScheduleId = adoptScheduleId ?? existing?.PracticeScheduleId;
+                students = capacityScheduleId is int scheduleId
+                    ? await _context.PracticeSchedules.AsNoTracking()
+                        .Where(s => s.Id == scheduleId)
+                        .Select(s => s.StudentCount)
+                        .FirstOrDefaultAsync()
+                    : null;
+            }
+            if (students is null && catalogPractice != null && !string.IsNullOrEmpty(Input.GroupName))
+                students = await _context.CourseGroups.AsNoTracking()
+                    .Where(g => g.ManagementId == Management.Id && g.SubjectId == Input.SubjectId && g.Name == Input.GroupName)
+                    .Select(g => g.StudentCount)
+                    .FirstOrDefaultAsync();
+            if (PlanningAssignmentRules.CapacityError(students, laboratory.Capacity, laboratory.Code) is string capacityError)
+                ModelState.AddModelError("Input.StudentCount", capacityError);
         }
 
         // Choque de ambiente: servicio único de ocupación (mismo criterio que la reprogramación y la reposición).
@@ -313,6 +399,37 @@ public class PlanificacionModel : PageModel
                 await LoadListsAsync();
                 return Page();
             }
+        }
+
+        // Choque de docente: bloquea, pero se puede insistir aceptando la advertencia (queda constancia en
+        // las observaciones). Va después de los bloqueos duros (ambiente y horario del grupo) para no pedir
+        // la aceptación de algo que igual se rechazaría. La huella asegura que se aceptan estos choques, no otros.
+        // Al editar solo se revisa si cambia el horario o el docente: un choque que ya existía (p. ej. importado)
+        // no debe impedir corregir observaciones ni sumar una constancia nueva en cada guardado.
+        var teacherSlotChanged = existing == null
+            || existing.ScheduledDate.Date != date.Date
+            || existing.StartPeriodId != Input.StartPeriodId
+            || existing.PeriodCount != Input.PeriodCount
+            || existing.TeacherPersonId != Input.TeacherPersonId;
+        List<string>? acceptedTeacherConflicts = null;
+        if (teacherSlotChanged && ModelState.IsValid && laboratory != null && startPeriod != null && day != null)
+        {
+            await LoadTeacherConflictsAsync(Input.TeacherPersonId, date, startPeriod.Order, Input.PeriodCount,
+                Id.HasValue ? [Id.Value] : null);
+            if (TeacherConflicts.Count > 0)
+            {
+                if (Input.AcceptTeacherConflict && Input.TeacherConflictFingerprint == TeacherConflictFingerprint)
+                    acceptedTeacherConflicts = [.. TeacherConflicts];
+                else
+                    ModelState.AddModelError(string.Empty,
+                        $"El docente ya tiene otra práctica en esos periodos: {string.Join("; ", TeacherConflicts)}.");
+            }
+        }
+
+        if (!ModelState.IsValid)
+        {
+            await LoadListsAsync();
+            return Page();
         }
 
         var practiceLabel = PracticeLabel(catalogPractice!);
@@ -367,6 +484,19 @@ public class PlanificacionModel : PageModel
                     existing != null ? [existing.Id] : null) is { Count: > 0 } conflicts)
                     ModelState.AddModelError(string.Empty,
                         $"El laboratorio se ocupó mientras se guardaba (ocupado o sin periodo libre entre prácticas): {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
+
+                // Choque de docente bajo bloqueo: si apareció uno nuevo la huella ya no coincide y se bloquea.
+                if (teacherSlotChanged)
+                    await LoadTeacherConflictsAsync(Input.TeacherPersonId, date, startPeriod.Order, Input.PeriodCount,
+                        existing != null ? [existing.Id] : null);
+                if (teacherSlotChanged && TeacherConflicts.Count > 0)
+                {
+                    if (Input.AcceptTeacherConflict && Input.TeacherConflictFingerprint == TeacherConflictFingerprint)
+                        acceptedTeacherConflicts = [.. TeacherConflicts];
+                    else
+                        ModelState.AddModelError(string.Empty,
+                            $"El docente ya tiene otra práctica en esos periodos: {string.Join("; ", TeacherConflicts)}.");
+                }
             }
             if (!ModelState.IsValid)
             {
@@ -397,7 +527,11 @@ public class PlanificacionModel : PageModel
             planning.GroupName = Input.GroupName;
             planning.PracticeName = practiceLabel;
             planning.PracticeNumber = catalogPractice!.Number;
-            planning.Observations = observations;
+            // Choque de docente aceptado: se deja constancia en las observaciones (recorta el texto previo si hace falta).
+            planning.Observations = acceptedTeacherConflicts is { Count: > 0 }
+                ? PlanningAssignmentRules.AppendTeacherConflictNote(observations,
+                    $"Choque de docente aceptado por {User.Identity?.Name ?? "usuario"} el {DateTime.Now:dd/MM/yyyy HH:mm}: {string.Join("; ", acceptedTeacherConflicts)}")
+                : observations;
             PlanningSlot.Apply(planning, date, Input.StartPeriodId, Input.PeriodCount, Periods);
 
             schedule.ManagementId = Management.Id;
@@ -427,6 +561,7 @@ public class PlanificacionModel : PageModel
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
             planningId = planning.Id;
+            PlanningCode = planning.Code;
         }
         catch (ArgumentException ex)
         {
@@ -445,9 +580,242 @@ public class PlanificacionModel : PageModel
         }
 
         TempData.Success(isNew
-            ? $"Planificación {L3Codes.Format(planningId)} registrada. Ahora define sus requerimientos."
+            ? $"Planificación {L3Codes.Format(planningId, PlanningCode)} registrada. Ahora define sus requerimientos."
             : "Planificación actualizada correctamente.");
+        if (acceptedTeacherConflicts is { Count: > 0 })
+            TempData.Warning("Se guardó con choque de docente; quedó constancia en las observaciones.");
         return RedirectToPage("./Requerimientos", new { planId = planningId });
+    }
+
+    /// <summary>
+    /// Asigna el bloque de periodos a una planificación aprobada sin periodo asignado (O10): no cambia la
+    /// fecha, el laboratorio, el docente, la materia, los requerimientos ni el estado; solo escribe
+    /// StartPeriodId/PeriodCount y los campos derivados del horario (PlanningSlot.Apply), y sincroniza la
+    /// programación vinculada. Mismas validaciones de ambiente y horario de grupo que el paso 1.
+    /// </summary>
+    public async Task<IActionResult> OnPostAssignPeriodAsync(int startPeriodId, int periodCount,
+        bool acceptTeacherConflict = false, string? teacherConflictFingerprint = null)
+    {
+        if (Id is not int planningId)
+            return RedirectToPage("./Index");
+
+        var planning = await _context.Plannings.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == planningId);
+        if (planning == null)
+        {
+            TempData.Error("La planificación no existe.");
+            return RedirectToPage("./Index");
+        }
+        var management = await _managements.GetSummaryAsync(planning.ManagementId);
+        if (management == null || !management.IsEditable)
+        {
+            TempData.Error(AcademicManagementService.ReadOnlyMessage);
+            return RedirectToPage(new { id = planningId });
+        }
+        if (planning.Status != PlanningStatus.Approved)
+        {
+            TempData.Error("Solo se asigna horario a planificaciones aprobadas sin periodo asignado.");
+            return RedirectToPage(new { id = planningId });
+        }
+        if (planning.StartPeriodId != null)
+        {
+            TempData.Warning("Esta planificación ya tiene periodo asignado.");
+            return RedirectToPage(new { id = planningId });
+        }
+        if (planning.LaboratoryId is not int laboratoryId)
+        {
+            TempData.Error("La planificación no tiene laboratorio asignado: no se puede reservar el horario.");
+            return RedirectToPage(new { id = planningId });
+        }
+        if (periodCount < 1 || periodCount > PlanningSlot.MaxPeriods)
+        {
+            TempData.Error($"La cantidad de periodos debe estar entre 1 y {PlanningSlot.MaxPeriods}.");
+            return RedirectToPage(new { id = planningId });
+        }
+
+        var periods = await _context.ClassPeriods.AsNoTracking().OrderBy(p => p.Order).ToListAsync();
+        var start = periods.FirstOrDefault(p => p.Id == startPeriodId);
+        if (start == null)
+        {
+            TempData.Error("Selecciona el periodo de inicio.");
+            return RedirectToPage(new { id = planningId });
+        }
+        if (!PlanningSlot.Fits(start.Order, periodCount))
+        {
+            TempData.Error($"El bloque no cabe en la jornada: el periodo {start.Order} con {periodCount} periodos supera el periodo {PlanningSlot.MaxPeriods}.");
+            return RedirectToPage(new { id = planningId });
+        }
+
+        // La fecha de la sesión no cambia: debe ser un día habilitado del calendario académico de la gestión.
+        var date = planning.ScheduledDate.Date;
+        if (PlanningSlot.WeekdayOf(date) == 0)
+        {
+            TempData.Error("Los domingos no hay actividades académicas: no se puede asignar el horario.");
+            return RedirectToPage(new { id = planningId });
+        }
+        var dayEnabled = await _context.AcademicDays.AsNoTracking()
+            .AnyAsync(d => d.Date == date && d.AcademicWeek.ManagementId == planning.ManagementId
+                && d.Status == AcademicDayStatus.Enabled);
+        if (!dayEnabled)
+        {
+            TempData.Error($"El día {date:dd/MM} no está habilitado en el calendario académico: no se puede asignar el horario.");
+            return RedirectToPage(new { id = planningId });
+        }
+
+        // Aforo: los estudiantes de la sesión no pueden superar la capacidad del laboratorio de la
+        // planificación (mismo texto y criterio que el guardado del paso 1).
+        int? assignStudents = null;
+        if (planning.PracticeScheduleId is int capacityScheduleId)
+            assignStudents = await _context.PracticeSchedules.AsNoTracking()
+                .Where(s => s.Id == capacityScheduleId)
+                .Select(s => s.StudentCount)
+                .FirstOrDefaultAsync();
+        if (assignStudents is null && planning.CourseGroupId is int capacityGroupId)
+            assignStudents = await _context.CourseGroups.AsNoTracking()
+                .Where(g => g.Id == capacityGroupId)
+                .Select(g => g.StudentCount)
+                .FirstOrDefaultAsync();
+        var capacityLab = await _context.Laboratories.AsNoTracking()
+            .Where(l => l.Id == laboratoryId)
+            .Select(l => new { l.Code, l.Capacity })
+            .FirstOrDefaultAsync();
+        if (PlanningAssignmentRules.CapacityError(assignStudents, capacityLab?.Capacity, capacityLab?.Code ?? string.Empty) is string assignCapacityError)
+        {
+            TempData.Error(assignCapacityError);
+            return RedirectToPage(new { id = planningId });
+        }
+
+        // Choque de ambiente: mismo criterio que el guardado del paso 1.
+        var conflicts = await _occupancy.FindConflictsAsync(laboratoryId, date, start.Order, periodCount, [planningId]);
+        if (conflicts.Count > 0)
+        {
+            TempData.Error($"El laboratorio está ocupado o no queda un periodo libre entre prácticas: {string.Join("; ", conflicts.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
+            return RedirectToPage(new { id = planningId });
+        }
+
+        // Horario de clases del grupo: el destino no puede coincidir con clases de otras materias del mismo grupo.
+        if (planning.CourseGroupId is int groupId)
+        {
+            var groupCheck = await _schedules.CheckDestinationAsync(groupId, date, start.Order, periodCount);
+            if (groupCheck.Collisions.Count > 0)
+            {
+                var subjects = groupCheck.Collisions
+                    .Select(c => c.SubjectName)
+                    .Distinct(StringComparer.CurrentCulture)
+                    .ToList();
+                TempData.Error($"El grupo {groupCheck.Collisions[0].GroupName} tiene clase de {string.Join(", ", subjects)} en ese horario: elija otro periodo.");
+                return RedirectToPage(new { id = planningId });
+            }
+        }
+
+        // Choque de docente: se puede insistir aceptando la advertencia (queda constancia en observaciones).
+        // Después de los bloqueos duros (ambiente y horario del grupo): no se pide aceptar algo que igual se rechazaría.
+        // Se guarda en TempData para que la página muestre la alerta y precargue el intento.
+        List<string>? acceptedAssignConflicts = null;
+        var teacherBlocks = await _occupancy.FindTeacherConflictsAsync(planning.TeacherPersonId, date, start.Order, periodCount, [planningId]);
+        if (teacherBlocks.Count > 0)
+        {
+            var conflictLabels = teacherBlocks.Select(c => $"{c.Label} ({c.PeriodsText})").ToList();
+            var conflictFingerprint = PlanningAssignmentRules.Fingerprint(teacherBlocks.Select(c => c.PlanningId));
+            if (!(acceptTeacherConflict && teacherConflictFingerprint == conflictFingerprint))
+            {
+                TempData["AssignTeacherConflicts"] = JsonSerializer.Serialize(conflictLabels);
+                TempData["AssignTeacherConflictFingerprint"] = conflictFingerprint;
+                TempData["AssignStartPeriodId"] = startPeriodId;
+                TempData["AssignPeriodCount"] = periodCount;
+                return RedirectToPage(new { id = planningId });
+            }
+            acceptedAssignConflicts = conflictLabels;
+        }
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        var resources = new List<string>
+        {
+            PlanningLockResources.ManagementDay(planning.ManagementId, date),
+            PlanningLockResources.LaboratoryDay(laboratoryId, date),
+            PlanningLockResources.Planning(planningId)
+        };
+        if (planning.TeacherPersonId > 0)
+            resources.Add(PlanningLockResources.TeacherDay(planning.TeacherPersonId, date));
+        if (!await _planningLock.TryAcquireAsync(resources))
+        {
+            TempData.Error(PlanningLockResources.BusyMessage + ".");
+            return RedirectToPage(new { id = planningId });
+        }
+
+        try
+        {
+            // No confiar en las consultas previas: revalidar dentro de la transacción.
+            var current = await _context.Plannings.AsNoTracking()
+                .Where(p => p.Id == planningId)
+                .Select(p => new { p.Status, p.StartPeriodId })
+                .FirstAsync();
+            if (current.Status != PlanningStatus.Approved || current.StartPeriodId != null)
+            {
+                TempData.Error("La planificación cambió de estado mientras se asignaba el horario; revisa la pantalla e intente nuevamente.");
+                return RedirectToPage(new { id = planningId });
+            }
+            if (await _occupancy.FindConflictsAsync(laboratoryId, date, start.Order, periodCount, [planningId]) is { Count: > 0 } revalidados)
+            {
+                TempData.Error($"El laboratorio se ocupó mientras se guardaba (ocupado o sin periodo libre entre prácticas): {string.Join("; ", revalidados.Select(c => $"{c.Label} ({c.PeriodsText})"))}.");
+                return RedirectToPage(new { id = planningId });
+            }
+
+            // Choque de docente bajo bloqueo: si apareció uno nuevo la huella ya no coincide y se vuelve a pedir.
+            var teacherRecheck = await _occupancy.FindTeacherConflictsAsync(planning.TeacherPersonId, date, start.Order, periodCount, [planningId]);
+            if (teacherRecheck.Count > 0)
+            {
+                var recheckLabels = teacherRecheck.Select(c => $"{c.Label} ({c.PeriodsText})").ToList();
+                var recheckFingerprint = PlanningAssignmentRules.Fingerprint(teacherRecheck.Select(c => c.PlanningId));
+                if (!(acceptTeacherConflict && teacherConflictFingerprint == recheckFingerprint))
+                {
+                    TempData["AssignTeacherConflicts"] = JsonSerializer.Serialize(recheckLabels);
+                    TempData["AssignTeacherConflictFingerprint"] = recheckFingerprint;
+                    TempData["AssignStartPeriodId"] = startPeriodId;
+                    TempData["AssignPeriodCount"] = periodCount;
+                    return RedirectToPage(new { id = planningId });
+                }
+                acceptedAssignConflicts = recheckLabels;
+            }
+
+            var tracked = await _context.Plannings.AsTracking().FirstAsync(p => p.Id == planningId);
+            PlanningSlot.Apply(tracked, date, startPeriodId, periodCount, periods);
+            if (acceptedAssignConflicts is { Count: > 0 })
+            {
+                tracked.Observations = PlanningAssignmentRules.AppendTeacherConflictNote(tracked.Observations,
+                    $"Choque de docente aceptado por {User.Identity?.Name ?? "usuario"} el {DateTime.Now:dd/MM/yyyy HH:mm}: {string.Join("; ", acceptedAssignConflicts)}");
+            }
+            if (tracked.PracticeScheduleId.HasValue)
+            {
+                var schedule = await _context.PracticeSchedules.AsTracking()
+                    .FirstOrDefaultAsync(s => s.Id == tracked.PracticeScheduleId.Value);
+                if (schedule != null)
+                {
+                    schedule.ExecutionDate = tracked.ScheduledDate.Date;
+                    schedule.StartTime = tracked.StartTime;
+                    schedule.EndTime = tracked.EndTime;
+                }
+            }
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            var lastOrder = PlanningSlot.LastOrder(start.Order, periodCount);
+            TempData.Success($"Horario asignado a {L3Codes.Format(tracked.Id, tracked.Code)}: periodos {start.Order}–{lastOrder} ({tracked.StartTime:hh\\:mm}–{tracked.EndTime:hh\\:mm}).");
+            if (acceptedAssignConflicts is { Count: > 0 })
+                TempData.Warning("Se asignó el horario con choque de docente; quedó constancia en las observaciones.");
+        }
+        catch (ArgumentException ex)
+        {
+            await transaction.RollbackAsync();
+            TempData.Error(ex.Message);
+        }
+        catch (DbUpdateException ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "No se pudo asignar el horario de la planificación {PlanningId}", planningId);
+            TempData.Error("No se pudo asignar el horario. Intente nuevamente.");
+        }
+        return RedirectToPage(new { id = planningId });
     }
 
     /// <summary>Quien puede crear prácticas del catálogo (mismos roles que Catálogos › Prácticas › Crear).</summary>
@@ -515,6 +883,15 @@ public class PlanificacionModel : PageModel
             && i.Status == GeneralStatus.Activo
             && i.InternStatus == GeneralStatus.Activo);
 
+    /// <summary>Recarga los choques de docente de la ventana elegida y su huella (para la vista y la aceptación).</summary>
+    private async Task LoadTeacherConflictsAsync(int teacherPersonId, DateTime date, int startOrder, int periodCount,
+        IReadOnlyCollection<int>? excludePlanningIds)
+    {
+        var blocks = await _occupancy.FindTeacherConflictsAsync(teacherPersonId, date.Date, startOrder, periodCount, excludePlanningIds);
+        TeacherConflicts = blocks.Select(b => $"{b.Label} ({b.PeriodsText})").ToList();
+        TeacherConflictFingerprint = PlanningAssignmentRules.Fingerprint(blocks.Select(b => b.PlanningId));
+    }
+
     private async Task LoadListsAsync()
     {
         var laboratories = await _context.Laboratories.AsNoTracking()
@@ -563,6 +940,32 @@ public class PlanificacionModel : PageModel
 
         LaboratoryList = new SelectList(laboratories, "Id", "Name", Input.LaboratoryId);
         TeacherList = new SelectList(teachers, "Id", "Name", Input.TeacherPersonId);
+    }
+
+    /// <summary>
+    /// Sugerencia de bloque de periodos para una planificación sin periodo (O10): el periodo cuyo rango
+    /// contiene la hora de inicio (o el más cercano) y la cantidad de periodos hasta cubrir la hora de fin
+    /// (mínimo 1), acotada a la jornada del catálogo.
+    /// </summary>
+    private (int StartPeriodId, int PeriodCount) SuggestSlot(TimeSpan? startTime, TimeSpan? endTime)
+    {
+        var ordered = Periods.OrderBy(p => p.Order).ToList();
+        ClassPeriod start;
+        if (startTime is TimeSpan desde)
+            // Primer periodo que termina después de la hora de inicio: la contiene o es el más cercano.
+            start = ordered.FirstOrDefault(p => p.EndTime > desde) ?? ordered[^1];
+        else
+            start = ordered.FirstOrDefault(p => endTime is TimeSpan hasta && p.EndTime > hasta) ?? ordered[0];
+
+        var count = 1;
+        if (endTime is TimeSpan fin)
+        {
+            var last = ordered.FirstOrDefault(p => p.EndTime >= fin) ?? ordered[^1];
+            count = last.Order - start.Order + 1;
+        }
+        if (!PlanningSlot.Fits(start.Order, count))
+            count = PlanningSlot.MaxPeriods - start.Order + 1;
+        return (start.Id, Math.Max(1, count));
     }
 
     /// <summary>
@@ -671,6 +1074,12 @@ public class PlanificacionModel : PageModel
         [StringLength(1000)]
         [Display(Name = "Observaciones")]
         public string? Observations { get; set; }
+
+        /// <summary>True cuando la persona acepta guardar con el choque de docente (queda constancia en observaciones).</summary>
+        public bool AcceptTeacherConflict { get; set; }
+
+        /// <summary>Huella de los choques aceptados: debe coincidir con los vigentes al procesar el formulario.</summary>
+        public string? TeacherConflictFingerprint { get; set; }
 
         public static InputModel From(Planning planning) => new()
         {

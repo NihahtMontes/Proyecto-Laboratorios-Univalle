@@ -5,22 +5,22 @@
 // REDO WIZARD PHASE (GLOBAL SWEETALERT2)
 // ==========================================
 window.confirmRedoPhase = function(planId, targetPhaseInt, targetPhaseName, currentPhaseInt = null) {
-    let alertText = 'Se anulará el progreso actual y los registros generados después de esta fase para que puedas empezar de nuevo. ¡Esta acción no se puede deshacer!';
+    let alertText = 'Se anulará el avance actual y los registros generados después de este paso para que puedas empezar de nuevo. ¡Esta acción no se puede deshacer!';
     let isHighImpact = false;
 
     if (currentPhaseInt != null) {
         let diff = parseInt(currentPhaseInt) - parseInt(targetPhaseInt);
         if (diff >= 2) {
-            alertText = `Atención: Para editar esta fase, se resetearán las ${diff - 1} fase(s) intermedia(s) y perderás su progreso actual. ¿Deseas continuar?`;
+            alertText = `Atención: Para corregir este paso, se reiniciarán ${diff - 1} paso(s) intermedio(s) y perderás su avance. ¿Deseas continuar?`;
             isHighImpact = true;
         } else if (diff === 1) {
             // If diff is 1, it's usually just an edit, but if called here, it's a rollback.
-            alertText = `Volverás a la fase de ${targetPhaseName}. El progreso de la fase actual se descartará.`;
+            alertText = `Volverás al paso «${targetPhaseName}». El avance del paso actual se descartará.`;
         }
     }
 
     Swal.fire({
-        title: isHighImpact ? '¿Retroceder múltiples fases?' : '¿Rehacer Fase ' + targetPhaseName + '?',
+        title: isHighImpact ? '¿Retroceder varios pasos?' : '¿Rehacer «' + targetPhaseName + '»?',
         text: alertText,
         icon: isHighImpact ? 'error' : 'warning',
         showCancelButton: true,
@@ -355,4 +355,44 @@ window.confirmRedoPhase = function(planId, targetPhaseInt, targetPhaseName, curr
             delete form.dataset.filterSubmitting;
         });
     });
+})();
+
+// ==========================================
+// AYUDA CONTEXTUAL (UX fase 2): popovers «?» y recuadro «¿Qué hago aquí?»
+// ==========================================
+(function () {
+    'use strict';
+
+    function initHelp() {
+        if (window.jQuery && typeof window.jQuery.fn.popover === 'function') {
+            window.jQuery('[data-toggle="popover"]').popover();
+        }
+
+        document.querySelectorAll('.ux-page-help').forEach(function (box) {
+            var key = 'ux-help:' + (box.getAttribute('data-help-key') || location.pathname);
+            var toggle = box.querySelector('.ux-page-help__toggle');
+            if (!toggle) return;
+
+            function apply(collapsed) {
+                box.classList.toggle('is-collapsed', collapsed);
+                toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            }
+
+            var stored = null;
+            try { stored = window.localStorage.getItem(key); } catch (e) { stored = null; }
+            apply(stored === 'collapsed');
+
+            toggle.addEventListener('click', function () {
+                var collapsed = !box.classList.contains('is-collapsed');
+                apply(collapsed);
+                try { window.localStorage.setItem(key, collapsed ? 'collapsed' : 'open'); } catch (e) { /* sin almacenamiento */ }
+            });
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHelp);
+    } else {
+        initHelp();
+    }
 })();

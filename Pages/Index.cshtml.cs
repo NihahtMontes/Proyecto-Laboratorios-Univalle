@@ -36,8 +36,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         private readonly IManagementContextService _managementContext;
         private readonly IDashboardReadService _dashboardReadService;
         private readonly IManagementActivationService _managementActivation;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
-        public IndexModel(ApplicationDbContext context, UserManager<User> userManager, ILogger<IndexModel> logger, IManagementContextService managementContext, IDashboardReadService dashboardReadService, IManagementActivationService managementActivation)
+        public IndexModel(ApplicationDbContext context, UserManager<User> userManager, ILogger<IndexModel> logger, IManagementContextService managementContext, IDashboardReadService dashboardReadService, IManagementActivationService managementActivation, IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _userManager = userManager;
@@ -45,6 +46,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             _managementContext = managementContext;
             _dashboardReadService = dashboardReadService;
             _managementActivation = managementActivation;
+            _stateHistory = stateHistory;
         }
 
         public Management? ActiveManagement { get; set; }
@@ -111,6 +113,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
         public const int PageSize = 5;
 
+        /// <summary>Laboratorios por página en el paso 1 (verificación): una sola constante para el PageModel y la vista.</summary>
+        public const int Step1PageSize = 2;
+
         // Contadores de fases para el Dashboard Premium
         public int CountL6 { get; set; }
         public int CountL7 { get; set; }
@@ -151,12 +156,38 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             (!string.IsNullOrEmpty(InventoryNumberFilter) ? $"&InventoryNumberFilter={Uri.EscapeDataString(InventoryNumberFilter)}" : "");
 
         public int CompletedTotalPages => CompletedTotalItems > 0 ? (int)Math.Ceiling((double)CompletedTotalItems / 5.0) : 0;
-        public int Step1LabTotalPages => Step1Labs.Count > 0 ? (int)Math.Ceiling((double)Step1Labs.Count / 3.0) : 0;
+        public int Step1LabTotalPages => Step1Labs.Count > 0 ? (int)Math.Ceiling((double)Step1Labs.Count / Step1PageSize) : 0;
 
         public async Task<IActionResult> OnGetAsync()
         {
             try
             {
+                // Inicio sin parpadeo: la redirección se resuelve en el servidor (antes era window.location en la vista).
+                if (!ShowWizard)
+                {
+                    ActiveManagement = ManagementId.HasValue
+                        ? await _context.Managements
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(m => m.Id == ManagementId.Value && m.Status == ManagementStatus.Active)
+                        : null;
+                    ActiveManagement ??= await _managementContext.GetCurrentManagementAsync();
+
+                    var isAdminUser = User.IsInRole(AuthorizationHelper.RoleAdministrator)
+                        || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
+                    if (!isAdminUser)
+                    {
+                        // El panel de la gestión es solo para administradores: el Supervisor inicia en planificación.
+                        return RedirectToPage("/LaboratoryOperations/Index");
+                    }
+                    if (ActiveManagement != null)
+                    {
+                        return RedirectToPage("/Managements/Details", new { id = ActiveManagement.Id, ActiveTab = "dashboard" });
+                    }
+
+                    // Administrador sin gestión activa: estado vacío, sin cargas pesadas.
+                    return Page();
+                }
+
                 // Cargar Listas para Filtros
                 var labsQuery = _context.Laboratories.Where(l => l.Status == GeneralStatus.Activo);
                 if (ActiveManagement?.FacultyId.HasValue == true)
@@ -178,7 +209,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                     .Select(e => new { Id = (int)e, Name = e.ToString() }), "Id", "Name");
 
                 // Buscar Gestión Activa (cached), o usar ManagementId directo
-                if (ManagementId.HasValue && ShowWizard)
+                if (ManagementId.HasValue)
                 {
                     ActiveManagement = await _context.Managements
                         .AsNoTracking()
@@ -186,11 +217,6 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 }
 
                 ActiveManagement ??= await _managementContext.GetCurrentManagementAsync();
-
-                if (!ShowWizard && ActiveManagement != null && ManagementId.HasValue && ManagementId.Value != ActiveManagement.Id)
-                {
-                    return RedirectToPage(new { ManagementId = ActiveManagement.Id });
-                }
 
                 if (ActiveManagement != null)
                 {
@@ -319,14 +345,24 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             return Page();
         }
 
-        public IActionResult OnPostNextStep()
+        public async Task<IActionResult> OnPostNextStep()
         {
+            // Igual que OnPostPreviousStep: en una gestión correctiva el paso 1 (verificación) no existe.
+            var management = ManagementId.HasValue
+                ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
+                : await _managementContext.GetCurrentManagementAsync();
+
+            var isCorrective = management?.Type == ManagementType.Corrective;
             var nextStep = Step >= 7 ? 7 : Step + 1;
+            if (isCorrective && nextStep == 1)
+            {
+                nextStep = 2; // Desde el paso 0 en correctivo, «siguiente» salta directo a la solicitud (L-7).
+            }
             return RedirectToPage(new {
                 ShowWizard = true,
                 Step = nextStep,
                 SelectedLabId = SelectedLabId,
-                ManagementId = ManagementId ?? ActiveManagement?.Id,
+                ManagementId = ManagementId ?? management?.Id,
                 FocusPlanId = FocusPlanId,
                 SearchTerm = SearchTerm,
                 SerialNumberFilter = SerialNumberFilter,
@@ -377,19 +413,19 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
             if (activeManagement == null)
             {
-                TempData.Error("No hay gestión activa para sincronizar.");
+                TempData.Error("No hay gestión activa para recalcular el avance.");
                 return RedirectToPage();
             }
 
             if (activeManagement.Type == ManagementType.Corrective)
             {
-                TempData.Warning("El flujo correctivo no sincroniza equipos. Reporte cada falla desde L-7 para crear su propio proceso.");
+                TempData.Warning("El flujo correctivo no agrega equipos automáticamente. Reporte cada falla desde el paso «Solicitud de servicio técnico» para crear su propio proceso.");
                 return RedirectToPage(new { ShowWizard = true, Step = 2, SelectedLabId, ManagementId = activeManagement.Id });
             }
 
             if (activeManagement.Type == ManagementType.Preventive)
             {
-                TempData.Info("Seleccione las categorias, subclasificaciones y unidades que entraran a esta ronda preventiva.");
+                TempData.Info("Seleccione las categorías, subclasificaciones y unidades que entrarán a este mantenimiento preventivo.");
                 return RedirectToPage("/Managements/PlanAssets", new { id = activeManagement.Id });
             }
 
@@ -422,7 +458,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             }
             else
             {
-                TempData.Success("El dashboard está actualizado. Todos los equipos activos ya están en la ronda.");
+                TempData.Success("El panel está actualizado. Todos los equipos activos ya están en la gestión.");
             }
 
             return RedirectToPage(new { ShowWizard, Step, SelectedLabId, ManagementId = activeManagement.Id, FocusPlanId });
@@ -482,7 +518,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
                 }
                 else if (plan != null)
                 {
-                    TempData.Error($"Este equipo no está en fase de Verificación (fase actual: {plan.CurrentPhase}). No se puede registrar falla rápida.");
+                    TempData.Error($"Este equipo no está en el paso de verificación de equipos (paso actual: {PhaseDisplayName(plan.CurrentPhase)}). No se puede registrar la falla rápida.");
                     return RedirectToPage(new { ShowWizard = true, Step = (int)plan.CurrentPhase, SelectedLabId = SelectedLabId, ManagementId = plan.ManagementId, FocusPlanId });
                 }
             }
@@ -499,7 +535,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
             if (activeManagement == null)
             {
-                TempData.Error("Para usar la Falla Rápida debe existir un periodo de Gestión Institucional activo.");
+                TempData.Error("Para usar la falla rápida debe existir una gestión de mantenimiento activa.");
                 return RedirectToPage();
             }
 
@@ -535,33 +571,20 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
                 if (plan.CurrentPhase != WizardPhase.Kardex || plan.EquipmentUnit == null)
                 {
-                    TempData.Error("El equipo no está listo para confirmar su Kardex.");
+                    TempData.Error("El equipo no está listo para cerrar su mantenimiento.");
                     return RedirectToPage(new { ShowWizard = true, Step = (int)plan.CurrentPhase, ManagementId = plan.ManagementId, FocusPlanId });
                 }
 
                 await using var transaction = await _context.Database.BeginTransactionAsync();
                 var historyDate = DateTime.UtcNow;
 
-                var previousOpenHistory = await _context.EquipmentStateHistories
-                    .AsTracking()
-                    .Where(history => history.EquipmentUnitId == plan.EquipmentUnit.Id && history.EndDate == null)
-                    .OrderByDescending(history => history.StartDate)
-                    .FirstOrDefaultAsync();
-
-                if (previousOpenHistory != null)
-                    previousOpenHistory.EndDate = historyDate;
-
-                var kardexEntry = new EquipmentStateHistory
-                {
-                    EquipmentUnitId = plan.EquipmentUnit.Id,
-                    Status = EquipmentStatus.Operational,
-                    StartDate = historyDate,
-                    Reason = $"Kardex: Mantenimiento #{plan.MaintenanceId} finalizado en Gestión #{plan.ManagementId}.",
-                    CreatedDate = historyDate
-                };
-                _context.EquipmentStateHistories.Add(kardexEntry);
-
-                plan.EquipmentUnit.CurrentStatus = EquipmentStatus.Operational;
+                var kardexEntry = await _stateHistory.ChangeStatusAsync(
+                    plan.EquipmentUnit,
+                    EquipmentStatus.Operational,
+                    $"Cierre del mantenimiento #{plan.MaintenanceId} en la gestión #{plan.ManagementId}.",
+                    historyDate,
+                    (await _userManager.GetUserAsync(User))?.Id,
+                    splitIfSameStatus: true);
 
                 await _context.SaveChangesAsync();
 
@@ -576,12 +599,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-                TempData.Success("Kardex actualizado. El equipo está marcado como Operativo.");
+                TempData.Success("Cierre del mantenimiento registrado. El equipo está marcado como operativo.");
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 _logger.LogError(ex, "No se pudo confirmar el Kardex del plan {PlanId}.", planId);
-                TempData.Error("No se pudo actualizar el Kardex. Intente nuevamente.");
+                TempData.Error("No se pudo registrar el cierre del mantenimiento. Intente nuevamente.");
             }
 
             return RedirectToPage(new { ShowWizard = true, Step = 6, SelectedLabId = SelectedLabId, ManagementId = redirectManagementId, FocusPlanId });
@@ -597,7 +620,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
             if (plan == null)
             {
-                TempData.Error("No se pudo validar el L-6 del equipo enfocado.");
+                TempData.Error("No se pudo validar la verificación del equipo atendido.");
                 return RedirectToPage(new { ShowWizard = true, Step = 1, ManagementId, FocusPlanId });
             }
 
@@ -609,7 +632,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
 
             if (verification == null)
             {
-                TempData.Error("No se encontro la verificacion L-6 del equipo enfocado.");
+                TempData.Error("No se encontró la verificación del equipo atendido.");
                 return RedirectToPage(new { ShowWizard = true, Step = 1, ManagementId = plan.ManagementId, FocusPlanId = plan.Id });
             }
 
@@ -623,7 +646,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages
             }
 
             await _context.SaveChangesAsync();
-            TempData.Success("Observacion L-6 actualizada para el equipo enfocado.");
+            TempData.Success("Observación de verificación actualizada para el equipo atendido.");
 
             return RedirectToPage(new { ShowWizard = true, Step = 1, ManagementId = plan.ManagementId, FocusPlanId = plan.Id });
         }
@@ -632,6 +655,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         {
             return v?.FailuresCount ?? 0;
         }
+
+        /// <summary>
+        /// Nombre visible (glosario) del paso del asistente asociado a una fase del plan:
+        /// evita mostrar el nombre interno del enum (p. ej. «TechnicalRequest») al usuario.
+        /// </summary>
+        private static string PhaseDisplayName(WizardPhase phase) => phase switch
+        {
+            WizardPhase.Verification => "Verificación de equipos",
+            WizardPhase.TechnicalRequest => "Solicitud de servicio técnico",
+            WizardPhase.Maintenance => "Registro de mantenimiento",
+            WizardPhase.Exit => "Salida de equipos",
+            WizardPhase.Kardex => "Cierre del mantenimiento",
+            WizardPhase.Disbursement => "Solicitud de compra",
+            _ => "inicio"
+        };
 
         private static bool IsCompletedPlan(ManagementPlan plan)
         {
@@ -693,5 +731,32 @@ namespace Proyecto_Laboratorios_Univalle.Pages
         public int? SelectedLabId { get; set; }
         public int? ManagementId { get; set; }
         public int? FocusPlanId { get; set; }
+
+        // Personalización por tarjeta (opcional). Si no se define, se usa ActionLabel.
+        public Func<ManagementPlan, string>? ActionLabelSelector { get; set; }
+        public Func<ManagementPlan, string?>? CardDetailSelector { get; set; }
+
+        public string ResolveActionLabel(ManagementPlan plan) =>
+            ActionLabelSelector?.Invoke(plan) ?? ActionLabel;
+
+        public string? ResolveCardDetail(ManagementPlan plan) =>
+            CardDetailSelector?.Invoke(plan);
+
+        /// <summary>
+        /// Paso 3 del asistente: mantenimiento ya registrado y aún no finalizado.
+        /// Usa la navegación Maintenance ya incluida en la consulta del panel (sin N+1).
+        /// </summary>
+        public static bool HasPendingMaintenance(ManagementPlan plan) =>
+            plan.MaintenanceId.HasValue
+            && plan.Maintenance != null
+            && plan.Maintenance.Status != MaintenanceStatus.Completed;
+
+        public static string MaintenanceStepActionLabel(ManagementPlan plan) =>
+            HasPendingMaintenance(plan) ? "Continuar mantenimiento" : "Registrar mantenimiento";
+
+        public static string? MaintenanceStepDetail(ManagementPlan plan) =>
+            HasPendingMaintenance(plan)
+                ? $"Mantenimiento #{plan.MaintenanceId} · {EnumHelper.GetDisplayName(plan.Maintenance!.Status)}"
+                : null;
     }
 }

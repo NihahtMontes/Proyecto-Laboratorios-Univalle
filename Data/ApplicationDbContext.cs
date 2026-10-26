@@ -12,6 +12,9 @@ namespace Proyecto_Laboratorios_Univalle.Data
     {
         private readonly ICurrentUserService _currentUserService;
 
+        // EquipmentStateHistory.Reason es nvarchar(500): el motivo del incidente L-5 se recorta a ese tope.
+        private const int EquipmentStateReasonMaxLength = 500;
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ICurrentUserService currentUserService)
           : base(options)
         {
@@ -88,7 +91,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 {
                     EquipmentUnitId = unitId,
                     StartDate = now,
-                    Reason = $"INCIDENTE L5 REGISTRADO: {incident.IncidentType} - {incident.DamageDescription}. Estado: {incident.RepositionStatus}",
+                    // DamageDescription admite 2000: se recorta para no superar el nvarchar(500) de Reason.
+                    Reason = TrimReason($"INCIDENTE L5 REGISTRADO: {incident.IncidentType} - {incident.DamageDescription}. Estado: {incident.RepositionStatus}"),
                     Status = Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Broken,
                     CreatedDate = now,
                     CreatedById = userId
@@ -96,6 +100,15 @@ namespace Proyecto_Laboratorios_Univalle.Data
             }
 
             return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        /// <summary>Corta el motivo al tope de la columna (497 + "..."), evitando DbUpdateException por longitud.</summary>
+        private static string? TrimReason(string? reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason)) return null;
+            return reason.Length <= EquipmentStateReasonMaxLength
+                ? reason
+                : reason[..(EquipmentStateReasonMaxLength - 3)] + "...";
         }
 
         private void SynchronizeLocationResolutionStatuses()
@@ -379,6 +392,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<Group> Groups { get; set; } = null!;
         public DbSet<Planning> Plannings { get; set; } = null!;
         public DbSet<PlanningRequirement> PlanningRequirements { get; set; } = null!;
+        public DbSet<UndatedL3Request> UndatedL3Requests { get; set; } = null!;
+        public DbSet<UndatedL3RequestLine> UndatedL3RequestLines { get; set; } = null!;
         public DbSet<L5Incident> L5Incidents { get; set; } = null!;
         public DbSet<AcademicWeek> AcademicWeeks { get; set; } = null!;
         public DbSet<AcademicDay> AcademicDays { get; set; } = null!;
@@ -536,8 +551,11 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<ArticleStock>().ToTable(t => t.HasCheckConstraint("CK_ArticleStocks_Quantity", "[AvailableQuantity] >= 0"));
             modelBuilder.Entity<ImportBatch>().HasIndex(batch => batch.Code).IsUnique();
             modelBuilder.Entity<Management>().HasIndex(m => m.Code).IsUnique().HasFilter("[Status] <> 99");
-            modelBuilder.Entity<Management>().HasIndex(m => m.Status).IsUnique().HasFilter("[Status] = 0");
-            modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.ManagementId, p.EquipmentUnitId }).IsUnique().HasFilter("[EquipmentUnitId] IS NOT NULL");
+            // Una gestión Activa por tipo: la preventiva del semestre convive con la correctiva del mismo semestre.
+            modelBuilder.Entity<Management>().HasIndex(m => new { m.Type, m.Status }).IsUnique().HasFilter("[Status] = 0");
+            // Un plan ABIERTO por unidad y gestión: en el correctivo, cerrado un proceso, la unidad puede abrir otro.
+            // En el preventivo la unicidad completa la garantizan PlanAssets, la sincronización y Details (miran planes en cualquier estado).
+            modelBuilder.Entity<ManagementPlan>().HasIndex(p => new { p.ManagementId, p.EquipmentUnitId }).IsUnique().HasFilter("[EquipmentUnitId] IS NOT NULL AND [PlanStatus] <> 2");
             modelBuilder.Entity<VerificationCheckResult>().HasIndex(r => new { r.VerificationId, r.CheckItemId }).IsUnique();
             modelBuilder.Entity<MaintenanceParticipant>().HasIndex(p => new { p.MaintenanceId, p.PersonId, p.Role }).IsUnique().HasFilter("[IsActive] = 1");
             modelBuilder.Entity<MaintenanceParticipant>().HasIndex(p => p.MaintenanceId).IsUnique().HasFilter("[IsPrimary] = 1 AND [IsActive] = 1");
@@ -795,7 +813,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             });
             modelBuilder.Entity<Management>().ToTable(table =>
             {
-                table.HasCheckConstraint("CK_Managements_Year", "[Year] BETWEEN 2000 AND 2100");
+                table.HasCheckConstraint("CK_Managements_Year", "[Year] BETWEEN 1900 AND 2100");
                 table.HasCheckConstraint("CK_Managements_Semester", "[Semester] IN (0, 1, 2)");
                 table.HasCheckConstraint("CK_Managements_Status", "[Status] IN (0, 1, 2, 99)");
                 table.HasCheckConstraint("CK_Managements_Type", "[Type] IN (0, 1, 9)");
@@ -875,7 +893,6 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Planning>().Property(r => r.AllLaboratories).HasDefaultValue(false);
             modelBuilder.Entity<Planning>().ToTable(t =>
             {
-                t.HasCheckConstraint("CK_Plannings_Laboratory", "[AllLaboratories] = 1 OR [LaboratoryId] IS NOT NULL");
                 t.HasCheckConstraint("CK_Plannings_Status", "[Status] IN (N'Planificada', N'Aprobada', N'Finalizada', N'Cancelada', N'Reprogramada', N'PendienteReposicion', N'Repuesta')");
                 t.HasCheckConstraint("CK_Plannings_Periods", "([StartPeriodId] IS NULL AND [PeriodCount] IS NULL) OR ([StartPeriodId] IS NOT NULL AND [PeriodCount] BETWEEN 1 AND 12)");
             });
@@ -886,7 +903,19 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<PlanningRequirement>().HasOne(d => d.Article).WithMany().HasForeignKey(d => d.ArticleId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PlanningRequirement>().HasOne(d => d.Planning).WithMany(p => p.Requirements).HasForeignKey(d => d.PlanningId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<PlanningRequirement>().ToTable(t =>
-                t.HasCheckConstraint("CK_PlanningRequirements_RequestedQuantity", "[RequestedQuantity] IS NULL OR [RequestedQuantity] > 0"));
+                t.HasCheckConstraint("CK_PlanningRequirements_RequestedQuantity", "[RequestedQuantity] IS NULL OR [RequestedQuantity] >= 0"));
+
+            // Solicitudes L-3 históricas del Excel sin fecha de práctica (solo lectura; no son Plannings).
+            modelBuilder.Entity<UndatedL3Request>().HasIndex(r => r.Code).IsUnique();
+            modelBuilder.Entity<UndatedL3Request>().HasOne(r => r.Management).WithMany().HasForeignKey(r => r.ManagementId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UndatedL3Request>().HasOne(r => r.Laboratory).WithMany().HasForeignKey(r => r.LaboratoryId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UndatedL3Request>().HasOne(r => r.Person).WithMany().HasForeignKey(r => r.TeacherPersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UndatedL3Request>().HasOne(r => r.Subject).WithMany().HasForeignKey(r => r.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UndatedL3Request>().Property(r => r.AllLaboratories).HasDefaultValue(false);
+            modelBuilder.Entity<UndatedL3RequestLine>().HasOne(l => l.UndatedL3Request).WithMany(r => r.Lines).HasForeignKey(l => l.UndatedL3RequestId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<UndatedL3RequestLine>().HasOne(l => l.Article).WithMany().HasForeignKey(l => l.ArticleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UndatedL3RequestLine>().HasOne(l => l.EquipmentUnit).WithMany().HasForeignKey(l => l.EquipmentUnitId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<UndatedL3RequestLine>().Property(l => l.RequestedQuantity).HasPrecision(18, 3);
             modelBuilder.Entity<Departure>().HasIndex(d => d.Code).IsUnique().HasFilter("[Code] IS NOT NULL");
             modelBuilder.Entity<Departure>().HasOne(d => d.Planning).WithMany(p => p.Departures).HasForeignKey(d => d.PlanningId).OnDelete(DeleteBehavior.Restrict);
             modelBuilder.Entity<DepartureItem>().HasIndex(i => i.Code).IsUnique().HasFilter("[Code] IS NOT NULL");

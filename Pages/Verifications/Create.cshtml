@@ -3,7 +3,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Verifications.CreateModel
 
 @{
-    ViewData["Title"] = "Registrar Verificación (L-6)";
+    ViewData["Title"] = "Nueva verificación de equipos";
+    ViewData["Section"] = "Mantenimiento de equipos";
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 1);
     var categoryList = Html.GetEnumSelectList<CostCategory>();
@@ -22,7 +23,7 @@
             <div class="card-body p-4">
                 <div class="d-flex align-items-center mb-4">
                     <div class="w-100 mr-4">
-                        <h4 class="card-title text-dark font-weight-bold m-0">Paso 1: Lista de Verificación Técnica (L6)</h4>
+                        <h4 class="card-title text-dark font-weight-bold m-0">Paso 1: Verificación de equipos</h4>
                         <div class="d-flex justify-content-between align-items-end mt-1">
                             <h6 class="card-subtitle text-muted mb-0">Protocolo de inspección de estado operativo de equipos.</h6>
                             <span class="text-info font-weight-bold small"><i class="fas fa-chart-line mr-1"></i>Avance: <span id="percentText">0%</span></span>
@@ -38,7 +39,7 @@
                     <input type="hidden" asp-for="ManagementPlanId" />
                     <input type="hidden" asp-for="ManagementId" />
 
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger shadow-sm border-0 small"></div>
+                    <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 small"></div>
 
                     @* Selección de equipo *@
                     <div class="bg-light p-4 rounded mb-4 border-left border-info border-3 shadow-none" style="border-width: 4px !important;">
@@ -133,7 +134,7 @@
                             {
                                 <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="1" asp-route-ManagementId="@ViewData["ManagementId"]"
                                    class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
-                                    <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
+                                    <i class="fas fa-arrow-left mr-1"></i> Volver al asistente
                                 </a>
                             }
                         </div>
@@ -156,7 +157,8 @@
 </div>
 
 @section Scripts {
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <link rel="stylesheet" href="~/assets/libs/select2/dist/css/select2.min.css" /> @* QA H-014: sin el CSS el texto del select se veía duplicado *@
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script>
         $(document).ready(function () {
             $(".select2").select2({ width: '100%' });
@@ -257,8 +259,8 @@
                 }
 
                 Swal.fire({
-                    title: '¿Guardar borrador L-6?',
-                    text: 'Se guardará el avance parcial sin pasar a L-7. Podrás continuar la verificación más tarde.',
+                    title: '¿Guardar borrador de la verificación?',
+                    text: 'Se guardará el avance parcial sin pasar a la solicitud de servicio técnico. Podrás continuar la verificación más tarde.',
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonColor: '#17a2b8',

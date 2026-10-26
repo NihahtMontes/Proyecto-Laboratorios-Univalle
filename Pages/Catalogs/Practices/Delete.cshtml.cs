@@ -51,6 +51,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Practices
 
             try
             {
+                // NoTracking global: FindAsync devuelve la entidad sin seguimiento; sin Attach la baja no persistía.
+                _context.Attach(practice).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 TempData.Success($"La Práctica '{practice.Code}' ha sido dada de baja del catálogo institucional.");
             }

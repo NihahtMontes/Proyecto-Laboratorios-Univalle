@@ -400,7 +400,7 @@
         this.$occBox.empty()
             .append('<i class="fas fa-exclamation-triangle text-warning mr-1"></i>')
             .append($('<span class="text-warning"></span>').text(
-                'El ambiente está ocupado o no queda un periodo libre entre prácticas: ' + labels.join('; ') + '.'));
+                'El laboratorio está ocupado o no queda un periodo libre entre prácticas: ' + labels.join('; ') + '.'));
         this.$occBox.show();
     };
 

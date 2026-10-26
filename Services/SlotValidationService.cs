@@ -189,8 +189,8 @@ public sealed class SlotValidationService : ISlotValidationService
         if (laboratory == null || laboratory.Status != GeneralStatus.Activo)
         {
             issues.Add(Block(Codes.LabInvalid, laboratory == null
-                ? "El ambiente seleccionado no existe."
-                : $"El ambiente {laboratory.Code} está inactivo."));
+                ? "El laboratorio seleccionado no existe."
+                : $"El laboratorio {laboratory.Code} está inactivo."));
         }
         else
         {
@@ -205,8 +205,8 @@ public sealed class SlotValidationService : ISlotValidationService
                         PlanningSlot.Overlaps(c.StartOrder, c.PeriodCount, startPeriod!.Order, count));
                     issues.Add(new SlotIssue(Codes.LabOccupied, SlotSeverity.Block,
                         overlaps
-                            ? $"El ambiente {laboratory.Code} ya está ocupado el {date:dd/MM/yyyy} en alguno de esos periodos."
-                            : $"Debe quedar un periodo libre entre prácticas del ambiente {laboratory.Code}: hay otra práctica justo antes o después.",
+                            ? $"El laboratorio {laboratory.Code} ya está ocupado el {date:dd/MM/yyyy} en alguno de esos periodos."
+                            : $"Debe quedar un periodo libre entre prácticas del laboratorio {laboratory.Code}: hay otra práctica justo antes o después.",
                         conflicts.Select(c => $"{c.Label} · {c.PeriodsText}").ToList()));
                 }
             }
@@ -216,12 +216,12 @@ public sealed class SlotValidationService : ISlotValidationService
             {
                 if (students > capacity)
                     issues.Add(Block(Codes.Capacity,
-                        $"El grupo tiene {students} estudiantes y el ambiente {laboratory.Code} admite {capacity}."));
+                        $"El grupo tiene {students} estudiantes y el laboratorio {laboratory.Code} admite {capacity}."));
             }
             else
             {
                 var missing = new List<string>();
-                if (laboratory.Capacity is null) missing.Add($"la capacidad del ambiente {laboratory.Code}");
+                if (laboratory.Capacity is null) missing.Add($"la capacidad del laboratorio {laboratory.Code}");
                 if (groupSize is null) missing.Add("la cantidad de estudiantes del grupo");
                 issues.Add(new SlotIssue(Codes.CapacityNotEvaluated, SlotSeverity.Info,
                     $"No se evaluó la capacidad: falta registrar {string.Join(" y ", missing)}.", []));
@@ -285,7 +285,7 @@ public sealed class SlotValidationService : ISlotValidationService
             .AnyAsync(d => d.PlanningId == origin.Id && OpenLoanStatuses.Contains(d.Status), ct);
         if (hasOpenDeparture)
             issues.Add(Warning(Codes.OpenDeparture,
-                "La planificación tiene una salida L-3 abierta. El material entregado queda registrado en la planificación de origen; la devolución se registra allí desde Cierre."));
+                "La planificación tiene una entrega de material abierta. El material entregado queda registrado en la planificación de origen; la devolución se registra allí desde Cierre."));
 
         if (fits)
             await EvaluateMaterialAsync(origin.Id, date, startPeriod!.StartTime, lastPeriod!.EndTime, issues, shortages, ct);

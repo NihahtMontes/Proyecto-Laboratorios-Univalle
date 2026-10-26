@@ -1,0 +1,56 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Account.ProfileModel
+@{
+    ViewData["Title"] = "Mi perfil";
+
+    var avatarUrl = !string.IsNullOrWhiteSpace(Model.ProfilePictureUrl)
+        ? $"{Url.Content("~/uploads/users/" + Model.ProfilePictureUrl)}?v={Model.ProfilePictureVersion}"
+        : null;
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap align-items-center border-bottom pb-4 mb-4">
+                    <div class="mr-4 mb-3 mb-md-0">
+                        @if (!string.IsNullOrEmpty(avatarUrl))
+                        {
+                            <img src="@avatarUrl" alt="@Model.FullName" class="rounded-circle shadow" style="width: 84px; height: 84px; object-fit: cover;">
+                        }
+                        else
+                        {
+                            <span class="rounded-circle bg-info text-white font-weight-bold shadow d-inline-flex align-items-center justify-content-center" style="width: 84px; height: 84px; font-size: 1.6rem;">
+                                @Model.Initials
+                            </span>
+                        }
+                    </div>
+                    <div class="flex-grow-1">
+                        <small class="text-muted text-uppercase font-weight-bold">Datos de la sesión</small>
+                        <h2 class="font-weight-bold text-dark mb-1">@Model.FullName</h2>
+                        <span class="badge badge-pill badge-info px-3 py-1">@Model.RoleName</span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="small text-muted font-weight-bold text-uppercase mb-1">Nombre completo</label>
+                        <div class="font-weight-bold text-dark">@(string.IsNullOrWhiteSpace(Model.FullName) ? "Sin dato" : Model.FullName)</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="small text-muted font-weight-bold text-uppercase mb-1">Usuario</label>
+                        <div class="font-weight-bold text-dark">@@@(string.IsNullOrWhiteSpace(Model.UserName) ? "Sin dato" : Model.UserName)</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="small text-muted font-weight-bold text-uppercase mb-1">Correo</label>
+                        <div class="font-weight-bold text-dark">@(string.IsNullOrWhiteSpace(Model.Email) ? "Correo no registrado" : Model.Email)</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="small text-muted font-weight-bold text-uppercase mb-1">Teléfono</label>
+                        <div class="font-weight-bold text-dark">@(string.IsNullOrWhiteSpace(Model.PhoneNumber) ? "Teléfono no registrado" : Model.PhoneNumber)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

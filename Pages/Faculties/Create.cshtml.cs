@@ -50,7 +50,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             }
 
             // Normalization
-            var normalizedName = Input.Name.Trim().ToLower();
+            var normalizedName = Input.Name.Clean().ToLower();
 
             // Duplicate Validation
             var exists = await _context.Faculties

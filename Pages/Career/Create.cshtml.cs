@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
@@ -45,6 +46,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Career
 
         public async Task<IActionResult> OnPostAsync()
         {
+            if (Input.Status == GeneralStatus.Eliminado)
+            {
+                ModelState.AddModelError("Input.Status", "Seleccione un estado válido (Activo o Inactivo).");
+            }
+
+            // La facultad (opcional) debe existir: antes una facultad inexistente provocaba un error 500 por la FK.
+            if (Input.FacultadId.HasValue && !await _context.Faculties.AnyAsync(f => f.Id == Input.FacultadId.Value))
+            {
+                ModelState.AddModelError("Input.FacultadId", "La facultad seleccionada no está disponible.");
+            }
+
             if (!ModelState.IsValid)
             {
                 LoadLists();

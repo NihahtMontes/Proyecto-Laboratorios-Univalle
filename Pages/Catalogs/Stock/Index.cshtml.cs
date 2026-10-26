@@ -19,7 +19,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
             _context = context;
         }
 
-        public IList<StockRowViewModel> StockRows { get; set; } = new List<StockRowViewModel>();
+        public PaginatedList<StockRowViewModel> StockRows { get; set; } = new PaginatedList<StockRowViewModel>(new List<StockRowViewModel>(), 0, 1, 20);
 
         public SelectList LaboratoryOptions { get; set; } = new SelectList(Enumerable.Empty<SelectListItem>());
 
@@ -35,7 +35,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
         /// <summary>Etiqueta visible del laboratorio seleccionado.</summary>
         public string? SelectedLaboratoryDisplay { get; set; }
 
-        public async Task<IActionResult> OnGetAsync()
+        public async Task<IActionResult> OnGetAsync(int? pageIndex)
         {
             // Dropdown: laboratorios activos, ordenados por código para que ECONO salga primero.
             var laboratories = await _context.Laboratories
@@ -63,7 +63,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
                 // Sin laboratorio seleccionado no hay existencias que mostrar.
                 SelectedLaboratoryId = null;
                 SelectedLaboratoryDisplay = null;
-                StockRows = new List<StockRowViewModel>();
+                StockRows = new PaginatedList<StockRowViewModel>(new List<StockRowViewModel>(), 0, 1, 20);
                 return Page();
             }
 
@@ -78,7 +78,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
             if (labInfo == null)
             {
                 SelectedLaboratoryDisplay = null;
-                StockRows = new List<StockRowViewModel>();
+                StockRows = new PaginatedList<StockRowViewModel>(new List<StockRowViewModel>(), 0, 1, 20);
                 return Page();
             }
 
@@ -103,6 +103,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
             var articles = await articlesQuery
                 .OrderBy(a => a.Name)
                 .ThenBy(a => a.Code)
+                .ThenBy(a => a.Id)
                 .Select(a => new
                 {
                     a.Id,
@@ -120,7 +121,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
                 .Where(s => s.LaboratoryId == LaboratoryFilter.Value)
                 .ToDictionaryAsync(s => s.ArticleId, s => new { s.AvailableQuantity, s.UpdatedOn });
 
-            StockRows = articles
+            var allRows = articles
                 .Select(a =>
                 {
                     var hasRow = stock.TryGetValue(a.Id, out var existing);
@@ -137,6 +138,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
                     };
                 })
                 .ToList();
+
+            // Paginación de 20 filas por página sobre el conjunto filtrado completo.
+            var currentPage = Math.Min(Math.Max(1, pageIndex ?? 1), Math.Max(1, (int)Math.Ceiling(allRows.Count / 20.0)));
+            var pageItems = allRows
+                .Skip((currentPage - 1) * 20)
+                .Take(20)
+                .ToList();
+
+            StockRows = new PaginatedList<StockRowViewModel>(pageItems, allRows.Count, currentPage, 20);
 
             return Page();
         }

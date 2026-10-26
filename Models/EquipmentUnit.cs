@@ -66,7 +66,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         // Each unit might have a slightly different cost or depreciation status
         [Display(Name = "Valor de Adquisición")]
         [Precision(18, 2)]
-        [Range(0, 999999999, ErrorMessage = "El valor debe ser positivo")]
+        [Range(0d, 999999999d, ErrorMessage = "El valor debe ser positivo")]
         public decimal? AcquisitionValue { get; set; }
 
         // ========================================

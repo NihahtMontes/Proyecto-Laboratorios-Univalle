@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -161,6 +161,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
                 .FirstOrDefaultAsync(g => g.Id == Input.Id);
             if (groupToUpdate == null) return NotFound();
 
+            // Una materia que forma parte de un grupo de estudiantes se edita desde el grupo (igual que el GET):
+            // un POST directo la desincronizaba de su grupo.
+            if (groupToUpdate.StudentGroupId is int linkedGroupId)
+            {
+                TempData.Info($"La materia es parte del grupo {groupToUpdate.Name}: su docente y datos se editan desde el grupo.");
+                return RedirectToPage("/Catalogs/StudentGroups/Edit", new { id = linkedGroupId });
+            }
+
             // El código no se envía desde el formulario: repoblar desde BD para mantenerlo visible.
             Input.Code = groupToUpdate.Code;
 
@@ -168,6 +176,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
             var slots = GroupScheduleField.Parse(Input.SlotsJson);
             if (slots == null)
                 ModelState.AddModelError("Input.SlotsJson", "El horario enviado no es válido: vuelva a marcar los periodos.");
+
+            // El estado Eliminado solo se asigna con la acción de baja (antes un POST manual lo aceptaba y el registro desaparecía).
+            if (Input.Status == GeneralStatus.Eliminado)
+            {
+                ModelState.AddModelError("Input.Status", "El estado Eliminado solo se gestiona desde la opción Dar de Baja.");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -181,10 +195,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
 
             // Validación de FK: gestión
             var management = await _context.Managements.AsNoTracking()
-                .FirstOrDefaultAsync(m => m.Id == Input.ManagementId && m.Status != ManagementStatus.Deleted && m.Semester > 0);
+                .FirstOrDefaultAsync(m => m.Id == Input.ManagementId && (m.Status == ManagementStatus.Active || m.Status == ManagementStatus.Inactive) && m.Semester > 0 && m.Type != ManagementType.Corrective);
             if (management == null)
             {
-                ModelState.AddModelError("Input.ManagementId", "La gestión seleccionada no existe o no está disponible.");
+                ModelState.AddModelError("Input.ManagementId", "La gestión seleccionada no existe o está completada (solo lectura).");
                 await LoadAuditAsync(groupToUpdate);
                 await LoadListsAsync();
                 return Page();
@@ -235,7 +249,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
                 .AnyAsync(g => g.Id != Input.Id
                                && g.ManagementId == Input.ManagementId
                                && g.SubjectId == Input.SubjectId
-                               && g.Name.Trim().ToUpper() == nameNormalized
+                               && g.Name.Replace(" ", "").ToUpper() == nameNormalized
                                && g.Status != GeneralStatus.Eliminado);
             if (nameExists)
             {
@@ -331,7 +345,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups
         private async Task LoadListsAsync()
         {
             var managements = await _context.Managements.AsNoTracking()
-                .Where(m => m.Status != ManagementStatus.Deleted && m.Semester > 0)
+                .Where(m => m.Status != ManagementStatus.Deleted && m.Semester > 0 && m.Type != ManagementType.Corrective)
                 .OrderByDescending(m => m.Year).ThenByDescending(m => m.Semester)
                 .Select(m => new { m.Id, m.Code })
                 .ToListAsync();

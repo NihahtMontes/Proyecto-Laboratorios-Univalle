@@ -38,3 +38,7 @@ outputs/
 *.bacpac
 *.mdf
 *.ldf
+
+# E2E y herramientas Python
+Tools/E2E/node_modules/
+__pycache__/

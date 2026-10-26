@@ -34,7 +34,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Faculties
             return RedirectToPage("/Laboratories/Index", null, "faculties");
         }
 
-        public async Task OnGetAsync(int? pageIndex)
+        // OnGet() redirige al listado unificado; este método ya no es un handler (antes chocaba con OnGet: "Multiple handlers matched").
+        public async Task LoadFacultiesAsync(int? pageIndex)
         {
             var query = _context.Faculties
                 .Include(f => f.CreatedBy)

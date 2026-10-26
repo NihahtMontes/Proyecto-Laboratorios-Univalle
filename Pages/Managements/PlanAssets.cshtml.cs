@@ -89,7 +89,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             {
                 if (!await LoadManagementAsync())
                 {
-                    return RedirectToManagementError("No se encontro la gestion solicitada para planificar activos.");
+                    return RedirectToManagementError("No se encontró la gestión solicitada para planificar activos.");
                 }
 
                 await LoadListsAsync();
@@ -285,7 +285,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                             ? EnumHelper.GetDisplayName(u.Equipment.TypeClassification.Value)
                             : u.Equipment.OtherClassificationDetail ?? "Otro confirmado",
                     LaboratoryName = u.Laboratory == null
-                        ? "Sin ambiente"
+                        ? "Sin laboratorio"
                         : (string.IsNullOrWhiteSpace(u.Laboratory.Code) ? u.Laboratory.Name : u.Laboratory.Code + " - " + u.Laboratory.Name)
                 })
                 .ToListAsync();
@@ -357,7 +357,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         {
             return RedirectToPage("/Error", new
             {
-                module = "Gestion L-48",
+                module = "Gestiones de mantenimiento",
                 entityId = Id.ToString(),
                 message,
                 returnUrl = Url.Page("./PlanAssets", new { id = Id }),

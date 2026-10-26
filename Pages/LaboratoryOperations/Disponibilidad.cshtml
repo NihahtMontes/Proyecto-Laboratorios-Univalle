@@ -1,8 +1,10 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.DisponibilidadModel
+@using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
 @using Proyecto_Laboratorios_Univalle.Services
 @{
-    ViewData["Title"] = "Disponibilidad — Paso 3";
+    ViewData["Title"] = "Disponibilidad";
+    ViewData["Section"] = "Planificación académica";
     var canApprove = !Model.IsApproved && !(Model.Context?.IsReadOnly ?? false);
     var hasWarnings = Model.HasShortage || Model.HasUnregistered;
     var selectedOriginId = Model.OriginLabId ?? 0;
@@ -183,6 +185,7 @@
                                 <th class="text-center">DISPONIBLE</th>
                                 <th class="text-center">DIFERENCIA</th>
                                 <th class="text-center">ESTADO</th>
+                                <th class="text-center">ACCIÓN</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -192,7 +195,7 @@
                                 var isInsufficient = hasAvailable && row.Available.GetValueOrDefault() < row.Requested;
                                 var isOk = hasAvailable && !isInsufficient;
                                 var rowClass = isInsufficient ? "table-danger" : (!hasAvailable ? "table-secondary" : "");
-                                <tr class="@rowClass">
+                                <tr class="@rowClass" data-focus-key="art-@row.ArticleId">
                                     <td class="font-weight-bold">
                                         @row.ArticleName
                                         <small class="d-block text-muted">@row.ArticleCode@(string.IsNullOrWhiteSpace(row.Unit) ? "" : $" · {row.Unit}")</small>
@@ -254,6 +257,22 @@
                                         {
                                             <span class="badge badge-secondary rounded-pill"><i class="fas fa-question mr-1"></i> Sin registro</span>
                                             <small class="d-block text-muted">Sin stock registrado</small>
+                                        }
+                                    </td>
+                                    <td class="text-center small">
+                                        @if (Model.RowStockAction(row) is StockAction rowAction)
+                                        {
+                                            <a href="@rowAction.Url" class="btn btn-sm @rowAction.Style btn-rounded mt-1 px-2 py-0 small font-weight-bold">
+                                                <i class="@rowAction.Icon mr-1"></i>@rowAction.Label
+                                            </a>
+                                        }
+                                        else if (StockActionLinks.NeedsAction(row.Stock, row.Requested))
+                                        {
+                                            <small class="d-block text-muted">Pide a un administrador que actualice el stock</small>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
                                         }
                                     </td>
                                 </tr>
@@ -335,7 +354,8 @@
                         </div>
                     </div>
 
-                    <div class="av-week-grid">
+                    <div class="av-week-grid"
+                         data-conflict-scope="av-week--hovering" data-conflict-related-class="av-practice--related">
                         @foreach (var day in Model.Week.Days)
                         {
                             var dayKey = day.Date;
@@ -387,7 +407,11 @@
                                                 else if (pState == DemandState.Rotation) { pStateClass = "av-practice-rotation"; }
                                             }
                                             var linkClass = "av-practice" + (isCurrent ? " av-practice-current" : "") + (string.IsNullOrEmpty(pStateClass) ? "" : " " + pStateClass);
-                                            <a class="@linkClass" asp-page="./Requerimientos" asp-route-planId="@p.Id">
+                                            var cardTags = Model.ConflictTags.TryGetValue(p.Id, out var cardTagList) ? cardTagList : null;
+                                            var hasCardTags = cardTags is { Count: > 0 };
+                                            var cardKeys = hasCardTags ? string.Join(" ", cardTags!.Select(t => t.Key).Distinct()) : null;
+                                            <a class="@linkClass" asp-page="./Requerimientos" asp-route-planId="@p.Id"
+                                               data-conflict-keys="@cardKeys">
                                                 <div class="av-practice-time">@p.TimeText</div>
                                                 <div class="av-practice-code">@p.Code</div>
                                                 <div class="av-practice-name">@p.PracticeName</div>
@@ -398,6 +422,26 @@
                                                 @if (!string.IsNullOrEmpty(p.LaboratoryCode))
                                                 {
                                                     <small class="d-block text-muted"><i class="fas fa-map-marker-alt mr-1"></i>@p.LaboratoryCode</small>
+                                                }
+                                                @if (hasCardTags)
+                                                {
+                                                    @* La tarjeta ya es un enlace: las etiquetas no pueden ser <a> anidadas; conflict-tags.js las abre. *@
+                                                    <span class="av-practice__conflicts">
+                                                        @foreach (var t in cardTags!.Take(3))
+                                                        {
+                                                            var tipo = ConflictTypes.Of(t.Kind);
+                                                            var relText = t.RelatedPlanningIds.Count > 0
+                                                                ? $"\nRelacionadas: {string.Join(", ", t.RelatedDisplayCodes)}" : string.Empty;
+                                                            var titulo = $"{t.Tag} · {tipo.Label} · {t.ArticleName} · {t.Date.ToString("dd/MM")}{relText}\nClic para resolver en Conflictos";
+                                                            <span class="gr-ctag gr-ctag--@tipo.Css @(t.Involved ? "is-involved" : "is-loose") js-cf-open" tabindex="0" role="link"
+                                                                  data-conflict-key="@t.Key" data-cf-color="var(--cf-@tipo.Css)" data-href="@t.Url"
+                                                                  title="@titulo">@t.Tag</span>
+                                                        }
+                                                        @if (cardTags!.Count > 3)
+                                                        {
+                                                            <span class="gr-ctag gr-ctag--more">+@(cardTags.Count - 3)</span>
+                                                        }
+                                                    </span>
                                                 }
                                                 @if (isCurrent)
                                                 {
@@ -413,23 +457,25 @@
                                             @foreach (var d in dayDemands.Where(x => x.HasIssue))
                                             {
                                                 var demandClass = d.State == DemandState.Conflict ? "av-demand-conflict" : "av-demand-rotation";
-                                                <div class="av-demand @demandClass">
+                                                var chipLabel = d.Kind == ConflictKind.Overlap ? "Conflicto"
+                                                    : d.Kind == ConflictKind.Shortage ? "Stock insuficiente"
+                                                    : d.Kind == ConflictKind.Rotation ? "Rotación"
+                                                    : "Sin stock";
+                                                var chipBadge = d.Kind == ConflictKind.Rotation ? "badge-warning text-white" : "badge-danger";
+                                                <a class="av-demand @demandClass" title="Ver detalle del conflicto"
+                                                   asp-page="./Conflictos"
+                                                   asp-route-selDate="@d.Date.ToString("yyyy-MM-dd")"
+                                                   asp-route-articleId="@d.ArticleId"
+                                                   style="display:block;text-decoration:none;color:inherit;">
                                                     <div class="av-demand-head">
                                                         <span title="@d.ArticleName">@d.ArticleName</span>
                                                         <span class="av-demand-qty">@d.TotalRequested.ToString("0.##")/@(d.Stock.Available?.ToString("0.##") ?? "0")</span>
                                                     </div>
                                                     <div class="d-flex justify-content-between align-items-center">
-                                                        @if (d.State == DemandState.Conflict)
-                                                        {
-                                                            <span class="badge badge-danger badge-pill">Conflicto</span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="badge badge-warning text-white badge-pill">Rotación</span>
-                                                        }
+                                                        <span class="badge badge-pill @chipBadge">@chipLabel</span>
                                                         <small class="text-muted">@d.PeakText</small>
                                                     </div>
-                                                </div>
+                                                </a>
                                             }
                                         </div>
                                     }
@@ -445,6 +491,7 @@
 
 @section Styles {
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/row-focus.css" asp-append-version="true" />
     <style>
         .bg-light-primary { background-color: #e8e7ff; }
 
@@ -586,16 +633,83 @@
             white-space: nowrap;
             font-size: 0.72rem;
         }
+
+        /* Conflictos de material: etiquetas iguales a la Grilla (mismos colores que conflictos.css) */
+        .av-week-grid {
+            --cf-overlap: #dc3545;
+            --cf-shortage: #8b1e3f;
+            --cf-rotation: #fd7e14;
+            --cf-nostock: #6c757d;
+        }
+        .av-practice__conflicts {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 3px;
+            overflow: hidden;
+            max-height: 15px;
+            margin-top: 0.2rem;
+            line-height: 1;
+        }
+        .gr-ctag {
+            display: inline-flex;
+            align-items: center;
+            flex: 0 0 auto;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 2px 5px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            color: #fff;
+            text-decoration: none;
+            white-space: nowrap;
+            user-select: none;
+            cursor: pointer;
+        }
+        .gr-ctag:hover, .gr-ctag:focus { text-decoration: none; color: #fff; filter: brightness(1.08); }
+        .gr-ctag--overlap { background: var(--cf-overlap); }
+        .gr-ctag--shortage { background: var(--cf-shortage); }
+        .gr-ctag--rotation { background: var(--cf-rotation); }
+        .gr-ctag--nostock { background: var(--cf-nostock); }
+        .gr-ctag--overlap.is-loose { background: #fff; border-color: var(--cf-overlap); color: var(--cf-overlap); }
+        .gr-ctag--shortage.is-loose { background: #fff; border-color: var(--cf-shortage); color: var(--cf-shortage); }
+        .gr-ctag--rotation.is-loose { background: #fff; border-color: var(--cf-rotation); color: var(--cf-rotation); }
+        .gr-ctag--nostock.is-loose { background: #fff; border-color: var(--cf-nostock); color: var(--cf-nostock); }
+        .gr-ctag--more { background: #eef0f3; color: #555; border-color: #d8dbe0; cursor: default; }
+        .av-practice--related {
+            outline: 2px solid var(--cf-active, #7460ee);
+            outline-offset: 1px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+        }
+        .av-week--hovering .av-practice:not(.av-practice--related) { opacity: .3; }
     </style>
 }
 
 @section Scripts {
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
+    <script src="~/js/row-focus.js" asp-append-version="true"></script>
+    <script src="~/js/conflict-tags.js" asp-append-version="true"></script>
     <script>
         (function () {
             $('.select2').select2({
                 width: '100%',
                 language: { noResults: function () { return 'Sin coincidencias'; } }
+            });
+
+            // Etiquetas de conflicto dentro de la tarjeta (span: no puede haber <a> dentro de <a>).
+            // preventDefault cancela la navegación de la tarjeta hacia Requerimientos.
+            function abrirConflicto(e) {
+                var tag = e.target && e.target.closest ? e.target.closest('.js-cf-open') : null;
+                var url = tag && tag.getAttribute('data-href');
+                if (url) {
+                    e.preventDefault();
+                    window.location.href = url;
+                }
+            }
+            document.addEventListener('click', abrirConflicto);
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') abrirConflicto(e);
             });
 
             var form = document.getElementById('form-approve');

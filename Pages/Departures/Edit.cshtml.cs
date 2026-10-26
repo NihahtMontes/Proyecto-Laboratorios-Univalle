@@ -8,6 +8,7 @@ using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Helpers;
 using Proyecto_Laboratorios_Univalle.Models;
 using Proyecto_Laboratorios_Univalle.Models.Enums;
+using Proyecto_Laboratorios_Univalle.Services;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -19,15 +20,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
         private readonly ApplicationDbContext _context;
         private readonly UserManager<User> _userManager;
         private readonly ILogger<EditModel> _logger;
+        private readonly IEquipmentStateHistoryService _stateHistory;
 
         public EditModel(
             ApplicationDbContext context,
             UserManager<User> userManager,
-            ILogger<EditModel> logger)
+            ILogger<EditModel> logger,
+            IEquipmentStateHistoryService stateHistory)
         {
             _context = context;
             _userManager = userManager;
             _logger = logger;
+            _stateHistory = stateHistory;
         }
 
         [BindProperty]
@@ -72,11 +76,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             [DataType(DataType.DateTime)]
             public DateTime? ActualReturnDate { get; set; }
 
-            [StringLength(500)]
+            [StringLength(500, ErrorMessage = "Las observaciones no pueden superar 500 caracteres")]
             [Display(Name = "Observaciones de Salida")]
             public string? DepartureObservations { get; set; }
 
-            [StringLength(500)]
+            [StringLength(500, ErrorMessage = "Las observaciones no pueden superar 500 caracteres")]
             [Display(Name = "Observaciones de Devolución")]
             public string? ReturnObservations { get; set; }
 
@@ -108,6 +112,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 .FirstOrDefaultAsync(d => d.Id == id);
 
             if (departure == null) return NotFound();
+
+            // Salida de práctica académica (L-3): su entrega, devolución y cierre se gestionan
+            // en el circuito L-3 para mantener la coherencia del stock y de las devoluciones.
+            if (departure.PlanningId.HasValue)
+            {
+                TempData.Info($"La salida {departure.Code ?? $"SAL-{departure.Id:00000}"} es de una práctica académica: su entrega, devolución y cierre se gestionan en «Entrega y devolución de material».");
+                return RedirectToPage("/LaboratoryOperations/L3", new { id = departure.PlanningId });
+            }
 
             int facultyId = departure.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
             int labId = departure.EquipmentUnit?.LaboratoryId ?? 0;
@@ -157,6 +169,45 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
         public async Task<IActionResult> OnPostAsync()
         {
+            // ── (a) La unidad física NO se toma del POST ──
+            // La salida conserva la unidad con la que fue registrada: se anula el campo
+            // postado para ignorar cualquier cambio manual y reconstruir la verdad desde BD.
+            var departureUnit = await _context.Departures
+                .AsNoTracking()
+                .Where(d => d.Id == Input.Id)
+                .Select(d => new { d.EquipmentUnitId, d.PlanningId, d.Code })
+                .FirstOrDefaultAsync();
+
+            if (departureUnit == null) return NotFound();
+
+            // Salida de práctica académica (L-3): bloquear la edición manual ANTES de validar o
+            // guardar, ya que marcar "Devuelto" aquí no registra la devolución ni repone stock.
+            if (departureUnit.PlanningId.HasValue)
+            {
+                TempData.Info($"La salida {departureUnit.Code ?? $"SAL-{Input.Id:00000}"} es de una práctica académica: su entrega, devolución y cierre se gestionan en «Entrega y devolución de material».");
+                return RedirectToPage("/LaboratoryOperations/L3", new { id = departureUnit.PlanningId });
+            }
+
+            ModelState.Remove("Input.EquipmentUnitId");
+            Input.EquipmentUnitId = departureUnit.EquipmentUnitId;
+
+            // ── (b)/(c) Coherencia de devolución y fechas ──
+            // Errores a nivel de modelo (la vista muestra el resumen ModelOnly).
+            if (Input.Status == LoanStatus.Returned && !Input.ActualReturnDate.HasValue)
+            {
+                ModelState.AddModelError(string.Empty, "Indique la fecha real de devolución para marcar la salida como devuelta.");
+            }
+
+            if (Input.ActualReturnDate.HasValue && Input.ActualReturnDate.Value.Date < Input.DepartureDate.Date)
+            {
+                ModelState.AddModelError(string.Empty, "La fecha real de devolución no puede ser anterior a la fecha de salida.");
+            }
+
+            if (Input.EstimatedReturnDate.HasValue && Input.EstimatedReturnDate.Value.Date < Input.DepartureDate.Date)
+            {
+                ModelState.AddModelError(string.Empty, "La fecha estimada de devolución no puede ser anterior a la fecha de salida.");
+            }
+
             if (!ModelState.IsValid)
             {
                 var departureForError = await _context.Departures.Include(m => m.EquipmentUnit).ThenInclude(eu => eu!.Laboratory).Include(d => d.Items).FirstOrDefaultAsync(m => m.Id == Input.Id);
@@ -184,6 +235,16 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 .FirstOrDefaultAsync(d => d.Id == Input.Id);
 
             if (departureDB == null) return NotFound();
+
+            // Estado previo de la salida (antes de aplicar los cambios del POST).
+            var statusBefore = departureDB.Status;
+
+            // Una salida ya devuelta no se reabre: dejaría la unidad sin coherencia con su historial.
+            if (statusBefore == LoanStatus.Returned && Input.Status != LoanStatus.Returned)
+            {
+                TempData.Warning($"La salida #{departureDB.Id} ya fue devuelta y no se puede reabrir. Registre una salida nueva si el equipo vuelve a salir.");
+                return RedirectToPage("./Index");
+            }
 
             departureDB.BorrowerId = Input.BorrowerId;
             departureDB.Type = Input.Type;
@@ -240,13 +301,34 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 }
             }
 
-            if (Input.Status == LoanStatus.Returned && Input.ActualReturnDate.HasValue)
+            // ── (d) Devolución: la unidad vuelve a Operativo SOLO si estaba En Préstamo ──
+            // Se usa la unidad tracked de la propia salida (nunca el POST) y se registra el historial.
+            if (Input.Status == LoanStatus.Returned && Input.ActualReturnDate.HasValue
+                && departureDB.EquipmentUnit is EquipmentUnit returnedUnit
+                && returnedUnit.CurrentStatus == EquipmentStatus.OnLoan)
             {
-                var unit = await _context.EquipmentUnits.FindAsync(Input.EquipmentUnitId);
-                if (unit != null)
+                await _stateHistory.ChangeStatusAsync(
+                    returnedUnit,
+                    EquipmentStatus.Operational,
+                    $"Devolución de la salida #{departureDB.Id}");
+            }
+
+            // ── (f) Cancelación: ninguna salida Cancelada puede dejar la unidad En Préstamo ──
+            if (Input.Status == LoanStatus.Cancelled
+                && departureDB.EquipmentUnit is EquipmentUnit cancelledUnit
+                && cancelledUnit.CurrentStatus == EquipmentStatus.OnLoan)
+            {
+                var hasOtherActiveDeparture = await _context.Departures
+                    .AnyAsync(d => d.EquipmentUnitId == cancelledUnit.Id
+                                    && d.Id != departureDB.Id
+                                    && (d.Status == LoanStatus.Active || d.Status == LoanStatus.Overdue));
+
+                if (!hasOtherActiveDeparture)
                 {
-                    unit.CurrentStatus = EquipmentStatus.Operational;
-                    _context.EquipmentUnits.Update(unit);
+                    await _stateHistory.ChangeStatusAsync(
+                        cancelledUnit,
+                        EquipmentStatus.Operational,
+                        $"Cancelación de la salida #{departureDB.Id}");
                 }
             }
 

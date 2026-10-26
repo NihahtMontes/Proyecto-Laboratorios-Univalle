@@ -57,7 +57,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             public RequestStatus Status { get; set; }
 
             [Display(Name = "Observaciones Adicionales")]
-            [StringLength(500, ErrorMessage = "Las observaciones no pueden superar los 500 caracteres")]
+            [StringLength(2000, ErrorMessage = "Las observaciones no pueden superar los 2000 caracteres")]
             public string? Observations { get; set; }
 
             // Technical Fields
@@ -74,6 +74,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             // Admin Fields
             [Display(Name = "Motivo de Rechazo")]
+            [StringLength(500, ErrorMessage = "El motivo de rechazo no puede superar los 500 caracteres.")]
             public string? RejectionReason { get; set; }
         }
 
@@ -87,7 +88,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             public decimal Quantity { get; set; } = 1;
 
             [Required]
-            [Range(0, 999999999)]
+            [Range(0d, 999999999d)]
             public decimal UnitPrice { get; set; }
 
             public string? UnitOfMeasure { get; set; } = "Unidad";
@@ -138,7 +139,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             var currentMgmt = ManagementId.HasValue
                 ? await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == ManagementId.Value)
-                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Status == ManagementStatus.Active);
+                : await _context.Managements.AsNoTracking().FirstOrDefaultAsync(m => m.Id == request.ManagementId); // la gestión del propio registro (pueden estar activas una preventiva y una correctiva)
 
             ViewData["IsCorrective"] = currentMgmt?.Type == ManagementType.Corrective;
             ViewData["IsWizard"] = IsWizard;
@@ -197,6 +198,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     ModelState.AddModelError("Input.Items", "Debe existir al menos un ítem.");
             }
 
+            // QA 2026-10-18: reglas de negocio del servidor.
+            if (!Enum.IsDefined(Input.Priority) || Input.Priority == RequestPriority.PorConfirmar)
+                ModelState.AddModelError("Input.Priority", "Seleccione una prioridad válida (Baja, Media, Alta o Muy alta).");
+            if (Input.Status == RequestStatus.Rejected && string.IsNullOrWhiteSpace(Input.RejectionReason))
+                ModelState.AddModelError("Input.RejectionReason", "Para rechazar la solicitud debe indicar el motivo de rechazo.");
+            if (requestToUpdate.Status != RequestStatus.Pending && Input.Status == RequestStatus.Pending)
+                ModelState.AddModelError("Input.Status", "Una solicitud que ya fue evaluada no puede volver a Pendiente.");
+
             if (!ModelState.IsValid)
             {
                 // Restore display properties
@@ -214,7 +223,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             // 1. Update Common Fields
             requestToUpdate.Description = Input.Description.Clean();
             requestToUpdate.Priority = Input.Priority;
-            requestToUpdate.Observations = Input.Observations?.Clean();
+            requestToUpdate.Observations = Input.Observations?.CleanMultiline(); // conserva las líneas del checklist
             requestToUpdate.LastModifiedDate = DateTime.UtcNow;
             requestToUpdate.ModifiedById = currentUser?.Id;
 
@@ -227,11 +236,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             {
                 requestToUpdate.InvestmentCode = Input.InvestmentCode?.Clean();
                 
-                // Preserve cost history: detach old rows instead of deleting them physically.
+                // Se conserva el historial anulando las líneas anteriores (IsVoided). Antes se desvinculaban con
+                // RequestId = null, lo que violaba CK_CostDetails_ExactlyOneParent (500 al editar la compra).
                 foreach (var detail in requestToUpdate.CostDetails.ToList())
                 {
-                    detail.RequestId = null;
-                    detail.Request = null;
+                    detail.IsVoided = true;
+                    detail.VoidedDate = DateTime.UtcNow;
                     detail.LastModifiedDate = DateTime.UtcNow;
                 }
                 

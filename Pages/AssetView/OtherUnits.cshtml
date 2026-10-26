@@ -77,7 +77,7 @@
                                             <span class="text-muted small">@unit.Equipment?.Brand @unit.Equipment?.Model</span>
                                         </td>
                                         <td class="font-weight-bold text-dark">@unit.InventoryNumber</td>
-                                        <td>@(unit.SerialNumber ?? "Sin dato")</td>
+                                        <td><span class="text-muted">@(string.IsNullOrWhiteSpace(unit.SerialNumber) ? "—" : unit.SerialNumber)</span></td>
                                         <td>@(unit.Laboratory?.Name ?? "Sin asignar")</td>
                                         <td>
                                             <span class="badge badge-pill badge-info px-3 py-1">@EnumHelper.GetDisplayName(unit.CurrentStatus)</span>

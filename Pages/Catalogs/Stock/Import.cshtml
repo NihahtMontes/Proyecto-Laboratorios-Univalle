@@ -3,6 +3,7 @@
 @using Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock
 @{
     ViewData["Title"] = "Cargar existencias desde Excel";
+    ViewData["Section"] = "Equipos e inventario";
     var maxRows = ImportModel.MaxRows;
 }
 
@@ -20,7 +21,7 @@
                     </div>
                     <div class="ml-auto mt-2 mt-md-0">
                         <a asp-page="./Index" class="btn btn-outline-secondary btn-rounded shadow-none font-weight-bold">
-                            <i class="fas fa-arrow-left mr-1"></i> Volver a existencias
+                            <i class="fas fa-arrow-left mr-1"></i> Volver al listado
                         </a>
                     </div>
                 </div>

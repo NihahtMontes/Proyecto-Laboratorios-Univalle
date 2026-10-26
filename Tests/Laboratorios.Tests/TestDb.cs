@@ -219,5 +219,53 @@ internal sealed class TestDb : IDisposable
         Context.ChangeTracker.Clear();
     }
 
+    // ==================== Circuito L-3 con unidades físicas y L-5 ====================
+
+    public const int EconomatoId = 10;
+
+    /// <summary>Economato: laboratorio de origen por defecto de las salidas L-3 (código ECONO).</summary>
+    public void AddEconomato()
+    {
+        Context.Laboratories.Add(new Laboratory { Id = EconomatoId, Code = "ECONO", Name = "Economato" });
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+    }
+
+    /// <summary>Equipo con una unidad física y el artículo de catálogo vinculado (Article.EquipmentId).</summary>
+    public Article AddEquipmentWithUnit(int equipmentId, int unitId, string inventoryNumber, int articleId,
+        string code, string name, EquipmentStatus unitStatus = EquipmentStatus.Operational)
+    {
+        Context.Equipments.Add(new Equipment { Id = equipmentId, Name = name });
+        Context.EquipmentUnits.Add(new EquipmentUnit
+        {
+            Id = unitId,
+            EquipmentId = equipmentId,
+            InventoryNumber = inventoryNumber,
+            CurrentStatus = unitStatus
+        });
+        var article = new Article { Id = articleId, Code = code, Name = name, EquipmentId = equipmentId };
+        Context.Articles.Add(article);
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+        return article;
+    }
+
+    /// <summary>Requerimiento de una unidad física concreta (línea de equipo de la planificación).</summary>
+    public PlanningRequirement AddUnitRequirement(int planningId, int articleId, int unitId, decimal quantity = 1)
+    {
+        var detail = new PlanningRequirement
+        {
+            PlanningId = planningId,
+            ArticleId = articleId,
+            EquipmentUnitId = unitId,
+            RequestedQuantity = quantity,
+            ExpectedQuantity = (int)Math.Ceiling(quantity)
+        };
+        Context.PlanningRequirements.Add(detail);
+        Context.SaveChanges();
+        Context.ChangeTracker.Clear();
+        return detail;
+    }
+
     public void Dispose() => Context.Dispose();
 }

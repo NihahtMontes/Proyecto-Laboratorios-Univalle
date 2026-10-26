@@ -2,7 +2,9 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Solicitudes de Adquisición";
+    ViewData["Title"] = "Solicitudes de compra";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
         || Model.FilterLaboratoryId.HasValue
         || Model.PriorityFilter.HasValue
@@ -25,7 +27,7 @@
 
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de Adquisición (L-12)</h3>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de compra</h3>
                         <h6 class="card-subtitle text-muted ml-2">Gestión de compra de nuevos activos, repuestos e insumos.</h6>
                     </div>
                 </div>
@@ -63,9 +65,9 @@
                             <select asp-for="FilterLaboratoryId"
                                     class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.FilterLaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
                                     asp-items="Model.LaboratoryList"
-                                    aria-label="Ambiente"
+                                    aria-label="Laboratorio"
                                     data-live-filter-control>
-                                <option value="">Ambiente</option>
+                                <option value="">Laboratorio</option>
                             </select>
 
                             @if (hasActiveFilters)
@@ -76,7 +78,7 @@
                             }
 
                             <span class="small text-muted ml-auto mb-2" aria-live="polite">
-                                <strong class="text-dark">@Model.Requests.Count</strong> solicitud(es)
+                                <strong class="text-dark">@Model.Requests.TotalCount</strong> solicitud(es)
                             </span>
                         </div>
                     </form>
@@ -185,6 +187,32 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if (Model.Requests.TotalPages > 1)
+                {
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            @if (Model.Requests.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex - 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter" asp-route-PriorityFilter="@Model.PriorityFilter" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Anterior</a>
+                                </li>
+                            }
+                            @for (var i = 1; i <= Model.Requests.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.Requests.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@i" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter" asp-route-PriorityFilter="@Model.PriorityFilter" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">@i</a>
+                                </li>
+                            }
+                            @if (Model.Requests.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" asp-page="./Index" asp-route-pageIndex="@(Model.Requests.PageIndex + 1)" asp-route-SearchTerm="@Model.SearchTerm" asp-route-StatusFilter="@Model.StatusFilter" asp-route-PriorityFilter="@Model.PriorityFilter" asp-route-FilterLaboratoryId="@Model.FilterLaboratoryId">Siguiente</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                }
             </div>
         </div>
     </div>
