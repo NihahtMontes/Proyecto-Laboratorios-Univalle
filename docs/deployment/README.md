@@ -1,6 +1,6 @@
 # Despliegue
 
-Guia sanitizada para preparar el sistema. Las credenciales reales deben vivir fuera del repositorio. Para iniciar otro agente, copiar `PROMPT_AGENTE_MONSTERASP.md` y consultar `INICIO_AGENTE_MONSTERASP.md` en la raiz.
+Guia sanitizada para preparar el sistema. Las credenciales reales deben vivir fuera del repositorio. Para iniciar otro agente, copiar `PROMPT_AGENTE_MONSTERASP.md` y consultar `INICIO_AGENTE_MONSTERASP.md` en esta misma carpeta.
 
 ## Nuevo destino MonsterASP: comprobar antes de operar
 
