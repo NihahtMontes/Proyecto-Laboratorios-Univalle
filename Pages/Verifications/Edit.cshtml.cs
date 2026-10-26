@@ -106,7 +106,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             // Mismo criterio que el L-6 masivo (MassCreate): solo «Malo» (o «Dado de baja») es falla y exige describirla.
             var isHealthyCondition = Input.PhysicalCondition is not (PhysicalCondition.Bad or PhysicalCondition.Decommissioned);
             if (!isHealthyCondition && string.IsNullOrWhiteSpace(Input.Observations))
-                ModelState.AddModelError("Input.Observations", "Describa las fallas del equipo marcado en estado Malo antes de guardar L-6.");
+                ModelState.AddModelError("Input.Observations", "Describa las fallas del equipo marcado en estado Malo antes de guardar la verificación.");
             if (Input.EquipmentUnitId <= 0 || !await _context.EquipmentUnits.AnyAsync(u => u.Id == Input.EquipmentUnitId))
                 ModelState.AddModelError("Input.EquipmentUnitId", "La unidad física seleccionada no existe.");
 
@@ -202,7 +202,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
 
                 if (planPhaseLocked)
                 {
-                    TempData.Warning($"La verificación se actualizó, pero el activo ya avanzó a {WizardPhaseGuard.PhaseLabel(linkedPlan!.CurrentPhase)}: el plan no se modificó. Use «Rehacer fase» si necesita corregirlo.");
+                    TempData.Warning($"La verificación se actualizó, pero el activo ya avanzó a {WizardPhaseGuard.PhaseLabel(linkedPlan!.CurrentPhase)}: su paso en el asistente no se modificó. Para corregirlo, abra el formulario del paso actual del equipo desde el asistente y use «Rehacer paso anterior».");
                 }
                 else
                 {

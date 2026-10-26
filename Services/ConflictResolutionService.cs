@@ -67,7 +67,7 @@ public sealed class ConflictResolutionService : IConflictResolutionService
         await _context.SaveChangesAsync(ct);
 
         return new(true,
-            $"Cantidad de {lines[0].ArticleName ?? articleId.ToString()} en {L3Codes.Format(planningId)} " +
+            $"Cantidad de {lines[0].ArticleName ?? articleId.ToString()} en {L3Codes.Format(planningId, plan.Code)} " +
             $"reducida de {current.ToString("0.##", Cultura)} a {newQuantity.ToString("0.##", Cultura)}.");
     }
 }

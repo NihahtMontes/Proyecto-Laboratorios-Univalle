@@ -2,6 +2,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
+    ViewData["Title"] = "Grupos";
+    ViewData["Section"] = "Planificación académica";
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
         || Model.ManagementFilter.HasValue
         || Model.SubjectFilter.HasValue

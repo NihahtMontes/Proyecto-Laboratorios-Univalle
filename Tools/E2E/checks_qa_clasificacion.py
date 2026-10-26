@@ -115,10 +115,10 @@ def check_detalle_equipos(s):
 def check_gestiones_listado(s):
     out = []
     esperado = {
-        "L-48": db_scalar("SELECT COUNT(*) FROM MaintenancePlans"),
-        "L-8": db_scalar("SELECT COUNT(*) FROM Maintenances"),
-        "L-6": db_scalar("SELECT COUNT(*) FROM Verifications"),
-        "L-7": db_scalar("SELECT COUNT(*) FROM Requests"),
+        "Cronograma": db_scalar("SELECT COUNT(*) FROM MaintenancePlans"),
+        "Mantenimientos": db_scalar("SELECT COUNT(*) FROM Maintenances"),
+        "Verificaciones": db_scalar("SELECT COUNT(*) FROM Verifications"),
+        "Solicitudes": db_scalar("SELECT COUNT(*) FROM Requests"),
     }
     suma = {k: 0 for k in esperado}
     sin_actividad = 0
@@ -169,14 +169,14 @@ def check_gestiones_detalle(s):
             if st != 200 or ERROR_MARKERS.search(limpio):
                 malas.append((code, tab, st))
         _, t = s.text(f"/Managements/Details?id={mid}&ActiveTab=dashboard")
-        vals = [tile(t, "L-48 Planes"), tile(t, "L-8 Mantenimientos"), tile(t, "L-6 Verificaciones"), tile(t, "L-7 Solicitudes")]
+        vals = [tile(t, "Planes del cronograma"), tile(t, "Mantenimientos"), tile(t, "Verificaciones"), tile(t, "Solicitudes de servicio técnico")]
         if vals != [l48, l8, l6, l7]:
             mal_dash.append((code, vals, [l48, l8, l6, l7]))
         _, html = s.get(f"/Managements/Details?id={mid}&ActiveTab=l48")
         filas = len(set(re.findall(r"(PLA-[A-Z0-9-]+)", html)))
         if l48 > 0 and filas != l48:
             mal_l48.append((code, filas, l48))
-        if l48 == 0 and "no tiene plan L-48 cargado" not in html:
+        if l48 == 0 and "no tiene cronograma cargado" not in html:
             mal_l48.append((code, "sin aviso", 0))
     out.append(Result(f"Details: {len(gest)} gestiones x 5 pestañas sin error", 0, len(malas), str(malas[:5])))
     out.append(Result("Details/dashboard: contadores históricos = BD", 0, len(mal_dash), str(mal_dash[:3])))

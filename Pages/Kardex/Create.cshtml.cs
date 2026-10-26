@@ -48,7 +48,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             [Display(Name = "Tipo de Mantenimiento")]
             public MaintenanceType MaintenanceType { get; set; }
 
-            [Required(ErrorMessage = "El técnico responsable es obligatorio para cerrar Kardex")]
+            [Required(ErrorMessage = "El técnico responsable es obligatorio para cerrar el mantenimiento")]
             [Display(Name = "Técnico Responsable")]
             public int? TechnicianId { get; set; }
 
@@ -64,7 +64,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             [DataType(DataType.DateTime)]
             public DateTime? EndDate { get; set; }
 
-            [Required(ErrorMessage = "La fecha real de devolución L-3 es obligatoria")]
+            [Required(ErrorMessage = "La fecha real de devolución del equipo es obligatoria")]
             [DataType(DataType.Date)]
             public DateTime? ActualReturnDate { get; set; }
 
@@ -106,7 +106,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             var plan = await ResolvePlanAsync(equipmentUnitId);
             if (plan == null)
             {
-                TempData.Error("No se encontró el plan de gestión para cerrar Kardex.");
+                TempData.Error("No se encontró el equipo en la gestión para cerrar el mantenimiento.");
                 return RedirectToPage("/Index");
             }
 
@@ -128,12 +128,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 await using var transaction = await _context.Database.BeginTransactionAsync();
 
                 SyncPartialMaintenance(plan, markCompleted: false);
-                MarkDraft(plan, "Borrador Kardex guardado con avance parcial del cierre técnico.");
+                MarkDraft(plan, "Borrador del cierre del mantenimiento guardado (datos parciales).");
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                TempData.Success("Borrador de Kardex guardado. Puede continuar después sin avanzar a desembolso.");
+                TempData.Success("Borrador del cierre del mantenimiento guardado. Puede continuar después; el equipo no avanza a la solicitud de compra.");
 
                 if (isWizard)
                 {
@@ -149,7 +149,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     "Error al guardar borrador Kardex para unidad {EquipmentUnitId} y plan {ManagementPlanId}.",
                     Input.EquipmentUnitId,
                     ManagementPlanId);
-                TempData.Error("No se pudo guardar el borrador de Kardex. Intente nuevamente.");
+                TempData.Error("No se pudo guardar el borrador del cierre. Intente nuevamente.");
                 await LoadListsAsync();
                 return Page();
             }
@@ -172,7 +172,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     .Distinct()
                     .ToList();
 
-                TempData.Error("No se pudo cerrar Kardex: " + string.Join(" | ", failedKeys));
+                TempData.Error("No se pudo cerrar el mantenimiento: " + string.Join(" | ", failedKeys));
                 await LoadListsAsync();
                 return Page();
             }
@@ -192,7 +192,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 {
                     departure.Status = LoanStatus.Returned;
                     departure.ActualReturnDate = Input.ActualReturnDate;
-                    departure.ReturnObservations = "Equipo devuelto y validado en cierre Kardex.";
+                    departure.ReturnObservations = "Equipo devuelto y validado en el cierre del mantenimiento.";
                     departure.LastModifiedDate = DateTime.UtcNow;
                     if (int.TryParse(userIdString, out var duid)) departure.ModifiedById = duid;
                 }
@@ -255,7 +255,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                TempData.Success("Kardex completado correctamente. El registro quedó guardado en el Kardex histórico y el equipo avanza a Desembolso.");
+                TempData.Success("Cierre del mantenimiento registrado. Quedó en el historial del equipo y el equipo pasa a la solicitud de compra.");
 
                 if (isWizard)
                 {
@@ -271,7 +271,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     "Error al cerrar Kardex para unidad {EquipmentUnitId} y plan {ManagementPlanId}.",
                     Input.EquipmentUnitId,
                     ManagementPlanId);
-                TempData.Error("No se pudo cerrar Kardex. Intente nuevamente.");
+                TempData.Error("No se pudo cerrar el mantenimiento. Intente nuevamente.");
                 await LoadListsAsync();
                 return Page();
             }
@@ -282,7 +282,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             var plan = await ResolvePlanAsync(Input.EquipmentUnitId);
             if (plan == null)
             {
-                TempData.Error($"No se pudo resolver el plan de Kardex. ManagementPlanId recibido: {ManagementPlanId?.ToString() ?? "sin valor"}.");
+                TempData.Error("No se encontró el equipo en la gestión. Vuelva al asistente y ábralo de nuevo.");
                 ViewData["IsWizard"] = isWizard;
                 await LoadListsAsync();
                 return (null, Page());
@@ -314,7 +314,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
 
             if (plan.Maintenance == null || plan.EquipmentUnit == null)
             {
-                TempData.Error("No se pudo guardar Kardex: el plan no tiene mantenimiento o unidad física vinculada.");
+                TempData.Error("No se pudo guardar el cierre: el equipo no tiene registro de mantenimiento o unidad física.");
                 await LoadListsAsync();
                 return (null, Page());
             }
@@ -528,8 +528,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
 
             if (plan.Maintenance == null)
             {
-                ModelState.AddModelError("Input.MaintenanceId", "El plan no tiene un mantenimiento L-8 vinculado.");
-                messages.Add("El plan no tiene un mantenimiento L-8 vinculado.");
+                ModelState.AddModelError("Input.MaintenanceId", "El equipo no tiene un registro de mantenimiento.");
+                messages.Add("El equipo no tiene un registro de mantenimiento.");
                 return messages;
             }
 
@@ -559,8 +559,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
 
             if (!Input.ActualReturnDate.HasValue)
             {
-                ModelState.AddModelError("Input.ActualReturnDate", "Falta devolución real L-3.");
-                messages.Add("Falta devolución real L-3.");
+                ModelState.AddModelError("Input.ActualReturnDate", "Falta registrar la devolución real del equipo.");
+                messages.Add("Falta registrar la devolución real del equipo.");
             }
 
             if (string.IsNullOrWhiteSpace(Input.Description))
@@ -595,14 +595,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
 
             if (plan.Departure != null && Input.ActualReturnDate.HasValue && Input.ActualReturnDate.Value.Date < plan.Departure.DepartureDate.Date)
             {
-                ModelState.AddModelError("Input.ActualReturnDate", "La devolución no puede ser anterior a la salida L-3.");
-                messages.Add("La devolución L-3 no puede ser anterior a la fecha de salida.");
+                ModelState.AddModelError("Input.ActualReturnDate", "La devolución no puede ser anterior a la salida del equipo.");
+                messages.Add("La devolución no puede ser anterior a la fecha de salida.");
             }
 
             if (plan.Departure == null)
             {
-                ModelState.AddModelError("Input.ActualReturnDate", "El plan no tiene salida L-3 vinculada.");
-                messages.Add("El plan no tiene salida L-3 vinculada.");
+                ModelState.AddModelError("Input.ActualReturnDate", "El equipo no tiene una salida de equipos registrada.");
+                messages.Add("El equipo no tiene una salida de equipos registrada.");
             }
 
             if (Input.StartDate.HasValue && Input.EndDate.HasValue && Input.EndDate.Value < Input.StartDate.Value)
@@ -630,21 +630,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
 
             if (!Input.Tasks.Any())
             {
-                ModelState.AddModelError("Input.Tasks", "Debe registrar tareas L-48.");
-                messages.Add("Debe registrar tareas L-48.");
+                ModelState.AddModelError("Input.Tasks", "Debe registrar las tareas de mantenimiento.");
+                messages.Add("Debe registrar las tareas de mantenimiento.");
             }
             else
             {
                 if (Input.Tasks.Any(t => string.IsNullOrWhiteSpace(t.Description)))
                 {
-                    ModelState.AddModelError("Input.Tasks", "Todas las tareas L-48 deben tener descripción.");
-                    messages.Add("Todas las tareas L-48 deben tener descripción.");
+                    ModelState.AddModelError("Input.Tasks", "Todas las tareas de mantenimiento deben tener descripción.");
+                    messages.Add("Todas las tareas de mantenimiento deben tener descripción.");
                 }
 
                 if (Input.Tasks.Any(t => !t.IsCompleted) || Input.CompletionPercentage != 100)
                 {
-                    ModelState.AddModelError("Input.Tasks", "Todas las tareas L-48 deben estar completadas.");
-                    messages.Add("Todas las tareas L-48 deben estar completadas.");
+                    ModelState.AddModelError("Input.Tasks", "Todas las tareas de mantenimiento deben estar completadas.");
+                    messages.Add("Todas las tareas de mantenimiento deben estar completadas.");
                 }
             }
 

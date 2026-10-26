@@ -513,7 +513,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                         plan.IsDraft = true;
                         plan.DraftPhase = WizardPhase.Maintenance;
                         plan.DraftSavedAt = DateTime.UtcNow;
-                        plan.DraftSummary = $"Borrador L-8 guardado al {Input.CompletionPercentage}% de avance técnico.";
+                        plan.DraftSummary = $"Borrador del registro de mantenimiento guardado al {Input.CompletionPercentage}% de avance.";
                         plan.LastModifiedDate = DateTime.UtcNow;
                     }
                     else
@@ -526,7 +526,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             try
             {
                 await _context.SaveChangesAsync();
-                TempData.Success($"Borrador L-8 guardado al {Input.CompletionPercentage}%. Puede continuar más tarde.");
+                TempData.Success($"Borrador del registro de mantenimiento guardado al {Input.CompletionPercentage}%. Puede continuar más tarde.");
 
                 if (ManagementPlanId.HasValue)
                 {

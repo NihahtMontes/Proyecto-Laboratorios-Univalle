@@ -357,7 +357,7 @@
         return '<dl class="gr-rs-dest' + (isFixed ? ' gr-rs-dest--fixed' : '') + '">'
             + '<dt>Fecha</dt><dd>' + esc(formatDate(d.date)) + '</dd>'
             + '<dt>Periodos</dt><dd>' + esc(periodsText(d.order)) + '</dd>'
-            + '<dt>Ambiente</dt><dd>' + esc(lab ? lab.label : '—') + '</dd>'
+            + '<dt>Laboratorio</dt><dd>' + esc(lab ? lab.label : '—') + '</dd>'
             + '<dt>Docente</dt><dd>' + esc(currentTeacherName()) + '</dd>'
             + '</dl>';
     }
@@ -366,7 +366,7 @@
         var issues = result.issues || [];
         if (issues.length === 0) {
             return '<ul class="gr-rs-issues"><li class="gr-rs-issue gr-rs-issue--info"><i class="mdi mdi-check-circle" aria-hidden="true"></i>'
-                + '<span>Sin observaciones: el ambiente y el docente están libres.</span></li></ul>';
+                + '<span>Sin observaciones: el laboratorio y el docente están libres.</span></li></ul>';
         }
         var order = { block: 0, warning: 1, info: 2 };
         var sorted = issues.slice().sort(function (a, b) { return (order[a.severity] || 0) - (order[b.severity] || 0); });
@@ -682,7 +682,7 @@
     // ---- chips de ambientes (visibles durante un arrastre nativo)
     function buildChips() {
         if (!chipsBox || chipsBox.getAttribute('data-built') === '1') return;
-        chipsBox.innerHTML = '<span class="gr-rs-chips__label"><i class="mdi mdi-arrow-right-bold" aria-hidden="true"></i> Llevar a otro ambiente:</span>';
+        chipsBox.innerHTML = '<span class="gr-rs-chips__label"><i class="mdi mdi-arrow-right-bold" aria-hidden="true"></i> Llevar a otro laboratorio:</span>';
         (cfg.labs || []).forEach(function (l) {
             var chip = document.createElement('button');
             chip.type = 'button';

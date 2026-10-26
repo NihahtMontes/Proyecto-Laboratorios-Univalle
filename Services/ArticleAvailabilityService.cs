@@ -402,6 +402,7 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
             .Select(r => new
             {
                 r.Id,
+                r.Code,
                 r.ScheduledDate,
                 r.StartTime,
                 r.EndTime,
@@ -414,7 +415,7 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
             .ToListAsync();
 
         var weekPractices = practices
-            .Select(p => new WeekPractice(p.Id, Pages.LaboratoryOperations.L3Codes.Format(p.Id), p.ScheduledDate.Date, p.StartTime, p.EndTime,
+            .Select(p => new WeekPractice(p.Id, Pages.LaboratoryOperations.L3Codes.Format(p.Id, p.Code), p.ScheduledDate.Date, p.StartTime, p.EndTime,
                 p.PracticeName, p.Subject, p.Group, p.Laboratory, p.Status))
             .ToList();
         var practiceById = weekPractices.ToDictionary(p => p.Id);

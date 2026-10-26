@@ -3,8 +3,8 @@
 @{
     var isCorrective = (bool)(ViewData["IsCorrective"] ?? false);
     var steps = isCorrective
-        ? new[] { "L7 Solicitud", "L8 Mantenimiento", "L3 Salida", "Kardex", "Desembolso" }
-        : new[] { "L6 Verificación", "L7 Solicitud", "L8 Mantenimiento", "L3 Salida", "Kardex", "Desembolso" };
+        ? new[] { "Solicitud", "Mantenimiento", "Salida", "Cierre", "Compra" }
+        : new[] { "Verificación", "Solicitud", "Mantenimiento", "Salida", "Cierre", "Compra" };
 }
     
 <div class="wizard-steps mb-4 d-flex justify-content-between position-relative mt-2 px-5">

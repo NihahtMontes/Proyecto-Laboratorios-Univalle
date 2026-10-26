@@ -3,7 +3,9 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using System.Text.Json
 @{
-    ViewData["Title"] = $"{(Model.Management.Type == ManagementType.Corrective ? "Mantenimiento Correctivo" : Model.Management.Type == ManagementType.PorConfirmar ? "Mantenimiento Por confirmar" : "Mantenimiento Preventivo")} {Model.Management.Code}";
+    ViewData["Title"] = "Panel de la gestión";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     var isManagementActive = Model.Management.Status == ManagementStatus.Active;
     // Variables L-48 (usadas solo cuando ActiveTab == l48, declaradas aqui para evitar RZ1010)
     var l48Sem      = Model.Management.Semester;
@@ -25,6 +27,8 @@
     var hasWizardPlans = Model.Management.ManagementPlans.Any()
         || Model.Management.Type != Proyecto_Laboratorios_Univalle.Models.Enums.ManagementType.PorConfirmar;
 }
+
+<partial name="_PageHelp" model='"Managements.Details"' />
 
 @section Styles {
     <style> 
@@ -95,7 +99,7 @@
     <!-- CABECERA DE LA GESTIÓN -->
     <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap">
         <div>
-            <h1 class="wizard-title mb-1">@(isCorrective ? "Mantenimiento Correctivo" : Model.Management.Type == ManagementType.PorConfirmar ? "Mantenimiento Por confirmar" : "Mantenimiento Preventivo") @Model.Management.Code</h1>
+            <h1 class="wizard-title mb-1">@(isCorrective ? "Mantenimiento correctivo" : Model.Management.Type == ManagementType.PorConfirmar ? "Mantenimiento importado por revisar" : "Mantenimiento preventivo") @Model.Management.Code</h1>
             <p class="wizard-subtitle">
                 @(string.IsNullOrEmpty(Model.Management.Description)
                     ? (isCorrective ? "Gestión semestral de fallas correctivas." : "Resumen de indicadores para este período administrativo.")
@@ -111,13 +115,13 @@
                         <i class="fas fa-tasks mr-2"></i>Planificar Activos
                     </a>
                     <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn rounded-pill px-3 font-weight-bold shadow-sm mr-2" style="background-color: #334155; color: white;">
-                        <i class="fas fa-play mr-2"></i>Iniciar Ronda (Wizard)
+                        <i class="fas fa-play mr-2"></i>Abrir asistente
                     </a>
                 }
                 else
                 {
                     <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-ManagementId="@Model.Management.Id" class="btn btn-danger rounded-pill px-3 font-weight-bold shadow-sm mr-2">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>Reportar Falla Crítica
+                        <i class="fas fa-exclamation-triangle mr-2"></i>Reportar falla
                     </a>
                 }
             }
@@ -131,12 +135,12 @@
                 <i class="fas fa-file-pdf mr-2"></i>Reportes Oficiales
             </a>
             <form method="post" asp-page-handler="UpdateActiveManagement" asp-route-id="@Model.Management.Id" class="d-inline mr-2">
-                <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white" style="background-color:#10b981;">
-                    <i class="fas fa-sync-alt mr-2"></i>Actualizar Gestión
+                <button type="submit" class="btn rounded-pill px-3 font-weight-bold shadow-sm text-white" style="background-color:#10b981;" title="Vuelve a calcular los contadores de la gestión a partir de los registros">
+                    <i class="fas fa-sync-alt mr-2"></i>Recalcular avance
                 </button>
             </form>
             <a asp-page="./Index" class="btn btn-light border rounded-pill px-4">
-                <i class="fas fa-arrow-left mr-2"></i>Volver
+                <i class="fas fa-arrow-left mr-2"></i>Volver al listado
             </a>
         </div>
     </div>
@@ -146,13 +150,13 @@
         <li class="nav-item">
             <a class="nav-link @(Model.ActiveTab == "dashboard" ? "active" : "")"
                href="?id=@Model.Management.Id&ActiveTab=dashboard">
-                <i class="fas fa-chart-pie mr-1"></i> Dashboard
+                <i class="fas fa-chart-pie mr-1"></i> Panel
             </a>
         </li>
         <li class="nav-item">
             <a class="nav-link @(Model.ActiveTab == "l48" || Model.ActiveTab == "" ? "active" : "")"
                href="?id=@Model.Management.Id&ActiveTab=l48">
-                <i class="fas fa-table mr-1"></i> @(isCorrective ? "Fallas Registradas" : "L-48 / Cronograma")
+                <i class="fas fa-table mr-1"></i> @(isCorrective ? "Fallas Registradas" : "Cronograma de mantenimiento")
             </a>
         </li>
         @if (!isCorrective)
@@ -187,10 +191,10 @@
             <div class="row mb-3">
                 <!-- L-48 Planes -->
                 <div class="col-6 col-md-3 mb-3">
-                    <a asp-page="/Maintenances/Plan" asp-route-ManagementId="@Model.Management.Id" class="asset-metric-tile asset-bg-blue p-3" title="Ver plan L-48 importado de esta gestión">
+                    <a asp-page="/Maintenances/Plan" asp-route-ManagementId="@Model.Management.Id" class="asset-metric-tile asset-bg-blue p-3" title="Ver el cronograma de mantenimiento importado de esta gestión">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-list"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L48Plans</div>
-                        <div class="font-weight-bold mt-2">L-48 Planes</div>
+                        <div class="font-weight-bold mt-2">Planes del cronograma</div>
                     </a>
                 </div>
                 <!-- L-8 Mantenimientos -->
@@ -198,7 +202,7 @@
                     <div class="asset-metric-tile asset-bg-red p-3">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-wrench"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L8Maintenances</div>
-                        <div class="font-weight-bold mt-2">L-8 Mantenimientos</div>
+                        <div class="font-weight-bold mt-2">Mantenimientos</div>
                     </div>
                 </div>
                 <!-- L-6 Verificaciones -->
@@ -206,7 +210,7 @@
                     <div class="asset-metric-tile asset-bg-cyan p-3">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L6Verifications</div>
-                        <div class="font-weight-bold mt-2">L-6 Verificaciones</div>
+                        <div class="font-weight-bold mt-2">Verificaciones</div>
                     </div>
                 </div>
                 <!-- L-7 Solicitudes -->
@@ -214,7 +218,7 @@
                     <div class="asset-metric-tile asset-bg-amber p-3">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-tools"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.HistoricalCountsInfo.L7Requests</div>
-                        <div class="font-weight-bold mt-2">L-7 Solicitudes</div>
+                        <div class="font-weight-bold mt-2">Solicitudes de servicio técnico</div>
                     </div>
                 </div>
             </div>
@@ -281,7 +285,7 @@
                     <a href="/Index?ShowWizard=true&Step=1&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-cyan p-3">
                         <div class="asset-metric-icon mb-3"><i class="fas fa-clipboard-check"></i></div>
                         <div class="asset-metric-value font-weight-bold">@Model.CountL6</div>
-                        <div class="font-weight-bold mt-2">L-6 Verificación</div>
+                        <div class="font-weight-bold mt-2">Verificación</div>
                     </a>
                 </div>
             }
@@ -290,7 +294,7 @@
                 <a href="/Index?ShowWizard=true&Step=2&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-amber p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-tools"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountL7</div>
-                    <div class="font-weight-bold mt-2">L-7 Solicitud</div>
+                    <div class="font-weight-bold mt-2">Solicitud</div>
                 </a>
             </div>
             <!-- L8 -->
@@ -298,7 +302,7 @@
                 <a href="/Index?ShowWizard=true&Step=3&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-red p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-wrench"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountL8</div>
-                    <div class="font-weight-bold mt-2">L-8 Mantenimiento</div>
+                    <div class="font-weight-bold mt-2">Mantenimiento</div>
                 </a>
             </div>
             <!-- L3 / Salida -->
@@ -306,7 +310,7 @@
                 <a href="/Index?ShowWizard=true&Step=4&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-purple p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-truck-loading"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountSalida</div>
-                    <div class="font-weight-bold mt-2">L-3 Salida</div>
+                    <div class="font-weight-bold mt-2">Salida</div>
                 </a>
             </div>
             <!-- Desembolso -->
@@ -314,7 +318,7 @@
                 <a href="/Index?ShowWizard=true&Step=6&ManagementId=@Model.Management.Id" class="asset-metric-tile asset-bg-slate p-3">
                     <div class="asset-metric-icon mb-3"><i class="fas fa-dollar-sign"></i></div>
                     <div class="asset-metric-value font-weight-bold">@Model.CountDesembolso</div>
-                    <div class="font-weight-bold mt-2">Desembolso</div>
+                    <div class="font-weight-bold mt-2">Compra</div>
                 </a>
             </div>
         </div>
@@ -480,13 +484,13 @@
             <!-- L-48 HISTÓRICO: nota de origen + enlace al listado completo -->
             <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
                 <span class="badge badge-light border text-muted px-3 py-2 font-weight-bold">
-                    <i class="fas fa-archive mr-1"></i> Plan L-48 histórico importado desde el Excel del cliente (solo lectura)
+                    <i class="fas fa-archive mr-1"></i> Cronograma histórico importado desde el Excel del cliente (solo lectura)
                 </span>
                 <span class="small text-muted" aria-live="polite">
                     <strong class="text-dark">@Model.HistoricalPlans.Count</strong> plan(es) importado(s)
                     <a asp-page="/Maintenances/Plan" asp-route-ManagementId="@Model.Management.Id"
                        class="btn btn-sm btn-outline-info btn-rounded font-weight-bold shadow-sm ml-3">
-                        <i class="fas fa-external-link-alt mr-1"></i> Ver en el listado completo del L-48
+                        <i class="fas fa-external-link-alt mr-1"></i> Ver en el listado completo del cronograma
                     </a>
                 </span>
             </div>
@@ -597,22 +601,22 @@
             <div class="alert alert-info border-0 rounded shadow-sm d-flex align-items-center" role="alert">
                 <i class="fas fa-info-circle text-info mr-3" style="font-size:1.4rem;"></i>
                 <div>
-                    <span class="font-weight-bold">Esta gestión no tiene plan L-48 cargado en el Excel del cliente.</span>
+                    <span class="font-weight-bold">Esta gestión no tiene cronograma cargado en el Excel del cliente.</span>
                     @if (Model.HistoricalCountsInfo.L8Maintenances > 0 || Model.HistoricalCountsInfo.L6Verifications > 0 || Model.HistoricalCountsInfo.L7Requests > 0)
                     {
                         <div class="small text-muted mt-1">
                             Registró actividad importada:
                             @if (Model.HistoricalCountsInfo.L8Maintenances > 0)
                             {
-                                <span class="badge badge-secondary px-2 mr-1">L-8: @Model.HistoricalCountsInfo.L8Maintenances</span>
+                                <span class="badge badge-secondary px-2 mr-1">Mantenimientos: @Model.HistoricalCountsInfo.L8Maintenances</span>
                             }
                             @if (Model.HistoricalCountsInfo.L6Verifications > 0)
                             {
-                                <span class="badge badge-secondary px-2 mr-1">L-6: @Model.HistoricalCountsInfo.L6Verifications</span>
+                                <span class="badge badge-secondary px-2 mr-1">Verificaciones: @Model.HistoricalCountsInfo.L6Verifications</span>
                             }
                             @if (Model.HistoricalCountsInfo.L7Requests > 0)
                             {
-                                <span class="badge badge-secondary px-2 mr-1">L-7: @Model.HistoricalCountsInfo.L7Requests</span>
+                                <span class="badge badge-secondary px-2 mr-1">Solicitudes: @Model.HistoricalCountsInfo.L7Requests</span>
                             }
                         </div>
                     }
@@ -768,7 +772,7 @@
                                 }
                                 <td rowspan="2" class="align-middle">
                                     <div class="font-weight-bold" style="font-size:0.82rem;">
-                                        <a href="@wizardUrl" class="text-primary" title="Abrir wizard en fase actual">
+                                        <a href="@wizardUrl" class="text-primary" title="Abrir el asistente en el paso actual">
                                             @plan.EquipmentUnit?.Equipment?.Name
                                         </a>
                                     </div>
@@ -811,7 +815,7 @@
                                     @(plan.Maintenance?.Technician?.FullName ?? "—")
                                 </td>
                                 <td rowspan="2" class="align-middle text-center">
-                                    <a href="@wizardUrl" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold shadow-sm" title="Atender en wizard">
+                                    <a href="@wizardUrl" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold shadow-sm" title="Atender en el asistente">
                                         <i class="fas fa-external-link-alt mr-1"></i> Atender
                                     </a>
                                 </td>
@@ -910,7 +914,7 @@
 
 @section Scripts {
 
-    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    @* SweetAlert2 ya la carga el layout (_Layout.cshtml). *@
     <script>
         async function toggleWeek(planId, weekNumber, type) {
             const formData = new FormData();
@@ -1225,7 +1229,7 @@
                                     var planId = Number.parseInt(ev._raw.PlanId, 10);
                                     var currentPhase = Number.parseInt(ev._raw.CurrentPhaseInt, 10);
                                     if (Number.isInteger(planId) && planId > 0 && Number.isInteger(currentPhase)) {
-                                        html += '<button type="button" class="btn btn-outline-danger btn-sm" title="Rehacer Mantenimiento" onclick="confirmRedoPhase(' + planId + ', 3, \'L-8 Mantenimiento\', ' + currentPhase + ')"><i class="fas fa-undo"></i></button>';
+                                        html += '<button type="button" class="btn btn-outline-danger btn-sm" title="Rehacer el registro de mantenimiento" onclick="confirmRedoPhase(' + planId + ', 3, \'Registro de mantenimiento\', ' + currentPhase + ')"><i class="fas fa-undo"></i></button>';
                                     }
                                 }
                             }

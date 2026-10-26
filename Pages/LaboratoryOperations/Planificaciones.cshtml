@@ -3,6 +3,8 @@
 @using Proyecto_Laboratorios_Univalle.Models
 @{
     ViewData["Title"] = "Planificaciones";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
     var statusText = string.IsNullOrEmpty(Model.Status) ? string.Empty : PlanningStatus.Label(Model.Status);
     var management = Model.Management;
 }
@@ -25,7 +27,7 @@
             }
             else
             {
-                <div class="text-muted small">Sesiones de práctica planificadas por gestión académica.</div>
+                <div class="text-muted small">Sesiones de práctica planificadas por semestre académico.</div>
             }
         </div>
         <div class="col-md-4 text-md-right mt-3 mt-md-0">
@@ -91,7 +93,7 @@
                 <div class="mb-3">
                     <i class="fas fa-folder-open text-primary opacity-50" style="font-size: 4rem;"></i>
                 </div>
-                <h3 class="font-weight-bold text-dark mb-2">No hay una gestión académica activa</h3>
+                <h3 class="font-weight-bold text-dark mb-2">No hay un semestre académico activo</h3>
                 <p class="text-muted mb-0">Elija una gestión en el selector o active una gestión semestral para registrar planificaciones.</p>
             </div>
         </div>
@@ -177,7 +179,7 @@
                                             <span class="badge badge-@row.StatusCss @(row.StatusCss == "light" ? "border" : string.Empty) px-2 py-1 rounded-pill">@row.StatusLabel</span>
                                             @if (row.HasIncident)
                                             {
-                                                <div class="small text-danger mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Incidente L-5</div>
+                                                <div class="small text-danger mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Incidente de material</div>
                                             }
                                         </td>
                                         <td class="text-right text-nowrap">
@@ -234,7 +236,7 @@
 }
 
 @section Scripts {
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script>
         (function () {
             $('.select2').select2({
@@ -253,7 +255,7 @@
                     e.preventDefault();
                     if (typeof Swal === 'undefined') { HTMLFormElement.prototype.submit.call(form); return; }
                     Swal.fire({ title: '¿Reabrir para editar?', text: (form.dataset.code || 'La planificación') +
-                        ' volverá a Planificada para editar sus requerimientos. No se reabren planificaciones con salida L-3.',
+                        ' volverá a Planificada para editar sus requerimientos. No se reabren planificaciones con entrega de material registrada.',
                         type: 'warning', showCancelButton: true, confirmButtonText: 'Sí, reabrir', cancelButtonText: 'Cancelar'
                     }).then(function (result) {
                         if (result && (result.isConfirmed === true || result.value === true))

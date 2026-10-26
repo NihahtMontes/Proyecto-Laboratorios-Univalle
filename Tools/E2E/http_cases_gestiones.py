@@ -43,7 +43,7 @@ if n == 0:
     ok = make({})
     expect(R, "Gestión/Create: correctiva válida 2026-1 (Inactiva)", ok, toast=CODIGO)
 dup = make({})
-expect(R, "Gestión/Create: correctiva duplicada", dup, status=200, error="Ya existe una gestion registrada")
+expect(R, "Gestión/Create: correctiva duplicada", dup, status=200, error="Ya existe una gestión registrada")
 cid = int(e2e_lib.db_scalar("SELECT TOP 1 Id FROM Managements WHERE Code=? AND [Status]<>99 ORDER BY Id DESC", CODIGO))
 
 # ---------- editar ----------

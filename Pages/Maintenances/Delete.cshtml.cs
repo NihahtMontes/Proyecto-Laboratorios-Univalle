@@ -69,7 +69,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
                 .FirstOrDefaultAsync(p => p.MaintenanceId == maintenance.Id);
             if (linkedPlan != null && linkedPlan.CurrentPhase > Models.Enums.WizardPhase.Maintenance)
             {
-                TempData.Warning($"No se puede anular este mantenimiento: el activo ya avanzó a {WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}. Use «Rehacer fase» en el asistente.");
+                TempData.Warning($"No se puede anular este mantenimiento: el activo ya avanzó a {WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}. Para corregirlo, abra el formulario del paso actual del equipo desde el asistente y use «Rehacer paso anterior».");
                 return RedirectToPage("./Index");
             }
 

@@ -364,12 +364,13 @@ public class GrillaModel : PageModel
             .Select(p => new
             {
                 p.Id,
+                p.Code,
                 p.GroupName,
                 p.TeacherPersonId,
                 p.PeriodCount,
                 p.StatusBeforeRecovery,
                 LaboratoryId = (int?)p.LaboratoryId,
-                Laboratory = p.Laboratory != null ? p.Laboratory.Code : "Sin ambiente",
+                Laboratory = p.Laboratory != null ? p.Laboratory.Code : "Sin laboratorio",
                 Subject = p.Subject != null ? p.Subject.Name : p.PracticeName,
                 StartOrder = p.StartPeriod != null ? (int?)p.StartPeriod.Order : null
             })
@@ -378,7 +379,7 @@ public class GrillaModel : PageModel
         var teachers = teacherIds.Count == 0
             ? []
             : await _context.Interns.AsNoTracking().Where(t => teacherIds.Contains(t.Id)).ToDictionaryAsync(t => t.Id, t => t.Name, ct);
-        return rows.Select(p => new RecoverySibling(p.Id, L3Codes.Format(p.Id), p.Laboratory, p.LaboratoryId,
+        return rows.Select(p => new RecoverySibling(p.Id, L3Codes.Format(p.Id, p.Code), p.Laboratory, p.LaboratoryId,
             p.Subject, p.GroupName ?? "—", teachers.GetValueOrDefault(p.TeacherPersonId, "—"), p.PeriodCount ?? 0,
             p.StartOrder is int order && p.PeriodCount is int count ? PlanningSlot.PeriodsText(order, count) : "Sin periodos",
             PlanningStatus.Label(p.StatusBeforeRecovery ?? PlanningStatus.PendingRecovery))).ToList();
@@ -432,6 +433,7 @@ public class GrillaModel : PageModel
             .Select(x => new
             {
                 x.Id,
+                x.Code,
                 x.ManagementId,
                 ManagementStatus = x.Management != null ? (Models.Enums.ManagementStatus?)x.Management.Status : null,
                 x.Status,
@@ -456,7 +458,7 @@ public class GrillaModel : PageModel
         if (p == null)
             return (null, "La planificación a reprogramar no existe o fue eliminada.");
         if (!isRecovery && p.Status == PlanningStatus.PendingRecovery)
-            return (null, $"{L3Codes.Format(p.Id)} está pendiente de reposición: se reubica desde la reposición del día suspendido.");
+            return (null, $"{L3Codes.Format(p.Id, p.Code)} está pendiente de reposición: se reubica desde la reposición del día suspendido.");
         if (isRecovery && (recoveryId is not > 0 || p.Status != PlanningStatus.PendingRecovery
             || p.StatusBeforeRecovery is null
             || !await _context.AcademicDays.AsNoTracking().AnyAsync(d => d.Date == p.ScheduledDate.Date
@@ -464,9 +466,9 @@ public class GrillaModel : PageModel
                 && d.DayRecoveryId == recoveryId && d.DayRecovery!.Status == Models.Enums.DayRecoveryStatus.InProgress)))
             return (null, "El bloque ya no está pendiente de esta reposición de día.");
         if (!isRecovery && !GridRelocation.IsReschedulableStatus(p.Status))
-            return (null, $"{L3Codes.Format(p.Id)} está en estado \"{PlanningStatus.Label(p.Status)}\" y no se puede reprogramar.");
+            return (null, $"{L3Codes.Format(p.Id, p.Code)} está en estado \"{PlanningStatus.Label(p.Status)}\" y no se puede reprogramar.");
         if (p.StartPeriodId is not int startPeriodId || p.StartOrder is not int startOrder || p.PeriodCount is not int count)
-            return (null, $"{L3Codes.Format(p.Id)} no tiene periodos asignados: complete su horario antes de reprogramarla.");
+            return (null, $"{L3Codes.Format(p.Id, p.Code)} no tiene periodos asignados: complete su horario antes de reprogramarla.");
         if (p.ManagementStatus is not (Models.Enums.ManagementStatus.Active or Models.Enums.ManagementStatus.Inactive))
             return (null, AcademicManagementService.ReadOnlyMessage);
 
@@ -477,7 +479,7 @@ public class GrillaModel : PageModel
 
         return (new RescheduleOrigin(
             p.Id,
-            L3Codes.Format(p.Id),
+            L3Codes.Format(p.Id, p.Code),
             p.ManagementId,
             string.IsNullOrWhiteSpace(p.SubjectName) ? "Sin materia" : p.SubjectName!,
             string.IsNullOrWhiteSpace(p.GroupLabel) ? "—" : p.GroupLabel!,

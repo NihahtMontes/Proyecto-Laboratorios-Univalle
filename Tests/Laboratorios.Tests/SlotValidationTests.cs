@@ -56,7 +56,7 @@ public class SlotValidationTests
 
         var issue = Single(result, Codes.LabOccupied);
         Assert.Equal(SlotSeverity.Block, issue.Severity);
-        Assert.Contains("Debe quedar un periodo libre entre prácticas del ambiente LAB-A", issue.Message);
+        Assert.Contains("Debe quedar un periodo libre entre prácticas del laboratorio LAB-A", issue.Message);
     }
 
     [Fact]
@@ -180,7 +180,7 @@ public class SlotValidationTests
         Assert.DoesNotContain(result.Issues, i => i.Code == Codes.Capacity);
         var info = Single(result, Codes.CapacityNotEvaluated);
         Assert.Equal(SlotSeverity.Info, info.Severity);
-        Assert.Contains("capacidad del ambiente LAB-B", info.Message);
+        Assert.Contains("capacidad del laboratorio LAB-B", info.Message);
         Assert.Equal("valid", result.Level);
     }
 

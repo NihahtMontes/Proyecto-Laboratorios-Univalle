@@ -149,9 +149,9 @@ def check_laboratories(s):
     return [
         Result("Laboratories: total visible vs BD",
                db_scalar("SELECT COUNT(*) FROM Laboratories WHERE Status <> 2"), len(labs)),
-        Result("Laboratories: contador 'ambiente(s)' vs BD",
+        Result("Laboratories: contador 'laboratorio(s)' vs BD",
                db_scalar("SELECT COUNT(*) FROM Laboratories WHERE Status <> 2"),
-               _contador(texto, "ambiente(s)")),
+               _contador(texto, "laboratorio(s)")),
         Result("Laboratories (#faculties): facultades visibles vs BD",
                db_scalar("SELECT COUNT(*) FROM Faculties WHERE Status <> 2"), len(facs)),
         Result("Laboratories (#careers): carreras visibles vs BD",

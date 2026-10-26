@@ -90,7 +90,13 @@ public sealed record ConflictWeekGrid(
 
 /// <summary>Etiqueta de conflicto que lleva una planificación (misma Tag/Key que la grilla de conflictos de esa semana).</summary>
 public sealed record PlanningConflictTag(string Key, string Tag, ConflictKind Kind, DateTime Date, int ArticleId,
-    string ArticleName, bool Involved, IReadOnlyList<int> RelatedPlanningIds, string Url);
+    string ArticleName, bool Involved, IReadOnlyList<int> RelatedPlanningIds, string Url,
+    IReadOnlyList<string>? RelatedCodes = null)
+{
+    /// <summary>Códigos visibles de las relacionadas (SOL3-… o PRA-…), en el mismo orden que RelatedPlanningIds.</summary>
+    public IReadOnlyList<string> RelatedDisplayCodes =>
+        RelatedCodes ?? RelatedPlanningIds.Select(L3Codes.Format).ToList();
+}
 
 public interface IConflictGridService
 {
@@ -199,7 +205,7 @@ public sealed class ConflictGridService : IConflictGridService
                 : "No hay prácticas que reponer";
             var actions = new List<ConflictAction>
             {
-                new("recover-day", "Reponer día", "fa-calendar-times", ConflictActionScope.Day, null, canRecover,
+                new("recover-day", "Suspender día", "fa-calendar-times", ConflictActionScope.Day, null, canRecover,
                     recoverReason, "btn-outline-danger")
             };
             return new ConflictDay(date, d, AcademicWeekGenerator.WeekdayNames[d], exists, suspended,
@@ -253,7 +259,8 @@ public sealed class ConflictGridService : IConflictGridService
         var tagsByPlanning = new Dictionary<int, List<PlanningConflictTag>>();
         foreach (var monday in lunes)
         {
-            var (_, _, builders) = await ComputeWeekAsync(monday, null, ct);
+            var (_, availability, builders) = await ComputeWeekAsync(monday, null, ct);
+            var codes = availability.Practices.ToDictionary(p => p.Id, p => p.Code);
             foreach (var builder in builders)
             {
                 var item = builder.Item;
@@ -262,11 +269,13 @@ public sealed class ConflictGridService : IConflictGridService
                 foreach (var practice in builder.Demand.Practices)
                 {
                     // Pide el artículo del conflicto: involucrada si cruza en el tramo sin stock; si no, etiqueta "floja".
+                    var related = involved.Where(id => id != practice.PracticeId).ToList();
                     var tag = new PlanningConflictTag(
                         item.Key, item.Tag, item.Kind, item.Date, item.ArticleId, item.ArticleName,
                         involved.Contains(practice.PracticeId),
-                        involved.Where(id => id != practice.PracticeId).ToList(),
-                        url);
+                        related,
+                        url,
+                        related.Select(id => codes.GetValueOrDefault(id) ?? L3Codes.Format(id)).ToList());
                     if (!tagsByPlanning.TryGetValue(practice.PracticeId, out var tags))
                         tagsByPlanning[practice.PracticeId] = tags = [];
                     tags.Add(tag);

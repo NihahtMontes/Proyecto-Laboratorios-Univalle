@@ -2,7 +2,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Stock.EditModel
 @using Proyecto_Laboratorios_Univalle.Helpers
 @{
-    ViewData["Title"] = "Ajustar Existencia";
+    ViewData["Title"] = "Ajustar existencia";
+    ViewData["Section"] = "Equipos e inventario";
     var articleName = Model.Article?.Name ?? "Artículo";
     var articleCode = Model.Article?.Code ?? string.Empty;
     var labDisplay = Model.Laboratory != null ? LaboratoryDisplayHelper.Format(Model.Laboratory) : "—";

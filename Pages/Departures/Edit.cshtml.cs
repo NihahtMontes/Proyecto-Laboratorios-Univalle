@@ -109,6 +109,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
             if (departure == null) return NotFound();
 
+            // Salida de práctica académica (L-3): su entrega, devolución y cierre se gestionan
+            // en el circuito L-3 para mantener la coherencia del stock y de las devoluciones.
+            if (departure.PlanningId.HasValue)
+            {
+                TempData.Info($"La salida {departure.Code ?? $"SAL-{departure.Id:00000}"} es de una práctica académica: su entrega, devolución y cierre se gestionan en «Entrega y devolución de material».");
+                return RedirectToPage("/LaboratoryOperations/L3", new { id = departure.PlanningId });
+            }
+
             int facultyId = departure.EquipmentUnit?.Laboratory?.FacultyId ?? 0;
             int labId = departure.EquipmentUnit?.LaboratoryId ?? 0;
 
@@ -163,10 +171,18 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             var departureUnit = await _context.Departures
                 .AsNoTracking()
                 .Where(d => d.Id == Input.Id)
-                .Select(d => new { d.EquipmentUnitId })
+                .Select(d => new { d.EquipmentUnitId, d.PlanningId, d.Code })
                 .FirstOrDefaultAsync();
 
             if (departureUnit == null) return NotFound();
+
+            // Salida de práctica académica (L-3): bloquear la edición manual ANTES de validar o
+            // guardar, ya que marcar "Devuelto" aquí no registra la devolución ni repone stock.
+            if (departureUnit.PlanningId.HasValue)
+            {
+                TempData.Info($"La salida {departureUnit.Code ?? $"SAL-{Input.Id:00000}"} es de una práctica académica: su entrega, devolución y cierre se gestionan en «Entrega y devolución de material».");
+                return RedirectToPage("/LaboratoryOperations/L3", new { id = departureUnit.PlanningId });
+            }
 
             ModelState.Remove("Input.EquipmentUnitId");
             Input.EquipmentUnitId = departureUnit.EquipmentUnitId;

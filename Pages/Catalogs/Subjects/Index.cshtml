@@ -2,6 +2,9 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Subjects.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
+    ViewData["Title"] = "Materias";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
         || Model.CareerFilter.HasValue
         || Model.SemesterFilter.HasValue

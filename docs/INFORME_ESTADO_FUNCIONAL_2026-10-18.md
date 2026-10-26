@@ -255,6 +255,99 @@ Todo se ejecutó sobre una **copia desechable** de la base REAL, que ya se elimi
 
 ---
 
+## 4.8 QA de planificación y circuito L-3/L-5 (informe de un probador, 2026-10-19)
+
+Se revisaron las observaciones del «Informe de QA Funcional — Auditoría del Circuito y Solicitudes L-3» contra la rama `qa`. Detalle y evidencia (fuera de git): `outputs/qa-obs-2026-10-19/INFORME_OBSERVACIONES_DANILOVER.md`.
+
+- **Ya estaban resueltas:**
+  - buscador de `/Departures`;
+  - edición de salidas con unidad obligatoria;
+  - «GESTIÓN» fija del Excel L-3;
+  - L-3 de finalizadas sin salida;
+  - kit con artículos retirados.
+- **Corregidas** (sin commit; aprobadas por el usuario):
+  - código visible `SOL3-…`;
+  - falta de stock que solo advierte (D2);
+  - unidad física en la salida de práctica;
+  - L-5 acumulado;
+  - «Asignar horario» para aprobadas sin periodo;
+  - Demanda con alcance y stock total;
+  - salidas de práctica en `/Departures` (sin editar fuera de L-3);
+  - Excel L-3 completo (laboratorio, cabecera académica y filas sin pisar la firma);
+  - botón «Descargar vale L-3».
+- **Verificación:** 50/50 casos en una copia, regresión E2E 833/833 y 378 tests.
+- **Pendientes de decisión:**
+  - O2 «Todos los laboratorios» (se eliminó a propósito en `bd0d465`);
+  - D10, salidas y devoluciones de V12;
+  - L-5 en decimales (requiere migración);
+  - importación desde la UI, alertas persistidas, informes de planificación e historial de auditoría.
+
+### 4.8.1 Informe final de QA: pendientes corregidos (2026-10-21, sin commit)
+
+Fuente: `outputs/qa-obs-2026-10-19/REVISION_INFORME_FINAL_GLM.md` (pendientes reales verificados contra el código local).
+
+| # | Corrección | Archivos principales |
+|---|---|---|
+| BUG-03 | El motivo del historial de estado de un L-5 con unidad física se recorta a 500 (antes `DbUpdateException` con descripciones largas) | `Data/ApplicationDbContext.cs` |
+| BUG-02b | La devolución L-3 no admite lo ya cubierto por L-5 (no repone stock perdido); precarga «sin cubrir»; la salida se cierra cuando lo devuelto más lo cubierto alcanza lo entregado (también en orígenes reprogramados) | `Services/L3CircuitService.cs` (`L3ReturnRules`), `L3.cshtml(.cs)` |
+| BUG-02a | El tope de L-5 resta lo devuelto: entregado − devuelto − ya registrado; el selector muestra «devuelto: n» | `L5.cshtml.cs` |
+| BUG-06 | `/Departures/Create` y `/Departures/Edit` reindexan los ítems al quitar o agregar filas (antes se perdían ítems en silencio) | `Departures/Create.cshtml`, `Edit.cshtml` |
+| Aforo | El alta, la edición y «Asignar horario» bloquean si los estudiantes superan la capacidad del ambiente (mismo texto que la reprogramación). **En REAL ningún laboratorio tiene capacidad cargada: la regla se activa al registrarla.** | `Planificacion.cshtml.cs`, `PlanningAssignmentRules.cs` |
+| Docente | Choque de docente en el alta, la edición y «Asignar horario»: se bloquea con una alerta destacada; para insistir hay que esperar una cuenta regresiva de 5 s y la aceptación queda en las observaciones («Choque de docente aceptado por {usuario} el {fecha}: …»). Una huella impide aceptar choques distintos de los mostrados. Al editar sin cambiar horario ni docente no se vuelve a pedir. | `Planificacion.cshtml(.cs)`, `wwwroot/js/confirm-countdown.js` |
+| Bajos | Grilla conserva `returnUrl` al cambiar de ambiente o semana; Demanda cuenta planificaciones distintas; la reprogramación actualiza `PracticeSchedule.WeekNumber` | `Grilla.cshtml`, `Demanda.cshtml.cs`, `ReschedulingService.cs` |
+| Hallados en la verificación | L-5: si la validación fallaba, la página quedaba sin formulario ni mensaje. Planificación: la práctica elegida se perdía al volver con errores o al editar, y el aviso «No hay prácticas del catálogo» se veía siempre. Salidas: la edición borraba las cantidades (`1,00` no es válido en un campo numérico). | `L5.cshtml.cs`, `Planificacion.cshtml`, `Departures/Create.cshtml`, `Edit.cshtml` |
+
+- **Verificación:**
+  - 402 tests (24 nuevos);
+  - copia desechable de REAL: `outputs/qa-obs-2026-10-21/final_verify.py` 31/31 y `obs_verify.py` 50/50;
+  - regresión E2E 833/833 (departures 110, informes 49, reportes 13, paginación 420, roles 241);
+  - capturas `outputs/qa-usuario/img/final21_*.png`;
+  - REAL y la nube sin tocar; copia y snapshot eliminados.
+- **Datos de REAL a tener en cuenta:**
+  - ningún artículo está vinculado a un equipo (`Articles.EquipmentId` vacío), así que el L-5 de una unidad física se registra sobre otro artículo entregado;
+  - muchas materias importadas no tienen prácticas de catálogo, y sin ellas una planificación importada no se puede editar.
+
+## 4.9 Mejora de UX/UI, fases 1 y 2 (2026-10-26, sin commit)
+
+Auditoría y plan: `docs/ux/AUDITORIA_UX_2026-10-21.md`. Glosario: `docs/ux/GLOSARIO.md`.
+
+Decisiones del usuario:
+- en pantalla, **solo nombres claros, sin códigos L-x** (quedan en los Excel y en la página de Ayuda);
+- ayuda contextual «?» y glosario;
+- prioridad para Administrador y SuperAdmin.
+
+| Fase | Qué se hizo |
+|---|---|
+| 1. Orientación y navegación | **Menú por tareas**: Inicio · Mantenimiento de equipos (Gestiones, Mantenimiento preventivo, Mantenimiento correctivo, Reportes, Registros) · Equipos e inventario · Planificación académica · Configuración · Ayuda. Sin «Procesos» duplicado; menú distinto por rol; Reportes visible también para el Supervisor; iconos que existen en la fuente del tema. |
+| | **Inicio** redirigido en el servidor: sin parpadeo y el botón «atrás» ya no queda en bucle. |
+| | **Permisos**: nueva pantalla «Acceso denegado» (antes /Error con «registro histórico incompleto»); «Mi perfil» para todos los roles; botones y enlaces solo para administradores ocultos al Supervisor. |
+| | **Títulos y ubicación**: las 139 páginas tienen título y «Sección ›»; sin títulos duplicados; textos de «Volver» unificados; búsqueda global falsa retirada; icono «?» en la barra superior. |
+| | **SweetAlert**: `swal-compat.js` hace que las llamadas con `icon:` muestren el icono (v7 solo entiende `type:`). |
+| | **Asistente**: el correctivo ya no muestra «¡Ronda Finalizada!» falso; el paso de verificación ya no esconde laboratorios por la paginación. |
+| 2. Lenguaje y ayuda | **Renombrado** según el glosario en el mantenimiento (asistente, gestiones, verificación, solicitud, mantenimiento, salida, cierre, compra, equipos y reportes) y en planificación (entrega de material, incidente de material, semestre académico, suspender día, reprogramar, laboratorio en lugar de ambiente), más los mensajes de servicios y guardas. **Unos 400 textos** en total, sin cambios de lógica. |
+| | Los mensajes ya no muestran identificadores internos (`ManagementPlanId`, «Req ID»). Las guardas indican dónde está «Rehacer paso anterior». |
+| | **Español**: mensajes de validación (`validation-es.js`) y Select2 (`select2-es.js`, 22 páginas). |
+| | **Ayuda**: `/Ayuda` con guía por rol, glosario con buscador (incluye el formato institucional de cada término) y preguntas frecuentes; recuadro «¿Qué hago aquí?» plegable en 14 pantallas prioritarias; icono «?» con explicación junto a conceptos difíciles (estado de verificación, checklist técnico, costo real, código de inversión, centro de costos, tareas). Textos en `Helpers/HelpContent.cs`. |
+
+- **Verificación** (copia desechable de REAL, eliminada al terminar):
+  - build sin errores y **402/402 tests** (se actualizaron los textos esperados);
+  - recorrido nuevo `Tools/E2E/http_cases_ux_navegacion.py`: **329/329**. Cuatro roles, 30 entradas de menú, 15 pasos del asistente; sin /Error, todas las pestañas con nombre, sin códigos ni jerga visibles y sin menús duplicados;
+  - **regresión E2E completa: ninguna falla nueva frente a la línea base** (se actualizaron los textos esperados de 20 scripts). Las fallas previas se deben a datos nuevos de REAL desde el 18/10 (`checks_qa_clasificacion` 7, `gestiones` 2, `usuarios_auth` se cae); `checks_academico` pasó de 3 fallas a 0;
+  - `final_verify.py` 31/31 y `sql_invariantes` 21/21;
+  - capturas `outputs/qa-usuario/img/ux26_*.png`.
+- **Pendiente** (fases 3 a 6 de la auditoría):
+  - Stepper con el estado real.
+  - Cierre del mantenimiento que repite datos del registro.
+  - Solicitud de compra obligatoria aunque no haya compras.
+  - Checklist con casillas.
+  - «Qué sigue» al aprobar una planificación.
+  - Borradores visibles.
+  - Capacidad del laboratorio editable.
+  - Componentes comunes, confirmaciones, doble envío.
+  - Contraste y accesibilidad.
+  - Manual por rol y prueba con usuarios reales.
+- **Fuera de alcance**: «Inventario general» todavía se titula «Ver Inventario» (`Pages/AssetView`, otro trabajo), y en Verificación masiva el «Estado actual» sigue en inglés («Operational»), punto M1 de la fase 3.
+
 ## 4.7 Cambios PENDIENTES DE REVISIÓN DEL USUARIO (no aceptados todavía)
 
 > **Actualización 2026-10-19:** el usuario pidió hacer commit de todo y subirlo a la rama `qa`, así que los archivos de la tabla (a) ya están en el commit de QA. Lo que sigue queda como historia.

@@ -2,7 +2,9 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Solicitudes de Adquisición";
+    ViewData["Title"] = "Solicitudes de compra";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
         || Model.FilterLaboratoryId.HasValue
         || Model.PriorityFilter.HasValue
@@ -25,7 +27,7 @@
 
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de Adquisición (L-12)</h3>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Solicitudes de compra</h3>
                         <h6 class="card-subtitle text-muted ml-2">Gestión de compra de nuevos activos, repuestos e insumos.</h6>
                     </div>
                 </div>
@@ -63,9 +65,9 @@
                             <select asp-for="FilterLaboratoryId"
                                     class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.FilterLaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
                                     asp-items="Model.LaboratoryList"
-                                    aria-label="Ambiente"
+                                    aria-label="Laboratorio"
                                     data-live-filter-control>
-                                <option value="">Ambiente</option>
+                                <option value="">Laboratorio</option>
                             </select>
 
                             @if (hasActiveFilters)

@@ -89,7 +89,7 @@ public class IndexModel : PageModel
     public IReadOnlyList<CompletedRecovery> CompletedRecoveries { get; private set; } = [];
     /// <summary>Planificaciones pendientes de reubicar (estado PendienteReposicion).</summary>
     public IReadOnlyList<PendingRescheduleNotice> PendingReschedules { get; private set; } = [];
-    /// <summary>Planificaciones vigentes sin periodo asignado (StartPeriodId null).</summary>
+    /// <summary>Planificaciones vigentes (no finalizadas) sin periodo asignado (StartPeriodId null).</summary>
     public IReadOnlyList<WithoutPeriodNotice> WithoutPeriod { get; private set; } = [];
     public int WithoutPeriodCount { get; private set; }
     /// <summary>Sesiones de los próximos 7 días agrupadas por ambiente.</summary>
@@ -225,12 +225,13 @@ public class IndexModel : PageModel
             .Select(p => new
             {
                 p.Id,
+                p.Code,
                 p.ScheduledDate,
                 p.StartTime,
                 p.EndTime,
                 p.GroupName,
                 p.PracticeName,
-                Laboratory = p.Laboratory != null ? p.Laboratory.Code + " · " + p.Laboratory.Name : "Sin ambiente",
+                Laboratory = p.Laboratory != null ? p.Laboratory.Code + " · " + p.Laboratory.Name : "Sin laboratorio",
                 Subject = p.Subject != null ? p.Subject.Name : "Sin materia"
             })
             .ToListAsync();
@@ -249,7 +250,7 @@ public class IndexModel : PageModel
                 recoveredByRecovery.GetValueOrDefault(r.Id),
                 pendingRows.Count(p => p.ScheduledDate.Date == r.Date.Date),
                 pendingRows.Where(p => p.ScheduledDate.Date == r.Date.Date)
-                    .Select(p => new PendingPlanningItem(p.Id, L3Codes.Format(p.Id), p.Laboratory, p.Subject,
+                    .Select(p => new PendingPlanningItem(p.Id, L3Codes.Format(p.Id, p.Code), p.Laboratory, p.Subject,
                         p.GroupName ?? "—", p.PracticeName))
                     .ToList(),
                 pendingRows.Where(p => p.ScheduledDate.Date == r.Date.Date)
@@ -270,33 +271,35 @@ public class IndexModel : PageModel
         // Las pendientes de reposición se reubican desde la reposición de su día (la Grilla rechaza ?reprogramar).
         var recoveryByDate = recoveries.GroupBy(r => r.Date.Date).ToDictionary(g => g.Key, g => g.First().Id);
         PendingReschedules = pendingRows
-            .Select(p => new PendingRescheduleNotice(p.Id, L3Codes.Format(p.Id), p.Laboratory, p.Subject,
+            .Select(p => new PendingRescheduleNotice(p.Id, L3Codes.Format(p.Id, p.Code), p.Laboratory, p.Subject,
                 p.GroupName ?? "—", p.PracticeName, p.ScheduledDate.Date, FormatTime(p.StartTime, p.EndTime),
                 recoveryByDate.TryGetValue(p.ScheduledDate.Date, out var recoveryId) ? recoveryId : null))
             .ToList();
 
-        // Planificaciones vigentes sin periodo asignado: no reservan horario en la grilla.
+        // Planificaciones vigentes (no finalizadas) sin periodo asignado: no reservan horario en la grilla.
         var withoutPeriodRows = await _context.Plannings.AsNoTracking()
             .Where(p => p.ManagementId == management.Id
                 && p.StartPeriodId == null
+                && p.Status != PlanningStatus.Finalized
                 && !PlanningStatus.NonOccupying.Contains(p.Status))
             .OrderBy(p => p.ScheduledDate)
             .Select(p => new
             {
                 p.Id,
+                p.Code,
                 p.ScheduledDate,
                 p.StartTime,
                 p.EndTime,
                 p.LaboratoryId,
                 p.GroupName,
                 p.PracticeName,
-                Laboratory = p.Laboratory != null ? p.Laboratory.Code + " · " + p.Laboratory.Name : "Sin ambiente",
+                Laboratory = p.Laboratory != null ? p.Laboratory.Code + " · " + p.Laboratory.Name : "Sin laboratorio",
                 Subject = p.Subject != null ? p.Subject.Name : "Sin materia"
             })
             .ToListAsync();
         WithoutPeriodCount = withoutPeriodRows.Count;
         WithoutPeriod = withoutPeriodRows.Take(6)
-            .Select(p => new WithoutPeriodNotice(p.Id, L3Codes.Format(p.Id), p.LaboratoryId, p.Laboratory, p.Subject,
+            .Select(p => new WithoutPeriodNotice(p.Id, L3Codes.Format(p.Id, p.Code), p.LaboratoryId, p.Laboratory, p.Subject,
                 p.GroupName ?? "—", p.ScheduledDate.Date, FormatTime(p.StartTime, p.EndTime)))
             .ToList();
 

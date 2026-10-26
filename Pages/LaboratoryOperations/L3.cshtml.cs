@@ -48,7 +48,7 @@ public class L3Model : PageModel
     public ReturnInput Return { get; set; } = new();
 
     public Planning? Plan { get; private set; }
-    public string Code => L3Codes.Format(Id);
+    public string Code => L3Codes.Format(Id, Plan?.Code);
     public DepartureView? CurrentDeparture { get; private set; }
     public List<DeliveryRow> DeliveryRows { get; private set; } = [];
     public List<ReturnRow> Items { get; private set; } = [];
@@ -63,7 +63,8 @@ public class L3Model : PageModel
     public bool CanFinalize => Plan?.Status == PlanningStatus.Approved;
     public bool IsFinalized => Plan?.Status == PlanningStatus.Finalized;
     public bool HasDeparture => CurrentDeparture != null;
-    public bool CanReturn => IsEditable && HasDeparture && Items.Any(i => i.Pending > 0);
+    /// <summary>Se devuelve solo lo pendiente sin cubrir por L-5: lo cubierto no debe volver ni reponer stock.</summary>
+    public bool CanReturn => IsEditable && HasDeparture && Items.Any(i => i.Uncovered > 0);
     public bool BlockFinalization => !HasDeparture || Items.Any(i => i.Uncovered > 0);
 
     public sealed record DeliveryRow(int DetailId, string ArticleCode, string ArticleName, bool ArticlePending, string? Unit,
@@ -166,6 +167,8 @@ public class L3Model : PageModel
                 TempData.Error("La solicitud no está en condiciones de finalizarse.");
                 return RedirectToPage(new { id = Id });
             }
+            // El mensaje de éxito muestra el código persistido (p. ej. "SOL3-0565" del Excel institucional).
+            Plan = plan;
 
             var departure = await _context.Departures.AsTracking().FirstOrDefaultAsync(d => d.PlanningId == Id);
             if (departure == null)
@@ -177,7 +180,7 @@ public class L3Model : PageModel
             var rows = await BuildReturnRowsAsync(departure.Id);
             if (rows.Any(r => r.Uncovered > 0))
             {
-                TempData.Error("Hay faltantes sin incidente L-5 registrado. Regístralos antes de finalizar.");
+                TempData.Error("Hay faltantes sin incidente de material registrado. Regístralos antes de finalizar.");
                 return RedirectToPage(new { id = Id });
             }
 
@@ -200,7 +203,7 @@ public class L3Model : PageModel
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "No se pudo finalizar la solicitud L-3 {PlanId}", Id);
-            TempData.Error("No se pudo finalizar L-3. Intente nuevamente.");
+            TempData.Error("No se pudo finalizar la práctica. Intente nuevamente.");
             return RedirectToPage(new { id = Id });
         }
 
@@ -277,8 +280,9 @@ public class L3Model : PageModel
                 departure.OriginLaboratory != null ? $"{departure.OriginLaboratory.Code} · {departure.OriginLaboratory.Name}" : "Sin origen",
                 departure.DepartureDate, departure.Status);
             Items = await BuildReturnRowsAsync(departure.Id);
-            Return.Lines = Items.Where(i => i.Pending > 0)
-                .Select(i => new ReturnInput.Line { DepartureItemId = i.DepartureItemId, Quantity = i.Pending }).ToList();
+            // El formulario precarga lo pendiente SIN cubrir por L-5: devolver lo cubierto repondría stock perdido.
+            Return.Lines = Items.Where(i => i.Uncovered > 0)
+                .Select(i => new ReturnInput.Line { DepartureItemId = i.DepartureItemId, Quantity = i.Uncovered }).ToList();
             Return.ResponsiblePersonId = Plan.TeacherPersonId;
             Return.ReturnDate = DateTime.Today;
             var people = await _context.Interns.AsNoTracking()
@@ -317,15 +321,40 @@ public class L3Model : PageModel
 
     private async Task<List<ReturnRow>> BuildReturnRowsAsync(int departureId)
     {
-        var items = await _context.DepartureItems.AsNoTracking()
-            .Where(i => i.DepartureId == departureId && i.ArticleId != null)
+        // Los ítems de unidad física llevan EquipmentUnitId y no ArticleId (CK_DepartureItems_ExactlyOneReference):
+        // se muestran con su inventario y se atribuyen al artículo vinculado a su equipo (mismo criterio que L-5).
+        var raw = await _context.DepartureItems.AsNoTracking()
+            .Where(i => i.DepartureId == departureId && (i.ArticleId != null || i.EquipmentUnitId != null))
             .Select(i => new
             {
-                i.Id, ArticleId = i.ArticleId!.Value, i.Article!.Code, i.Article.Name,
-                Unit = i.Article.MeasurementUnit != null ? i.Article.MeasurementUnit.Name : i.Article.UnitOfMeasure,
+                i.Id, i.ArticleId, ArticleCode = i.Article != null ? i.Article.Code : null,
+                ArticleName = i.Article != null ? i.Article.Name : null,
+                Unit = i.Article == null ? null : i.Article.MeasurementUnit != null ? i.Article.MeasurementUnit.Name : i.Article.UnitOfMeasure,
+                i.ProductName,
+                InventoryNumber = i.EquipmentUnit != null ? i.EquipmentUnit.InventoryNumber : null,
+                EquipmentId = i.EquipmentUnit != null ? (int?)i.EquipmentUnit.EquipmentId : null,
                 Delivered = i.Quantity ?? 0
             })
             .ToListAsync();
+        var equipmentIds = raw.Where(i => i.ArticleId == null && i.EquipmentId != null).Select(i => i.EquipmentId!.Value).Distinct().ToList();
+        var linkedArticles = (await _context.Articles.AsNoTracking()
+                .Where(a => a.EquipmentId != null && equipmentIds.Contains(a.EquipmentId.Value) && a.Status == GeneralStatus.Activo)
+                .OrderBy(a => a.Id)
+                .Select(a => new { a.Id, EquipmentId = a.EquipmentId!.Value, a.Code })
+                .ToListAsync())
+            .GroupBy(a => a.EquipmentId)
+            .ToDictionary(g => g.Key, g => g.First());
+        var items = raw.Select(i =>
+        {
+            if (i.ArticleId is int articleId)
+                return new { i.Id, ArticleId = articleId, Code = i.ArticleCode ?? "", Name = i.ArticleName ?? i.ProductName ?? "", i.Unit, i.Delivered };
+            var linked = i.EquipmentId is int equipmentId ? linkedArticles.GetValueOrDefault(equipmentId) : null;
+            return new
+            {
+                i.Id, ArticleId = linked?.Id ?? 0, Code = linked?.Code ?? "",
+                Name = $"{i.ProductName ?? "Equipo"} · Unidad {i.InventoryNumber}", Unit = (string?)"Unidad", i.Delivered
+            };
+        }).ToList();
         var itemIds = items.Select(i => i.Id).ToList();
         var returned = await _context.DepartureReturnItems.AsNoTracking()
             .Where(r => itemIds.Contains(r.DepartureItemId))

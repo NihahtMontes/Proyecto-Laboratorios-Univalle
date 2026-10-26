@@ -3,7 +3,8 @@
 @using Proyecto_Laboratorios_Univalle.Helpers
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Detalles de Unidad Física";
+    ViewData["Title"] = "Detalle de la unidad física";
+    ViewData["Section"] = "Equipos e inventario";
     var showMaintenancesTab = HttpContext.Request.Query.Keys.Any(k => k.StartsWith("Maintenance"));
     var hasMaintenanceFilters = Model.MaintenanceManagementId.HasValue
         || Model.MaintenanceManagementType.HasValue
@@ -85,7 +86,7 @@
                         <i class="fas fa-edit mr-1"></i> Editar Unidad
                     </a>
                     <a asp-page="/Equipment/Details" asp-route-id="@Model.EquipmentUnit.EquipmentId" class="btn btn-outline-secondary btn-block font-weight-bold btn-rounded py-2">
-                        <i class="fas fa-arrow-left mr-1"></i> Volver al Equipo
+                        <i class="fas fa-arrow-left mr-1"></i> Volver
                     </a>
                 </div>
             </div>

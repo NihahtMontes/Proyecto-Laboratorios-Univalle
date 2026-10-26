@@ -233,7 +233,7 @@ check(R, "Usuarios/Delete GET: 200", st == 200, f"status={st}")
 # Admin ante una cuenta SuperAdmin
 for p in (f"/Users/Edit/{id_sa2}", f"/Users/Delete/{id_sa2}"):
     st, loc = nr_get(adm, p)
-    check(R, f"Usuarios (como Administrador): GET {p} de un SuperAdmin -> acceso denegado (302 a /Error)", st == 302 and "/error" in (loc or "").lower(), f"status={st} location={loc}")
+    check(R, f"Usuarios (como Administrador): GET {p} de un SuperAdmin -> acceso denegado (302 a /AccesoDenegado)", st == 302 and "/accesodenegado" in (loc or "").lower(), f"status={st} location={loc}")
 
 # =====================================================================================
 # Edit
@@ -302,9 +302,9 @@ r = sub(adm, "adm se asigna SA", E_adm, {"Input.Role": "99"})
 check(R, "Usuarios/Edit (Administrador): asignarse el rol SuperAdmin -> 'Solo un superadministrador puede asignar este rol.'", r.has_error("Solo un superadministrador puede asignar este rol."), f"status={r.status} errores={r.errors[:2]}")
 check(R, "Usuarios/Edit (Administrador): su rol sigue siendo Administrador", urole(id_adm) == 1, f"rol={urole(id_adm)}")
 r = post(adm, "adm edita SA2", E_sa2, [("Input.FirstName", "Hack"), ("Input.LastName", "Hack"), ("Input.IdentityCard", ci_sa2), ("Input.Email", e_sa2), ("Input.Role", "1"), ("Input.PhoneNumber", "70012345")], "/Users/Create", follow=False)
-check(R, "Usuarios/Edit (Administrador): POST directo sobre un SuperAdmin -> acceso denegado y sin cambios", r.status == 302 and "/error" in (r.location or "").lower() and urole(id_sa2) == 99, f"status={r.status} location={r.location} rol SA2={urole(id_sa2)}")
+check(R, "Usuarios/Edit (Administrador): POST directo sobre un SuperAdmin -> acceso denegado y sin cambios", r.status == 302 and "/accesodenegado" in (r.location or "").lower() and urole(id_sa2) == 99, f"status={r.status} location={r.location} rol SA2={urole(id_sa2)}")
 r = post(adm, "adm elimina SA2", f"/Users/Delete/{id_sa2}", [("AppUser.Id", str(id_sa2))], "/Users/Create", follow=False)
-check(R, "Usuarios/Delete (Administrador): POST directo sobre un SuperAdmin -> acceso denegado y sin cambios", r.status == 302 and "/error" in (r.location or "").lower() and ustatus(id_sa2) == 0, f"status={r.status} location={r.location} Status SA2={ustatus(id_sa2)}")
+check(R, "Usuarios/Delete (Administrador): POST directo sobre un SuperAdmin -> acceso denegado y sin cambios", r.status == 302 and "/accesodenegado" in (r.location or "").lower() and ustatus(id_sa2) == 0, f"status={r.status} location={r.location} Status SA2={ustatus(id_sa2)}")
 # SA edita a otro SA (permitido porque qa_super sigue activo)
 r = sub(c, "qa_super degrada a SA2", E_sa2, {"Input.Role": "1"})
 check(R, "Usuarios/Edit (qa_super sobre SA2): degradar a otro SuperAdmin es válido mientras exista otro SuperAdmin activo (qa_super)", r.status == 302 and urole(id_sa2) == 1, f"status={r.status} rol SA2={urole(id_sa2)} errores={r.errors[:1]}")

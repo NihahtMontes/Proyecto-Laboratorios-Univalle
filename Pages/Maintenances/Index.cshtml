@@ -2,6 +2,9 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Maintenances.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
+    ViewData["Title"] = "Registros de mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
         || Model.SelectedLaboratoryId.HasValue
         || Model.StatusFilter.HasValue;
@@ -17,8 +20,8 @@
                                 <h6 class="card-subtitle text-muted ml-2">Control centralizado de servicios preventivos y correctivos.</h6>
                             </div>
                             <div class="ml-auto mt-3 mr-2">
-                                <a asp-page="./Plan" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold" title="Plan de mantenimiento (L-48)">
-                                    <i class="fas fa-clipboard-list mr-1 text-info"></i> Plan L-48
+                                <a asp-page="./Plan" class="btn bg-white border btn-rounded shadow-sm text-dark px-4 font-weight-bold" title="Cronograma de mantenimiento">
+                                    <i class="fas fa-clipboard-list mr-1 text-info"></i> Cronograma de mantenimiento
                                 </a>
                             </div>
                         </div>
@@ -62,9 +65,9 @@
                                     <select asp-for="SelectedLaboratoryId"
                                             class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.SelectedLaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
                                             asp-items="Model.LaboratoryList"
-                                            aria-label="Ambiente"
+                                            aria-label="Laboratorio"
                                             data-live-filter-control>
-                                        <option value="">Ambiente</option>
+                                        <option value="">Laboratorio</option>
                                     </select>
 
                                     @if (hasActiveFilters)
@@ -169,7 +172,7 @@
                                                         <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1" title="Detalles">
                                                             <i class="fas fa-search-plus"></i>
                                                         </a>
-                                                        <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@item.EquipmentUnitId" class="btn btn-sm btn-outline-primary btn-rounded mr-1" title="Kardex (Histórico)">
+                                                        <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@item.EquipmentUnitId" class="btn btn-sm btn-outline-primary btn-rounded mr-1" title="Historial del equipo">
                                                             <i class="fas fa-history"></i>
                                                         </a>
                                                         <a asp-page="./Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger btn-rounded" title="Eliminar">
@@ -229,7 +232,7 @@
 }
 
 @section Scripts {
-    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    @* SweetAlert2 ya la carga el layout (_Layout.cshtml). *@
     <script>
         $(function () {
              $('[data-toggle="tooltip"]').tooltip();

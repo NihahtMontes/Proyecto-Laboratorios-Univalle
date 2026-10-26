@@ -41,7 +41,7 @@ def run(R, c):
     st, html, ids = dash(c, 2, lab)
     check(R, "Dashboard paso 2 (L-7): enlaces 'Requests/Create?...managementPlanId=' para A y C (no B ni D)", st == 200 and pa in ids and pc in ids and pb not in ids and pd not in ids, f"status={st} ids={sorted(ids)}")
     r = P.l7(c, pa, {"Input.Description": "Motor no enciende (L-7 flujo QAP)", "Input.Priority": "2"}, name="flujo L-7 A", follow=True)
-    check(R, "L-7 A: 'Solicitud técnica L-7 registrada exitosamente.' -> paso 3", r.has_toast("Solicitud técnica L-7 registrada exitosamente.", "success") and "Step=3" in (r.location or ""), P.dump(r))
+    check(R, "L-7 A: 'Solicitud de servicio técnico registrada correctamente.' -> paso 3", r.has_toast("Solicitud de servicio técnico registrada correctamente.", "success") and "Step=3" in (r.location or ""), P.dump(r))
     fase(R, "L-7 A", pa, 3, 4, 0)
     r = P.l7(c, pc, {"Input.Description": "", "Input.TechnicalChecklistConfirmed": "false"}, draft=True, name="flujo L-7 C borrador", follow=True)
     fase(R, "L-7 C borrador", pc, 2, 3, None, True)

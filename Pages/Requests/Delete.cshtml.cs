@@ -64,7 +64,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 var isPlanTechnicalRequest = linkedPlan.RequestId == request.Id && linkedPlan.CurrentPhase <= Models.Enums.WizardPhase.Maintenance;
                 if (!isPlanTechnicalRequest)
                 {
-                    TempData.Error($"No se puede anular la solicitud #{request.Id}: forma parte del proceso del activo (fase {WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}). Use «Rehacer fase» en el asistente.");
+                    TempData.Error($"No se puede anular esta solicitud: forma parte del proceso del equipo (paso {WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}). Para corregirlo, abra el formulario del paso actual del equipo desde el asistente y use «Rehacer paso anterior».");
                     return RedirectToPage("./Index");
                 }
 

@@ -128,12 +128,12 @@ def run(R, c):
     tiles = {lbl.strip(): int(v) for v, lbl in
              re.findall(r'asset-metric-value font-weight-bold">(\d+)</div>\s*<div class="font-weight-bold mt-2">([^<]+)</div>', html or "")}
     ok_contadores = st == 200 and all(tiles.get(lbl) == por_fase.get(fase, 0)
-                                      for lbl, fase in (("L-7 Solicitud", PHASE_L7), ("L-8 Mantenimiento", PHASE_L8),
-                                                        ("L-3 Salida", PHASE_L3), ("Desembolso", PHASE_L12)))
+                                      for lbl, fase in (("Solicitud", PHASE_L7), ("Mantenimiento", PHASE_L8),
+                                                        ("Salida", PHASE_L3), ("Compra", PHASE_L12)))
     check(R, "CR-09 contadores L-7/L-8/L-3/Desembolso del dashboard de la correctiva coinciden con SQL (planes por fase, pipeline activo)",
           ok_contadores, f"html={tiles} sql={por_fase} status={st}")
-    check(R, "CR-09 CountL6 de una gestion correctiva es 0: el dashboard ni siquiera muestra la tarjeta 'L-6 Verificacion'",
-          st == 200 and "L-6 Verificaci\u00f3n" not in (html or ""), f"status={st} tiles={sorted(tiles)}")
+    check(R, "CR-09 CountL6 de una gestion correctiva es 0: el panel ni siquiera muestra la tarjeta 'Verificaci\u00f3n'",
+          st == 200 and "Verificaci\u00f3n" not in tiles, f"status={st} tiles={sorted(tiles)}")
 
     # ================================================================ CR-10 informes en correctivo (plan llevado a DONE)
     p10 = plan(ctxc["plan"])
@@ -163,7 +163,7 @@ def run(R, c):
           f"{P.dump(r)} plan={plan(pid11)}")
     st, loc = csup.probe(f"/Maintenances/Create?managementPlanId={pid11}&isWizard=true")
     check(R, "CR-11 Supervisor: /Maintenances/Create del plan -> acceso denegado (302 a /Error|/Login|AccessDenied o 403, sin formulario)",
-          st in (302, 303, 403) and (st == 403 or any(x in (loc or "") for x in ("/Error", "/Login", "AccessDenied"))),
+          st in (302, 303, 403) and (st == 403 or any(x in (loc or "") for x in ("/Error", "/Login", "AccessDenied", "/AccesoDenegado"))),
           f"status={st} loc={loc}")
     cci = P.client("qa_cierre", pw)
     st, loc = cci.probe("/Requests/Create")

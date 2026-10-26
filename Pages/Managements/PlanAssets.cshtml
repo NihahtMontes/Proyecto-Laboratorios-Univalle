@@ -4,6 +4,8 @@
 
 @{
     ViewData["Title"] = "Planificar activos";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     var showEquipmentSubclassification = Model.Category == EquipmentCategory.Equipment
         || (!Model.Category.HasValue && Model.TypeClassification.HasValue);
     var showUtensilSubclassification = Model.Category == EquipmentCategory.Utensil
@@ -14,6 +16,8 @@
         || Model.UtensilType.HasValue
         || !string.IsNullOrWhiteSpace(Model.SearchTerm);
 }
+
+<partial name="_PageHelp" model='"Managements.PlanAssets"' />
 
 @section Styles {
     <style>
@@ -62,11 +66,11 @@
                 <div class="d-md-flex align-items-start mb-4 pb-3 border-bottom">
                     <div>
                         <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Planificar activos</h3>
-                        <h6 class="card-subtitle text-muted ml-2">Seleccione unidades fisicas para la ronda preventiva @Model.Management.Code.</h6>
+                        <h6 class="card-subtitle text-muted ml-2">Seleccione las unidades físicas que entrarán al mantenimiento preventivo @Model.Management.Code.</h6>
                     </div>
                     <div class="ml-auto mt-3 mt-md-0">
                         <a asp-page="./Details" asp-route-id="@Model.Management.Id" asp-route-ActiveTab="dashboard" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold">
-                            <i class="fas fa-arrow-left mr-1"></i> Volver
+                            <i class="fas fa-arrow-left mr-1"></i> Volver al panel
                         </a>
                     </div>
                 </div>
@@ -158,9 +162,9 @@
                         <select asp-for="LaboratoryId"
                                 asp-items="Model.LaboratoryList"
                                 class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.LaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
-                                aria-label="Ambiente"
+                                aria-label="Laboratorio"
                                 data-live-filter-control>
-                            <option value="">Ambiente</option>
+                            <option value="">Laboratorio</option>
                         </select>
 
                         @if (hasActiveFilters)
@@ -188,10 +192,10 @@
                     <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-3">
                         <div class="text-muted small">
                             Mostrando <strong>@Model.FirstItemNumber</strong> - <strong>@Model.LastItemNumber</strong> de <strong>@Model.TotalMatching</strong> coincidencias.
-                            <span class="ml-md-2 d-block d-md-inline">Pagina <strong>@Model.CurrentPage</strong> de <strong>@Model.TotalPages</strong>.</span>
+                            <span class="ml-md-2 d-block d-md-inline">Página <strong>@Model.CurrentPage</strong> de <strong>@Model.TotalPages</strong>.</span>
                         </div>
                         <div class="text-muted small mt-2 mt-md-0">
-                            <i class="fas fa-info-circle mr-1"></i> La seleccion aplica solo a la pagina visible.
+                            <i class="fas fa-info-circle mr-1"></i> La selección aplica solo a la página visible.
                         </div>
                     </div>
 
@@ -204,8 +208,8 @@
                                     </th>
                                     <th class="border-top-0">Activo</th>
                                     <th class="border-top-0">Inventario</th>
-                                    <th class="border-top-0">Subclasificacion</th>
-                                    <th class="border-top-0">Ambiente</th>
+                                    <th class="border-top-0">Subclasificación</th>
+                                    <th class="border-top-0">Laboratorio</th>
                                     <th class="border-top-0 text-center">Estado</th>
                                 </tr>
                             </thead>
@@ -258,7 +262,7 @@
 
                     @if (Model.TotalPages > 1)
                     {
-                        <nav aria-label="Paginacion de activos para planificacion" class="mt-3">
+                        <nav aria-label="Paginación de activos para planificación" class="mt-3">
                             <ul class="pagination justify-content-center mb-0">
                                 <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
                                     <a class="page-link"
@@ -347,7 +351,7 @@
 
                     <div class="d-flex justify-content-end mt-3">
                         <button type="submit" class="btn btn-success btn-rounded px-4 font-weight-bold shadow-sm">
-                            <i class="fas fa-save mr-1"></i> Aplicar cambios de planificacion
+                            <i class="fas fa-save mr-1"></i> Aplicar cambios de planificación
                         </button>
                     </div>
                 </form>
@@ -393,16 +397,16 @@
                 event.preventDefault();
 
                 var message = removalsWithHistory > 0
-                    ? 'Se excluiran ' + removals + ' activo(s) de esta pagina. ' + removalsWithHistory + ' tienen historial; sus registros L-6/L-7/L-8/L-3/L-12 se cancelaran logicamente.'
-                    : 'Se excluiran ' + removals + ' activo(s) de esta pagina visible.';
+                    ? 'Se excluirán ' + removals + ' activo(s) de esta página. ' + removalsWithHistory + ' tienen historial; sus registros de verificación, solicitud, mantenimiento, salida y compra se cancelarán lógicamente.'
+                    : 'Se excluirán ' + removals + ' activo(s) de esta página visible.';
 
                 if (window.Swal && typeof Swal.fire === 'function') {
                     Swal.fire({
-                        title: 'Aplicar cambios de planificacion',
+                        title: 'Aplicar cambios de planificación',
                         text: message,
                         type: removalsWithHistory > 0 ? 'warning' : 'question',
                         showCancelButton: true,
-                        confirmButtonText: 'Si, aplicar cambios',
+                        confirmButtonText: 'Sí, aplicar cambios',
                         cancelButtonText: 'Cancelar',
                         confirmButtonColor: '#28a745',
                         cancelButtonColor: '#6c757d'

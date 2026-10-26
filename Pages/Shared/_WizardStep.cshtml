@@ -65,7 +65,7 @@
                                                     <th style="width: 10%;">Fecha</th>
                                                     <th style="width: 25%;">Descripción</th>
                                                     <th style="width: 15%;">Servicio Efectuado Por</th>
-                                                    <th style="width: 10%;">Próx. Mant.</th>
+                                                    <th style="width: 10%;">Próx. mantenimiento</th>
                                                     <th style="width: 10%;">Importe (Bs)</th>
                                                     <th style="width: 20%;">Observaciones</th>
                                                     <th style="width: 10%;">Acción</th>
@@ -80,16 +80,16 @@
                                                     <td class="text-center align-middle font-weight-bold text-success h6 m-0">@((item.Maintenance?.ActualCost ?? 0m).ToString("N2"))</td>
                                                     <td class="align-middle text-muted">@(item.Maintenance?.Recommendations ?? "Pendiente")</td>
                                                     <td class="text-center align-middle">
-                                                        <a href="/Kardex/Create?managementPlanId=@item.Id&isWizard=true&managementId=@ViewData["ManagementId"]"
-                                                           class="btn btn-login-glow btn-sm rounded-pill font-weight-bold w-100 text-white shadow-sm mb-2"
-                                                           style="background: linear-gradient(to right, #2563eb, #1e40af); border: none;">
-                                                            <i class="fas fa-check-double mr-1"></i> Completar Kardex
-                                                        </a>
-                                                        <a href="/EquipmentUnits/Kardex/@(item.EquipmentUnitId)?isWizard=true&managementId=@ViewData["ManagementId"]&selectedLabId=@(item.EquipmentUnit?.LaboratoryId)&returnStep=5"
-                                                           class="btn btn-sm btn-outline-info btn-rounded font-weight-bold px-2 w-100 shadow-sm"
-                                                           target="_blank" title="Ver historial completo de mantenimientos del equipo">
-                                                            <i class="fas fa-history mr-1"></i> Ver Kardex
-                                                        </a>
+                                        <a href="/Kardex/Create?managementPlanId=@item.Id&isWizard=true&managementId=@ViewData["ManagementId"]"
+                                           class="btn btn-login-glow btn-sm rounded-pill font-weight-bold w-100 text-white shadow-sm mb-2"
+                                           style="background: linear-gradient(to right, #2563eb, #1e40af); border: none;">
+                                            <i class="fas fa-check-double mr-1"></i> Cerrar mantenimiento
+                                        </a>
+                                        <a href="/EquipmentUnits/Kardex/@(item.EquipmentUnitId)?isWizard=true&managementId=@ViewData["ManagementId"]&selectedLabId=@(item.EquipmentUnit?.LaboratoryId)&returnStep=5"
+                                           class="btn btn-sm btn-outline-info btn-rounded font-weight-bold px-2 w-100 shadow-sm"
+                                           target="_blank" title="Ver historial completo de mantenimientos del equipo">
+                                            <i class="fas fa-history mr-1"></i> Ver historial
+                                        </a>
                                                     </td>
                                                 </tr>
                                             </tbody>
@@ -158,14 +158,14 @@
                            asp-route-isWizard="true"
                            asp-route-managementId="@ViewData["ManagementId"]"
                            asp-route-focusPlanId="@Model.FocusPlanId"
-                           class="btn btn-outline-success btn-sm rounded-pill font-weight-bold px-3 shadow-sm mr-2">
-                            Ver L-6
+                            class="btn btn-outline-success btn-sm rounded-pill font-weight-bold px-3 shadow-sm mr-2">
+                            Ver verificación
                         </a>
                         <button type="button"
                                 class="btn btn-outline-info btn-sm rounded-pill font-weight-bold px-3 shadow-sm"
                                 data-toggle="modal"
                                 data-target="#l6ObservationModal-@item.Id">
-                            Observacion
+                            Observación
                         </button>
                     }
                     else if (!string.IsNullOrEmpty(Model.ActionPage)) {
@@ -194,7 +194,7 @@
                         <div class="modal-content border-0 shadow">
                             <form method="post" asp-page="/Index" asp-page-handler="UpdateFocusedVerificationObservation" class="js-l6-observation-form">
                                 <div class="modal-header bg-info text-white">
-                                    <h5 class="modal-title font-weight-bold" id="l6ObservationModalLabel-@item.Id">Observacion L-6</h5>
+                                    <h5 class="modal-title font-weight-bold" id="l6ObservationModalLabel-@item.Id">Observación de verificación</h5>
                                     <button type="button" class="close text-white" data-dismiss="modal" aria-label="Cerrar">
                                         <span aria-hidden="true">&times;</span>
                                     </button>
@@ -204,7 +204,7 @@
                                     <input type="hidden" name="verificationId" value="@item.VerificationId" />
                                     <input type="hidden" name="ManagementId" value="@ViewData["ManagementId"]" />
                                     <input type="hidden" name="FocusPlanId" value="@Model.FocusPlanId" />
-                                    <label class="font-weight-bold text-dark" for="l6Observations-@item.Id">Comentario de verificacion</label>
+                                    <label class="font-weight-bold text-dark" for="l6Observations-@item.Id">Comentario de verificación</label>
                                     <textarea id="l6Observations-@item.Id" name="observations" class="form-control" rows="5" maxlength="1000">@(item.Verification?.Observations)</textarea>
                                 </div>
                                 <div class="modal-footer">

@@ -3,6 +3,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Maintenances.EditModel
 
 @{
+    ViewData["Title"] = "Editar registro de mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
     var categoryList = Html.GetEnumSelectList<CostCategory>();
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 3);
@@ -21,11 +23,11 @@
                 <div class="d-flex no-block align-items-center">
                     <div>
                         <h4 class="card-title text-white font-weight-bold mb-0">Actualizar Servicio Técnico #@Model.Input.Id</h4>
-                        <h6 class="card-subtitle text-white-50 mb-0">Gestión de parámetros técnicos, checklists L-48 y control de costos.</h6>
+                        <h6 class="card-subtitle text-white-50 mb-0">Datos técnicos, tareas de mantenimiento y control de costos.</h6>
                     </div>
                     <div class="ml-auto">
                         <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@Model.Input.EquipmentUnitId" class="btn btn-sm btn-outline-light btn-rounded">
-                            <i class="fas fa-history mr-1"></i> Ver Kardex del Equipo
+                            <i class="fas fa-history mr-1"></i> Ver historial del equipo
                         </a>
                     </div>
                 </div>
@@ -41,7 +43,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link font-weight-bold small uppercase" data-toggle="tab" href="#tab-tecnico" role="tab">
-                            <i class="fas fa-tools mr-2"></i> 2. Ejecución L-48
+                            <i class="fas fa-tools mr-2"></i> 2. Tareas de mantenimiento
                         </a>
                     </li>
                     <li class="nav-item">
@@ -151,7 +153,7 @@
                         <div class="row align-items-center">
                             <div class="col-md-7 border-right">
                                 <div class="d-flex align-items-center mb-4">
-                                    <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Tareas de Verificación Técnica L-48</h5>
+                                    <h5 class="text-dark font-weight-bold mb-0"><i class="fas fa-tasks mr-2 text-primary"></i>Tareas de mantenimiento</h5>
                                     <button type="button" class="btn btn-sm btn-outline-primary btn-rounded font-weight-bold ml-auto" onclick="addTask()">
                                         <i class="fas fa-plus mr-1"></i> Agregar Tarea
                                     </button>
@@ -166,7 +168,7 @@
                                                     <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_@i" name="Input.Tasks[@i].IsCompleted" value="true" onchange="calculatePercentage()" @(Model.Input.Tasks[i].IsCompleted ? "checked" : "") />
                                                     <label class="custom-control-label" for="taskChk_@i"></label>
                                                 </div>
-                                                <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required />
+                                                <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea" required />
                                                 <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </button>
@@ -179,7 +181,7 @@
                                 <div class="progress-circle mx-auto mb-4" style="width: 200px; height: 200px;">
                                     <h2 id="displayProgressText" class="display-4 font-weight-bold text-primary" style="line-height: 200px;">0%</h2>
                                 </div>
-                                <h6 class="text-muted text-uppercase font-weight-bold mb-0">Progreso de Tareas L-48</h6>
+                                <h6 class="text-muted text-uppercase font-weight-bold mb-0">Avance de las tareas</h6>
                             </div>
                         </div>
                         <div class="mt-4 d-flex justify-content-between">
@@ -364,7 +366,7 @@
 
 @section Scripts {
     <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
-    <script src="~/assets/libs/sweetalert2/dist/sweetalert2.all.min.js"></script>
+    @* SweetAlert2 ya la carga el layout (_Layout.cshtml). *@
     <script>
         $(function () {
             "use strict";
@@ -383,7 +385,7 @@
                 form.attr('action', '?handler=Draft');
                 if (typeof Swal === 'undefined') { form.submit(); return; }
                 Swal.fire({
-                    title: '¿Guardar borrador L-8?',
+                    title: '¿Guardar borrador del mantenimiento?',
                     text: 'Se guardará el progreso sin avanzar de fase. Podrá continuar después.',
                     icon: 'question',
                     showCancelButton: true,
@@ -424,7 +426,7 @@
                         <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_${index}" name="Input.Tasks[${index}].IsCompleted" value="true" onchange="calculatePercentage()" />
                         <label class="custom-control-label" for="taskChk_${index}"></label>
                     </div>
-                    <input type="text" name="Input.Tasks[${index}].Description" value="" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required />
+                    <input type="text" name="Input.Tasks[${index}].Description" value="" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea" required />
                     <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
                         <i class="fas fa-trash-alt"></i>
                     </button>
@@ -485,7 +487,7 @@
             const progress = $('#hiddenPercentageInput').val();
 
             if (status == "2" && progress < 100) {
-                Swal.fire('Atención', 'No se puede completar el mantenimiento si el progreso técnico (L-48) no es del 100%.', 'warning');
+                Swal.fire('Atención', 'No se puede completar el mantenimiento si el avance de las tareas no es del 100%.', 'warning');
                 return;
             }
 

@@ -4,7 +4,9 @@
 @using Proyecto_Laboratorios_Univalle.Helpers
 
 @{
-    ViewData["Title"] = "Editar Registro de Kardex";
+    ViewData["Title"] = "Editar cierre del mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 5);
     int? planId = (int?)ViewData["ManagementPlanId"];
@@ -21,7 +23,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Actualizar Kardex e Historial</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Actualizar el cierre y el historial</h4>
                         <h6 class="card-subtitle text-muted italic">Edición de un registro histórico del activo.</h6>
                     </div>
                     <div class="ml-auto mt-2 mt-md-0 text-right">
@@ -98,12 +100,12 @@
                         @if (isWizard && ViewData["LinkedDepartureId"] != null)
                         {
                             <div class="form-group mt-4 mb-0">
-                                <label class="control-label font-weight-bold small text-uppercase text-muted">Salida de Equipo Relacionada (L-3)</label>
+                                <label class="control-label font-weight-bold small text-uppercase text-muted">Salida relacionada</label>
                                 <div class="p-2 rounded mt-2" style="background:#fffbeb; border: 1px solid #fef08a;">
                                     <div class="d-flex align-items-center">
                                         <div class="mr-3" style="color: #d97706;"><i class="fas fa-sign-out-alt fa-lg"></i></div>
                                         <div>
-                                            <h6 class="m-0 font-weight-bold" style="color: #b45309;">Salida L-3 Vinculada</h6>
+                                            <h6 class="m-0 font-weight-bold" style="color: #b45309;">Salida vinculada</h6>
                                             <span class="small" style="color: #d97706;">ID: @ViewData["LinkedDepartureId"]</span>
                                         </div>
                                         <a href="/Departures/Details?id=@ViewData["LinkedDepartureId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #d97706; border: 1px solid #fef08a;">
@@ -116,13 +118,13 @@
                                         @if (diff == 1)
                                         {
                                             <a href="/Departures/Edit?id=@ViewData["LinkedDepartureId"]" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold shadow-sm ml-2">
-                                                <i class="fas fa-edit"></i> Editar L-3
+                                                <i class="fas fa-edit"></i> Editar salida
                                             </a>
                                         }
                                         else
                                         {
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, @prevPhaseEnumInt, 'L-3 Salida', @currentPhaseInt)">
-                                                <i class="fas fa-undo"></i> Rehacer L-3
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, @prevPhaseEnumInt, 'Salida de equipos', @currentPhaseInt)">
+                                                <i class="fas fa-undo"></i> Rehacer salida
                                             </button>
                                         }
                                     </div>
@@ -132,12 +134,12 @@
                         else if (isWizard && ViewData["LinkedMaintenanceId"] != null)
                         {
                             <div class="form-group mt-4 mb-0">
-                                <label class="control-label font-weight-bold small text-uppercase text-muted">Mantenimiento Relacionado (L-8)</label>
+                                <label class="control-label font-weight-bold small text-uppercase text-muted">Mantenimiento relacionado</label>
                                 <div class="p-2 rounded mt-2" style="background:#f5f3ff; border: 1px solid #ddd6fe;">
                                     <div class="d-flex align-items-center">
                                         <div class="mr-3" style="color: #7c3aed;"><i class="fas fa-wrench fa-lg"></i></div>
                                         <div>
-                                            <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Mantenimiento L-8 Vinculado</h6>
+                                            <h6 class="m-0 font-weight-bold" style="color: #5b21b6;">Mantenimiento vinculado</h6>
                                             <span class="small" style="color: #7c3aed;">ID: @ViewData["LinkedMaintenanceId"]</span>
                                         </div>
                                         <a href="/Maintenances/Details/@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #7c3aed; border: 1px solid #ddd6fe;">
@@ -151,13 +153,13 @@
                                         {
                                             // Wait, diff from 5 to 3 is 2! So it will show Rehacer. Which is correct!
                                             <a href="/Maintenances/Edit?id=@ViewData["LinkedMaintenanceId"]" class="btn btn-sm btn-outline-warning btn-rounded font-weight-bold shadow-sm ml-2">
-                                                <i class="fas fa-edit"></i> Editar L-8
+                                                <i class="fas fa-edit"></i> Editar mantenimiento
                                             </a>
                                         }
                                         else
                                         {
-                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, @prevPhaseEnumInt, 'L-8 Mantenimiento', @currentPhaseInt)">
-                                                <i class="fas fa-undo"></i> Rehacer L-8
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, @prevPhaseEnumInt, 'Registro de mantenimiento', @currentPhaseInt)">
+                                                <i class="fas fa-undo"></i> Rehacer mantenimiento
                                             </button>
                                         }
                                     </div>
@@ -169,7 +171,7 @@
                     <!-- FILA 2: DATOS DE HISTORIAL -->
                     <div class="row">
                         <div class="col-lg-7">
-                            <h5 class="text-success font-weight-bold mb-3 uppercase small"><i class="fas fa-check-circle mr-2"></i>Estado Final (Kardex)</h5>
+                            <h5 class="text-success font-weight-bold mb-3 uppercase small"><i class="fas fa-check-circle mr-2"></i>Estado final</h5>
                             <div class="card border mb-4 shadow-sm">
                                 <div class="card-body">
                                     <div class="row">
@@ -217,7 +219,7 @@
                                 <div class="card-body p-4">
                                     <div class="d-flex align-items-center mb-3">
                                         <div>
-                                            <h5 class="text-dark font-weight-bold mb-1 uppercase small"><i class="fas fa-tasks mr-2 text-info"></i>Tareas Técnicas L-48</h5>
+                                            <h5 class="text-dark font-weight-bold mb-1 uppercase small"><i class="fas fa-tasks mr-2 text-info"></i>Tareas de mantenimiento</h5>
                                             <p class="text-muted small mb-0">Añade, modifica o elimina lógicamente las tareas asociadas al mantenimiento.</p>
                                         </div>
                                         <button type="button" class="btn btn-sm btn-outline-info btn-rounded font-weight-bold ml-auto" onclick="addTask()">
@@ -234,7 +236,7 @@
                                                     <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_@i" name="Input.Tasks[@i].IsCompleted" value="true" onchange="calculatePercentage()" @(Model.Input.Tasks[i].IsCompleted ? "checked" : "") />
                                                     <label class="custom-control-label" for="taskChk_@i"></label>
                                                 </div>
-                                                <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required />
+                                                <input type="text" name="Input.Tasks[@i].Description" value="@Model.Input.Tasks[i].Description" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea" required />
                                                 <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </button>
@@ -248,7 +250,7 @@
                         <div class="col-lg-4">
                             <div class="card bg-info text-white border-0 shadow-sm mb-4">
                                 <div class="card-body p-4">
-                                    <h6 class="text-white-50 font-weight-bold uppercase small mb-2">Avance L-48</h6>
+                                    <h6 class="text-white-50 font-weight-bold uppercase small mb-2">Avance de las tareas</h6>
                                     <div class="d-flex align-items-end mb-3">
                                         <span id="displayProgressText" class="display-4 font-weight-bold line-height-1">0%</span>
                                         <span class="ml-2 mb-2 small text-white-50">completado</span>
@@ -267,7 +269,7 @@
                         @if (isWizard)
                         {
                             <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="@Model.ReturnStep" asp-route-SelectedLabId="@Model.SelectedLabId" asp-route-ManagementId="@Model.ManagementId" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
-                                <i class="fas fa-magic mr-1"></i> Volver al Wizard
+                                <i class="fas fa-magic mr-1"></i> Volver al asistente
                             </a>
                         }
                         else
@@ -277,7 +279,7 @@
                             </a>
                         }
                         <button type="submit" class="btn btn-info btn-rounded px-5 shadow-sm font-weight-bold text-white py-2">
-                            <i class="fas fa-sync-alt mr-1"></i> Actualizar Kardex
+                            <i class="fas fa-sync-alt mr-1"></i> Guardar cambios
                         </button>
                     </div>
                 </form>
@@ -293,7 +295,7 @@
             <input type="checkbox" class="custom-control-input maintenance-check" id="taskChk_INDEX" name="Input.Tasks[INDEX].IsCompleted" value="true" onchange="calculatePercentage()" disabled />
             <label class="custom-control-label" for="taskChk_INDEX"></label>
         </div>
-        <input type="text" name="Input.Tasks[INDEX].Description" value="" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea L-48" required disabled />
+        <input type="text" name="Input.Tasks[INDEX].Description" value="" class="form-control form-control-sm font-weight-bold task-desc" placeholder="Descripción de la tarea" required disabled />
         <button type="button" class="btn btn-sm btn-link text-danger ml-2 p-0" onclick="removeTask(this)" title="Quitar tarea">
             <i class="fas fa-trash-alt"></i>
         </button>

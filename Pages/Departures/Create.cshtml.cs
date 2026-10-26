@@ -287,7 +287,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 // Técnico SIEMPRE viene de L-8 en wizard
                 if (wizardPlan.Maintenance?.TechnicianId == null)
                 {
-                    TempData.Error("Debe asignar un técnico en L-8 antes de registrar la salida.");
+                    TempData.Error("Debe asignar un técnico en el registro de mantenimiento antes de registrar la salida.");
                     await LoadLists();
                     return Page();
                 }
@@ -322,7 +322,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             }
             else if (isWizard)
             {
-                TempData.Error($"No se pudo resolver el plan del wizard L-3. ManagementPlanId recibido: {ManagementPlanId?.ToString() ?? "sin valor"}.");
+                TempData.Error("No se encontró el equipo en la gestión. Vuelva al asistente y ábralo de nuevo.");
                 await LoadLists();
                 return Page();
             }
@@ -543,7 +543,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 {
                     if (saveDraft)
                     {
-                        TempData.Success("Borrador L-3 guardado correctamente.");
+                        TempData.Success("Borrador de la salida de equipos guardado correctamente.");
                         return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = Input.LaboratoryId, ManagementId = wizardPlan.ManagementId });
                     }
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = 5, SelectedLabId = Input.LaboratoryId, ManagementId = wizardPlan.ManagementId });
@@ -559,7 +559,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     "Error al guardar L-3 para unidad {EquipmentUnitId} y plan {ManagementPlanId}.",
                     Input.EquipmentUnitId,
                     ManagementPlanId);
-                TempData.Error("No se pudo guardar el registro L-3. Intente nuevamente.");
+                TempData.Error("No se pudo guardar la salida de equipos. Intente nuevamente.");
                 await LoadLists();
                 return Page();
             }
@@ -570,7 +570,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.Exit;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-3 guardado con salida parcial.";
+            plan.DraftSummary = "Borrador de la salida de equipos guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.Exit;
             plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

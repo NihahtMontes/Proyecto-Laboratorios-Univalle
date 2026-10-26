@@ -3,6 +3,9 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
+    ViewData["Title"] = "Detalle de la verificación";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     bool isWizard = Model.IsWizard;
 }
 
@@ -14,7 +17,7 @@
                 <div class="card-body p-4">
                     <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                         <div>
-                            <h4 class="card-title text-dark font-weight-bold">Sesión de Verificación L-6</h4>
+                            <h4 class="card-title text-dark font-weight-bold">Sesión de verificación de equipos</h4>
                             <h6 class="card-subtitle text-muted">
                                 @Model.SessionLabName — @Model.SessionDate.ToString("dd/MM/yyyy") ·
                                 @Model.SessionEquipments.Count equipo(s)
@@ -26,7 +29,7 @@
                             {
                                 <a href="/api/reports/download/l6?managementId=@Model.SessionManagementId&labId=@Model.LabId&date=@Model.SessionDate.ToString("yyyy-MM-dd")"
                                    class="btn btn-success btn-rounded shadow-sm font-weight-bold px-4">
-                                    <i class="fas fa-file-excel mr-2"></i> Descargar Verificación L-6
+                                    <i class="fas fa-file-excel mr-2"></i> Descargar verificación (Excel)
                                 </a>
                             }
                         </div>
@@ -88,7 +91,7 @@
 
                     <div class="form-actions text-right mt-4">
                         <a asp-page="./Index" asp-route-filterLaboratoryId="@Model.LabId" class="btn btn-outline-secondary btn-rounded px-4 font-weight-bold shadow-sm">
-                            <i class="fas fa-arrow-left mr-1"></i> Volver al Historial
+                            <i class="fas fa-arrow-left mr-1"></i> Volver al listado
                         </a>
                     </div>
                 </div>
@@ -110,7 +113,7 @@ else if (Model.Verification != null)
                 <div class="card-body p-4">
                     <div class="d-flex no-block align-items-center mb-4">
                         <div>
-                            <h4 class="card-title text-dark font-weight-bold">Paso 1: Verificación L-6</h4>
+                            <h4 class="card-title text-dark font-weight-bold">Paso 1: Verificación de equipos</h4>
                             <h6 class="card-subtitle text-muted small">Detalle de la inspección técnica inicial. (ID: #@Model.Verification.Id)</h6>
                         </div>
                         <div class="ml-auto d-print-none">
@@ -244,13 +247,13 @@ else if (Model.Verification != null)
                 {
                     <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="@(Model.FocusPlanId.HasValue ? 1 : 2)" asp-route-ManagementId="@ViewData["ManagementId"]" asp-route-focusPlanId="@Model.FocusPlanId"
                        class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
-                        <i class="fas fa-arrow-left mr-2"></i> Volver al Wizard
+                        <i class="fas fa-arrow-left mr-2"></i> Volver al asistente
                     </a>
                 }
                 else
                 {
                     <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded font-weight-bold py-2 mb-4">
-                        <i class="fas fa-arrow-left mr-2"></i> Volver al Listado
+                        <i class="fas fa-arrow-left mr-2"></i> Volver al listado
                     </a>
                 }
             </div>

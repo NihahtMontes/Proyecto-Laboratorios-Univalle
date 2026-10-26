@@ -52,7 +52,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Acquisitions
             var linkedPlan = await _context.ManagementPlans.AsNoTracking().FirstOrDefaultAsync(p => p.AcquisitionRequestId == request.Id);
             if (linkedPlan != null)
             {
-                TempData.Warning($"No se puede anular la solicitud de adquisición #{request.Id}: forma parte del proceso del activo (fase {Helpers.WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}). Use «Rehacer fase» en el asistente.");
+                TempData.Warning($"No se puede anular esta solicitud de compra: forma parte del proceso del equipo (paso {Helpers.WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}). Para corregirlo, abra el formulario del paso actual del equipo desde el asistente y use «Rehacer paso anterior».");
                 return RedirectToPage("./Index");
             }
             {

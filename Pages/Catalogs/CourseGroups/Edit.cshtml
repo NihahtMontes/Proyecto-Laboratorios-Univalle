@@ -1,5 +1,9 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.CourseGroups.EditModel
+@{
+    ViewData["Title"] = "Editar grupo";
+    ViewData["Section"] = "Planificación académica";
+}
 
 <div class="row">
     <!-- Main Column: CourseGroup Management -->
@@ -197,7 +201,7 @@
 }
 
 @section Scripts {
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script>
         $(function () {
             "use strict";

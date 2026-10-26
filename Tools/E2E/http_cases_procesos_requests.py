@@ -66,15 +66,15 @@ def run(R, c):
     r = P.l7(c, ctx["a"]["plan"], {"Input.EstimatedRepairTime": "t" * 101, "Input.Observations": checklist(13)}, name="tiempo estimado 101", follow=True)
     check(R, "Create: tiempo estimado de 101 caracteres -> mensaje de longitud especifico", r.status == 200 and r.has_toast("100", "error"), P.dump(r))
     r = P.l7(c, 99999, name="plan inexistente", follow=True)
-    check(R, "Create: plan inexistente -> 'No se pudo resolver el plan del wizard para L-7. ManagementPlanId recibido: 99999.'", r.status == 200 and r.has_toast("ManagementPlanId recibido: 99999", "error"), P.dump(r))
+    check(R, "Create: plan inexistente -> 'No se encontró el equipo en la gestión.'", r.status == 200 and r.has_toast("No se encontró el equipo en la gestión", "error"), P.dump(r))
     check(R, "Create: ninguna validacion fallida modifico el plan", plan(ctx["a"]["plan"])["phase"] == 2 and plan(ctx["a"]["plan"])["state"] == 3 and plan(ctx["a"]["plan"])["req"] == pend["a"])
 
     # borrador (sin checklist ni descripcion)
     r = P.l7(c, ctx["b"]["plan"], {"Input.Description": "", "Input.TechnicalChecklistConfirmed": "false"}, draft=True, name="borrador", follow=True)
-    check(R, "Create borrador: 'Borrador L-7 guardado correctamente.' sin exigir checklist ni descripcion", r.has_toast("Borrador L-7 guardado correctamente.", "success") and r.status == 302 and "Step=2" in (r.location or ""), P.dump(r))
+    check(R, "Create borrador: 'Borrador de la solicitud de servicio técnico guardado correctamente.' sin exigir checklist ni descripcion", r.has_toast("Borrador de la solicitud de servicio técnico guardado correctamente.", "success") and r.status == 302 and "Step=2" in (r.location or ""), P.dump(r))
     pb = plan(ctx["b"]["plan"])
     check(R, "Create borrador: plan sigue en L-7 (2/3) con IsDraft y DraftPhase=2", pb["phase"] == 2 and pb["state"] == 3 and pb["draft"] == 1 and pb["draftphase"] == 2, f"{pb}")
-    check(R, "Create borrador: reutiliza la misma solicitud (no duplica) con descripcion marcador", pb["req"] == pend["b"] and n_req(ctx["b"]["unit"]) == 1 and rq(pb["req"])["desc"] == "Borrador L-7 pendiente de descripción técnica.", f"{rq(pb['req'])}")
+    check(R, "Create borrador: reutiliza la misma solicitud (no duplica) con descripcion marcador", pb["req"] == pend["b"] and n_req(ctx["b"]["unit"]) == 1 and rq(pb["req"])["desc"] == "Borrador de la solicitud pendiente de descripción técnica.", f"{rq(pb['req'])}")
 
     ob = rq(pb["req"])["obs"] or ""
     lineas_ob = [ln for ln in ob.split("\n") if ln.strip()[:1].isdigit()]
@@ -86,7 +86,7 @@ def run(R, c):
 
     # registro valido
     r = P.l7(c, ctx["a"]["plan"], {"Input.Description": "Motor no arranca QAP", "Input.EstimatedRepairTime": "3 dias", "Input.Priority": "2", "Input.Observations": checklist(13)}, name="valido", follow=True)
-    check(R, "Create: 'Solicitud técnica L-7 registrada exitosamente.' y redirige al paso 3 del wizard", r.status == 302 and "Step=3" in (r.location or "") and r.has_toast("Solicitud técnica L-7 registrada exitosamente.", "success"), P.dump(r))
+    check(R, "Create: 'Solicitud de servicio técnico registrada correctamente.' y redirige al paso 3 del wizard", r.status == 302 and "Step=3" in (r.location or "") and r.has_toast("Solicitud de servicio técnico registrada correctamente.", "success"), P.dump(r))
     pa = plan(ctx["a"]["plan"])
     check(R, "Create: plan a Maintenance/AwaitingMaintenance (3/4) sin borrador", pa["phase"] == 3 and pa["state"] == 4 and pa["draft"] == 0, f"{pa}")
     ra = rq(pa["req"])
@@ -139,7 +139,7 @@ def run(R, c):
     check(R, "NewRequest (Supervisor): redirige al asistente correctivo de CORR-2027-2 (ShowWizard, Step=2)",
           st == 302 and "showwizard=true" in (loc or "").lower() and f"managementid={corr_id}" in (loc or "").lower() and "step=2" in (loc or "").lower(), f"status={st} loc={loc}")
     _, html = cs.get("/Requests/Index?handler=NewRequest")
-    check(R, "NewRequest: aviso 'Iniciar mantenimiento correctivo: registre la falla en el L-7 del asistente.'", "Iniciar mantenimiento correctivo: registre la falla en el L-7 del asistente." in (html or ""), "")
+    check(R, "NewRequest: aviso 'Mantenimiento correctivo: registre la falla en la solicitud de servicio técnico del asistente.'", "Mantenimiento correctivo: registre la falla en la solicitud de servicio t" in (html or ""), "")  # el aviso va serializado en JSON (acentos como \uXXXX)
 
     def campos_libre(mg, u):
         return [("Input.FacultyId", str(P.FAC)), ("Input.LaboratoryId", str(lab)), ("Input.EquipmentUnitId", str(u)),
@@ -149,7 +149,7 @@ def run(R, c):
     n_antes = scalar("select count(*) from Requests")
     r = P.post_raw(c, f"/Requests/Create?ManagementId={P.MGMT}", campos_libre(P.MGMT, ctx["a"]["unit"]), f"/Requests/Create?ManagementId={corr_id}", follow=True, name="preventiva sin plan")
     check(R, "Create: POST con ManagementId=30 (preventiva) sin plan -> 'la L-7 nace de un L-6 con falla' y va al asistente",
-          r.has_toast("En el mantenimiento preventivo la L-7 nace de un L-6 con falla", "warning") and "showwizard=true" in (r.location or "").lower(), P.dump(r))
+          r.has_toast("En el mantenimiento preventivo la solicitud nace de una verificación con falla", "warning") and "showwizard=true" in (r.location or "").lower(), P.dump(r))
     check(R, "Create: la L-7 preventiva suelta no creo ninguna solicitud", scalar("select count(*) from Requests") == n_antes)
     mgmt_inactiva = scalar("select top 1 Id from Managements where Status=1 and Type<>9 order by Id")
     if not mgmt_inactiva:
@@ -162,7 +162,7 @@ def run(R, c):
     n_antes = scalar("select count(*) from Requests")
     r = P.post_raw(c, f"/Requests/Create?ManagementId={mgmt_inactiva}", campos_libre(mgmt_inactiva, ctx["a"]["unit"]), f"/Requests/Create?ManagementId={corr_id}", follow=True, name="gestion inactiva")
     check(R, "Create: POST con ManagementId de una gestion Inactiva -> 'no esta activa' y vuelve a /Requests sin crear nada",
-          r.has_toast("La gestión seleccionada no está activa: no admite nuevas solicitudes L-7.", "warning") and (r.location or "").lower().split("?")[0].rstrip("/") == "/requests" and scalar("select count(*) from Requests") == n_antes, P.dump(r) + f" mgmt={mgmt_inactiva}")
+          r.has_toast("La gestión seleccionada no está activa: no admite nuevas solicitudes de servicio técnico.", "warning") and (r.location or "").lower().split("?")[0].rstrip("/") == "/requests" and scalar("select count(*) from Requests") == n_antes, P.dump(r) + f" mgmt={mgmt_inactiva}")
 
     # ---- D-7 (T0-09): un proceso correctivo abierto por unidad y gestion
     ud7, invd7 = P.nueva_unidad(c, lab, "rd7")
@@ -170,7 +170,7 @@ def run(R, c):
            "Input.Observations": checklist(13), "Input.TechnicalChecklistConfirmed": "true", "Input.Priority": "1"}
     r = post_form(c, f"/Requests/Create?isWizard=true&ManagementId={corr_id}", fd7, name="correctiva primera (D-7)", follow=True)
     check(R, "Create correctivo: la L-7 de la correctiva activa se registra y salta al paso 3 del asistente",
-          r.status == 302 and "Step=3" in (r.location or "") and r.has_toast("Solicitud técnica L-7 registrada exitosamente.", "success"), P.dump(r))
+          r.status == 302 and "Step=3" in (r.location or "") and r.has_toast("Solicitud de servicio técnico registrada correctamente.", "success"), P.dump(r))
     pd7 = scalar("select top 1 Id from ManagementPlans where ManagementId=? and EquipmentUnitId=? order by Id desc", corr_id, ud7)
     fase(R, "Create correctivo (D-7): sin plan previo se crea el ManagementPlan en fase Mantenimiento (3/4, En Progreso)", pd7, 3, 4, 1)
     n_reqs, n_plans = scalar("select count(*) from Requests"), scalar("select count(*) from ManagementPlans")
@@ -187,7 +187,7 @@ def run(R, c):
            "Input.Observations": checklist(13), "Input.TechnicalChecklistConfirmed": "true", "Input.Priority": "1"}
     r = post_form(c, f"/Requests/Create?ManagementId={corr_id}", nwf, name="no wizard sin plan (correctiva)", follow=True)
     check(R, "Create no-wizard sin plan: registra la L-7 y vuelve al listado",
-          r.status == 302 and r.has_toast("Solicitud técnica L-7 registrada exitosamente.", "success") and n_req(unw[0]) == 1, P.dump(r))
+          r.status == 302 and r.has_toast("Solicitud de servicio técnico registrada correctamente.", "success") and n_req(unw[0]) == 1, P.dump(r))
     rid_nw = scalar("select top 1 Id from Requests where EquipmentUnitId=? and Type=1 order by Id desc", unw[0])
     pid_nw = scalar("select top 1 Id from ManagementPlans where ManagementId=? and EquipmentUnitId=? order by Id desc", corr_id, unw[0])
     pnw = plan(pid_nw)
@@ -234,7 +234,7 @@ def run(R, c):
         st, html = c.get(pth)
         check(R, f"Index {pth}: 200 sin pagina de error", st == 200, f"status={st}")
     st, html = c.get("/Requests?SearchTerm=ZZZ_NO_EXISTE_QAP")
-    check(R, "Index: sin resultados -> 'No se encontraron requerimientos técnicos (L-7) registrados.'", "No se encontraron requerimientos técnicos (L-7) registrados." in html)
+    check(R, "Index: sin resultados -> 'No se encontraron solicitudes de servicio técnico.'", "No se encontraron solicitudes de servicio técnico." in html)
 
     # ================================================================ Edit
     ep = lambda i: f"/Requests/Edit/{i}"

@@ -116,7 +116,7 @@ public class WizardPhaseGuardEarlyPhasesTests
         Assert.Equal(WizardPhase.Maintenance, plan.CurrentPhase);
         Assert.Equal(WizardEquipmentState.AwaitingMaintenance, plan.CurrentState);
         Assert.Null(plan.RequestId);
-        Assert.Contains("L-7 Solicitud técnica", Assert.IsType<string>(page.TempData["WarningMessage"]));
+        Assert.Contains("Solicitud de servicio técnico", Assert.IsType<string>(page.TempData["WarningMessage"]));
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class WizardPhaseGuardEarlyPhasesTests
         Assert.Equal("/Index", redirect.PageName);
         Assert.Equal((int)WizardPhase.Maintenance, (int)redirect.RouteValues["Step"]!);
         Assert.Equal(TestDb.ManagementId, (int)redirect.RouteValues["ManagementId"]!);
-        Assert.Contains("L-7 Solicitud técnica", Assert.IsType<string>(page.TempData["WarningMessage"]));
+        Assert.Contains("Solicitud de servicio técnico", Assert.IsType<string>(page.TempData["WarningMessage"]));
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class WizardPhaseGuardEarlyPhasesTests
         var plan = GetPlan(db);
         Assert.Equal(WizardPhase.Maintenance, plan.CurrentPhase);
         Assert.Equal(WizardEquipmentState.AwaitingMaintenance, plan.CurrentState);
-        Assert.Contains("L-6 Verificación", Assert.IsType<string>(page.TempData["WarningMessage"]));
+        Assert.Contains("Verificación de equipos", Assert.IsType<string>(page.TempData["WarningMessage"]));
     }
 
     [Fact]
@@ -213,7 +213,7 @@ public class WizardPhaseGuardEarlyPhasesTests
 
         Assert.Equal("/Index", redirect.PageName);
         Assert.Equal((int)WizardPhase.Exit, (int)redirect.RouteValues["Step"]!);
-        Assert.Contains("L-6 Verificación", Assert.IsType<string>(page.TempData["WarningMessage"]));
+        Assert.Contains("Verificación de equipos", Assert.IsType<string>(page.TempData["WarningMessage"]));
     }
 
     // ═══════════════ L-3 Departures/Create ═══════════════
@@ -243,7 +243,7 @@ public class WizardPhaseGuardEarlyPhasesTests
         var plan = GetPlan(db);
         Assert.Equal(WizardPhase.Maintenance, plan.CurrentPhase);
         Assert.Equal(WizardEquipmentState.AwaitingMaintenance, plan.CurrentState);
-        Assert.Contains("L-3 Salida", Assert.IsType<string>(page.TempData["WarningMessage"]));
+        Assert.Contains("Salida de equipos", Assert.IsType<string>(page.TempData["WarningMessage"]));
     }
 
     [Fact]
@@ -262,7 +262,7 @@ public class WizardPhaseGuardEarlyPhasesTests
         Assert.Equal("/Index", redirect.PageName);
         Assert.Equal((int)WizardPhase.Maintenance, (int)redirect.RouteValues["Step"]!);
         Assert.Equal(TestDb.ManagementId, (int)redirect.RouteValues["ManagementId"]!);
-        Assert.Contains("L-3 Salida", Assert.IsType<string>(page.TempData["WarningMessage"]));
+        Assert.Contains("Salida de equipos", Assert.IsType<string>(page.TempData["WarningMessage"]));
     }
 
     // ═══════════════ L-6 Verifications/Edit (ventana temprana) ═══════════════
@@ -328,8 +328,8 @@ public class WizardPhaseGuardEarlyPhasesTests
         Assert.Equal(WizardEquipmentState.AwaitingDeparture, plan.CurrentState);
         Assert.Null(plan.LastModifiedDate); // el plan no fue tocado
         var warning = Assert.IsType<string>(page.TempData["WarningMessage"]);
-        Assert.Contains("el plan no se modificó", warning);
-        Assert.Contains("L-3 Salida", warning);
+        Assert.Contains("su paso en el asistente no se modificó", warning);
+        Assert.Contains("Salida de equipos", warning);
     }
 
     [Fact]
@@ -350,7 +350,7 @@ public class WizardPhaseGuardEarlyPhasesTests
         Assert.Equal(WizardPhase.Maintenance, plan.CurrentPhase);
         Assert.Equal(WizardEquipmentState.AwaitingMaintenance, plan.CurrentState);
         Assert.Equal(RequestId, plan.RequestId);
-        Assert.Contains("el plan no se modificó", Assert.IsType<string>(page.TempData["WarningMessage"]));
+        Assert.Contains("su paso en el asistente no se modificó", Assert.IsType<string>(page.TempData["WarningMessage"]));
     }
 
     [Fact]

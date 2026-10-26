@@ -3,7 +3,8 @@
 @using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
 @using Proyecto_Laboratorios_Univalle.Services
 @{
-    ViewData["Title"] = "Disponibilidad — Paso 3";
+    ViewData["Title"] = "Disponibilidad";
+    ViewData["Section"] = "Planificación académica";
     var canApprove = !Model.IsApproved && !(Model.Context?.IsReadOnly ?? false);
     var hasWarnings = Model.HasShortage || Model.HasUnregistered;
     var selectedOriginId = Model.OriginLabId ?? 0;
@@ -430,7 +431,7 @@
                                                         {
                                                             var tipo = ConflictTypes.Of(t.Kind);
                                                             var relText = t.RelatedPlanningIds.Count > 0
-                                                                ? $"\nRelacionadas: {string.Join(", ", t.RelatedPlanningIds.Select(L3Codes.Format))}" : string.Empty;
+                                                                ? $"\nRelacionadas: {string.Join(", ", t.RelatedDisplayCodes)}" : string.Empty;
                                                             var titulo = $"{t.Tag} · {tipo.Label} · {t.ArticleName} · {t.Date.ToString("dd/MM")}{relText}\nClic para resolver en Conflictos";
                                                             <span class="gr-ctag gr-ctag--@tipo.Css @(t.Involved ? "is-involved" : "is-loose") js-cf-open" tabindex="0" role="link"
                                                                   data-conflict-key="@t.Key" data-cf-color="var(--cf-@tipo.Css)" data-href="@t.Url"
@@ -686,7 +687,7 @@
 }
 
 @section Scripts {
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script src="~/js/row-focus.js" asp-append-version="true"></script>
     <script src="~/js/conflict-tags.js" asp-append-version="true"></script>
     <script>

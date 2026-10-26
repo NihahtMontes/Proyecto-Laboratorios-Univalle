@@ -137,7 +137,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             {
                 _logger.LogError(ex, "Error al listar gestiones de mantenimiento.");
                 ManagementList = new PaginatedList<Management>(new List<Management>(), 0, 1, 20);
-                TempData.Error("No se pudieron cargar las gestiones. Revise el detalle tecnico en logs.");
+                TempData.Error("No se pudieron cargar las gestiones. Revise el detalle técnico en los registros del sistema.");
             }
 
             return Page();
@@ -156,7 +156,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (correctiveId == null)
             {
-                TempData.Warning("No hay una gestion correctiva activa. Cree o active una gestion correctiva antes de reportar fallas.");
+                TempData.Warning("No hay una gestión correctiva activa. Cree o active una gestión correctiva antes de reportar fallas.");
                 return RedirectToPage("./Index", new { Type = ManagementType.Corrective.ToString() });
             }
 
@@ -175,7 +175,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
                 if (management == null)
                 {
-                    return RedirectToManagementError(id, "No se encontro la gestion solicitada para cerrar.", type);
+                    return RedirectToManagementError(id, "No se encontró la gestión solicitada para cerrar.", type);
                 }
 
                 // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
@@ -201,7 +201,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 var purgedMessage = purgedGroups > 0
                     ? $" Se eliminaron {purgedGroups} grupo(s) de la gestión."
                     : string.Empty;
-                TempData.Success($"La gestion administrativa ha sido cerrada correctamente.{purgedMessage}");
+                TempData.Success($"La gestión de mantenimiento se cerró correctamente.{purgedMessage}");
                 return RedirectToPage("./Index", new { Type = type });
             }
             catch (Exception ex)
@@ -223,7 +223,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
                 if (management == null || management.Status == ManagementStatus.Deleted)
                 {
-                    return RedirectToManagementError(id, "No se encontro la gestion solicitada para activar.", type);
+                    return RedirectToManagementError(id, "No se encontró la gestión solicitada para activar.", type);
                 }
 
                 // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
@@ -248,13 +248,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 _managementContext.InvalidateCache();
 
                 var closedMessage = activationResult.ClosedCount > 0
-                    ? $" Se cerro {activationResult.ClosedCount} gestion activa anterior del mismo tipo."
+                    ? $" Se cerró {activationResult.ClosedCount} gestión activa anterior del mismo tipo."
                     : string.Empty;
                 var purgedMessage = purgedGroups > 0
                     ? $" Se eliminaron {purgedGroups} grupo(s) de la gestión."
                     : string.Empty;
 
-                TempData.Success($"La gestion {management.Code} ahora es la gestion activa correcta.{closedMessage}{purgedMessage}");
+                TempData.Success($"La gestión {management.Code} ahora es la gestión activa de este tipo.{closedMessage}{purgedMessage}");
                 return RedirectToPage("./Details", new { id = management.Id, ActiveTab = "dashboard" });
             }
             catch (Exception ex)
@@ -277,7 +277,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
                 if (management == null)
                 {
-                    return RedirectToManagementError(id, "No se encontro la gestion solicitada para eliminar.", type);
+                    return RedirectToManagementError(id, "No se encontró la gestión solicitada para eliminar.", type);
                 }
 
                 // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
@@ -292,7 +292,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
                 if (management.Status == ManagementStatus.Active && management.Type != ManagementType.Corrective)
                 {
-                    TempData.Error("No se puede eliminar una gestion preventiva activa. Cierrela o active otra gestion preventiva antes de darla de baja.");
+                    TempData.Error("No se puede eliminar una gestión preventiva activa. Ciérrela o active otra gestión preventiva antes de darla de baja.");
                     return RedirectToPage("./Index", new { Type = type });
                 }
 
@@ -303,7 +303,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
                 _managementContext.InvalidateCache();
 
                 var planCount = management.ManagementPlans?.Count ?? 0;
-                TempData.Success($"La gestion {management.Code} fue dada de baja logicamente. Su historial L-48 y {planCount} registro(s) asociados quedan preservados.");
+                TempData.Success($"La gestión {management.Code} fue dada de baja lógicamente. Su cronograma y {planCount} registro(s) asociados quedan preservados.");
                 return RedirectToPage("./Index", new { Type = type });
             }
             catch (Exception ex)
@@ -325,7 +325,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
                 if (management == null)
                 {
-                    return RedirectToManagementError(id, "No se encontro la gestion solicitada para planificar activos.", type);
+                    return RedirectToManagementError(id, "No se encontró la gestión solicitada para planificar activos.", type);
                 }
 
                 // Gestiones históricas (Type == PorConfirmar) son de solo consulta: defensa del servidor
@@ -340,17 +340,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
                 if (management.Type == ManagementType.Corrective)
                 {
-                    TempData.Warning("Las gestiones correctivas no sincronizan equipos. Cada activo entra al flujo cuando se reporta una falla L-7.");
+                    TempData.Warning("Las gestiones correctivas no agregan equipos automáticamente. Cada activo entra al flujo cuando se reporta una falla.");
                     return RedirectToPage("./Index", new { Type = type });
                 }
 
                 if (management.Status != ManagementStatus.Active)
                 {
-                    TempData.Warning("Solo se pueden planificar activos en una gestion preventiva activa.");
+                    TempData.Warning("Solo se pueden planificar activos en una gestión preventiva activa.");
                     return RedirectToPage("./Index", new { Type = type });
                 }
 
-                TempData.Info("Seleccione las categorias, subclasificaciones y unidades que entraran a esta ronda preventiva.");
+                TempData.Info("Seleccione las categorías, subclasificaciones y unidades que entrarán a este mantenimiento preventivo.");
                 return RedirectToPage("./PlanAssets", new { id });
             }
             catch (Exception ex)
@@ -364,7 +364,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
         {
             return RedirectToPage("/Error", new
             {
-                module = "Gestion L-48",
+                module = "Gestión de mantenimiento",
                 entityId = id.ToString(),
                 message,
                 returnUrl = Url.Page("./Index", new { Type = type }),

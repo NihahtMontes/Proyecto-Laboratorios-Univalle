@@ -244,6 +244,7 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
             .Select(p => new
             {
                 p.Id,
+                p.Code,
                 p.LaboratoryId,
                 p.AllLaboratories,
                 p.ScheduledDate,
@@ -297,7 +298,7 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
                 var count = startOrder is int so ? Math.Min(p.PeriodCount!.Value, maxOrder - so + 1) : (p.PeriodCount ?? 1);
                 return new GridBlock(
                     p.Id,
-                    L3Codes.Format(p.Id),
+                    L3Codes.Format(p.Id, p.Code),
                     lab!.Id,
                     p.ScheduledDate.Date,
                     AcademicWeekGenerator.WeekdayOf(p.ScheduledDate),
@@ -375,6 +376,7 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
             {
                 r.OriginPlanningId,
                 r.DestinationPlanningId,
+                DestinationCode = r.DestinationPlanning.Code,
                 r.OriginDate,
                 r.OriginLaboratoryId,
                 r.DestinationDate,
@@ -396,7 +398,7 @@ public sealed class LaboratoryGridService : ILaboratoryGridService
         foreach (var r in rows.Where(r => planningIds.Contains(r.OriginPlanningId)))
         {
             result[r.OriginPlanningId] = new GridRelocation(GridRelocationKind.MovedTo, r.DayRecoveryId.HasValue,
-                $"Ver nueva ubicación: {L3Codes.Format(r.DestinationPlanningId)} {r.DestinationDate:dd/MM}",
+                $"Ver nueva ubicación: {L3Codes.Format(r.DestinationPlanningId, r.DestinationCode)} {r.DestinationDate:dd/MM}",
                 GridRelocation.GridUrl(r.DestinationManagementId, r.DestinationLaboratoryId, r.DestinationDate));
         }
 

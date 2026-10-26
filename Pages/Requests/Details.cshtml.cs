@@ -35,7 +35,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
         {
             if (id == null)
             {
-                return RedirectToError("Sin dato", "No se recibio el identificador de la solicitud L-7.");
+                return RedirectToError("Sin dato", "No se indicó qué solicitud abrir.");
             }
 
             try
@@ -60,7 +60,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
                 if (request == null)
                 {
-                    return RedirectToError(id.Value.ToString(), "No se encontro la solicitud L-7 solicitada.");
+                    return RedirectToError(id.Value.ToString(), "No se encontró la solicitud de servicio técnico.");
                 }
 
                 Request = request;
@@ -79,7 +79,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al abrir detalle L-7 para RequestId {RequestId}", id);
-                return RedirectToError(id.Value.ToString(), "Se produjo una excepcion al abrir la solicitud L-7.");
+                return RedirectToError(id.Value.ToString(), "No se pudo abrir la solicitud de servicio técnico.");
             }
         }
 
@@ -90,7 +90,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             return RedirectToPage("/Error", new
             {
-                module = "Solicitud L-7",
+                module = "Solicitudes de servicio técnico",
                 entityId,
                 message,
                 returnUrl,

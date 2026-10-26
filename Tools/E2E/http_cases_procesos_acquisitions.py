@@ -46,7 +46,7 @@ def run(R, c):
     check(R, "Create: GET wizard 200", st == 200, f"status={st}")
     for campo, msg in (("Input.Description", "La justificación es obligatoria"), ("Input.InvestmentCode", "El código de inversión es obligatorio"), ("Input.CostCenter", "El centro de costos es obligatorio")):
         r = P.l12(c, pid("a"), {campo: ""}, name=f"sin {campo}", follow=True)
-        check(R, f"Create: sin {campo.split('.')[-1]} -> 'No se pudo guardar L-12: ... {msg}'", r.status == 200 and r.has_toast("No se pudo guardar L-12:", "error") and r.has_toast(msg, "error"), P.dump(r))
+        check(R, f"Create: sin {campo.split('.')[-1]} -> 'No se pudo guardar la solicitud de compra: ... {msg}'", r.status == 200 and r.has_toast("No se pudo guardar la solicitud de compra:", "error") and r.has_toast(msg, "error"), P.dump(r))
     r = P.l12(c, pid("a"), {"Input.Description": "", "Input.InvestmentCode": "", "Input.CostCenter": ""}, name="todo vacio", follow=True)
     check(R, "Create: los tres obligatorios vacios -> los tres mensajes", all(r.has_toast(m, "error") for m in ("La justificación es obligatoria", "El código de inversión es obligatorio", "El centro de costos es obligatorio")), P.dump(r))
     r = P.l12(c, pid("a"), {"Input.Description": "d" * 1001}, name="justificacion 1001", follow=True)
@@ -58,21 +58,21 @@ def run(R, c):
     r = P.l12(c, pid("a"), {"Input.CostCenter": "c" * 101}, name="centro 101", follow=True)
     check(R, "Create: centro de costos de 101 -> mensaje en espanol", r.status == 200 and bool(r.toasts) and not P._EN.search(P.toast_text(r)), P.dump(r))
     r = P.l12(c, 99999, name="plan inexistente", follow=True)
-    check(R, "Create: plan inexistente -> 'No se pudo resolver el plan de gestión para L-12. ManagementPlanId recibido: 99999.'", r.status == 200 and r.has_toast("ManagementPlanId recibido: 99999", "error"), P.dump(r))
+    check(R, "Create: plan inexistente -> 'No se encontró el equipo en la gestión.'", r.status == 200 and r.has_toast("No se encontró el equipo en la gestión", "error"), P.dump(r))
     check(R, "Create: las validaciones fallidas no tocaron el plan ni crearon solicitudes", plan(pid("a"))["state"] == 8 and plan(pid("a"))["acq"] is None and n_acq(uid("a")) == 0)
 
     # borrador
     r = P.l12(c, pid("b"), {"Input.Description": "", "Input.InvestmentCode": "", "Input.CostCenter": ""}, draft=True, name="borrador", follow=True)
     pb = plan(pid("b"))
-    check(R, "Create borrador: 'Borrador L-12 para ... guardado correctamente.' sin exigir campos, paso 6", r.status == 302 and "Step=6" in (r.location or "") and r.has_toast(f"Borrador L-12 para '{inv('b')}' guardado correctamente.", "success"), P.dump(r))
+    check(R, "Create borrador: 'Borrador de la solicitud de compra para ... guardado correctamente.' sin exigir campos, paso 6", r.status == 302 and "Step=6" in (r.location or "") and r.has_toast(f"Borrador de la solicitud de compra para '{inv('b')}' guardado correctamente.", "success"), P.dump(r))
     check(R, "Create borrador: plan sigue en L-12 (6/8) en borrador; sin notificacion", pb["phase"] == 6 and pb["state"] == 8 and pb["draft"] == 1 and pb["draftphase"] == 6 and pb["acq"] and n_notif(inv("b")) == 0, f"{pb} notif={n_notif(inv('b'))}")
-    check(R, "Create borrador: la solicitud queda con justificacion marcador", rq(pb["acq"])["desc"] == "Borrador L-12 pendiente de justificación.", f"{rq(pb['acq'])}")
+    check(R, "Create borrador: la solicitud queda con justificacion marcador", rq(pb["acq"])["desc"] == "Borrador de la solicitud de compra pendiente de justificación.", f"{rq(pb['acq'])}")
 
     # valido
     nom = inv("a")
     r = P.l12(c, pid("a"), {"Input.Description": "Justificacion de compra QAP", "Input.Observations": "Obs compra QAP"}, name="valido", follow=True)
     pa = plan(pid("a"))
-    check(R, "Create: 'Solicitud de Adquisición para ... registrada exitosamente. El mantenimiento quedó completado en el wizard.' y paso 7", r.status == 302 and "Step=7" in (r.location or "") and r.has_toast(f"Solicitud de Adquisición para '{nom}' registrada exitosamente. El mantenimiento quedó completado en el wizard.", "success"), P.dump(r))
+    check(R, "Create: 'Solicitud de compra para ... registrada correctamente. El mantenimiento del equipo quedó completado.' y paso 7", r.status == 302 and "Step=7" in (r.location or "") and r.has_toast(f"Solicitud de compra para '{nom}' registrada correctamente. El mantenimiento del equipo quedó completado.", "success"), P.dump(r))
     check(R, "Create: plan Completed (6/9), PlanStatus Completado (2), sin borrador", pa["phase"] == 6 and pa["state"] == 9 and pa["pstatus"] == 2 and pa["draft"] == 0 and pa["acq"], f"{pa}")
     x = rq(pa["acq"])
     check(R, "Create: solicitud de COMPRA (2) Pendiente, prioridad Media, con codigo, centro de costos, justificacion y observaciones", x["type"] == 2 and x["status"] == 0 and x["prio"] == 1 and x["inv"] == "INV-QAP" and x["cc"] == "CC-QAP" and x["desc"] == "Justificacion de compra QAP" and x["obs"] == "Obs compra QAP", f"{x}")

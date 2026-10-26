@@ -4,7 +4,9 @@
 @using Proyecto_Laboratorios_Univalle.Helpers
 
 @{
-    ViewData["Title"] = "Editar Solicitud de Adquisición (L-12)";
+    ViewData["Title"] = "Editar solicitud de compra";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
     int currentPhaseInt = (int)(ViewData["CurrentPhaseInt"] ?? 6);
     int? planId = (int?)ViewData["ManagementPlanId"];
@@ -97,14 +99,14 @@
                                 <div class="d-flex align-items-center">
                                     <div class="mr-3" style="color: #0284c7;"><i class="fas fa-clipboard-list fa-lg"></i></div>
                                     <div>
-                                        <h6 class="m-0 font-weight-bold" style="color: #0369a1;">Kardex / Historial Previos (Fase 5)</h6>
-                                        <span class="small" style="color: #0284c7;">Ref L-8 Mantenimiento: @ViewData["LinkedMaintenanceId"]</span>
+                                        <h6 class="m-0 font-weight-bold" style="color: #0369a1;">Cierre del mantenimiento e historial</h6>
+                                        <span class="small" style="color: #0284c7;">Mantenimiento vinculado al equipo</span>
                                     </div>
                                     <a href="/Maintenances/Details/@ViewData["LinkedMaintenanceId"]" target="_blank" class="btn btn-sm btn-light rounded-pill font-weight-bold shadow-sm ml-auto" style="color: #0284c7; border: 1px solid #bae6fd;">
-                                        Ver Mantenimiento L-8 <i class="fas fa-external-link-alt ml-1"></i>
+                                        Ver registro de mantenimiento <i class="fas fa-external-link-alt ml-1"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, 5, 'Kardex e Historial', 6)">
-                                        <i class="fas fa-undo"></i> Rehacer Kardex
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-rounded font-weight-bold shadow-sm ml-2" onclick="confirmRedoPhase(@planId, 5, 'Cierre del mantenimiento', 6)">
+                                        <i class="fas fa-undo"></i> Rehacer cierre
                                     </button>
                                 </div>
                             </div>
@@ -168,7 +170,7 @@
                         @if (isWizard)
                         {
                             <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="6" class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
-                                <i class="fas fa-undo mr-1"></i> Volver al Wizard
+                                <i class="fas fa-undo mr-1"></i> Volver al asistente
                             </a>
                         }
                         else

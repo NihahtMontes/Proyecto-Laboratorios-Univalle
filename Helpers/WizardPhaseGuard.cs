@@ -14,12 +14,12 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
         /// <summary>Nombre visible (español) de la fase.</summary>
         public static string PhaseLabel(WizardPhase phase) => phase switch
         {
-            WizardPhase.Verification => "L-6 Verificación",
-            WizardPhase.TechnicalRequest => "L-7 Solicitud técnica",
-            WizardPhase.Maintenance => "L-8 Mantenimiento",
-            WizardPhase.Exit => "L-3 Salida",
-            WizardPhase.Kardex => "Kardex",
-            WizardPhase.Disbursement => "L-12 Desembolso",
+            WizardPhase.Verification => "Verificación de equipos",
+            WizardPhase.TechnicalRequest => "Solicitud de servicio técnico",
+            WizardPhase.Maintenance => "Registro de mantenimiento",
+            WizardPhase.Exit => "Salida de equipos",
+            WizardPhase.Kardex => "Cierre del mantenimiento",
+            WizardPhase.Disbursement => "Solicitud de compra",
             _ => phase.ToString()
         };
 
@@ -36,14 +36,14 @@ namespace Proyecto_Laboratorios_Univalle.Helpers
             if (plan.CurrentState == WizardEquipmentState.Completed || plan.PlanStatus == ManagementPlanStatus.Completed)
             {
                 return $"Este activo ya completó su ronda de mantenimiento; no se puede registrar {PhaseLabel(expected)}. " +
-                       "Si necesita corregir algo, use «Rehacer fase» en el wizard.";
+                       "Si necesita corregir un paso anterior, abra el formulario del paso actual del equipo desde el asistente y use el botón «Rehacer paso anterior».";
             }
 
             if (plan.CurrentPhase == expected)
                 return null;
 
-            return $"Este activo no está en la fase {PhaseLabel(expected)} (fase actual: {PhaseLabel(plan.CurrentPhase)}). " +
-                   "No se registró nada. Si necesita corregir una fase anterior, use «Rehacer fase» en el wizard.";
+            return $"Este activo no está en el paso {PhaseLabel(expected)} (paso actual: {PhaseLabel(plan.CurrentPhase)}). " +
+                       "No se registró nada. Si necesita corregir un paso anterior, abra el formulario del paso actual del equipo desde el asistente y use el botón «Rehacer paso anterior».";
         }
     }
 }

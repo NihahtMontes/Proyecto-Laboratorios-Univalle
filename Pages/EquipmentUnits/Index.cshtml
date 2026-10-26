@@ -5,6 +5,8 @@
 
 @{
     ViewData["Title"] = "Unidades físicas";
+    ViewData["Section"] = "Equipos e inventario";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
         || Model.LaboratoryId.HasValue
         || Model.Status.HasValue;
@@ -39,9 +41,9 @@
                             <select asp-for="LaboratoryId"
                                     class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.LaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
                                     asp-items="Model.LaboratoriesList"
-                                    aria-label="Ambiente"
+                                    aria-label="Laboratorio"
                                     data-live-filter-control>
-                                <option value="">Ambiente</option>
+                                <option value="">Laboratorio</option>
                             </select>
 
                             <select asp-for="Status"
@@ -77,7 +79,7 @@
                                 <th class="text-center">Estado Operativo</th>
                                 <th class="text-center">Condición Física</th>
                                 <th class="text-right">Valor de Adquisición</th>
-                                <th class="text-center">Kardex</th>
+                                <th class="text-center">Historial</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -120,7 +122,7 @@
                                             @(unit.AcquisitionValue.HasValue ? $"Bs {unit.AcquisitionValue.Value:N2}" : "—")
                                         </td>
                                         <td class="text-center v-middle">
-                                            <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-primary btn-rounded" title="Kardex (Histórico)">
+                                            <a asp-page="/EquipmentUnits/Kardex" asp-route-id="@unit.Id" class="btn btn-sm btn-outline-primary btn-rounded" title="Historial del equipo">
                                                 <i class="fas fa-history"></i>
                                             </a>
                                         </td>

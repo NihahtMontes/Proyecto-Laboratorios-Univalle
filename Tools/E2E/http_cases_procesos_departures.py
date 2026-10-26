@@ -69,9 +69,9 @@ def run(R, c):
     r = P.l3(c, 0, 0, lab, filas=[(pid("b"), uid("b"), "true")], mgmt=99999, name="gestion inexistente", follow=True)
     check(R, "MassCreate: gestion inexistente -> 'No hay gestión activa...' o similar, sin 500 ni cambios", r.status < 500 and plan(pid("b"))["phase"] == 4, P.dump(r))
     r = P.l3(c, 0, 0, lab, filas=[(pid("b"), uid("b"), "true")], mgmt=27, name="gestion cerrada", follow=True)
-    check(R, "MassCreate: gestion historica 27 con plan de la 30 -> se omite ('No se registró ninguna salida')", r.has_toast("No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico L-8 y un plan válido.", "error") and plan(pid("b"))["phase"] == 4, P.dump(r))
+    check(R, "MassCreate: gestion historica 27 con plan de la 30 -> se omite ('No se registró ninguna salida')", r.has_toast("No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico asignado en el registro de mantenimiento.", "error") and plan(pid("b"))["phase"] == 4, P.dump(r))
     r = P.l3(c, 0, 0, lab, filas=[(nt["plan"], nt["unit"], "true")], name="sin tecnico", follow=True)
-    expect(R, "MassCreate: unico equipo sin tecnico L-8", r, status=200, toast="No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico L-8 y un plan válido.", toast_kind="error")
+    expect(R, "MassCreate: unico equipo sin tecnico L-8", r, status=200, toast="No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico asignado en el registro de mantenimiento.", toast_kind="error")
     l3_sin_tec = scalar("select count(*) from ManagementPlans mp join Maintenances m on m.Id = mp.MaintenanceId where mp.ManagementId = ? and mp.CurrentPhase = 4 and m.TechnicianId is null", P.MGMT)
     check(R, "MassCreate sin tecnico: no existe ningun plan en L-3 sin tecnico en la gestion 30", l3_sin_tec == 0, f"planes en L-3 sin tecnico={l3_sin_tec}")
     r = P.l3(c, 0, 0, lab, filas=[(p3["plan"], p3["unit"], "true")], name="plan en L-8", follow=True)
@@ -90,7 +90,7 @@ def run(R, c):
     # borrador
     r = P.l3(c, 0, 0, lab, filas=[(pid("b"), uid("b"), "true")], draft=True, name="borrador", follow=True)
     pb = plan(pid("b"))
-    check(R, "MassCreate borrador: 'Borrador L-3 guardado para 1 salida(s).' y vuelve al paso 4", r.status == 302 and "Step=4" in (r.location or "") and r.has_toast("Borrador L-3 guardado para 1 salida(s).", "success"), P.dump(r))
+    check(R, "MassCreate borrador: 'Borrador de la salida de equipos guardado para 1 equipo(s).' y vuelve al paso 4", r.status == 302 and "Step=4" in (r.location or "") and r.has_toast("Borrador de la salida de equipos guardado para 1 equipo(s).", "success"), P.dump(r))
     check(R, "MassCreate borrador: plan sigue en L-3 (4/6) con IsDraft/DraftPhase=4, la unidad NO sale (Operativa) y la salida queda Cancelada (99)", pb["phase"] == 4 and pb["state"] == 6 and pb["draft"] == 1 and pb["draftphase"] == 4 and unidad(uid("b"))["status"] == 0 and pb["dep"] and dp(pb["dep"])["status"] == 99, f"{pb} {dp(pb['dep']) if pb['dep'] else None}")
     r = P.l3(c, 0, 0, lab, filas=[(pid("b"), uid("b"), "true")], draft=True, name="borrador repetido", follow=True)
     check(R, "MassCreate borrador repetido: reutiliza la misma salida (no duplica)", n_dep_all(uid("b")) == 1, f"salidas={n_dep_all(uid('b'))}")
@@ -147,7 +147,7 @@ def run(R, c):
     cx = f"/Departures/Create?isWizard=true&managementPlanId={cu['x']['plan']}"
     r = post_form(c, cx, {}, handler="Draft", name="wizard borrador", follow=True)
     px = plan(cu["x"]["plan"])
-    check(R, "Create wizard borrador: 'Borrador L-3 guardado correctamente.' plan 4/6 en borrador, unidad no sale", r.status == 302 and r.has_toast("Borrador L-3 guardado correctamente.", "success") and px["phase"] == 4 and px["draft"] == 1 and unidad(cu["x"]["unit"])["status"] == 0, P.dump(r) + f" {px}")
+    check(R, "Create wizard borrador: 'Borrador de la salida de equipos guardado correctamente.' plan 4/6 en borrador, unidad no sale", r.status == 302 and r.has_toast("Borrador de la salida de equipos guardado correctamente.", "success") and px["phase"] == 4 and px["draft"] == 1 and unidad(cu["x"]["unit"])["status"] == 0, P.dump(r) + f" {px}")
 
     # no wizard (formulario completo)
     un1 = P.nueva_unidad(c, lab, "scn1")

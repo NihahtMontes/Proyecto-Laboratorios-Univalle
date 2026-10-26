@@ -1,6 +1,10 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Acquisitions.DetailsModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Detalle de la solicitud de compra";
+    ViewData["Section"] = "Mantenimiento de equipos";
+}
 
 @if (TempData["Error"] != null)
 {
@@ -214,7 +218,7 @@
             </a>
 
             <a asp-page="./Index" class="btn btn-outline-secondary btn-block btn-rounded py-2 mb-4 font-weight-bold">
-                <i class="fas fa-arrow-left mr-2 font-weight-bold"></i> Volver al Listado
+                <i class="fas fa-arrow-left mr-2 font-weight-bold"></i> Volver al listado
             </a>
         </div>
     </div>

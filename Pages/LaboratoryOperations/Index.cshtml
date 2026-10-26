@@ -2,14 +2,18 @@
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.IndexModel
 @using System.Globalization
 @using Proyecto_Laboratorios_Univalle.Services
-@{ ViewData["Title"] = "Panel de planificación"; }
+@{
+    ViewData["Title"] = "Panel de planificación";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
+}
 
 <div class="page-breadcrumb">
     <div class="row align-items-center">
         <div class="col-md-8">
             <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">OPERACIÓN DE LABORATORIOS</h4>
             <h2 class="font-weight-bold text-dark">Panel de planificación</h2>
-            <div class="text-muted small">Resumen de la gestión académica, métricas y avisos accionables; el detalle por ambiente vive en la Grilla.</div>
+            <div class="text-muted small">Resumen del semestre académico, indicadores y avisos; el detalle por laboratorio está en la Grilla.</div>
         </div>
         @if (Model.Managements.Count > 0)
         {
@@ -38,14 +42,21 @@
             <div class="mb-4">
                 <i class="fas fa-calendar-plus opacity-25" style="font-size: 5rem; color: #7460ee !important;"></i>
             </div>
-            <h2 class="font-weight-bold text-dark mb-2">No hay una gestión académica activa</h2>
+            <h2 class="font-weight-bold text-dark mb-2">No hay un semestre académico activo</h2>
             <p class="text-muted mb-4" style="max-width: 540px;">
                 Active una gestión semestral o elija una en el selector para consultar sus planificaciones y su calendario académico.
             </p>
             <div class="d-flex mt-2">
-                <a asp-page="/Managements/Index" class="btn btn-primary rounded-pill px-4 shadow-sm mr-2" style="background: #7460ee; border: none;">
-                    <i class="fas fa-university mr-2"></i> Ir a Gestiones
-                </a>
+                @if (User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+                {
+                    <a asp-page="/Managements/Index" class="btn btn-primary rounded-pill px-4 shadow-sm mr-2" style="background: #7460ee; border: none;">
+                        <i class="fas fa-university mr-2"></i> Ir a Gestiones
+                    </a>
+                }
+                else
+                {
+                    <p class="text-muted mb-0 align-self-center">Pida al administrador que active la gestión del semestre.</p>
+                }
                 <a asp-page="./Planificaciones" class="btn btn-light border rounded-pill px-4 shadow-sm">
                     <i class="fas fa-table mr-2"></i> Ver planificaciones
                 </a>
@@ -66,7 +77,7 @@
                     <div class="small text-muted">Las planificaciones de esta gestión no admiten nuevos registros.</div>
                 </div>
                 <a asp-page="./Index" class="btn btn-warning btn-rounded font-weight-bold px-3 shadow-sm">
-                    <i class="fas fa-arrow-left mr-1"></i> Volver a la gestión actual
+                    <i class="fas fa-arrow-left mr-1"></i> Volver al panel
                 </a>
             </div>
         }
@@ -107,7 +118,7 @@
                             {
                                 <button type="button" class="btn btn-warning btn-rounded font-weight-bold px-4 shadow-sm"
                                         data-toggle="modal" data-target="#modal-reponer-dia">
-                                    <i class="mdi mdi-backup-restore mr-1"></i> Reponer día
+                                    <i class="mdi mdi-backup-restore mr-1"></i> Suspender día
                                 </button>
                             }
                             <a asp-page="./Grilla" asp-route-managementId="@management.Id" class="btn btn-outline-primary btn-rounded font-weight-bold px-4">
@@ -403,7 +414,7 @@
                         <div class="metric-icon bg-light-danger text-danger mr-3"><i class="fas fa-exclamation-triangle fa-lg"></i></div>
                         <div>
                             <h3 class="mb-0 font-weight-bold">@Model.IncidentCount</h3>
-                            <small class="text-muted">Incidencias L-5</small>
+                            <small class="text-muted">Incidentes de material</small>
                         </div>
                     </div>
                 </div>
@@ -518,14 +529,14 @@
         <div class="tab-content pn-tab-content" id="pn-view-tabs-content">
             <div class="tab-pane fade show active" id="pn-tab-alerts" role="tabpanel" aria-labelledby="pn-tab-alerts-tab">
                 <div class="row">
-                    @* (a) Reposiciones de días suspendidos *@
+                    @* (a) Días suspendidos y reposiciones *@
                     <div class="col-lg-6 mb-3">
                         <div class="card border-0 shadow-sm rounded-lg h-100 pn-alert">
                             <div class="card-body p-4">
                                 <div class="d-flex align-items-center mb-3">
                                     <div class="pn-alert__icon pn-alert__icon--warning mr-3"><i class="mdi mdi-backup-restore"></i></div>
                                     <div class="flex-grow-1">
-                                        <h5 class="font-weight-bold text-dark mb-0">Reposiciones de días suspendidos</h5>
+                                        <h5 class="font-weight-bold text-dark mb-0">Días suspendidos y reposiciones</h5>
                                         <small class="text-muted">Prácticas esperando reubicación en otra fecha</small>
                                     </div>
                                     <span class="badge @(Model.Recoveries.Count > 0 ? "badge-warning" : "badge-light border text-dark") px-2 py-1">@Model.Recoveries.Count</span>
@@ -567,7 +578,7 @@
                                                             </div>
                                                             <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-reponer="@p.Id" asp-route-recoveryId="@r.Id"
                                                                class="btn btn-sm btn-outline-warning btn-rounded flex-shrink-0">
-                                                                <i class="mdi mdi-arrow-right-bold mr-1"></i>Reubicar
+                                                                <i class="mdi mdi-arrow-right-bold mr-1"></i>Reprogramar
                                                             </a>
                                                         </li>
                                                     }
@@ -614,7 +625,7 @@
                                                 {
                                                     <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-reponer="@p.Id" asp-route-recoveryId="@p.RecoveryId"
                                                        class="btn btn-sm btn-outline-danger btn-rounded flex-shrink-0">
-                                                        <i class="mdi mdi-arrow-right-bold mr-1"></i>Reubicar
+                                                        <i class="mdi mdi-arrow-right-bold mr-1"></i>Reprogramar
                                                     </a>
                                                 }
                                                 else
@@ -643,7 +654,7 @@
                                     <div class="pn-alert__icon pn-alert__icon--info mr-3"><i class="far fa-clock"></i></div>
                                     <div class="flex-grow-1">
                                         <h5 class="font-weight-bold text-dark mb-0">Sin periodo asignado</h5>
-                                        <small class="text-muted">Planificaciones vigentes que no reservan horario en la grilla</small>
+                                        <small class="text-muted">Planificaciones vigentes (no finalizadas) que no reservan horario en la grilla</small>
                                     </div>
                                     <span class="badge @(Model.WithoutPeriodCount > 0 ? "badge-info" : "badge-light border text-dark") px-2 py-1">@Model.WithoutPeriodCount</span>
                                 </div>
@@ -661,9 +672,9 @@
                                                     <span class="font-weight-bold text-dark">@p.Code</span> · @p.Subject (@p.Group)
                                                     <span class="text-muted d-block">@p.Laboratory · @p.Date.ToString("dd/MM") · @p.TimeText</span>
                                                 </div>
-                                                <a asp-page="./Grilla" asp-route-managementId="@management.Id" asp-route-laboratoryId="@p.LaboratoryId"
+                                                <a asp-page="./Planificacion" asp-route-id="@p.Id"
                                                    class="btn btn-sm btn-outline-info btn-rounded flex-shrink-0">
-                                                    <i class="mdi mdi-table-large mr-1"></i>Ver grilla
+                                                    <i class="far fa-clock mr-1"></i>Asignar horario
                                                 </a>
                                             </li>
                                         }
@@ -698,7 +709,7 @@
                                         <table class="table table-sm mb-0 pn-table">
                                             <thead>
                                                 <tr>
-                                                    <th>Ambiente</th>
+                                                    <th>Laboratorio</th>
                                                     <th class="text-center">Sesiones</th>
                                                     <th>Primera sesión</th>
                                                     <th class="text-right">Acción</th>
@@ -881,7 +892,7 @@
                               data-management-id="@management.Id" class="modal-content border-0 shadow-lg rounded-lg">
                             <div class="modal-header" style="background: linear-gradient(135deg, #fff8e6, #fffdf5); border-bottom: 1px solid #f3ecd4;">
                                 <h5 class="modal-title font-weight-bold text-dark" id="modal-reponer-titulo">
-                                    <i class="mdi mdi-backup-restore text-warning mr-2"></i>Reponer día
+                                    <i class="mdi mdi-backup-restore text-warning mr-2"></i>Suspender día
                                 </h5>
                                 <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
                                     <span aria-hidden="true">&times;</span>
@@ -909,7 +920,7 @@
                             <div class="modal-footer border-0">
                                 <button type="button" class="btn btn-outline-secondary btn-rounded font-weight-bold" data-dismiss="modal">Cancelar</button>
                                 <button type="submit" id="recovery-confirm" class="btn btn-warning btn-rounded font-weight-bold px-4" disabled>
-                                    <i class="mdi mdi-backup-restore mr-1"></i>Suspender y reponer
+                                    <i class="mdi mdi-backup-restore mr-1"></i>Suspender día
                                 </button>
                             </div>
                         </form>
@@ -1041,7 +1052,7 @@
                     };
                     if (typeof Swal === 'undefined') { send(); return; }
                     Swal.fire({
-                        title: '¿Suspender y reponer el día?',
+                        title: '¿Suspender el día?',
                         text: lastPreview.message + ' Las planificaciones quedarán pendientes de reubicación.',
                         type: 'warning',
                         showCancelButton: true,

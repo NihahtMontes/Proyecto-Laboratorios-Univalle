@@ -2,13 +2,15 @@
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.ReposicionesModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Reposiciones de día";
+    ViewData["Title"] = "Días suspendidos y reposiciones";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
 }
 
 <div class="page-breadcrumb"><div class="row align-items-center">
     <div class="col-md-8"><h4 class="text-primary text-uppercase font-weight-bold">PLANIFICACIÓN</h4>
-        <h2 class="font-weight-bold text-dark">Reposiciones de día</h2>
-        <p class="text-muted mb-0">Reubique cada práctica de un día suspendido. Las devoluciones L-3 permanecen en su planificación de origen.</p>
+        <h2 class="font-weight-bold text-dark">Días suspendidos y reposiciones</h2>
+        <p class="text-muted mb-0">Reubique cada práctica de un día suspendido. La devolución de material sigue registrada en la planificación de origen.</p>
     </div>
     <div class="col-md-4 text-md-right mt-3 mt-md-0"><a asp-page="./CalendarioAcademico" asp-route-managementId="@Model.ManagementId" class="btn btn-outline-primary btn-rounded">Calendario académico</a></div>
 </div></div>
@@ -81,7 +83,7 @@
                                     </div>
                                     @if (Model.CanRecover)
                                     { <a asp-page="./Grilla" asp-route-reponer="@p.Id" asp-route-recoveryId="@selected.Id"
-                                         class="btn btn-sm btn-outline-warning btn-rounded mt-1">Reubicar <span class="sr-only">@p.Code</span></a> }
+                                         class="btn btn-sm btn-outline-warning btn-rounded mt-1">Reprogramar <span class="sr-only">@p.Code</span></a> }
                                 </div>
                             }
                         </div>
@@ -98,7 +100,7 @@
                                         <th>Grupo</th>
                                         <th>Nueva fecha</th>
                                         <th>Periodos</th>
-                                        <th>Ambiente</th>
+                                        <th>Laboratorio</th>
                                     </tr>
                                 </thead>
                                 <tbody>

@@ -74,12 +74,12 @@ st, lst = c.get(f"/Laboratories?SearchTerm={tag}")
 check(R, "Laboratorios/Index: el HTML hostil se muestra escapado", st == 200 and f"<b>QAl{tag}</b>" not in lst and "<script>x</script>" not in lst, "")
 
 # ---- Create: duplicados ----
-expect(R, "Laboratorios/Create: duplicado exacto en la misma facultad", sub(c, "dup exacto", "/Laboratories/Create", {"Input.FacultyId": str(FAC1), "Input.Name": n1}), status=200, error="Ya existe un ambiente con este nombre en la facultad seleccionada")
-expect(R, "Laboratorios/Create: duplicado con otra capitalización y espacios laterales", sub(c, "dup caps", "/Laboratories/Create", {"Input.FacultyId": str(FAC1), "Input.Name": f"  {n1.upper()}  "}), status=200, error="Ya existe un ambiente con este nombre en la facultad seleccionada")
+expect(R, "Laboratorios/Create: duplicado exacto en la misma facultad", sub(c, "dup exacto", "/Laboratories/Create", {"Input.FacultyId": str(FAC1), "Input.Name": n1}), status=200, error="Ya existe un laboratorio con este nombre en la facultad seleccionada")
+expect(R, "Laboratorios/Create: duplicado con otra capitalización y espacios laterales", sub(c, "dup caps", "/Laboratories/Create", {"Input.FacultyId": str(FAC1), "Input.Name": f"  {n1.upper()}  "}), status=200, error="Ya existe un laboratorio con este nombre en la facultad seleccionada")
 base_d = "Lab Doble " + tag
 sub(c, "crear base doble", "/Laboratories/Create", {"Input.FacultyId": str(FAC1), "Input.Name": base_d})
 res = sub(c, "dup espacio doble", "/Laboratories/Create", {"Input.FacultyId": str(FAC1), "Input.Name": base_d.replace(" ", "  ")})
-check(R, "Laboratorios/Create: duplicado con espacios dobles internos debe detectarse (se guarda normalizado a un espacio)", res.has_error("Ya existe un ambiente"),
+check(R, "Laboratorios/Create: duplicado con espacios dobles internos debe detectarse (se guarda normalizado a un espacio)", res.has_error("Ya existe un laboratorio"),
       f"status={res.status} (302 = se creó un duplicado) cuenta en BD de '{base_d}'={K.dbv('select count(*) from Laboratories where Name=?', base_d)}")
 res = sub(c, "mismo nombre otra facultad", "/Laboratories/Create", {"Input.FacultyId": str(FAC2), "Input.Name": n1})
 check(R, "Laboratorios/Create: el mismo nombre en OTRA facultad se permite", res.status == 302, f"status={res.status} errores={res.errors[:1]}")
@@ -106,7 +106,7 @@ check(R, "Laboratorios/Edit: facultad inexistente 99999 se rechaza con mensaje (
 other = "Lab Hermano " + tag
 sub(c, "crear hermano", "/Laboratories/Create", {"Input.FacultyId": str(FAC1), "Input.Name": other})
 id_h = K.id_by("Laboratories", "Name", other)
-expect(R, "Laboratorios/Edit: nombre duplicado en la misma facultad", sub(c, "edit dup", f"/Laboratories/Edit/{id1}", {"Input.Name": " " + other.upper() + " "}), status=200, error="Ya existe otro ambiente con este nombre en la facultad seleccionada")
+expect(R, "Laboratorios/Edit: nombre duplicado en la misma facultad", sub(c, "edit dup", f"/Laboratories/Edit/{id1}", {"Input.Name": " " + other.upper() + " "}), status=200, error="Ya existe otro laboratorio con este nombre en la facultad seleccionada")
 expect(R, "Laboratorios/Edit: guardar sin cambios (no es duplicado de sí mismo)", sub(c, "edit self", f"/Laboratories/Edit/{id1}", {}), status=302, redirect="/Laboratories",
        toast=f"Datos del Laboratorio '{code1}' ({n1}) actualizados correctamente.", toast_kind="success")
 res = sub(c, "edit id inexistente", f"/Laboratories/Edit/{id1}", {"Input.Id": "99999", "Input.Name": "Nuevo " + K.rnd()})

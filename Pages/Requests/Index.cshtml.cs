@@ -68,7 +68,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 return RedirectToPage("./Index");
             }
 
-            TempData.Info("Iniciar mantenimiento correctivo: registre la falla en el L-7 del asistente.");
+            TempData.Info("Mantenimiento correctivo: registre la falla en la solicitud de servicio técnico del asistente.");
             return RedirectToPage("/Index", new { ShowWizard = true, ManagementId = correctiveId.Value, Step = 2 });
         }
 

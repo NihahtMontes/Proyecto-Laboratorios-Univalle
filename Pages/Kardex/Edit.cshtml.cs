@@ -131,11 +131,11 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
 
             // QA 2026-10-18: el historial Kardex no es la puerta para dar de baja una unidad ni para prestarla sin salida L-3.
             if (Input.Status == EquipmentStatus.Deleted)
-                ModelState.AddModelError("Input.Status", "La baja de una unidad se registra desde Unidades físicas, no desde el historial Kardex.");
+                ModelState.AddModelError("Input.Status", "La baja de una unidad se registra desde Unidades físicas, no desde el historial del equipo.");
             if (Input.Status == EquipmentStatus.OnLoan && !Input.EndDate.HasValue
                 && !await _context.Departures.AnyAsync(d => d.EquipmentUnitId == Input.EquipmentUnitId
                     && (d.Status == LoanStatus.Active || d.Status == LoanStatus.Overdue)))
-                ModelState.AddModelError("Input.Status", "Solo puede marcarse «En Préstamo» si la unidad tiene una salida L-3 abierta.");
+                ModelState.AddModelError("Input.Status", "Solo puede marcarse «En Préstamo» si la unidad tiene una salida de equipos abierta.");
 
             if (!ModelState.IsValid)
             {
@@ -205,7 +205,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
                     }
                 }
 
-                TempData.Success("Registro de Kardex actualizado correctamente.");
+                TempData.Success("Registro del historial actualizado correctamente.");
                 if (IsWizard)
                 {
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = ReturnStep, SelectedLabId, ManagementId });
@@ -217,7 +217,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Kardex
             catch (Exception ex)
             {
                 _logger.LogError(ex, "No se pudo actualizar el Kardex {HistoryId}.", Input.Id);
-                TempData.Error("No se pudo actualizar el Kardex. Intente nuevamente.");
+                TempData.Error("No se pudo actualizar el historial. Intente nuevamente.");
                 var history = await _context.EquipmentStateHistories
                     .Include(h => h.EquipmentUnit)
                         .ThenInclude(eu => eu!.Laboratory)

@@ -51,11 +51,12 @@ public class DisponibilidadModel : PageModel
     public int? OriginLabId { get; set; }
 
     public Planning? Plan { get; private set; }
-    public string Code => L3Codes.Format(PlanId);
+    public string Code => L3Codes.Format(PlanId, Plan?.Code);
     public List<AvailabilityRow> Items { get; private set; } = [];
     public SelectList OriginList { get; private set; } = new(Enumerable.Empty<SelectListItem>());
     public string? OriginName { get; private set; }
-    public bool HasShortage => Items.Any(i => i.State == AvailabilityState.Insufficient);
+    /// <summary>True si algún artículo queda insuficiente o sin registro de stock (D2: exige confirmación al aprobar).</summary>
+    public bool HasShortage => Items.Any(i => i.State is AvailabilityState.Insufficient or AvailabilityState.NotRegistered);
     public bool HasUnregistered => Items.Any(i => i.State == AvailabilityState.NotRegistered);
     public bool IsApproved => Plan != null && Plan.Status != PlanningStatus.Planned;
 
@@ -190,23 +191,15 @@ public class DisponibilidadModel : PageModel
                 return RedirectToPage("./Requerimientos", new { planId = PlanId, conflict = true });
             }
 
-            // No se aprueba lo que no tiene stock registrado (o en 0): se vuelve a Requerimientos para registrarlo.
-            // Un stock insuficiente (pero existente) solo se informa: la salida valida y descuenta.
-            var missing = await PlanningStockGate.FindAsync(_context, _availability, plan.Id);
-            if (missing.Count > 0)
-            {
-                var names = string.Join(", ", missing.Take(5).Select(m => m.ArticleName)) + (missing.Count > 5 ? "…" : "");
-                TempData.Error($"No se puede aprobar: hay artículos sin stock ({names}). Registre su existencia primero.");
-                return RedirectToPage("./Requerimientos", new { planId = PlanId });
-            }
-
+            // Regla D2: la falta de stock solo advierte; nunca bloquea la aprobación. Quien descuenta y
+            // bloquea si no alcanza es la salida L-3: los artículos sin stock se entregan sin descontar.
             var originId = OriginLabId is 0 ? null : OriginLabId;
             var rows = await BuildRowsAsync(plan.Id, originId);
             var week = await _availability.GetWeekForPracticeAsync(plan.Id);
             var issues = week?.Issues.Count(d => d.Practices.Any(p => p.PracticeId == plan.Id)) ?? 0;
             var shortages = rows.Count(r => r.State == AvailabilityState.Insufficient);
             var unregistered = rows.Count(r => r.State == AvailabilityState.NotRegistered);
-            if ((issues > 0 || shortages > 0) && !Acknowledged)
+            if ((issues > 0 || shortages > 0 || unregistered > 0) && !Acknowledged)
             {
                 TempData.Warning("Confirma que conoces los faltantes, conflictos o rotaciones de la semana antes de aprobar.");
                 return RedirectToPage(new { planId = PlanId, originLabId = OriginLabId });

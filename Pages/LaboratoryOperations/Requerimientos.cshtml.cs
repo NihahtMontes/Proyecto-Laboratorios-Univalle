@@ -56,7 +56,7 @@ public class RequerimientosModel : PageModel
     public BatchInput Batch { get; set; } = new();
 
     public Planning? Plan { get; private set; }
-    public string Code => L3Codes.Format(PlanId);
+    public string Code => L3Codes.Format(PlanId, Plan?.Code);
     public bool IsEditable => Plan?.Status == PlanningStatus.Planned;
     public List<RequirementRow> Items { get; private set; } = [];
 
@@ -89,7 +89,7 @@ public class RequerimientosModel : PageModel
     public bool IsShort(RequirementRow row) =>
         row.Stock?.Available is decimal available && RequestedByArticle.GetValueOrDefault(row.ArticleId) > available;
 
-    /// <summary>Artículos de inventario sin stock (sin registro o en 0): bloquean "Validar disponibilidad".</summary>
+    /// <summary>Artículos de inventario sin stock (sin registro o en 0): solo se advierten (D2), no bloquean.</summary>
     public List<PlanningStockGate.MissingStock> MissingStock { get; private set; } = [];
 
     /// <summary>Laboratorio donde se registra el stock faltante (Economato).</summary>
@@ -535,17 +535,13 @@ public class RequerimientosModel : PageModel
             return Reload();
         }
 
-        // No se planifica lo que no tiene stock: se lleva al usuario a registrar la existencia del primero
-        // y la pantalla de existencias lo devuelve aquí al guardar o cancelar.
+        // Regla D2: la falta de stock en la solicitud solo advierte; quien descuenta y bloquea si no
+        // alcanza es la salida L-3. El usuario puede registrar la existencia (opcional) o continuar.
         var missing = await PlanningStockGate.FindAsync(_context, _availability, plan.Id);
         if (missing.Count > 0)
         {
-            StockLaboratoryId = await PlanningStockGate.StockLaboratoryIdAsync(_context, plan.Id);
             var names = string.Join(", ", missing.Take(5).Select(m => m.ArticleName)) + (missing.Count > 5 ? "…" : "");
-            TempData.Warning($"Registre el stock antes de continuar. Sin stock: {names}.");
-            return StockUrl(missing[0].ArticleId) is string url
-                ? LocalRedirect(url)
-                : Reload();
+            TempData.Warning($"Atención: {missing.Count} artículo(s) sin stock ({names}). Puedes continuar: al aprobar se pedirá confirmación, y la entrega de material se hace sin descontar lo que no tiene registro y se bloquea si el stock registrado no alcanza.");
         }
 
         return RedirectToPage("./Disponibilidad", new { planId = PlanId });

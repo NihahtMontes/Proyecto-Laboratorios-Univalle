@@ -46,6 +46,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     .ThenInclude(u => u!.Equipment)
                 .Include(d => d.EquipmentUnit)
                     .ThenInclude(u => u!.Laboratory)
+                .Include(d => d.Planning)
+                    .ThenInclude(p => p!.Laboratory)
+                .Include(d => d.OriginLaboratory)
                 .Include(d => d.Borrower)
                 .AsQueryable();
 
@@ -67,6 +70,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 query = query.Where(d =>
                     d.EquipmentUnit!.Equipment!.Name.ToLower().Contains(term) ||
                     d.EquipmentUnit!.InventoryNumber.ToLower().Contains(term) ||
+                    (d.Code != null && d.Code.ToLower().Contains(term)) ||
+                    (d.Planning != null && d.Planning.Code != null && d.Planning.Code.ToLower().Contains(term)) ||
                     (d.BorrowerId != null && (internIds.Contains(d.BorrowerId.Value) || externIds.Contains(d.BorrowerId.Value))));
             }
 
@@ -82,10 +87,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                 query = query.Where(d => d.Status == FilterStatus.Value);
             }
 
-            // Filtro por Laboratorio (vía EquipmentUnit)
+            // Filtro por Laboratorio: ambiente de la unidad de equipo o, en salidas de
+            // práctica (L-3), el ambiente de la planificación que origina la salida.
             if (FilterLaboratoryId.HasValue)
             {
-                query = query.Where(d => d.EquipmentUnit != null && d.EquipmentUnit.LaboratoryId == FilterLaboratoryId.Value);
+                query = query.Where(d =>
+                    (d.EquipmentUnit != null && d.EquipmentUnit.LaboratoryId == FilterLaboratoryId.Value) ||
+                    (d.PlanningId != null && d.Planning!.LaboratoryId == FilterLaboratoryId.Value));
             }
 
             Departures = await PaginatedList<Departure>.CreateAsync(

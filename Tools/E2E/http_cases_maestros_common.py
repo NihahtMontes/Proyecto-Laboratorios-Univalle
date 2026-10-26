@@ -57,7 +57,7 @@ def client(user=None, pw=None):
 
 def logged_in(c):
     st, page = c.get("/")
-    return st == 200 and "Cerrar Sesion" in page
+    return st == 200 and re.search(r"Cerrar ses(?:i|ió)n", page, re.I) is not None
 
 
 def track(label, res):

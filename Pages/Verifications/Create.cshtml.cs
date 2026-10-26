@@ -360,7 +360,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             {
                 if (saveDraft)
                 {
-                    TempData.Success($"Borrador L-6 guardado correctamente.");
+                    TempData.Success($"Borrador de la verificación guardado correctamente.");
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = 1, SelectedLabId = Input.LaboratoryId, ManagementId = currentMgmt.Id });
                 }
 
@@ -379,7 +379,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.Verification;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-6 guardado con verificación parcial.";
+            plan.DraftSummary = "Borrador de la verificación guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.Verification;
             plan.CurrentState = WizardEquipmentState.PendingVerification;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

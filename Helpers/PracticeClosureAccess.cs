@@ -18,7 +18,8 @@ public static class PracticeClosureAccess
     private static readonly string[] AllowedPrefixes =
     [
         "/Cierre", "/LaboratoryOperations/L3", "/LaboratoryOperations/L5",
-        "/Login", "/Logout", "/Error", "/Api/Notifications", "/Notifications"
+        "/Login", "/Logout", "/Error", "/Api/Notifications", "/Notifications",
+        "/AccesoDenegado", "/Ayuda", "/Account/Profile"
     ];
 
     /// <summary>True si el usuario solo tiene el rol de cierre (sin rol de gestión).</summary>

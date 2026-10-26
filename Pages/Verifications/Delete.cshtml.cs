@@ -63,7 +63,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Verifications
                 .FirstOrDefaultAsync(p => p.VerificationId == verification.Id);
             if (linkedPlan != null && linkedPlan.CurrentPhase > Models.Enums.WizardPhase.Verification)
             {
-                TempData.Warning($"No se puede anular la verificación #{verification.Id}: el activo ya avanzó a {WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}. Use «Rehacer fase» en el asistente.");
+                TempData.Warning($"No se puede anular esta verificación: el equipo ya avanzó a {WizardPhaseGuard.PhaseLabel(linkedPlan.CurrentPhase)}. Para corregirlo, abra el formulario del paso actual del equipo desde el asistente y use «Rehacer paso anterior».");
                 return RedirectToPage("./Index");
             }
             if (linkedPlan != null)

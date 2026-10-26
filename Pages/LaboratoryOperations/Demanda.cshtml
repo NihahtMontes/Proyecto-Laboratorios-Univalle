@@ -1,14 +1,25 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.DemandaModel
 @using Proyecto_Laboratorios_Univalle.Services
-@{ ViewData["Title"] = "Demanda"; }
+@{
+    ViewData["Title"] = "Demanda de material";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
+}
 
 <div class="page-breadcrumb">
     <div class="row align-items-end">
         <div class="col-md-8">
-            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-1">PRÁCTICAS FUTURAS</h4>
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-1">@(Model.IsWholeManagement ? "TODA LA GESTIÓN" : "PRÁCTICAS FUTURAS")</h4>
             <h2 class="font-weight-bold text-dark mb-1">Demanda de utensilios y materiales</h2>
-            <div class="text-muted small">Consolidado de los requerimientos registrados en planificaciones L-3 vigentes con fecha igual o posterior a hoy.</div>
+            @if (Model.IsWholeManagement)
+            {
+                <div class="text-muted small">Consolidado de los requerimientos de todas las planificaciones de la gestión que ocupan material (incluidas las finalizadas).</div>
+            }
+            else
+            {
+                <div class="text-muted small">Consolidado de los requerimientos registrados en planificaciones vigentes con fecha igual o posterior a hoy.</div>
+            }
         </div>
         <div class="col-md-4 text-md-right mt-3 mt-md-0">
             @if (Model.HasManagement)
@@ -30,9 +41,9 @@
                 <div class="mb-3">
                     <i class="fas fa-calendar-times text-primary opacity-50" style="font-size: 4rem;"></i>
                 </div>
-                <h3 class="font-weight-bold text-dark mb-2">No hay una gestión académica disponible</h3>
+                <h3 class="font-weight-bold text-dark mb-2">No hay un semestre académico disponible</h3>
                 <p class="text-muted mb-4">
-                    La demanda se calcula sobre las planificaciones de una gestión académica. Cree o active una gestión para ver los requerimientos consolidados.
+                    La demanda se calcula sobre las planificaciones de un semestre académico. Cree o active una gestión para ver los requerimientos consolidados.
                 </p>
                 <div class="d-flex justify-content-center gap-2 flex-wrap">
                     <a asp-page="/Managements/Index" asp-route-type="Preventive" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm">
@@ -58,11 +69,18 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body py-3">
             <form method="get" class="form-row align-items-end">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label asp-for="ManagementId" class="small font-weight-bold">GESTIÓN</label>
                     <select asp-for="ManagementId" asp-items="Model.ManagementList" class="custom-select"></select>
                 </div>
-                <div class="col-md-3 mt-3 mt-md-0">
+                <div class="col-md-2 mt-3 mt-md-0">
+                    <label asp-for="Scope" class="small font-weight-bold">ALCANCE</label>
+                    <select asp-for="Scope" class="custom-select">
+                        <option value="proximas">Próximas prácticas</option>
+                        <option value="gestion">Toda la gestión</option>
+                    </select>
+                </div>
+                <div class="col-md-2 mt-3 mt-md-0">
                     <label asp-for="LaboratoryId" class="small font-weight-bold">LABORATORIO</label>
                     <select asp-for="LaboratoryId" asp-items="Model.LaboratoryList" class="custom-select">
                         <option value="">Todos los laboratorios</option>
@@ -144,16 +162,7 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
                     <h6 class="font-weight-bold text-primary mb-1">CONSOLIDADO DE DEMANDA POR ARTÍCULO</h6>
-                    <span class="text-muted small">
-                        @if (!string.IsNullOrEmpty(Model.OriginLaboratoryCode))
-                        {
-                            <span>Stock comparado con el Economato (<strong>@Model.OriginLaboratoryCode</strong>).</span>
-                        }
-                        else
-                        {
-                            <span>No se encontró un laboratorio con código "ECONO" para comparar el stock; las columnas Disponible mostrarán "Sin registro".</span>
-                        }
-                    </span>
+                    <span class="text-muted small">Stock comparado con el total institucional (todos los laboratorios; equipos por unidades físicas disponibles).</span>
                 </div>
                 <span class="badge badge-light text-muted">@Model.Rows.Count artículos</span>
             </div>
@@ -216,6 +225,10 @@
                                         @if (row.Available.HasValue)
                                         {
                                             <span>@row.Available.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)</span>
+                                            @if (!string.IsNullOrEmpty(row.StockSource))
+                                            {
+                                                <span class="badge badge-light border text-muted ml-1" title="Fuente del stock">@row.StockSource</span>
+                                            }
                                         }
                                         else
                                         {
@@ -234,7 +247,13 @@
 
     <div class="alert alert-info border-0 shadow-sm mt-4 mb-0">
         <i class="fas fa-info-circle mr-2"></i>
-        Esta pantalla agrega los requerimientos de las planificaciones L-3 de la gestión seleccionada a partir del flujo persistido (planificación, requerimientos, disponibilidad y devolución). El stock proviene de los registros de existencias del Economato.
+        Esta pantalla agrega los requerimientos de las planificaciones de la gestión seleccionada a partir del
+        flujo persistido (planificación, requerimientos, disponibilidad y devolución). El stock comparado es el total
+        institucional de todos los laboratorios; para artículos de equipo se cuentan las unidades físicas disponibles.
+        @if (Model.IsWholeManagement)
+        {
+            <text>El alcance "Toda la gestión" incluye también las planificaciones finalizadas y con fechas pasadas.</text>
+        }
     </div>
     }
 </div>

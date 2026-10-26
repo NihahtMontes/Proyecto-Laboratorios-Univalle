@@ -2,7 +2,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Schedules.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
-    ViewData["Title"] = "Cronograma de Intervenciones (L-48)";
+    ViewData["Title"] = "Cronograma de mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
     var hasActiveFilters = Model.LabFilterId.HasValue
         || Model.CategoryFilterId.HasValue
         || Model.TechFilterId.HasValue

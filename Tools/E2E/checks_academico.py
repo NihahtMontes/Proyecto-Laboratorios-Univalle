@@ -172,7 +172,8 @@ def check_planificaciones(s):
     out, suma = [], 0
     for mid, codigo, n_bd in por_gestion:
         _, text = s.text(f"/LaboratoryOperations/Planificaciones?managementId={mid}")
-        visibles = len(re.findall(r"PRA-\d{5,}", text))
+        # Desde la corrección O1 (2026-10-19) la pantalla muestra el código persistido (SOL3-…) o PRA- si no hay.
+        visibles = len(set(re.findall(r"\b(?:PRA-\d{5,}|SOL3-\d+)\b", text)))
         suma += visibles
         out.append(Result(f"Planificaciones: gestion {codigo} visible vs BD", n_bd, visibles,
                           f"contador visible={_badge(text, 'planificación(es)')}"))
@@ -214,7 +215,8 @@ def check_cierre(s):
     """/Cierre solo muestra el dia actual (con rol de gestion se puede cambiar ?Date=).
     Si el usuario no tiene el rol se reporta sin comparacion para no falsar la prueba."""
     _, text = s.text("/Cierre")
-    visibles = len(re.findall(r"PRA-\d{5,}", text))
+    # Desde la corrección O1 (2026-10-19) la pantalla muestra el código persistido (SOL3-…) o PRA- si no hay.
+    visibles = len(set(re.findall(r"\b(?:PRA-\d{5,}|SOL3-\d+)\b", text)))
     if re.search(r"permiso|denegad", text, re.I):
         return Result("Cierre: sesiones de hoy visibles (sin permiso de rol)", "n/d", visibles,
                       "el usuario E2E no tiene rol de cierre")

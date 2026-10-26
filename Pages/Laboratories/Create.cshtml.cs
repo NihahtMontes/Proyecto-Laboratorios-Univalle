@@ -80,7 +80,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Laboratories
 
             if (nameExists)
             {
-                ModelState.AddModelError("Input.Name", "Ya existe un ambiente con este nombre en la facultad seleccionada.");
+                ModelState.AddModelError("Input.Name", "Ya existe un laboratorio con este nombre en la facultad seleccionada.");
                 LoadFaculties();
                 return Page();
             }

@@ -1,5 +1,9 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Persons.DeleteModel
+@{
+    ViewData["Title"] = "Eliminar persona";
+    ViewData["Section"] = "Configuración";
+}
 
 <div class="row justify-content-center" style="min-height: 60vh; align-items: center;">
     <div class="col-md-6 col-lg-5">
@@ -50,7 +54,7 @@
                 </form>
                 
                 <div class="mt-4">
-                    <a asp-page="./Index" class="btn btn-link text-muted small uppercase font-weight-bold">Volver al Directorio</a>
+                    <a asp-page="./Index" class="btn btn-link text-muted small uppercase font-weight-bold">Volver al listado</a>
                 </div>
             </div>
         </div>

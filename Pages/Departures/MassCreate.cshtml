@@ -3,9 +3,13 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Salida Masiva por Laboratorio (L-3)";
+    ViewData["Title"] = "Salida masiva por laboratorio";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     bool isWizard = (bool)(ViewData["IsWizard"] ?? false);
 }
+
+<partial name="_PageHelp" model='"Departures.MassCreate"' />
 
 <div class="row justify-content-center">
     <div class="col-lg-12">
@@ -19,7 +23,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Salida Masiva por Laboratorio (L-3)</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Salida de equipos por laboratorio</h4>
                         <h6 class="card-subtitle text-muted">Registra la salida de todos los equipos pendientes del laboratorio seleccionado.</h6>
                     </div>
                     <div class="ml-auto">
@@ -31,7 +35,7 @@
                 <div class="bg-light p-4 rounded mb-4 border-left border-warning shadow-sm" style="border-left-width: 4px;">
                     <div class="row align-items-end">
                         <div class="col-md-5">
-                            <label class="font-weight-bold small text-uppercase text-muted">Laboratorio / Ambiente</label>
+                            <label class="font-weight-bold small text-uppercase text-muted">Laboratorio</label>
                             <select id="labSelector" class="form-control custom-select" asp-items="Model.LabList">
                                 <option value="">-- Seleccione un laboratorio --</option>
                             </select>
@@ -101,7 +105,7 @@
                                         </th>
                                         <th class="border-top-0" style="width:25%;">Equipo</th>
                                         <th class="border-top-0" style="width:18%;">Inv. / Marca</th>
-                                        <th class="border-top-0" style="width:15%;">Técnico (L-8)</th>
+                                        <th class="border-top-0" style="width:15%;">Técnico</th>
                                         <th class="border-top-0" style="width:28%;">Producto / Ítem de Salida</th>
                                     </tr>
                                 </thead>
@@ -116,7 +120,7 @@
                                 <a asp-page="/Index" asp-route-ShowWizard="true" asp-route-Step="4"
                                    asp-route-ManagementId="@Model.ManagementId"
                                    class="btn btn-outline-secondary btn-rounded px-4 mr-2 font-weight-bold">
-                                    <i class="fas fa-arrow-left mr-1"></i> Volver al Wizard
+                                    <i class="fas fa-arrow-left mr-1"></i> Volver al asistente
                                 </a>
                             }
                             else
@@ -141,7 +145,7 @@
                             <div>
                                 <strong class="text-danger">Equipos sin técnico responsable</strong><br>
                                 <span id="diagnosticText"></span><br>
-                                <small class="text-muted">Para habilitar estos equipos, vaya a <strong>Mantenimiento L-8</strong> y asigne un técnico responsable antes de registrar la salida.</small>
+                                <small class="text-muted">Para habilitar estos equipos, vaya al <strong>registro de mantenimiento</strong> y asigne un técnico responsable antes de registrar la salida.</small>
                             </div>
                         </div>
                     </div>
@@ -149,7 +153,7 @@
                 <div id="emptyState" class="text-center py-5 text-muted" style="display:none;">
                     <i class="fas fa-sign-out-alt fa-3x mb-3 d-block opacity-2"></i>
                     <span class="font-weight-bold">No hay equipos pendientes de salida en este laboratorio.</span>
-                    <p class="small mt-2">Solo aparecen equipos en fase <strong>L-3 Salida</strong> con mantenimiento completado.</p>
+                    <p class="small mt-2">Solo aparecen equipos en el paso <strong>Salida de equipos</strong> con mantenimiento completado.</p>
                 </div>
 
                 <div id="loadingState" class="text-center py-5" style="display:none;">
@@ -258,7 +262,7 @@
                 var blocked = data.filter(function(d) { return !d.hasTechnician || !d.hasLaboratory; }).length;
                 if (blocked > 0) {
                     var parts = [];
-                    if (noTech > 0) parts.push('<strong>' + noTech + '</strong> sin técnico en L-8');
+                    if (noTech > 0) parts.push('<strong>' + noTech + '</strong> sin técnico asignado');
                     if (noLab > 0) parts.push('<strong>' + noLab + '</strong> sin laboratorio asignado');
                     $('#diagnosticText').html(parts.join(' y ') + ' de <strong>' + totalRows + '</strong> equipo(s) serán omitidos de la salida.');
                     $('#diagnosticBanner').show();
@@ -329,7 +333,7 @@
             }
 
             Swal.fire({
-                title: isDraft ? '¿Guardar borrador L-3?' : '¿Confirmar Salidas?',
+                title: isDraft ? '¿Guardar borrador de la salida?' : '¿Confirmar Salidas?',
                 text: isDraft ? 'Se guardará la selección y fechas sin marcar equipos en salida.' : 'Se registrará la salida de ' + count + ' equipo(s) seleccionado(s) y avanzarán al Kardex.',
                 icon: 'question',
                 showCancelButton: true,

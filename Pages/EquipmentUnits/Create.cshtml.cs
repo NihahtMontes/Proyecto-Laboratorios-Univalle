@@ -157,7 +157,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             if (Input.CurrentStatus == EquipmentStatus.Deleted)
                 ModelState.AddModelError("Input.CurrentStatus", "No se puede registrar una unidad con estado «Eliminado».");
             else if (Input.CurrentStatus == EquipmentStatus.OnLoan)
-                ModelState.AddModelError("Input.CurrentStatus", "Una unidad nueva no puede registrarse «En Préstamo»: el préstamo se registra con una salida L-3.");
+                ModelState.AddModelError("Input.CurrentStatus", "Una unidad nueva no puede registrarse «En Préstamo»: el préstamo se registra con una salida de equipos.");
 
             if (!ModelState.IsValid)
             {

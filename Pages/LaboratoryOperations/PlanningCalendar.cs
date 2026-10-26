@@ -79,7 +79,7 @@ public sealed record PlanningCalendar(
             .OrderBy(r => r.ScheduledDate)
             .Select(r => new
             {
-                r.Id, r.PracticeName, r.ScheduledDate, r.ScheduledEndDate, r.Status, r.TeacherPersonId,
+                r.Id, r.Code, r.PracticeName, r.ScheduledDate, r.ScheduledEndDate, r.Status, r.TeacherPersonId,
                 StartOrder = r.StartPeriod != null ? (int?)r.StartPeriod.Order : null,
                 r.PeriodCount,
                 SubjectName = r.Subject != null ? r.Subject.Name : "Sin materia",
@@ -97,7 +97,7 @@ public sealed record PlanningCalendar(
             .ToDictionaryAsync(i => i.Id, i => i.Name);
 
         var cards = plannings.ToLookup(p => p.ScheduledDate.Date, p => new PlanningCard(
-            p.Id, L3Codes.Format(p.Id), p.PracticeName, p.SubjectName, p.LaboratoryName, p.GroupLabel,
+            p.Id, L3Codes.Format(p.Id, p.Code), p.PracticeName, p.SubjectName, p.LaboratoryName, p.GroupLabel,
             teachers.TryGetValue(p.TeacherPersonId, out var t) ? t : "—",
             PlanningStatusView.TimeText(p.StartOrder, p.PeriodCount, p.ScheduledDate, p.ScheduledEndDate),
             p.Status, PlanningStatus.Label(p.Status), PlanningStatusView.Css(p.Status), PlanningStatus.Occupies(p.Status),

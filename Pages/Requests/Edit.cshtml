@@ -2,6 +2,10 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Requests.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Proyecto_Laboratorios_Univalle.Helpers
+@{
+    ViewData["Title"] = "Editar solicitud de servicio técnico";
+    ViewData["Section"] = "Mantenimiento de equipos";
+}
 
 <div class="row">
     <div class="col-lg-8">
@@ -55,7 +59,7 @@
                         {
                             <textarea asp-for="Input.Description" class="form-control bg-light" rows="3" readonly></textarea>
                             <div class="alert alert-info border-0 shadow-sm mt-2 mb-0 small">
-                                <i class="fas fa-info-circle mr-1"></i> La descripción y hallazgos técnicos provienen de la fase L-6. Para modificarlos, debe editar directamente la fase L-6.
+                                <i class="fas fa-info-circle mr-1"></i> La descripción y los hallazgos técnicos vienen de la verificación. Para modificarlos, edite la verificación del equipo.
                             </div>
                         }
                         else

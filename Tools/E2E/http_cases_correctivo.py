@@ -5,6 +5,7 @@ Cubre: CR-01 convivencia/visibilidad, CR-02 asistente paso 2, CR-03 L-7 con y si
 CR-05 validaciones L-8, CR-06 L-3/Kardex/L-12, CR-07 historial de estados. Solo contra la copia QA.
 Salida: outputs/qa-usuario/http_cases_procesos_correctivo.txt (la escribe P.finish).
 """
+import html as _html
 import http_cases_procesos_common as P
 import http_cases_correctivo_common as C
 from http_cases_procesos_common import check, plan, scalar, sql, unidad
@@ -31,8 +32,8 @@ def run(R, c):
                      "Input.StartDate": "2027-07-01", "Input.PlannedEndDate": "2027-12-31",
                      "Input.Description": "Correctiva QA", "Input.FacultyId": ""},
                     name="CR-01 duplicado CORR-2027-2")
-    check(R, "CR-01 crear un duplicado CORR-2027-2 se rechaza con 'Ya existe una gestion registrada para CORR-2027-2.'",
-          r.status == 200 and (r.has_error("Ya existe una gestion registrada") or r.has_toast("Ya existe una gestion registrada")),
+    check(R, "CR-01 crear un duplicado CORR-2027-2 se rechaza con 'Ya existe una gestión registrada para CORR-2027-2.'",
+          r.status == 200 and (r.has_error("Ya existe una gestión registrada") or r.has_toast("Ya existe una gestión registrada")),
           P.dump(r))
     st, html = c.get("/LaboratoryOperations/Planificaciones")
     check(R, "CR-01 CORR-2027-2 no aparece en /LaboratoryOperations/Planificaciones",
@@ -46,22 +47,22 @@ def run(R, c):
 
     # ================================================================ CR-02 asistente correctivo: arranca en el paso 2 (L-7)
     st, html = c.get(f"/?ShowWizard=true&ManagementId={corr}")
-    check(R, "CR-02 GET /?ShowWizard=true&ManagementId=<corr> sin Step muestra el paso 2 ('Paso 2: L7 Solicitud')",
-          st == 200 and "Paso 2: L7 Solicitud" in (html or ""), f"status={st}")
-    check(R, "CR-02 el paso 2 correctivo ofrece reportar falla ('Reportar Nueva Falla')",
-          st == 200 and "Reportar Nueva Falla" in (html or ""), f"status={st}")
+    check(R, "CR-02 GET /?ShowWizard=true&ManagementId=<corr> sin Step muestra el paso 2 ('Paso 2: Solicitud de servicio técnico')",
+          st == 200 and "Paso 2: Solicitud de servicio técnico" in _html.unescape(html or ""), f"status={st}")
+    check(R, "CR-02 el paso 2 correctivo ofrece reportar falla ('Reportar nueva falla')",
+          st == 200 and "Reportar nueva falla" in _html.unescape(html or ""), f"status={st}")
     r = P.post_form(c, f"/?ShowWizard=true&Step=2&ManagementId={corr}", {"Step": "2", "ManagementId": str(corr)},
                     handler="PreviousStep", action_contains="PreviousStep", name="CR-02 Atras en paso 2", follow=True)
     # En el correctivo el paso 1 (L-6) no existe: «Atrás» desde el paso 2 vuelve al resumen (Step=0) o se queda en 2, nunca al 1.
     loc_back = (r.location or "")
     check(R, "CR-02 POST 'Atras' (PreviousStep) desde el paso 2 no lleva al paso 1 (L-6): vuelve al resumen (Step=0) o se queda en 2",
-          r.status < 500 and "Step=1&" not in loc_back + "&" and ("Step=0" in loc_back or "Step=2" in loc_back or "Paso 2: L7 Solicitud" in (r.text or "")), P.dump(r))
+          r.status < 500 and "Step=1&" not in loc_back + "&" and ("Step=0" in loc_back or "Step=2" in loc_back or "Paso 2: Solicitud de servicio técnico" in _html.unescape(r.text or "")), P.dump(r))
 
     # ================================================================ CR-03 L-7 correctivo: plan nuevo y borrador
     u3, inv3 = P.nueva_unidad(c, lab, "c3")
     r = C.l7_corr(c, corr, lab, u3, name="CR-03 L-7 correctiva", follow=True)
-    check(R, "CR-03 L-7 sin plan previo: 'Solicitud tecnica L-7 registrada exitosamente.' y redirige al paso 3",
-          r.status == 302 and "Step=3" in (r.location or "") and r.has_toast("Solicitud t\u00e9cnica L-7 registrada exitosamente.", "success"),
+    check(R, "CR-03 L-7 sin plan previo: 'Solicitud de servicio técnico registrada correctamente.' y redirige al paso 3",
+          r.status == 302 and "Step=3" in (r.location or "") and r.has_toast("Solicitud de servicio t\u00e9cnico registrada correctamente.", "success"),
           P.dump(r))
     pid3 = C.plan_de(corr, u3)
     p3 = plan(pid3)

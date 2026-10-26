@@ -4,6 +4,7 @@
 @using Proyecto_Laboratorios_Univalle.Services
 @{
     ViewData["Title"] = "Conflictos de material";
+    ViewData["Section"] = "Planificación académica";
     ViewData["HidePageTitle"] = true;
     var grid = Model.Grid;
     var cultura = CultureInfo.GetCultureInfo("es-ES");
@@ -48,7 +49,7 @@
     {
         <div class="gr-empty-state">
             <i class="fas fa-exclamation-triangle gr-empty-state__icon"></i>
-            <h3 class="font-weight-bold text-dark mb-2">No hay gestión académica configurada</h3>
+            <h3 class="font-weight-bold text-dark mb-2">No hay un semestre académico configurado</h3>
             <p class="text-muted mb-4">Active una gestión semestral o abra esta pantalla desde una gestión para revisar los conflictos de material.</p>
             <a asp-page="/Managements/Index" class="btn btn-primary btn-rounded px-4 shadow-sm gr-btn-primary">
                 <i class="fas fa-university mr-2"></i> Ir a Gestiones
@@ -490,7 +491,7 @@
                   data-management-id="@grid.Management.Id" class="modal-content border-0 shadow-lg rounded-lg">
                 <div class="modal-header" style="background: linear-gradient(135deg, #fff8e6, #fffdf5); border-bottom: 1px solid #f3ecd4;">
                     <h5 class="modal-title font-weight-bold text-dark" id="modal-reponer-titulo">
-                        <i class="mdi mdi-backup-restore text-warning mr-2"></i>Reponer día
+                        <i class="mdi mdi-backup-restore text-warning mr-2"></i>Suspender día
                     </h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
                         <span aria-hidden="true">&times;</span>
@@ -518,7 +519,7 @@
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-outline-secondary btn-rounded font-weight-bold" data-dismiss="modal">Cancelar</button>
                     <button type="submit" id="recovery-confirm" class="btn btn-warning btn-rounded font-weight-bold px-4" disabled>
-                        <i class="mdi mdi-backup-restore mr-1"></i>Suspender y reponer
+                        <i class="mdi mdi-backup-restore mr-1"></i>Suspender día
                     </button>
                 </div>
             </form>
@@ -692,7 +693,7 @@
                     };
                     if (typeof Swal === 'undefined') { send(); return; }
                     Swal.fire({
-                        title: '¿Suspender y reponer el día?',
+                        title: '¿Suspender el día?',
                         text: lastPreview.message + ' Las planificaciones quedarán pendientes de reubicación.',
                         type: 'warning',
                         showCancelButton: true,

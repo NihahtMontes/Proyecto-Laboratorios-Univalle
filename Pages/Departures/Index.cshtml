@@ -3,7 +3,9 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 
 @{
-    ViewData["Title"] = "Control de Salidas de Equipos (L-3)";
+    ViewData["Title"] = "Salidas de equipos";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm)
         || Model.FilterType.HasValue
         || Model.FilterStatus.HasValue
@@ -26,7 +28,7 @@
             <div class="card-body">
                 <div class="d-md-flex align-items-center mb-4">
                     <div>
-                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Control de Salidas de Equipos (L-3)</h3>
+                        <h3 class="card-title text-dark font-weight-bold mt-2 ml-2">Salidas de equipos</h3>
                         <h6 class="card-subtitle text-muted ml-2">Préstamos y salidas por mantenimiento externo.</h6>
                     </div>
                     <div class="ml-auto mt-3">
@@ -69,9 +71,9 @@
                             <select asp-for="FilterLaboratoryId"
                                     class="custom-select btn-rounded w-auto mw-100 mr-2 mb-2 @(Model.FilterLaboratoryId.HasValue ? "border-info text-info font-weight-bold" : "")"
                                     asp-items="Model.LaboratoriesList"
-                                    aria-label="Ambiente"
+                                    aria-label="Laboratorio"
                                     data-live-filter-control>
-                                <option value="">Ambiente</option>
+                                <option value="">Laboratorio</option>
                             </select>
 
                             @if (hasActiveFilters)
@@ -117,19 +119,47 @@
                                 {
                                     <tr>
                                         <td>
-                                            <div class="d-flex align-items-center">
-                                                <div>
-                                                    <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
-                                                    <small class="text-muted italic">Inv: @item.EquipmentUnit?.InventoryNumber</small>
+                                            @if (item.PlanningId.HasValue)
+                                            {
+                                                var planningCode = string.IsNullOrEmpty(item.Planning?.Code)
+                                                    ? $"PRA-{item.PlanningId:00000}"
+                                                    : item.Planning.Code;
+                                                <div class="d-flex align-items-center">
+                                                    <div>
+                                                        <h6 class="m-b-0 font-weight-bold text-dark">@(item.Code ?? $"SAL-{item.Id:00000}")</h6>
+                                                        <small class="text-muted italic">Práctica @planningCode@(string.IsNullOrWhiteSpace(item.Planning?.PracticeName) ? "" : $" · {item.Planning.PracticeName}")</small>
+                                                        @{
+                                                            var origen = item.OriginLaboratory?.Code;
+                                                            var ambiente = item.Planning?.Laboratory?.Code;
+                                                        }
+                                                        @if (origen != null || ambiente != null)
+                                                        {
+                                                            <small class="text-muted italic d-block">@(origen == null ? "" : $"Origen: {origen}")@(origen != null && ambiente != null ? " · " : "")@(ambiente == null ? "" : $"Laboratorio: {ambiente}")</small>
+                                                        }
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="d-flex align-items-center">
+                                                    <div>
+                                                        <h6 class="m-b-0 font-weight-bold text-dark">@item.EquipmentUnit?.Equipment?.Name</h6>
+                                                        <small class="text-muted italic">Inv: @item.EquipmentUnit?.InventoryNumber</small>
+                                                    </div>
+                                                </div>
+                                            }
                                         </td>
                                         <td class="v-middle">
                                             <div class="text-dark font-weight-bold">@item.Borrower?.FullName</div>
                                             <small class="text-muted italic">Solicitante</small>
                                         </td>
                                         <td class="text-center v-middle">
-                                            @{
+                                            @if (item.PlanningId.HasValue)
+                                            {
+                                                <span class="badge badge-success px-3 py-1 font-weight-bold">PRÁCTICA</span>
+                                            }
+                                            else
+                                            {
                                                 var (tClass, tText) = item.Type switch
                                                 {
                                                     DepartureType.ExternalLoan => ("badge-info", "PRÉSTAMO EXT."),
@@ -139,8 +169,8 @@
                                                     DepartureType.DefinitiveExit => ("badge-danger", "BAJA DEFINITIVA"),
                                                     _ => ("badge-secondary", "DESCONOCIDO")
                                                 };
+                                                <span class="badge @tClass px-3 py-1 font-weight-bold">@tText</span>
                                             }
-                                            <span class="badge @tClass px-3 py-1 font-weight-bold">@tText</span>
                                         </td>
                                         <td class="text-center v-middle">
                                             <div class="text-dark">@item.DepartureDate.ToString("dd/MM/yyyy")</div>
@@ -166,9 +196,18 @@
                                                 <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info btn-rounded mx-1 shadow-sm" title="Ver Detalles">
                                                     <i class="fas fa-search-plus"></i>
                                                 </a>
-                                                <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded shadow-sm" title="Editar">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
+                                                @if (item.PlanningId.HasValue)
+                                                {
+                                                    <a href="/LaboratoryOperations/L3?id=@item.PlanningId" class="btn btn-sm btn-outline-warning btn-rounded shadow-sm" title="Gestionar la entrega y devolución de material">
+                                                        <i class="fas fa-clipboard-check"></i>
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning btn-rounded shadow-sm" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                }
                                             </div>
                                         </td>
                                     </tr>

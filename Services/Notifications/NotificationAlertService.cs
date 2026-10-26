@@ -630,7 +630,7 @@ public sealed partial class NotificationAlertService : INotificationAlertService
 
             var date = completedMaintenance.SuggestedDate.Date;
             var (title, urgency) = date < today
-                ? ("Preventivo vencido según Kardex", NotificationUrgency.Danger)
+                ? ("Preventivo vencido según el historial del equipo", NotificationUrgency.Danger)
                 : date <= today.AddDays(7)
                     ? ("Preventivo por programar", NotificationUrgency.Warning)
                     : ("Preventivo sugerido", NotificationUrgency.Info);

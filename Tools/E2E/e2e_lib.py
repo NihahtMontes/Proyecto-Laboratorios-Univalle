@@ -62,7 +62,7 @@ class Session:
                                        "Input.Password": pw}).encode()
         self.opener.open(urllib.request.Request(BASE + "/Login", data=data), timeout=60)
         status, home = self.get("/")
-        if status != 200 or "Cerrar Sesion" not in home:
+        if status != 200 or not re.search(r"Cerrar ses(?:i|ió)n", home, re.I):
             sys.exit("No se pudo iniciar sesión")
 
     def text(self, path):

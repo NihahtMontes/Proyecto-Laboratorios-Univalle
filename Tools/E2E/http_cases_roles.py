@@ -1,6 +1,6 @@
 """Matriz de roles por HTTP (solo GET sin seguir redirects) contra la copia QA.
 Usuarios (creados por /Users/Create con la clave de E2E_PW): qa_super (SuperAdmin), qa_adm (Administrador), qa_sup (Supervisor), qa_cierre (PracticeClosure).
-Resultado observado: OK (200) | DENY (302 a /Error) | CIERRE (302 a /Cierre) | LOGIN (302 a /Login) | 404 | otro.
+Resultado observado: OK (200) | DENY (302 a /AccesoDenegado; antes /Error) | CIERRE (302 a /Cierre) | LOGIN (302 a /Login) | 404 | otro.
 """
 import os
 import re
@@ -81,6 +81,8 @@ CASES = [
     ("/Migration/Import", SAONLY),
     ("/Api/Notifications?handler=Unread&scope=all&take=5", PCOK),
     ("/Error", {"SA": "OK", "ADM": "OK", "SUP": "OK", "PC": "OK"}),
+    ("/AccesoDenegado", PCOK),
+    ("/Account/Profile", PCOK),
 ]
 
 
@@ -89,7 +91,7 @@ def classify(status, location):
     if status == 200:
         return "OK"
     if status in (301, 302, 303):
-        if "/error" in loc:
+        if "/accesodenegado" in loc or "/error" in loc:
             return "DENY"
         if "/cierre" in loc:
             return "CIERRE"
@@ -112,6 +114,9 @@ for path, expected in CASES:
                 got = expected[role]
         # /Faculties redirige por diseño a /Laboratories#faculties para SA y ADM
         if path == "/Faculties" and role in ("SA", "ADM") and st in (301, 302, 303) and (loc or "").lower().split("#")[0].rstrip("/").endswith("/laboratories"):
+            got = "OK"
+        # El inicio redirige en el servidor según el rol (UX fase 1): administradores al panel de la gestión, Supervisor a planificación.
+        if path == "/" and st in (301, 302, 303) and re.search(r"/(managements/details|laboratoryoperations)", (loc or "").lower()):
             got = "OK"
         # /Error redirige 302 a sí mismo? se acepta 200
         R.append(e2e_lib.Result(f"[{role}] GET {path}", expected[role], got, "" if got == expected[role] else f"(status={st}, loc={loc})"))

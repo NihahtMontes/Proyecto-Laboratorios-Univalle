@@ -174,7 +174,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.EquipmentUnits
             {
                 if (EquipmentUnit.CurrentStatus == EquipmentStatus.OnLoan)
                 {
-                    ModelState.AddModelError("EquipmentUnit.CurrentStatus", "El estado \"En Préstamo\" se asigna automáticamente al registrar una salida (L-3); no puede establecerse manualmente.");
+                    ModelState.AddModelError("EquipmentUnit.CurrentStatus", "El estado \"En Préstamo\" se asigna automáticamente al registrar una salida de equipos; no puede establecerse manualmente.");
                 }
                 else if (EquipmentUnit.CurrentStatus == EquipmentStatus.Deleted)
                 {

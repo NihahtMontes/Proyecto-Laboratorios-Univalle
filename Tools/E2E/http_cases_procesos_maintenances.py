@@ -42,7 +42,7 @@ def run(R, c):
     st, html = c.get(f"/Maintenances/Create?isWizard=true&managementPlanId={pid('a')}")
     check(R, "Create: GET wizard 200", st == 200, f"status={st}")
     r = P.l8(c, pid("a"), {"Input.TechnicianId": ""}, name="sin tecnico", follow=True)
-    check(R, "Create (wizard): sin tecnico -> 'El técnico responsable es obligatorio en el flujo de mantenimiento...'", r.status == 200 and r.has_toast("El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que L-3 pueda derivar el responsable de la salida.", "error"), P.dump(r))
+    check(R, "Create (wizard): sin tecnico -> 'El técnico responsable es obligatorio en el flujo de mantenimiento...'", r.status == 200 and r.has_toast("El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que la salida de equipos tome ese responsable.", "error"), P.dump(r))
     r = P.l8(c, pid("a"), {"Input.CompletionPercentage": "50", **{f"Input.Tasks[{i}].IsCompleted": None for i in (2, 3)}}, name="Completado al 50%", follow=True)
     check(R, "Create: Completado con 50 % de avance -> 'el avance debe estar al 100%' como error de campo o toast",
           r.status == 200 and (r.has_error("el avance debe estar al 100%") or r.has_toast("el avance debe estar al 100%")), P.dump(r))

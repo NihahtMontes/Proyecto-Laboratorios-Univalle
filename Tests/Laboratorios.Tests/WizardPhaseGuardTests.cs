@@ -107,12 +107,12 @@ public class WizardPhaseGuardTests
     }
 
     [Theory]
-    [InlineData(WizardPhase.Verification, "L-6 Verificación")]
-    [InlineData(WizardPhase.TechnicalRequest, "L-7 Solicitud técnica")]
-    [InlineData(WizardPhase.Maintenance, "L-8 Mantenimiento")]
-    [InlineData(WizardPhase.Exit, "L-3 Salida")]
-    [InlineData(WizardPhase.Kardex, "Kardex")]
-    [InlineData(WizardPhase.Disbursement, "L-12 Desembolso")]
+    [InlineData(WizardPhase.Verification, "Verificación de equipos")]
+    [InlineData(WizardPhase.TechnicalRequest, "Solicitud de servicio técnico")]
+    [InlineData(WizardPhase.Maintenance, "Registro de mantenimiento")]
+    [InlineData(WizardPhase.Exit, "Salida de equipos")]
+    [InlineData(WizardPhase.Kardex, "Cierre del mantenimiento")]
+    [InlineData(WizardPhase.Disbursement, "Solicitud de compra")]
     public void PhaseLabel_DevuelveNombresVisiblesEnEspanol(WizardPhase phase, string expected)
     {
         Assert.Equal(expected, WizardPhaseGuard.PhaseLabel(phase));

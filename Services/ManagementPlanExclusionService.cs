@@ -137,7 +137,7 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 Excluded = true,
                 HadHistory = hadHistory,
                 Message = hadHistory
-                    ? "Se excluyo la unidad y se cancelaron logicamente sus registros del wizard."
+                    ? "Se excluyó la unidad y se cancelaron sus registros del asistente."
                     : "Se excluyo la unidad del plan."
             };
         }

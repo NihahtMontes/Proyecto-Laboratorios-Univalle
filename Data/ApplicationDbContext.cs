@@ -12,6 +12,9 @@ namespace Proyecto_Laboratorios_Univalle.Data
     {
         private readonly ICurrentUserService _currentUserService;
 
+        // EquipmentStateHistory.Reason es nvarchar(500): el motivo del incidente L-5 se recorta a ese tope.
+        private const int EquipmentStateReasonMaxLength = 500;
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ICurrentUserService currentUserService)
           : base(options)
         {
@@ -88,7 +91,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 {
                     EquipmentUnitId = unitId,
                     StartDate = now,
-                    Reason = $"INCIDENTE L5 REGISTRADO: {incident.IncidentType} - {incident.DamageDescription}. Estado: {incident.RepositionStatus}",
+                    // DamageDescription admite 2000: se recorta para no superar el nvarchar(500) de Reason.
+                    Reason = TrimReason($"INCIDENTE L5 REGISTRADO: {incident.IncidentType} - {incident.DamageDescription}. Estado: {incident.RepositionStatus}"),
                     Status = Proyecto_Laboratorios_Univalle.Models.Enums.EquipmentStatus.Broken,
                     CreatedDate = now,
                     CreatedById = userId
@@ -96,6 +100,15 @@ namespace Proyecto_Laboratorios_Univalle.Data
             }
 
             return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        /// <summary>Corta el motivo al tope de la columna (497 + "..."), evitando DbUpdateException por longitud.</summary>
+        private static string? TrimReason(string? reason)
+        {
+            if (string.IsNullOrWhiteSpace(reason)) return null;
+            return reason.Length <= EquipmentStateReasonMaxLength
+                ? reason
+                : reason[..(EquipmentStateReasonMaxLength - 3)] + "...";
         }
 
         private void SynchronizeLocationResolutionStatuses()

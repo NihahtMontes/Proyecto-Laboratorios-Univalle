@@ -261,6 +261,8 @@ public sealed class ReschedulingService : IReschedulingService
                     schedule.LaboratoryId = command.LaboratoryId;
                     schedule.TeacherPersonId = command.TeacherPersonId;
                     schedule.AcademicWeekId = destination.AcademicWeekId;
+                    // Mismo criterio que el paso 1 (Planificacion): la semana del catálogo es 1..30.
+                    schedule.WeekNumber = destination.AcademicWeek is >= 1 and <= 30 ? destination.AcademicWeek : null;
                     schedule.Status = PracticeScheduleStatus.Rescheduled;
                 }
             }

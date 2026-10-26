@@ -3,6 +3,8 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
     ViewData["Title"] = "Grupos";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
     string SemesterLabel(int n) => n + (n == 1 || n == 3 ? ".er" : ".º") + " semestre";
 }
 

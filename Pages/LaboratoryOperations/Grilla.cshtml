@@ -6,6 +6,7 @@
 @using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
 @{
     ViewData["Title"] = "Grilla por laboratorio";
+    ViewData["Section"] = "Planificación académica";
     ViewData["HidePageTitle"] = true;
     var grid = Model.Grid;
     var origin = Model.Origin;
@@ -41,7 +42,7 @@
             }
             else
             {
-                <div class="text-muted small">Horario semanal de un ambiente: lunes a sábado por periodos académicos.</div>
+                <div class="text-muted small">Horario semanal de un laboratorio: lunes a sábado por periodos académicos.</div>
             }
         </div>
         @if (grid != null)
@@ -60,7 +61,7 @@
     {
         <div class="gr-empty-state">
             <i class="mdi mdi-table-large gr-empty-state__icon"></i>
-            <h3 class="font-weight-bold text-dark mb-2">No hay una gestión académica activa</h3>
+            <h3 class="font-weight-bold text-dark mb-2">No hay un semestre académico activo</h3>
             <p class="text-muted mb-4">Active una gestión semestral o abra la grilla desde una gestión para consultar el horario de sus laboratorios.</p>
             <a asp-page="/Managements/Index" class="btn btn-primary btn-rounded px-4 shadow-sm gr-btn-primary">
                 <i class="fas fa-university mr-2"></i> Ir a Gestiones
@@ -103,7 +104,7 @@
                     </a>
                 }
                 @* Chips de ambientes: visibles solo durante un arrastre (los llena grilla-reprogramar.js) *@
-                <div class="gr-rs-chips" id="gr-rs-chips" hidden aria-label="Cambiar de ambiente durante el arrastre"></div>
+                <div class="gr-rs-chips" id="gr-rs-chips" hidden aria-label="Cambiar de laboratorio durante el arrastre"></div>
             </div>
         }
 
@@ -151,6 +152,8 @@
                          <input type="hidden" name="@(Model.IsRecoveryMode ? "reponer" : "reprogramar")" value="@origin!.Id" />
                          @if (Model.IsRecoveryMode) { <input type="hidden" name="recoveryId" value="@Model.RecoveryId" /> }
                         <input type="hidden" name="managementId" value="@management.Id" />
+                        @* El cambio de ambiente/semana no debe perder la pantalla de origen del modo. *@
+                        @if (Model.SafeReturnUrl is string controlsReturnUrl) { <input type="hidden" name="returnUrl" value="@controlsReturnUrl" /> }
                     }
                     <div class="gr-controls__field">
                         <label for="gr-management" class="gr-controls__label">Gestión</label>
@@ -164,7 +167,7 @@
                     </div>
 
                     <div class="gr-controls__field gr-controls__field--lab">
-                        <label for="gr-lab" class="gr-controls__label">Ambiente</label>
+                        <label for="gr-lab" class="gr-controls__label">Laboratorio</label>
                         <select id="gr-lab" name="laboratoryId" class="form-control form-control-sm" disabled="@(!grid.HasLaboratories)">
                             @foreach (var l in grid.Laboratories)
                             {
@@ -274,7 +277,7 @@
         {
             <div class="gr-empty-state">
                 <i class="fas fa-flask gr-empty-state__icon"></i>
-                <h4 class="font-weight-bold text-dark mb-2">No hay ambientes activos</h4>
+                <h4 class="font-weight-bold text-dark mb-2">No hay laboratorios activos</h4>
                 <p class="text-muted mb-0">Registre o active un laboratorio para consultar su horario.</p>
             </div>
         }
@@ -312,7 +315,7 @@
                             </header>
                             <dl class="gr-sheet__meta">
                                 <div><dt>Gestión</dt><dd>@management.Code</dd></div>
-                                <div class="gr-sheet__meta-wide"><dt>Ambiente</dt><dd>@lab.Label</dd></div>
+                                <div class="gr-sheet__meta-wide"><dt>Laboratorio</dt><dd>@lab.Label</dd></div>
                                 <div><dt>Piso / ubicación</dt><dd>@lab.LocationText</dd></div>
                                 <div><dt>Capacidad</dt><dd>@lab.CapacityText</dd></div>
                                 <div><dt>Semana académica</dt><dd>@week.Number (@week.RangeText)</dd></div>
@@ -347,7 +350,7 @@
                                              else if (Model.CanRecover && !mode && grid.CanAdd && day.Blocks.Any(b => b.Occupies))
                                              {
                                                  <a asp-page="./CalendarioAcademico" asp-route-managementId="@management.Id"
-                                                    asp-fragment="day-@day.Date.ToString("yyyy-MM-dd", inv)" class="small gr-noprint">Reponer día</a>
+                                                    asp-fragment="day-@day.Date.ToString("yyyy-MM-dd", inv)" class="small gr-noprint">Suspender día</a>
                                              }
                                         </div>
                                     }
@@ -414,7 +417,7 @@
                                                         {
                                                             var tipo = ConflictTypes.Of(t.Kind);
                                                             var relText = t.RelatedPlanningIds.Count > 0
-                                                                ? $"\nRelacionadas: {string.Join(", ", t.RelatedPlanningIds.Select(L3Codes.Format))}" : string.Empty;
+                                                                ? $"\nRelacionadas: {string.Join(", ", t.RelatedDisplayCodes)}" : string.Empty;
                                                             var titulo = $"{t.Tag} · {tipo.Label} · {t.ArticleName} · {t.Date.ToString("dd/MM")}{relText}\nClic para resolver en Conflictos";
                                                             <a class="gr-ctag gr-ctag--@tipo.Css @(t.Involved ? "is-involved" : "is-loose")" href="@t.Url" draggable="false"
                                                                data-conflict-key="@t.Key" data-cf-color="var(--cf-@tipo.Css)"
@@ -520,7 +523,7 @@
                                         <span class="gr-legend__swatch gr-legend__swatch--group-busy"></span> Clase de otra materia del grupo
                                     </span>
                                 }
-                                <span class="gr-legend__note text-muted small">Los estados atenuados no ocupan el ambiente; <i class="mdi mdi-arrow-right-bold" aria-hidden="true"></i> lleva a su nueva ubicación.</span>
+                                <span class="gr-legend__note text-muted small">Los estados atenuados no ocupan el laboratorio; <i class="mdi mdi-arrow-right-bold" aria-hidden="true"></i> lleva a su nueva ubicación.</span>
                             </div>
                         </div>
                     </div>
@@ -628,7 +631,7 @@
                                             </div>
                                         </div>
                                         <div class="form-group mb-2">
-                                            <label for="gr-rs-lab" class="gr-controls__label">Ambiente</label>
+                                            <label for="gr-rs-lab" class="gr-controls__label">Laboratorio</label>
                                             <select id="gr-rs-lab" name="Move.LaboratoryId" class="custom-select custom-select-sm">
                                                 @foreach (var l in grid.Laboratories)
                                                 {
@@ -715,7 +718,7 @@
                                                 <a asp-page="./Grilla" asp-route-reponer="@pending.Id" asp-route-recoveryId="@overview.Id"
                                                    asp-route-laboratoryId="@pending.LaboratoryId" asp-route-managementId="@management.Id"
                                                    class="btn btn-sm btn-outline-warning btn-rounded mt-1">
-                                                    <i class="mdi mdi-arrow-right-bold mr-1"></i>Reubicar
+                                                    <i class="mdi mdi-arrow-right-bold mr-1"></i>Reprogramar
                                                 </a>
                                             </div>
                                         }
@@ -764,7 +767,7 @@
 }
 
 @section Scripts {
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script>
         (function () {
             var form = document.getElementById('gr-controls');

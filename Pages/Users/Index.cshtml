@@ -2,6 +2,9 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Users.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
+    ViewData["Title"] = "Usuarios";
+    ViewData["Section"] = "Configuración";
+    ViewData["HidePageTitle"] = true;
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter.HasValue;
 }
 <div class="row">

@@ -4,6 +4,8 @@
 @using Proyecto_Laboratorios_Univalle.Services
 @{
     ViewData["Title"] = "Calendario académico";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
 }
 
 <div class="page-breadcrumb">
@@ -38,13 +40,20 @@
                 <div class="mb-3">
                     <i class="fas fa-calendar-times text-primary opacity-50" style="font-size: 4rem;"></i>
                 </div>
-                <h3 class="font-weight-bold text-dark mb-2">No hay una gestión académica disponible</h3>
+                <h3 class="font-weight-bold text-dark mb-2">No hay un semestre académico disponible</h3>
                 <p class="text-muted mb-4">
                     El calendario académico depende de las fechas de una gestión. Cree o active una gestión para generar sus semanas.
                 </p>
-                <a asp-page="/Managements/Index" asp-route-type="Preventive" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm">
-                    <i class="fas fa-calendar-plus mr-2"></i> Ver gestiones
-                </a>
+                @if (User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
+                {
+                    <a asp-page="/Managements/Index" asp-route-type="Preventive" class="btn btn-primary btn-rounded font-weight-bold px-4 shadow-sm">
+                        <i class="fas fa-calendar-plus mr-2"></i> Ver gestiones
+                    </a>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">Pida al administrador que active la gestión del semestre.</p>
+                }
             </div>
         </div>
     }
@@ -265,7 +274,7 @@
                                                                 <button type="button" class="btn btn-outline-warning btn-sm btn-rounded font-weight-bold mt-1"
                                                                         data-toggle="modal" data-target="#modal-reponer-dia"
                                                                         data-day-id="@day.DayId" data-day-label="@dayLabel" data-count="@day.PlanCount" data-labs="@day.LabCount">
-                                                                    <i class="mdi mdi-backup-restore mr-1"></i>Reponer día
+                                                                    <i class="mdi mdi-backup-restore mr-1"></i>Suspender día
                                                                 </button>
                                                             }
                                                         }
@@ -343,14 +352,14 @@
             <div class="modal-dialog modal-dialog-centered" role="document">
                 <form method="post" asp-page-handler="RecoverDay" id="form-recover-day" class="modal-content border-0 shadow-lg rounded-lg">
                     <div class="modal-header bg-light-warning">
-                        <h5 class="modal-title font-weight-bold" id="modal-reponer-titulo"><i class="mdi mdi-backup-restore mr-1"></i>Reponer día completo</h5>
+                        <h5 class="modal-title font-weight-bold" id="modal-reponer-titulo"><i class="mdi mdi-backup-restore mr-1"></i>Suspender día completo</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body">
                         <input type="hidden" name="managementId" value="@Model.Management.Id" />
                         <input type="hidden" name="dayId" id="recover-day-id" />
-                        <p>Suspenderá <strong id="recover-day-label"></strong> y pondrá <strong id="recover-day-count"></strong> planificaciones de <strong id="recover-day-labs"></strong> ambientes en la bandeja de reposición.</p>
-                        <p class="small text-muted">Se conserva la práctica original y su salida de material L-3. Cada nueva ubicación se confirma por separado.</p>
+                        <p>Suspenderá <strong id="recover-day-label"></strong> y pondrá <strong id="recover-day-count"></strong> planificaciones de <strong id="recover-day-labs"></strong> laboratorios en la lista para reprogramar.</p>
+                        <p class="small text-muted">Se conserva la práctica original y su entrega de material. Cada nueva ubicación se confirma por separado.</p>
                         <label for="recover-day-reason" class="font-weight-bold">Motivo de suspensión</label>
                         <textarea id="recover-day-reason" name="reason" class="form-control" maxlength="200" rows="3" required></textarea>
                     </div>
@@ -451,9 +460,9 @@
                     if (!form.reportValidity()) return;
                     var send = function () { form.dataset.confirmed = '1'; HTMLFormElement.prototype.submit.call(form); };
                     if (typeof Swal === 'undefined') { send(); return; }
-                    Swal.fire({ title: id === 'form-recover-day' ? '¿Suspender y reponer el día entero?' : '¿Suspender este día?',
+                    Swal.fire({ title: id === 'form-recover-day' ? '¿Suspender el día entero?' : '¿Suspender este día?',
                         text: id === 'form-recover-day'
-                            ? 'Todas las planificaciones del día dejarán de ocupar el ambiente y quedarán pendientes de reubicación.'
+                            ? 'Todas las planificaciones del día dejarán de ocupar el laboratorio y quedarán pendientes de reprogramar.'
                             : 'El día dejará de admitir nuevas planificaciones.',
                         type: 'warning', showCancelButton: true, confirmButtonText: 'Sí, suspender', cancelButtonText: 'Cancelar'
                     }).then(function (result) { if (result && (result.isConfirmed === true || result.value === true)) send(); });

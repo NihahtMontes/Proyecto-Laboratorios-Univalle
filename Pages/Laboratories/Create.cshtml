@@ -1,5 +1,9 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Laboratories.CreateModel
+@{
+    ViewData["Title"] = "Nuevo laboratorio";
+    ViewData["Section"] = "Configuración";
+}
 
 
 
@@ -86,7 +90,7 @@
 
                             <div class="form-group mb-4">
                                 <label asp-for="Input.Description" class="control-label font-weight-bold small uppercase text-muted">
-                                    Descripción del Ambiente
+                                    Descripción del laboratorio
                                 </label>
                                 <textarea asp-for="Input.Description" class="form-control" rows="3" placeholder="Detalles sobre el acceso, capacidad instalada o equipamiento base..."></textarea>
                                 <span asp-validation-for="Input.Description" class="text-danger small"></span>

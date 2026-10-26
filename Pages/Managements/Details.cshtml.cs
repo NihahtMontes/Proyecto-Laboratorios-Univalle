@@ -368,7 +368,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (currentManagement == null)
             {
-                TempData.Warning("No se encontro la gestion solicitada para actualizar el dashboard.");
+                TempData.Warning("No se encontró la gestión solicitada para actualizar el panel.");
                 return RedirectToPage("./Index");
             }
 
@@ -386,7 +386,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (activationResult.ActiveManagement == null)
             {
-                TempData.Warning("No hay una gestion activa para este tipo. Cree o active una gestion antes de continuar.");
+                TempData.Warning("No hay una gestión activa para este tipo. Cree o active una gestión antes de continuar.");
                 return RedirectToPage("./Index", new { Type = currentManagement.Type.ToString() });
             }
 
@@ -401,13 +401,13 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             _managementContext.InvalidateCache();
 
             var closedMessage = activationResult.ClosedCount > 0
-                ? $" Se cerro {activationResult.ClosedCount} gestion activa duplicada."
+                ? $" Se cerró {activationResult.ClosedCount} gestión activa duplicada."
                 : string.Empty;
             var purgedMessage = purgedGroups > 0
                 ? $" Se eliminaron {purgedGroups} grupo(s) de la gestión."
                 : string.Empty;
 
-            TempData.Success($"Gestion actualizada correctamente. Ahora estas en {activeCode}.{closedMessage}{purgedMessage}");
+            TempData.Success($"Gestión actualizada correctamente. Ahora está en {activeCode}.{closedMessage}{purgedMessage}");
             return RedirectToPage("./Details", new { id = activeId, ActiveTab = "dashboard" });
         }
 
@@ -431,14 +431,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (management.Type == ManagementType.Corrective)
             {
-                TempData.Warning("Las gestiones correctivas no sincronizan equipos. Cada activo entra al flujo cuando se reporta una falla L-7.");
+                TempData.Warning("Las gestiones correctivas no agregan equipos automáticamente. Cada activo entra al flujo cuando se reporta una falla.");
                 return RedirectToPage(new { id, ActiveTab });
             }
 
             // Obtener todos los IDs de equipos ya en esta gestión
             if (management.Type == ManagementType.Preventive)
             {
-                TempData.Info("Seleccione las categorias, subclasificaciones y unidades que entraran a esta ronda preventiva.");
+                TempData.Info("Seleccione las categorías, subclasificaciones y unidades que entrarán a este mantenimiento preventivo.");
                 return RedirectToPage("./PlanAssets", new { id });
             }
 
@@ -455,7 +455,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
 
             if (!newEquipments.Any())
             {
-                TempData.Info("Todos los equipos activos ya están incluidos en esta ronda.");
+                TempData.Info("Todos los equipos activos ya están incluidos en esta gestión.");
                 return RedirectToPage(new { id, ActiveTab });
             }
 
@@ -475,7 +475,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Managements
             }
 
             await _context.SaveChangesAsync();
-            TempData.Success($"Se han sincronizado {newEquipments.Count} equipos nuevos a esta ronda.");
+            TempData.Success($"Se han agregado {newEquipments.Count} equipos nuevos a esta gestión.");
 
             return RedirectToPage(new { id, ActiveTab });
         }

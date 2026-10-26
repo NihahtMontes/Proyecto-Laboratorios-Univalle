@@ -61,17 +61,17 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             var currentMgmt = await ResolveManagementAsync();
             var isCorrective = currentMgmt?.Type == ManagementType.Corrective;
 
-            // T0-10: una gestión que no está activa no admite nuevas solicitudes L-7.
+            // T0-10: una gestión que no está activa no admite nuevas solicitudes de servicio técnico.
             if (ManagementId.HasValue && currentMgmt != null && currentMgmt.Status != ManagementStatus.Active)
             {
-                TempData.Warning("La gestión seleccionada no está activa: no admite nuevas solicitudes L-7.");
+                TempData.Warning("La gestión seleccionada no está activa: no admite nuevas solicitudes de servicio técnico.");
                 return RedirectToPage("./Index");
             }
 
             // T0-10: en preventivo la L-7 nace de un L-6 con falla; no se admite suelta.
             if (!ManagementPlanId.HasValue && currentMgmt?.Type == ManagementType.Preventive)
             {
-                TempData.Warning("En el mantenimiento preventivo la L-7 nace de un L-6 con falla: continúe desde el asistente preventivo.");
+                TempData.Warning("En el mantenimiento preventivo la solicitud nace de una verificación con falla: continúe desde el asistente preventivo.");
                 return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, ManagementId = currentMgmt.Id });
             }
 
@@ -212,7 +212,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
                 if (wizardPlan == null)
                 {
-                    TempData.Error($"No se pudo resolver el plan del wizard para L-7. ManagementPlanId recibido: {ManagementPlanId.Value}.");
+                    TempData.Error("No se encontró el equipo en la gestión. Vuelva al asistente y ábralo de nuevo.");
                     await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                     ViewData["IsWizard"] = isWizard;
                     return Page();
@@ -258,10 +258,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             ViewData["ManagementType"] = currentMgmt?.Type.ToString();
             ViewData["CurrentPhaseInt"] = (int)(wizardPlan?.CurrentPhase ?? WizardPhase.TechnicalRequest);
 
-            // T0-10: una gestión que no está activa no admite nuevas solicitudes L-7.
+            // T0-10: una gestión que no está activa no admite nuevas solicitudes de servicio técnico.
             if (ManagementId.HasValue && currentMgmt != null && currentMgmt.Status != ManagementStatus.Active)
             {
-                TempData.Warning("La gestión seleccionada no está activa: no admite nuevas solicitudes L-7.");
+                TempData.Warning("La gestión seleccionada no está activa: no admite nuevas solicitudes de servicio técnico.");
                 return RedirectToPage("./Index");
             }
 
@@ -269,7 +269,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             // guarda una L-7 suelta (sin ManagementPlanId) en una gestión preventiva.
             if (wizardPlan == null && currentMgmt?.Type == ManagementType.Preventive)
             {
-                TempData.Warning("En el mantenimiento preventivo la L-7 nace de un L-6 con falla: continúe desde el asistente preventivo.");
+                TempData.Warning("En el mantenimiento preventivo la solicitud nace de una verificación con falla: continúe desde el asistente preventivo.");
                 return RedirectToPage("/Index", new { ShowWizard = true, Step = 2, ManagementId = currentMgmt.Id });
             }
 
@@ -281,7 +281,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             {
                 if (!Enum.IsDefined(typeof(RequestPriority), Input.Priority) || Input.Priority == RequestPriority.PorConfirmar)
                 {
-                    ModelState.AddModelError("Input.Priority", "Debe seleccionar una prioridad válida para la solicitud L-7.");
+                    ModelState.AddModelError("Input.Priority", "Seleccione una prioridad válida para la solicitud.");
                 }
 
                 if (!Input.TechnicalChecklistConfirmed || CountChecklistItems(Input.Observations) < TechnicalChecklistMinimumItems)
@@ -300,8 +300,8 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     .ToList();
 
                 TempData.Error(errors.Count > 0
-                    ? "No se pudo registrar la solicitud L-7: " + string.Join(" ", errors)
-                    : "No se pudo registrar la solicitud L-7. Revise los campos obligatorios.");
+                    ? "No se pudo registrar la solicitud de servicio técnico: " + string.Join(" ", errors)
+                    : "No se pudo registrar la solicitud de servicio técnico. Revise los campos obligatorios.");
 
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
@@ -320,14 +320,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             if (unit == null)
             {
-                TempData.Error("No se pudo registrar la solicitud L-7: la unidad física no existe.");
+                TempData.Error("No se pudo registrar la solicitud de servicio técnico: la unidad física no existe.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
 
             if (unit.LaboratoryId == null)
             {
-                TempData.Error("No se pudo registrar la solicitud L-7: la unidad física no tiene laboratorio asignado.");
+                TempData.Error("No se pudo registrar la solicitud de servicio técnico: la unidad física no tiene laboratorio asignado.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
@@ -343,7 +343,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
             if (hasPendingRequest)
             {
-                TempData.Warning("Ya existe una solicitud L-7 pendiente para esta unidad en la gestión seleccionada.");
+                TempData.Warning("Ya existe una solicitud de servicio técnico pendiente para esta unidad en la gestión seleccionada.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
@@ -390,7 +390,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 request.EquipmentId = unit.EquipmentId;
                 request.EquipmentUnitId = Input.EquipmentUnitId;
                 request.Description = string.IsNullOrWhiteSpace(Input.Description)
-                    ? "Borrador L-7 pendiente de descripción técnica."
+                    ? "Borrador de la solicitud pendiente de descripción técnica."
                     : Input.Description.Clean()!;
                 request.Priority = Input.Priority;
                 // T0-03b: el checklist técnico completo (~900 caracteres) ya no se trunca a 500:
@@ -458,12 +458,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                 }
                 else if (isWizard)
                 {
-                    throw new InvalidOperationException("El flujo wizard preventivo requiere un ManagementPlanId válido para avanzar de L-7 a L-8.");
+                    throw new InvalidOperationException("Abra la solicitud desde el asistente preventivo para que el equipo pase al registro de mantenimiento.");
                 }
 
                 await transaction.CommitAsync();
 
-                TempData.Success(saveDraft ? "Borrador L-7 guardado correctamente." : "Solicitud técnica L-7 registrada exitosamente.");
+                TempData.Success(saveDraft ? "Borrador de la solicitud de servicio técnico guardado correctamente." : "Solicitud de servicio técnico registrada correctamente.");
 
                 if (isWizard)
                 {
@@ -495,7 +495,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
                     "Error al registrar solicitud L-7 para unidad {EquipmentUnitId} y plan {ManagementPlanId}.",
                     Input.EquipmentUnitId,
                     ManagementPlanId);
-                TempData.Error("No se pudo registrar la solicitud L-7. Intente nuevamente.");
+                TempData.Error("No se pudo registrar la solicitud de servicio técnico. Intente nuevamente.");
                 await LoadLists(Input.FacultyId, Input.LaboratoryId, Input.EquipmentUnitId);
                 return Page();
             }
@@ -503,7 +503,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
 
         private void ApplyRequestToInput(Request request)
         {
-            Input.Description = request.Description == "Borrador L-7 pendiente de descripción técnica." ? string.Empty : request.Description;
+            Input.Description = request.Description == "Borrador de la solicitud pendiente de descripción técnica." ? string.Empty : request.Description;
             Input.Observations = request.Observations;
             // T0-03b: los borradores guardados con el límite antiguo (500) dejaron un
             // prefijo truncado del checklist; al reabrirlos se restaura el texto completo.
@@ -559,7 +559,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Requests
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.TechnicalRequest;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-7 guardado con solicitud técnica parcial.";
+            plan.DraftSummary = "Borrador de la solicitud de servicio técnico guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.TechnicalRequest;
             plan.CurrentState = WizardEquipmentState.AwaitingRequest;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

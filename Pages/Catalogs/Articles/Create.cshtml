@@ -1,5 +1,9 @@
 @page
 @model Proyecto_Laboratorios_Univalle.Pages.Catalogs.Articles.CreateModel
+@{
+    ViewData["Title"] = "Nuevo artículo";
+    ViewData["Section"] = "Equipos e inventario";
+}
 
 <div class="row justify-content-center">
     <div class="col-lg-11 col-xl-10">
@@ -110,7 +114,7 @@
 
 @section Scripts {
     <link href="~/assets/libs/select2/dist/css/select2.min.css" rel="stylesheet">
-    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/assets/libs/select2/dist/js/select2.full.min.js"></script><script src="~/js/select2-es.js" asp-append-version="true"></script>
     <script src="~/assets/extra-libs/jqbootstrapvalidation/validation.js"></script>
     <script>
         $(function () {

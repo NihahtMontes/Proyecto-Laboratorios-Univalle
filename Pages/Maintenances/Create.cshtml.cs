@@ -339,7 +339,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             if (!saveDraft && !Input.TechnicianId.HasValue &&
                 (isWizard || Input.Status is MaintenanceStatus.InProgress or MaintenanceStatus.Completed))
             {
-                ModelState.AddModelError("Input.TechnicianId", "El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que L-3 pueda derivar el responsable de la salida.");
+                ModelState.AddModelError("Input.TechnicianId", "El técnico responsable es obligatorio en el flujo de mantenimiento. Asígnelo para que la salida de equipos tome ese responsable.");
             }
 
             var equipmentUnit = await _context.EquipmentUnits.Include(u => u.Equipment).AsTracking().FirstOrDefaultAsync(u => u.Id == Input.EquipmentUnitId);
@@ -756,7 +756,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Maintenances
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.Maintenance;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-8 guardado con planificación parcial de mantenimiento.";
+            plan.DraftSummary = "Borrador del registro de mantenimiento guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.Maintenance;
             plan.CurrentState = WizardEquipmentState.AwaitingMaintenance;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

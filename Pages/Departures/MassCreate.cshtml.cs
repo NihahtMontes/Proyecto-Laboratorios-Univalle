@@ -197,7 +197,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
 
             if (activeMgmt == null)
             {
-                TempData.Error("No hay gestión activa para registrar la salida L-3.");
+                TempData.Error("No hay una gestión activa para registrar la salida de equipos.");
                 await LoadLabList();
                 return Page();
             }
@@ -333,21 +333,21 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
                     "No se registraron salidas masivas. Omitidos: {Skipped}. Filas: {AttemptedRows}.",
                     skipped,
                     attemptedRows);
-                TempData.Error("No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico L-8 y un plan válido.");
+                TempData.Error("No se registró ninguna salida. Verifique que los equipos seleccionados tengan técnico asignado en el registro de mantenimiento.");
                 await LoadLabList();
                 return Page();
             }
 
             if (saveDraft)
             {
-                TempData.Success($"Borrador L-3 guardado para {created} salida(s).");
+                TempData.Success($"Borrador de la salida de equipos guardado para {created} equipo(s).");
                 if (IsWizard)
                     return RedirectToPage("/Index", new { ShowWizard = true, Step = 4, SelectedLabId = LabId, ManagementId = activeMgmt.Id });
                 return RedirectToPage("./Index");
             }
 
             var msg = $"{created} salida(s) registrada(s) correctamente.";
-            if (skipped > 0) msg += $" {skipped} equipo(s) omitido(s) por no tener técnico en L-8.";
+            if (skipped > 0) msg += $" {skipped} equipo(s) omitido(s) por no tener técnico asignado en el registro de mantenimiento.";
             TempData.Success(msg);
 
             if (IsWizard)
@@ -371,7 +371,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Departures
             plan.IsDraft = true;
             plan.DraftPhase = WizardPhase.Exit;
             plan.DraftSavedAt = DateTime.UtcNow;
-            plan.DraftSummary = "Borrador L-3 guardado con salida masiva parcial.";
+            plan.DraftSummary = "Borrador de la salida de equipos guardado (datos parciales).";
             plan.CurrentPhase = WizardPhase.Exit;
             plan.CurrentState = WizardEquipmentState.AwaitingDeparture;
             plan.PlanStatus = ManagementPlanStatus.InProgress;

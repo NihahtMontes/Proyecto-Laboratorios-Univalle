@@ -76,7 +76,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.SecurePolicy = cookieSecurePolicy;
     options.LoginPath = "/Login";
-    options.AccessDeniedPath = "/Error";
+    options.AccessDeniedPath = "/AccesoDenegado";
     options.SlidingExpiration = true;
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
 });

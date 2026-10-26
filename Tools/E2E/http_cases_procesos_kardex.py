@@ -49,7 +49,7 @@ def run(R, c):
     check(R, "Create: GET con plan inexistente redirige (no 500)", st in (302, 404), f"status={st} loc={loc}")
     st, html = c.get("/Kardex/Create?isWizard=true&managementPlanId=99999")
     _, tst = P.parse_messages(html)
-    check(R, "Create: GET con plan inexistente muestra 'No se encontró el plan de gestión para cerrar Kardex.'", any("No se encontró el plan de gestión para cerrar Kardex." in t for _, t in tst), f"status={st} toasts={tst[:2]}")
+    check(R, "Create: GET con plan inexistente muestra 'No se encontró el equipo en la gestión para cerrar el mantenimiento.'", any("No se encontró el equipo en la gestión para cerrar el mantenimiento." in t for _, t in tst), f"status={st} toasts={tst[:2]}")
     st, _ = c.get("/Kardex/Create")
     check(R, "Create: GET sin plan ni unidad no produce 500", st < 500, f"status={st}")
 
@@ -57,13 +57,13 @@ def run(R, c):
     def cierre(k, label, quitar=None, ov=None, draft=False, follow=True):
         return P.kardex(c, pid(k), ov, draft=draft, name=label, quitar=quitar, follow=follow)
 
-    faltas = [("Input.ActualReturnDate", "Falta devolución real L-3."), ("Input.SuggestedNextMaintenanceDate", "Falta próximo mantenimiento sugerido."),
+    faltas = [("Input.ActualReturnDate", "Falta registrar la devolución real del equipo."), ("Input.SuggestedNextMaintenanceDate", "Falta próximo mantenimiento sugerido."),
               ("Input.SatisfactionLevel", "Falta nivel de satisfacción."), ("Input.Recommendations", "Faltan recomendaciones."),
               ("Input.Observations", "Faltan observaciones finales."), ("Input.Description", "Falta descripción de trabajos realizados."),
               ("Input.TechnicianId", "Falta técnico responsable."), ("Input.StartDate", "Falta inicio real."), ("Input.EndDate", "Falta finalización real.")]
     for campo, msg in faltas:
         r = cierre("a", f"sin {campo}", ov={campo: ""})
-        check(R, f"Cierre: sin {campo.split('.')[-1]} -> 'No se pudo cerrar Kardex: ... {msg}'", r.status == 200 and r.has_toast("No se pudo cerrar Kardex:", "error") and r.has_toast(msg, "error"), P.dump(r))
+        check(R, f"Cierre: sin {campo.split('.')[-1]} -> 'No se pudo cerrar el mantenimiento: ... {msg}'", r.status == 200 and r.has_toast("No se pudo cerrar el mantenimiento:", "error") and r.has_toast(msg, "error"), P.dump(r))
     check(R, "Cierre: ningun campo faltante avanzo el plan ni cambio la unidad", plan(pid("a"))["phase"] == 5 and unidad(uid("a"))["status"] == 10)
     hoy_ret = P.d(3)
     r = cierre("a", "proximo igual a fin", ov={"Input.SuggestedNextMaintenanceDate": P.d(2)})
@@ -71,7 +71,7 @@ def run(R, c):
     r = cierre("a", "proximo anterior a fin", ov={"Input.SuggestedNextMaintenanceDate": P.d(-100)})
     check(R, "Cierre: proximo mantenimiento anterior a la finalizacion rechazado", r.has_toast("El próximo mantenimiento debe ser posterior a la finalización.", "error"), P.dump(r))
     r = cierre("a", "devolucion antes de salida", ov={"Input.ActualReturnDate": P.d(-2)})
-    check(R, "Cierre: devolucion anterior a la salida -> 'La devolución L-3 no puede ser anterior a la fecha de salida.'", r.has_toast("La devolución L-3 no puede ser anterior a la fecha de salida.", "error"), P.dump(r))
+    check(R, "Cierre: devolucion anterior a la salida -> 'La devolución no puede ser anterior a la fecha de salida.'", r.has_toast("La devolución no puede ser anterior a la fecha de salida.", "error"), P.dump(r))
     r = cierre("a", "fin antes de inicio", ov={"Input.StartDate": f"{P.d(5)}T08:00", "Input.EndDate": f"{P.d(4)}T08:00"})
     check(R, "Cierre: finalizacion anterior al inicio -> 'La finalización no puede ser anterior al inicio real.'", r.has_toast("La finalización no puede ser anterior al inicio real.", "error"), P.dump(r))
     r = cierre("a", "sin costos", ov={"Input.CostDetails[0].Concept": ""})
@@ -79,7 +79,7 @@ def run(R, c):
     r = cierre("a", "costo total 0", ov={"Input.CostDetails[0].UnitPrice": "0"})
     check(R, "Cierre: costo total 0 -> 'El costo real total debe ser mayor a 0.'", r.has_toast("El costo real total debe ser mayor a 0.", "error") or r.has_toast("Debe registrar al menos un costo real.", "error"), P.dump(r))
     r = cierre("a", "tarea incompleta", ov={"Input.Tasks[1].IsCompleted": None})
-    check(R, "Cierre: tarea L-48 incompleta -> 'Todas las tareas L-48 deben estar completadas.'", r.has_toast("Todas las tareas L-48 deben estar completadas.", "error"), P.dump(r))
+    check(R, "Cierre: tarea L-48 incompleta -> 'Todas las tareas de mantenimiento deben estar completadas.'", r.has_toast("Todas las tareas de mantenimiento deben estar completadas.", "error"), P.dump(r))
     r = cierre("a", "tarea sin descripcion", ov={"Input.Tasks[1].Description": ""})
     check(R, "Cierre: sin tareas validas no se puede cerrar (descripcion vacia descarta la tarea)", r.status == 200 and plan(pid("a"))["phase"] == 5, P.dump(r))
     r = cierre("a", "descripcion 2001", ov={"Input.Description": "d" * 2001})
@@ -95,12 +95,12 @@ def run(R, c):
     r = cierre("a", "concepto de costo 201", ov={"Input.CostDetails[0].Concept": "c" * 201})
     check(R, "Cierre: concepto de costo de 201 caracteres -> sin 500 y sin cierre", r.status < 500 and plan(pid("a"))["phase"] == 5, P.dump(r))
     r = post_raw(c, P.with_handler("/Kardex/Create?isWizard=true&managementPlanId=99999", "Close"), [("Input.Description", "x"), ("Input.ActualReturnDate", P.d(3))], pg("a"), follow=True, name="cierre plan inexistente")
-    check(R, "Cierre: plan inexistente -> 'No se pudo resolver el plan de Kardex. ManagementPlanId recibido: 99999.' sin 500", r.status < 500 and r.has_toast("No se pudo resolver el plan de Kardex. ManagementPlanId recibido: 99999.", "error"), P.dump(r))
+    check(R, "Cierre: plan inexistente -> 'No se encontró el equipo en la gestión.' sin 500", r.status < 500 and r.has_toast("No se encontró el equipo en la gestión.", "error"), P.dump(r))
 
     # ================================================================ borrador
     r = cierre("b", "borrador", ov={"Input.Description": "", "Input.Recommendations": "", "Input.Observations": "", "Input.SatisfactionLevel": ""}, draft=True)
     pb = plan(pid("b"))
-    check(R, "Borrador: 'Borrador de Kardex guardado. Puede continuar después sin avanzar a desembolso.' sin exigir campos", r.status == 302 and "Step=5" in (r.location or "") and r.has_toast("Borrador de Kardex guardado. Puede continuar después sin avanzar a desembolso.", "success"), P.dump(r))
+    check(R, "Borrador: 'Borrador del cierre del mantenimiento guardado. Puede continuar después; el equipo no avanza a la solicitud de compra.' sin exigir campos", r.status == 302 and "Step=5" in (r.location or "") and r.has_toast("Borrador del cierre del mantenimiento guardado. Puede continuar después; el equipo no avanza a la solicitud de compra.", "success"), P.dump(r))
     check(R, "Borrador: plan sigue en Kardex (5/7) en borrador (DraftPhase=5), la unidad sigue En Prestamo y la salida Activa", pb["phase"] == 5 and pb["state"] == 7 and pb["draft"] == 1 and pb["draftphase"] == 5 and unidad(uid("b"))["status"] == 10 and dep(pb["dep"])["status"] == 0, f"{pb} unidad={unidad(uid('b'))['status']}")
     mb = mn(pb["mnt"])
     check(R, "Borrador: el mantenimiento L-8 (que ya estaba Completado) vuelve a 'En curso' (1) por un simple borrador de Kardex", mb["status"] == 2, f"estado del L-8={mb['status']} (2=Completado, 1=En curso)")
@@ -111,10 +111,10 @@ def run(R, c):
     # ================================================================ cierre valido
     r = cierre("c", "cierre valido", ov={"Input.Description": "Trabajos de cierre QAP"})
     pc = plan(pid("c"))
-    check(R, "Cierre valido: 'Kardex completado correctamente...' y redirige al paso 6", r.status == 302 and "Step=6" in (r.location or "") and r.has_toast("Kardex completado correctamente. El registro quedó guardado en el Kardex histórico y el equipo avanza a Desembolso.", "success"), P.dump(r))
+    check(R, "Cierre valido: 'Cierre del mantenimiento registrado...' y redirige al paso 6", r.status == 302 and "Step=6" in (r.location or "") and r.has_toast("Cierre del mantenimiento registrado. Quedó en el historial del equipo y el equipo pasa a la solicitud de compra.", "success"), P.dump(r))
     check(R, "Cierre valido: plan a Disbursement/AwaitingDisbursement (6/8), PlanStatus En progreso, sin borrador, KardexHistory vinculado", pc["phase"] == 6 and pc["state"] == 8 and pc["pstatus"] == 1 and pc["draft"] == 0 and pc["kardex"], f"{pc}")
     dc = dep(pc["dep"])
-    check(R, "Cierre valido: salida L-3 Devuelta (1) con fecha real y observacion de devolucion", dc["status"] == 1 and str(dc["act"])[:10] == P.d(3) and dc["robs"] == "Equipo devuelto y validado en cierre Kardex.", f"{dc}")
+    check(R, "Cierre valido: salida L-3 Devuelta (1) con fecha real y observacion de devolucion", dc["status"] == 1 and str(dc["act"])[:10] == P.d(3) and dc["robs"] == "Equipo devuelto y validado en el cierre del mantenimiento.", f"{dc}")
     check(R, "Cierre valido: unidad Operativa (0)", unidad(uid("c"))["status"] == 0, f"{unidad(uid('c'))['status']}")
     mc = mn(pc["mnt"])
     check(R, "Cierre valido: L-8 Completado, 100 %, descripcion, recomendaciones, observaciones, satisfaccion y proximo mantenimiento guardados", mc["status"] == 2 and mc["pct"] == 100 and mc["desc"] == "Trabajos de cierre QAP" and mc["rec"] == "Revisar cada 6 meses" and mc["sat"] == 4 and str(mc["next"])[:10] == P.d(400), f"{mc}")
@@ -129,8 +129,8 @@ def run(R, c):
     p4a = plan(p4["plan"])   # el cierre del L-8 ya deja un historial Kardex vinculado: se compara antes/después
     r = P.kardex(c, p4["plan"], name="cierre sobre plan sin salida (P4)", follow=True)
     p4d = plan(p4["plan"])
-    check(R, "Cierre sobre un plan que aun espera su salida L-3 (sin salida) -> rechazado sin cerrar (guarda de fase con toast warning o 'El plan no tiene salida L-3 vinculada.')",
-          p4d["phase"] == 4 and p4d["kardex"] == p4a["kardex"] and p4d["dep"] == p4a["dep"] and (any(k == "warning" for k, _ in r.toasts) or r.has_toast("El plan no tiene salida L-3 vinculada.", "error")),
+    check(R, "Cierre sobre un plan que aun espera su salida L-3 (sin salida) -> rechazado sin cerrar (guarda de fase con toast warning o 'El equipo no tiene una salida de equipos registrada.')",
+          p4d["phase"] == 4 and p4d["kardex"] == p4a["kardex"] and p4d["dep"] == p4a["dep"] and (any(k == "warning" for k, _ in r.toasts) or r.has_toast("El equipo no tiene una salida de equipos registrada.", "error")),
           P.dump(r) + f" plan={p4d}")
     antes = plan(p7["plan"])
     r = P.kardex(c, p7["plan"], name="cierre sobre plan completado (P7)", follow=True)
@@ -175,7 +175,7 @@ def run(R, c):
     check(R, "Edit: el motivo editado queda guardado (el servidor muestra exito; debe persistir)", hist(hid)["reason"] == "Motivo editado QAP", f"motivo={hist(hid)['reason']}")
     ps = f"/Kardex/Edit?id={hid}&isWizard=true&ManagementId={P.MGMT}&SelectedLabId={lab}&ReturnStep=6"
     r = post_form(c, ps, {"Input.Reason": "Motivo editado QAP 2"}, name="edit valido (wizard)", follow=True)
-    check(R, "Edit wizard: 302 al paso del wizard con 'Registro de Kardex actualizado correctamente.'", r.status == 302 and r.has_toast("Registro de Kardex actualizado correctamente.", "success"), P.dump(r))
+    check(R, "Edit wizard: 302 al paso del wizard con 'Registro del historial actualizado correctamente.'", r.status == 302 and r.has_toast("Registro del historial actualizado correctamente.", "success"), P.dump(r))
     check(R, "Edit wizard: tras el mensaje de exito el motivo editado esta realmente guardado", hist(hid)["reason"] == "Motivo editado QAP 2", f"motivo={hist(hid)['reason']}")
     # edicion que cambia el estado de la unidad (historial abierto => Edit actualiza la unidad)
     r = post_form(c, ps, {"Input.Status": "99", "Input.Reason": "x"}, name="edit estado Eliminado", follow=False)

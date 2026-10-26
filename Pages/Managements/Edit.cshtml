@@ -1,6 +1,11 @@
 @page "{id:int}"
 @model Proyecto_Laboratorios_Univalle.Pages.Managements.EditModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
+@{
+    ViewData["Title"] = "Editar gestión de mantenimiento";
+    ViewData["Section"] = "Mantenimiento de equipos";
+    ViewData["HidePageTitle"] = true;
+}
 
 <div class="row justify-content-center">
     <div class="col-lg-10">
@@ -8,7 +13,7 @@
             <div class="card-body p-4">
                 <div class="d-flex no-block align-items-center mb-4 pb-3 border-bottom">
                     <div>
-                        <h4 class="card-title text-dark font-weight-bold">Editar Gestión Administrativa L-48</h4>
+                        <h4 class="card-title text-dark font-weight-bold">Editar gestión de mantenimiento</h4>
                         <h6 class="card-subtitle text-muted italic">Actualización de parámetros del período académico</h6>
                     </div>
                     <div class="ml-auto">
@@ -134,7 +139,7 @@
                     showCancelButton: true,
                     confirmButtonColor: '#f59e0b',
                     cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Si, guardar',
+                    confirmButtonText: 'Sí, guardar',
                     cancelButtonText: 'Cancelar'
                 }).then(function (result) {
                     if (result && (result.isConfirmed === true || result.value === true)) {

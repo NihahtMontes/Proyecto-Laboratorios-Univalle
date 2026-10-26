@@ -2,6 +2,8 @@
 @model Proyecto_Laboratorios_Univalle.Pages.Laboratories.IndexModel
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @{
+    ViewData["Title"] = "Laboratorios";
+    ViewData["Section"] = "Configuración";
     var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm) || Model.StatusFilter.HasValue;
 }
 <div class="row">
@@ -76,7 +78,7 @@
                                     }
 
                                     <span class="small text-muted ml-auto mb-2" aria-live="polite">
-                                        <strong class="text-dark">@Model.Laboratories.TotalCount</strong> ambiente(s)
+                                        <strong class="text-dark">@Model.Laboratories.TotalCount</strong> laboratorio(s)
                                     </span>
                                 </div>
                             </form>

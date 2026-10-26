@@ -1,0 +1,131 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Ayuda.IndexModel
+@{
+    ViewData["Title"] = "Ayuda";
+    ViewData["Section"] = "Ayuda";
+}
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h3 class="card-title text-dark font-weight-bold mb-1">¿Cómo se usa la aplicación?</h3>
+                <p class="mb-0" style="color:#4b5563;">
+                    Guía rápida por rol, glosario de términos y respuestas a las dudas más comunes.
+                    En cada pantalla puede abrir el recuadro <strong>«¿Qué hago aquí?»</strong> y tocar el icono
+                    <i class="mdi mdi-help-circle-outline text-primary" aria-hidden="true"></i> junto a un concepto para ver su explicación.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="font-weight-bold text-dark mt-2 mb-3">Cómo empezar según su rol</h4>
+<div class="row">
+    @foreach (var guide in Model.RoleGuides)
+    {
+        <div class="col-lg-4 mb-3">
+            <div class="card shadow-sm border-0 h-100 ux-role-card">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="mdi @guide.Icon mr-2" aria-hidden="true"></i>
+                        <h5 class="font-weight-bold text-dark mb-0">@guide.Role</h5>
+                    </div>
+                    <ol class="pl-3 mb-0">
+                        @foreach (var step in guide.Steps)
+                        {
+                            <li class="mb-1">@step</li>
+                        }
+                    </ol>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="d-md-flex align-items-center mb-3">
+            <h4 class="font-weight-bold text-dark mb-2 mb-md-0" id="glosario">Glosario</h4>
+            <div class="ml-md-auto" style="min-width:280px;">
+                <label for="glossary-search" class="sr-only">Buscar en el glosario</label>
+                <input type="search" id="glossary-search" class="form-control" placeholder="Buscar un término (por ejemplo «compra» o «L-7»)" autocomplete="off" />
+            </div>
+        </div>
+        <p class="small mb-3" style="color:#4b5563;">
+            La columna «Formato institucional» indica el formato en Excel que corresponde a cada término (por ejemplo, la
+            solicitud de servicio técnico es el formato L-7). En el resto de la aplicación se usan solo los nombres.
+        </p>
+        @foreach (var area in Model.GlossaryByArea)
+        {
+            <h5 class="font-weight-bold text-dark mt-3 glossary-area">@area.Key</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-2 glossary-table">
+                    <thead class="bg-light">
+                        <tr>
+                            <th style="width:24%;">Término</th>
+                            <th>Qué significa</th>
+                            <th style="width:14%;">Formato institucional</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var term in area)
+                        {
+                            <tr class="glossary-row" data-search="@($"{term.Name} {term.Definition} {term.Format}".ToLowerInvariant())">
+                                <td class="font-weight-bold text-dark">@term.Name</td>
+                                <td>@term.Definition</td>
+                                <td class="ux-glossary-format">@(term.Format ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <p class="mb-0 mt-2" id="glossary-empty" style="display:none; color:#4b5563;">No hay términos que coincidan con la búsqueda.</p>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <h4 class="font-weight-bold text-dark mb-3">Preguntas frecuentes</h4>
+        @foreach (var faq in Model.Faqs)
+        {
+            <div class="mb-3">
+                <h6 class="font-weight-bold text-dark mb-1">@faq.Question</h6>
+                <p class="mb-0" style="color:#374151;">@faq.Answer</p>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var input = document.getElementById('glossary-search');
+            if (!input) return;
+            var rows = Array.prototype.slice.call(document.querySelectorAll('.glossary-row'));
+            var empty = document.getElementById('glossary-empty');
+            // Quita tildes para buscar «verificacion» o «verificación» por igual (marcas combinantes U+0300–U+036F).
+            var accents = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+            function normalize(text) {
+                return (text || '').toLowerCase().normalize('NFD').replace(accents, '');
+            }
+            input.addEventListener('input', function () {
+                var q = normalize(input.value.trim());
+                var visible = 0;
+                rows.forEach(function (row) {
+                    var show = !q || normalize(row.getAttribute('data-search')).indexOf(q) !== -1;
+                    row.style.display = show ? '' : 'none';
+                    if (show) visible++;
+                });
+                document.querySelectorAll('.glossary-table').forEach(function (table) {
+                    var any = table.querySelectorAll('.glossary-row:not([style*="none"])').length > 0;
+                    table.closest('.table-responsive').style.display = any ? '' : 'none';
+                    var heading = table.closest('.table-responsive').previousElementSibling;
+                    if (heading && heading.classList.contains('glossary-area')) heading.style.display = any ? '' : 'none';
+                });
+                empty.style.display = visible === 0 ? '' : 'none';
+            });
+        })();
+    </script>
+}
