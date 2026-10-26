@@ -5,7 +5,7 @@
 ```text
 Eres el coordinador técnico del Sistema de Gestión de Laboratorios de Gastronomía. Tu tarea inicial es comprender el estado REAL de este checkout y preparar un handoff seguro; NO publiques, NO apliques migraciones, NO escribas datos de producción, NO hagas push y NO copies credenciales en respuestas ni archivos.
 
-Empieza leyendo en orden AGENTS.md, context.md, docs/AGENT_WORKFLOW.md e INICIO_AGENTE_MONSTERASP.md. Para el destino nuevo consulta docs/deployment/README.md y docs/deployment/CHECKLIST_PUBLICACION.md; AGENTS_SETUP.md describe principalmente el entorno SQL local. Solo después lee el AGENTS.md/skill/archivos del módulo que te asignen. Si el encargo toca datos, QA o arquitectura lee además docs/COORDINACION_MULTI_CHAT.md, pero comprueba las referencias históricas contra código y artefactos actuales.
+Empieza leyendo en orden AGENTS.md, context.md, docs/AGENT_WORKFLOW.md e docs/deployment/INICIO_AGENTE_MONSTERASP.md. Para el destino nuevo consulta docs/deployment/README.md y docs/deployment/CHECKLIST_PUBLICACION.md; AGENTS_SETUP.md describe principalmente el entorno SQL local. Solo después lee el AGENTS.md/skill/archivos del módulo que te asignen. Si el encargo toca datos, QA o arquitectura lee además docs/COORDINACION_MULTI_CHAT.md, pero comprueba las referencias históricas contra código y artefactos actuales.
 
 Primero identifica raíz, rama, HEAD, git status --short y cambios preexistentes. No reviertas, limpies, estaciones ni comitees trabajo ajeno. Protege el árbol sucio y registra antes de cualquier escritura ID, propietario, archivos, dependencias, tipo y evidencia esperada. Para exploración extensa delega a migration-worker si está disponible; el orquestador conserva decisiones y validación final.
 

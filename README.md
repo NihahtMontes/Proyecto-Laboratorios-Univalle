@@ -4,8 +4,8 @@ Aplicación **ASP.NET Core 9** con Razor Pages y controladores, Entity Framework
 
 ## Empezar una conversación con un agente
 
-1. Entregarle el contenido de **[`PROMPT_AGENTE_MONSTERASP.md`](PROMPT_AGENTE_MONSTERASP.md)**: es el texto listo para copiar.
-2. El agente debe leer **[`INICIO_AGENTE_MONSTERASP.md`](INICIO_AGENTE_MONSTERASP.md)**: contexto, rutas de documentación y precauciones del destino nuevo.
+1. Entregarle el contenido de **[`docs/deployment/PROMPT_AGENTE_MONSTERASP.md`](docs/deployment/PROMPT_AGENTE_MONSTERASP.md)**: es el texto listo para copiar.
+2. El agente debe leer **[`docs/deployment/INICIO_AGENTE_MONSTERASP.md`](docs/deployment/INICIO_AGENTE_MONSTERASP.md)**: contexto, rutas de documentación y precauciones del destino nuevo.
 3. Para tareas del proyecto en general: [`AGENTS.md`](AGENTS.md), [`context.md`](context.md) y [`docs/AGENT_WORKFLOW.md`](docs/AGENT_WORKFLOW.md). Leer las instrucciones/skills del módulo afectado, no todo el repositorio.
 
 ## Preparación MonsterASP

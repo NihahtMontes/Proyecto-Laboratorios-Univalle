@@ -10,10 +10,8 @@
 
 Estos archivos se conservan para auditoria o soporte, pero no deben tratarse como artefactos de produccion:
 
-- `Gastro/`: prototipo independiente no integrado al flujo ASP.NET Core principal.
 - `wwwroot/css/tailwind-dashboard.css`: CSS Tailwind no referenciado por las vistas actuales.
-- `dashboard.html`: prototipo suelto de dashboard.
-- `database_seed.sql` y `migration_equipment_softdelete.sql`: scripts historicos/manuales, no migraciones EF activas.
-- `fix_script.py`, `fix-encoding.ps1`, `read_excel.py` y `CleanTemplates.csx`: tooling local/manual.
+
+Eliminados el 2026-10-26 con aprobacion del usuario (siguen en el historial de git): `Gastro/`, `tmp/`, `recursos/`, `dashboard.html`, `database_seed.sql`, `migration_equipment_softdelete.sql`, `fix_script.py`, `fix-encoding.ps1`, `read_excel.py` y `CleanTemplates.csx`. La documentacion antigua de la raiz se movio a `docs/archive/` y las guias de MonsterASP a `docs/deployment/`.
 
 El proyecto excluye estos artefactos del build/publish mediante el `.csproj`, sin borrarlos. Cualquier eliminacion fisica requiere aprobacion explicita.
