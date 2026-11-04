@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 640" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#17365D"/>
+    </marker>
+    <marker id="arrg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7A869A"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1000" height="640" fill="#FFFFFF"/>
+  <text x="20" y="30" font-size="18" font-weight="700" fill="#17365D">Arquitectura por capas — sistema actual (ASP.NET Core 9 + EF Core + SQL Server)</text>
+
+  <!-- Capas -->
+  <g font-size="13">
+    <rect x="20" y="50" width="600" height="80" rx="8" fill="#EAF2F8" stroke="#17365D" stroke-width="1.5"/>
+    <text x="36" y="74" font-weight="700" fill="#17365D">1 · Vista — Razor Pages (.cshtml)</text>
+    <text x="36" y="96" fill="#333">Bootstrap 4 · NiceAdmin · SweetAlert2 · Select2</text>
+    <text x="36" y="116" fill="#555" font-size="12">Ej.: Planificacion.cshtml, Grilla.cshtml, Conflictos.cshtml</text>
+
+    <rect x="20" y="150" width="600" height="80" rx="8" fill="#EAF2F8" stroke="#17365D" stroke-width="1.5"/>
+    <text x="36" y="174" font-weight="700" fill="#17365D">2 · PageModel (.cshtml.cs) — entrada HTTP</text>
+    <text x="36" y="196" fill="#333">Valida el InputModel, llama al servicio y decide redirect y TempData</text>
+    <text x="36" y="216" fill="#555" font-size="12">Ej.: PlanificacionModel, GrillaModel, L3Model, L5Model</text>
+
+    <rect x="20" y="250" width="600" height="110" rx="8" fill="#DCE9F5" stroke="#17365D" stroke-width="2"/>
+    <text x="36" y="274" font-weight="700" fill="#17365D">3 · Servicios de negocio, con interfaz (inyectados por DI en Program.cs)</text>
+    <text x="36" y="298" fill="#333">IReschedulingService · ISlotValidationService · IOccupancyService</text>
+    <text x="36" y="318" fill="#333">IArticleAvailabilityService · IL3CircuitService · IConflictGridService</text>
+    <text x="36" y="338" fill="#333">IDayRecoveryService · IReportService · IManagementActivationService …</text>
+    <text x="470" y="352" fill="#17365D" font-size="12" font-weight="700">27 servicios propios</text>
+
+    <rect x="20" y="380" width="600" height="80" rx="8" fill="#EAF2F8" stroke="#17365D" stroke-width="1.5"/>
+    <text x="36" y="404" font-weight="700" fill="#17365D">4 · ApplicationDbContext (EF Core) — Repository + Unit of Work</text>
+    <text x="36" y="426" fill="#333">Filtros globales de baja lógica · NoTracking por defecto · 32 migraciones</text>
+    <text x="36" y="446" fill="#555" font-size="12">Las restricciones y los índices viven en la base; nada se borra físicamente</text>
+
+    <rect x="20" y="480" width="600" height="70" rx="8" fill="#17365D"/>
+    <text x="36" y="508" font-weight="700" fill="#FFFFFF">5 · SQL Server</text>
+    <text x="36" y="530" fill="#EAF2F8">DB_Laboratorios_Univalle_REAL (local) · MonsterASP (nube)</text>
+  </g>
+
+  <!-- Flechas entre capas -->
+  <g stroke="#17365D" stroke-width="2" marker-end="url(#arr)">
+    <line x1="320" y1="130" x2="320" y2="148"/>
+    <line x1="320" y1="230" x2="320" y2="248"/>
+    <line x1="320" y1="360" x2="320" y2="378"/>
+    <line x1="320" y1="460" x2="320" y2="478"/>
+  </g>
+
+  <!-- Patrones a la derecha -->
+  <g font-size="12.5">
+    <rect x="650" y="50" width="330" height="120" rx="8" fill="#FFF8E6" stroke="#C98B00" stroke-width="1.5"/>
+    <text x="664" y="72" font-weight="700" fill="#8A5A00">Strategy + Liskov (L)</text>
+    <text x="664" y="94" fill="#333">IPlanningLock</text>
+    <text x="680" y="114" fill="#333">→ SqlServerPlanningLock (producción,</text>
+    <text x="694" y="132" fill="#333">sp_getapplock contra doble reserva)</text>
+    <text x="680" y="152" fill="#333">→ NoOpPlanningLock (tests)</text>
+
+    <rect x="650" y="185" width="330" height="110" rx="8" fill="#EAF7EE" stroke="#2E7D4F" stroke-width="1.5"/>
+    <text x="664" y="207" font-weight="700" fill="#1F5E39">Abierto / cerrado (O)</text>
+    <text x="664" y="229" fill="#333">IOccupancySource → PlanningOccupancySource</text>
+    <text x="664" y="249" fill="#333">OccupancyService suma todas las fuentes:</text>
+    <text x="664" y="269" fill="#333">una fuente nueva se registra en DI</text>
+    <text x="664" y="287" fill="#333">sin tocar el servicio.</text>
+
+    <rect x="650" y="310" width="330" height="90" rx="8" fill="#EAF7EE" stroke="#2E7D4F" stroke-width="1.5"/>
+    <text x="664" y="332" font-weight="700" fill="#1F5E39">Catálogo extensible (O)</text>
+    <text x="664" y="354" fill="#333">ConflictAction: la vista de Conflictos solo</text>
+    <text x="664" y="374" fill="#333">recorre la lista de acciones; una acción</text>
+    <text x="664" y="392" fill="#333">nueva no cambia la vista.</text>
+
+    <rect x="650" y="415" width="330" height="135" rx="8" fill="#F3EEFA" stroke="#5B3E96" stroke-width="1.5"/>
+    <text x="664" y="437" font-weight="700" fill="#43307A">Inversión de dependencias (D) + DI</text>
+    <text x="664" y="459" fill="#333">Los PageModels piden interfaces;</text>
+    <text x="664" y="479" fill="#333">Program.cs decide la implementación:</text>
+    <text x="664" y="501" fill="#555" font-family="Consolas, monospace" font-size="11.5">AddScoped&lt;IPlanningLock,</text>
+    <text x="664" y="517" fill="#555" font-family="Consolas, monospace" font-size="11.5">          SqlServerPlanningLock&gt;();</text>
+    <text x="664" y="539" fill="#333">En tests se inyecta otra implementación.</text>
+  </g>
+
+  <!-- Conectores punteados a la capa de servicios -->
+  <g stroke="#7A869A" stroke-width="1.5" stroke-dasharray="5,4" fill="none" marker-end="url(#arrg)">
+    <path d="M650,110 C635,110 635,280 622,290"/>
+    <path d="M650,240 C640,240 640,300 622,305"/>
+    <path d="M650,355 C640,355 640,335 622,330"/>
+  </g>
+
+  <text x="20" y="585" font-size="12" fill="#555">S · Responsabilidad única: cada servicio resuelve un caso (reprogramar, validar destino, reponer día, circuito L-3…).</text>
+  <text x="20" y="605" font-size="12" fill="#555">I · Interfaces chicas: ISlotValidationService solo valida; ICurrentUserService solo entrega el usuario actual.</text>
+  <text x="20" y="625" font-size="12" fill="#555">Informes Excel: IReportService, con una clase parcial por informe (L6, L48, L3, Requests, Kardex, Acquisitions).</text>
+</svg>
