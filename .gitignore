@@ -42,3 +42,12 @@ outputs/
 # E2E y herramientas Python
 Tools/E2E/node_modules/
 __pycache__/
+
+# Paquetes y perfiles de publicación con credenciales (*.pubxml.user ya lo cubre *.user)
+publish/
+publish-*/
+*.[Pp]ublish[Ss]ettings
+
+# Claude: versionar solo las skills del proyecto
+.claude/*
+!.claude/skills/
