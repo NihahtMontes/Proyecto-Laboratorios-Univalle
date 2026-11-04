@@ -107,6 +107,7 @@
         .asset-bg-cyan { background: linear-gradient(135deg, #03a9f3, #4fc3f7); }
         .asset-bg-teal { background: linear-gradient(135deg, #00838f, #26c6da); }
         .asset-bg-slate { background: linear-gradient(135deg, #6c757d, #95a5a6); }
+        .asset-bg-pink { background: linear-gradient(135deg, #d81b60, #f06292); }
 
         .asset-nav-card {
             min-height: 172px;
@@ -222,6 +223,17 @@
                                 </a>
                             </div>
                             <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
+                                <a asp-page="/Catalogs/Articles/Index" class="text-decoration-none" title="Ver el catálogo de artículos" style="@adminLinkStyle" aria-disabled="@(canOpenAdminLists ? "false" : "true")">
+                                    <div class="asset-metric-tile asset-bg-pink p-3">
+                                        <div class="asset-metric-icon mb-3"><i class="fas fa-blender"></i></div>
+                                        <div class="asset-metric-value font-weight-bold">@Model.ArticlesCount.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("es-BO"))</div>
+                                        <div class="font-weight-bold mt-2">Artículos</div>
+                                        <small>Catálogo de utensilios, vajilla, cristalería y más</small>
+                                        <small class="d-block">En @Model.ArticleCategoriesCount categoría(s)</small>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-xl-3 col-md-4 col-sm-6 mb-3">
                                 <div class="asset-metric-tile asset-bg-purple p-3">
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-microscope"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.EquipmentUnitsCount</div>
@@ -233,8 +245,8 @@
                                 <div class="asset-metric-tile asset-bg-green p-3">
                                     <div class="asset-metric-icon mb-3"><i class="fas fa-utensils"></i></div>
                                     <div class="asset-metric-value font-weight-bold">@Model.UtensilUnitsCount</div>
-                                    <div class="font-weight-bold mt-2">Utensilios</div>
-                                    <small>Materiales y menaje</small>
+                                    <div class="font-weight-bold mt-2">Utensilios patrimoniales</div>
+                                    <small>Unidades con N.º de inventario (no incluye el catálogo de artículos)</small>
                                 </div>
                             </div>
                             <div class="col-xl-3 col-md-4 col-sm-6 mb-3">

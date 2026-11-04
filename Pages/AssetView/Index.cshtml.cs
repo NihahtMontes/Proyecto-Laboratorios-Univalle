@@ -32,6 +32,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
         public int ClassificationQualityPercent { get; set; }
         public int StockRecordsCount { get; set; }
         public int StockLaboratoriesCount { get; set; }
+        /// <summary>Artículos del catálogo (utensilios, vajilla, cristalería, etc.); no son unidades patrimoniales.</summary>
+        public int ArticlesCount { get; set; }
+        public int ArticleCategoriesCount { get; set; }
 
         public string CategoryDataJson { get; set; } = "[]";
         public string EquipmentSubClassJson { get; set; } = "{}";
@@ -91,6 +94,15 @@ namespace Proyecto_Laboratorios_Univalle.Pages.AssetView
             StockLaboratoriesCount = await _context.ArticleStocks
                 .AsNoTracking()
                 .Select(s => s.LaboratoryId)
+                .Distinct()
+                .CountAsync();
+            ArticlesCount = await _context.Articles
+                .AsNoTracking()
+                .CountAsync(a => a.Status != GeneralStatus.Eliminado);
+            ArticleCategoriesCount = await _context.Articles
+                .AsNoTracking()
+                .Where(a => a.Status != GeneralStatus.Eliminado && a.ArticleCategoryId.HasValue)
+                .Select(a => a.ArticleCategoryId!.Value)
                 .Distinct()
                 .CountAsync();
             UnitsWithoutSpecificClassificationCount = PendingClassificationUnitsCount + LegacyInferredUnitsCount;
