@@ -3302,7 +3302,7 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         {
                             t.HasCheckConstraint("CK_Plannings_Periods", "([StartPeriodId] IS NULL AND [PeriodCount] IS NULL) OR ([StartPeriodId] IS NOT NULL AND [PeriodCount] BETWEEN 1 AND 12)");
 
-                            t.HasCheckConstraint("CK_Plannings_Status", "[Status] IN (N'Planificada', N'Aprobada', N'Finalizada', N'Cancelada', N'Reprogramada', N'PendienteReposicion', N'Repuesta')");
+                            t.HasCheckConstraint("CK_Plannings_Status", "[Status] IN (N'Planificada', N'Aprobada', N'Finalizada', N'Cancelada', N'Reprogramada', N'PendienteReposicion', N'Repuesta', N'Solicitada', N'Observada', N'Rechazada')");
                         });
                 });
 
@@ -3358,6 +3358,85 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.ToTable("PlanningRequirements", t =>
                         {
                             t.HasCheckConstraint("CK_PlanningRequirements_RequestedQuantity", "[RequestedQuantity] IS NULL OR [RequestedQuantity] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningReview", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Action")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FromStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("PlanningId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ToStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("PlanningId", "CreatedDate");
+
+                    b.ToTable("PlanningReviews", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlanningReviews_Action", "[Action] BETWEEN 1 AND 7");
+                        });
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningReviewLine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ArticleId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("NewQuantity")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int>("PlanningReviewId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("PreviousQuantity")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArticleId");
+
+                    b.HasIndex("PlanningReviewId", "ArticleId")
+                        .IsUnique();
+
+                    b.ToTable("PlanningReviewLines", t =>
+                        {
+                            t.HasCheckConstraint("CK_PlanningReviewLines_Quantities", "([PreviousQuantity] IS NULL OR [PreviousQuantity] >= 0) AND ([NewQuantity] IS NULL OR [NewQuantity] >= 0) AND ([PreviousQuantity] IS NOT NULL OR [NewQuantity] IS NOT NULL)");
                         });
                 });
 
@@ -4307,6 +4386,9 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Property<int?>("ModifiedById")
                         .HasColumnType("int");
 
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("bit");
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -4317,6 +4399,9 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PersonId")
+                        .HasColumnType("int");
 
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
@@ -4373,11 +4458,17 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
+                    b.HasIndex("PersonId")
+                        .IsUnique()
+                        .HasFilter("[PersonId] IS NOT NULL");
+
                     b.ToTable("Users", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 3, 99)");
+                            t.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 3, 4, 99)");
 
                             t.HasCheckConstraint("CK_Users_Status", "[Status] BETWEEN 0 AND 2");
+
+                            t.HasCheckConstraint("CK_Users_TeacherPerson", "[Role] <> 4 OR [PersonId] IS NOT NULL");
                         });
                 });
 
@@ -5888,6 +5979,44 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("Planning");
                 });
 
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningReview", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Planning", "Planning")
+                        .WithMany("Reviews")
+                        .HasForeignKey("PlanningId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Planning");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningReviewLine", b =>
+                {
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Article", "Article")
+                        .WithMany()
+                        .HasForeignKey("ArticleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.PlanningReview", "PlanningReview")
+                        .WithMany("Lines")
+                        .HasForeignKey("PlanningReviewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Article");
+
+                    b.Navigation("PlanningReview");
+                });
+
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Practice", b =>
                 {
                     b.HasOne("Proyecto_Laboratorios_Univalle.Models.Subject", "Subject")
@@ -6254,9 +6383,16 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                         .WithMany()
                         .HasForeignKey("ModifiedById");
 
+                    b.HasOne("Proyecto_Laboratorios_Univalle.Models.Person", "Person")
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("CreatedBy");
 
                     b.Navigation("ModifiedBy");
+
+                    b.Navigation("Person");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Verification", b =>
@@ -6517,6 +6653,13 @@ namespace Proyecto_Laboratorios_Univalle.Data.SqlServerMigrations
                     b.Navigation("Incidents");
 
                     b.Navigation("Requirements");
+
+                    b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.PlanningReview", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("Proyecto_Laboratorios_Univalle.Models.Practice", b =>

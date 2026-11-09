@@ -78,9 +78,58 @@ public static class L3ReturnRules
 }
 
 /// <summary>
-/// Circuito L-3 por artículo: la salida descuenta el stock del laboratorio de origen y la devolución lo repone.
-/// Reglas (decisiones D2/D2b): con registro de stock y cantidad insuficiente se bloquea; sin registro se permite
-/// sin descontar y queda una incidencia STOCK_NOT_REGISTERED. La suma devuelta nunca supera lo entregado.
+/// Reglas del modelo de stock por horario (Sprint 3): la existencia de un artículo reutilizable no cambia al
+/// entregarlo ni al devolverlo; lo entregado y aún no devuelto solo cuenta como "fuera ahora".
+/// </summary>
+public static class StockRules
+{
+    /// <summary>
+    /// Cantidad por artículo entregada desde el laboratorio de origen en salidas abiertas, menos lo devuelto y lo
+    /// cubierto por incidentes L-5 (esa parte ya se descontó de la existencia al registrar el incidente).
+    /// </summary>
+    public static async Task<Dictionary<int, decimal>> OutstandingAsync(ApplicationDbContext context, int originLaboratoryId,
+        IReadOnlyCollection<int> articleIds)
+    {
+        if (articleIds.Count == 0) return [];
+        var open = new[] { LoanStatus.Active, LoanStatus.Overdue };
+        var rows = await context.DepartureItems.AsNoTracking()
+            .Where(i => i.ArticleId != null && articleIds.Contains(i.ArticleId.Value) && i.EquipmentUnitId == null
+                && i.Departure != null && i.Departure.OriginLaboratoryId == originLaboratoryId && open.Contains(i.Departure.Status))
+            .Select(i => new
+            {
+                ArticleId = i.ArticleId!.Value,
+                i.Departure!.PlanningId,
+                Delivered = i.Quantity ?? 0,
+                Returned = i.ReturnedQuantity ?? 0
+            })
+            .ToListAsync();
+        if (rows.Count == 0) return [];
+
+        var planningIds = rows.Where(r => r.PlanningId != null).Select(r => r.PlanningId!.Value).Distinct().ToList();
+        var covered = await context.L5Incidents.AsNoTracking()
+            .Where(i => i.PlanningId != null && planningIds.Contains(i.PlanningId.Value) && i.ArticleId != null)
+            .GroupBy(i => new { PlanningId = i.PlanningId!.Value, ArticleId = i.ArticleId!.Value })
+            .Select(g => new { g.Key.PlanningId, g.Key.ArticleId, Total = g.Sum(i => i.AffectedQuantity) })
+            .ToListAsync();
+
+        return rows
+            .GroupBy(r => new { r.PlanningId, r.ArticleId })
+            .Select(g =>
+            {
+                var pending = g.Sum(r => Math.Max(0, r.Delivered - r.Returned));
+                var cover = covered.FirstOrDefault(c => c.PlanningId == g.Key.PlanningId && c.ArticleId == g.Key.ArticleId)?.Total ?? 0;
+                return (g.Key.ArticleId, Out: Math.Max(0, pending - cover));
+            })
+            .GroupBy(x => x.ArticleId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Out));
+    }
+}
+
+/// <summary>
+/// Circuito L-3 por artículo con stock por horario: la salida y la devolución NO cambian la existencia
+/// (el material reutilizable vuelve); la existencia solo baja con un incidente L-5 (ApplicationDbContext).
+/// Reglas: con registro de stock y existencia libre insuficiente se bloquea la entrega; sin registro se permite
+/// y queda una incidencia STOCK_NOT_REGISTERED. La suma devuelta nunca supera lo entregado.
 /// </summary>
 public interface IL3CircuitService
 {
@@ -164,20 +213,32 @@ public class L3CircuitService : IL3CircuitService
                 .Where(l => !IsEquipmentLine(details[l.DetailId]))
                 .Select(l => details[l.DetailId].ArticleId)
                 .Distinct().ToList();
-            var stocks = await _context.ArticleStocks.AsTracking()
+            var stocks = await _context.ArticleStocks.AsNoTracking()
                 .Where(s => s.LaboratoryId == originLaboratoryId && inventoryArticleIds.Contains(s.ArticleId))
                 .ToDictionaryAsync(s => s.ArticleId);
 
-            // Validar todo antes de descontar: una línea sin stock suficiente bloquea la salida completa.
+            // Modelo de stock por horario: la existencia (AvailableQuantity) es lo que el laboratorio TIENE y no
+            // cambia al entregar ni al devolver; solo la reduce un incidente L-5 (rotura/pérdida) o un ajuste.
+            // Lo que está fuera ahora (otras salidas abiertas del mismo origen) se descuenta solo para esta entrega física.
+            var outNow = await StockRules.OutstandingAsync(_context, originLaboratoryId, inventoryArticleIds);
+
+            // Validar todo antes de entregar: una línea sin existencia libre suficiente bloquea la salida completa.
             foreach (var group in wanted.Where(l => !IsEquipmentLine(details[l.DetailId])).GroupBy(l => details[l.DetailId].ArticleId))
             {
                 var total = group.Sum(l => l.Quantity);
-                if (stocks.TryGetValue(group.Key, out var stock) && stock.AvailableQuantity < total)
+                if (stocks.TryGetValue(group.Key, out var stock))
                 {
-                    await transaction.RollbackAsync();
-                    var article = details[group.First().DetailId].Article;
-                    return L3CircuitResult.Fail(
-                        $"Stock insuficiente de {article?.Code} · {article?.Name} en {origin.Code}: disponible {stock.AvailableQuantity:0.##}, solicitado {total:0.##}.");
+                    var free = stock.AvailableQuantity - outNow.GetValueOrDefault(group.Key);
+                    if (free < total)
+                    {
+                        await transaction.RollbackAsync();
+                        var article = details[group.First().DetailId].Article;
+                        var outText = outNow.GetValueOrDefault(group.Key) > 0
+                            ? $" ({outNow[group.Key]:0.##} de {stock.AvailableQuantity:0.##} siguen entregados en otras prácticas sin devolver)"
+                            : string.Empty;
+                        return L3CircuitResult.Fail(
+                            $"Stock insuficiente de {article?.Code} · {article?.Name} en {origin.Code}: libre ahora {Math.Max(0, free):0.##}, solicitado {total:0.##}{outText}.");
+                    }
                 }
             }
 
@@ -220,12 +281,8 @@ public class L3CircuitService : IL3CircuitService
                 // Las líneas de equipo físico no descuentan existencias ni generan aviso de stock sin registro.
                 if (IsEquipmentLine(detail)) continue;
 
-                if (stocks.TryGetValue(detail.ArticleId, out var stock))
-                {
-                    stock.AvailableQuantity -= line.Quantity;
-                    stock.UpdatedOn = DateTime.UtcNow;
-                }
-                else if (detail.Article != null && unregistered.All(a => a.Id != detail.ArticleId))
+                // La entrega no descuenta la existencia (el material vuelve al terminar la práctica).
+                if (!stocks.ContainsKey(detail.ArticleId) && detail.Article != null && unregistered.All(a => a.Id != detail.ArticleId))
                 {
                     unregistered.Add(detail.Article);
                 }
@@ -360,16 +417,6 @@ public class L3CircuitService : IL3CircuitService
                 covered, wanted);
             if (outcome.Error != null) return L3CircuitResult.Fail(outcome.Error);
 
-            // Solo los ítems de inventario manejan existencias: las unidades físicas no descontaron stock al salir.
-            var articleIds = wanted.Select(l => items[l.DepartureItemId])
-                .Where(i => i.EquipmentUnitId == null && i.ArticleId != null)
-                .Select(i => i.ArticleId!.Value).Distinct().ToList();
-            var stocks = departure.OriginLaboratoryId.HasValue
-                ? await _context.ArticleStocks.AsTracking()
-                    .Where(s => s.LaboratoryId == departure.OriginLaboratoryId && articleIds.Contains(s.ArticleId))
-                    .ToDictionaryAsync(s => s.ArticleId)
-                : new Dictionary<int, ArticleStock>();
-
             var ret = new DepartureReturn
             {
                 DepartureId = departure.Id,
@@ -383,13 +430,7 @@ public class L3CircuitService : IL3CircuitService
                 var item = items[line.DepartureItemId];
                 ret.Items.Add(new DepartureReturnItem { DepartureItemId = item.Id, ReturnedQuantity = line.Quantity, Code = TemporaryCode() });
                 item.ReturnedQuantity = returnedSoFar.GetValueOrDefault(item.Id) + line.Quantity;
-                // Solo se repone lo que se descontó: las unidades físicas no descontaron existencias
-                // (su disponibilidad se deduce de la salida abierta) y sin registro de stock no hay nada que reponer.
-                if (item.EquipmentUnitId == null && item.ArticleId is int articleId && stocks.TryGetValue(articleId, out var stock))
-                {
-                    stock.AvailableQuantity += line.Quantity;
-                    stock.UpdatedOn = DateTime.UtcNow;
-                }
+                // La devolución no repone existencia: la entrega nunca la descontó (modelo de stock por horario).
             }
 
             // Cierre según L3ReturnRules: por artículo, devuelto + cubierto L-5 >= entregado (ítems sin artículo: todo devuelto).

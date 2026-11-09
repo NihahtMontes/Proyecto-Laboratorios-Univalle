@@ -246,6 +246,10 @@
 .gr-block--secondary { border-left-color: #6c757d; background: #f2f3f4; }
 .gr-block--light { border-left-color: #b8b8c2; background: #f8f8fa; }
 .gr-block--danger { border-left-color: #f62d51; background: #fdecef; }
+/* Solicitudes docentes en revisión: se dibujan atenuadas (no ocupan) para avisar del interés en el horario. */
+.gr-block--primary { border-left-color: #7460ee; background: #f3f1fe; }
+.gr-block--orange { border-left-color: #fb8c00; background: #fff4e5; }
+.gr-block--dark { border-left-color: #343a40; background: #f1f1f1; }
 
 /* No ocupantes (reprogramada, pendiente de reposición, repuesta): atenuados */
 .gr-block--inactive { opacity: .6; border-style: dashed; border-left-style: solid; }

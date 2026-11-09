@@ -290,14 +290,18 @@ public sealed class ArticleAvailabilityService : IArticleAvailabilityService
                 .ToListAsync();
             var unitIds = units.Select(u => u.Id).ToList();
 
+            // Stock por horario: solo restan los préstamos ajenos a una práctica (Kardex / préstamo externo).
+            // La entrega L-3 de una práctica ya cuenta como demanda en el horario de esa práctica; restarla aquí
+            // la haría "desaparecer" para todas las fechas mientras no se registre la devolución.
             var openLoanStatuses = new[] { LoanStatus.Active, LoanStatus.Overdue };
             var loanedByHeader = await _context.Departures.AsNoTracking()
-                .Where(d => d.EquipmentUnitId != null && unitIds.Contains(d.EquipmentUnitId.Value) && openLoanStatuses.Contains(d.Status))
+                .Where(d => d.EquipmentUnitId != null && unitIds.Contains(d.EquipmentUnitId.Value) && openLoanStatuses.Contains(d.Status)
+                    && d.PlanningId == null)
                 .Select(d => d.EquipmentUnitId!.Value)
                 .ToListAsync();
             var loanedByItem = await _context.DepartureItems.AsNoTracking()
                 .Where(i => i.EquipmentUnitId != null && unitIds.Contains(i.EquipmentUnitId.Value)
-                    && i.Departure != null && openLoanStatuses.Contains(i.Departure.Status))
+                    && i.Departure != null && openLoanStatuses.Contains(i.Departure.Status) && i.Departure.PlanningId == null)
                 .Select(i => i.EquipmentUnitId!.Value)
                 .ToListAsync();
             var loaned = loanedByHeader.Concat(loanedByItem).ToHashSet();

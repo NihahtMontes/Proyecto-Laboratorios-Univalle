@@ -68,6 +68,20 @@ namespace Proyecto_Laboratorios_Univalle.Models
         [Display(Name = "Estado")]
         public GeneralStatus Status { get; set; } = GeneralStatus.Activo;
 
+        /// <summary>
+        /// Persona del catálogo (People) que representa este usuario. Obligatoria para el rol Docente:
+        /// sus planificaciones se filtran por <c>Planning.TeacherPersonId = PersonId</c>. Única por persona.
+        /// </summary>
+        [Display(Name = "Persona vinculada")]
+        public int? PersonId { get; set; }
+
+        [ForeignKey("PersonId")]
+        public virtual Person? Person { get; set; }
+
+        /// <summary>True cuando la contraseña la generó el sistema: se exige cambiarla en el primer ingreso.</summary>
+        [Display(Name = "Debe cambiar la contraseña")]
+        public bool MustChangePassword { get; set; }
+
         // ========================================
         // WORK INFORMATION
         // ========================================

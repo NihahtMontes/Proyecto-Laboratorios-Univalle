@@ -100,6 +100,14 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             public IFormFile? ProfilePictureUpload { get; set; }
 
             public string? ExistingProfilePictureUrl { get; set; }
+
+            /// <summary>Persona docente del catálogo (obligatoria para el rol Docente).</summary>
+            [Display(Name = "Docente del catálogo")]
+            public int? PersonId { get; set; }
+
+            /// <summary>Al poner una contraseña nueva, exigir que el usuario la cambie al ingresar.</summary>
+            [Display(Name = "Pedir cambio de contraseña en el próximo ingreso")]
+            public bool MustChangePassword { get; set; } = true;
         }
 
         public async Task<IActionResult> OnGetAsync(int? id)
@@ -123,7 +131,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             Id = user.Id;
             Input = MapToInput(user);
             ViewData["ReturnUrl"] = HttpContext.Request.Query["returnUrl"].ToString();
-            LoadRoles();
+            await LoadRolesAsync();
             return Page();
         }
 
@@ -156,9 +164,12 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             if (imageValidationError != null)
                 ModelState.AddModelError("Input.ProfilePictureUpload", imageValidationError);
 
+            if (await TeacherLink.ValidateAsync(_context, Input.Role, Input.PersonId, id) is string teacherError)
+                ModelState.AddModelError("Input.PersonId", teacherError);
+
             if (!ModelState.IsValid)
             {
-                LoadRoles();
+                await LoadRolesAsync();
                 return Page();
             }
 
@@ -182,7 +193,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
 
             if (!ModelState.IsValid)
             {
-                LoadRoles();
+                await LoadRolesAsync();
                 return Page();
             }
 
@@ -218,7 +229,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             {
                 ModelState.AddModelError(string.Empty,
                     "No puede cambiar su propio rol ni desactivar su propia cuenta.");
-                LoadRoles();
+                await LoadRolesAsync();
                 return Page();
             }
 
@@ -235,7 +246,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 {
                     ModelState.AddModelError(string.Empty,
                         "Debe existir al menos un superadministrador activo.");
-                    LoadRoles();
+                    await LoadRolesAsync();
                     return Page();
                 }
             }
@@ -271,7 +282,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                     await transaction.RollbackAsync();
                     SafeImageUpload.DeleteIfExists(newProfilePicturePath);
                     Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
-                    LoadRoles();
+                    await LoadRolesAsync();
                     return Page();
                 }
 
@@ -285,7 +296,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                         await transaction.RollbackAsync();
                         SafeImageUpload.DeleteIfExists(newProfilePicturePath);
                         Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
-                        LoadRoles();
+                        await LoadRolesAsync();
                         return Page();
                     }
                 }
@@ -299,7 +310,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                         await transaction.RollbackAsync();
                         SafeImageUpload.DeleteIfExists(newProfilePicturePath);
                         Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
-                        LoadRoles();
+                        await LoadRolesAsync();
                         return Page();
                     }
                 }
@@ -312,7 +323,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                         await transaction.RollbackAsync();
                         SafeImageUpload.DeleteIfExists(newProfilePicturePath);
                         Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
-                        LoadRoles();
+                        await LoadRolesAsync();
                         return Page();
                     }
 
@@ -326,7 +337,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                     await transaction.RollbackAsync();
                     SafeImageUpload.DeleteIfExists(newProfilePicturePath);
                     Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
-                    LoadRoles();
+                    await LoadRolesAsync();
                     return Page();
                 }
 
@@ -354,7 +365,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 _logger.LogError(ex, "No se pudo actualizar el usuario {UserId}.", id);
                 Input.ExistingProfilePictureUrl = oldProfilePictureUrl;
                 TempData.Error("No se pudieron guardar los datos del usuario. Revise la información e intente nuevamente.");
-                LoadRoles();
+                await LoadRolesAsync();
                 return Page();
             }
 
@@ -385,7 +396,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
                 PhoneNumber = user.PhoneNumber,
                 Email = user.Email ?? string.Empty,
                 UserName = user.UserName,
-                ExistingProfilePictureUrl = user.ProfilePictureUrl
+                ExistingProfilePictureUrl = user.ProfilePictureUrl,
+                PersonId = user.PersonId,
+                MustChangePassword = true
             };
         }
 
@@ -403,6 +416,10 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             user.PhoneNumber = Input.PhoneNumber?.Trim();
             user.Email = normalizedEmail;
             user.NormalizedEmail = _userManager.NormalizeEmail(normalizedEmail);
+            // El vínculo con la persona solo aplica al rol Docente; al cambiar de rol se libera.
+            user.PersonId = Input.Role == UserRole.Docente ? Input.PersonId : null;
+            if (!string.IsNullOrWhiteSpace(Input.NewPassword))
+                user.MustChangePassword = Input.MustChangePassword;
         }
 
         private async Task<string?> GetExistingProfilePictureUrlAsync(int id)
@@ -422,8 +439,9 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Users
             }
         }
 
-        private void LoadRoles()
+        private async Task LoadRolesAsync()
         {
+            ViewData["TeacherOptions"] = TeacherLink.ToSelectList(await TeacherLink.OptionsAsync(_context, Id), Input.PersonId);
             var roles = EnumHelper.ToSelectList<UserRole>();
             if (!User.IsInRole(AuthorizationHelper.RoleSuperAdmin))
             {

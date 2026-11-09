@@ -129,6 +129,9 @@ builder.Services.AddScoped<IReschedulingService, ReschedulingService>();
 builder.Services.AddScoped<IDayRecoveryService, DayRecoveryService>();
 builder.Services.AddScoped<RequirementPickerService>();
 builder.Services.AddScoped<IL3CircuitService, L3CircuitService>();
+builder.Services.Configure<Proyecto_Laboratorios_Univalle.Services.TeacherRequests.TeacherRequestOptions>(
+    builder.Configuration.GetSection(Proyecto_Laboratorios_Univalle.Services.TeacherRequests.TeacherRequestOptions.Section));
+builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.TeacherRequests.ITeacherRequestService, Proyecto_Laboratorios_Univalle.Services.TeacherRequests.TeacherRequestService>();
 builder.Services.AddScoped<IArticleAvailabilityService, ArticleAvailabilityService>();
 builder.Services.AddScoped<IConflictGridService, ConflictGridService>();
 builder.Services.AddScoped<IConflictResolutionService, ConflictResolutionService>();
@@ -217,6 +220,7 @@ app.UseCookiePolicy();
 app.UseAuthentication();
 // El rol de cierre de prácticas solo ve su módulo (Cierre, L-3, L-5); antes de la autorización para redirigir siempre a /Cierre.
 app.UsePracticeClosureScope();
+app.UseTeacherScope();
 app.UseAuthorization();
 
 app.MapRazorPages();

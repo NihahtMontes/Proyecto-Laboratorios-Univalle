@@ -98,6 +98,8 @@
                                 <span asp-validation-for="Input.Role" class="text-danger small font-weight-bold"></span>
                             </div>
 
+                            <partial name="_TeacherLinkFields" model="Model.Input.PersonId" />
+
                             <div class="form-group mb-3 border-left border-warning pl-3 bg-light p-3 rounded shadow-none">
                                 <label asp-for="Input.UserName" class="control-label font-weight-bold small text-warning uppercase mb-2">Nombre de Usuario (Login) <span class="text-danger">*</span></label>
                                 <div class="input-group">
@@ -115,11 +117,16 @@
                                     <input asp-for="Input.Password" class="form-control" id="passwordInput" type="password" required />
                                     <div class="input-group-append">
                                         <button type="button" class="btn btn-outline-secondary" onclick="togglePassword()" id="togglePasswordBtn" title="Ver/Ocultar"><i class="fas fa-eye"></i></button>
-                                        <button type="button" class="btn btn-dark" onclick="generatePassword()" title="Generar Automática"><i class="fas fa-magic"></i></button>
+                                        <button type="button" class="btn btn-dark" onclick="generatePassword()" title="Generar automática"><i class="fas fa-magic"></i></button>
+                                        <button type="button" class="btn btn-outline-info" onclick="copyPassword()" title="Copiar contraseña"><i class="far fa-copy"></i></button>
                                     </div>
                                 </div>
                                 <span asp-validation-for="Input.Password" class="text-danger small font-weight-bold"></span>
-                                <small class="text-muted italic d-block mt-1" style="font-size: 0.75rem;">Mínimo 12 caracteres, con mayúscula, minúscula, número y símbolo.</small>
+                                <small class="text-muted italic d-block mt-1" style="font-size: 0.75rem;">Mínimo 12 caracteres, con mayúscula, minúscula, número y símbolo. Usa <i class="fas fa-magic"></i> para generarla y <i class="far fa-copy"></i> para copiarla y entregarla al usuario.</small>
+                                <div class="custom-control custom-checkbox mt-2">
+                                    <input type="checkbox" class="custom-control-input" asp-for="Input.MustChangePassword" />
+                                    <label class="custom-control-label small" asp-for="Input.MustChangePassword">Pedir cambio de contraseña en el primer ingreso</label>
+                                </div>
                             </div>
 
                             <h5 class="font-weight-bold text-info mb-3 mt-4"><i class="fas fa-briefcase mr-2"></i> Perfil Laboral</h5>
@@ -200,9 +207,22 @@
             }
             var retVal = chars.join("");
             var input = document.getElementById("passwordInput");
+            document.getElementById("Input_MustChangePassword").checked = true;
             input.value = retVal;
             input.type = "text";
             document.getElementById("togglePasswordBtn").innerHTML = '<i class="fas fa-eye-slash"></i>';
+        }
+
+        function copyPassword() {
+            var input = document.getElementById("passwordInput");
+            if (!input.value) { Swal.fire({ title: "Sin contraseña", text: "Genera o escribe una contraseña primero.", type: "info" }); return; }
+            var done = function () { Swal.fire({ title: "Copiada", text: "Entrega la contraseña al usuario por un canal seguro.", type: "success", timer: 1800, showConfirmButton: false }); };
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(input.value).then(done);
+            } else {
+                input.type = "text"; input.select(); document.execCommand("copy"); done();
+            }
+            document.getElementById("Input_MustChangePassword").checked = true;
         }
 
         function togglePassword() {

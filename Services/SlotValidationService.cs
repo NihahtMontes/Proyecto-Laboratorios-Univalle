@@ -113,6 +113,14 @@ public sealed class SlotValidationService : ISlotValidationService
             return Result();
         }
 
+        // Solicitudes de docentes sin aprobar: se resuelven en la bandeja (aprobar/observar/rechazar), no se mueven.
+        if (origin.Status is PlanningStatus.Requested or PlanningStatus.Observed or PlanningStatus.Rejected)
+        {
+            issues.Add(Block(Codes.OriginNotMovable,
+                $"Es una solicitud de docente ({PlanningStatus.Label(origin.Status)}): revísala en Solicitudes de docentes; el docente elige otro horario si se observa."));
+            return Result();
+        }
+
         if (NotMovableStatuses.Contains(origin.Status))
         {
             issues.Add(Block(Codes.OriginNotMovable,

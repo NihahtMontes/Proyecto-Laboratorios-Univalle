@@ -1,0 +1,253 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Docente.SolicitudModel
+@using System.Globalization
+@using Proyecto_Laboratorios_Univalle.Models
+@using Proyecto_Laboratorios_Univalle.Helpers
+@{
+    ViewData["Title"] = $"Solicitud {Model.Code}";
+    ViewData["Section"] = "Portal docente";
+    ViewData["HidePageTitle"] = true;
+    var es = new CultureInfo("es-BO");
+    var r = Model.Row;
+    var status = r.Status;
+
+    // Seguimiento tipo "pedido en línea": enviada → en revisión → resultado → realizada.
+    var submitted = Model.History.FirstOrDefault(h => h.Action == PlanningReviewAction.Submitted);
+    var isPending = PlanningStatus.PendingReview.Contains(status);
+    var isApproved = status is PlanningStatus.Approved or PlanningStatus.Finalized;
+    var isClosed = status is PlanningStatus.Rejected or PlanningStatus.Cancelled;
+}
+
+@section Styles {
+    <link href="~/css/docente.css" rel="stylesheet" asp-append-version="true" />
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">
+                <a asp-page="./Solicitudes" class="text-reset">MIS SOLICITUDES</a> <i class="fas fa-chevron-right mx-1 small"></i> @Model.Code
+            </h4>
+            <h2 class="font-weight-bold text-dark mb-1">@r.Practice</h2>
+            <span class="badge badge-pill badge-@r.StatusCss px-3 py-2"><i class="@r.StatusIcon mr-1"></i>@r.StatusText</span>
+            <span class="text-muted small ml-2">@r.Subject · Grupo @r.Group</span>
+        </div>
+        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+            @if (Model.CanEdit)
+            {
+                <a asp-page="./NuevaSolicitud" asp-route-id="@r.Id" class="btn rounded-pill px-4 text-white mb-1" style="background:#fb8c00;"><i class="fas fa-edit mr-1"></i>Corregir y reenviar</a>
+            }
+            @if (Model.CanPrint)
+            {
+                <a asp-page-handler="Ficha" asp-route-id="@r.Id" target="_blank" class="btn btn-outline-danger rounded-pill px-3 mb-1"><i class="fas fa-file-pdf mr-1"></i>Ficha PDF</a>
+            }
+            @if (Model.Window.IsOpen)
+            {
+                <a asp-page="./NuevaSolicitud" asp-route-copyFrom="@r.Id" class="btn btn-light border rounded-pill px-3 mb-1" title="Crear una nueva solicitud con los mismos datos y material"><i class="fas fa-clone mr-1"></i>Repetir</a>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    @if (Model.JustSent)
+    {
+        <div class="alert border-0 shadow-sm d-flex align-items-center mb-4" style="background:#e8f8f4;">
+            <i class="fas fa-paper-plane fa-2x mr-3" style="color:#36bea6;"></i>
+            <div>
+                <strong>¡Listo! Tu solicitud está en revisión.</strong>
+                <div class="small text-muted">Te avisaremos en la campana de notificaciones cuando sea aprobada u observada. Mientras tanto el laboratorio no está reservado.</div>
+            </div>
+        </div>
+    }
+
+    <!-- Seguimiento -->
+    <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+        <div class="card-body py-4">
+            <div class="dc-stepper mb-0">
+                <div class="dc-step is-done"><span class="dc-step__dot"><i class="fas fa-paper-plane"></i></span><span class="dc-step__text">Enviada<br /><small class="text-muted font-weight-normal">@(submitted != null ? BoliviaTime.ToLocal(submitted.Date).ToString("dd/MM HH:mm") : r.RequestDate.ToString("dd/MM"))</small></span></div>
+                <div class="dc-step__bar is-done"></div>
+                <div class="dc-step @(isPending ? "is-active" : "is-done")">
+                    <span class="dc-step__dot">@if (isPending) { <i class="fas fa-hourglass-half"></i> } else { <i class="fas fa-check"></i> }</span>
+                    <span class="dc-step__text">@(status == PlanningStatus.Observed ? "Observada" : "En revisión")</span>
+                </div>
+                <div class="dc-step__bar @(isPending ? null : "is-done")"></div>
+                @if (isClosed)
+                {
+                    <div class="dc-step is-active"><span class="dc-step__dot" style="background:#adb5bd;border-color:#adb5bd;"><i class="fas fa-times"></i></span><span class="dc-step__text text-muted">@r.StatusText</span></div>
+                }
+                else
+                {
+                    <div class="dc-step @(isApproved ? (status == PlanningStatus.Approved ? "is-active" : "is-done") : null)"><span class="dc-step__dot"><i class="fas fa-check-circle"></i></span><span class="dc-step__text">Aprobada</span></div>
+                    <div class="dc-step__bar @(status == PlanningStatus.Finalized ? "is-done" : null)"></div>
+                    <div class="dc-step @(status == PlanningStatus.Finalized ? "is-active" : null)"><span class="dc-step__dot"><i class="fas fa-flag-checkered"></i></span><span class="dc-step__text">Realizada</span></div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <!-- Datos -->
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-6 col-lg-3 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Fecha</div>
+                            <div class="font-weight-bold text-dark text-capitalize">@r.Date.ToString("dddd d 'de' MMMM", es)</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Horario</div>
+                            <div class="font-weight-bold text-dark">@r.TimeText</div>
+                            <div class="small text-muted">@r.PeriodsText</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Laboratorio</div>
+                            <div class="font-weight-bold text-dark">@r.LabCode</div>
+                            <div class="small text-muted">@r.LabName</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Estudiantes</div>
+                            <div class="font-weight-bold text-dark">@(Model.Students?.ToString() ?? "—")</div>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Observations))
+                    {
+                        <div class="p-3 rounded bg-light small"><i class="fas fa-sticky-note mr-1 text-muted"></i><strong>Tus indicaciones:</strong> @Model.Observations</div>
+                    }
+                    @if (Model.HasDeparture)
+                    {
+                        <div class="mt-3 small text-muted"><i class="fas fa-truck-loading mr-1"></i>El material ya fue entregado por el encargado de cierre@(Model.IncidentCount > 0 ? $" · {Model.IncidentCount} incidente(s) registrado(s)" : "").</div>
+                    }
+                </div>
+            </div>
+
+            <!-- Material -->
+            <div class="card border-0 shadow-sm" style="border-radius:16px;">
+                <div class="card-body">
+                    <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-box-open mr-2" style="color:#7460ee;"></i>Material @(isApproved ? "aprobado" : "solicitado") <span class="badge badge-light border">@Model.Lines.Count</span></h5>
+                    @if (Model.Lines.Any(l => l.ChangedByReviewer))
+                    {
+                        <div class="alert border-0 small" style="background:#f3f1fe;"><i class="fas fa-exchange-alt mr-1" style="color:#7460ee;"></i>El revisor ajustó algunas cantidades: verás lo que pediste tachado y lo aprobado en morado.</div>
+                    }
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="thead-light"><tr><th>Artículo</th><th>Categoría</th><th class="text-right">Cantidad</th></tr></thead>
+                            <tbody>
+                                @foreach (var line in Model.Lines)
+                                {
+                                    <tr>
+                                        <td><strong class="text-dark">@line.Name</strong><div class="small text-muted">@line.Code</div></td>
+                                        <td class="small text-muted align-middle">@line.Category</td>
+                                        <td class="text-right align-middle">
+                                            @if (line.ChangedByReviewer)
+                                            {
+                                                <span class="dc-diff-old">@line.RequestedByTeacher?.ToString("0.##")</span>
+                                                <span class="dc-diff-new">@line.Quantity.ToString("0.##")</span>
+                                            }
+                                            else
+                                            {
+                                                <strong>@line.Quantity.ToString("0.##")</strong>
+                                            }
+                                            <small class="text-muted">@line.Unit</small>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                <div class="card-body">
+                    <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-history mr-2" style="color:#7460ee;"></i>Historial</h5>
+                    @if (Model.History.Count == 0)
+                    {
+                        <div class="small text-muted">Esta práctica fue programada por la coordinación (sin historial de solicitud).</div>
+                    }
+                    else
+                    {
+                        <div class="dc-timeline">
+                            @foreach (var h in Model.History)
+                            {
+                                var (icon, color) = h.Action switch
+                                {
+                                    PlanningReviewAction.Submitted => ("fas fa-paper-plane", "#7460ee"),
+                                    PlanningReviewAction.Resubmitted => ("fas fa-redo", "#7460ee"),
+                                    PlanningReviewAction.Observed => ("fas fa-comment-dots", "#fb8c00"),
+                                    PlanningReviewAction.Approved => ("fas fa-check", "#36bea6"),
+                                    PlanningReviewAction.ApprovedWithChanges => ("fas fa-clipboard-check", "#36bea6"),
+                                    PlanningReviewAction.Rejected => ("fas fa-times", "#f62d51"),
+                                    _ => ("fas fa-undo", "#9aa0a6")
+                                };
+                                <div class="dc-tl-item">
+                                    <span class="dc-tl-item__dot" style="background:@color;"><i class="@icon"></i></span>
+                                    <div class="dc-tl-item__title">@h.ActionText</div>
+                                    <div class="dc-tl-item__meta">@h.UserName · @BoliviaTime.ToLocal(h.Date).ToString("dd/MM/yyyy HH:mm")</div>
+                                    @if (!string.IsNullOrWhiteSpace(h.Comment))
+                                    {
+                                        <div class="dc-tl-item__comment">@h.Comment</div>
+                                    }
+                                    @if (h.Lines.Count > 0)
+                                    {
+                                        <ul class="small mt-2 mb-0 pl-3">
+                                            @foreach (var l in h.Lines)
+                                            {
+                                                <li>@l.ArticleName: @(l.PreviousQuantity?.ToString("0.##") ?? "—") → <strong>@(l.NewQuantity?.ToString("0.##") ?? "quitado")</strong></li>
+                                            }
+                                        </ul>
+                                    }
+                                </div>
+                            }
+                            @if (isPending && status == PlanningStatus.Requested)
+                            {
+                                <div class="dc-tl-item is-future">
+                                    <span class="dc-tl-item__dot"><i class="fas fa-hourglass-half"></i></span>
+                                    <div class="dc-tl-item__title">Esperando revisión</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (Model.CanWithdraw)
+            {
+                <form method="post" asp-page-handler="Withdraw" asp-route-id="@r.Id" id="withdrawForm">
+                    <input type="hidden" name="reason" id="withdrawReason" />
+                    <button type="button" class="btn btn-outline-secondary btn-block rounded-pill" id="btnWithdraw"><i class="fas fa-undo mr-1"></i>Retirar solicitud</button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            var btn = document.getElementById('btnWithdraw');
+            if (!btn) return;
+            btn.addEventListener('click', function () {
+                Swal.fire({
+                    title: '¿Retirar la solicitud?',
+                    text: 'Ya no será revisada. Puedes indicar el motivo (opcional).',
+                    input: 'text',
+                    inputPlaceholder: 'Motivo (opcional)',
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, retirar',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#6c757d'
+                }).then(function (result) {
+                    if (!(result && (result.isConfirmed === true || result.value !== undefined && result.dismiss === undefined))) return;
+                    document.getElementById('withdrawReason').value = typeof result.value === 'string' ? result.value : '';
+                    HTMLFormElement.prototype.submit.call(document.getElementById('withdrawForm'));
+                });
+            });
+        })();
+    </script>
+}

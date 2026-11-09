@@ -111,6 +111,8 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public ICollection<PlanningRequirement> Requirements { get; set; } = new List<PlanningRequirement>();
         public ICollection<L5Incident> Incidents { get; set; } = new List<L5Incident>();
         public ICollection<Departure> Departures { get; set; } = new List<Departure>();
+        /// <summary>Historial de revisión (solo solicitudes de docentes).</summary>
+        public ICollection<PlanningReview> Reviews { get; set; } = new List<PlanningReview>();
 
         // IAuditable implementation
         public DateTime CreatedDate { get; set; }
@@ -134,9 +136,17 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public const string PendingRecovery = "PendienteReposicion";
         /// <summary>Origen ya reubicado dentro de una reposición de día.</summary>
         public const string Recovered = "Repuesta";
-        public static readonly string[] All = [Planned, Approved, Finalized, Cancelled, Rescheduled, PendingRecovery, Recovered];
+        /// <summary>Solicitud enviada por un docente, en espera de revisión (solo avisa: no ocupa ambiente ni material).</summary>
+        public const string Requested = "Solicitada";
+        /// <summary>El revisor devolvió la solicitud al docente con observaciones para corregir y reenviar.</summary>
+        public const string Observed = "Observada";
+        /// <summary>Solicitud rechazada por el revisor (motivo en PlanningReviews). No ocupa nada.</summary>
+        public const string Rejected = "Rechazada";
+        public static readonly string[] All = [Planned, Approved, Finalized, Cancelled, Rescheduled, PendingRecovery, Recovered, Requested, Observed, Rejected];
+        /// <summary>Estados de una solicitud docente que todavía no se aprobó (ni se rechazó).</summary>
+        public static readonly string[] PendingReview = [Requested, Observed];
         /// <summary>Estados que NO ocupan ambiente ni docente ni demandan material.</summary>
-        public static readonly string[] NonOccupying = [Cancelled, Rescheduled, PendingRecovery, Recovered];
+        public static readonly string[] NonOccupying = [Cancelled, Rescheduled, PendingRecovery, Recovered, Requested, Observed, Rejected];
         public static bool Occupies(string status) => !NonOccupying.Contains(status);
         /// <summary>Orígenes ya reubicados (o esperando reposición): su L-3 se sigue cerrando en ellos.</summary>
         public static readonly string[] Moved = [Rescheduled, PendingRecovery, Recovered];
@@ -149,6 +159,7 @@ namespace Proyecto_Laboratorios_Univalle.Models
         public static string Label(string status) => status switch
         {
             PendingRecovery => "Pendiente de reposición",
+            Requested => "Solicitada (en revisión)",
             _ => status
         };
     }

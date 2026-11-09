@@ -1,0 +1,330 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations.Solicitudes.RevisarModel
+@using System.Globalization
+@using Proyecto_Laboratorios_Univalle.Models
+@using Proyecto_Laboratorios_Univalle.Helpers
+@using Proyecto_Laboratorios_Univalle.Services
+@using Proyecto_Laboratorios_Univalle.Services.TeacherRequests
+@using Proyecto_Laboratorios_Univalle.Pages.LaboratoryOperations
+@{
+    ViewData["Title"] = $"Revisar {Model.Code}";
+    ViewData["Section"] = "Planificación académica";
+    ViewData["HidePageTitle"] = true;
+    var es = new CultureInfo("es-BO");
+    var p = Model.Plan;
+    var lastOrder = Model.StartOrder is int so && p.PeriodCount is int pc ? so + pc - 1 : (int?)null;
+    var shortCount = Model.Material.Count(m => m.State == MaterialState.Short);
+    var hasBlocks = Model.Slot.HasBlocks;
+    var materialById = Model.Material.ToDictionary(m => m.ArticleId);
+}
+
+@section Styles {
+    <link href="~/css/docente.css" rel="stylesheet" asp-append-version="true" />
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase text-primary font-weight-bold mb-0">
+                <a asp-page="./Index" class="text-reset">SOLICITUDES DE DOCENTES</a> <i class="fas fa-chevron-right mx-1 small"></i> @Model.Code
+            </h4>
+            <h2 class="font-weight-bold text-dark mb-1">@p.PracticeName</h2>
+            <span class="badge badge-pill badge-@PlanningStatusView.Css(p.Status) px-3 py-2">@PlanningStatus.Label(p.Status)</span>
+            <span class="text-muted small ml-2"><i class="fas fa-user mr-1"></i>@Model.TeacherName · @p.Subject?.Name · Grupo @(p.CourseGroup?.Name ?? p.GroupName)</span>
+        </div>
+        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+            @if (p.LaboratoryId.HasValue)
+            {
+                <a asp-page="../Grilla" asp-route-managementId="@p.ManagementId" asp-route-laboratoryId="@p.LaboratoryId" asp-route-date="@p.ScheduledDate.ToString("yyyy-MM-dd")" class="btn btn-light border rounded-pill px-3">
+                    <i class="mdi mdi-table-large mr-1"></i>Ver en la grilla
+                </a>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    <!-- Veredicto -->
+    @if (Model.CanReview)
+    {
+        if (hasBlocks)
+        {
+            <div class="alert border-0 shadow-sm d-flex align-items-center mb-3" style="background:#fdecef;">
+                <i class="fas fa-ban fa-2x mr-3 text-danger"></i>
+                <div><strong>No se puede aprobar en este horario.</strong><div class="small">@string.Join(" ", Model.Slot.Blocks.Select(b => b.Message)) Obsérvala para que el docente elija otro horario.</div></div>
+            </div>
+        }
+        else if (shortCount > 0 || Model.Competitors.Count > 0)
+        {
+            <div class="alert border-0 shadow-sm d-flex align-items-center mb-3" style="background:#fff8e8;">
+                <i class="fas fa-exclamation-triangle fa-2x mr-3 text-warning"></i>
+                <div><strong>Se puede aprobar, con avisos.</strong>
+                    <div class="small">
+                        @if (shortCount > 0) { <span>@shortCount artículo(s) no alcanzan en ese horario: ajusta cantidades o coordina préstamo. </span> }
+                        @if (Model.Competitors.Count > 0) { <span>@Model.Competitors.Count solicitud(es) piden el mismo laboratorio: al aprobar esta, quedarán sin horario y se avisará a sus docentes.</span> }
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert border-0 shadow-sm d-flex align-items-center mb-3" style="background:#e8f8f4;">
+                <i class="fas fa-check-circle fa-2x mr-3" style="color:#36bea6;"></i>
+                <div><strong>Todo en orden.</strong><div class="small">Laboratorio libre, sin choques del docente ni del grupo y con material suficiente. Puedes aprobar con un clic.</div></div>
+            </div>
+        }
+    }
+
+    <div class="row">
+        <!-- Solicitud y material -->
+        <div class="col-lg-7 mb-4">
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-sm-4 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Fecha</div>
+                            <div class="font-weight-bold text-dark text-capitalize">@p.ScheduledDate.ToString("dddd d 'de' MMMM", es)</div>
+                            <div class="small text-muted">Semana @p.AcademicWeek</div>
+                        </div>
+                        <div class="col-sm-4 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Horario</div>
+                            <div class="font-weight-bold text-dark">@PlanningStatusView.TimeText(Model.StartOrder, p.PeriodCount, p.ScheduledDate, p.ScheduledEndDate)</div>
+                        </div>
+                        <div class="col-sm-4 mb-3">
+                            <div class="small text-muted text-uppercase font-weight-bold">Laboratorio · estudiantes</div>
+                            <div class="font-weight-bold text-dark">@p.Laboratory?.Code · @(Model.Students?.ToString() ?? "—") est.</div>
+                            <div class="small text-muted">@p.Laboratory?.Name</div>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(p.Observations))
+                    {
+                        <div class="p-3 rounded bg-light small"><i class="fas fa-sticky-note mr-1 text-muted"></i><strong>Indicaciones del docente:</strong> @p.Observations</div>
+                    }
+                </div>
+            </div>
+
+            <form method="post" asp-page-handler="Approve" asp-route-id="@p.Id" id="approveForm">
+                <div class="card border-0 shadow-sm" style="border-radius:16px;">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <h5 class="font-weight-bold text-dark mb-0"><i class="fas fa-box-open mr-2" style="color:#7460ee;"></i>Material solicitado</h5>
+                            @if (Model.CanReview)
+                            {
+                                <small class="text-muted ml-auto">Puedes ajustar cantidades (0 = quitar). Quedará registrado como “aprobada con cambios”.</small>
+                            }
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr><th>Artículo</th><th class="text-center">Stock</th><th class="text-center">Libre</th><th class="text-center">Cantidad</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var line in Model.Lines)
+                                    {
+                                        materialById.TryGetValue(line.ArticleId, out var m);
+                                        <tr>
+                                            <td>
+                                                <span class="dc-light dc-light--@(m?.StateCss ?? "secondary")" title="@m?.StateText"></span>
+                                                <strong class="text-dark">@line.Name</strong> <small class="text-muted">@line.Code</small>
+                                                @if (m != null)
+                                                {
+                                                    <div class="dc-explain ml-4">@m.Explanation</div>
+                                                    @if (m.Uses.Count > 0)
+                                                    {
+                                                        <div class="dc-explain ml-4">
+                                                            @foreach (var u in m.Uses)
+                                                            {
+                                                                <span class="badge badge-light border mr-1">@u.Code · @u.TimeText · @u.Quantity.ToString("0.##")</span>
+                                                            }
+                                                        </div>
+                                                    }
+                                                }
+                                            </td>
+                                            <td class="text-center align-middle">@(m?.Stock?.ToString("0.##") ?? "—")</td>
+                                            <td class="text-center align-middle"><span class="badge badge-pill badge-@(m?.StateCss ?? "secondary")">@(m?.Free?.ToString("0.##") ?? "—")</span></td>
+                                            <td class="text-center align-middle">
+                                                @if (Model.CanReview)
+                                                {
+                                                    <input type="number" class="form-control form-control-sm dc-qty mx-auto" name="qty[@line.ArticleId]" value="@line.Quantity.ToString("0.##", CultureInfo.InvariantCulture)" min="0" step="1" data-original="@line.Quantity.ToString("0.##", CultureInfo.InvariantCulture)" />
+                                                }
+                                                else if (line.ChangedByReviewer)
+                                                {
+                                                    <span class="dc-diff-old">@line.RequestedByTeacher?.ToString("0.##")</span><span class="dc-diff-new">@line.Quantity.ToString("0.##")</span>
+                                                }
+                                                else
+                                                {
+                                                    <strong>@line.Quantity.ToString("0.##")</strong>
+                                                }
+                                                <small class="text-muted d-block">@line.Unit</small>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        @if (Model.CanReview)
+                        {
+                            <div class="form-group mt-3 mb-0">
+                                <label class="small font-weight-bold text-uppercase text-muted" for="comment">Comentario para el docente (opcional)</label>
+                                <input type="text" class="form-control" id="comment" name="comment" maxlength="1000" placeholder="Ej: te asignamos 10 bowls porque H-02 usa el resto a la misma hora." />
+                            </div>
+                        }
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Día del laboratorio y análisis -->
+        <div class="col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                <div class="card-body">
+                    <h5 class="font-weight-bold text-dark mb-3"><i class="far fa-calendar-alt mr-2" style="color:#7460ee;"></i>@p.Laboratory?.Code el @p.ScheduledDate.ToString("dddd d", es)</h5>
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            @foreach (var period in Model.Periods)
+                            {
+                                var mine = Model.StartOrder is int s0 && lastOrder is int l0 && period.Order >= s0 && period.Order <= l0;
+                                var block = Model.DayBlocks.FirstOrDefault(b => period.Order >= b.StartOrder && period.Order <= b.LastOrder);
+                                var competitor = Model.Competitors.FirstOrDefault(c => period.Order >= c.StartOrder && period.Order < c.StartOrder + c.PeriodCount);
+                                <tr style="@(mine ? "background:#f3f1fe;" : null)">
+                                    <td class="text-muted small text-nowrap" style="width:96px;">P@(period.Order) · @period.StartTime.ToString(@"hh\:mm")</td>
+                                    <td class="small">
+                                        @if (mine)
+                                        {
+                                            <span class="font-weight-bold" style="color:#7460ee;"><i class="fas fa-arrow-right mr-1"></i>Esta solicitud</span>
+                                            @if (block != null) { <span class="badge badge-danger ml-1">Choca con @block.Label</span> }
+                                        }
+                                        else if (block != null)
+                                        {
+                                            <span class="text-dark"><i class="fas fa-lock mr-1 text-danger"></i>@block.Label</span>
+                                        }
+                                        else if (competitor != null)
+                                        {
+                                            <span style="color:#7460ee;"><i class="fas fa-hourglass-half mr-1"></i>@competitor.Code (pendiente)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">Libre</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            @if (Model.Competitors.Count > 0)
+            {
+                <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                    <div class="card-body">
+                        <h6 class="font-weight-bold text-dark mb-2"><i class="fas fa-random mr-2" style="color:#7460ee;"></i>Compiten por el mismo laboratorio</h6>
+                        @foreach (var c in Model.Competitors)
+                        {
+                            <a asp-page="./Revisar" asp-route-id="@c.Id" class="d-block p-2 rounded mb-2 bg-light text-dark">
+                                <strong>@c.Code</strong> · @c.Teacher<div class="small text-muted">@c.Practice · @Proyecto_Laboratorios_Univalle.Services.PlanningSlot.PeriodsText(c.StartOrder, c.PeriodCount) · pedida @c.RequestDate.ToString("dd/MM HH:mm")</div>
+                            </a>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (Model.Slot.Warnings.Any() || Model.Slot.Issues.Any(i => i.Severity == CheckSeverity.Info))
+            {
+                <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                    <div class="card-body">
+                        @foreach (var issue in Model.Slot.Issues.Where(i => i.Severity != CheckSeverity.Block))
+                        {
+                            <div class="small mb-2"><i class="fas @(issue.Severity == CheckSeverity.Info ? "fa-info-circle text-info" : "fa-exclamation-triangle text-warning") mr-1"></i><strong>@issue.Title:</strong> @issue.Message</div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+                <div class="card-body">
+                    <h6 class="font-weight-bold text-dark mb-3"><i class="fas fa-history mr-2" style="color:#7460ee;"></i>Historial</h6>
+                    <div class="dc-timeline">
+                        @foreach (var h in Model.History)
+                        {
+                            var color = h.Action switch
+                            {
+                                PlanningReviewAction.Observed => "#fb8c00",
+                                PlanningReviewAction.Approved or PlanningReviewAction.ApprovedWithChanges => "#36bea6",
+                                PlanningReviewAction.Rejected => "#f62d51",
+                                PlanningReviewAction.Withdrawn => "#9aa0a6",
+                                _ => "#7460ee"
+                            };
+                            <div class="dc-tl-item">
+                                <span class="dc-tl-item__dot" style="background:@color;"><i class="fas fa-circle" style="font-size:.5rem;"></i></span>
+                                <div class="dc-tl-item__title">@h.ActionText</div>
+                                <div class="dc-tl-item__meta">@h.UserName · @BoliviaTime.ToLocal(h.Date).ToString("dd/MM/yyyy HH:mm")</div>
+                                @if (!string.IsNullOrWhiteSpace(h.Comment)) { <div class="dc-tl-item__comment">@h.Comment</div> }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.CanReview)
+    {
+        <div class="card border-0 shadow mb-4 dc-sticky" style="border-radius:16px; bottom:16px; top:auto; z-index:5;">
+            <div class="card-body d-flex flex-wrap align-items-center py-3">
+                <div class="small text-muted mr-auto mb-2 mb-md-0"><i class="fas fa-gavel mr-1"></i>Decide sobre <strong>@Model.Code</strong>: el docente recibirá un aviso con tu decisión.</div>
+                <form method="post" asp-page-handler="Reject" asp-route-id="@p.Id" id="rejectForm" class="d-inline"><input type="hidden" name="comment" /></form>
+                <form method="post" asp-page-handler="Observe" asp-route-id="@p.Id" id="observeForm" class="d-inline"><input type="hidden" name="comment" /></form>
+                <button type="button" class="btn btn-outline-danger rounded-pill px-3 mr-2 mb-1" id="btnReject"><i class="fas fa-times mr-1"></i>Rechazar</button>
+                <button type="button" class="btn rounded-pill px-3 mr-2 mb-1 text-white" style="background:#fb8c00;" id="btnObserve"><i class="fas fa-comment-dots mr-1"></i>Observar</button>
+                <button type="button" class="btn btn-success rounded-pill px-4 mb-1" id="btnApprove" @(hasBlocks ? "disabled title=\"Hay un choque de horario\"" : null)><i class="fas fa-check mr-1"></i>Aprobar</button>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            function confirmed(r) { return r && (r.isConfirmed === true || r.value === true); }
+            function askComment(title, text, placeholder, color, formId) {
+                Swal.fire({
+                    title: title, text: text, input: 'textarea', inputPlaceholder: placeholder, type: 'warning',
+                    showCancelButton: true, confirmButtonText: 'Enviar', cancelButtonText: 'Cancelar', confirmButtonColor: color,
+                    inputValidator: function (value) {
+                        return new Promise(function (resolve) {
+                            resolve(value && value.trim().length >= 5 ? undefined : 'Escribe al menos 5 caracteres.');
+                        });
+                    }
+                }).then(function (r) {
+                    if (!r || typeof r.value !== 'string') return;
+                    var form = document.getElementById(formId);
+                    form.querySelector('[name=comment]').value = r.value.trim();
+                    HTMLFormElement.prototype.submit.call(form);
+                });
+            }
+            var approve = document.getElementById('btnApprove');
+            if (approve) approve.addEventListener('click', function () {
+                var changed = Array.prototype.filter.call(document.querySelectorAll('input[data-original]'), function (i) {
+                    return Number(i.value) !== Number(i.getAttribute('data-original'));
+                }).length;
+                Swal.fire({
+                    title: changed ? '¿Aprobar con ' + changed + ' cambio(s) de cantidad?' : '¿Aprobar la solicitud?',
+                    text: 'Se reserva el laboratorio y el material en ese horario. El docente recibirá el aviso.' + (@Model.Competitors.Count > 0 ? ' Las solicitudes que compiten quedarán sin horario.' : ''),
+                    type: 'question', showCancelButton: true, confirmButtonText: 'Sí, aprobar', cancelButtonText: 'Cancelar', confirmButtonColor: '#36bea6'
+                }).then(function (r) {
+                    if (confirmed(r)) { approve.disabled = true; HTMLFormElement.prototype.submit.call(document.getElementById('approveForm')); }
+                });
+            });
+            var observe = document.getElementById('btnObserve');
+            if (observe) observe.addEventListener('click', function () {
+                askComment('Observar la solicitud', 'Vuelve al docente para que la corrija y la reenvíe. Indica qué debe cambiar.', 'Ej: H-02 está ocupado ese día; prueba el jueves en H-03…', '#fb8c00', 'observeForm');
+            });
+            var reject = document.getElementById('btnReject');
+            if (reject) reject.addEventListener('click', function () {
+                askComment('Rechazar la solicitud', 'La solicitud se cierra. Indica el motivo para el docente.', 'Motivo del rechazo…', '#f62d51', 'rejectForm');
+            });
+        })();
+    </script>
+}

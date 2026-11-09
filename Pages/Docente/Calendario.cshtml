@@ -1,0 +1,137 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Docente.CalendarioModel
+@{
+    ViewData["Title"] = "Mi calendario";
+    ViewData["Section"] = "Portal docente";
+    ViewData["HidePageTitle"] = true;
+}
+
+@section Styles {
+    <link href="~/assets/libs/fullcalendar/dist/fullcalendar.min.css" rel="stylesheet" />
+    <link href="~/css/docente.css" rel="stylesheet" asp-append-version="true" />
+    <style>
+        .fc { font-size: .85rem; }
+        .fc-event { border-radius: 6px; padding: 2px 4px; cursor: pointer; font-size: .72rem; }
+        .fc-day:hover { background: rgba(116, 96, 238, .04); }
+        .fc-toolbar h2 { font-size: 1.2rem; font-weight: 700; text-transform: capitalize; }
+        .fc-unthemed td.fc-today { background: #f3f1fe; }
+    </style>
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-7">
+            <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">PORTAL DOCENTE</h4>
+            <h2 class="font-weight-bold text-dark mb-0">Mi calendario</h2>
+            <div class="text-muted small">Haz clic en una práctica para ver el detalle sin salir del calendario.</div>
+        </div>
+        <div class="col-md-5 text-md-right mt-3 mt-md-0">
+            <div class="btn-group mr-2">
+                <button type="button" class="btn btn-light border active" id="viewMonth">Mes</button>
+                <button type="button" class="btn btn-light border" id="viewWeek">Semana</button>
+                <button type="button" class="btn btn-light border" id="viewList">Lista</button>
+            </div>
+            @if (Model.Window.IsOpen)
+            {
+                <a asp-page="./NuevaSolicitud" class="btn text-white rounded-pill px-3" style="background:#7460ee;"><i class="fas fa-plus mr-1"></i>Solicitar</a>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    <div class="card border-0 shadow-sm" style="border-radius:16px;">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center mb-3 dc-legend">
+                <span><i style="background:#36bea6;"></i>Aprobada</span>
+                <span><i style="background:#7460ee;"></i>En revisión</span>
+                <span><i style="background:#fb8c00;"></i>Observada</span>
+                <span><i style="background:#2962ff;"></i>Realizada</span>
+                <div class="custom-control custom-switch ml-auto">
+                    <input type="checkbox" class="custom-control-input" id="showClosed" />
+                    <label class="custom-control-label small" for="showClosed">Mostrar rechazadas y retiradas</label>
+                </div>
+            </div>
+            <div id="calendar"></div>
+        </div>
+    </div>
+</div>
+
+<div class="dc-drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="dc-drawer" id="drawer" aria-hidden="true">
+    <div class="dc-drawer__head d-flex align-items-start">
+        <div class="flex-grow-1">
+            <div class="small text-muted" id="dwCode"></div>
+            <h5 class="font-weight-bold text-dark mb-1" id="dwTitle"></h5>
+            <span class="badge badge-pill" id="dwStatus"></span>
+        </div>
+        <button type="button" class="close ml-2" id="dwClose" aria-label="Cerrar"><span>&times;</span></button>
+    </div>
+    <div class="dc-drawer__body" id="dwBody"></div>
+</aside>
+
+@section Scripts {
+    <script src="~/assets/libs/moment/min/moment.min.js"></script>
+    <script src="~/assets/libs/fullcalendar/dist/fullcalendar.min.js"></script>
+    <script>
+        moment.locale('es', {
+            months: 'enero_febrero_marzo_abril_mayo_junio_julio_agosto_septiembre_octubre_noviembre_diciembre'.split('_'),
+            monthsShort: 'ene_feb_mar_abr_may_jun_jul_ago_sep_oct_nov_dic'.split('_'),
+            weekdays: 'domingo_lunes_martes_miércoles_jueves_viernes_sábado'.split('_'),
+            weekdaysShort: 'dom_lun_mar_mié_jue_vie_sáb'.split('_'),
+            weekdaysMin: 'do_lu_ma_mi_ju_vi_sá'.split('_'),
+            week: { dow: 1 }
+        });
+        $(function () {
+            function esc(v) { return $('<div/>').text(v == null ? '' : String(v)).html(); }
+            var eventsUrl = '@Url.Page("./Calendario", "Events")';
+            var $cal = $('#calendar');
+            $cal.fullCalendar({
+                header: { left: 'prev,next today', center: 'title', right: '' },
+                buttonText: { today: 'Hoy' },
+                locale: 'es',
+                firstDay: 1,
+                hiddenDays: [0],
+                height: 'auto',
+                eventLimit: 3,
+                timeFormat: 'HH:mm',
+                slotLabelFormat: 'HH:mm',
+                minTime: '07:00:00',
+                maxTime: '19:00:00',
+                allDaySlot: false,
+                noEventsMessage: 'Sin prácticas en este rango',
+                events: function (start, end, tz, callback) {
+                    $.getJSON(eventsUrl, { start: start.format('YYYY-MM-DD'), end: end.format('YYYY-MM-DD'), showClosed: $('#showClosed').is(':checked') })
+                        .done(callback)
+                        .fail(function () { callback([]); });
+                },
+                eventClick: function (ev) { openDrawer(ev); return false; },
+                eventRender: function (ev, el) { el.attr('title', ev.code + ' · ' + ev.status + ' · ' + ev.time); }
+            });
+            function setView(view, btn) {
+                $cal.fullCalendar('changeView', view);
+                $('#viewMonth,#viewWeek,#viewList').removeClass('active');
+                $(btn).addClass('active');
+            }
+            $('#viewMonth').on('click', function () { setView('month', this); });
+            $('#viewWeek').on('click', function () { setView('agendaWeek', this); });
+            $('#viewList').on('click', function () { setView('listMonth', this); });
+            $('#showClosed').on('change', function () { $cal.fullCalendar('refetchEvents'); });
+
+            function openDrawer(ev) {
+                $('#dwCode').text(ev.code);
+                $('#dwTitle').text(ev.practice);
+                $('#dwStatus').attr('class', 'badge badge-pill badge-' + ev.statusCss).text(ev.status);
+                $('#dwBody').html(
+                    '<div class="mb-3"><div class="small text-muted text-uppercase font-weight-bold">Cuándo</div><div class="font-weight-bold text-dark text-capitalize">' + esc(ev.dateText) + '</div><div class="small">' + esc(ev.time) + ' · ' + esc(ev.periods) + '</div></div>' +
+                    '<div class="mb-3"><div class="small text-muted text-uppercase font-weight-bold">Dónde</div><div class="font-weight-bold text-dark">' + esc(ev.lab) + '</div></div>' +
+                    '<div class="mb-3"><div class="small text-muted text-uppercase font-weight-bold">Materia y grupo</div><div>' + esc(ev.subject) + ' · Grupo ' + esc(ev.group) + '</div></div>' +
+                    '<div class="mb-4"><div class="small text-muted text-uppercase font-weight-bold">Material</div><div>' + esc(ev.items) + ' artículo(s)</div></div>' +
+                    '<a class="btn btn-block rounded-pill text-white" style="background:#7460ee;" href="' + esc(ev.url) + '"><i class="fas fa-eye mr-1"></i>Ver detalle completo</a>');
+                $('#drawer, #drawerBackdrop').addClass('is-open');
+            }
+            $('#dwClose, #drawerBackdrop').on('click', function () { $('#drawer, #drawerBackdrop').removeClass('is-open'); });
+            $(document).on('keydown', function (e) { if (e.key === 'Escape') $('#drawer, #drawerBackdrop').removeClass('is-open'); });
+        });
+    </script>
+}

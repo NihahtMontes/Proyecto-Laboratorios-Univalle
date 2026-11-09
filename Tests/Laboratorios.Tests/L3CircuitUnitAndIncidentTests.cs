@@ -62,7 +62,7 @@ public class L3CircuitUnitAndIncidentTests
     }
 
     [Fact]
-    public async Task GetStock_DespuésDeLaSalidaDeUnidad_LaMuestraComoPrestada()
+    public async Task GetStock_SalidaDeUnidadDeUnaPractica_NoLaQuitaDelStockDeOtrasFechas()
     {
         using var db = new TestDb();
         var detail = SeedUnitPlan(db, 1);
@@ -74,10 +74,12 @@ public class L3CircuitUnitAndIncidentTests
         var result = await Circuit(db).CreateDepartureAsync(1, TestDb.EconomatoId, [new DepartureLine(detail.Id, 1m)], null);
         Assert.True(result.Ok, result.Message);
 
+        // Stock por horario: la entrega de una práctica ya cuenta como demanda en su horario; la unidad sigue
+        // siendo parte de la existencia para otras prácticas (el préstamo externo sin práctica sí la quitaría).
         var after = await Availability(db).GetStockAsync([ArticleId], null);
         Assert.Equal(StockSource.EquipmentUnits, after[ArticleId].Source);
-        Assert.Equal(0m, after[ArticleId].Available);
-        Assert.Equal(1, after[ArticleId].OnLoan);
+        Assert.Equal(1m, after[ArticleId].Available);
+        Assert.Equal(0, after[ArticleId].OnLoan);
     }
 
     [Fact]

@@ -1,0 +1,55 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model int?
+@{
+    // Campo "Docente del catálogo": solo visible con el rol Docente (valor 4). Lo usan Crear y Editar usuario.
+    var options = ViewData["TeacherOptions"] as List<SelectListItem> ?? [];
+}
+<div id="teacherLinkPanel" class="form-group mb-3 p-3 rounded border-left border-primary" style="background:#f3f1fe; display:none;">
+    <label for="Input_PersonId" class="control-label font-weight-bold small text-uppercase" style="color:#7460ee;">
+        <i class="fas fa-user mr-1"></i> Docente del catálogo <span class="text-danger">*</span>
+    </label>
+    <select id="Input_PersonId" name="Input.PersonId" class="form-control custom-select">
+        <option value="">-- Seleccionar docente --</option>
+        @foreach (var option in options)
+        {
+            <option value="@option.Value" selected="@(option.Selected || option.Value == Model?.ToString())">@option.Text</option>
+        }
+    </select>
+    <span class="text-danger small font-weight-bold" data-valmsg-for="Input.PersonId" data-valmsg-replace="true"></span>
+    <small class="form-text text-muted">
+        La cuenta verá y solicitará prácticas solo de los grupos de este docente.
+        @if (options.Count == 0)
+        {
+            <span class="d-block text-warning font-weight-bold mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Todos los docentes del catálogo ya tienen cuenta.</span>
+        }
+    </small>
+</div>
+<script>
+    (function () {
+        function sync() {
+            var role = document.getElementById('Input_Role');
+            var panel = document.getElementById('teacherLinkPanel');
+            if (!role || !panel) return;
+            panel.style.display = role.value === '4' ? '' : 'none';
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            var role = document.getElementById('Input_Role');
+            if (role) role.addEventListener('change', sync);
+            sync();
+            var person = document.getElementById('Input_PersonId');
+            if (!person) return;
+            person.addEventListener('change', function () {
+                // Sugerir nombres a partir del docente elegido (solo si los campos están vacíos).
+                var text = (person.options[person.selectedIndex] || {}).text || '';
+                var name = text.split(' · ')[0].replace(/^(Ing\.|Lic\.|Dr\.|Dra\.|Chef|MSc\.|M\.Sc\.)\s*/i, '').trim();
+                if (!name || person.value === '') return;
+                var parts = name.split(/\s+/);
+                var first = document.getElementById('Input_FirstName');
+                var last = document.getElementById('Input_LastName');
+                var cap = function (w) { return w.charAt(0).toUpperCase() + w.slice(1); };
+                if (first && !first.value) first.value = cap(parts[0]);
+                if (last && !last.value && parts.length > 1) last.value = parts.slice(1).map(cap).join(' ');
+            });
+        });
+    })();
+</script>

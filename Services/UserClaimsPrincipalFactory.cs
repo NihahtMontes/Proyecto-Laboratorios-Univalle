@@ -47,6 +47,12 @@ namespace Proyecto_Laboratorios_Univalle.Services
                 identity.AddClaim(new Claim(
                     ClaimTypes.Role,
                     AuthorizationHelper.ToIdentityRole(user.Role)));
+
+                // Docente: persona vinculada (filtra sus planificaciones) y cambio de contraseña obligatorio.
+                if (user.PersonId is int personId)
+                    identity.AddClaim(new Claim(TeacherAccess.PersonIdClaim, personId.ToString()));
+                if (user.MustChangePassword)
+                    identity.AddClaim(new Claim(TeacherAccess.MustChangePasswordClaim, "true"));
             }
 
             return principal;

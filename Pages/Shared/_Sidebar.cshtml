@@ -1,7 +1,20 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Proyecto_Laboratorios_Univalle.Helpers
+@using Microsoft.EntityFrameworkCore
+@inject Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext SidebarDb
 @{
     var closureOnly = PracticeClosureAccess.IsClosureOnly(User);
+    var teacherOnly = TeacherAccess.IsTeacherOnly(User);
+    var teacherPersonId = TeacherAccess.PersonId(User);
+    var isReviewer = !closureOnly && !teacherOnly && (User.IsInRole(AuthorizationHelper.RoleSupervisor)
+        || User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin));
+    // Contadores del menú: solicitudes por revisar (revisores) y observadas por corregir (docente).
+    var pendingRequests = isReviewer
+        ? await SidebarDb.Plannings.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == Proyecto_Laboratorios_Univalle.Models.PlanningStatus.Requested)
+        : 0;
+    var observedRequests = teacherOnly && teacherPersonId is int sidebarPersonId
+        ? await SidebarDb.Plannings.AsNoTracking().CountAsync(p => !p.IsDeleted && p.TeacherPersonId == sidebarPersonId && p.Status == Proyecto_Laboratorios_Univalle.Models.PlanningStatus.Observed)
+        : 0;
     // Las páginas de administración (AdminRoles) no se muestran al Supervisor en el menú (H-021): antes terminaban en /Error.
     var isAdminMenu = User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
     var isSupervisor = !closureOnly && !isAdminMenu;
@@ -17,7 +30,48 @@
     <div class="scroll-sidebar">
         <nav class="sidebar-nav">
             <ul id="sidebarnav">
-                @if (!closureOnly)
+                @if (teacherOnly)
+                {
+                    <li class="nav-small-cap">
+                        <i class="mdi mdi-dots-horizontal"></i>
+                        <span class="hide-menu">Portal docente</span>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/Index" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-view-dashboard"></i>
+                            <span class="hide-menu">Mi semana</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/NuevaSolicitud" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-plus-circle-outline"></i>
+                            <span class="hide-menu">Solicitar práctica</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/Solicitudes" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-inbox-arrow-up"></i>
+                            <span class="hide-menu">Mis solicitudes</span>
+                            @if (observedRequests > 0)
+                            {
+                                <span class="badge badge-pill badge-warning ml-auto" title="Observadas por corregir">@observedRequests</span>
+                            }
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/Calendario" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-calendar-multiple"></i>
+                            <span class="hide-menu">Mi calendario</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-item">
+                        <a asp-page="/Docente/Disponibilidad" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-magnify"></i>
+                            <span class="hide-menu">Consultar disponibilidad</span>
+                        </a>
+                    </li>
+                }
+                else if (!closureOnly)
                 {
                     <li class="nav-small-cap">
                         <i class="mdi mdi-dots-horizontal"></i>
@@ -179,6 +233,17 @@
                         <a asp-page="/LaboratoryOperations/Index" class="sidebar-link waves-effect waves-dark">
                             <i class="mdi mdi-view-dashboard"></i>
                             <span class="hide-menu">Panel de planificación</span>
+                        </a>
+                    </li>
+
+                    <li class="sidebar-item">
+                        <a asp-page="/LaboratoryOperations/Solicitudes/Index" class="sidebar-link waves-effect waves-dark">
+                            <i class="mdi mdi-inbox-arrow-down"></i>
+                            <span class="hide-menu">Solicitudes de docentes</span>
+                            @if (pendingRequests > 0)
+                            {
+                                <span class="badge badge-pill badge-danger ml-auto" title="Por revisar">@pendingRequests</span>
+                            }
                         </a>
                     </li>
 

@@ -1,0 +1,152 @@
+@page
+@model Proyecto_Laboratorios_Univalle.Pages.Docente.DisponibilidadModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Consultar disponibilidad";
+    ViewData["Section"] = "Portal docente";
+    ViewData["HidePageTitle"] = true;
+    var es = new CultureInfo("es-BO");
+}
+
+@section Styles {
+    <link href="~/css/docente.css" rel="stylesheet" asp-append-version="true" />
+}
+
+<div class="page-breadcrumb">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h4 class="page-title text-uppercase font-weight-bold mb-0" style="color:#7460ee;">PORTAL DOCENTE</h4>
+            <h2 class="font-weight-bold text-dark mb-0">Consultar disponibilidad</h2>
+            <div class="text-muted small">Mira qué laboratorios están libres un día y cuánto material queda libre en un horario, antes de solicitar.</div>
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid mt-3">
+    <form method="get" class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+        <div class="card-body">
+            <div class="form-row align-items-end">
+                <div class="col-md-3 mb-2">
+                    <label class="small font-weight-bold text-uppercase text-muted mb-1" for="date">Día</label>
+                    <input type="date" class="form-control" id="date" name="date" value="@Model.Date.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label class="small font-weight-bold text-uppercase text-muted mb-1" for="fromPeriodId">Desde el periodo</label>
+                    <select class="custom-select" id="fromPeriodId" name="fromPeriodId">
+                        @foreach (var p in Model.Periods)
+                        {
+                            <option value="@p.Id" selected="@(p.Id == Model.FromPeriodId)">P@(p.Order) · @p.StartTime.ToString(@"hh\:mm")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="small font-weight-bold text-uppercase text-muted mb-1" for="periodCount">Periodos</label>
+                    <select class="custom-select" id="periodCount" name="periodCount">
+                        @for (var i = 1; i <= 6; i++)
+                        {
+                            <option value="@i" selected="@(i == Model.PeriodCount)">@i</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label class="small font-weight-bold text-uppercase text-muted mb-1" for="term">Artículo (opcional)</label>
+                    <input type="search" class="form-control" id="term" name="term" value="@Model.Term" placeholder="Ej: batidora, bowl…" />
+                </div>
+                <div class="col-md-1 mb-2">
+                    <button type="submit" class="btn btn-block text-white" style="background:#7460ee;" title="Consultar"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+        <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center mb-3">
+                <h5 class="font-weight-bold text-dark mb-0 text-capitalize"><i class="fas fa-th mr-2" style="color:#7460ee;"></i>Laboratorios el @Model.Date.ToString("dddd d 'de' MMMM", es)</h5>
+                <div class="btn-group btn-group-sm ml-auto mt-2 mt-md-0">
+                    <a asp-route-date="@Model.Date.AddDays(-1).ToString("yyyy-MM-dd")" asp-route-fromPeriodId="@Model.FromPeriodId" asp-route-periodCount="@Model.PeriodCount" asp-route-term="@Model.Term" class="btn btn-light border"><i class="fas fa-chevron-left"></i></a>
+                    <a asp-route-date="@Model.Date.AddDays(1).ToString("yyyy-MM-dd")" asp-route-fromPeriodId="@Model.FromPeriodId" asp-route-periodCount="@Model.PeriodCount" asp-route-term="@Model.Term" class="btn btn-light border"><i class="fas fa-chevron-right"></i></a>
+                </div>
+            </div>
+            @if (Model.DayNote != null)
+            {
+                <div class="alert alert-light border small"><i class="fas fa-info-circle mr-1"></i>@Model.DayNote</div>
+            }
+            <div class="table-responsive">
+                <table class="dc-grid" style="min-width:820px;">
+                    <thead>
+                        <tr>
+                            <th class="dc-grid__period" style="width:150px;">Laboratorio</th>
+                            @foreach (var p in Model.Periods)
+                            {
+                                <th>P@(p.Order)<small class="d-block text-muted font-weight-normal">@p.StartTime.ToString(@"hh\:mm")</small></th>
+                            }
+                            <th style="width:70px;">Libres</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var lab in Model.Labs)
+                        {
+                            <tr>
+                                <th class="dc-grid__period"><span class="text-dark">@lab.Code</span><small class="d-block text-muted text-truncate">@lab.Name</small></th>
+                                @foreach (var cell in lab.Cells)
+                                {
+                                    var label = cell switch { "busy" => "Ocupado", "gap" => "Limpieza", "pending" => "Revisión", "mine" => "Tuya", "off" => "", _ => "" };
+                                    <td class="dc-cell is-@cell" style="cursor:default;" title="@label">@label</td>
+                                }
+                                <td class="text-center font-weight-bold @(lab.FreeCount > 0 ? "text-success" : "text-muted")">@lab.FreeCount</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="dc-legend mt-2">
+                <span><i style="background:#f1f5f9;"></i>Libre</span>
+                <span><i style="background:#fde2e7;"></i>Ocupado</span>
+                <span><i style="background:#ffe9cc;"></i>Limpieza entre prácticas</span>
+                <span><i style="background:#e6e1fd;"></i>Solicitud en revisión</span>
+                <span><i style="background:#e8f8f4;"></i>Tus prácticas</span>
+            </div>
+            @if (Model.Window.Contains(Model.Date))
+            {
+                <div class="mt-3"><a asp-page="./NuevaSolicitud" class="btn btn-sm rounded-pill text-white px-3" style="background:#7460ee;"><i class="fas fa-plus mr-1"></i>Solicitar una práctica</a></div>
+            }
+            else
+            {
+                <div class="mt-3 small text-muted"><i class="far fa-clock mr-1"></i>Solo puedes solicitar @Model.Window.RangeText.</div>
+            }
+        </div>
+    </div>
+
+    @if (Model.Term != null)
+    {
+        <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+            <div class="card-body">
+                <h5 class="font-weight-bold text-dark mb-3"><i class="fas fa-box-open mr-2" style="color:#7460ee;"></i>Material libre en ese horario</h5>
+                @if (Model.Articles.Count == 0)
+                {
+                    <div class="text-muted small">No encontramos artículos con “@Model.Term”.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="thead-light"><tr><th>Artículo</th><th class="text-center">Stock total</th><th class="text-center">En uso</th><th class="text-center">Libre</th></tr></thead>
+                            <tbody>
+                                @foreach (var a in Model.Articles)
+                                {
+                                    <tr>
+                                        <td><span class="dc-light dc-light--@(a.Stock == null ? "secondary" : a.Free > 0 ? "success" : "danger")"></span><strong class="text-dark">@a.Name</strong> <small class="text-muted">@a.Code</small></td>
+                                        <td class="text-center">@(a.Stock?.ToString("0.##") ?? "—")</td>
+                                        <td class="text-center">@a.UsedByOthers.ToString("0.##")</td>
+                                        <td class="text-center font-weight-bold">@(a.Free?.ToString("0.##") ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

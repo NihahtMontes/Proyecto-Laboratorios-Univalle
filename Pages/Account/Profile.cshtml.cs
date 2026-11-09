@@ -10,7 +10,7 @@ namespace Proyecto_Laboratorios_Univalle.Pages.Account
 {
     /// <summary>
     /// Perfil propio en modo lectura (nombre, usuario, correo, teléfono y rol).
-    /// Sin cambio de contraseña: la edición la hace el administrador en Usuarios.
+    /// La contraseña se cambia en Account/CambiarClave; el resto de datos los edita el administrador en Usuarios.
     /// </summary>
     [Authorize]
     public class ProfileModel : PageModel

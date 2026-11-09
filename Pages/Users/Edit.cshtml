@@ -110,6 +110,8 @@
                                 <span asp-validation-for="Input.Role" class="text-danger small font-weight-bold"></span>
                             </div>
 
+                            <partial name="_TeacherLinkFields" model="Model.Input.PersonId" />
+
                             @* QA 2026-10-18: la página de baja recomendaba «Inactivar desde el editor», pero no había campo de estado. *@
                             <div class="form-group mb-3 border-left border-info pl-3 bg-light p-3 rounded shadow-none">
                                 <label asp-for="Input.Status" class="control-label font-weight-bold small text-info uppercase">Estado de la cuenta</label>
@@ -134,6 +136,10 @@
                                     <small class="text-warning font-weight-bold d-block mt-2 small">
                                         <i class="fas fa-info-circle mr-1"></i> Deje en blanco para conservar la actual.
                                     </small>
+                                    <div class="custom-control custom-checkbox mt-2">
+                                        <input type="checkbox" class="custom-control-input" asp-for="Input.MustChangePassword" />
+                                        <label class="custom-control-label small" asp-for="Input.MustChangePassword">Pedir cambio de contraseña en el próximo ingreso</label>
+                                    </div>
                                 </div>
                             </div>
 

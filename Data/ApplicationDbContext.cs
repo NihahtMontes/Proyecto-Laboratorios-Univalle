@@ -67,6 +67,30 @@ namespace Proyecto_Laboratorios_Univalle.Data
                 .Select(e => e.Entity)
                 .ToList();
 
+            // Stock por horario: la rotura/pérdida de un artículo reutilizable (sin unidad física) es lo único que
+            // reduce su existencia. Se descuenta del laboratorio de origen de la salida de la planificación
+            // (Economato si no hay salida), sin bajar de 0. La entrega/devolución L-3 no toca la existencia.
+            foreach (var incident in newL5Incidents.Where(i => i.EquipmentUnitId == null && i.ArticleId != null && i.AffectedQuantity > 0))
+            {
+                int? originLabId = incident.PlanningId is int planningId
+                    ? await Departures.AsNoTracking()
+                        .Where(d => d.PlanningId == planningId && d.Status != Proyecto_Laboratorios_Univalle.Models.Enums.LoanStatus.Cancelled)
+                        .OrderByDescending(d => d.Id)
+                        .Select(d => d.OriginLaboratoryId)
+                        .FirstOrDefaultAsync(cancellationToken)
+                    : null;
+                originLabId ??= await Laboratories.AsNoTracking()
+                    .Where(l => l.Code == "ECONO").Select(l => (int?)l.Id).FirstOrDefaultAsync(cancellationToken);
+                if (originLabId is not int labId) continue;
+
+                var stock = ArticleStocks.Local.FirstOrDefault(s => s.LaboratoryId == labId && s.ArticleId == incident.ArticleId)
+                    ?? await ArticleStocks.AsTracking()
+                        .FirstOrDefaultAsync(s => s.LaboratoryId == labId && s.ArticleId == incident.ArticleId, cancellationToken);
+                if (stock == null) continue;
+                stock.AvailableQuantity = Math.Max(0, stock.AvailableQuantity - incident.AffectedQuantity);
+                stock.UpdatedOn = now;
+            }
+
             // Varias incidencias de la misma unidad en un mismo guardado abren un solo historial.
             var processedUnits = new HashSet<int>();
             foreach(var incident in newL5Incidents)
@@ -395,6 +419,8 @@ namespace Proyecto_Laboratorios_Univalle.Data
         public DbSet<UndatedL3Request> UndatedL3Requests { get; set; } = null!;
         public DbSet<UndatedL3RequestLine> UndatedL3RequestLines { get; set; } = null!;
         public DbSet<L5Incident> L5Incidents { get; set; } = null!;
+        public DbSet<PlanningReview> PlanningReviews { get; set; } = null!;
+        public DbSet<PlanningReviewLine> PlanningReviewLines { get; set; } = null!;
         public DbSet<AcademicWeek> AcademicWeeks { get; set; } = null!;
         public DbSet<AcademicDay> AcademicDays { get; set; } = null!;
         public DbSet<ClassPeriod> ClassPeriods { get; set; } = null!;
@@ -893,7 +919,7 @@ namespace Proyecto_Laboratorios_Univalle.Data
             modelBuilder.Entity<Planning>().Property(r => r.AllLaboratories).HasDefaultValue(false);
             modelBuilder.Entity<Planning>().ToTable(t =>
             {
-                t.HasCheckConstraint("CK_Plannings_Status", "[Status] IN (N'Planificada', N'Aprobada', N'Finalizada', N'Cancelada', N'Reprogramada', N'PendienteReposicion', N'Repuesta')");
+                t.HasCheckConstraint("CK_Plannings_Status", "[Status] IN (N'Planificada', N'Aprobada', N'Finalizada', N'Cancelada', N'Reprogramada', N'PendienteReposicion', N'Repuesta', N'Solicitada', N'Observada', N'Rechazada')");
                 t.HasCheckConstraint("CK_Plannings_Periods", "([StartPeriodId] IS NULL AND [PeriodCount] IS NULL) OR ([StartPeriodId] IS NOT NULL AND [PeriodCount] BETWEEN 1 AND 12)");
             });
             modelBuilder.Entity<Planning>().HasOne(r => r.StartPeriod).WithMany().HasForeignKey(r => r.StartPeriodId).OnDelete(DeleteBehavior.Restrict);
@@ -986,9 +1012,26 @@ namespace Proyecto_Laboratorios_Univalle.Data
 
             modelBuilder.Entity<User>().ToTable("Users", table =>
             {
-                table.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 3, 99)");
+                table.HasCheckConstraint("CK_Users_Role", "[Role] IN (1, 2, 3, 4, 99)");
+                // Un docente siempre está vinculado a su persona del catálogo.
+                table.HasCheckConstraint("CK_Users_TeacherPerson", "[Role] <> 4 OR [PersonId] IS NOT NULL");
                 table.HasCheckConstraint("CK_Users_Status", "[Status] BETWEEN 0 AND 2");
             });
+            // Usuario ↔ persona: como máximo una cuenta por persona del catálogo.
+            modelBuilder.Entity<User>().HasOne(u => u.Person).WithMany().HasForeignKey(u => u.PersonId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<User>().HasIndex(u => u.PersonId).IsUnique().HasFilter("[PersonId] IS NOT NULL");
+
+            // Historial de solicitudes docentes (PlanningReviews / PlanningReviewLines).
+            modelBuilder.Entity<PlanningReview>().HasOne(r => r.Planning).WithMany(p => p.Reviews).HasForeignKey(r => r.PlanningId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanningReview>().HasOne(r => r.User).WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanningReview>().HasIndex(r => new { r.PlanningId, r.CreatedDate });
+            modelBuilder.Entity<PlanningReview>().ToTable(t => t.HasCheckConstraint("CK_PlanningReviews_Action", "[Action] BETWEEN 1 AND 7"));
+            modelBuilder.Entity<PlanningReviewLine>().HasOne(l => l.PlanningReview).WithMany(r => r.Lines).HasForeignKey(l => l.PlanningReviewId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<PlanningReviewLine>().HasOne(l => l.Article).WithMany().HasForeignKey(l => l.ArticleId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PlanningReviewLine>().HasIndex(l => new { l.PlanningReviewId, l.ArticleId }).IsUnique();
+            modelBuilder.Entity<PlanningReviewLine>().ToTable(t => t.HasCheckConstraint("CK_PlanningReviewLines_Quantities",
+                "([PreviousQuantity] IS NULL OR [PreviousQuantity] >= 0) AND ([NewQuantity] IS NULL OR [NewQuantity] >= 0) AND ([PreviousQuantity] IS NOT NULL OR [NewQuantity] IS NOT NULL)"));
+
             modelBuilder.Entity<Person>().ToTable("People", table =>
             {
                 table.HasCheckConstraint("CK_People_Status", "[Status] BETWEEN 0 AND 2");
