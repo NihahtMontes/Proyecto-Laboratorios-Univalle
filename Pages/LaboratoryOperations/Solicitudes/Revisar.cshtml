@@ -145,7 +145,7 @@
                                             <td class="text-center align-middle">
                                                 @if (Model.CanReview)
                                                 {
-                                                    <input type="number" class="form-control form-control-sm dc-qty mx-auto" name="qty[@line.ArticleId]" value="@line.Quantity.ToString("0.##", CultureInfo.InvariantCulture)" min="0" step="1" data-original="@line.Quantity.ToString("0.##", CultureInfo.InvariantCulture)" />
+                                                    <input type="number" class="form-control form-control-sm dc-qty mx-auto" name="qty[@line.ArticleId]" value="@line.Quantity.ToString("0.##", CultureInfo.InvariantCulture)" min="0" step="0.01" data-original="@line.Quantity.ToString("0.##", CultureInfo.InvariantCulture)" />
                                                 }
                                                 else if (line.ChangedByReviewer)
                                                 {
@@ -165,6 +165,20 @@
 
                         @if (Model.CanReview)
                         {
+                            @if (shortCount > 0)
+                            {
+                                <div class="mt-3 p-3 rounded border" style="background:#fff8e8;">
+                                    <div class="small mb-2">
+                                        <i class="fas fa-exclamation-triangle text-warning mr-1"></i>
+                                        <strong>@shortCount artículo(s) no alcanzan en ese horario.</strong>
+                                        Ajusta las cantidades arriba o marca la casilla para aprobar con faltantes.
+                                    </div>
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="allowShortage" name="allowShortage" value="true" />
+                                        <label class="custom-control-label small font-weight-bold" for="allowShortage">Aprobar igual con faltantes (quedará registrado en el historial)</label>
+                                    </div>
+                                </div>
+                            }
                             <div class="form-group mt-3 mb-0">
                                 <label class="small font-weight-bold text-uppercase text-muted" for="comment">Comentario para el docente (opcional)</label>
                                 <input type="text" class="form-control" id="comment" name="comment" maxlength="1000" placeholder="Ej: te asignamos 10 bowls porque H-02 usa el resto a la misma hora." />
@@ -223,7 +237,7 @@
                         @foreach (var c in Model.Competitors)
                         {
                             <a asp-page="./Revisar" asp-route-id="@c.Id" class="d-block p-2 rounded mb-2 bg-light text-dark">
-                                <strong>@c.Code</strong> · @c.Teacher<div class="small text-muted">@c.Practice · @Proyecto_Laboratorios_Univalle.Services.PlanningSlot.PeriodsText(c.StartOrder, c.PeriodCount) · pedida @c.RequestDate.ToString("dd/MM HH:mm")</div>
+                                <strong>@c.Code</strong> · @c.Teacher<div class="small text-muted">@c.Practice · @Proyecto_Laboratorios_Univalle.Services.PlanningSlot.PeriodsText(c.StartOrder, c.PeriodCount) · pedida @BoliviaTime.ToLocal(c.RequestDate).ToString("dd/MM HH:mm")</div>
                             </a>
                         }
                     </div>
@@ -278,7 +292,7 @@
                 <form method="post" asp-page-handler="Observe" asp-route-id="@p.Id" id="observeForm" class="d-inline"><input type="hidden" name="comment" /></form>
                 <button type="button" class="btn btn-outline-danger rounded-pill px-3 mr-2 mb-1" id="btnReject"><i class="fas fa-times mr-1"></i>Rechazar</button>
                 <button type="button" class="btn rounded-pill px-3 mr-2 mb-1 text-white" style="background:#fb8c00;" id="btnObserve"><i class="fas fa-comment-dots mr-1"></i>Observar</button>
-                <button type="button" class="btn btn-success rounded-pill px-4 mb-1" id="btnApprove" @(hasBlocks ? "disabled title=\"Hay un choque de horario\"" : null)><i class="fas fa-check mr-1"></i>Aprobar</button>
+                <button type="button" class="btn btn-success rounded-pill px-4 mb-1" id="btnApprove" disabled="@hasBlocks" title="@(hasBlocks ? "Hay un choque de horario" : null)"><i class="fas fa-check mr-1"></i>Aprobar</button>
             </div>
         </div>
     }
@@ -309,9 +323,12 @@
                 var changed = Array.prototype.filter.call(document.querySelectorAll('input[data-original]'), function (i) {
                     return Number(i.value) !== Number(i.getAttribute('data-original'));
                 }).length;
+                var shortageBox = document.querySelector('#approveForm input[name="allowShortage"]');
+                var withShortage = shortageBox != null && shortageBox.checked === true;
+                var shortageText = withShortage ? ' Se aprueba con artículos faltantes y quedará registrado en el historial.' : '';
                 Swal.fire({
                     title: changed ? '¿Aprobar con ' + changed + ' cambio(s) de cantidad?' : '¿Aprobar la solicitud?',
-                    text: 'Se reserva el laboratorio y el material en ese horario. El docente recibirá el aviso.' + (@Model.Competitors.Count > 0 ? ' Las solicitudes que compiten quedarán sin horario.' : ''),
+                    text: 'Se reserva el laboratorio y el material en ese horario. El docente recibirá el aviso.' + shortageText + (@Model.Competitors.Count > 0 ? ' Las solicitudes que compiten quedarán sin horario.' : ''),
                     type: 'question', showCancelButton: true, confirmButtonText: 'Sí, aprobar', cancelButtonText: 'Cancelar', confirmButtonColor: '#36bea6'
                 }).then(function (r) {
                     if (confirmed(r)) { approve.disabled = true; HTMLFormElement.prototype.submit.call(document.getElementById('approveForm')); }

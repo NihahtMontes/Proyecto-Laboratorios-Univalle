@@ -23,7 +23,7 @@
                     </div>
                 </div>
 
-                <form method="post" enctype="multipart/form-data" novalidate>
+                <form method="post" enctype="multipart/form-data" id="userEditForm" novalidate>
                     <div asp-validation-summary="All" class="alert alert-danger shadow-sm border-0 small" role="alert"></div>
                     <input type="hidden" name="id" value="@Model.Id" />
 
@@ -260,6 +260,47 @@
             setupBlocking('#Input_FirstName', textPattern);
             setupBlocking('#Input_LastName', textPattern);
             setupBlocking('#Input_SecondLastName', textPattern);
+
+            // Confirmación SweetAlert2 v7 antes de guardar cambios del usuario (patrón de otras vistas Edit).
+            // jqBootstrapValidation corre primero: si el formulario es inválido, cancela el submit y este bloque no llega a ejecutarse.
+            var form = document.getElementById('userEditForm');
+            if (form) {
+                form.addEventListener('submit', function (event) {
+                    if (form.dataset.confirmed === 'true') {
+                        return true;
+                    }
+                    event.preventDefault();
+
+                    if (typeof Swal === 'undefined') {
+                        form.dataset.confirmed = 'true';
+                        HTMLFormElement.prototype.submit.call(form);
+                        return false;
+                    }
+
+                    Swal.fire({
+                        title: '¿Guardar los cambios del usuario?',
+                        text: 'Los cambios de rol o estado se aplican en su próximo ingreso.',
+                        type: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Sí, guardar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function (result) {
+                        if (result && (result.isConfirmed === true || result.value === true)) {
+                            form.dataset.confirmed = 'true';
+                            var btn = form.querySelector('button[type="submit"]');
+                            if (btn) {
+                                btn.disabled = true;
+                                btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span>Guardando…';
+                            }
+                            HTMLFormElement.prototype.submit.call(form);
+                        }
+                    });
+
+                    return false;
+                });
+            }
         });
     </script>
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

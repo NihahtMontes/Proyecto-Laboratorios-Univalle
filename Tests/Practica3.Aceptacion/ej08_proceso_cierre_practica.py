@@ -68,8 +68,8 @@ async def main():
         await cerrar_alerta(page)
         stock_tras_salida = await existencias(gestor)
         cap3b = await captura(gestor, "08_04_existencias_tras_salida", full_page=True)
-        r.criterio("CA8-2", "Al entregar el material se registra la salida y se descuentan las existencias",
-                   "registrada" in mensaje_salida.lower() and stock_tras_salida == {"cuchillo": 6, "bowl": 14, "tabla": 9},
+        r.criterio("CA8-2", "Al entregar el material se registra la salida y las existencias de utensilios no cambian (stock por horario)",
+                   "registrada" in mensaje_salida.lower() and stock_tras_salida == stock_inicial,
                    f"Mensaje: «{mensaje_salida.splitlines()[-1] if mensaje_salida else ''}». Existencias antes {stock_inicial} → después {stock_tras_salida}",
                    cap3, observacion=f"Apoyo: {cap2}, {cap3b}")
 

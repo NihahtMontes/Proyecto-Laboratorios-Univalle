@@ -68,16 +68,29 @@
         var d = new Date(iso + 'T00:00:00');
         return d.toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' });
     }
+    // Fecha local formateada a mano: toISOString() pasa por UTC y puede cambiar el día según la hora local.
+    function isoDate(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
     function mondayOf(iso) {
         var d = new Date(iso + 'T00:00:00');
         var diff = (d.getDay() + 6) % 7;
         d.setDate(d.getDate() - diff);
-        return d.toISOString().slice(0, 10);
+        return isoDate(d);
     }
     function addDays(iso, n) {
         var d = new Date(iso + 'T00:00:00');
         d.setDate(d.getDate() + n);
-        return d.toISOString().slice(0, 10);
+        return isoDate(d);
+    }
+    // Contador de secuencia por tipo de petición: descarta respuestas que llegan fuera de orden.
+    var seq = { practices: 0, week: 0, check: 0, kit: 0, articles: 0 };
+    function stale(type, id) { return id !== seq[type]; }
+    // Activa elementos con rol de botón también con Enter/Espacio (accesibilidad con teclado).
+    function keyActivate(el, fn) {
+        el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 32) { e.preventDefault(); fn(); }
+        });
     }
     function toast(type, title) {
         Swal.fire({ toast: true, position: 'top-end', type: type, title: title, showConfirmButton: false, timer: 2200 });
@@ -88,14 +101,16 @@
     // ───────── PASO 1: grupo y práctica ─────────
     function renderGroups() {
         $('groupList').innerHTML = cfg.groups.map(function (g) {
-            return '<div class="col-md-6 col-xl-4 mb-3"><div class="dc-pick' + (g.id === state.groupId ? ' is-selected' : '') + '" data-group="' + g.id + '">' +
+            return '<div class="col-md-6 col-xl-4 mb-3"><div class="dc-pick' + (g.id === state.groupId ? ' is-selected' : '') + '" data-group="' + g.id + '" role="button" tabindex="0">' +
                 '<div class="dc-pick__title">' + esc(g.subject) + '</div>' +
                 '<div class="dc-pick__meta"><i class="fas fa-users mr-1"></i>Grupo ' + esc(g.name) +
                 (g.students ? ' · ' + g.students + ' estudiantes' : '') + (g.labCode ? ' · <i class="fas fa-building mx-1"></i>' + esc(g.labCode) : '') + '</div>' +
                 '<div class="dc-pick__meta">' + esc(g.subjectCode) + '</div></div></div>';
         }).join('');
         Array.prototype.forEach.call(document.querySelectorAll('[data-group]'), function (el) {
-            el.addEventListener('click', function () { selectGroup(Number(el.getAttribute('data-group'))); });
+            var pick = function () { selectGroup(Number(el.getAttribute('data-group'))); };
+            el.addEventListener('click', pick);
+            keyActivate(el, pick);
         });
     }
 
@@ -116,7 +131,9 @@
         $('practiceBlock').style.display = '';
         renderGroups();
         $('practiceList').innerHTML = '<div class="col-12 text-muted small py-3"><span class="spinner-border spinner-border-sm mr-2"></span>Cargando prácticas…</div>';
+        var my = ++seq.practices;
         getJson('Practices', { groupId: id }).then(function (list) {
+            if (stale('practices', my)) return;
             state.practices = list;
             if (state.practiceId) {
                 var p = list.filter(function (x) { return x.id === state.practiceId; })[0];
@@ -125,6 +142,7 @@
             renderPractices();
             renderSide();
         }).catch(function () {
+            if (stale('practices', my)) return;
             $('practiceList').innerHTML = '<div class="col-12 text-danger small">No se pudieron cargar las prácticas. Recarga la página.</div>';
         });
         renderSide();
@@ -145,13 +163,13 @@
             if (p.done) badges += '<span class="badge badge-info ml-1" title="Sesiones ya realizadas por este grupo">Realizada ' + p.done + 'x</span>';
             if (p.planned) badges += '<span class="badge badge-success ml-1" title="Sesiones aprobadas próximas">Aprobada ' + p.planned + 'x</span>';
             if (p.pending) badges += '<span class="badge badge-primary ml-1" title="Solicitudes en revisión u observadas">En revisión ' + p.pending + '</span>';
-            return '<div class="col-md-6 mb-2"><div class="dc-pick' + (p.id === state.practiceId ? ' is-selected' : '') + '" data-practice="' + p.id + '">' +
+            return '<div class="col-md-6 mb-2"><div class="dc-pick' + (p.id === state.practiceId ? ' is-selected' : '') + '" data-practice="' + p.id + '" role="button" tabindex="0">' +
                 '<div class="d-flex"><span class="badge badge-light border mr-2 align-self-start">' + esc(p.number ? 'P-' + p.number : p.code) + '</span>' +
                 '<div class="flex-grow-1"><div class="dc-pick__title" style="font-size:.88rem;">' + esc(p.name) + badges + '</div>' +
                 '<div class="dc-pick__meta"><i class="fas fa-box-open mr-1"></i>' + (p.kitCount > 0 ? 'Kit de ' + p.kitCount + ' artículo(s)' : 'Sin kit: agregarás el material a mano') + '</div></div></div></div></div>';
         }).join('');
         Array.prototype.forEach.call(document.querySelectorAll('[data-practice]'), function (el) {
-            el.addEventListener('click', function () {
+            var pick = function () {
                 var id = Number(el.getAttribute('data-practice'));
                 var p = state.practices.filter(function (x) { return x.id === id; })[0];
                 if (state.practiceId !== id) { state.lines = []; state.kitLoadedFor = null; }
@@ -161,7 +179,9 @@
                     toast('info', 'Tu grupo ya tiene esta práctica ' + (p.done + p.planned + p.pending) + ' vez/veces: se agregará como una sesión más');
                 renderPractices();
                 renderSide();
-            });
+            };
+            el.addEventListener('click', pick);
+            keyActivate(el, pick);
         });
     }
 
@@ -223,10 +243,15 @@
             return;
         }
         $('weekGrid').innerHTML = '<div class="text-muted small py-3 text-center"><span class="spinner-border spinner-border-sm mr-2"></span>Cargando la semana…</div>';
+        var my = ++seq.week;
         getJson('Week', { labId: state.labId, date: state.weekDate, excludeId: state.planningId }).then(function (data) {
+            if (stale('week', my)) return;
             weekData = data;
             renderWeek();
-        }).catch(function () { $('weekGrid').innerHTML = '<div class="text-danger small">No se pudo cargar la semana.</div>'; });
+        }).catch(function () {
+            if (stale('week', my)) return;
+            $('weekGrid').innerHTML = '<div class="text-danger small">No se pudo cargar la semana.</div>';
+        });
     }
 
     function renderWeek() {
@@ -246,14 +271,14 @@
                 var cls = 'dc-cell is-' + cell.state + (selected ? ' is-selected' : '');
                 var label = selected ? 'Tu práctica' : cell.state === 'busy' ? 'Ocupado' : cell.state === 'gap' ? 'Limpieza' :
                     cell.state === 'pending' ? 'En revisión' : cell.state === 'mine' ? 'Tuya' : cell.state === 'off' ? (d.offReason || '') : '';
-                html += '<td class="' + cls + '" data-date="' + d.date + '" data-period="' + cell.periodId + '" data-state="' + cell.state + '" title="' + esc(label) + '">' + esc(label) + '</td>';
+                html += '<td class="' + cls + '" data-date="' + d.date + '" data-period="' + cell.periodId + '" data-state="' + cell.state + '" title="' + esc(label) + '" role="button" tabindex="0">' + esc(label) + '</td>';
             });
             html += '</tr>';
         });
         html += '</tbody></table>';
         $('weekGrid').innerHTML = html;
         Array.prototype.forEach.call(document.querySelectorAll('#weekGrid td[data-period]'), function (td) {
-            td.addEventListener('click', function () {
+            var activate = function () {
                 var st = td.getAttribute('data-state');
                 if (st === 'off') { toast('info', td.getAttribute('title') || 'Día no disponible'); return; }
                 if (st === 'busy' || st === 'gap' || st === 'mine') { toast('warning', 'Ese periodo no está libre'); return; }
@@ -263,22 +288,29 @@
                 renderWeek();
                 runCheck();
                 renderSide();
-            });
+            };
+            td.addEventListener('click', activate);
+            keyActivate(td, activate);
         });
     }
 
     var runCheck = debounce(function () {
-        if (!state.groupId || !state.date || !state.startPeriodId || !state.labId) { state.check = null; renderIssues(); renderLines(); renderSide(); return; }
+        if (!state.groupId || !state.date || !state.startPeriodId || !state.labId) { ++seq.check; state.check = null; renderIssues(); renderLines(); renderSide(); return; }
+        var my = ++seq.check;
         $('slotIssues').innerHTML = '<div class="small text-muted"><span class="spinner-border spinner-border-sm mr-2"></span>Verificando choques y material…</div>';
         postJson('Check', {
             planningId: state.planningId, groupId: state.groupId, date: state.date, startPeriodId: state.startPeriodId,
             periodCount: state.periodCount, labId: state.labId, students: state.students, lines: linesPayload()
         }).then(function (res) {
+            if (stale('check', my)) return;
             state.check = res;
             renderIssues();
             renderLines();
             renderSide();
-        }).catch(function () { $('slotIssues').innerHTML = '<div class="small text-danger">No se pudo verificar. Intenta de nuevo.</div>'; });
+        }).catch(function () {
+            if (stale('check', my)) return;
+            $('slotIssues').innerHTML = '<div class="small text-danger">No se pudo verificar. Intenta de nuevo.</div>';
+        });
     }, 350);
 
     function blocks() { return state.check ? state.check.issues.filter(function (i) { return i.severity === 'Block'; }) : []; }
@@ -304,19 +336,30 @@
     }
 
     // ───────── PASO 3: material ─────────
+    function kitHintLoaded(count, students) {
+        $('kitHint').textContent = !count
+            ? 'Esta práctica no tiene kit registrado: agrega los artículos que necesitas.'
+            : 'Cargamos el kit de la práctica' + (students ? ' para ' + students + ' estudiantes' : '') + '. Ajusta lo que necesites.';
+    }
+
     function loadKit(force) {
         if (!state.practiceId || !state.groupId) return Promise.resolve();
         var key = state.practiceId + '|' + (state.students || '');
         if (!force && (state.kitLoadedFor === key || state.lines.length > 0)) return Promise.resolve();
         $('linesBody').innerHTML = '<tr><td colspan="5" class="text-center text-muted small py-3"><span class="spinner-border spinner-border-sm mr-2"></span>Cargando el kit de la práctica…</td></tr>';
+        var my = ++seq.kit;
         return getJson('Kit', { practiceId: state.practiceId, groupId: state.groupId, students: state.students }).then(function (kit) {
+            if (stale('kit', my)) return;
             state.lines = kit.map(function (k) { return { articleId: k.articleId, code: k.code, name: k.name, category: k.category, unit: k.unit, quantity: k.quantity, note: k.note }; });
             state.kitLoadedFor = key;
-            $('kitHint').textContent = kit.length
-                ? 'Cargamos el kit de la práctica' + (state.students ? ' para ' + state.students + ' estudiantes' : '') + '. Ajusta lo que necesites.'
-                : 'Esta práctica no tiene kit registrado: agrega los artículos que necesitas.';
+            kitHintLoaded(kit.length, state.students);
             renderLines();
             runCheck();
+        }).catch(function () {
+            if (stale('kit', my)) return;
+            $('linesBody').innerHTML = '<tr><td colspan="5" class="text-center text-danger small py-3">No se pudo cargar el kit de la práctica. <button type="button" class="btn btn-sm btn-outline-danger rounded-pill ml-2" data-retry="kit"><i class="fas fa-redo mr-1"></i>Reintentar</button></td></tr>';
+            var retry = document.querySelector('[data-retry="kit"]');
+            if (retry) retry.addEventListener('click', function () { loadKit(true); });
         });
     }
 
@@ -344,7 +387,7 @@
                 (m ? '<div class="dc-explain ml-4">' + esc(m.explanation) + '</div>' : '') + '</td>' +
                 '<td class="text-center align-middle">' + (stock == null ? '<span class="text-muted">—</span>' : stock) + '</td>' +
                 '<td class="text-center align-middle">' + (free == null ? '<span class="text-muted">—</span>' : '<span class="badge badge-pill badge-' + css + '">' + free + '</span>') + '</td>' +
-                '<td class="text-center align-middle"><input type="number" class="form-control form-control-sm dc-qty mx-auto" min="0" step="1" value="' + esc(l.quantity) + '" data-qty="' + idx + '" /></td>' +
+                '<td class="text-center align-middle"><input type="number" class="form-control form-control-sm dc-qty mx-auto" min="0" step="0.01" value="' + esc(l.quantity) + '" data-qty="' + idx + '" /></td>' +
                 '<td class="text-right align-middle"><button type="button" class="btn btn-sm btn-link text-danger" data-remove="' + idx + '" title="Quitar"><i class="fas fa-trash-alt"></i></button></td>' +
                 '</tr>';
         }).join('');
@@ -369,7 +412,9 @@
         var term = $('articleTerm').value.trim();
         var cat = $('articleCategory').value;
         if (term.length < 2 && !cat) { $('articleResults').innerHTML = ''; return; }
+        var my = ++seq.articles;
         getJson('Articles', { term: term, categoryId: cat }).then(function (rows) {
+            if (stale('articles', my)) return;
             if (!rows.length) { $('articleResults').innerHTML = '<div class="small text-muted p-2">Sin resultados.</div>'; return; }
             $('articleResults').innerHTML = rows.map(function (r, i) {
                 var already = state.lines.some(function (l) { return l.articleId === r.articleId; });
@@ -388,6 +433,11 @@
                     runCheck();
                 });
             });
+        }).catch(function () {
+            if (stale('articles', my)) return;
+            $('articleResults').innerHTML = '<div class="small text-danger p-2">No se pudo buscar artículos. <button type="button" class="btn btn-sm btn-outline-danger rounded-pill py-0 ml-2" data-retry="articles"><i class="fas fa-redo mr-1"></i>Reintentar</button></div>';
+            var retry = document.querySelector('[data-retry="articles"]');
+            if (retry) retry.addEventListener('click', function () { searchArticles(); });
         });
     }, 300);
 
@@ -421,7 +471,9 @@
 
     function renderReview() {
         var g = group(), l = lab(), ms = materialSummary();
-        var rows = state.lines.map(function (x) {
+        // El resumen cuenta solo lo que se envía: líneas con cantidad mayor que cero.
+        var active = state.lines.filter(function (x) { return Number(x.quantity) > 0; });
+        var rows = active.map(function (x) {
             var m = materialFor(x.articleId);
             return '<tr><td><span class="dc-light dc-light--' + (m ? m.stateCss : 'secondary') + '"></span>' + esc(x.name) + '</td><td class="text-right font-weight-bold">' + esc(x.quantity) + ' <small class="text-muted">' + esc(x.unit || '') + '</small></td></tr>';
         }).join('');
@@ -430,7 +482,7 @@
             '<div class="col-md-6 mb-3"><div class="p-3 rounded" style="background:#f3f1fe;"><div class="small text-uppercase font-weight-bold" style="color:#7460ee;">Práctica</div><div class="font-weight-bold text-dark">' + esc(state.practiceName) + '</div><div class="small text-muted">' + esc(g ? g.subject + ' · Grupo ' + g.name : '') + (state.students ? ' · ' + state.students + ' estudiantes' : '') + '</div></div></div>' +
             '<div class="col-md-6 mb-3"><div class="p-3 rounded" style="background:#e8f8f4;"><div class="small text-uppercase font-weight-bold" style="color:#128a74;">Cuándo y dónde</div><div class="font-weight-bold text-dark text-capitalize">' + esc(fmtDate(state.date)) + '</div><div class="small text-muted">' + esc(timeText()) + ' · ' + esc(l ? l.code + ' · ' + l.name : '') + '</div></div></div>' +
             '</div>' +
-            '<table class="table table-sm mb-0"><thead class="thead-light"><tr><th>Material (' + state.lines.length + ')</th><th class="text-right">Cantidad</th></tr></thead><tbody>' + rows + '</tbody></table>';
+            '<table class="table table-sm mb-0"><thead class="thead-light"><tr><th>Material (' + active.length + ')</th><th class="text-right">Cantidad</th></tr></thead><tbody>' + rows + '</tbody></table>';
         var warn = '';
         warnings().forEach(function (i) { if (i.severity === 'Warning') warn += '<div class="alert border-0 small mb-2" style="background:#fff8e8;"><i class="fas fa-exclamation-triangle text-warning mr-2"></i>' + esc(i.message) + '</div>'; });
         if (ms && ms.short) warn += '<div class="alert border-0 small mb-2" style="background:#fdecef;"><i class="fas fa-exclamation-circle text-danger mr-2"></i>' + ms.short + ' artículo(s) no alcanzan en tu horario. Puedes enviar igual: el revisor decidirá si ajusta cantidades o cambia el horario.</div>';
@@ -492,10 +544,12 @@
     function submit() {
         if (!canLeave(1) || !canLeave(2) || !canLeave(3)) return;
         var g = group();
+        // La confirmación cuenta solo lo que se envía: líneas con cantidad mayor que cero.
+        var itemCount = linesPayload().filter(function (l) { return l.quantity > 0; }).length;
         Swal.fire({
             title: state.planningId ? '¿Reenviar la solicitud corregida?' : '¿Enviar la solicitud?',
             html: '<div class="text-left small">' + esc(state.practiceName) + '<br><b class="text-capitalize">' + esc(fmtDate(state.date)) + '</b> · ' + esc(timeText()) + ' · ' + esc((lab() || {}).code) +
-                '<br>Grupo ' + esc(g ? g.name : '') + ' · ' + state.lines.length + ' artículo(s)<br><br>El laboratorio se reserva cuando el revisor la apruebe. Te avisaremos.</div>',
+                '<br>Grupo ' + esc(g ? g.name : '') + ' · ' + itemCount + ' artículo(s)<br><br>El laboratorio se reserva cuando el revisor la apruebe. Te avisaremos.</div>',
             type: 'question',
             showCancelButton: true,
             confirmButtonText: '<i class="fas fa-paper-plane"></i> Enviar',
@@ -532,9 +586,27 @@
     });
     $('practiceSearch').addEventListener('input', renderPractices);
     $('students').addEventListener('change', function () {
-        state.students = this.value ? Number(this.value) : null;
+        var previous = state.students;
+        var next = this.value ? Number(this.value) : null;
+        state.students = next;
         state.kitLoadedFor = null;
         renderSide();
+        // Si ya hay kit cargado, ofrecer recalcular; si no, la próxima carga ya usa el número nuevo.
+        if (!state.practiceId || state.lines.length === 0 || next === null || next === previous) return;
+        Swal.fire({
+            title: '¿Recalcular el kit para ' + next + ' estudiantes?',
+            text: 'Se reemplazan las cantidades actuales.',
+            type: 'question', showCancelButton: true,
+            confirmButtonText: 'Sí, recalcular', cancelButtonText: 'No, dejar así',
+            confirmButtonColor: '#7460ee', cancelButtonColor: '#6c757d'
+        }).then(function (r) {
+            if (r && (r.isConfirmed === true || r.value === true)) {
+                loadKit(true);
+            } else {
+                // Las cantidades siguen calculadas para otra cantidad de estudiantes: el hint no debe afirmar lo contrario.
+                $('kitHint').textContent = 'Kit cargado para otra cantidad de estudiantes. Ajusta las cantidades o vuelve a cargar el kit.';
+            }
+        });
     });
     $('periodCount').addEventListener('change', function () {
         state.periodCount = Number(this.value);

@@ -132,6 +132,7 @@ builder.Services.AddScoped<IL3CircuitService, L3CircuitService>();
 builder.Services.Configure<Proyecto_Laboratorios_Univalle.Services.TeacherRequests.TeacherRequestOptions>(
     builder.Configuration.GetSection(Proyecto_Laboratorios_Univalle.Services.TeacherRequests.TeacherRequestOptions.Section));
 builder.Services.AddScoped<Proyecto_Laboratorios_Univalle.Services.TeacherRequests.ITeacherRequestService, Proyecto_Laboratorios_Univalle.Services.TeacherRequests.TeacherRequestService>();
+builder.Services.AddScoped<SidebarCountsService>();
 builder.Services.AddScoped<IArticleAvailabilityService, ArticleAvailabilityService>();
 builder.Services.AddScoped<IConflictGridService, ConflictGridService>();
 builder.Services.AddScoped<IConflictResolutionService, ConflictResolutionService>();

@@ -65,7 +65,7 @@
     <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
         <div class="card-body py-4">
             <div class="dc-stepper mb-0">
-                <div class="dc-step is-done"><span class="dc-step__dot"><i class="fas fa-paper-plane"></i></span><span class="dc-step__text">Enviada<br /><small class="text-muted font-weight-normal">@(submitted != null ? BoliviaTime.ToLocal(submitted.Date).ToString("dd/MM HH:mm") : r.RequestDate.ToString("dd/MM"))</small></span></div>
+                <div class="dc-step is-done"><span class="dc-step__dot"><i class="fas fa-paper-plane"></i></span><span class="dc-step__text">Enviada<br /><small class="text-muted font-weight-normal">@(submitted != null ? BoliviaTime.ToLocal(submitted.Date).ToString("dd/MM HH:mm") : BoliviaTime.ToLocal(r.RequestDate).ToString("dd/MM"))</small></span></div>
                 <div class="dc-step__bar is-done"></div>
                 <div class="dc-step @(isPending ? "is-active" : "is-done")">
                     <span class="dc-step__dot">@if (isPending) { <i class="fas fa-hourglass-half"></i> } else { <i class="fas fa-check"></i> }</span>

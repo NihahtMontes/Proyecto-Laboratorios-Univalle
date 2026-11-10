@@ -11,8 +11,10 @@ namespace Laboratorios.Tests.Practica3.Integracion;
 /// Ejercicio 5 — Integración entre dos módulos funcionales.
 /// Módulo 1: Circuito L-3 de la práctica (salida de material y devolución, Pages/LaboratoryOperations/L3 + L3CircuitService).
 /// Módulo 2: Existencias del Economato (ArticleStock, Catálogos › Existencias), que usa la Disponibilidad y la planificación.
-/// Relación: la salida L-3 descuenta la existencia del laboratorio de origen; la devolución la repone; una salida sin
-/// existencia suficiente se rechaza completa. Los casos se ejecutan en orden sobre la práctica de hoy (PRA-P3-001).
+/// Relación (stock por horario): la salida L-3 registra lo entregado sin cambiar la existencia, que es lo que el
+/// laboratorio tiene; lo entregado y no devuelto queda "fuera ahora" y reduce lo libre para otra entrega; la devolución
+/// cierra lo pendiente; una salida sin existencia libre suficiente se rechaza completa. Los casos se ejecutan en orden
+/// sobre la práctica de hoy (PRA-P3-001).
 /// </summary>
 [Collection(AppCollection.Name)]
 [TestCaseOrderer("Laboratorios.Tests.Practica3.Soporte.OrdenAlfabetico", "Laboratorios.Tests")]
@@ -82,7 +84,7 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
     }
 
     [Fact]
-    public async Task I5_01_salida_L3_descuenta_la_existencia_del_economato()
+    public async Task I5_01_salida_L3_registra_lo_entregado_sin_cambiar_la_existencia()
     {
         using var s = await app.LoginAsAsync(EscenarioGastronomia.GestorUser);
         var antes = await EstadoAsync(EscenarioGastronomia.PlanHoy);
@@ -91,16 +93,18 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
         var despues = await EstadoAsync(EscenarioGastronomia.PlanHoy);
         var existencias = await s.GetAsync("/Catalogs/Stock?laboratoryFilter=" + await EconomatoAsync());
 
-        var cumple = pagina.Contains("registrada") && despues.Harina == antes.Harina - 5 && despues.Huevo == antes.Huevo - 24
-            && despues.Cuchillo == antes.Cuchillo - 6 && despues.Salidas == 1 && despues.EstadoSalida == nameof(LoanStatus.Active);
+        var cumple = pagina.Contains("registrada") && despues.Harina == antes.Harina && despues.Huevo == antes.Huevo
+            && despues.Cuchillo == antes.Cuchillo && despues.Salidas == 1 && despues.EstadoSalida == nameof(LoanStatus.Active)
+            && despues.EntregadoPendiente == 35;
         Evidencia.Registrar(Ejercicio, "I5-01", "Salida L-3 de la práctica de hoy (módulo 1) → existencias (módulo 2)",
-            "PRA-P3-001: harina 5; huevo 24; cuchillo 6; origen ECONO", "Mensaje «Salida SAL-##### registrada.»; harina −5, huevo −24 y cuchillo −6 respecto del valor previo; 1 salida activa",
+            "PRA-P3-001: harina 5; huevo 24; cuchillo 6; origen ECONO", "Mensaje «Salida SAL-##### registrada.»; existencias sin cambios (stock por horario); 1 salida activa con 35 pendientes de devolver",
             $"Antes: {Txt(antes)} → Después: {Txt(despues)}", cumple);
 
         Assert.True(pagina.Contains("registrada"), pagina.Text[..Math.Min(600, pagina.Text.Length)]);
-        Assert.Equal(antes.Harina - 5, despues.Harina);
-        Assert.Equal(antes.Huevo - 24, despues.Huevo);
-        Assert.Equal(antes.Cuchillo - 6, despues.Cuchillo);
+        Assert.Equal(antes.Harina, despues.Harina);
+        Assert.Equal(antes.Huevo, despues.Huevo);
+        Assert.Equal(antes.Cuchillo, despues.Cuchillo);
+        Assert.Equal(35m, despues.EntregadoPendiente);
         Assert.Equal(HttpStatusCode.OK, existencias.Status);
     }
 
@@ -122,7 +126,7 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
     }
 
     [Fact]
-    public async Task I5_03_devolucion_parcial_repone_solo_lo_devuelto()
+    public async Task I5_03_devolucion_parcial_descuenta_solo_lo_pendiente()
     {
         using var s = await app.LoginAsAsync(EscenarioGastronomia.GestorUser);
         var antes = await EstadoAsync(EscenarioGastronomia.PlanHoy);
@@ -130,10 +134,10 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
         var pagina = await RegistrarDevolucionAsync(s, EscenarioGastronomia.PlanHoy, (EscenarioGastronomia.CuchilloCode, 4m));
         var despues = await EstadoAsync(EscenarioGastronomia.PlanHoy);
 
-        var cumple = despues.Cuchillo == antes.Cuchillo + 4 && despues.Harina == antes.Harina && despues.EstadoSalida == nameof(LoanStatus.Active)
+        var cumple = despues.Cuchillo == antes.Cuchillo && despues.Harina == antes.Harina && despues.EstadoSalida == nameof(LoanStatus.Active)
             && despues.EntregadoPendiente == antes.EntregadoPendiente - 4;
         Evidencia.Registrar(Ejercicio, "I5-03", "Devolución parcial (4 de 6 cuchillos)", "Devolver cuchillo 4",
-            "Cuchillo +4; resto sin cambios; la salida sigue Active con pendiente −4",
+            "Existencias sin cambios; la salida sigue Active con pendiente −4",
             $"Antes: {Txt(antes)} → Después: {Txt(despues)}", cumple);
         Assert.True(cumple, pagina.Text[..Math.Min(600, pagina.Text.Length)]);
     }
@@ -154,7 +158,7 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
     }
 
     [Fact]
-    public async Task I5_05_devolucion_total_cierra_la_salida_y_restituye_la_existencia_inicial()
+    public async Task I5_05_devolucion_total_cierra_la_salida_sin_cambiar_la_existencia()
     {
         using var s = await app.LoginAsAsync(EscenarioGastronomia.GestorUser);
         var antes = await EstadoAsync(EscenarioGastronomia.PlanHoy);
@@ -162,10 +166,10 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
             (EscenarioGastronomia.HarinaCode, 5m), (EscenarioGastronomia.HuevoCode, 24m), (EscenarioGastronomia.CuchilloCode, 2m));
         var despues = await EstadoAsync(EscenarioGastronomia.PlanHoy);
 
-        var cumple = despues.Harina == antes.Harina + 5 && despues.Huevo == antes.Huevo + 24 && despues.Cuchillo == antes.Cuchillo + 2
+        var cumple = despues.Harina == antes.Harina && despues.Huevo == antes.Huevo && despues.Cuchillo == antes.Cuchillo
             && despues.EstadoSalida == nameof(LoanStatus.Returned) && despues.EntregadoPendiente == 0;
         Evidencia.Registrar(Ejercicio, "I5-05", "Devolución del resto (harina 5; huevo 24; cuchillo 2)", "Devolver todo lo pendiente",
-            "Harina +5; huevo +24; cuchillo +2 (vuelven a su valor anterior a la salida); salida Returned; pendiente 0",
+            "Existencias sin cambios; salida Returned; pendiente 0 (todo volvió)",
             $"Antes: {Txt(antes)} → Después: {Txt(despues)}", cumple);
         Assert.True(cumple, Txt(despues) + " · " + pagina.Text[..Math.Min(600, pagina.Text.Length)]);
     }
@@ -179,7 +183,7 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
         var pagina = await RegistrarSalidaAsync(s, EscenarioGastronomia.PlanSinStock);
         var despues = await EstadoAsync(EscenarioGastronomia.PlanSinStock);
 
-        const string msg = "Stock insuficiente de ART-00004 · Mantequilla sin sal en ECONO: disponible 2, solicitado 5.";
+        const string msg = "Stock insuficiente de ART-00004 · Mantequilla sin sal en ECONO: libre ahora 2, solicitado 5.";
         var cumple = pagina.Contains(msg) && despues == antes && despues.Salidas == 0;
         Evidencia.Registrar(Ejercicio, "I5-06", "Salida de un recurso no disponible (mantequilla 5 kg; existencia 2 kg)", "PRA-P3-004: mantequilla 5",
             $"«{msg}»; sin salida; existencia 2", $"Mensaje={pagina.Contains(msg)}; mantequilla {despues.Mantequilla:0.##}; salidas {despues.Salidas}", cumple);
@@ -187,25 +191,25 @@ public class Ej05_SalidaL3ExistenciasTests(AppFixture app)
     }
 
     [Fact]
-    public async Task I5_07_consistencia_entre_modulos_existencia_mas_pendiente_igual_a_inicial()
+    public async Task I5_07_consistencia_entre_modulos_existencia_igual_a_inicial_y_pendiente_no_negativo()
     {
-        // Invariante: para cada artículo, existencia actual + entregado sin devolver = existencia inicial (no se crea ni pierde material).
+        // Invariante (stock por horario, sin incidentes L-5): la existencia sigue igual a la inicial y lo entregado sin devolver nunca es negativo.
         var resumen = await app.QueryAsync(async db =>
         {
             var econo = await db.Laboratories.Where(l => l.Code == EscenarioGastronomia.EconomatoCode).Select(l => l.Id).FirstAsync();
             var stock = await db.ArticleStocks.AsNoTracking().Include(a => a.Article).Where(a => a.LaboratoryId == econo).ToListAsync();
             var pendiente = await db.DepartureItems.AsNoTracking().Where(i => i.Departure!.OriginLaboratoryId == econo && i.ArticleId != null)
                 .GroupBy(i => i.ArticleId!.Value).Select(g => new { g.Key, P = g.Sum(i => (i.Quantity ?? 0) - (i.ReturnedQuantity ?? 0)) }).ToListAsync();
-            return stock.Select(sk => (sk.Article!.Code, sk.AvailableQuantity + (pendiente.FirstOrDefault(p => p.Key == sk.ArticleId)?.P ?? 0))).ToList();
+            return stock.Select(sk => (sk.Article!.Code, sk.AvailableQuantity, Pendiente: pendiente.FirstOrDefault(p => p.Key == sk.ArticleId)?.P ?? 0)).ToList();
         });
         var iniciales = new Dictionary<string, decimal>
         {
             [EscenarioGastronomia.HarinaCode] = 50, [EscenarioGastronomia.HuevoCode] = 120, [EscenarioGastronomia.CuchilloCode] = 10, [EscenarioGastronomia.MantequillaCode] = 2
         };
-        var faltan = resumen.Where(r => iniciales.TryGetValue(r.Code, out var ini) && r.Item2 != ini).ToList();
+        var faltan = resumen.Where(r => iniciales.TryGetValue(r.Code, out var ini) && (r.AvailableQuantity != ini || r.Pendiente < 0)).ToList();
         var cumple = faltan.Count == 0;
-        Evidencia.Registrar(Ejercicio, "I5-07", "Consistencia: existencia + pendiente = existencia inicial", "Todos los artículos del Economato",
-            "Igualdad para todos los artículos", string.Join("; ", resumen.Select(r => $"{r.Code}: {r.Item2:0.##}")), cumple);
+        Evidencia.Registrar(Ejercicio, "I5-07", "Consistencia: existencia = existencia inicial y pendiente ≥ 0", "Todos los artículos del Economato",
+            "Igualdad para todos los artículos", string.Join("; ", resumen.Select(r => $"{r.Code}: {r.AvailableQuantity:0.##} (fuera {r.Pendiente:0.##})")), cumple);
         Assert.Empty(faltan);
     }
 }

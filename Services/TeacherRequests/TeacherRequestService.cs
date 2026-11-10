@@ -26,13 +26,19 @@ public interface ITeacherRequestService
         IReadOnlyList<RequestLineInput> lines, int max = 3);
     Task<TeacherOpResult> SubmitAsync(TeacherProfile teacher, RequestInput input, int? planningId, string? note);
     Task<TeacherOpResult> WithdrawAsync(TeacherProfile teacher, int planningId, string? reason);
-    Task<TeacherOpResult> ApproveAsync(int reviewerUserId, int planningId, string? comment, IReadOnlyList<RequestLineInput>? adjustedLines);
+    Task<TeacherOpResult> ApproveAsync(int reviewerUserId, int planningId, string? comment, IReadOnlyList<RequestLineInput>? adjustedLines,
+        bool allowShortage = false);
     Task<TeacherOpResult> ObserveAsync(int reviewerUserId, int planningId, string comment);
     Task<TeacherOpResult> RejectAsync(int reviewerUserId, int planningId, string reason);
     Task<IReadOnlyList<RequestLineView>> GetLinesAsync(int planningId);
     Task<IReadOnlyList<ReviewEventView>> GetHistoryAsync(int planningId);
     /// <summary>Otras solicitudes pendientes que piden el mismo ambiente en un horario que se cruza.</summary>
     Task<IReadOnlyList<Planning>> FindCompetingRequestsAsync(int planningId);
+    /// <summary>
+    /// Evalúa el material de varias solicitudes del mismo día con una sola consulta de rango, artículos, stock y
+    /// no devueltos (la bandeja de revisión lo usa en vez de llamar a <see cref="CheckMaterialAsync"/> por fila).
+    /// </summary>
+    Task<IReadOnlyList<DayMaterialCheck>> CheckMaterialForDayAsync(DateTime date, IReadOnlyList<MaterialDayRequest> requests);
 }
 
 public sealed class TeacherRequestService : ITeacherRequestService
@@ -220,6 +226,22 @@ public sealed class TeacherRequestService : ITeacherRequestService
 
     // ───────────────────────────── Material por horario ─────────────────────────────
 
+    /// <summary>Artículo tal como se muestra en el semáforo de material.</summary>
+    private sealed record ArticleBasic(int Id, string Code, string Name, string? Category);
+
+    /// <summary>
+    /// Datos de material cargados una sola vez y reutilizados por todas las evaluaciones de una misma operación
+    /// (buscador de horarios, bandeja de revisión): catálogo, stock y lo no devuelto de prácticas que ya terminaron.
+    /// </summary>
+    private sealed class MaterialContext
+    {
+        public required Dictionary<int, ArticleBasic> Articles { get; init; }
+        public required Dictionary<int, ArticleStockInfo> Stock { get; init; }
+
+        /// <summary>Por artículo: entregado y no devuelto de salidas abiertas cuya práctica terminó antes de la ventana pedida.</summary>
+        public required IReadOnlyDictionary<int, decimal> Overdue { get; init; }
+    }
+
     public async Task<IReadOnlyList<MaterialLineCheck>> CheckMaterialAsync(DateTime date, int startPeriodId, int periodCount,
         IReadOnlyList<RequestLineInput> lines, int? excludePlanningId)
     {
@@ -231,24 +253,65 @@ public sealed class TeacherRequestService : ITeacherRequestService
         return await EvaluateMaterialAsync(range, date.Date, start.StartTime, last.EndTime, lines, excludePlanningId);
     }
 
+    public async Task<IReadOnlyList<DayMaterialCheck>> CheckMaterialForDayAsync(DateTime date, IReadOnlyList<MaterialDayRequest> requests)
+    {
+        if (requests.Count == 0) return [];
+        var periods = await _context.ClassPeriods.AsNoTracking().OrderBy(p => p.Order).ToListAsync();
+        var ids = requests.SelectMany(r => r.Lines).Where(l => l.Quantity > 0).Select(l => l.ArticleId).Distinct().ToList();
+        var range = ids.Count == 0 ? null : await _availability.GetRangeAsync(date.Date, date.Date);
+        // Las solicitudes de la bandeja son siempre futuras: lo no devuelto que afecta al día es el de prácticas
+        // terminadas antes de que empiece el día (las del propio día se ven como demanda del horario).
+        var context = ids.Count == 0 ? null : await LoadMaterialContextAsync(ids, date.Date);
+
+        var result = new List<DayMaterialCheck>();
+        foreach (var request in requests)
+        {
+            var start = periods.FirstOrDefault(p => p.Id == request.StartPeriodId);
+            if (range == null || context == null || start == null)
+            {
+                result.Add(new DayMaterialCheck(request.PlanningId, []));
+                continue;
+            }
+            var last = periods.FirstOrDefault(p => p.Order == PlanningSlot.LastOrder(start.Order, request.PeriodCount)) ?? start;
+            result.Add(new DayMaterialCheck(request.PlanningId,
+                EvaluateMaterial(range, date.Date, start.StartTime, last.EndTime, request.Lines, request.PlanningId, context)));
+        }
+        return result;
+    }
+
+    private async Task<MaterialContext> LoadMaterialContextAsync(IReadOnlyCollection<int> articleIds, DateTime windowStart)
+    {
+        var articles = await _context.Articles.AsNoTracking()
+            .Where(a => articleIds.Contains(a.Id))
+            .Select(a => new ArticleBasic(a.Id, a.Code, a.Name, a.ArticleCategory != null ? a.ArticleCategory.Name : a.Category))
+            .ToDictionaryAsync(a => a.Id);
+        var stock = await _availability.GetStockAsync(articleIds, null);
+        var overdue = await StockRules.OverdueOutstandingAsync(_context, articleIds, windowStart);
+        return new MaterialContext { Articles = articles, Stock = stock, Overdue = overdue };
+    }
+
     private async Task<IReadOnlyList<MaterialLineCheck>> EvaluateMaterialAsync(WeekAvailability range, DateTime date, TimeSpan from, TimeSpan to,
         IReadOnlyList<RequestLineInput> lines, int? excludePlanningId)
     {
         var merged = lines.Where(l => l.Quantity > 0).GroupBy(l => l.ArticleId)
             .Select(g => new RequestLineInput(g.Key, g.Sum(l => l.Quantity))).ToList();
         if (merged.Count == 0) return [];
-        var ids = merged.Select(l => l.ArticleId).ToList();
-        var articles = await _context.Articles.AsNoTracking()
-            .Where(a => ids.Contains(a.Id))
-            .Select(a => new { a.Id, a.Code, a.Name, Category = a.ArticleCategory != null ? a.ArticleCategory.Name : a.Category })
-            .ToDictionaryAsync(a => a.Id);
-        var stock = await _availability.GetStockAsync(ids, null);
+        var context = await LoadMaterialContextAsync(merged.Select(l => l.ArticleId).ToList(), date + from);
+        return EvaluateMaterial(range, date, from, to, merged, excludePlanningId, context);
+    }
+
+    private static IReadOnlyList<MaterialLineCheck> EvaluateMaterial(WeekAvailability range, DateTime date, TimeSpan from, TimeSpan to,
+        IReadOnlyList<RequestLineInput> lines, int? excludePlanningId, MaterialContext context)
+    {
+        var merged = lines.Where(l => l.Quantity > 0).GroupBy(l => l.ArticleId)
+            .Select(g => new RequestLineInput(g.Key, g.Sum(l => l.Quantity))).ToList();
+        if (merged.Count == 0) return [];
         var practices = range.Practices.ToDictionary(p => p.Id);
 
         var result = new List<MaterialLineCheck>();
         foreach (var line in merged)
         {
-            if (!articles.TryGetValue(line.ArticleId, out var article)) continue;
+            if (!context.Articles.TryGetValue(line.ArticleId, out var article)) continue;
             var demand = range.Demands.FirstOrDefault(d => d.Date == date && d.ArticleId == line.ArticleId);
             var uses = new List<MaterialUse>();
             decimal usedByOthers = 0;
@@ -270,7 +333,7 @@ public sealed class TeacherRequestService : ITeacherRequestService
                     .Max();
             }
 
-            var info = stock.GetValueOrDefault(line.ArticleId);
+            var info = context.Stock.GetValueOrDefault(line.ArticleId);
             decimal? available = info?.Available;
             MaterialState state;
             decimal? free = null;
@@ -282,20 +345,25 @@ public sealed class TeacherRequestService : ITeacherRequestService
             }
             else
             {
-                free = Math.Max(0, total - usedByOthers);
+                // Acta de stock: disponible = existencia − reservas coincidentes − préstamos no devueltos − mantenimiento.
+                var overdue = context.Overdue.GetValueOrDefault(line.ArticleId);
+                var effectiveTotal = Math.Max(0, total - overdue);
+                free = Math.Max(0, effectiveTotal - usedByOthers);
+                var overdueNote = overdue > 0 ? $" ({overdue:0.##} sin devolver de prácticas anteriores)" : string.Empty;
                 if (line.Quantity > total)
                 {
                     state = MaterialState.Short;
-                    explanation = $"Pides {line.Quantity:0.##} y en toda la institución hay {total:0.##}.";
+                    explanation = $"Pides {line.Quantity:0.##} y en toda la institución hay {total:0.##}{overdueNote}.";
                 }
                 else if (line.Quantity > free)
                 {
                     state = MaterialState.Short;
                     var releaseAt = uses.Where(u => u.End.HasValue).Select(u => u.End!.Value).DefaultIfEmpty().Max();
-                    explanation = $"Stock {total:0.##}: {usedByOthers:0.##} en uso por {string.Join(", ", uses.Take(2).Select(u => $"{u.Code} ({u.TimeText})"))}"
+                    explanation = $"Stock {total:0.##}{overdueNote}: {usedByOthers:0.##} en uso" + (uses.Count > 0
+                            ? $" por {string.Join(", ", uses.Take(2).Select(u => $"{u.Code} ({u.TimeText})"))}" : string.Empty)
                         + (releaseAt > TimeSpan.Zero ? $". Se libera a las {releaseAt:hh\\:mm}: elige un horario después o pide {free:0.##}." : $". Puedes pedir hasta {free:0.##}.");
                 }
-                else if (line.Quantity == free && usedByOthers > 0)
+                else if (line.Quantity == free && (usedByOthers > 0 || overdue > 0))
                 {
                     state = MaterialState.Tight;
                     explanation = $"Alcanza justo: usas las {free:0.##} unidades libres en ese horario.";
@@ -304,8 +372,10 @@ public sealed class TeacherRequestService : ITeacherRequestService
                 {
                     state = MaterialState.Ok;
                     explanation = usedByOthers > 0
-                        ? $"Libres {free:0.##} de {total:0.##} en ese horario ({usedByOthers:0.##} en uso por otras prácticas)."
-                        : $"Libres {total:0.##} en ese horario.";
+                        ? $"Libres {free:0.##} de {total:0.##} en ese horario ({usedByOthers:0.##} en uso por otras prácticas{overdueNote})."
+                        : overdue > 0
+                            ? $"Libres {free:0.##} de {total:0.##} en ese horario{overdueNote}."
+                            : $"Libres {total:0.##} en ese horario.";
                 }
             }
             result.Add(new MaterialLineCheck(article.Id, article.Code, article.Name, article.Category, line.Quantity, available,
@@ -368,6 +438,10 @@ public sealed class TeacherRequestService : ITeacherRequestService
         var blocks = await _occupancy.GetAsync(new OccupancyQuery(days.First(), days.Last()));
         var ownSlots = await _groups.GetGroupSlotsAsync(group.Id);
         var range = lines.Count > 0 ? await _availability.GetRangeAsync(days.First(), days.Last()) : null;
+        // Material cargado UNA vez por búsqueda (catálogo, stock y no devueltos): antes se consultaba por cada candidato.
+        var materialContext = range != null
+            ? await LoadMaterialContextAsync(lines.Where(l => l.Quantity > 0).Select(l => l.ArticleId).Distinct().ToList(), days.First().Date)
+            : null;
 
         var found = new List<(SlotSuggestion Slot, int Score)>();
         foreach (var date in days)
@@ -396,9 +470,9 @@ public sealed class TeacherRequestService : ITeacherRequestService
                     else if (labRank > 0) score += 10;
 
                     var materialIssues = 0;
-                    if (range != null)
+                    if (range != null && materialContext != null)
                     {
-                        var material = await EvaluateMaterialAsync(range, date, start.StartTime, end, lines, null);
+                        var material = EvaluateMaterial(range, date, start.StartTime, end, lines, null, materialContext);
                         materialIssues = material.Count(m => m.State == MaterialState.Short);
                         if (materialIssues == 0) { score += 30; reasons.Add("Material completo"); }
                         else reasons.Add($"{materialIssues} artículo(s) no alcanzan");
@@ -516,9 +590,14 @@ public sealed class TeacherRequestService : ITeacherRequestService
                 CourseGroupId = group.Id,
                 GroupName = group.Name,
                 TeacherPersonId = teacher.PersonId,
-                ScalingFactor = group.ScalingFactor
+                ScalingFactor = group.ScalingFactor,
+                // Marca del flujo docente: permite cancelar la programación si la solicitud se rechaza o retira
+                // sin tocar las importadas (ImportBatchId) ni las creadas por otro flujo.
+                CreatedById = teacher.UserId
             };
-            if (input.StudentCount.HasValue) schedule.StudentCount = input.StudentCount;
+            // La programación puede ser compartida por varias sesiones del mismo grupo: el número de estudiantes
+            // de esta solicitud solo se escribe al crearla (una corrección no pisa el valor de las otras sesiones).
+            if (newSchedule && input.StudentCount.HasValue) schedule.StudentCount = input.StudentCount;
             if (newSchedule) _context.PracticeSchedules.Add(schedule);
 
             var day = await _context.AcademicDays.AsNoTracking()
@@ -614,24 +693,50 @@ public sealed class TeacherRequestService : ITeacherRequestService
 
     public async Task<TeacherOpResult> WithdrawAsync(TeacherProfile teacher, int planningId, string? reason)
     {
-        var plan = await _context.Plannings.AsTracking().FirstOrDefaultAsync(p => p.Id == planningId);
-        if (plan == null || plan.TeacherPersonId != teacher.PersonId) return TeacherOpResult.Fail("La solicitud no existe.");
-        if (!PlanningStatus.PendingReview.Contains(plan.Status))
-            return TeacherOpResult.Fail("Solo puedes retirar una solicitud que todavía no fue aprobada ni rechazada.");
-        var from = plan.Status;
-        plan.Status = PlanningStatus.Cancelled;
-        _context.PlanningReviews.Add(new PlanningReview
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            PlanningId = plan.Id, Action = PlanningReviewAction.Withdrawn, FromStatus = from, ToStatus = PlanningStatus.Cancelled,
-            Comment = Trim(reason, 1000), UserId = teacher.UserId, CreatedDate = DateTime.UtcNow
-        });
-        await _context.SaveChangesAsync();
-        return new TeacherOpResult(true, $"Solicitud {L3Codes.Format(plan.Id, plan.Code)} retirada.", plan.Id);
+            if (!await _lock.TryAcquireAsync([PlanningLockResources.Planning(planningId)]))
+                return TeacherOpResult.Fail(PlanningLockResources.BusyMessage + ".");
+
+            // Relectura bajo bloqueo: el revisor pudo aprobar/observar mientras el docente confirmaba el retiro.
+            var plan = await _context.Plannings.AsTracking().Include(p => p.PracticeSchedule)
+                .FirstOrDefaultAsync(p => p.Id == planningId);
+            if (plan == null || plan.TeacherPersonId != teacher.PersonId)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("La solicitud no existe.");
+            }
+            if (!PlanningStatus.PendingReview.Contains(plan.Status))
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("Solo puedes retirar una solicitud que todavía no fue aprobada ni rechazada.");
+            }
+
+            var from = plan.Status;
+            plan.Status = PlanningStatus.Cancelled;
+            await CancelOrphanScheduleAsync(plan);
+            _context.PlanningReviews.Add(new PlanningReview
+            {
+                PlanningId = plan.Id, Action = PlanningReviewAction.Withdrawn, FromStatus = from, ToStatus = PlanningStatus.Cancelled,
+                Comment = Trim(reason, 1000), UserId = teacher.UserId, CreatedDate = DateTime.UtcNow
+            });
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return new TeacherOpResult(true, $"Solicitud {L3Codes.Format(plan.Id, plan.Code)} retirada.", plan.Id);
+        }
+        catch (DbUpdateException ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "No se pudo retirar la solicitud {PlanningId}", planningId);
+            return TeacherOpResult.Fail("No se pudo retirar la solicitud. Intenta nuevamente.");
+        }
     }
 
     // ───────────────────────────── Revisión (Supervisor / Administrador / SuperAdmin) ─────────────────────────────
 
-    public async Task<TeacherOpResult> ApproveAsync(int reviewerUserId, int planningId, string? comment, IReadOnlyList<RequestLineInput>? adjustedLines)
+    public async Task<TeacherOpResult> ApproveAsync(int reviewerUserId, int planningId, string? comment,
+        IReadOnlyList<RequestLineInput>? adjustedLines, bool allowShortage = false)
     {
         var snapshot = await _context.Plannings.AsNoTracking().Include(p => p.StartPeriod).FirstOrDefaultAsync(p => p.Id == planningId);
         if (snapshot == null) return TeacherOpResult.Fail("La solicitud no existe.");
@@ -720,6 +825,28 @@ public sealed class TeacherRequestService : ITeacherRequestService
                 if (review.Lines.Count > 0) review.Action = PlanningReviewAction.ApprovedWithChanges;
             }
 
+            // Sobreventa: las solicitudes pendientes no consumen stock, así que el material se revalida recién al
+            // aprobar, con los ajustes ya aplicados en memoria y excluyendo esta planificación (igual que CheckMaterialAsync).
+            var finalLines = FinalLines(plan.Requirements, adjustedLines);
+            string? shortageDetail = null;
+            if (finalLines.Count > 0)
+            {
+                var material = await CheckMaterialAsync(date, startPeriodId, count, finalLines, plan.Id);
+                var shortages = material.Where(m => m.State == MaterialState.Short).ToList();
+                if (shortages.Count > 0)
+                {
+                    shortageDetail = string.Join("; ", shortages.Select(s => $"{s.Name}: pide {s.Requested:0.##}, libre {(s.Free ?? 0):0.##}"));
+                    if (!allowShortage)
+                    {
+                        await transaction.RollbackAsync();
+                        return TeacherOpResult.Fail("No se puede aprobar: no alcanza el material en ese horario: " + shortageDetail
+                            + ". Ajusta cantidades, observa la solicitud o marca «Aprobar igual con faltantes».");
+                    }
+                    // Aprobación consciente de los faltantes: queda asentada en el historial y avisada al revisor.
+                    review.Comment = Trim($"{comment} [Aprobada con faltantes: {shortageDetail}]", 1000);
+                }
+            }
+
             plan.Status = PlanningStatus.Approved;
             // La programación puede ser compartida por varias sesiones del mismo grupo y práctica: solo refleja la fecha
             // de esta sesión si ninguna otra sesión vigente la usa (no se reescribe la fecha de sesiones anteriores).
@@ -752,6 +879,8 @@ public sealed class TeacherRequestService : ITeacherRequestService
             await transaction.CommitAsync();
 
             var warnings = new List<string>();
+            if (shortageDetail != null)
+                warnings.Add($"Aprobada con faltantes de material: {shortageDetail}.");
             if (competitors.Count > 0)
                 warnings.Add($"{competitors.Count} solicitud(es) pendiente(s) del mismo ambiente quedaron sin horario: {string.Join(", ", competitors.Select(c => L3Codes.Format(c.Id, c.Code)))}. Obsérvalas o recházalas.");
             return new TeacherOpResult(true, $"Solicitud {L3Codes.Format(plan.Id, plan.Code)} aprobada.", plan.Id, warnings);
@@ -782,23 +911,85 @@ public sealed class TeacherRequestService : ITeacherRequestService
                 : "Escribe qué debe corregir el docente (mínimo 5 caracteres).");
         if (text.Length > 1000) return TeacherOpResult.Fail("El comentario no puede superar los 1 000 caracteres.");
 
-        var plan = await _context.Plannings.AsTracking().FirstOrDefaultAsync(p => p.Id == planningId);
-        if (plan == null) return TeacherOpResult.Fail("La solicitud no existe.");
-        if (plan.Status != PlanningStatus.Requested)
-            return TeacherOpResult.Fail($"La solicitud está {PlanningStatus.Label(plan.Status)}: solo se revisa una solicitud en revisión.");
-
-        var from = plan.Status;
-        plan.Status = toStatus;
-        _context.PlanningReviews.Add(new PlanningReview
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            PlanningId = plan.Id, Action = action, FromStatus = from, ToStatus = toStatus,
-            Comment = text, UserId = reviewerUserId, CreatedDate = DateTime.UtcNow
-        });
-        await NotifyTeacherAsync(plan, title, $"{L3Codes.Format(plan.Id, plan.Code)}: {hint}", icon);
-        await _context.SaveChangesAsync();
-        return new TeacherOpResult(true, action == PlanningReviewAction.Rejected
-            ? $"Solicitud {L3Codes.Format(plan.Id, plan.Code)} rechazada."
-            : $"Solicitud {L3Codes.Format(plan.Id, plan.Code)} devuelta al docente con observaciones.", plan.Id);
+            if (!await _lock.TryAcquireAsync([PlanningLockResources.Planning(planningId)]))
+                return TeacherOpResult.Fail(PlanningLockResources.BusyMessage + ".");
+
+            // Relectura bajo bloqueo: observar/rechazar compite con la aprobación y con el retiro del docente.
+            var plan = await _context.Plannings.AsTracking().Include(p => p.PracticeSchedule)
+                .FirstOrDefaultAsync(p => p.Id == planningId);
+            if (plan == null)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail("La solicitud no existe.");
+            }
+            if (plan.Status != PlanningStatus.Requested)
+            {
+                await transaction.RollbackAsync();
+                return TeacherOpResult.Fail($"La solicitud está {PlanningStatus.Label(plan.Status)}: solo se revisa una solicitud en revisión.");
+            }
+
+            var from = plan.Status;
+            plan.Status = toStatus;
+            if (action == PlanningReviewAction.Rejected) await CancelOrphanScheduleAsync(plan);
+            _context.PlanningReviews.Add(new PlanningReview
+            {
+                PlanningId = plan.Id, Action = action, FromStatus = from, ToStatus = toStatus,
+                Comment = text, UserId = reviewerUserId, CreatedDate = DateTime.UtcNow
+            });
+            await NotifyTeacherAsync(plan, title, $"{L3Codes.Format(plan.Id, plan.Code)}: {hint}", icon);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+            return new TeacherOpResult(true, action == PlanningReviewAction.Rejected
+                ? $"Solicitud {L3Codes.Format(plan.Id, plan.Code)} rechazada."
+                : $"Solicitud {L3Codes.Format(plan.Id, plan.Code)} devuelta al docente con observaciones.", plan.Id);
+        }
+        catch (DbUpdateException ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "No se pudo revisar la solicitud {PlanningId} (acción {Action})", planningId, action);
+            return TeacherOpResult.Fail("No se pudo guardar la revisión. Intenta nuevamente.");
+        }
+    }
+
+    /// <summary>
+    /// Cancela la programación creada por el flujo docente si esta planificación era su único uso vigente:
+    /// nunca se tocan las importadas (ImportBatchId) ni las que otra planificación no rechazada/cancelada usa.
+    /// Observar NO cancela: el docente puede corregir y reenviar la misma solicitud.
+    /// </summary>
+    private async Task CancelOrphanScheduleAsync(Planning plan)
+    {
+        if (plan.PracticeScheduleId is not int sid || plan.PracticeSchedule is not { ImportBatchId: null } schedule) return;
+        // Solo si la creó la cuenta del propio docente al enviar la solicitud (no el asistente del administrador).
+        if (schedule.CreatedById is not int creatorId
+            || !await _context.Users.AsNoTracking().AnyAsync(u => u.Id == creatorId && u.PersonId == plan.TeacherPersonId))
+            return;
+        var inUse = await _context.Plannings.AsNoTracking()
+            .AnyAsync(p => p.PracticeScheduleId == sid && p.Id != plan.Id && !p.IsDeleted
+                && p.Status != PlanningStatus.Rejected && p.Status != PlanningStatus.Cancelled);
+        if (!inUse) schedule.Status = PracticeScheduleStatus.Cancelled;
+    }
+
+    /// <summary>Líneas finales de la solicitud tal como quedarán tras aprobar (con o sin ajustes del revisor).</summary>
+    private static List<RequestLineInput> FinalLines(IEnumerable<PlanningRequirement> requirements, IReadOnlyList<RequestLineInput>? adjusted)
+    {
+        var previous = requirements
+            .GroupBy(r => r.ArticleId)
+            .ToDictionary(g => g.Key, g => g.Sum(r => r.RequestedQuantity ?? r.ExpectedQuantity));
+        IEnumerable<RequestLineInput> lines;
+        if (adjusted != null)
+        {
+            var wanted = adjusted.GroupBy(l => l.ArticleId).ToDictionary(g => g.Key, g => g.Sum(l => l.Quantity));
+            lines = previous.Keys.Union(wanted.Keys)
+                .Select(id => new RequestLineInput(id, wanted.TryGetValue(id, out var next) ? next : previous[id]));
+        }
+        else
+        {
+            lines = previous.Select(kv => new RequestLineInput(kv.Key, kv.Value));
+        }
+        return lines.Where(l => l.Quantity > 0).ToList();
     }
 
     // ───────────────────────────── Consultas compartidas ─────────────────────────────

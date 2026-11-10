@@ -1,20 +1,14 @@
 @using Proyecto_Laboratorios_Univalle.Models.Enums
 @using Proyecto_Laboratorios_Univalle.Helpers
-@using Microsoft.EntityFrameworkCore
-@inject Proyecto_Laboratorios_Univalle.Data.ApplicationDbContext SidebarDb
+@inject Proyecto_Laboratorios_Univalle.Services.SidebarCountsService SidebarCounts
 @{
     var closureOnly = PracticeClosureAccess.IsClosureOnly(User);
     var teacherOnly = TeacherAccess.IsTeacherOnly(User);
-    var teacherPersonId = TeacherAccess.PersonId(User);
     var isReviewer = !closureOnly && !teacherOnly && (User.IsInRole(AuthorizationHelper.RoleSupervisor)
         || User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin));
     // Contadores del menú: solicitudes por revisar (revisores) y observadas por corregir (docente).
-    var pendingRequests = isReviewer
-        ? await SidebarDb.Plannings.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == Proyecto_Laboratorios_Univalle.Models.PlanningStatus.Requested)
-        : 0;
-    var observedRequests = teacherOnly && teacherPersonId is int sidebarPersonId
-        ? await SidebarDb.Plannings.AsNoTracking().CountAsync(p => !p.IsDeleted && p.TeacherPersonId == sidebarPersonId && p.Status == Proyecto_Laboratorios_Univalle.Models.PlanningStatus.Observed)
-        : 0;
+    // El servicio devuelve (0,0) si la base no responde: el menú nunca tumba la página (D-02).
+    var (pendingRequests, observedRequests) = await SidebarCounts.GetAsync(User);
     // Las páginas de administración (AdminRoles) no se muestran al Supervisor en el menú (H-021): antes terminaban en /Error.
     var isAdminMenu = User.IsInRole(AuthorizationHelper.RoleAdministrator) || User.IsInRole(AuthorizationHelper.RoleSuperAdmin);
     var isSupervisor = !closureOnly && !isAdminMenu;

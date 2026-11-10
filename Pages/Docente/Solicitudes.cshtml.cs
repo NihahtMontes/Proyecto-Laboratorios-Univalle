@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Proyecto_Laboratorios_Univalle.Data;
 using Proyecto_Laboratorios_Univalle.Models;
@@ -43,8 +44,15 @@ public class SolicitudesModel : TeacherPageBase
 
         var query = Mine().Where(p => statuses.Contains(p.Status));
         if (Search != null)
+        {
+            // El código visible "PRA-00013" se deriva del Id: si el texto es de esa forma, buscar también por número.
+            var code = Regex.Match(Search, @"^PRA-?0*(\d+)$", RegexOptions.IgnoreCase);
+            var planningId = 0;
+            var byId = code.Success && int.TryParse(code.Groups[1].Value, out planningId);
             query = query.Where(p => p.PracticeName.Contains(Search) || (p.Code != null && p.Code.Contains(Search))
-                || (p.Subject != null && p.Subject.Name.Contains(Search)));
+                || (p.Subject != null && p.Subject.Name.Contains(Search))
+                || (byId && p.Id == planningId));
+        }
         var ordered = ActiveTab is "aprobadas" or "revision" or "observadas"
             ? query.OrderBy(p => p.ScheduledDate)
             : query.OrderByDescending(p => p.ScheduledDate);

@@ -53,7 +53,7 @@
                     <input type="search" class="form-control" id="term" name="term" value="@Model.Term" placeholder="Ej: batidora, bowl…" />
                 </div>
                 <div class="col-md-1 mb-2">
-                    <button type="submit" class="btn btn-block text-white" style="background:#7460ee;" title="Consultar"><i class="fas fa-search"></i></button>
+                    <button type="submit" class="btn btn-block text-white" style="background:#7460ee;" title="Consultar" aria-label="Consultar disponibilidad"><i class="fas fa-search"></i></button>
                 </div>
             </div>
         </div>
@@ -91,7 +91,7 @@
                                 <th class="dc-grid__period"><span class="text-dark">@lab.Code</span><small class="d-block text-muted text-truncate">@lab.Name</small></th>
                                 @foreach (var cell in lab.Cells)
                                 {
-                                    var label = cell switch { "busy" => "Ocupado", "gap" => "Limpieza", "pending" => "Revisión", "mine" => "Tuya", "off" => "", _ => "" };
+                                    var label = cell switch { "busy" => "Ocupado", "gap" => "Limpieza", "pending" => "Revisión", "mine" => "Tuya", "off" => "Sin clases", _ => "" };
                                     <td class="dc-cell is-@cell" style="cursor:default;" title="@label">@label</td>
                                 }
                                 <td class="text-center font-weight-bold @(lab.FreeCount > 0 ? "text-success" : "text-muted")">@lab.FreeCount</td>

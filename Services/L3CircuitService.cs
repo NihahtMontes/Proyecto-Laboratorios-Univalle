@@ -123,6 +123,70 @@ public static class StockRules
             .GroupBy(x => x.ArticleId)
             .ToDictionary(g => g.Key, g => g.Sum(x => x.Out));
     }
+
+    /// <summary>
+    /// Por artículo: lo entregado y no devuelto (descontado lo cubierto por incidentes L-5 de esa planificación)
+    /// en salidas abiertas de CUALQUIER origen cuya práctica ya terminó antes de <paramref name="asOfLocal"/>
+    /// (fin de la práctica = ScheduledDate + EndTime; sin EndTime, fin del día). Las salidas sin planificación
+    /// cuentan siempre. Es el material que, en la ventana pedida, todavía no volvió al almacén y reduce lo libre.
+    /// </summary>
+    public static async Task<Dictionary<int, decimal>> OverdueOutstandingAsync(ApplicationDbContext context,
+        IReadOnlyCollection<int> articleIds, DateTime asOfLocal)
+    {
+        if (articleIds.Count == 0) return [];
+        var open = new[] { LoanStatus.Active, LoanStatus.Overdue };
+        var rows = await context.DepartureItems.AsNoTracking()
+            .Where(i => i.ArticleId != null && articleIds.Contains(i.ArticleId.Value) && i.EquipmentUnitId == null
+                && i.Departure != null && open.Contains(i.Departure.Status))
+            .Select(i => new
+            {
+                ArticleId = i.ArticleId!.Value,
+                i.Departure!.PlanningId,
+                PlannedDate = (DateTime?)i.Departure.Planning!.ScheduledDate,
+                PlannedEnd = i.Departure.Planning.EndTime,
+                Delivered = i.Quantity ?? 0,
+                Returned = i.ReturnedQuantity ?? 0
+            })
+            .ToListAsync();
+        if (rows.Count == 0) return [];
+
+        // Sin planificación (salidas manuales) la práctica no existe: cuenta siempre. Con planificación, solo si ya terminó.
+        var endOfDay = new TimeSpan(23, 59, 59);
+        var ended = rows
+            .Select(r => new
+            {
+                r.ArticleId,
+                r.PlanningId,
+                PracticeEnd = r.PlannedDate.HasValue ? r.PlannedDate.Value.Date + (r.PlannedEnd ?? endOfDay) : (DateTime?)null,
+                Pending = Math.Max(0, r.Delivered - r.Returned)
+            })
+            .Where(r => r.PracticeEnd == null || r.PracticeEnd.Value < asOfLocal)
+            .ToList();
+        if (ended.Count == 0) return [];
+
+        // Mismo descuento de L-5 que OutstandingAsync: esa parte ya salió de la existencia.
+        var planningIds = ended.Where(r => r.PlanningId != null).Select(r => r.PlanningId!.Value).Distinct().ToList();
+        var covered = planningIds.Count == 0
+            ? []
+            : await context.L5Incidents.AsNoTracking()
+                .Where(i => i.PlanningId != null && planningIds.Contains(i.PlanningId.Value) && i.ArticleId != null)
+                .GroupBy(i => new { PlanningId = i.PlanningId!.Value, ArticleId = i.ArticleId!.Value })
+                .Select(g => new { g.Key.PlanningId, g.Key.ArticleId, Total = g.Sum(i => i.AffectedQuantity) })
+                .ToListAsync();
+
+        return ended
+            .GroupBy(r => new { r.PlanningId, r.ArticleId })
+            .Select(g =>
+            {
+                var pending = g.Sum(r => r.Pending);
+                var cover = g.Key.PlanningId is int pid
+                    ? covered.FirstOrDefault(c => c.PlanningId == pid && c.ArticleId == g.Key.ArticleId)?.Total ?? 0
+                    : 0;
+                return (g.Key.ArticleId, Out: Math.Max(0, pending - cover));
+            })
+            .GroupBy(x => x.ArticleId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Out));
+    }
 }
 
 /// <summary>

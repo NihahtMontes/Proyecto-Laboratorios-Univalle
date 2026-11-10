@@ -56,7 +56,7 @@ public class RevisarModel : PageModel
         return Page();
     }
 
-    public async Task<IActionResult> OnPostApproveAsync(int id, string? comment, Dictionary<int, decimal>? qty)
+    public async Task<IActionResult> OnPostApproveAsync(int id, string? comment, Dictionary<int, decimal>? qty, bool allowShortage)
     {
         var current = await _context.PlanningRequirements.AsNoTracking().Where(r => r.PlanningId == id)
             .Select(r => new { r.ArticleId, Quantity = r.RequestedQuantity ?? r.ExpectedQuantity }).ToListAsync();
@@ -64,7 +64,8 @@ public class RevisarModel : PageModel
         if (qty != null && current.Any(c => qty.TryGetValue(c.ArticleId, out var q) && q != c.Quantity))
             adjusted = current.Select(c => new RequestLineInput(c.ArticleId, qty.TryGetValue(c.ArticleId, out var q) ? q : c.Quantity)).ToList();
 
-        var result = await _requests.ApproveAsync(UserId, id, comment, adjusted);
+        // allowShortage viene del formulario («Aprobar igual con faltantes»): aprueba aunque el material no alcance.
+        var result = await _requests.ApproveAsync(UserId, id, comment, adjusted, allowShortage);
         if (!result.Ok)
         {
             TempData.Error(result.Message);

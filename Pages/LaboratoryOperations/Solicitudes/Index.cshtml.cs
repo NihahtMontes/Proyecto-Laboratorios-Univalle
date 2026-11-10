@@ -74,6 +74,32 @@ public class IndexModel : PageModel
         var names = await _context.Interns.AsNoTracking().Where(i => teacherIds.Contains(i.Id))
             .ToDictionaryAsync(i => i.Id, i => string.IsNullOrWhiteSpace(i.Title) ? i.Name : i.Title + " " + i.Name);
 
+        // Material de las pendientes: requerimientos en UNA consulta y evaluación por día (un solo rango/stock por fecha).
+        var pendingRows = rows
+            .Where(r => r.Status == PlanningStatus.Requested && r.LaboratoryId != null && r.StartPeriodId != null
+                && r.PeriodCount != null && r.CourseGroupId != null)
+            .ToList();
+        var pendingIds = pendingRows.Select(r => r.Id).ToList();
+        var linesByPlan = new Dictionary<int, IReadOnlyList<RequestLineInput>>();
+        if (pendingIds.Count > 0)
+        {
+            var allLines = await _context.PlanningRequirements.AsNoTracking()
+                .Where(l => pendingIds.Contains(l.PlanningId))
+                .Select(l => new { l.PlanningId, l.ArticleId, Quantity = l.RequestedQuantity ?? l.ExpectedQuantity })
+                .ToListAsync();
+            foreach (var group in allLines.GroupBy(l => l.PlanningId))
+                linesByPlan[group.Key] = group.Select(l => new RequestLineInput(l.ArticleId, l.Quantity)).ToList();
+        }
+        var materialByPlan = new Dictionary<int, IReadOnlyList<MaterialLineCheck>>();
+        foreach (var dayGroup in pendingRows.GroupBy(r => r.ScheduledDate.Date))
+        {
+            var batch = dayGroup
+                .Select(r => new MaterialDayRequest(r.Id, r.StartPeriodId!.Value, r.PeriodCount!.Value, linesByPlan.GetValueOrDefault(r.Id) ?? []))
+                .ToList();
+            foreach (var check in await _requests.CheckMaterialForDayAsync(dayGroup.Key, batch))
+                materialByPlan[check.PlanningId] = check.Lines;
+        }
+
         foreach (var r in rows)
         {
             int blocks = 0, competitors = 0, shortCount = 0, noStock = 0;
@@ -86,11 +112,11 @@ public class IndexModel : PageModel
                 }, r.Id, forApproval: true);
                 blocks = check.Blocks.Count();
                 competitors = check.Issues.Count(i => i.Code == "PENDING_COMPETITION");
-                var lines = await _context.PlanningRequirements.AsNoTracking().Where(l => l.PlanningId == r.Id)
-                    .Select(l => new RequestLineInput(l.ArticleId, l.RequestedQuantity ?? l.ExpectedQuantity)).ToListAsync();
-                var material = await _requests.CheckMaterialAsync(r.ScheduledDate, startId, count, lines, r.Id);
-                shortCount = material.Count(m => m.State == MaterialState.Short);
-                noStock = material.Count(m => m.State == MaterialState.NoStock);
+                if (materialByPlan.TryGetValue(r.Id, out var material))
+                {
+                    shortCount = material.Count(m => m.State == MaterialState.Short);
+                    noStock = material.Count(m => m.State == MaterialState.NoStock);
+                }
             }
             Rows.Add(new InboxRow(r.Id, Pages.LaboratoryOperations.L3Codes.Format(r.Id, r.Code), names.GetValueOrDefault(r.TeacherPersonId) ?? "—",
                 r.PracticeName, r.Subject, r.Group, r.ScheduledDate, r.StartTime, r.EndTime, r.Lab, r.Items, r.Status, r.RequestDate,
@@ -106,7 +132,8 @@ public class IndexModel : PageModel
         var failed = new List<string>();
         foreach (var id in ids.Distinct())
         {
-            var result = await _requests.ApproveAsync(userId, id, "Aprobada en lote: sin choques ni faltantes.", null);
+            // El lote nunca aprueba con faltantes: solo entra lo que el semáforo marcó como limpio.
+            var result = await _requests.ApproveAsync(userId, id, "Aprobada en lote: sin choques ni faltantes.", null, allowShortage: false);
             if (result.Ok) ok++; else failed.Add(result.Message);
         }
         if (ok > 0) TempData.Success($"{ok} solicitud(es) aprobada(s). Los docentes ya fueron notificados.");

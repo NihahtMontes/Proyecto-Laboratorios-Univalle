@@ -933,6 +933,32 @@ public sealed partial class NotificationAlertService : INotificationAlertService
             Domain = NotificationDomains.Planning
         }, filterTerm);
 
+        // Material sin devolver: salidas abiertas cuya práctica terminó hace más de 2 horas (aún el mismo día).
+        // Mismo público que las alertas de cierre/L-3: quien ve la planificación ve el estado del material.
+        var unreturnedCutoff = DateTime.Now.AddHours(-2);
+        var openWithPractice = await _context.Departures
+            .AsNoTracking()
+            .Where(d => d.PlanningId != null && (d.Status == LoanStatus.Active || d.Status == LoanStatus.Overdue))
+            .Select(d => new { PlannedDate = (DateTime?)d.Planning!.ScheduledDate, PlannedEnd = d.Planning.EndTime })
+            .ToListAsync(cancellationToken);
+        var unreturnedCount = openWithPractice
+            .Where(d => d.PlannedDate!.Value.Date + (d.PlannedEnd ?? new TimeSpan(23, 59, 59)) < unreturnedCutoff)
+            .Count();
+        AddAggregate(results, unreturnedCount, new NotificationItem
+        {
+            Id = -6_000_005,
+            Title = "Material sin devolver",
+            Message = $"{unreturnedCount} salida(s) con material pendiente de prácticas que ya terminaron.",
+            Url = "/Cierre/Index",
+            Icon = "fas fa-box-open text-warning",
+            SortDate = today,
+            Time = "Hoy",
+            SyntheticKey = "plan-unreturned",
+            Group = NotificationGroups.Planning,
+            Urgency = NotificationUrgency.Warning,
+            Domain = NotificationDomains.Planning
+        }, filterTerm);
+
         return results;
     }
 

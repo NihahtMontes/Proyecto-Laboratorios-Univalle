@@ -32,6 +32,12 @@ public sealed record RequestWindow(
 
 public sealed record RequestLineInput(int ArticleId, decimal Quantity);
 
+/// <summary>Solicitud pendiente cuyo material se evalúa en lote junto con otras del mismo día.</summary>
+public sealed record MaterialDayRequest(int PlanningId, int StartPeriodId, int PeriodCount, IReadOnlyList<RequestLineInput> Lines);
+
+/// <summary>Resultado del material de una solicitud evaluada en lote (vease <see cref="MaterialDayRequest"/>).</summary>
+public sealed record DayMaterialCheck(int PlanningId, IReadOnlyList<MaterialLineCheck> Lines);
+
 /// <summary>Datos de una solicitud (alta o corrección de una observada).</summary>
 public sealed class RequestInput
 {
