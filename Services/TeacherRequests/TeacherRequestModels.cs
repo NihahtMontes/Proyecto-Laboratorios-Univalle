@@ -51,6 +51,16 @@ public sealed record AssignmentSuggestion(
     IReadOnlyList<OriginOption> Origins,
     IReadOnlyList<AssignmentInput> Suggested);
 
+/// <summary>Práctica programada del docente (cronograma de la gestión) que todavía no tiene solicitud vigente.</summary>
+public sealed record ProgrammedPractice(int ScheduleId, int CourseGroupId, int PracticeId, DateTime Date, int? WeekNumber,
+    string Practice, string Subject, string Group, int? LaboratoryId, bool InWindow);
+
+/// <summary>Control semanal: prácticas programadas (previstas) frente a las que ya tienen solicitud (recibidas).</summary>
+public sealed record WeekCoverage(int? WeekNumber, DateTime From, DateTime To, int Expected, int Received, IReadOnlyList<string> Missing)
+{
+    public int MissingCount => Expected - Received;
+}
+
 /// <summary>Solicitud pendiente cuyo material se evalúa en lote junto con otras del mismo día.</summary>
 public sealed record MaterialDayRequest(int PlanningId, int StartPeriodId, int PeriodCount, IReadOnlyList<RequestLineInput> Lines);
 

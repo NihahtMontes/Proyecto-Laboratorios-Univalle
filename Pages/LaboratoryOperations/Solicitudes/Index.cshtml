@@ -61,6 +61,43 @@
         </div>
     </div>
 
+    @if (Model.Coverage.Any(c => c.Expected > 0))
+    {
+        <!-- Control semanal: prácticas programadas frente a solicitudes recibidas -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center mb-3">
+                    <h5 class="font-weight-bold text-dark mb-0 mr-3"><i class="fas fa-tasks mr-2" style="color:#7460ee;"></i>Previstas vs. recibidas</h5>
+                    <small class="text-muted">Prácticas del cronograma de cada semana y cuántas ya tienen solicitud del docente.</small>
+                </div>
+                <div class="row">
+                    @foreach (var c in Model.Coverage)
+                    {
+                        var pct = c.Expected == 0 ? 100 : (int)Math.Round(100.0 * c.Received / c.Expected);
+                        var bar = c.MissingCount == 0 ? "bg-success" : pct >= 50 ? "bg-warning" : "bg-danger";
+                        <div class="col-md-3 col-6 mb-3">
+                            <div class="p-3 rounded h-100" style="background:#f8f9fc;">
+                                <div class="small text-uppercase font-weight-bold text-muted">@(c.WeekNumber is int w ? $"Semana {w}" : "Semana") · @c.From.ToString("dd/MM")–@c.To.ToString("dd/MM")</div>
+                                <div class="font-weight-bold text-dark" style="font-size:1.4rem;">@c.Received <small class="text-muted">de @c.Expected</small></div>
+                                <div class="progress my-2" style="height:6px;"><div class="progress-bar @bar" style="width:@pct%"></div></div>
+                                @if (c.MissingCount > 0)
+                                {
+                                    <div class="small text-muted" title="@string.Join("\n", c.Missing)">
+                                        Faltan @c.MissingCount: @c.Missing.FirstOrDefault()@(c.MissingCount > 1 ? "…" : "")
+                                    </div>
+                                }
+                                else if (c.Expected > 0)
+                                {
+                                    <div class="small text-success font-weight-bold"><i class="fas fa-check mr-1"></i>Todas solicitadas</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
     <div class="card border-0 shadow-sm" style="border-radius:16px;">
         <div class="card-body p-0">
             @if (Model.Rows.Count == 0)

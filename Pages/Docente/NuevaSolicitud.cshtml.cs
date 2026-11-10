@@ -49,9 +49,30 @@ public class NuevaSolicitudModel : TeacherPageBase
     [BindProperty] public string? Note { get; set; }
     [BindProperty] public int? PlanningId { get; set; }
 
-    public async Task<IActionResult> OnGetAsync(int? id, int? copyFrom)
+    public async Task<IActionResult> OnGetAsync(int? id, int? copyFrom, int? scheduleId)
     {
         await LoadListsAsync();
+        if (id == null && copyFrom == null && scheduleId is int programmed)
+        {
+            // Desde el cronograma: grupo, práctica y semana precargados; el docente elige día, horario y material.
+            var practice = (await Requests.GetProgrammedAsync(Teacher.PersonId, Window, 200)).FirstOrDefault(p => p.ScheduleId == programmed);
+            if (practice == null || Groups.All(g => g.Id != practice.CourseGroupId))
+            {
+                TempData.Warning("Esa práctica programada ya tiene solicitud o no es de tus grupos.");
+                return RedirectToPage("./Index");
+            }
+            InitialStateJson = JsonSerializer.Serialize(new
+            {
+                groupId = practice.CourseGroupId,
+                practiceId = practice.PracticeId,
+                weekDate = practice.Date.ToString("yyyy-MM-dd"),
+                periodCount = 2,
+                labId = practice.LaboratoryId,
+                observations = $"Práctica programada para el {practice.Date:dd/MM/yyyy}" + (practice.WeekNumber is int w ? $" (semana {w})." : "."),
+                lines = Array.Empty<object>()
+            }, Json);
+            return Page();
+        }
         var sourceId = id ?? copyFrom;
         if (sourceId is int source)
         {

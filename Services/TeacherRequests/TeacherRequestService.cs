@@ -46,6 +46,12 @@ public interface ITeacherRequestService
     /// (Economato primero; el faltante queda en el Economato).
     /// </summary>
     Task<IReadOnlyList<AssignmentSuggestion>> SuggestAssignmentsAsync(int planningId);
+
+    /// <summary>Prácticas programadas del docente en la gestión vigente, desde hoy, que aún no tienen solicitud vigente.</summary>
+    Task<IReadOnlyList<ProgrammedPractice>> GetProgrammedAsync(int teacherPersonId, RequestWindow window, int max = 20);
+
+    /// <summary>Control semanal de la gestión vigente: programadas (previstas) frente a las que ya tienen solicitud.</summary>
+    Task<IReadOnlyList<WeekCoverage>> GetWeeklyCoverageAsync(DateTime from, int weeks);
 }
 
 public sealed class TeacherRequestService : ITeacherRequestService
@@ -653,7 +659,10 @@ public sealed class TeacherRequestService : ITeacherRequestService
             // reutiliza aunque el grupo ya tenga esa práctica (un docente puede repetirla las veces que necesite; cada
             // sesión es su propia Planning con fecha, horario y material). Solo se crea si el grupo nunca la tuvo.
             var schedule = await _context.PracticeSchedules.AsTracking()
-                .FirstOrDefaultAsync(s => s.ManagementId == group.ManagementId && s.PracticeId == practice.Id && s.GroupName == group.Name);
+                .Where(s => s.ManagementId == group.ManagementId && s.PracticeId == practice.Id
+                    && (s.CourseGroupId == group.Id || s.GroupName == group.Name))
+                .OrderBy(s => s.CourseGroupId == group.Id ? 0 : 1)
+                .FirstOrDefaultAsync();
             var newSchedule = schedule == null;
             schedule ??= new PracticeSchedule
             {
@@ -1075,6 +1084,63 @@ public sealed class TeacherRequestService : ITeacherRequestService
             .AnyAsync(p => p.PracticeScheduleId == sid && p.Id != plan.Id && !p.IsDeleted
                 && p.Status != PlanningStatus.Rejected && p.Status != PlanningStatus.Cancelled);
         if (!inUse) schedule.Status = PracticeScheduleStatus.Cancelled;
+    }
+
+    // ───────────────────────────── Programación → solicitudes ─────────────────────────────
+
+    /// <summary>Planificaciones que cuentan como "solicitud recibida" de una programación (no rechazadas ni retiradas).</summary>
+    private static readonly string[] NotReceivedStatuses = [PlanningStatus.Rejected, PlanningStatus.Cancelled];
+
+    public async Task<IReadOnlyList<ProgrammedPractice>> GetProgrammedAsync(int teacherPersonId, RequestWindow window, int max = 20)
+    {
+        if (window.ManagementId is not int managementId) return [];
+        var today = DateTime.Today;
+        var rows = await _context.PracticeSchedules.AsNoTracking()
+            .Where(s => s.ManagementId == managementId && s.Status == PracticeScheduleStatus.Scheduled && !s.IsDeleted
+                && s.CourseGroupId != null && s.CourseGroup!.TeacherPersonId == teacherPersonId && s.CourseGroup.Status == GeneralStatus.Activo
+                && s.ExecutionDate != null && s.ExecutionDate >= today
+                && !_context.Plannings.Any(p => p.PracticeScheduleId == s.Id && !p.IsDeleted && !NotReceivedStatuses.Contains(p.Status)))
+            .OrderBy(s => s.ExecutionDate)
+            .Take(max)
+            .Select(s => new
+            {
+                s.Id, CourseGroupId = s.CourseGroupId!.Value, s.PracticeId, Date = s.ExecutionDate!.Value, s.WeekNumber,
+                Practice = s.Practice!.Name, Subject = s.Subject!.Name, Group = s.CourseGroup!.Name, s.LaboratoryId
+            })
+            .ToListAsync();
+        return rows.Select(r => new ProgrammedPractice(r.Id, r.CourseGroupId, r.PracticeId, r.Date.Date, r.WeekNumber, r.Practice,
+            r.Subject, r.Group, r.LaboratoryId, window.Contains(r.Date.Date))).ToList();
+    }
+
+    public async Task<IReadOnlyList<WeekCoverage>> GetWeeklyCoverageAsync(DateTime from, int weeks)
+    {
+        var management = await _managements.GetCurrentAsync();
+        if (management == null || weeks < 1) return [];
+        var monday = from.Date.AddDays(-(((int)from.DayOfWeek + 6) % 7));
+        var until = monday.AddDays(7 * weeks);
+        var rows = await _context.PracticeSchedules.AsNoTracking()
+            .Where(s => s.ManagementId == management.Id && !s.IsDeleted && s.ExecutionDate != null
+                && s.ExecutionDate >= monday && s.ExecutionDate < until
+                && (s.Status == PracticeScheduleStatus.Scheduled || s.Status == PracticeScheduleStatus.Executed))
+            .Select(s => new
+            {
+                Date = s.ExecutionDate!.Value, s.WeekNumber,
+                Label = s.Subject!.Name + " · Grupo " + (s.CourseGroup != null ? s.CourseGroup.Name : s.GroupName) + " · " + s.Practice!.Name,
+                Received = _context.Plannings.Any(p => p.PracticeScheduleId == s.Id && !p.IsDeleted && !NotReceivedStatuses.Contains(p.Status))
+            })
+            .ToListAsync();
+
+        var result = new List<WeekCoverage>();
+        for (var w = 0; w < weeks; w++)
+        {
+            var start = monday.AddDays(7 * w);
+            var end = start.AddDays(6);
+            var week = rows.Where(r => r.Date.Date >= start && r.Date.Date <= end).ToList();
+            result.Add(new WeekCoverage(week.Select(r => r.WeekNumber).FirstOrDefault(n => n != null), start, end, week.Count,
+                week.Count(r => r.Received),
+                week.Where(r => !r.Received).OrderBy(r => r.Date).Take(5).Select(r => $"{r.Label} ({r.Date:dd/MM})").ToList()));
+        }
+        return result;
     }
 
     // ───────────────────────────── Asignación de origen (V13: SolicitudL3Asignaciones) ─────────────────────────────

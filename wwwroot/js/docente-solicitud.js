@@ -646,6 +646,7 @@
         state.date = initial.date || null;
         state.startPeriodId = initial.date ? initial.startPeriodId : null;
         if (initial.date) state.weekDate = initial.date;
+        else if (initial.weekDate) state.weekDate = initial.weekDate;   // desde el cronograma: abre la semana programada
         state.lines = (initial.lines || []).map(function (l) { return { articleId: l.articleId, code: l.code, name: l.name, category: l.category, unit: l.unit, quantity: l.quantity }; });
         state.kitLoadedFor = state.lines.length ? state.practiceId + '|' + (state.students || '') : null;
         $('observations').value = initial.observations || '';

@@ -21,6 +21,8 @@ public class IndexModel : TeacherPageBase
     public DateTime WeekStart { get; private set; }
     public List<TeacherPlanningRow> Week { get; private set; } = [];
     public List<NewsItem> News { get; private set; } = [];
+    /// <summary>Prácticas del cronograma que todavía no solicitó (para iniciarlas con un clic).</summary>
+    public IReadOnlyList<ProgrammedPractice> Programmed { get; private set; } = [];
 
     public sealed record NewsItem(int PlanningId, string Code, string Practice, PlanningReviewAction Action, string? Comment, DateTime Date);
 
@@ -56,6 +58,8 @@ public class IndexModel : TeacherPageBase
                     && p.Status != PlanningStatus.Rejected && p.Status != PlanningStatus.Cancelled)
                 .OrderBy(p => p.ScheduledDate).ThenBy(p => p.StartTime))
             .ToListAsync();
+
+        Programmed = await Requests.GetProgrammedAsync(Teacher.PersonId, Window, 8);
 
         News = await Db.PlanningReviews.AsNoTracking()
             .Where(r => r.Planning!.TeacherPersonId == Teacher.PersonId && r.UserId != Teacher.UserId)

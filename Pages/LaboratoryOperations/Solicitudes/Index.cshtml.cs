@@ -42,12 +42,15 @@ public class IndexModel : PageModel
     public int ToReview { get; private set; }
     public int Observed { get; private set; }
     public List<InboxRow> Rows { get; private set; } = [];
+    /// <summary>Control semanal (esta semana y las 3 siguientes): prácticas programadas frente a solicitudes recibidas.</summary>
+    public IReadOnlyList<WeekCoverage> Coverage { get; private set; } = [];
 
     public async Task OnGetAsync(string? tab)
     {
         Tab = tab is "observadas" or "resueltas" ? tab : "revisar";
         ToReview = await _context.Plannings.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == PlanningStatus.Requested);
         Observed = await _context.Plannings.AsNoTracking().CountAsync(p => !p.IsDeleted && p.Status == PlanningStatus.Observed);
+        Coverage = await _requests.GetWeeklyCoverageAsync(DateTime.Today, 4);
 
         IQueryable<Planning> query = _context.Plannings.AsNoTracking().Where(p => !p.IsDeleted);
         query = Tab switch

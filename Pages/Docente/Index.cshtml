@@ -144,6 +144,44 @@
         </div>
     </div>
 
+    @if (Model.Programmed.Count > 0)
+    {
+        <!-- Prácticas del cronograma por solicitar -->
+        <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
+            <div class="card-body">
+                <div class="d-flex flex-wrap align-items-center mb-3">
+                    <h5 class="font-weight-bold text-dark mb-0 mr-3"><i class="fas fa-calendar-plus mr-2" style="color:#7460ee;"></i>Prácticas programadas por solicitar</h5>
+                    <small class="text-muted">Según el cronograma de la gestión. Solicítalas con anticipación para asegurar laboratorio y material.</small>
+                </div>
+                <div class="list-group list-group-flush">
+                    @foreach (var p in Model.Programmed)
+                    {
+                        <div class="list-group-item px-0 d-flex flex-wrap align-items-center">
+                            <div class="mr-3 text-center" style="min-width:64px;">
+                                <div class="font-weight-bold text-dark">@p.Date.ToString("dd/MM")</div>
+                                <small class="text-muted text-capitalize">@p.Date.ToString("ddd", es)@(p.WeekNumber is int w ? $" · sem. {w}" : "")</small>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="font-weight-bold text-dark">@p.Practice</div>
+                                <small class="text-muted">@p.Subject · Grupo @p.Group</small>
+                            </div>
+                            @if (p.InWindow)
+                            {
+                                <a asp-page="./NuevaSolicitud" asp-route-scheduleId="@p.ScheduleId" class="btn btn-sm text-white rounded-pill px-3" style="background:#7460ee;">
+                                    <i class="fas fa-paper-plane mr-1"></i>Solicitar
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="badge badge-pill badge-light border px-3 py-2" title="Aún fuera del plazo para solicitar">Se habilita más adelante</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
     <!-- Semana -->
     <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
         <div class="card-body">
